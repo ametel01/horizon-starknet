@@ -34,6 +34,10 @@ pub mod Errors {
     pub const MARKET_FACTORY_ALREADY_EXISTS: felt252 = 'MktFactory: already exists';
     pub const MARKET_FACTORY_DEPLOY_FAILED: felt252 = 'MktFactory: deploy failed';
 
+    // Router errors
+    pub const ROUTER_SLIPPAGE_EXCEEDED: felt252 = 'Router: slippage exceeded';
+    pub const ROUTER_DEADLINE_EXCEEDED: felt252 = 'Router: deadline exceeded';
+
     // Math errors
     pub const MATH_OVERFLOW: felt252 = 'Math: overflow';
     pub const MATH_UNDERFLOW: felt252 = 'Math: underflow';

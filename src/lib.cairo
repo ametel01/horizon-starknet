@@ -3,4 +3,5 @@ pub mod interfaces;
 pub mod libraries;
 pub mod market;
 pub mod mocks;
+pub mod router;
 pub mod tokens;
