@@ -38,4 +38,5 @@ pub mod Errors {
     // Factory errors
     pub const FACTORY_ALREADY_EXISTS: felt252 = 'Factory: already exists';
     pub const FACTORY_INVALID_EXPIRY: felt252 = 'Factory: invalid expiry';
+    pub const FACTORY_DEPLOY_FAILED: felt252 = 'Factory: deploy failed';
 }

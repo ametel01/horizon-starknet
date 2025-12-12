@@ -1,3 +1,4 @@
+pub mod factory;
 pub mod interfaces;
 pub mod libraries;
 pub mod market;
