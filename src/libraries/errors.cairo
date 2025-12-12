@@ -30,6 +30,10 @@ pub mod Errors {
     pub const MARKET_ZERO_LIQUIDITY: felt252 = 'Market: zero liquidity';
     pub const MARKET_INVALID_RESERVES: felt252 = 'Market: invalid reserves';
 
+    // Market Factory errors
+    pub const MARKET_FACTORY_ALREADY_EXISTS: felt252 = 'MktFactory: already exists';
+    pub const MARKET_FACTORY_DEPLOY_FAILED: felt252 = 'MktFactory: deploy failed';
+
     // Math errors
     pub const MATH_OVERFLOW: felt252 = 'Math: overflow';
     pub const MATH_UNDERFLOW: felt252 = 'Math: underflow';
