@@ -109,9 +109,8 @@ pub mod Factory {
 
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();
-            let (yt_address, _) = match deploy_syscall(
-                yt_class_hash, salt, yt_calldata.span(), false,
-            ) {
+            let (yt_address, _) =
+                match deploy_syscall(yt_class_hash, salt, yt_calldata.span(), false) {
                 Result::Ok(result) => result,
                 Result::Err(_) => panic!("{}", Errors::FACTORY_DEPLOY_FAILED),
             };
