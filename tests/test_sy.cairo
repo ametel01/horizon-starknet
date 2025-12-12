@@ -2,7 +2,7 @@ use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,
 };
-use starknet::ContractAddress;
+use starknet::{ContractAddress, SyscallResultTrait};
 use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use yield_tokenization::libraries::math::WAD;
 use yield_tokenization::mocks::mock_yield_token::{
@@ -33,20 +33,20 @@ fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
 
 // Deploy mock yield token
 fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
-    let contract = declare("MockYieldToken").unwrap().contract_class();
+    let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
     let mut calldata = array![];
     // name: "MockYieldToken" (14 chars)
     append_bytearray(ref calldata, 'MockYieldToken', 14);
     // symbol: "MYT" (3 chars)
     append_bytearray(ref calldata, 'MYT', 3);
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockYieldTokenDispatcher { contract_address }
 }
 
 // Deploy SY token
 fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDispatcher {
-    let contract = declare("SY").unwrap().contract_class();
+    let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     // name: "SY Token" (8 chars)
     append_bytearray(ref calldata, 'SY Token', 8);
@@ -58,7 +58,7 @@ fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDis
     calldata.append(initial_exchange_rate.low.into());
     calldata.append(initial_exchange_rate.high.into());
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
 

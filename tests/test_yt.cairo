@@ -3,7 +3,7 @@ use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
     start_cheat_caller_address, stop_cheat_caller_address,
 };
-use starknet::{ClassHash, ContractAddress};
+use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
 use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
 use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use yield_tokenization::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
@@ -38,18 +38,18 @@ const ONE_YEAR: u64 = 365 * 86400;
 
 // Deploy mock yield token (underlying asset)
 fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
-    let contract = declare("MockYieldToken").unwrap().contract_class();
+    let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'MockYieldToken', 14);
     append_bytearray(ref calldata, 'MYT', 3);
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockYieldTokenDispatcher { contract_address }
 }
 
 // Deploy SY token
 fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDispatcher {
-    let contract = declare("SY").unwrap().contract_class();
+    let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
@@ -57,13 +57,13 @@ fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDis
     calldata.append(initial_exchange_rate.low.into());
     calldata.append(initial_exchange_rate.high.into());
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
 
 // Get PT class hash for YT deployment
 fn get_pt_class_hash() -> ClassHash {
-    let contract = declare("PT").unwrap().contract_class();
+    let contract = declare("PT").unwrap_syscall().contract_class();
     *contract.class_hash
 }
 
@@ -71,7 +71,7 @@ fn get_pt_class_hash() -> ClassHash {
 fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTDispatcher {
     start_cheat_block_timestamp_global(CURRENT_TIME);
 
-    let contract = declare("YT").unwrap().contract_class();
+    let contract = declare("YT").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'YT Token', 8);
     append_bytearray(ref calldata, 'YT', 2);
@@ -79,7 +79,7 @@ fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTD
     calldata.append(pt_class_hash.into());
     calldata.append(expiry.into());
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
 }
 
