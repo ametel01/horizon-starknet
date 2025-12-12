@@ -137,3 +137,13 @@ scarb fmt
 - YT distributes yield continuously until maturity
 - At maturity: PT price → 1, YT price → 0
 - The AMM curve naturally shifts to push PT toward its underlying value as expiry approaches
+
+
+DO NOT ADD 
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+
+
+to commit messages
