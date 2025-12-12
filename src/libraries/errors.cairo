@@ -9,9 +9,13 @@ pub mod Errors {
     pub const SY_ZERO_REDEEM: felt252 = 'SY: zero redeem';
     pub const SY_INSUFFICIENT_BALANCE: felt252 = 'SY: insufficient balance';
 
-    // PT/YT errors
-    pub const PT_ONLY_YT_CAN_MINT: felt252 = 'PT: only YT can mint';
-    pub const PT_ONLY_YT_CAN_BURN: felt252 = 'PT: only YT can burn';
+    // PT errors
+    pub const PT_ONLY_YT: felt252 = 'PT: only YT';
+    pub const PT_YT_NOT_SET: felt252 = 'PT: YT not set';
+    pub const PT_YT_ALREADY_SET: felt252 = 'PT: YT already set';
+    pub const PT_INVALID_EXPIRY: felt252 = 'PT: invalid expiry';
+
+    // YT errors
     pub const YT_EXPIRED: felt252 = 'YT: expired';
     pub const YT_NOT_EXPIRED: felt252 = 'YT: not expired';
     pub const YT_INSUFFICIENT_PT: felt252 = 'YT: insufficient PT';
