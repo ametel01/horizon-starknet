@@ -1,0 +1,761 @@
+use snforge_std::{
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
+use starknet::{ContractAddress, SyscallResultTrait};
+use yield_tokenization::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
+use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use yield_tokenization::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
+use yield_tokenization::libraries::math::WAD;
+use yield_tokenization::mocks::mock_yield_token::{
+    IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait,
+};
+
+// Test addresses
+fn user1() -> ContractAddress {
+    'user1'.try_into().unwrap()
+}
+
+fn user2() -> ContractAddress {
+    'user2'.try_into().unwrap()
+}
+
+fn zero_address() -> ContractAddress {
+    0.try_into().unwrap()
+}
+
+// Helper to serialize ByteArray for calldata
+fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
+    calldata.append(0); // data array length
+    calldata.append(value); // pending_word
+    calldata.append(len.into()); // pending_word_len
+}
+
+// Default market parameters
+fn default_scalar_root() -> u256 {
+    50 * WAD // Controls rate sensitivity
+}
+
+fn default_initial_anchor() -> u256 {
+    WAD / 10 // 0.1 WAD = ~10% APY
+}
+
+fn default_fee_rate() -> u256 {
+    WAD / 100 // 1% fee
+}
+
+// Deploy mock yield token
+fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
+    let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'MockYieldToken', 14);
+    append_bytearray(ref calldata, 'MYT', 3);
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
+    IMockYieldTokenDispatcher { contract_address }
+}
+
+// Deploy SY token
+fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDispatcher {
+    let contract = declare("SY").unwrap_syscall().contract_class();
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'SY Token', 8);
+    append_bytearray(ref calldata, 'SY', 2);
+    calldata.append(underlying.into());
+    calldata.append(initial_exchange_rate.low.into());
+    calldata.append(initial_exchange_rate.high.into());
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
+    ISYDispatcher { contract_address }
+}
+
+// Deploy YT (which deploys PT internally)
+fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
+    let pt_class = declare("PT").unwrap_syscall().contract_class();
+    let yt_class = declare("YT").unwrap_syscall().contract_class();
+
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'YT Token', 8);
+    append_bytearray(ref calldata, 'YT', 2);
+    calldata.append(sy.into());
+    calldata.append((*pt_class.class_hash).into());
+    calldata.append(expiry.into());
+
+    let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
+    IYTDispatcher { contract_address }
+}
+
+// Deploy Market
+fn deploy_market(
+    pt: ContractAddress, scalar_root: u256, initial_anchor: u256, fee_rate: u256,
+) -> IMarketDispatcher {
+    let contract = declare("Market").unwrap_syscall().contract_class();
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'PT-SY LP', 8);
+    append_bytearray(ref calldata, 'LP', 2);
+    calldata.append(pt.into());
+    calldata.append(scalar_root.low.into());
+    calldata.append(scalar_root.high.into());
+    calldata.append(initial_anchor.low.into());
+    calldata.append(initial_anchor.high.into());
+    calldata.append(fee_rate.low.into());
+    calldata.append(fee_rate.high.into());
+
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
+    IMarketDispatcher { contract_address }
+}
+
+// Full setup: underlying -> SY -> YT/PT -> Market
+fn setup() -> (
+    IMockYieldTokenDispatcher, ISYDispatcher, IYTDispatcher, IPTDispatcher, IMarketDispatcher,
+) {
+    // Set timestamp to a known value
+    start_cheat_block_timestamp_global(1000);
+
+    let underlying = deploy_mock_yield_token();
+    let sy = deploy_sy(underlying.contract_address, WAD);
+
+    // Expiry in ~1 year
+    let expiry = 1000 + 365 * 24 * 60 * 60;
+    let yt = deploy_yt(sy.contract_address, expiry);
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    let market = deploy_market(
+        pt.contract_address, default_scalar_root(), default_initial_anchor(), default_fee_rate(),
+    );
+
+    (underlying, sy, yt, pt, market)
+}
+
+// Helper: Setup user with SY and PT tokens
+fn setup_user_with_tokens(
+    underlying: IMockYieldTokenDispatcher,
+    sy: ISYDispatcher,
+    yt: IYTDispatcher,
+    user: ContractAddress,
+    amount: u256,
+) {
+    // Mint underlying to user
+    underlying.mint(user, amount * 2);
+
+    // Approve and deposit to get SY
+    start_cheat_caller_address(underlying.contract_address, user);
+    underlying.approve(sy.contract_address, amount * 2);
+    stop_cheat_caller_address(underlying.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount * 2);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Approve SY for YT contract and mint PT+YT
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, amount);
+    stop_cheat_caller_address(yt.contract_address);
+}
+
+// ============ Constructor Tests ============
+
+#[test]
+fn test_market_constructor() {
+    let (_, sy, yt, pt, market) = setup();
+
+    assert(market.sy() == sy.contract_address, 'Wrong SY');
+    assert(market.pt() == pt.contract_address, 'Wrong PT');
+    assert(market.yt() == yt.contract_address, 'Wrong YT');
+    assert(market.expiry() == yt.expiry(), 'Wrong expiry');
+    assert(!market.is_expired(), 'Should not be expired');
+
+    let (sy_reserve, pt_reserve) = market.get_reserves();
+    assert(sy_reserve == 0, 'SY reserve should be 0');
+    assert(pt_reserve == 0, 'PT reserve should be 0');
+    assert(market.total_lp_supply() == 0, 'LP supply should be 0');
+}
+
+// ============ Mint (Add Liquidity) Tests ============
+
+#[test]
+fn test_market_mint_initial() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+    let sy_amount = 100 * WAD;
+    let pt_amount = 100 * WAD;
+
+    // Setup user with tokens
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Approve market to spend tokens
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, sy_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, pt_amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    // Add liquidity
+    start_cheat_caller_address(market.contract_address, user);
+    let (sy_used, pt_used, lp_minted) = market.mint(user, sy_amount, pt_amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify results
+    assert(sy_used == sy_amount, 'Wrong SY used');
+    assert(pt_used == pt_amount, 'Wrong PT used');
+    assert(lp_minted > 0, 'LP should be minted');
+
+    let (sy_reserve, pt_reserve) = market.get_reserves();
+    assert(sy_reserve == sy_amount, 'Wrong SY reserve');
+    assert(pt_reserve == pt_amount, 'Wrong PT reserve');
+    assert(market.total_lp_supply() == lp_minted, 'Wrong LP supply');
+}
+
+#[test]
+fn test_market_mint_subsequent() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user1_addr = user1();
+    let user2_addr = user2();
+
+    // Setup both users with tokens
+    setup_user_with_tokens(underlying, sy, yt, user1_addr, 200 * WAD);
+    setup_user_with_tokens(underlying, sy, yt, user2_addr, 200 * WAD);
+
+    // User1 adds initial liquidity
+    start_cheat_caller_address(sy.contract_address, user1_addr);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user1_addr);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user1_addr);
+    let (_, _, lp1) = market.mint(user1_addr, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // User2 adds more liquidity
+    start_cheat_caller_address(sy.contract_address, user2_addr);
+    sy.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user2_addr);
+    pt.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user2_addr);
+    let (sy_used2, pt_used2, lp2) = market.mint(user2_addr, 50 * WAD, 50 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify user2 got proportional LP tokens
+    assert(sy_used2 == 50 * WAD, 'Wrong SY used');
+    assert(pt_used2 == 50 * WAD, 'Wrong PT used');
+    // LP tokens should be proportional (50% of user1's)
+    assert(lp2 == lp1 / 2, 'Wrong LP ratio');
+}
+
+#[test]
+#[should_panic(expected: 'Market: expired')]
+fn test_market_mint_expired() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 100 * WAD);
+
+    // Fast forward past expiry
+    start_cheat_block_timestamp_global(market.expiry() + 1);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 50 * WAD, 50 * WAD);
+}
+
+#[test]
+#[should_panic(expected: 'YT: zero amount')]
+fn test_market_mint_zero_amount() {
+    let (_, _, _, _, market) = setup();
+    let user = user1();
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 0, 0);
+}
+
+// ============ Burn (Remove Liquidity) Tests ============
+
+#[test]
+fn test_market_burn() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+
+    // Get balances before burn
+    let sy_before = sy.balance_of(user);
+    let pt_before = pt.balance_of(user);
+
+    // Remove all liquidity
+    let (sy_out, pt_out) = market.burn(user, lp_minted);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify tokens returned
+    assert(sy_out == 100 * WAD, 'Wrong SY returned');
+    assert(pt_out == 100 * WAD, 'Wrong PT returned');
+
+    // Verify balances updated
+    assert(sy.balance_of(user) == sy_before + sy_out, 'Wrong SY balance');
+    assert(pt.balance_of(user) == pt_before + pt_out, 'Wrong PT balance');
+
+    // Verify reserves emptied
+    let (sy_reserve, pt_reserve) = market.get_reserves();
+    assert(sy_reserve == 0, 'SY reserve should be 0');
+    assert(pt_reserve == 0, 'PT reserve should be 0');
+}
+
+#[test]
+fn test_market_burn_partial() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+
+    // Remove half liquidity
+    let (sy_out, pt_out) = market.burn(user, lp_minted / 2);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify got approximately half back
+    assert(sy_out == 50 * WAD, 'Wrong SY returned');
+    assert(pt_out == 50 * WAD, 'Wrong PT returned');
+
+    // Verify remaining reserves
+    let (sy_reserve, pt_reserve) = market.get_reserves();
+    assert(sy_reserve == 50 * WAD, 'Wrong SY reserve');
+    assert(pt_reserve == 50 * WAD, 'Wrong PT reserve');
+}
+
+#[test]
+fn test_market_burn_after_expiry() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Fast forward past expiry
+    start_cheat_block_timestamp_global(market.expiry() + 1);
+
+    // Should still be able to burn after expiry
+    start_cheat_caller_address(market.contract_address, user);
+    let (sy_out, pt_out) = market.burn(user, lp_minted);
+    stop_cheat_caller_address(market.contract_address);
+
+    assert(sy_out == 100 * WAD, 'Should get SY back');
+    assert(pt_out == 100 * WAD, 'Should get PT back');
+}
+
+// ============ Swap Tests ============
+
+#[test]
+fn test_swap_exact_pt_for_sy() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity first
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Swap PT for SY
+    let swap_amount = 10 * WAD;
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, swap_amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    let sy_before = sy.balance_of(user);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify received SY
+    assert(sy_out > 0, 'Should receive SY');
+    assert(sy.balance_of(user) == sy_before + sy_out, 'Wrong SY balance');
+
+    // Verify reserves updated
+    let (sy_reserve, pt_reserve) = market.get_reserves();
+    assert(pt_reserve == 100 * WAD + swap_amount, 'Wrong PT reserve');
+    assert(sy_reserve == 100 * WAD - sy_out, 'Wrong SY reserve');
+}
+
+#[test]
+fn test_swap_exact_sy_for_pt() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Swap SY for PT
+    let swap_amount = 10 * WAD;
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, swap_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let pt_before = pt.balance_of(user);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify received PT
+    assert(pt_out > 0, 'Should receive PT');
+    assert(pt.balance_of(user) == pt_before + pt_out, 'Wrong PT balance');
+}
+
+#[test]
+fn test_swap_sy_for_exact_pt() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Want to get exactly 5 PT
+    let exact_pt_out = 5 * WAD;
+    let max_sy_in = 10 * WAD; // Generous max
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, max_sy_in);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let pt_before = pt.balance_of(user);
+    let sy_before = sy.balance_of(user);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let sy_spent = market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify got exact PT
+    assert(pt.balance_of(user) == pt_before + exact_pt_out, 'Should get exact PT');
+    // Verify spent SY
+    assert(sy.balance_of(user) == sy_before - sy_spent, 'Wrong SY spent');
+    assert(sy_spent <= max_sy_in, 'Exceeded max SY');
+}
+
+#[test]
+fn test_swap_pt_for_exact_sy() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Want to get exactly 5 SY
+    let exact_sy_out = 5 * WAD;
+    let max_pt_in = 10 * WAD;
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, max_pt_in);
+    stop_cheat_caller_address(pt.contract_address);
+
+    let sy_before = sy.balance_of(user);
+    let pt_before = pt.balance_of(user);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let pt_spent = market.swap_pt_for_exact_sy(user, exact_sy_out, max_pt_in);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify got exact SY
+    assert(sy.balance_of(user) == sy_before + exact_sy_out, 'Should get exact SY');
+    // Verify spent PT
+    assert(pt.balance_of(user) == pt_before - pt_spent, 'Wrong PT spent');
+    assert(pt_spent <= max_pt_in, 'Exceeded max PT');
+}
+
+// ============ Slippage Protection Tests ============
+
+#[test]
+#[should_panic(expected: 'Market: slippage exceeded')]
+fn test_swap_slippage_exceeded() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Try to swap with unrealistic min_out
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    // Expect at least 100 WAD SY for 1 WAD PT - should fail
+    market.swap_exact_pt_for_sy(user, WAD, 100 * WAD);
+}
+
+// ============ Expiry Tests ============
+
+#[test]
+#[should_panic(expected: 'Market: expired')]
+fn test_swap_after_expiry() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Fast forward past expiry
+    start_cheat_block_timestamp_global(market.expiry() + 1);
+
+    // Swap should fail
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, WAD, 0);
+}
+
+// ============ Implied Rate Tests ============
+
+#[test]
+fn test_get_ln_implied_rate() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get implied rate
+    let ln_rate = market.get_ln_implied_rate();
+
+    // Should be non-zero
+    assert(ln_rate > 0, 'Rate should be positive');
+}
+
+#[test]
+fn test_implied_rate_changes_with_swap() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    let rate_before = market.get_ln_implied_rate();
+
+    // Do a swap - sell PT for SY
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 20 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 20 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    let rate_after = market.get_ln_implied_rate();
+
+    // Rate should have changed (more PT in pool = higher proportion = lower rate)
+    assert(rate_after != rate_before, 'Rate should change');
+}
+
+// ============ Edge Cases ============
+
+#[test]
+#[should_panic(expected: 'YT: zero address')]
+fn test_mint_zero_receiver() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 100 * WAD);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(zero_address(), 50 * WAD, 50 * WAD);
+}
+
+#[test]
+fn test_multiple_users_swap() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user1_addr = user1();
+    let user2_addr = user2();
+
+    // Setup both users
+    setup_user_with_tokens(underlying, sy, yt, user1_addr, 200 * WAD);
+    setup_user_with_tokens(underlying, sy, yt, user2_addr, 200 * WAD);
+
+    // User1 adds liquidity
+    start_cheat_caller_address(sy.contract_address, user1_addr);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user1_addr);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user1_addr);
+    market.mint(user1_addr, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // User2 swaps
+    start_cheat_caller_address(pt.contract_address, user2_addr);
+    pt.approve(market.contract_address, 10 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user2_addr);
+    let sy_out = market.swap_exact_pt_for_sy(user2_addr, 10 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    assert(sy_out > 0, 'User2 should get SY');
+
+    // User1 can still remove liquidity (partial)
+    start_cheat_caller_address(market.contract_address, user1_addr);
+    let lp_balance = market.total_lp_supply();
+    let (sy_back, pt_back) = market.burn(user1_addr, lp_balance / 2);
+    stop_cheat_caller_address(market.contract_address);
+
+    assert(sy_back > 0, 'User1 should get SY');
+    assert(pt_back > 0, 'User1 should get PT');
+}
