@@ -21,6 +21,10 @@ pub mod Market {
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 
     // ERC20 component for LP token functionality
+    #[abi(embed_v0)]
+    impl ERC20Impl = ERC20Component::ERC20Impl<ContractState>;
+    #[abi(embed_v0)]
+    impl ERC20MetadataImpl = ERC20Component::ERC20MetadataImpl<ContractState>;
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
 
     #[storage]
