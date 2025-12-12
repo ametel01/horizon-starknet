@@ -1,12 +1,17 @@
 use starknet::ContractAddress;
+use yield_tokenization::libraries::math::WAD;
 
 /// Mock yield-bearing token for testing
 /// A simple ERC20 token that can be minted by anyone (for testing purposes)
+/// Includes exchange rate simulation for yield testing
 #[starknet::contract]
 pub mod MockYieldToken {
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
-    use starknet::storage::{StorageMapReadAccess, StoragePointerReadAccess};
+    use starknet::storage::{
+        StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use starknet::{ContractAddress, get_caller_address};
+    use super::WAD;
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 
@@ -17,6 +22,8 @@ pub mod MockYieldToken {
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        // Simulated exchange rate (for yield testing)
+        exchange_rate: u256,
     }
 
     #[event]
@@ -29,6 +36,8 @@ pub mod MockYieldToken {
     #[constructor]
     fn constructor(ref self: ContractState, name: ByteArray, symbol: ByteArray) {
         self.erc20.initializer(name, symbol);
+        // Initialize exchange rate to 1:1 (WAD)
+        self.exchange_rate.write(WAD);
     }
 
     #[abi(embed_v0)]
@@ -93,6 +102,17 @@ pub mod MockYieldToken {
             let caller = get_caller_address();
             self.erc20.burn(caller, amount);
         }
+
+        /// Get simulated exchange rate (for yield testing)
+        fn exchange_rate(self: @ContractState) -> u256 {
+            self.exchange_rate.read()
+        }
+
+        /// Set simulated exchange rate (for yield testing)
+        /// Use this to simulate yield accrual
+        fn set_exchange_rate(ref self: ContractState, new_rate: u256) {
+            self.exchange_rate.write(new_rate);
+        }
     }
 }
 
@@ -115,4 +135,8 @@ pub trait IMockYieldToken<TContractState> {
     // Mock functions for testing
     fn mint(ref self: TContractState, to: ContractAddress, amount: u256);
     fn burn(ref self: TContractState, amount: u256);
+
+    // Exchange rate simulation for yield testing
+    fn exchange_rate(self: @TContractState) -> u256;
+    fn set_exchange_rate(ref self: TContractState, new_rate: u256);
 }
