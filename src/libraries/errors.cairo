@@ -18,6 +18,7 @@ pub mod Errors {
     // YT errors
     pub const YT_EXPIRED: felt252 = 'YT: expired';
     pub const YT_NOT_EXPIRED: felt252 = 'YT: not expired';
+    pub const YT_INVALID_EXPIRY: felt252 = 'YT: invalid expiry';
     pub const YT_INSUFFICIENT_PT: felt252 = 'YT: insufficient PT';
     pub const YT_INSUFFICIENT_YT: felt252 = 'YT: insufficient YT';
     pub const YT_INSUFFICIENT_SY: felt252 = 'YT: insufficient SY';
