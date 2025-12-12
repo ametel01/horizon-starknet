@@ -1,0 +1,36 @@
+pub mod Errors {
+    // General errors
+    pub const ZERO_ADDRESS: felt252 = 'YT: zero address';
+    pub const ZERO_AMOUNT: felt252 = 'YT: zero amount';
+    pub const UNAUTHORIZED: felt252 = 'YT: unauthorized';
+
+    // SY errors
+    pub const SY_ZERO_DEPOSIT: felt252 = 'SY: zero deposit';
+    pub const SY_ZERO_REDEEM: felt252 = 'SY: zero redeem';
+    pub const SY_INSUFFICIENT_BALANCE: felt252 = 'SY: insufficient balance';
+
+    // PT/YT errors
+    pub const PT_ONLY_YT_CAN_MINT: felt252 = 'PT: only YT can mint';
+    pub const PT_ONLY_YT_CAN_BURN: felt252 = 'PT: only YT can burn';
+    pub const YT_EXPIRED: felt252 = 'YT: expired';
+    pub const YT_NOT_EXPIRED: felt252 = 'YT: not expired';
+    pub const YT_INSUFFICIENT_PT: felt252 = 'YT: insufficient PT';
+    pub const YT_INSUFFICIENT_YT: felt252 = 'YT: insufficient YT';
+    pub const YT_INSUFFICIENT_SY: felt252 = 'YT: insufficient SY';
+
+    // Market errors
+    pub const MARKET_EXPIRED: felt252 = 'Market: expired';
+    pub const MARKET_INSUFFICIENT_LIQUIDITY: felt252 = 'Market: insufficient liquidity';
+    pub const MARKET_SLIPPAGE_EXCEEDED: felt252 = 'Market: slippage exceeded';
+    pub const MARKET_ZERO_LIQUIDITY: felt252 = 'Market: zero liquidity';
+    pub const MARKET_INVALID_RESERVES: felt252 = 'Market: invalid reserves';
+
+    // Math errors
+    pub const MATH_OVERFLOW: felt252 = 'Math: overflow';
+    pub const MATH_UNDERFLOW: felt252 = 'Math: underflow';
+    pub const MATH_DIVISION_BY_ZERO: felt252 = 'Math: division by zero';
+
+    // Factory errors
+    pub const FACTORY_ALREADY_EXISTS: felt252 = 'Factory: already exists';
+    pub const FACTORY_INVALID_EXPIRY: felt252 = 'Factory: invalid expiry';
+}
