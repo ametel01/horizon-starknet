@@ -347,6 +347,11 @@ function PortfolioContent(): ReactNode {
   const { isConnected } = useStarknet();
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
   const { data: portfolio, isLoading: positionsLoading, isError } = usePositions(markets);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const {
     claimAllYield,
@@ -391,7 +396,7 @@ function PortfolioContent(): ReactNode {
     }
   };
 
-  const isLoading = marketsLoading || positionsLoading;
+  const isLoading = !mounted || marketsLoading || positionsLoading;
 
   if (!isConnected) {
     return (
@@ -410,14 +415,6 @@ function PortfolioContent(): ReactNode {
     );
   }
 
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-8 text-center">
-        <p className="text-red-500">Failed to load positions. Please try again.</p>
-      </div>
-    );
-  }
-
   const activePositions =
     portfolio?.positions.filter(
       (p) =>
@@ -428,7 +425,10 @@ function PortfolioContent(): ReactNode {
         p.claimableYield > BigInt(0)
     ) ?? [];
 
-  if (activePositions.length === 0) {
+  // Show "no positions" message when:
+  // - There's no portfolio data (error or empty)
+  // - Or there are no active positions
+  if (isError || activePositions.length === 0) {
     return (
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-8 text-center">
         <p className="text-neutral-400">You have no positions yet.</p>

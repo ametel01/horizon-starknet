@@ -3,7 +3,7 @@
 import BigNumber from 'bignumber.js';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useMemo, useState } from 'react';
+import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { AddLiquidityForm } from '@/components/forms/AddLiquidityForm';
 import { RemoveLiquidityForm } from '@/components/forms/RemoveLiquidityForm';
@@ -20,6 +20,11 @@ function PoolsPageContent(): ReactNode {
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
   const [activeTab, setActiveTab] = useState<PoolTab>('add');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
   const { isConnected } = useStarknet();
@@ -71,7 +76,7 @@ function PoolsPageContent(): ReactNode {
     <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
       {/* Main Content */}
       <div className="w-full max-w-lg">
-        {isLoading ? (
+        {!mounted || isLoading ? (
           <SkeletonCard className="h-[600px]" />
         ) : isError ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-8 text-center">

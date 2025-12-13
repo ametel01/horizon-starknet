@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useMemo } from 'react';
+import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { SwapForm } from '@/components/forms/SwapForm';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -11,6 +11,11 @@ import { useDashboardMarkets } from '@/hooks/useMarkets';
 function TradePageContent(): ReactNode {
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
 
@@ -26,7 +31,7 @@ function TradePageContent(): ReactNode {
     <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
       {/* Swap Form */}
       <div className="w-full max-w-lg">
-        {isLoading ? (
+        {!mounted || isLoading ? (
           <SkeletonCard className="h-[600px]" />
         ) : isError ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-8 text-center">
