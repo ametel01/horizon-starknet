@@ -15,7 +15,7 @@ jobs:
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.9.2"
+          scarb-version: "2.14.0"
 
       - name: Check formatting
         run: scarb fmt --check

@@ -15,12 +15,12 @@ jobs:
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.9.2"
+          scarb-version: "2.14.0"
 
       - name: Setup snfoundry
         uses: foundry-rs/setup-snfoundry@v3
         with:
-          starknet-foundry-version: "0.35.1"
+          starknet-foundry-version: "0.54.0"
 
       - name: Run tests
         run: snforge test

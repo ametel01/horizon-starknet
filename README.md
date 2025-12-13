@@ -126,8 +126,8 @@ As expiry approaches:
 
 ### Prerequisites
 
-- [Scarb](https://docs.swmansion.com/scarb/) 2.9.2+
-- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/) 0.35.1+
+- [Scarb](https://docs.swmansion.com/scarb/) 2.14.0+
+- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/) 0.54.0+
 
 ### Building
 
