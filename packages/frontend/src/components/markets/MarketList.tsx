@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
@@ -13,8 +13,14 @@ interface MarketListProps {
 
 export function MarketList({ className }: MarketListProps): ReactNode {
   const { markets, isLoading, isError } = useDashboardMarkets();
+  const [mounted, setMounted] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Show skeleton on server and during initial client render to prevent hydration mismatch
+  if (!mounted || isLoading) {
     return (
       <div className={className}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -7,6 +7,7 @@ import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
 
 export type TransactionStatus = 'idle' | 'signing' | 'pending' | 'success' | 'error';
+export type TxStatus = TransactionStatus;
 
 export interface UseTransactionReturn {
   execute: (calls: Call | Call[]) => Promise<InvokeFunctionResponse | null>;

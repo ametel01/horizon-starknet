@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -9,8 +9,14 @@ import { formatWad } from '@/lib/math/wad';
 
 export function StatsOverview(): ReactNode {
   const { markets, totalTvl, avgApy, isLoading } = useDashboardMarkets();
+  const [mounted, setMounted] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Show skeleton on server and during initial client render to prevent hydration mismatch
+  if (!mounted || isLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCardSkeleton />

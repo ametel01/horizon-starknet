@@ -18,6 +18,12 @@ async function callContract<T>(contract: Contract, method: string): Promise<T> {
   return result;
 }
 
+// Type for tuple return from Cairo contracts
+interface TupleResult {
+  '0': bigint;
+  '1': bigint;
+}
+
 async function fetchMarketData(
   marketAddress: string,
   provider: ProviderInterface
@@ -32,7 +38,7 @@ async function fetchMarketData(
       callContract<bigint>(market, 'yt'),
       callContract<bigint>(market, 'expiry'),
       callContract<boolean>(market, 'is_expired'),
-      callContract<{ sy_reserve: bigint; pt_reserve: bigint }>(market, 'get_reserves'),
+      callContract<TupleResult>(market, 'get_reserves'),
       callContract<bigint>(market, 'total_lp_supply'),
       callContract<bigint>(market, 'get_ln_implied_rate'),
     ]);
@@ -46,9 +52,10 @@ async function fetchMarketData(
     isExpired: isExpiredVal,
   };
 
+  // Reserves are returned as a tuple { '0': sy_reserve, '1': pt_reserve }
   const state: MarketState = {
-    syReserve: reserves.sy_reserve,
-    ptReserve: reserves.pt_reserve,
+    syReserve: reserves['0'],
+    ptReserve: reserves['1'],
     totalLpSupply,
     lnImpliedRate: lnRate,
   };
@@ -85,12 +92,16 @@ export function useMarkets(
   const { provider } = useStarknet();
   const { refetchInterval = 30000 } = options;
 
+  // Only run queries on client side to avoid SSR issues with localhost RPC
+  const isClient = typeof window !== 'undefined';
+
   const queries = useQueries({
     queries: marketAddresses.map((address) => ({
       queryKey: ['market', address],
       queryFn: () => fetchMarketData(address, provider),
       refetchInterval,
       staleTime: 10000,
+      enabled: isClient,
     })),
   });
 

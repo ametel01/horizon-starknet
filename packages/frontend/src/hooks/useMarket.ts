@@ -22,6 +22,12 @@ async function callContract<T>(contract: Contract, method: string): Promise<T> {
   return result;
 }
 
+// Type for tuple return from Cairo contracts
+interface TupleResult {
+  '0': bigint;
+  '1': bigint;
+}
+
 export function useMarket(
   marketAddress: string | null,
   options: UseMarketOptions = {}
@@ -54,7 +60,7 @@ export function useMarket(
         callContract<bigint>(market, 'yt'),
         callContract<bigint>(market, 'expiry'),
         callContract<boolean>(market, 'is_expired'),
-        callContract<{ sy_reserve: bigint; pt_reserve: bigint }>(market, 'get_reserves'),
+        callContract<TupleResult>(market, 'get_reserves'),
         callContract<bigint>(market, 'total_lp_supply'),
         callContract<bigint>(market, 'get_ln_implied_rate'),
       ]);
@@ -68,9 +74,10 @@ export function useMarket(
         isExpired: isExpiredVal,
       };
 
+      // Reserves are returned as a tuple { '0': sy_reserve, '1': pt_reserve }
       const state: MarketState = {
-        syReserve: reserves.sy_reserve,
-        ptReserve: reserves.pt_reserve,
+        syReserve: reserves['0'],
+        ptReserve: reserves['1'],
         totalLpSupply,
         lnImpliedRate: lnRate,
       };
@@ -145,14 +152,14 @@ export function useMarketState(
       const market = getMarketContract(marketAddress, provider);
 
       const [reserves, totalLpSupply, lnRate] = await Promise.all([
-        callContract<{ sy_reserve: bigint; pt_reserve: bigint }>(market, 'get_reserves'),
+        callContract<TupleResult>(market, 'get_reserves'),
         callContract<bigint>(market, 'total_lp_supply'),
         callContract<bigint>(market, 'get_ln_implied_rate'),
       ]);
 
       return {
-        syReserve: reserves.sy_reserve,
-        ptReserve: reserves.pt_reserve,
+        syReserve: reserves['0'],
+        ptReserve: reserves['1'],
         totalLpSupply,
         lnImpliedRate: lnRate,
         impliedApy: lnRateToApy(lnRate),
