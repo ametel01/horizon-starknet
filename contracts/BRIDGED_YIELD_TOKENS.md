@@ -2,6 +2,8 @@
 
 This document explains how Horizon Protocol handles yield-bearing assets like wstETH that are bridged to Starknet as plain ERC20 tokens.
 
+> **New in v0.2**: YT Trading is now fully implemented. Users can buy YT (for leveraged yield exposure) and sell YT (for fixed yield) through the Router's flash swap mechanism. See [Implemented YT Swap Functions](#implemented-yt-swap-functions) for details.
+
 ## The Challenge with Bridged Yield Tokens
 
 On **Ethereum**, wstETH exposes yield mechanics:
@@ -313,28 +315,40 @@ Net effect: User paid YT, received SY
 
 ## Router Interface for YT Trading
 
+The Router contract provides a complete interface for all protocol operations including YT trading:
+
 ```cairo
-trait IRouter {
-    // Existing functions
-    fn mint_py_from_sy(...);
-    fn redeem_py_to_sy(...);
+#[starknet::interface]
+pub trait IRouter<TContractState> {
+    // ============ PT/YT Minting & Redemption ============
+    fn mint_py_from_sy(ref self: TContractState, yt: ContractAddress, receiver: ContractAddress, amount_sy_in: u256, min_py_out: u256) -> (u256, u256);
+    fn redeem_py_to_sy(ref self: TContractState, yt: ContractAddress, receiver: ContractAddress, amount_py_in: u256, min_sy_out: u256) -> u256;
+    fn redeem_pt_post_expiry(ref self: TContractState, yt: ContractAddress, receiver: ContractAddress, amount_pt_in: u256, min_sy_out: u256) -> u256;
 
-    // YT Trading via flash swaps
-    fn swap_exact_sy_for_yt(
-        yt: ContractAddress,
-        market: ContractAddress,
-        receiver: ContractAddress,
-        sy_in: u256,
-        min_yt_out: u256
-    ) -> u256;
+    // ============ Market Liquidity Operations ============
+    fn add_liquidity(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, sy_desired: u256, pt_desired: u256, min_lp_out: u256) -> (u256, u256, u256);
+    fn remove_liquidity(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, lp_to_burn: u256, min_sy_out: u256, min_pt_out: u256) -> (u256, u256);
 
-    fn swap_exact_yt_for_sy(
-        yt: ContractAddress,
-        market: ContractAddress,
-        receiver: ContractAddress,
-        yt_in: u256,
-        min_sy_out: u256
-    ) -> u256;
+    // ============ Market Swap Operations (PT ↔ SY) ============
+    fn swap_exact_sy_for_pt(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, exact_sy_in: u256, min_pt_out: u256) -> u256;
+    fn swap_exact_pt_for_sy(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, exact_pt_in: u256, min_sy_out: u256) -> u256;
+    fn swap_sy_for_exact_pt(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, exact_pt_out: u256, max_sy_in: u256) -> u256;
+    fn swap_pt_for_exact_sy(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, exact_sy_out: u256, max_pt_in: u256) -> u256;
+
+    // ============ Combined Operations ============
+    fn mint_py_and_keep(ref self: TContractState, yt: ContractAddress, market: ContractAddress, receiver: ContractAddress, amount_sy_in: u256, min_pt_out: u256) -> (u256, u256);
+    fn buy_pt_from_sy(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, amount_sy_in: u256, min_pt_out: u256) -> u256;
+    fn sell_pt_for_sy(ref self: TContractState, market: ContractAddress, receiver: ContractAddress, amount_pt_in: u256, min_sy_out: u256) -> u256;
+
+    // ============ YT Trading Operations (via Flash Swaps) - IMPLEMENTED ============
+    /// Buy YT using SY through the PT/SY market
+    /// Mechanism: Mint PT+YT from SY, sell PT back to market, keep YT
+    fn swap_exact_sy_for_yt(ref self: TContractState, yt: ContractAddress, market: ContractAddress, receiver: ContractAddress, exact_sy_in: u256, min_yt_out: u256) -> u256;
+
+    /// Sell YT for SY through the PT/SY market
+    /// Mechanism: Buy PT from market (using collateral), combine with YT to redeem SY
+    /// Note: User must approve 4x exact_yt_in in SY as collateral (unused portion refunded)
+    fn swap_exact_yt_for_sy(ref self: TContractState, yt: ContractAddress, market: ContractAddress, receiver: ContractAddress, exact_yt_in: u256, min_sy_out: u256) -> u256;
 }
 ```
 
@@ -480,7 +494,21 @@ The 5 SY received = 100 * (1 - PT_price) = 100 * 0.05 = 5 SY
 
 The "~5 SY" comes directly from the PT price established by the market, which reflects the collective expectation of ~5% yield until maturity.
 
-## Implementation: swap_exact_sy_for_yt
+## Implemented YT Swap Functions
+
+The Router now includes two fully implemented YT swap functions that enable synthetic YT trading through the PT/SY AMM.
+
+### swap_exact_sy_for_yt (Buy YT with SY)
+
+**Mechanism:**
+1. Take SY from user
+2. Mint PT+YT from all SY
+3. Sell all PT back to market for SY
+4. Send YT to receiver
+5. Return recovered SY to receiver
+
+**User provides:** SY tokens
+**User receives:** YT tokens + recovered SY (from PT sale)
 
 ```cairo
 fn swap_exact_sy_for_yt(
@@ -488,44 +516,75 @@ fn swap_exact_sy_for_yt(
     yt: ContractAddress,
     market: ContractAddress,
     receiver: ContractAddress,
+    exact_sy_in: u256,
+    min_yt_out: u256,
+) -> u256;
+```
+
+**Example:**
+```
+User spends: 10 SY
+Router mints: 10 PT + 10 YT
+Router sells: 10 PT → ~9.5 SY (at 0.95 PT price)
+User receives: 10 YT + 9.5 SY
+
+Net cost: 10 - 9.5 = 0.5 SY for 10 YT
+Effective YT price: 0.05 SY per YT (matches 1 - PT_price)
+```
+
+### swap_exact_yt_for_sy (Sell YT for SY)
+
+**Mechanism:**
+1. Take YT from user
+2. Take collateral SY from user (4x YT amount to handle AMM price impact)
+3. Buy exact PT from market using collateral SY
+4. Combine PT + YT to redeem for SY
+5. Return net SY to receiver (redemption SY + refund - collateral used)
+
+**User provides:** YT tokens + collateral SY (4x YT amount)
+**User receives:** Net SY (effective YT value + unused collateral)
+
+```cairo
+fn swap_exact_yt_for_sy(
+    ref self: ContractState,
+    yt: ContractAddress,
+    market: ContractAddress,
+    receiver: ContractAddress,
+    exact_yt_in: u256,
+    min_sy_out: u256,
+) -> u256;
+```
+
+**Example:**
+```
+User provides: 10 YT + 40 SY (collateral)
+Router buys: 10 PT for ~9.5 SY (at 0.95 PT price)
+Router redeems: 10 PT + 10 YT → 10 SY
+Router returns: 10 SY (redemption) + 30.5 SY (refund) = 40.5 SY total
+
+Net gain: 40.5 - 40 = 0.5 SY from selling 10 YT
+Effective YT price: 0.05 SY per YT
+```
+
+**Important Notes:**
+- The collateral (4x multiplier) handles AMM curve and price impact
+- If selling YT is unprofitable (PT price > 1), the function returns 0 effective gain
+- Slippage protection via `min_sy_out` / `min_yt_out` parameters
+- Unused collateral is always returned to the user
+
+### Events
+
+Both functions emit a `SwapYT` event:
+```cairo
+struct SwapYT {
+    sender: ContractAddress,
+    receiver: ContractAddress,
+    yt: ContractAddress,
+    market: ContractAddress,
     sy_in: u256,
-    min_yt_out: u256
-) -> u256 {
-    let yt_dispatcher = IYTDispatcher { contract_address: yt };
-    let market_dispatcher = IMarketDispatcher { contract_address: market };
-    let sy = yt_dispatcher.sy();
-    let pt = yt_dispatcher.pt();
-
-    // Calculate how much PT we can sell to recover our SY
-    let (sy_to_mint, pt_to_sell) = calculate_swap_amounts(market, sy_in);
-
-    // 1. Transfer SY from user
-    IERC20Dispatcher { contract_address: sy }
-        .transfer_from(get_caller_address(), get_contract_address(), sy_in);
-
-    // 2. Mint PT + YT (equal amounts)
-    IERC20Dispatcher { contract_address: sy }.approve(yt, sy_to_mint);
-    let (pt_minted, yt_minted) = yt_dispatcher.mint_py(get_contract_address(), sy_to_mint);
-
-    // 3. Sell PT for SY to recover capital
-    IERC20Dispatcher { contract_address: pt }.approve(market, pt_minted);
-    let sy_received = market_dispatcher.swap_exact_pt_for_sy(
-        get_contract_address(),
-        pt_minted,
-        0
-    );
-
-    // 4. Transfer YT to receiver
-    IERC20Dispatcher { contract_address: yt }.transfer(receiver, yt_minted);
-
-    // 5. Return excess SY to user
-    let sy_excess = sy_received - (sy_to_mint - sy_in);
-    if sy_excess > 0 {
-        IERC20Dispatcher { contract_address: sy }.transfer(receiver, sy_excess);
-    }
-
-    assert(yt_minted >= min_yt_out, 'Slippage exceeded');
-    yt_minted
+    yt_in: u256,
+    sy_out: u256,
+    yt_out: u256,
 }
 ```
 
@@ -536,7 +595,7 @@ fn swap_exact_sy_for_yt(
 | Deposit/Withdraw SY | Done | Wrap/unwrap underlying |
 | Mint/Redeem PT+YT | Done | Split and combine |
 | Trade PT ↔ SY | Done | AMM for PT |
-| Trade YT ↔ SY | TODO | Flash swap pattern |
+| Trade YT ↔ SY | **Done** | Flash swap pattern via Router |
 | Claim YT Interest | Done | Yield distribution |
 | YT Price Discovery | Derived | From PT price |
 
