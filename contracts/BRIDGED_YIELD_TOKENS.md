@@ -340,16 +340,145 @@ trait IRouter {
 
 ## YT Price Derivation
 
-Since `PT + YT = SY` (by construction), YT price is derived from PT price:
+The YT price isn't set directly - it's **derived from the PT price** in the AMM.
+
+### The Fundamental Invariant
+
+```
+PT + YT = SY  (always, by construction)
+```
+
+Since 1 PT + 1 YT can always be redeemed for 1 SY:
 
 ```
 YT_price = SY_price - PT_price
-
-Example:
-  SY price: 1.00 (by definition, 1 SY = 1 underlying share)
-  PT price: 0.95 (trading at discount, implies 5% yield to maturity)
-  YT price: 0.05 (captures the 5% yield)
+         = 1 - PT_price  (since SY_price = 1 by definition)
 ```
+
+### PT Price Determines Everything
+
+The AMM trades **PT/SY**. The PT price reflects the market's expectation of yield:
+
+```
+PT trades at DISCOUNT before expiry
+  → because PT only gives you principal (no yield rights)
+  → the discount = expected yield until maturity
+
+At expiry: PT_price → 1.0 (converges to par)
+```
+
+### Implied Yield Calculation
+
+From the PT price, we calculate the **implied APY**:
+
+```cairo
+// Simple approximation (for short periods)
+implied_yield = (1 - pt_price) / pt_price / time_to_expiry_years
+
+// More accurate (continuous compounding)
+implied_apy = (1 / pt_price) ^ (1 / time_to_expiry_years) - 1
+```
+
+### Example Calculation
+
+```
+Given:
+  - PT price: 0.95 SY
+  - Time to expiry: 1 year
+
+YT price = 1 - 0.95 = 0.05 SY
+
+Implied APY = (1 / 0.95) ^ (1/1) - 1
+            = 1.0526 - 1
+            = 5.26%
+
+So 100 YT ≈ 5 SY (capturing ~5% expected yield on 100 underlying)
+```
+
+### With Different Time to Expiry
+
+```
+Same PT price (0.95), but only 6 months to expiry:
+
+Implied APY = (1 / 0.95) ^ (1/0.5) - 1
+            = (1.0526) ^ 2 - 1
+            = 10.8%
+
+The shorter the time, the higher the implied rate for the same discount.
+```
+
+### Who Sets the PT Price?
+
+**Market participants** through trading:
+
+```
+Buyer thinks yield will be HIGH → buys YT → sells PT → PT price drops
+Buyer thinks yield will be LOW  → buys PT → sells YT → PT price rises
+
+Supply/Demand on the AMM establishes equilibrium price
+```
+
+### The AMM Curve
+
+The Market uses a time-weighted curve that:
+
+1. **Incorporates time-to-expiry** - Rate scalar changes as expiry approaches
+2. **Concentrates liquidity** - Around expected yield rates
+3. **Converges PT to 1** - As expiry approaches, curve pushes PT → par
+
+```cairo
+// From market_math.cairo
+fn get_rate_scalar(scalar_root: u256, time_to_expiry: u256) -> u256 {
+    // Scalar increases as expiry approaches, reducing price impact
+    // This helps PT converge to 1.0 at expiry
+}
+
+fn get_exchange_rate(proportion: u256, rate_scalar: u256, rate_anchor: u256) -> u256 {
+    // Uses logit-style curve for PT/SY pricing
+    // ln(proportion / (1 - proportion)) * rate_scalar + rate_anchor
+}
+```
+
+### Price Discovery Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PRICE DISCOVERY FLOW                         │
+└─────────────────────────────────────────────────────────────────┘
+
+  Market Participants          AMM (PT/SY Pool)           Derived
+  ─────────────────           ────────────────           ────────
+
+  "I think yields     ──────►  PT/SY trades    ──────►   PT Price
+   will be 8%"                 establish                  = 0.93
+                               equilibrium
+                                    │
+                                    ▼
+                              YT Price = 1 - PT
+                                    = 0.07
+                                    │
+                                    ▼
+                              Implied APY
+                              = (1/0.93)^(1/t) - 1
+                              ≈ 7.5% (if t=1yr)
+```
+
+### What Happens When User "Sells 100 YT for ~5 SY"
+
+The flash swap executes:
+
+```
+1. User has 100 YT, wants SY
+2. Router executes flash swap:
+   a. Borrow 100 PT from market
+   b. Combine 100 PT + 100 YT → redeem for 100 SY
+   c. Sell enough SY to buy back 100 PT (costs ~95 SY at current price)
+   d. User keeps the difference: ~5 SY
+
+The 5 SY received = 100 * (1 - PT_price) = 100 * 0.05 = 5 SY
+```
+
+The "~5 SY" comes directly from the PT price established by the market, which reflects the collective expectation of ~5% yield until maturity.
 
 ## Implementation: swap_exact_sy_for_yt
 
