@@ -1,12 +1,11 @@
 'use client';
 
-import { useQueries } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
-import { getTestSetup } from '@/lib/constants/addresses';
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
-import { getMarketContract } from '@/lib/starknet/contracts';
+import { getMarketContract, getMarketFactoryContract } from '@/lib/starknet/contracts';
 import type { MarketData, MarketInfo, MarketState } from '@/types/market';
 
 import { useStarknet } from './useStarknet';
@@ -26,48 +25,53 @@ async function fetchMarketData(
 ): Promise<MarketData> {
   const market = getMarketContract(marketAddress, provider);
 
-  // Fetch all market data in parallel using typed contract calls
-  const [syAddress, ptAddress, ytAddress, expiry, isExpiredVal, reserves, totalLpSupply, lnRate] =
-    await Promise.all([
-      market.sy(),
-      market.pt(),
-      market.yt(),
-      market.expiry(),
-      market.is_expired(),
-      market.get_reserves(),
-      market.total_lp_supply(),
-      market.get_ln_implied_rate(),
-    ]);
+  try {
+    // Fetch all market data in parallel using typed contract calls
+    const [syAddress, ptAddress, ytAddress, expiry, isExpiredVal, reserves, totalLpSupply, lnRate] =
+      await Promise.all([
+        market.sy(),
+        market.pt(),
+        market.yt(),
+        market.expiry(),
+        market.is_expired(),
+        market.get_reserves(),
+        market.total_lp_supply(),
+        market.get_ln_implied_rate(),
+      ]);
 
-  const info: MarketInfo = {
-    address: marketAddress,
-    syAddress,
-    ptAddress,
-    ytAddress,
-    expiry: Number(expiry),
-    isExpired: isExpiredVal,
-  };
+    const info: MarketInfo = {
+      address: marketAddress,
+      syAddress,
+      ptAddress,
+      ytAddress,
+      expiry: Number(expiry),
+      isExpired: isExpiredVal,
+    };
 
-  // Reserves are returned as a tuple [sy_reserve, pt_reserve]
-  const reservesArr = reserves as unknown[];
-  const state: MarketState = {
-    syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
-    ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
-    totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
-    lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
-  };
+    // Reserves are returned as a tuple [sy_reserve, pt_reserve]
+    const reservesArr = reserves as unknown[];
+    const state: MarketState = {
+      syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
+      ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
+      totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
+      lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
+    };
 
-  const impliedApy = lnRateToApy(state.lnImpliedRate);
-  const days = daysToExpiry(info.expiry);
-  const tvlSy = state.syReserve + state.ptReserve;
+    const impliedApy = lnRateToApy(state.lnImpliedRate);
+    const days = daysToExpiry(info.expiry);
+    const tvlSy = state.syReserve + state.ptReserve;
 
-  return {
-    ...info,
-    state,
-    impliedApy,
-    tvlSy,
-    daysToExpiry: days,
-  };
+    return {
+      ...info,
+      state,
+      impliedApy,
+      tvlSy,
+      daysToExpiry: days,
+    };
+  } catch (error) {
+    console.error('[fetchMarketData] Error for market:', marketAddress, error);
+    throw error;
+  }
 }
 
 interface UseMarketsOptions {
@@ -98,7 +102,7 @@ export function useMarkets(
       queryFn: () => fetchMarketData(address, provider),
       refetchInterval,
       staleTime: 10000,
-      enabled: isClient,
+      enabled: isClient && address !== '0x0',
       // Disable structural sharing to prevent BigInt serialization issues
       structuralSharing: false,
     })),
@@ -125,24 +129,96 @@ export function useMarkets(
 }
 
 /**
- * Hook to get known market addresses for the current network
- * For katana, returns the test market; for other networks, returns empty array
+ * Hook to fetch all market addresses from the MarketFactory on-chain
  */
-export function useKnownMarkets(): string[] {
-  const { network } = useStarknet();
+export function useMarketAddresses(): {
+  addresses: string[];
+  isLoading: boolean;
+  isError: boolean;
+} {
+  const { provider, network } = useStarknet();
+  const isClient = typeof window !== 'undefined';
 
-  const testSetup = getTestSetup(network);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['marketFactory', 'allMarkets', network],
+    queryFn: async () => {
+      const marketFactory = getMarketFactoryContract(provider, network);
+      const result = await marketFactory.get_all_markets();
 
-  if (testSetup) {
-    return [testSetup.market];
-  }
+      // The result is an array of market addresses
+      let addresses: string[];
+      if (Array.isArray(result)) {
+        addresses = result
+          .map((addr: unknown) => {
+            // Handle both string and bigint addresses
+            if (typeof addr === 'bigint') {
+              return '0x' + addr.toString(16).padStart(64, '0');
+            }
+            return String(addr);
+          })
+          .filter(
+            (addr) =>
+              addr !== '0x0' &&
+              addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+          );
+      } else {
+        addresses = [];
+      }
 
-  // TODO: For mainnet/sepolia, fetch from indexer or registry
-  return [];
+      return addresses;
+    },
+    enabled: isClient,
+    staleTime: 60000,
+    retry: 2,
+  });
+
+  return {
+    addresses: data ?? [],
+    isLoading,
+    isError,
+  };
 }
 
 /**
- * Combined hook for dashboard that uses known markets
+ * Hook to get market count from MarketFactory
+ */
+export function useMarketCount(): {
+  count: number;
+  isLoading: boolean;
+  isError: boolean;
+} {
+  const { provider, network } = useStarknet();
+  const isClient = typeof window !== 'undefined';
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['marketFactory', 'marketCount', network],
+    queryFn: async () => {
+      const marketFactory = getMarketFactoryContract(provider, network);
+      const count = await marketFactory.get_market_count();
+      return Number(count);
+    },
+    enabled: isClient,
+    staleTime: 60000,
+  });
+
+  return {
+    count: data ?? 0,
+    isLoading,
+    isError,
+  };
+}
+
+/**
+ * Hook to get known market addresses for the current network
+ * Uses MarketFactory on-chain data, falls back to static config
+ */
+export function useKnownMarkets(): string[] {
+  const { addresses } = useMarketAddresses();
+  return addresses;
+}
+
+/**
+ * Combined hook for dashboard that uses known markets from MarketFactory
  */
 export function useDashboardMarkets(options: UseMarketsOptions = {}): UseMarketsReturn {
   const marketAddresses = useKnownMarkets();

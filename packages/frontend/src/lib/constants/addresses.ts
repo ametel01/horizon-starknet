@@ -2,7 +2,25 @@ import katanaAddressesRaw from '@deploy/addresses/katana.json';
 
 import type { NetworkId } from '../starknet/provider';
 
-// Type definition for the katana.json structure
+// Type definitions for the new dual-market JSON structure
+interface YieldTokenInfo {
+  name: string;
+  symbol: string;
+  address: string;
+  isERC4626: boolean;
+}
+
+interface SYTokenInfo {
+  address: string;
+  underlying: string;
+}
+
+interface MarketAddresses {
+  PT: string;
+  YT: string;
+  Market: string;
+}
+
 interface KatanaAddresses {
   network: string;
   rpcUrl: string;
@@ -14,12 +32,28 @@ interface KatanaAddresses {
     Router?: string;
   };
   testSetup: {
-    MockYieldToken?: string;
-    SY?: string;
-    PT?: string;
-    YT?: string;
-    Market?: string;
+    testRecipient?: string;
+    baseToken?: {
+      STRK?: string;
+    };
+    yieldTokens?: {
+      nstSTRK?: YieldTokenInfo;
+      sSTRK?: YieldTokenInfo;
+    };
+    syTokens?: {
+      'SY-nstSTRK'?: SYTokenInfo;
+      'SY-sSTRK'?: SYTokenInfo;
+    };
+    markets?: {
+      nstSTRK?: MarketAddresses;
+      sSTRK?: MarketAddresses;
+    };
     expiry?: number;
+  };
+  marketParams?: {
+    scalarRoot?: string;
+    initialAnchor?: string;
+    feeRate?: string;
   };
 }
 
@@ -31,12 +65,17 @@ export interface ContractAddresses {
   router: string;
 }
 
-export interface TestSetupAddresses {
-  mockYieldToken: string;
-  sy: string;
-  pt: string;
-  yt: string;
-  market: string;
+// New market info structure for dual-market support
+export interface MarketInfo {
+  key: string;
+  marketAddress: string;
+  ptAddress: string;
+  ytAddress: string;
+  syAddress: string;
+  underlyingAddress: string;
+  yieldTokenName: string;
+  yieldTokenSymbol: string;
+  isERC4626: boolean;
   expiry: number;
 }
 
@@ -64,28 +103,24 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
   },
 };
 
-// Test setup addresses (only for katana)
-const TEST_SETUP: Record<NetworkId, TestSetupAddresses | null> = {
-  katana: katanaAddresses.testSetup.SY
-    ? {
-        mockYieldToken: katanaAddresses.testSetup.MockYieldToken ?? ZERO_ADDRESS,
-        sy: katanaAddresses.testSetup.SY ?? ZERO_ADDRESS,
-        pt: katanaAddresses.testSetup.PT ?? ZERO_ADDRESS,
-        yt: katanaAddresses.testSetup.YT ?? ZERO_ADDRESS,
-        market: katanaAddresses.testSetup.Market ?? ZERO_ADDRESS,
-        expiry: katanaAddresses.testSetup.expiry ?? 0,
-      }
-    : null,
-  sepolia: null,
-  mainnet: null,
-};
-
 export function getAddresses(network: NetworkId): ContractAddresses {
   return ADDRESSES[network];
 }
 
-export function getTestSetup(network: NetworkId): TestSetupAddresses | null {
-  return TEST_SETUP[network];
+/**
+ * Get base token address (STRK)
+ */
+export function getBaseTokenAddress(network: NetworkId): string {
+  if (network !== 'katana') return ZERO_ADDRESS;
+  return katanaAddresses.testSetup.baseToken?.STRK ?? ZERO_ADDRESS;
+}
+
+/**
+ * Get test recipient address
+ */
+export function getTestRecipient(network: NetworkId): string {
+  if (network !== 'katana') return ZERO_ADDRESS;
+  return katanaAddresses.testSetup.testRecipient ?? ZERO_ADDRESS;
 }
 
 // Re-export for convenience

@@ -9,11 +9,8 @@ import {
   getPTContract,
   getRouterContract,
   getSYContract,
-  getTestMarketContract,
-  getTestPTContract,
-  getTestSYContract,
-  getTestYTContract,
   getYTContract,
+  getMockYieldTokenContract,
   type TypedFactory,
   type TypedMarket,
   type TypedMarketFactory,
@@ -21,6 +18,7 @@ import {
   type TypedRouter,
   type TypedSY,
   type TypedYT,
+  type TypedMockYieldToken,
 } from '@/lib/starknet/contracts';
 
 import { useAccount } from './useAccount';
@@ -42,12 +40,7 @@ export interface UseContractsReturn {
   getSY: (address: string) => TypedSY;
   getPT: (address: string) => TypedPT;
   getYT: (address: string) => TypedYT;
-
-  // Test setup contracts (katana only)
-  testSY: TypedSY | null;
-  testPT: TypedPT | null;
-  testYT: TypedYT | null;
-  testMarket: TypedMarket | null;
+  getMockYieldToken: (address: string) => TypedMockYieldToken;
 }
 
 export function useContracts(): UseContractsReturn {
@@ -101,11 +94,10 @@ export function useContracts(): UseContractsReturn {
     [account, provider]
   );
 
-  // Test contracts (katana)
-  const testSY = useMemo(() => getTestSYContract(provider, network), [provider, network]);
-  const testPT = useMemo(() => getTestPTContract(provider, network), [provider, network]);
-  const testYT = useMemo(() => getTestYTContract(provider, network), [provider, network]);
-  const testMarket = useMemo(() => getTestMarketContract(provider, network), [provider, network]);
+  const getMockYieldToken = useMemo(
+    () => (address: string) => getMockYieldTokenContract(address, account ?? provider),
+    [account, provider]
+  );
 
   return {
     factory,
@@ -118,9 +110,6 @@ export function useContracts(): UseContractsReturn {
     getSY,
     getPT,
     getYT,
-    testSY,
-    testPT,
-    testYT,
-    testMarket,
+    getMockYieldToken,
   };
 }

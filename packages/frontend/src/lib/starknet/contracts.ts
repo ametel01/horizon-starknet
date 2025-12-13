@@ -12,7 +12,7 @@ import {
   YT_ABI,
 } from '@/types/generated';
 
-import { getAddresses, getTestSetup } from '../constants/addresses';
+import { getAddresses } from '../constants/addresses';
 
 import { type NetworkId } from './provider';
 
@@ -86,55 +86,14 @@ export function getYTContract(address: string, providerOrAccount: ProviderOrAcco
   return new Contract(YT_ABI, address, providerOrAccount).typedv2(YT_ABI);
 }
 
+export function getMockYieldTokenContract(
+  address: string,
+  providerOrAccount: ProviderOrAccount
+): TypedMockYieldToken {
+  return new Contract(MOCKYIELDTOKEN_ABI, address, providerOrAccount).typedv2(MOCKYIELDTOKEN_ABI);
+}
+
 // ERC20 contract - uses SY_ABI as it includes ERC20 functions
 export function getERC20Contract(address: string, providerOrAccount: ProviderOrAccount): TypedSY {
   return new Contract(SY_ABI, address, providerOrAccount).typedv2(SY_ABI);
-}
-
-// Test setup contracts (katana only)
-export function getMockYieldTokenContract(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedMockYieldToken | null {
-  const testSetup = getTestSetup(network);
-  if (!testSetup) return null;
-  return new Contract(MOCKYIELDTOKEN_ABI, testSetup.mockYieldToken, providerOrAccount).typedv2(
-    MOCKYIELDTOKEN_ABI
-  );
-}
-
-export function getTestSYContract(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedSY | null {
-  const testSetup = getTestSetup(network);
-  if (!testSetup) return null;
-  return new Contract(SY_ABI, testSetup.sy, providerOrAccount).typedv2(SY_ABI);
-}
-
-export function getTestPTContract(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedPT | null {
-  const testSetup = getTestSetup(network);
-  if (!testSetup) return null;
-  return new Contract(PT_ABI, testSetup.pt, providerOrAccount).typedv2(PT_ABI);
-}
-
-export function getTestYTContract(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedYT | null {
-  const testSetup = getTestSetup(network);
-  if (!testSetup) return null;
-  return new Contract(YT_ABI, testSetup.yt, providerOrAccount).typedv2(YT_ABI);
-}
-
-export function getTestMarketContract(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedMarket | null {
-  const testSetup = getTestSetup(network);
-  if (!testSetup) return null;
-  return new Contract(MARKET_ABI, testSetup.market, providerOrAccount).typedv2(MARKET_ABI);
 }
