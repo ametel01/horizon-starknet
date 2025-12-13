@@ -2,9 +2,9 @@
 
 A Pendle-style yield tokenization protocol implemented in Cairo for Starknet. This protocol allows users to separate yield-bearing assets into their principal and yield components, enabling advanced yield trading strategies.
 
-[![Build](https://github.com/your-org/yield-tokenization-starknet/actions/workflows/build.yml/badge.svg)](https://github.com/your-org/yield-tokenization-starknet/actions/workflows/build.yml)
-[![Test](https://github.com/your-org/yield-tokenization-starknet/actions/workflows/test.yml/badge.svg)](https://github.com/your-org/yield-tokenization-starknet/actions/workflows/test.yml)
-[![Format](https://github.com/your-org/yield-tokenization-starknet/actions/workflows/fmt.yml/badge.svg)](https://github.com/your-org/yield-tokenization-starknet/actions/workflows/fmt.yml)
+[![Build](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/build.yml/badge.svg)](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/build.yml)
+[![Test](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/test.yml/badge.svg)](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/test.yml)
+[![Format](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/fmt.yml/badge.svg)](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/fmt.yml)
 
 ## Overview
 
