@@ -20,6 +20,14 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Horizon Protocol',
   description: 'Split yield-bearing assets into Principal and Yield Tokens on Starknet',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/logo-32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/logo-64.png', type: 'image/png', sizes: '64x64' },
+    ],
+    apple: '/logo-128.png',
+  },
 };
 
 interface RootLayoutProps {
