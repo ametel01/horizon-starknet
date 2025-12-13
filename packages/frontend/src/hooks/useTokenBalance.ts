@@ -23,59 +23,82 @@ function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
   return uint256.uint256ToBN(value);
 }
 
+// Return type for balance hooks - stores as string to avoid BigInt serialization issues
+interface BalanceResult {
+  data: bigint | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => Promise<unknown>;
+}
+
 export function useTokenBalance(
   tokenAddress: string | null,
   options: { enabled?: boolean; refetchInterval?: number } = {}
-): UseQueryResult<bigint> {
+): BalanceResult {
   const { provider } = useStarknet();
   const { address } = useAccount();
   const { enabled = true, refetchInterval = 15000 } = options;
 
-  return useQuery({
+  // Store as string internally to avoid BigInt serialization issues
+  const query = useQuery({
     queryKey: ['token-balance', tokenAddress, address],
-    queryFn: async (): Promise<bigint> => {
+    queryFn: async (): Promise<string> => {
       if (!tokenAddress || !address) {
         throw new Error('Token address and user address required');
       }
 
       const token = getERC20Contract(tokenAddress, provider);
       const balance = await token.balance_of(address);
-      return toBigInt(balance as bigint | { low: bigint; high: bigint });
+      return toBigInt(balance as bigint | { low: bigint; high: bigint }).toString();
     },
     enabled: enabled && !!tokenAddress && !!address,
     refetchInterval,
     staleTime: 5000,
-    // Disable structural sharing to prevent BigInt serialization issues
-    structuralSharing: false,
   });
+
+  return {
+    data: query.data !== undefined ? BigInt(query.data) : undefined,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+  };
 }
 
 export function useTokenAllowance(
   tokenAddress: string | null,
   spenderAddress: string | null,
   options: { enabled?: boolean; refetchInterval?: number } = {}
-): UseQueryResult<bigint> {
+): BalanceResult {
   const { provider } = useStarknet();
   const { address } = useAccount();
   const { enabled = true, refetchInterval = 15000 } = options;
 
-  return useQuery({
+  // Store as string internally to avoid BigInt serialization issues
+  const query = useQuery({
     queryKey: ['token-allowance', tokenAddress, address, spenderAddress],
-    queryFn: async (): Promise<bigint> => {
+    queryFn: async (): Promise<string> => {
       if (!tokenAddress || !address || !spenderAddress) {
         throw new Error('Token, user, and spender addresses required');
       }
 
       const token = getERC20Contract(tokenAddress, provider);
       const allowance = await token.allowance(address, spenderAddress);
-      return toBigInt(allowance as bigint | { low: bigint; high: bigint });
+      return toBigInt(allowance as bigint | { low: bigint; high: bigint }).toString();
     },
     enabled: enabled && !!tokenAddress && !!address && !!spenderAddress,
     refetchInterval,
     staleTime: 5000,
-    // Disable structural sharing to prevent BigInt serialization issues
-    structuralSharing: false,
   });
+
+  return {
+    data: query.data !== undefined ? BigInt(query.data) : undefined,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+  };
 }
 
 export function useTokenInfo(
