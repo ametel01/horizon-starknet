@@ -1,13 +1,16 @@
 #!/bin/bash
 
 # =============================================================================
-# Reset all addresses in an .env file
+# Reset all addresses in an .env file and corresponding addresses JSON
 # =============================================================================
 # Usage: ./deploy/scripts/reset-env.sh <env-file>
 #   e.g.: ./deploy/scripts/reset-env.sh .env.katana
 # =============================================================================
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ADDRESSES_DIR="$SCRIPT_DIR/../addresses"
 
 ENV_FILE="${1:-.env.katana}"
 
@@ -55,4 +58,28 @@ done
 cat "$TEMP_FILE" > "$ENV_FILE"
 rm -f "$TEMP_FILE"
 
-echo "Done!"
+echo "Done resetting $ENV_FILE!"
+
+# Reset corresponding addresses JSON file
+# Extract network name from env file (e.g., .env.katana -> katana)
+NETWORK=$(basename "$ENV_FILE" | sed 's/^\.env\.//')
+ADDRESSES_FILE="$ADDRESSES_DIR/${NETWORK}.json"
+
+if [[ -f "$ADDRESSES_FILE" ]]; then
+    echo "Resetting addresses file: $ADDRESSES_FILE..."
+    cat > "$ADDRESSES_FILE" << 'EOF'
+{
+  "network": "",
+  "rpcUrl": "",
+  "deployedAt": "",
+  "classHashes": {},
+  "contracts": {},
+  "testSetup": {}
+}
+EOF
+    echo "Done resetting $ADDRESSES_FILE!"
+else
+    echo "No addresses file found at $ADDRESSES_FILE (skipping)"
+fi
+
+echo "Reset complete!"
