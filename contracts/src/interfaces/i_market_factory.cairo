@@ -24,4 +24,13 @@ pub trait IMarketFactory<TContractState> {
 
     /// Get the market class hash used for deployments
     fn market_class_hash(self: @TContractState) -> starknet::ClassHash;
+
+    /// Get the total number of markets created
+    fn get_market_count(self: @TContractState) -> u32;
+
+    /// Get all market addresses created by this factory
+    fn get_all_markets(self: @TContractState) -> Array<ContractAddress>;
+
+    /// Get market address by index (0-based)
+    fn get_market_at(self: @TContractState, index: u32) -> ContractAddress;
 }

@@ -24,6 +24,10 @@ pub mod MarketFactory {
         valid_markets: Map<ContractAddress, bool>,
         // Counter for unique salt generation
         deploy_count: u256,
+        // List of all market addresses (indexed)
+        market_list: Map<u32, ContractAddress>,
+        // Total number of markets created
+        market_count: u32,
     }
 
     #[event]
@@ -48,6 +52,7 @@ pub mod MarketFactory {
         assert(!market_class_hash.is_zero(), Errors::ZERO_ADDRESS);
         self.market_class_hash.write(market_class_hash);
         self.deploy_count.write(0);
+        self.market_count.write(0);
     }
 
     #[abi(embed_v0)]
@@ -125,6 +130,11 @@ pub mod MarketFactory {
             self.market_registry.write(pt, market_address);
             self.valid_markets.write(market_address, true);
 
+            // Add to market list
+            let current_count = self.market_count.read();
+            self.market_list.write(current_count, market_address);
+            self.market_count.write(current_count + 1);
+
             // Emit event
             self
                 .emit(
@@ -154,6 +164,29 @@ pub mod MarketFactory {
         /// Get the market class hash used for deployments
         fn market_class_hash(self: @ContractState) -> ClassHash {
             self.market_class_hash.read()
+        }
+
+        /// Get the total number of markets created
+        fn get_market_count(self: @ContractState) -> u32 {
+            self.market_count.read()
+        }
+
+        /// Get all market addresses created by this factory
+        fn get_all_markets(self: @ContractState) -> Array<ContractAddress> {
+            let count = self.market_count.read();
+            let mut markets: Array<ContractAddress> = array![];
+            let mut i: u32 = 0;
+            while i < count {
+                markets.append(self.market_list.read(i));
+                i += 1;
+            }
+            markets
+        }
+
+        /// Get market address by index (0-based)
+        fn get_market_at(self: @ContractState, index: u32) -> ContractAddress {
+            assert(index < self.market_count.read(), Errors::INDEX_OUT_OF_BOUNDS);
+            self.market_list.read(index)
         }
     }
 }
