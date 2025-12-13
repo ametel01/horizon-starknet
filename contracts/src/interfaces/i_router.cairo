@@ -187,4 +187,40 @@ pub trait IRouter<TContractState> {
         amount_pt_in: u256,
         min_sy_out: u256,
     ) -> u256;
+
+    // ============ YT Trading Operations (via Flash Swaps) ============
+
+    /// Buy YT using SY through the PT/SY market
+    /// Mechanism: Mint PT+YT from SY, sell PT back to market, keep YT
+    /// @param yt The YT contract address
+    /// @param market The PT/SY market address
+    /// @param receiver Address to receive YT
+    /// @param exact_sy_in Exact amount of SY to spend
+    /// @param min_yt_out Minimum YT to receive (slippage protection)
+    /// @return Amount of YT received
+    fn swap_exact_sy_for_yt(
+        ref self: TContractState,
+        yt: ContractAddress,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        exact_sy_in: u256,
+        min_yt_out: u256,
+    ) -> u256;
+
+    /// Sell YT for SY through the PT/SY market
+    /// Mechanism: Buy PT from market, combine with YT to redeem SY
+    /// @param yt The YT contract address
+    /// @param market The PT/SY market address
+    /// @param receiver Address to receive SY
+    /// @param exact_yt_in Exact amount of YT to sell
+    /// @param min_sy_out Minimum SY to receive (slippage protection)
+    /// @return Amount of SY received
+    fn swap_exact_yt_for_sy(
+        ref self: TContractState,
+        yt: ContractAddress,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        exact_yt_in: u256,
+        min_sy_out: u256,
+    ) -> u256;
 }

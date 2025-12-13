@@ -33,6 +33,7 @@ pub mod Errors {
     // Market Factory errors
     pub const MARKET_FACTORY_ALREADY_EXISTS: felt252 = 'MktFactory: already exists';
     pub const MARKET_FACTORY_DEPLOY_FAILED: felt252 = 'MktFactory: deploy failed';
+    pub const INDEX_OUT_OF_BOUNDS: felt252 = 'MktFactory: index out of bounds';
 
     // Router errors
     pub const ROUTER_SLIPPAGE_EXCEEDED: felt252 = 'Router: slippage exceeded';
