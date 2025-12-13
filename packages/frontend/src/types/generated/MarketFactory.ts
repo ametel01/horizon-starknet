@@ -107,6 +107,44 @@ export const MARKETFACTORY_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'get_market_count',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u32',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_all_markets',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Array::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_market_at',
+        inputs: [
+          {
+            name: 'index',
+            type: 'core::integer::u32',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
     ],
   },
   {

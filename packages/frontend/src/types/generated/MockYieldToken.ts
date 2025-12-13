@@ -1,8 +1,8 @@
 export const MOCKYIELDTOKEN_ABI = [
   {
     type: 'impl',
-    name: 'MockYieldTokenImpl',
-    interface_name: 'horizon::mocks::mock_yield_token::IMockYieldToken',
+    name: 'ERC4626Impl',
+    interface_name: 'horizon::interfaces::i_erc4626::IERC4626',
   },
   {
     type: 'struct',
@@ -52,7 +52,7 @@ export const MOCKYIELDTOKEN_ABI = [
   },
   {
     type: 'interface',
-    name: 'horizon::mocks::mock_yield_token::IMockYieldToken',
+    name: 'horizon::interfaces::i_erc4626::IERC4626',
     items: [
       {
         type: 'function',
@@ -200,35 +200,18 @@ export const MOCKYIELDTOKEN_ABI = [
       },
       {
         type: 'function',
-        name: 'mint',
-        inputs: [
+        name: 'asset',
+        inputs: [],
+        outputs: [
           {
-            name: 'to',
             type: 'core::starknet::contract_address::ContractAddress',
           },
-          {
-            name: 'amount',
-            type: 'core::integer::u256',
-          },
         ],
-        outputs: [],
-        state_mutability: 'external',
+        state_mutability: 'view',
       },
       {
         type: 'function',
-        name: 'burn',
-        inputs: [
-          {
-            name: 'amount',
-            type: 'core::integer::u256',
-          },
-        ],
-        outputs: [],
-        state_mutability: 'external',
-      },
-      {
-        type: 'function',
-        name: 'exchange_rate',
+        name: 'total_assets',
         inputs: [],
         outputs: [
           {
@@ -239,15 +222,324 @@ export const MOCKYIELDTOKEN_ABI = [
       },
       {
         type: 'function',
-        name: 'set_exchange_rate',
+        name: 'convert_to_shares',
         inputs: [
           {
-            name: 'new_rate',
+            name: 'assets',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'convert_to_assets',
+        inputs: [
+          {
+            name: 'shares',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'max_deposit',
+        inputs: [
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_deposit',
+        inputs: [
+          {
+            name: 'assets',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'deposit',
+        inputs: [
+          {
+            name: 'assets',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'max_mint',
+        inputs: [
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_mint',
+        inputs: [
+          {
+            name: 'shares',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'mint',
+        inputs: [
+          {
+            name: 'shares',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'max_withdraw',
+        inputs: [
+          {
+            name: 'owner',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_withdraw',
+        inputs: [
+          {
+            name: 'assets',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'withdraw',
+        inputs: [
+          {
+            name: 'assets',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'owner',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'max_redeem',
+        inputs: [
+          {
+            name: 'owner',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_redeem',
+        inputs: [
+          {
+            name: 'shares',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'redeem',
+        inputs: [
+          {
+            name: 'shares',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'owner',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+    ],
+  },
+  {
+    type: 'impl',
+    name: 'MockYieldTokenExtImpl',
+    interface_name: 'horizon::mocks::mock_yield_token::IMockYieldTokenExt',
+  },
+  {
+    type: 'interface',
+    name: 'horizon::mocks::mock_yield_token::IMockYieldTokenExt',
+    items: [
+      {
+        type: 'function',
+        name: 'index',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_index',
+        inputs: [
+          {
+            name: 'new_index_wad',
             type: 'core::integer::u256',
           },
         ],
         outputs: [],
         state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'increase_index_bps',
+        inputs: [
+          {
+            name: 'bps',
+            type: 'core::integer::u32',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'mint_shares',
+        inputs: [
+          {
+            name: 'to',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'shares',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'admin',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
       },
     ],
   },
@@ -262,6 +554,14 @@ export const MOCKYIELDTOKEN_ABI = [
       {
         name: 'symbol',
         type: 'core::byte_array::ByteArray',
+      },
+      {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'admin',
+        type: 'core::starknet::contract_address::ContractAddress',
       },
     ],
   },
@@ -328,6 +628,82 @@ export const MOCKYIELDTOKEN_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::mocks::mock_yield_token::MockYieldToken::IndexUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::mocks::mock_yield_token::MockYieldToken::Deposit',
+    kind: 'struct',
+    members: [
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'assets',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'shares',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::mocks::mock_yield_token::MockYieldToken::Withdraw',
+    kind: 'struct',
+    members: [
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'assets',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'shares',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::mocks::mock_yield_token::MockYieldToken::Event',
     kind: 'enum',
     variants: [
@@ -335,6 +711,21 @@ export const MOCKYIELDTOKEN_ABI = [
         name: 'ERC20Event',
         type: 'openzeppelin_token::erc20::erc20::ERC20Component::Event',
         kind: 'flat',
+      },
+      {
+        name: 'IndexUpdated',
+        type: 'horizon::mocks::mock_yield_token::MockYieldToken::IndexUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'Deposit',
+        type: 'horizon::mocks::mock_yield_token::MockYieldToken::Deposit',
+        kind: 'nested',
+      },
+      {
+        name: 'Withdraw',
+        type: 'horizon::mocks::mock_yield_token::MockYieldToken::Withdraw',
+        kind: 'nested',
       },
     ],
   },

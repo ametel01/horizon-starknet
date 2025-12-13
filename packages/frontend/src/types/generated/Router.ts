@@ -370,6 +370,70 @@ export const ROUTER_ABI = [
         ],
         state_mutability: 'external',
       },
+      {
+        type: 'function',
+        name: 'swap_exact_sy_for_yt',
+        inputs: [
+          {
+            name: 'yt',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'exact_sy_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_yt_out',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'swap_exact_yt_for_sy',
+        inputs: [
+          {
+            name: 'yt',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'exact_yt_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_sy_out',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
     ],
   },
   {
@@ -564,6 +628,53 @@ export const ROUTER_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::router::Router::SwapYT',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sender',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'yt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'sy_in',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'yt_in',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_out',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'yt_out',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::router::Router::Event',
     kind: 'enum',
     variants: [
@@ -590,6 +701,11 @@ export const ROUTER_ABI = [
       {
         name: 'Swap',
         type: 'horizon::router::Router::Swap',
+        kind: 'nested',
+      },
+      {
+        name: 'SwapYT',
+        type: 'horizon::router::Router::SwapYT',
         kind: 'nested',
       },
     ],

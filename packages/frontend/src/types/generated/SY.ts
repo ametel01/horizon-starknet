@@ -207,7 +207,7 @@ export const SY_ABI = [
             type: 'core::starknet::contract_address::ContractAddress',
           },
           {
-            name: 'amount_token_to_deposit',
+            name: 'amount_shares_to_deposit',
             type: 'core::integer::u256',
           },
         ],
@@ -279,8 +279,12 @@ export const SY_ABI = [
         type: 'core::starknet::contract_address::ContractAddress',
       },
       {
-        name: 'initial_exchange_rate',
-        type: 'core::integer::u256',
+        name: 'index_oracle',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'is_erc4626',
+        type: 'core::bool',
       },
     ],
   },
@@ -401,23 +405,6 @@ export const SY_ABI = [
   },
   {
     type: 'event',
-    name: 'horizon::tokens::sy::SY::ExchangeRateUpdated',
-    kind: 'struct',
-    members: [
-      {
-        name: 'old_rate',
-        type: 'core::integer::u256',
-        kind: 'data',
-      },
-      {
-        name: 'new_rate',
-        type: 'core::integer::u256',
-        kind: 'data',
-      },
-    ],
-  },
-  {
-    type: 'event',
     name: 'horizon::tokens::sy::SY::Event',
     kind: 'enum',
     variants: [
@@ -434,11 +421,6 @@ export const SY_ABI = [
       {
         name: 'Redeem',
         type: 'horizon::tokens::sy::SY::Redeem',
-        kind: 'nested',
-      },
-      {
-        name: 'ExchangeRateUpdated',
-        type: 'horizon::tokens::sy::SY::ExchangeRateUpdated',
         kind: 'nested',
       },
     ],
