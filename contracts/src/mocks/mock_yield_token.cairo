@@ -1,18 +1,20 @@
 use horizon::libraries::math::WAD;
 use starknet::ContractAddress;
 
-/// Mock yield-bearing token for testing (ERC4626-like)
+/// Mock yield-bearing token for testing (ERC-4626 compatible)
 /// A non-rebasing, value-accruing shares token with:
 /// - An underlying ERC20 asset
 /// - An externally settable index for yield simulation
-/// - ERC4626-like deposit/redeem functions
+/// - Full ERC-4626 deposit/mint/withdraw/redeem functions
 ///
-/// Implements both IYieldToken and IIndexOracle, so it can be used as:
+/// Mimics Nostra's nstSTRK and other ERC-4626 vaults.
+/// Can be used as:
 /// - The underlying token for SY
-/// - The index oracle for SY (same address)
+/// - Its own index oracle (via convert_to_assets)
 #[starknet::contract]
 pub mod MockYieldToken {
-    use horizon::interfaces::i_yield_token::IYieldToken;
+    use core::num::traits::Bounded;
+    use horizon::interfaces::i_erc4626::IERC4626;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -28,7 +30,7 @@ pub mod MockYieldToken {
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
-        // The underlying asset (e.g., mock USDC or ETH)
+        // The underlying asset (e.g., STRK)
         underlying: ContractAddress,
         // The index in WAD (starts at 1e18, increases to represent yield)
         // assets = shares * index / WAD
@@ -58,7 +60,7 @@ pub mod MockYieldToken {
         #[key]
         pub caller: ContractAddress,
         #[key]
-        pub receiver: ContractAddress,
+        pub owner: ContractAddress,
         pub assets: u256,
         pub shares: u256,
     }
@@ -90,7 +92,9 @@ pub mod MockYieldToken {
     }
 
     #[abi(embed_v0)]
-    impl MockYieldTokenImpl of IYieldToken<ContractState> {
+    impl ERC4626Impl of IERC4626<ContractState> {
+        // ============ ERC20 Base ============
+
         fn name(self: @ContractState) -> ByteArray {
             self.erc20.ERC20_name.read()
         }
@@ -141,46 +145,52 @@ pub mod MockYieldToken {
             true
         }
 
-        /// Returns the underlying asset address
+        // ============ ERC-4626 Asset Info ============
+
         fn asset(self: @ContractState) -> ContractAddress {
             self.underlying.read()
         }
 
-        /// Returns the current index (exchange rate) in WAD
-        fn index(self: @ContractState) -> u256 {
-            self.index_wad.read()
+        fn total_assets(self: @ContractState) -> u256 {
+            // Total assets = total shares * index / WAD
+            let total_shares = self.erc20.ERC20_total_supply.read();
+            let index = self.index_wad.read();
+            (total_shares * index) / WAD
         }
 
-        /// Convert shares to assets: assets = floor(shares * index / WAD)
+        // ============ ERC-4626 Conversion Functions ============
+
+        fn convert_to_shares(self: @ContractState, assets: u256) -> u256 {
+            let index = self.index_wad.read();
+            if index == 0 {
+                return assets; // 1:1 if index is 0
+            }
+            (assets * WAD) / index
+        }
+
         fn convert_to_assets(self: @ContractState, shares: u256) -> u256 {
             let index = self.index_wad.read();
             (shares * index) / WAD
         }
 
-        /// Convert assets to shares: shares = floor(assets * WAD / index)
-        fn convert_to_shares(self: @ContractState, assets: u256) -> u256 {
-            let index = self.index_wad.read();
-            (assets * WAD) / index
+        // ============ ERC-4626 Deposit Functions ============
+
+        fn max_deposit(self: @ContractState, receiver: ContractAddress) -> u256 {
+            // No deposit limit for mock
+            Bounded::<u256>::MAX
         }
-    }
 
-    // Note: IYieldToken already implements index(), which satisfies IIndexOracle
-    // The ABI exposes `index()` which can be called via IIndexOracleDispatcher
+        fn preview_deposit(self: @ContractState, assets: u256) -> u256 {
+            Self::convert_to_shares(self, assets)
+        }
 
-    #[abi(embed_v0)]
-    impl MockYieldTokenExtImpl of super::IMockYieldTokenExt<ContractState> {
-        /// Deposit underlying assets to mint shares
-        /// @param assets Amount of underlying assets to deposit
-        /// @param receiver Address to receive the minted shares
-        /// @return shares Amount of shares minted
         fn deposit(ref self: ContractState, assets: u256, receiver: ContractAddress) -> u256 {
             assert(assets > 0, 'MYT: zero assets');
 
             let caller = get_caller_address();
-            let index = self.index_wad.read();
 
-            // Calculate shares: shares = floor(assets * WAD / index)
-            let shares = (assets * WAD) / index;
+            // Calculate shares
+            let shares = Self::convert_to_shares(@self, assets);
             assert(shares > 0, 'MYT: zero shares');
 
             // Transfer underlying from caller
@@ -191,16 +201,97 @@ pub mod MockYieldToken {
             // Mint shares to receiver
             self.erc20.mint(receiver, shares);
 
-            self.emit(Deposit { caller, receiver, assets, shares });
+            self.emit(Deposit { caller, owner: receiver, assets, shares });
 
             shares
         }
 
-        /// Redeem shares for underlying assets
-        /// @param shares Amount of shares to redeem
-        /// @param receiver Address to receive the underlying assets
-        /// @param owner Address that owns the shares
-        /// @return assets Amount of assets returned
+        // ============ ERC-4626 Mint Functions ============
+
+        fn max_mint(self: @ContractState, receiver: ContractAddress) -> u256 {
+            // No mint limit for mock
+            Bounded::<u256>::MAX
+        }
+
+        fn preview_mint(self: @ContractState, shares: u256) -> u256 {
+            Self::convert_to_assets(self, shares)
+        }
+
+        fn mint(ref self: ContractState, shares: u256, receiver: ContractAddress) -> u256 {
+            assert(shares > 0, 'MYT: zero shares');
+
+            let caller = get_caller_address();
+
+            // Calculate assets needed
+            let assets = Self::convert_to_assets(@self, shares);
+            assert(assets > 0, 'MYT: zero assets');
+
+            // Transfer underlying from caller
+            let underlying = IERC20Dispatcher { contract_address: self.underlying.read() };
+            let success = underlying.transfer_from(caller, get_contract_address(), assets);
+            assert(success, 'MYT: transfer failed');
+
+            // Mint shares to receiver
+            self.erc20.mint(receiver, shares);
+
+            self.emit(Deposit { caller, owner: receiver, assets, shares });
+
+            assets
+        }
+
+        // ============ ERC-4626 Withdraw Functions ============
+
+        fn max_withdraw(self: @ContractState, owner: ContractAddress) -> u256 {
+            let shares = self.erc20.ERC20_balances.read(owner);
+            Self::convert_to_assets(self, shares)
+        }
+
+        fn preview_withdraw(self: @ContractState, assets: u256) -> u256 {
+            Self::convert_to_shares(self, assets)
+        }
+
+        fn withdraw(
+            ref self: ContractState,
+            assets: u256,
+            receiver: ContractAddress,
+            owner: ContractAddress,
+        ) -> u256 {
+            assert(assets > 0, 'MYT: zero assets');
+
+            let caller = get_caller_address();
+
+            // Calculate shares to burn
+            let shares = Self::convert_to_shares(@self, assets);
+            assert(shares > 0, 'MYT: zero shares');
+
+            // If caller is not owner, check and spend allowance
+            if caller != owner {
+                self.erc20._spend_allowance(owner, caller, shares);
+            }
+
+            // Burn shares from owner
+            self.erc20.burn(owner, shares);
+
+            // Transfer underlying to receiver
+            let underlying = IERC20Dispatcher { contract_address: self.underlying.read() };
+            let success = underlying.transfer(receiver, assets);
+            assert(success, 'MYT: transfer failed');
+
+            self.emit(Withdraw { caller, receiver, owner, assets, shares });
+
+            shares
+        }
+
+        // ============ ERC-4626 Redeem Functions ============
+
+        fn max_redeem(self: @ContractState, owner: ContractAddress) -> u256 {
+            self.erc20.ERC20_balances.read(owner)
+        }
+
+        fn preview_redeem(self: @ContractState, shares: u256) -> u256 {
+            Self::convert_to_assets(self, shares)
+        }
+
         fn redeem(
             ref self: ContractState,
             shares: u256,
@@ -210,15 +301,14 @@ pub mod MockYieldToken {
             assert(shares > 0, 'MYT: zero shares');
 
             let caller = get_caller_address();
-            let index = self.index_wad.read();
 
             // If caller is not owner, check and spend allowance
             if caller != owner {
                 self.erc20._spend_allowance(owner, caller, shares);
             }
 
-            // Calculate assets: assets = floor(shares * index / WAD)
-            let assets = (shares * index) / WAD;
+            // Calculate assets
+            let assets = Self::convert_to_assets(@self, shares);
             assert(assets > 0, 'MYT: zero assets');
 
             // Burn shares from owner
@@ -233,9 +323,16 @@ pub mod MockYieldToken {
 
             assets
         }
+    }
+
+    #[abi(embed_v0)]
+    impl MockYieldTokenExtImpl of super::IMockYieldTokenExt<ContractState> {
+        /// Get the current index (for compatibility with IIndexOracle)
+        fn index(self: @ContractState) -> u256 {
+            self.index_wad.read()
+        }
 
         /// Set the index (admin only, for testing)
-        /// @param new_index_wad New index value in WAD
         fn set_index(ref self: ContractState, new_index_wad: u256) {
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'MYT: not admin');
@@ -249,7 +346,6 @@ pub mod MockYieldToken {
         }
 
         /// Increase index by basis points (admin only, for testing)
-        /// @param bps Basis points to increase (e.g., 100 = 1%)
         fn increase_index_bps(ref self: ContractState, bps: u32) {
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'MYT: not admin');
@@ -280,11 +376,8 @@ pub mod MockYieldToken {
 /// Extended interface for MockYieldToken (includes test controls)
 #[starknet::interface]
 pub trait IMockYieldTokenExt<TContractState> {
-    // ERC4626-like deposit/redeem
-    fn deposit(ref self: TContractState, assets: u256, receiver: ContractAddress) -> u256;
-    fn redeem(
-        ref self: TContractState, shares: u256, receiver: ContractAddress, owner: ContractAddress,
-    ) -> u256;
+    // Index access (for IIndexOracle compatibility)
+    fn index(self: @TContractState) -> u256;
 
     // Test controls (admin only)
     fn set_index(ref self: TContractState, new_index_wad: u256);
@@ -294,7 +387,7 @@ pub trait IMockYieldTokenExt<TContractState> {
 }
 
 /// Combined interface for testing convenience
-/// Includes IYieldToken (ERC20 + index) and IMockYieldTokenExt (test controls)
+/// Includes full ERC-4626 and test controls
 #[starknet::interface]
 pub trait IMockYieldToken<TContractState> {
     // ERC20 standard
@@ -310,17 +403,40 @@ pub trait IMockYieldToken<TContractState> {
     ) -> bool;
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
 
-    // Yield token specific
+    // ERC-4626 Asset Info
     fn asset(self: @TContractState) -> ContractAddress;
-    fn index(self: @TContractState) -> u256;
-    fn convert_to_assets(self: @TContractState, shares: u256) -> u256;
-    fn convert_to_shares(self: @TContractState, assets: u256) -> u256;
+    fn total_assets(self: @TContractState) -> u256;
 
-    // ERC4626-like deposit/redeem
+    // ERC-4626 Conversion Functions
+    fn convert_to_shares(self: @TContractState, assets: u256) -> u256;
+    fn convert_to_assets(self: @TContractState, shares: u256) -> u256;
+
+    // ERC-4626 Deposit Functions
+    fn max_deposit(self: @TContractState, receiver: ContractAddress) -> u256;
+    fn preview_deposit(self: @TContractState, assets: u256) -> u256;
     fn deposit(ref self: TContractState, assets: u256, receiver: ContractAddress) -> u256;
+
+    // ERC-4626 Mint Functions
+    fn max_mint(self: @TContractState, receiver: ContractAddress) -> u256;
+    fn preview_mint(self: @TContractState, shares: u256) -> u256;
+    fn mint(ref self: TContractState, shares: u256, receiver: ContractAddress) -> u256;
+
+    // ERC-4626 Withdraw Functions
+    fn max_withdraw(self: @TContractState, owner: ContractAddress) -> u256;
+    fn preview_withdraw(self: @TContractState, assets: u256) -> u256;
+    fn withdraw(
+        ref self: TContractState, assets: u256, receiver: ContractAddress, owner: ContractAddress,
+    ) -> u256;
+
+    // ERC-4626 Redeem Functions
+    fn max_redeem(self: @TContractState, owner: ContractAddress) -> u256;
+    fn preview_redeem(self: @TContractState, shares: u256) -> u256;
     fn redeem(
         ref self: TContractState, shares: u256, receiver: ContractAddress, owner: ContractAddress,
     ) -> u256;
+
+    // Index (IIndexOracle compatibility)
+    fn index(self: @TContractState) -> u256;
 
     // Test controls (admin only)
     fn set_index(ref self: TContractState, new_index_wad: u256);

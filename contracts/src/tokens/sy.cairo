@@ -5,18 +5,20 @@ use starknet::ContractAddress;
 /// 1 SY represents 1 share of the underlying yield-bearing asset.
 ///
 /// The exchange_rate can come from two sources:
-/// 1. Native yield tokens: The underlying token itself implements index()
-/// 2. Bridged tokens (like wstETH): A separate oracle provides the index
+/// 1. ERC-4626 vaults (like Nostra nstSTRK): Call convert_to_assets(WAD) directly
+/// 2. Custom oracles: A separate oracle that implements IIndexOracle
 ///
-/// Constructor takes an `index_oracle` parameter:
-/// - For native tokens: pass underlying address (implements IIndexOracle)
-/// - For bridged tokens: pass oracle address that syncs from L1
+/// Constructor takes an `index_oracle` parameter and `is_erc4626` flag:
+/// - For ERC-4626 tokens: pass underlying address as oracle, set is_erc4626=true
+/// - For custom oracles: pass oracle address, set is_erc4626=false
 #[starknet::contract]
 pub mod SY {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_erc4626::{IERC4626MinimalDispatcher, IERC4626MinimalDispatcherTrait};
     use horizon::interfaces::i_index_oracle::{IIndexOracleDispatcher, IIndexOracleDispatcherTrait};
     use horizon::interfaces::i_sy::ISY;
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::math::WAD;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -35,10 +37,13 @@ pub mod SY {
         erc20: ERC20Component::Storage,
         // The underlying yield-bearing token address (ERC20)
         underlying: ContractAddress,
-        // The index oracle address (implements IIndexOracle)
+        // The index oracle address (implements IIndexOracle or IERC4626)
         // Can be same as underlying for native yield tokens,
         // or a separate oracle for bridged tokens
         index_oracle: ContractAddress,
+        // Whether the index_oracle is an ERC-4626 vault
+        // If true, call convert_to_assets(WAD) instead of index()
+        is_erc4626: bool,
     }
 
     #[event]
@@ -73,7 +78,9 @@ pub mod SY {
     /// @param name SY token name
     /// @param symbol SY token symbol
     /// @param underlying The underlying yield-bearing token (ERC20)
-    /// @param index_oracle The index source (same as underlying for native, or oracle for bridged)
+    /// @param index_oracle The index source (same as underlying for ERC-4626, or oracle for
+    /// bridged)
+    /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -81,6 +88,7 @@ pub mod SY {
         symbol: ByteArray,
         underlying: ContractAddress,
         index_oracle: ContractAddress,
+        is_erc4626: bool,
     ) {
         // Initialize ERC20
         self.erc20.initializer(name, symbol);
@@ -90,6 +98,7 @@ pub mod SY {
         assert(!index_oracle.is_zero(), Errors::ZERO_ADDRESS);
         self.underlying.write(underlying);
         self.index_oracle.write(index_oracle);
+        self.is_erc4626.write(is_erc4626);
     }
 
     #[abi(embed_v0)]
@@ -103,7 +112,9 @@ pub mod SY {
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            18
+            let underlying_addr = self.underlying.read();
+            let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
+            underlying_token.decimals()
         }
 
         fn total_supply(self: @ContractState) -> u256 {
@@ -221,11 +232,20 @@ pub mod SY {
         }
 
         /// Get the current exchange rate (assets per share in WAD)
-        /// This reads from the configured index oracle
+        /// For ERC-4626 vaults: calls convert_to_assets(WAD)
+        /// For custom oracles: calls index()
         fn exchange_rate(self: @ContractState) -> u256 {
             let oracle_addr = self.index_oracle.read();
-            let oracle = IIndexOracleDispatcher { contract_address: oracle_addr };
-            oracle.index()
+
+            if self.is_erc4626.read() {
+                // ERC-4626: convert_to_assets(1 share) = exchange rate
+                let vault = IERC4626MinimalDispatcher { contract_address: oracle_addr };
+                vault.convert_to_assets(WAD)
+            } else {
+                // Custom oracle: call index()
+                let oracle = IIndexOracleDispatcher { contract_address: oracle_addr };
+                oracle.index()
+            }
         }
 
         /// Get the underlying token address
@@ -251,12 +271,18 @@ pub mod SY {
         fn get_index_oracle(self: @ContractState) -> ContractAddress {
             self.index_oracle.read()
         }
+
+        /// Check if this SY uses an ERC-4626 vault for exchange rate
+        fn get_is_erc4626(self: @ContractState) -> bool {
+            self.is_erc4626.read()
+        }
     }
 }
 
 // Interface for calling external ERC20 tokens
 #[starknet::interface]
 pub trait IERC20<TContractState> {
+    fn decimals(self: @TContractState) -> u8;
     fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
     fn transfer_from(
         ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
