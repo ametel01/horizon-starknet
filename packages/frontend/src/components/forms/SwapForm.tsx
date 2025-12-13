@@ -101,8 +101,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
   }, [parsedInputAmount, expectedOutput]);
 
   // Validation
-  const hasInsufficientBalance =
-    inputBalance !== undefined && parsedInputAmount > inputBalance;
+  const hasInsufficientBalance = inputBalance !== undefined && parsedInputAmount > inputBalance;
   const isValidAmount = parsedInputAmount > BigInt(0);
 
   const canSwap =
@@ -295,19 +294,11 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
 
         {/* Transaction Status */}
         {txStatus !== 'idle' && (
-          <TxStatus
-            status={txStatus}
-            txHash={transactionHash ?? null}
-            error={error}
-          />
+          <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
         )}
 
         {/* Submit Button */}
-        <Button
-          onClick={handleSwap}
-          disabled={!canSwap || isSwapping}
-          className="w-full"
-        >
+        <Button onClick={handleSwap} disabled={!canSwap || isSwapping} className="w-full">
           {isSwapping
             ? 'Swapping...'
             : !isConnected
