@@ -87,13 +87,21 @@ pub fn deploy_mock_yield_token_default() -> (IMockERC20Dispatcher, IMockYieldTok
 /// Deploy SY token
 /// For native yield tokens, underlying == index_oracle (same address)
 /// For bridged tokens, index_oracle would be a separate oracle contract
-pub fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+/// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+pub fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -125,11 +133,12 @@ pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> 
 
 /// Deploy full stack: MockERC20 -> MockYieldToken -> SY
 /// MockYieldToken serves as both underlying AND index oracle (same address)
+/// Uses ERC-4626 mode since MockYieldToken implements the full ERC-4626 interface
 pub fn setup_sy() -> (IMockERC20Dispatcher, IMockYieldTokenDispatcher, ISYDispatcher) {
     let base_asset = deploy_mock_erc20();
     let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
-    // For native yield tokens, underlying == index_oracle
-    let sy = deploy_sy(yield_token.contract_address, yield_token.contract_address);
+    // For ERC-4626 tokens, underlying == index_oracle, is_erc4626 = true
+    let sy = deploy_sy(yield_token.contract_address, yield_token.contract_address, true);
     (base_asset, yield_token, sy)
 }
 

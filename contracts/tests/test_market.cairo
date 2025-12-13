@@ -80,13 +80,20 @@ fn deploy_yield_token_stack() -> (IMockERC20Dispatcher, IMockYieldTokenDispatche
 }
 
 // Deploy SY token
-fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -151,7 +158,7 @@ fn setup() -> (
     start_cheat_block_timestamp_global(1000);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     // Expiry in ~1 year
     let expiry = 1000 + 365 * 24 * 60 * 60;

@@ -76,13 +76,20 @@ fn deploy_yield_token_stack() -> IMockYieldTokenDispatcher {
     yield_token
 }
 
-fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'Standardized Yield', 18);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -181,7 +188,7 @@ fn test_expiry_pt_only_redemption() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     // Short expiry - 30 days
     let expiry = start_time + 30 * 24 * 60 * 60;
@@ -233,7 +240,7 @@ fn test_yt_worthless_after_expiry() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -278,7 +285,7 @@ fn test_exactly_at_expiry_timestamp() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -310,7 +317,7 @@ fn test_cannot_mint_after_expiry() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
@@ -343,7 +350,7 @@ fn test_cannot_redeem_post_expiry_before_expiry() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -370,7 +377,7 @@ fn test_market_expired_behavior() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -426,7 +433,7 @@ fn test_market_no_swaps_after_expiry() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -468,7 +475,7 @@ fn test_router_post_expiry_redemption() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -505,7 +512,7 @@ fn test_yield_accumulation_until_expiry() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 90 * 24 * 60 * 60; // 90 days
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -568,7 +575,7 @@ fn test_multiple_users_expiry_redemption() {
     start_cheat_block_timestamp_global(start_time);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };

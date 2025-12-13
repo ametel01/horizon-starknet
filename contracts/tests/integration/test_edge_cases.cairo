@@ -84,13 +84,20 @@ fn deploy_yield_token_stack() -> (IMockERC20Dispatcher, IMockYieldTokenDispatche
     (base_asset, yield_token)
 }
 
-fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'Standardized Yield', 18);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -187,7 +194,7 @@ fn test_zero_sy_deposit() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     start_cheat_caller_address(sy.contract_address, alice());
     sy.deposit(alice(), 0); // Should panic
@@ -200,7 +207,7 @@ fn test_zero_sy_redeem() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     // First deposit some
     mint_yield_token_to_user(underlying, alice(), 100 * WAD);
@@ -223,7 +230,7 @@ fn test_zero_py_mint() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
@@ -238,7 +245,7 @@ fn test_zero_py_redeem() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
@@ -253,7 +260,7 @@ fn test_zero_market_mint() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -271,7 +278,7 @@ fn test_large_amounts() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -329,7 +336,7 @@ fn test_many_users_concurrent_operations() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -387,7 +394,7 @@ fn test_sequential_swaps_same_user() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -459,7 +466,7 @@ fn test_minimum_amounts() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let _pt = IPTDispatcher { contract_address: yt.pt() };
@@ -500,7 +507,7 @@ fn test_mixed_operation_sizes() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -558,7 +565,7 @@ fn test_operations_across_time() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let _pt = IPTDispatcher { contract_address: yt.pt() };
@@ -616,7 +623,7 @@ fn test_transfer_chains() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -675,7 +682,7 @@ fn test_approval_patterns() {
     start_cheat_block_timestamp_global(start_time);
 
     let (_, underlying) = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };

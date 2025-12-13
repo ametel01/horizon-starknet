@@ -74,13 +74,20 @@ fn deploy_yield_token_stack() -> IMockYieldTokenDispatcher {
 }
 
 // Deploy SY token
-fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -119,7 +126,7 @@ fn mint_yield_token_to_user(
 // Full setup
 fn setup() -> (IMockYieldTokenDispatcher, ISYDispatcher, IFactoryDispatcher) {
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
     let (yt_class_hash, pt_class_hash) = get_class_hashes();
     let factory = deploy_factory(yt_class_hash, pt_class_hash);
     (underlying, sy, factory)
@@ -225,8 +232,8 @@ fn test_factory_create_multiple_expiries() {
 fn test_factory_create_multiple_sy_tokens() {
     let underlying1 = deploy_yield_token_stack();
     let underlying2 = deploy_yield_token_stack();
-    let sy1 = deploy_sy(underlying1.contract_address, underlying1.contract_address);
-    let sy2 = deploy_sy(underlying2.contract_address, underlying2.contract_address);
+    let sy1 = deploy_sy(underlying1.contract_address, underlying1.contract_address, true);
+    let sy2 = deploy_sy(underlying2.contract_address, underlying2.contract_address, true);
     let (yt_class_hash, pt_class_hash) = get_class_hashes();
     let factory = deploy_factory(yt_class_hash, pt_class_hash);
 

@@ -78,13 +78,20 @@ fn deploy_yield_token_stack() -> IMockYieldTokenDispatcher {
     deploy_mock_yield_token(underlying.contract_address, admin_addr)
 }
 
-fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -150,7 +157,7 @@ fn setup() -> (
     start_cheat_block_timestamp_global(1000);
 
     let underlying = deploy_yield_token_stack();
-    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     let expiry = 1000 + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
@@ -726,4 +733,310 @@ fn test_router_mint_py_zero_amount() {
 
     start_cheat_caller_address(router.contract_address, user);
     router.mint_py_from_sy(yt.contract_address, user, 0, 0);
+}
+
+// ============ YT Swap Tests ============
+
+#[test]
+fn test_router_swap_exact_sy_for_yt() {
+    let (underlying, sy, yt, pt, market, router) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    setup_user_with_tokens(underlying, sy, yt, user, amount);
+
+    // Add liquidity to market first
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, amount, amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get more SY for swapping
+    setup_user_with_sy(underlying, sy, user, 20 * WAD);
+
+    // Swap SY for YT through router
+    let swap_amount = 10 * WAD;
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, swap_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let yt_before = yt.balance_of(user);
+    let sy_before = sy.balance_of(user);
+
+    start_cheat_caller_address(router.contract_address, user);
+    let yt_out = router
+        .swap_exact_sy_for_yt(yt.contract_address, market.contract_address, user, swap_amount, 0);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Verify YT received
+    assert(yt_out > 0, 'Should receive YT');
+    assert(yt.balance_of(user) == yt_before + yt_out, 'Wrong YT balance');
+
+    // User should have received some SY back from PT sale
+    // Net SY spent = swap_amount - SY_from_PT_sale
+    // So final SY should be >= sy_before - swap_amount (some SY recovered)
+    let sy_after = sy.balance_of(user);
+    assert(sy_after >= sy_before - swap_amount, 'SY recovery failed');
+}
+
+#[test]
+fn test_router_swap_exact_sy_for_yt_to_receiver() {
+    let (underlying, sy, yt, pt, market, router) = setup();
+    let sender = user1();
+    let receiver = user2();
+    let amount = 100 * WAD;
+
+    setup_user_with_tokens(underlying, sy, yt, sender, amount);
+
+    // Add liquidity to market
+    start_cheat_caller_address(sy.contract_address, sender);
+    sy.approve(market.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, sender);
+    pt.approve(market.contract_address, amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, sender);
+    market.mint(sender, amount, amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get more SY for swapping
+    setup_user_with_sy(underlying, sy, sender, 20 * WAD);
+
+    let swap_amount = 10 * WAD;
+    start_cheat_caller_address(sy.contract_address, sender);
+    sy.approve(router.contract_address, swap_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let sender_yt_before = yt.balance_of(sender);
+    let receiver_yt_before = yt.balance_of(receiver);
+
+    start_cheat_caller_address(router.contract_address, sender);
+    let yt_out = router
+        .swap_exact_sy_for_yt(
+            yt.contract_address, market.contract_address, receiver, swap_amount, 0,
+        );
+    stop_cheat_caller_address(router.contract_address);
+
+    // Verify tokens went to receiver, not sender
+    assert(yt.balance_of(receiver) == receiver_yt_before + yt_out, 'Receiver should have YT');
+    assert(yt.balance_of(sender) == sender_yt_before, 'Sender YT unchanged');
+}
+
+#[test]
+#[should_panic(expected: 'Router: slippage exceeded')]
+fn test_router_swap_exact_sy_for_yt_slippage() {
+    let (underlying, sy, yt, pt, market, router) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    setup_user_with_tokens(underlying, sy, yt, user, amount);
+
+    // Add liquidity to market
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, amount, amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    setup_user_with_sy(underlying, sy, user, 20 * WAD);
+
+    let swap_amount = 10 * WAD;
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, swap_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Request unrealistic min_yt_out
+    start_cheat_caller_address(router.contract_address, user);
+    router
+        .swap_exact_sy_for_yt(
+            yt.contract_address, market.contract_address, user, swap_amount, swap_amount * 100,
+        );
+}
+
+#[test]
+fn test_router_swap_exact_yt_for_sy() {
+    let (underlying, sy, yt, pt, market, router) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    setup_user_with_tokens(underlying, sy, yt, user, amount);
+
+    // Add liquidity to market
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, amount, amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get more SY and mint more YT for selling
+    setup_user_with_sy(underlying, sy, user, 50 * WAD);
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(yt.contract_address, 30 * WAD); // Only mint 30 WAD worth, keep 20 WAD for collateral
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, 30 * WAD);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Swap YT for SY through router
+    // User needs to approve both YT and SY (collateral)
+    // Router uses max_sy_for_pt = exact_yt_in * 4 internally to handle AMM curve and fees
+    let yt_to_sell = 5 * WAD;
+    let collateral_sy = yt_to_sell * 4; // 4x multiplier to match router's internal calculation
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.approve(router.contract_address, yt_to_sell);
+    stop_cheat_caller_address(yt.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, collateral_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let sy_before = sy.balance_of(user);
+    let yt_before = yt.balance_of(user);
+
+    start_cheat_caller_address(router.contract_address, user);
+    let sy_out = router
+        .swap_exact_yt_for_sy(yt.contract_address, market.contract_address, user, yt_to_sell, 0);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Verify YT sold
+    assert(yt.balance_of(user) == yt_before - yt_to_sell, 'Wrong YT balance');
+
+    // Verify operation completed
+    // Note: sy_out is the effective gain from selling YT (sy_from_redemption - sy_spent_on_pt)
+    // This can be 0 or positive. In high implied yield markets, selling YT may not be profitable.
+    // The user still receives net_sy_out = sy_from_redemption + refund, which is positive.
+    let sy_after = sy.balance_of(user);
+    // User should receive back at least their refund + redemption, minus collateral provided
+    // The change should be >= sy_out (effective gain, can be 0 in unprofitable markets)
+    assert(sy_after >= sy_before - collateral_sy + sy_out, 'SY balance incorrect');
+}
+
+#[test]
+fn test_router_swap_exact_yt_for_sy_to_receiver() {
+    let (underlying, sy, yt, pt, market, router) = setup();
+    let sender = user1();
+    let receiver = user2();
+    let amount = 100 * WAD;
+
+    setup_user_with_tokens(underlying, sy, yt, sender, amount);
+
+    // Add liquidity to market
+    start_cheat_caller_address(sy.contract_address, sender);
+    sy.approve(market.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, sender);
+    pt.approve(market.contract_address, amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, sender);
+    market.mint(sender, amount, amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get more SY and mint more YT, keeping some SY for collateral
+    setup_user_with_sy(underlying, sy, sender, 50 * WAD);
+    start_cheat_caller_address(sy.contract_address, sender);
+    sy.approve(yt.contract_address, 30 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, sender);
+    yt.mint_py(sender, 30 * WAD);
+    stop_cheat_caller_address(yt.contract_address);
+
+    let yt_to_sell = 5 * WAD;
+    let collateral_sy = yt_to_sell * 4; // 4x multiplier to match router
+
+    start_cheat_caller_address(yt.contract_address, sender);
+    yt.approve(router.contract_address, yt_to_sell);
+    stop_cheat_caller_address(yt.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, sender);
+    sy.approve(router.contract_address, collateral_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let receiver_sy_before = sy.balance_of(receiver);
+
+    start_cheat_caller_address(router.contract_address, sender);
+    router
+        .swap_exact_yt_for_sy(
+            yt.contract_address, market.contract_address, receiver, yt_to_sell, 0,
+        );
+    stop_cheat_caller_address(router.contract_address);
+
+    // Verify receiver got SY
+    assert(sy.balance_of(receiver) > receiver_sy_before, 'Receiver should have SY');
+}
+
+#[test]
+#[should_panic(expected: 'Router: slippage exceeded')]
+fn test_router_swap_exact_yt_for_sy_slippage() {
+    let (underlying, sy, yt, pt, market, router) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    setup_user_with_tokens(underlying, sy, yt, user, amount);
+
+    // Add liquidity to market
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, amount, amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get more SY and mint more YT, keeping some for collateral
+    setup_user_with_sy(underlying, sy, user, 50 * WAD);
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(yt.contract_address, 30 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, 30 * WAD);
+    stop_cheat_caller_address(yt.contract_address);
+
+    let yt_to_sell = 5 * WAD;
+    let collateral_sy = yt_to_sell * 4; // 4x multiplier to match router
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.approve(router.contract_address, yt_to_sell);
+    stop_cheat_caller_address(yt.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, collateral_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Request unrealistic min_sy_out
+    start_cheat_caller_address(router.contract_address, user);
+    router
+        .swap_exact_yt_for_sy(
+            yt.contract_address, market.contract_address, user, yt_to_sell, yt_to_sell * 100,
+        );
 }

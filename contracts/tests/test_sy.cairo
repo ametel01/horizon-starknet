@@ -59,13 +59,20 @@ fn deploy_mock_yield_token(
 }
 
 // Deploy SY token
-fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(
+    underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
     calldata.append(index_oracle.into());
+    calldata.append(if is_erc4626 {
+        1
+    } else {
+        0
+    });
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -76,7 +83,7 @@ fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYD
 fn setup() -> (IMockERC20Dispatcher, IMockYieldTokenDispatcher, ISYDispatcher) {
     let base_asset = deploy_mock_erc20();
     let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
-    let sy = deploy_sy(yield_token.contract_address, yield_token.contract_address);
+    let sy = deploy_sy(yield_token.contract_address, yield_token.contract_address, true);
     (base_asset, yield_token, sy)
 }
 
