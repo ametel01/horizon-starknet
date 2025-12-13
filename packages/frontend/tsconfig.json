@@ -35,9 +35,9 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"],
+      "@contracts/*": ["../../contracts/target/dev/*"],
+      "@deploy/*": ["../../deploy/*"]
     },
     "noEmit": true
   },
