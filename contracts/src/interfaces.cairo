@@ -1,3 +1,4 @@
+pub mod i_erc4626;
 pub mod i_factory;
 pub mod i_index_oracle;
 pub mod i_market;
