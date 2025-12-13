@@ -44,11 +44,11 @@ update_env() {
     local key=$1
     local value=$2
     if grep -q "^${key}=" "$ENV_FILE"; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-        else
-            sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-        fi
+        # Use temp file approach for Docker bind mount compatibility
+        local temp_file=$(mktemp)
+        sed "s|^${key}=.*|${key}=${value}|" "$ENV_FILE" > "$temp_file"
+        cat "$temp_file" > "$ENV_FILE"
+        rm -f "$temp_file"
     else
         echo "${key}=${value}" >> "$ENV_FILE"
     fi

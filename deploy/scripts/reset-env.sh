@@ -39,15 +39,20 @@ KEYS=(
     "EXPIRY_TIMESTAMP"
 )
 
+# Create temp file for modifications (works with Docker bind mounts)
+TEMP_FILE=$(mktemp)
+cp "$ENV_FILE" "$TEMP_FILE"
+
 for key in "${KEYS[@]}"; do
-    if grep -q "^${key}=" "$ENV_FILE"; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|^${key}=.*|${key}=|" "$ENV_FILE"
-        else
-            sed -i "s|^${key}=.*|${key}=|" "$ENV_FILE"
-        fi
+    if grep -q "^${key}=" "$TEMP_FILE"; then
+        sed "s|^${key}=.*|${key}=|" "$TEMP_FILE" > "${TEMP_FILE}.new"
+        mv "${TEMP_FILE}.new" "$TEMP_FILE"
         echo "  Reset: $key"
     fi
 done
+
+# Copy back to original file (works with bind mounts)
+cat "$TEMP_FILE" > "$ENV_FILE"
+rm -f "$TEMP_FILE"
 
 echo "Done!"
