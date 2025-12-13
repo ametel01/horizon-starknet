@@ -171,8 +171,8 @@ src/adapters/
 #### 2.1 Project Setup
 
 **Technology Stack** (Recommended):
-- **Framework**: Next.js 14 (App Router)
-- **Starknet**: starknet.js, get-starknet
+- **Framework**: Next.js 16 (App Router)
+- **Starknet**: starknet.js ^9.0.0, get-starknet
 - **Wallet**: ArgentX, Braavos integration
 - **Styling**: TailwindCSS + shadcn/ui
 - **State**: TanStack Query (React Query)
