@@ -1204,9 +1204,9 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 
 ### Priority 3 (Pages)
 - [x] `src/app/mint/page.tsx`
-- [ ] `src/app/trade/page.tsx`
-- [ ] `src/app/pools/page.tsx`
-- [ ] `src/app/portfolio/page.tsx`
+- [x] `src/app/trade/page.tsx`
+- [x] `src/app/pools/page.tsx`
+- [x] `src/app/portfolio/page.tsx`
 
 ### Priority 4 (Components)
 - [x] `src/components/ui/Button.tsx`
@@ -1216,7 +1216,9 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 - [ ] `src/components/ui/*` (remaining base components: Modal, Toast)
 - [x] `src/components/forms/TokenInput.tsx`
 - [x] `src/components/forms/MintForm.tsx`
-- [ ] `src/components/forms/*` (remaining: SwapForm, AddLiquidityForm, RemoveLiquidityForm)
+- [x] `src/components/forms/SwapForm.tsx`
+- [x] `src/components/forms/AddLiquidityForm.tsx`
+- [x] `src/components/forms/RemoveLiquidityForm.tsx`
 - [x] `src/components/display/TokenAmount.tsx`
 - [x] `src/components/display/ExpiryCountdown.tsx`
 - [x] `src/components/display/TxStatus.tsx`
@@ -1231,10 +1233,11 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 - [x] `src/hooks/useMint.ts`
 - [x] `src/hooks/useTokenBalance.ts`
 - [x] `src/types/market.ts`
-- [ ] `src/hooks/usePositions.ts`
-- [ ] `src/hooks/useYield.ts`
-- [ ] `src/hooks/useSwap.ts`
-- [ ] `src/hooks/useLiquidity.ts`
+- [x] `src/hooks/usePositions.ts`
+- [x] `src/hooks/useYield.ts`
+- [x] `src/hooks/useSwap.ts`
+- [x] `src/hooks/useLiquidity.ts`
+- [x] `src/hooks/useRedeem.ts`
 
 ---
 
