@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/Input';
@@ -27,6 +27,8 @@ export function TokenInput({
   disabled = false,
   error,
 }: TokenInputProps): ReactNode {
+  const inputId = useId();
+  const errorId = useId();
   const { data: balance, isLoading: balanceLoading } = useTokenBalance(tokenAddress);
 
   const handleMaxClick = (): void => {
@@ -38,15 +40,24 @@ export function TokenInput({
   };
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
+    <div
+      className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4"
+      role="group"
+      aria-labelledby={`${inputId}-label`}
+    >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm text-neutral-400">{label}</span>
+        <label id={`${inputId}-label`} htmlFor={inputId} className="text-sm text-neutral-400">
+          {label}
+        </label>
         <div className="flex items-center gap-2">
           <span className="text-sm text-neutral-500">Balance:</span>
           {balanceLoading ? (
-            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-16" aria-label="Loading balance" />
           ) : (
-            <span className="font-mono text-sm text-neutral-300">
+            <span
+              className="font-mono text-sm text-neutral-300"
+              aria-label={`Balance: ${balance !== undefined ? formatWad(balance, 4) : '0.0000'} ${tokenSymbol}`}
+            >
               {balance !== undefined ? formatWad(balance, 4) : '0.0000'}
             </span>
           )}
@@ -55,11 +66,13 @@ export function TokenInput({
 
       <div className="flex items-center gap-2">
         <NumberInput
+          id={inputId}
           value={value}
           onChange={onChange}
           placeholder="0.0"
           disabled={disabled}
-          error={error}
+          aria-invalid={error !== undefined}
+          aria-describedby={error !== undefined ? errorId : undefined}
           className="border-0 bg-transparent text-2xl focus:ring-0"
         />
         <div className="flex shrink-0 items-center gap-2">
@@ -68,16 +81,21 @@ export function TokenInput({
             size="sm"
             onClick={handleMaxClick}
             disabled={disabled || balance === undefined || balance === BigInt(0)}
+            aria-label={`Set maximum ${tokenSymbol} amount`}
           >
             MAX
           </Button>
-          <span className="min-w-[60px] text-right font-medium text-neutral-100">
+          <span className="min-w-[60px] text-right font-medium text-neutral-100" aria-hidden="true">
             {tokenSymbol}
           </span>
         </div>
       </div>
 
-      {error ? <p className="mt-2 text-sm text-red-500">{error}</p> : null}
+      {error !== undefined ? (
+        <p id={errorId} className="mt-2 text-sm text-red-500" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -95,19 +113,27 @@ export function TokenOutput({
   tokenSymbol,
   isLoading = false,
 }: TokenOutputProps): ReactNode {
+  const formattedAmount = formatWad(amount, 4);
+
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
+    <div
+      className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4"
+      role="status"
+      aria-label={`${label}: ${formattedAmount} ${tokenSymbol}`}
+    >
       <div className="mb-2">
         <span className="text-sm text-neutral-400">{label}</span>
       </div>
 
       <div className="flex items-center justify-between">
         {isLoading ? (
-          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-8 w-32" aria-label="Loading amount" />
         ) : (
-          <span className="font-mono text-2xl text-neutral-100">{formatWad(amount, 4)}</span>
+          <span className="font-mono text-2xl text-neutral-100">{formattedAmount}</span>
         )}
-        <span className="font-medium text-neutral-100">{tokenSymbol}</span>
+        <span className="font-medium text-neutral-100" aria-hidden="true">
+          {tokenSymbol}
+        </span>
       </div>
     </div>
   );

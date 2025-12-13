@@ -4,10 +4,19 @@ import { cn } from '@/lib/utils';
 
 interface SkeletonProps {
   className?: string;
+  'aria-label'?: string;
 }
 
-export function Skeleton({ className }: SkeletonProps): ReactNode {
-  return <div className={cn('animate-pulse rounded bg-neutral-800', className)} />;
+export function Skeleton({ className, 'aria-label': ariaLabel }: SkeletonProps): ReactNode {
+  return (
+    <div
+      className={cn('animate-pulse rounded bg-neutral-800', className)}
+      role="status"
+      aria-label={ariaLabel ?? 'Loading'}
+    >
+      <span className="sr-only">{ariaLabel ?? 'Loading...'}</span>
+    </div>
+  );
 }
 
 export function SkeletonText({ className }: SkeletonProps): ReactNode {
