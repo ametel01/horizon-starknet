@@ -1,4 +1,4 @@
-use yield_tokenization::libraries::errors::Errors;
+use horizon::libraries::errors::Errors;
 
 // WAD = 10^18 (standard 18 decimal precision)
 pub const WAD: u256 = 1_000_000_000_000_000_000;

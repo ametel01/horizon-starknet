@@ -14,13 +14,13 @@ pub trait IPTInit<TContractState> {
 #[starknet::contract]
 pub mod PT {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_pt::IPT;
+    use horizon::libraries::errors::Errors;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use yield_tokenization::interfaces::i_pt::IPT;
-    use yield_tokenization::libraries::errors::Errors;
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 

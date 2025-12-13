@@ -1,4 +1,4 @@
-use yield_tokenization::libraries::math::{
+use horizon::libraries::math::{
     HALF_WAD, TWO_WAD, WAD, abs_diff, exp2_wad, exp_neg_wad, exp_wad, ln_wad, log2_wad, max, min,
     pow_u256, pow_wad, wad_div, wad_mul,
 };

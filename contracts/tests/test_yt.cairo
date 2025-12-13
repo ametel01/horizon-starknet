@@ -1,16 +1,14 @@
 use core::num::traits::Zero;
+use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
+use horizon::libraries::math::WAD;
+use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
-use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-use yield_tokenization::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
-use yield_tokenization::libraries::math::WAD;
-use yield_tokenization::mocks::mock_yield_token::{
-    IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait,
-};
 
 // Test addresses
 fn user1() -> ContractAddress {

@@ -4,15 +4,15 @@
 #[starknet::contract]
 pub mod Factory {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_factory::IFactory;
+    use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
+    use horizon::libraries::errors::Errors;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
-    use yield_tokenization::interfaces::i_factory::IFactory;
-    use yield_tokenization::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
-    use yield_tokenization::libraries::errors::Errors;
 
     #[storage]
     struct Storage {

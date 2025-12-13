@@ -1,5 +1,5 @@
+use horizon::libraries::math::WAD;
 use starknet::ContractAddress;
-use yield_tokenization::libraries::math::WAD;
 
 /// Mock yield-bearing token for testing
 /// A simple ERC20 token that can be minted by anyone (for testing purposes)

@@ -1,10 +1,10 @@
+use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+use horizon::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
-use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-use yield_tokenization::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
 
 // Test addresses
 fn user1() -> ContractAddress {

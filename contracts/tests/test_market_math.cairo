@@ -1,5 +1,5 @@
-use yield_tokenization::libraries::math::WAD;
-use yield_tokenization::market::market_math::{
+use horizon::libraries::math::WAD;
+use horizon::market::market_math::{
     MIN_TIME_TO_EXPIRY, MarketState, calc_burn_lp, calc_mint_lp, calc_price_impact,
     calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
     calc_swap_sy_for_exact_pt, check_slippage, get_implied_apy, get_ln_implied_rate,

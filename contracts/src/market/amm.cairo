@@ -5,18 +5,18 @@
 #[starknet::contract]
 pub mod Market {
     use core::num::traits::Zero;
-    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use yield_tokenization::interfaces::i_market::IMarket;
-    use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-    use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-    use yield_tokenization::libraries::errors::Errors;
-    use yield_tokenization::market::market_math::{
+    use horizon::interfaces::i_market::IMarket;
+    use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+    use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+    use horizon::libraries::errors::Errors;
+    use horizon::market::market_math::{
         MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
         calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt,
         check_slippage, get_ln_implied_rate, get_time_to_expiry,
     };
+    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 

@@ -1,3 +1,10 @@
+use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
+use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+use horizon::interfaces::i_router::IRouterDispatcher;
+use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
+use horizon::libraries::math::WAD;
+use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 /// Integration Tests: Edge Cases
 /// Tests boundary conditions and unusual scenarios.
 ///
@@ -13,15 +20,6 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
-use yield_tokenization::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
-use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-use yield_tokenization::interfaces::i_router::IRouterDispatcher;
-use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-use yield_tokenization::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
-use yield_tokenization::libraries::math::WAD;
-use yield_tokenization::mocks::mock_yield_token::{
-    IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait,
-};
 
 // ============ Test Addresses ============
 

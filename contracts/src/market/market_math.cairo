@@ -5,8 +5,8 @@
 /// - Uses a modified curve that accounts for time decay
 /// - Implied rate can be derived from current market state
 
-use yield_tokenization::libraries::errors::Errors;
-use yield_tokenization::libraries::math::{
+use horizon::libraries::errors::Errors;
+use horizon::libraries::math::{
     HALF_WAD, WAD, exp_neg_wad, exp_wad, ln_wad, max, min, wad_div, wad_mul,
 };
 

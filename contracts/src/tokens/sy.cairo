@@ -7,14 +7,14 @@ use starknet::ContractAddress;
 #[starknet::contract]
 pub mod SY {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_sy::ISY;
+    use horizon::libraries::errors::Errors;
+    use horizon::libraries::math::{WAD, wad_div, wad_mul};
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use yield_tokenization::interfaces::i_sy::ISY;
-    use yield_tokenization::libraries::errors::Errors;
-    use yield_tokenization::libraries::math::{WAD, wad_div, wad_mul};
     use super::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);

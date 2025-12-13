@@ -5,6 +5,12 @@
 #[starknet::contract]
 pub mod YT {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+    use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+    use horizon::interfaces::i_yt::IYT;
+    use horizon::libraries::errors::Errors;
+    use horizon::libraries::math::{wad_div, wad_mul};
+    use horizon::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
@@ -15,12 +21,6 @@ pub mod YT {
         ClassHash, ContractAddress, SyscallResultTrait, get_block_timestamp, get_caller_address,
         get_contract_address,
     };
-    use yield_tokenization::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-    use yield_tokenization::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-    use yield_tokenization::interfaces::i_yt::IYT;
-    use yield_tokenization::libraries::errors::Errors;
-    use yield_tokenization::libraries::math::{wad_div, wad_mul};
-    use yield_tokenization::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 
