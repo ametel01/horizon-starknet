@@ -23,6 +23,8 @@ echo "Resetting addresses in $ENV_FILE..."
 
 # List of keys to reset
 KEYS=(
+    # Class hashes
+    "MOCK_ERC20_CLASS_HASH"
     "MOCK_YIELD_TOKEN_CLASS_HASH"
     "SY_CLASS_HASH"
     "PT_CLASS_HASH"
@@ -31,14 +33,25 @@ KEYS=(
     "FACTORY_CLASS_HASH"
     "MARKET_FACTORY_CLASS_HASH"
     "ROUTER_CLASS_HASH"
+    # Core contract addresses
     "FACTORY_ADDRESS"
     "MARKET_FACTORY_ADDRESS"
     "ROUTER_ADDRESS"
-    "MOCK_YIELD_TOKEN_ADDRESS"
-    "SY_ADDRESS"
-    "PT_ADDRESS"
-    "YT_ADDRESS"
-    "MARKET_ADDRESS"
+    # Base token
+    "STRK_ADDRESS"
+    # Yield Token 1: nstSTRK (ERC-4626 style)
+    "NST_STRK_ADDRESS"
+    "SY_NST_STRK_ADDRESS"
+    "PT_NST_STRK_ADDRESS"
+    "YT_NST_STRK_ADDRESS"
+    "MARKET_NST_STRK_ADDRESS"
+    # Yield Token 2: sSTRK (Index oracle style)
+    "SSTRK_ADDRESS"
+    "SY_SSTRK_ADDRESS"
+    "PT_SSTRK_ADDRESS"
+    "YT_SSTRK_ADDRESS"
+    "MARKET_SSTRK_ADDRESS"
+    # Expiry timestamp
     "EXPIRY_TIMESTAMP"
 )
 

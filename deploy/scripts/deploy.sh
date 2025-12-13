@@ -26,6 +26,9 @@ BUILD_DIR="$CONTRACTS_DIR/target/dev"
 NETWORK="${1:-katana}"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
 
+# Test recipient address for minting tokens
+TEST_RECIPIENT="0x0715140EF3b872C34c0E82CB2650c4bEB0E9F60d5a157414af6913E9326cd691"
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Horizon Protocol Deployment${NC}"
 echo -e "${BLUE}Network: $NETWORK${NC}"
@@ -54,6 +57,11 @@ update_env() {
     fi
 }
 
+# Convert string to hex for ByteArray pending_word
+string_to_hex() {
+    echo -n "$1" | xxd -p | tr -d '\n'
+}
+
 # =============================================================================
 # Load Environment
 # =============================================================================
@@ -70,6 +78,33 @@ log_info "Account: $DEPLOYER_ACCOUNT"
 
 # Build starkli common args
 STARKLI_COMMON="--rpc $STARKNET_RPC_URL --account $DEPLOYER_ACCOUNT"
+
+# Get deployer address for admin purposes
+# For katana, use the well-known account addresses
+if [[ "$NETWORK" == "katana" ]]; then
+    # Katana default accounts (deterministic)
+    case "$DEPLOYER_ACCOUNT" in
+        "katana-0")
+            DEPLOYER_ADDRESS="0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
+            ;;
+        "katana-1")
+            DEPLOYER_ADDRESS="0x13d9ee239f33fea4f8785b9e3870ade909e20a9599ae7cd62c1c292b73af1b7"
+            ;;
+        *)
+            # Try starkli for other accounts
+            DEPLOYER_ADDRESS=$(starkli account address "$DEPLOYER_ACCOUNT" 2>/dev/null || echo "")
+            ;;
+    esac
+else
+    # For other networks, fetch from starkli
+    DEPLOYER_ADDRESS=$(starkli account address "$DEPLOYER_ACCOUNT" 2>/dev/null || echo "")
+fi
+
+if [[ -z "$DEPLOYER_ADDRESS" ]]; then
+    log_error "Could not get deployer address for account: $DEPLOYER_ACCOUNT"
+    exit 1
+fi
+log_info "Deployer address: $DEPLOYER_ADDRESS"
 
 # =============================================================================
 # Build Contracts
@@ -123,6 +158,7 @@ declare_class() {
 
 log_info "Declaring contract classes..."
 
+MOCK_ERC20_CLASS_HASH=$(declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH")
 MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
 SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
 PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
@@ -197,90 +233,209 @@ log_success "Core infrastructure deployed"
 # =============================================================================
 
 if [[ "$NETWORK" != "mainnet" ]]; then
-    log_info "Deploying test setup..."
-
-    # MockYieldToken: constructor(name: ByteArray, symbol: ByteArray)
-    # ByteArray: data_len (0), pending_word (hex string), pending_word_len
-    MOCK_YIELD_TOKEN_ADDRESS=$(deploy_contract "$MOCK_YIELD_TOKEN_CLASS_HASH" "MockYieldToken" "MOCK_YIELD_TOKEN_ADDRESS" \
-        0x0 0x4d6f636b5969656c64 0x9 \
-        0x0 0x6d594c44 0x4)
-
-    # SY: constructor(name, symbol, underlying, initial_exchange_rate)
-    # WAD = 10^18 = 1000000000000000000
-    SY_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY" "SY_ADDRESS" \
-        0x0 0x53592d6d594c44 0x7 \
-        0x0 0x53596d594c44 0x6 \
-        "$MOCK_YIELD_TOKEN_ADDRESS" \
-        "u256:1000000000000000000")
-
-    log_success "Test setup deployed"
+    log_info "Deploying test setup with 2 yield tokens and 2 markets..."
 
     # -------------------------------------------------------------------------
-    # Create PT/YT Pair
+    # Deploy Base Token (STRK mock)
     # -------------------------------------------------------------------------
 
-    log_info "Creating PT/YT pair..."
+    # MockERC20: constructor(name: ByteArray, symbol: ByteArray)
+    # ByteArray format: data_len (0 for short strings), pending_word (hex), pending_word_len
+    log_info "Deploying base token (STRK)..."
+    STRK_ADDRESS=$(deploy_contract "$MOCK_ERC20_CLASS_HASH" "STRK" "STRK_ADDRESS" \
+        0x0 0x537461726b6e6574 0x8 \
+        0x0 0x5354524b 0x4)
+
+    # -------------------------------------------------------------------------
+    # Deploy Yield Token 1: nstSTRK (ERC-4626 - Nostra style)
+    # -------------------------------------------------------------------------
+
+    # MockYieldToken: constructor(name: ByteArray, symbol: ByteArray, underlying: ContractAddress, admin: ContractAddress)
+    # "Nostra Staked STRK" = 0x4e6f7374726120537461 6b6564205354524b (18 chars)
+    # "nstSTRK" = 0x6e73745354524b (7 chars)
+    # Admin is the deployer so we can mint shares
+    log_info "Deploying nstSTRK (ERC-4626 yield token)..."
+    NST_STRK_ADDRESS=$(deploy_contract "$MOCK_YIELD_TOKEN_CLASS_HASH" "nstSTRK" "NST_STRK_ADDRESS" \
+        0x0 0x4e6f73747261205374616b6564205354524b 0x12 \
+        0x0 0x6e73745354524b 0x7 \
+        "$STRK_ADDRESS" \
+        "$DEPLOYER_ADDRESS")
+
+    # -------------------------------------------------------------------------
+    # Deploy Yield Token 2: sSTRK (Regular yield token with index())
+    # -------------------------------------------------------------------------
+
+    # "Staked Starknet Token" = 21 chars, need to split
+    # "sSTRK" = 0x735354524b (5 chars)
+    # Admin is the deployer so we can mint shares
+    log_info "Deploying sSTRK (regular yield token)..."
+    SSTRK_ADDRESS=$(deploy_contract "$MOCK_YIELD_TOKEN_CLASS_HASH" "sSTRK" "SSTRK_ADDRESS" \
+        0x0 0x5374616b656420537461726b6e657420546f6b656e 0x15 \
+        0x0 0x735354524b 0x5 \
+        "$STRK_ADDRESS" \
+        "$DEPLOYER_ADDRESS")
+
+    # -------------------------------------------------------------------------
+    # Deploy SY 1: SY-nstSTRK (wraps nstSTRK, ERC-4626 mode)
+    # -------------------------------------------------------------------------
+
+    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626)
+    # "SY Nostra Staked STRK" = 21 chars
+    # "SY-nstSTRK" = 10 chars
+    log_info "Deploying SY-nstSTRK..."
+    SY_NST_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-nstSTRK" "SY_NST_STRK_ADDRESS" \
+        0x0 0x5359204e6f73747261205374616b6564205354524b 0x15 \
+        0x0 0x53592d6e73745354524b 0xa \
+        "$NST_STRK_ADDRESS" \
+        "$NST_STRK_ADDRESS" \
+        0x1)
+
+    # -------------------------------------------------------------------------
+    # Deploy SY 2: SY-sSTRK (wraps sSTRK, uses index() oracle mode)
+    # -------------------------------------------------------------------------
+
+    # "SY Staked Starknet Token" = 24 chars
+    # "SY-sSTRK" = 8 chars
+    log_info "Deploying SY-sSTRK..."
+    SY_SSTRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-sSTRK" "SY_SSTRK_ADDRESS" \
+        0x0 0x5359205374616b656420537461726b6e657420546f6b656e 0x18 \
+        0x0 0x53592d735354524b 0x8 \
+        "$SSTRK_ADDRESS" \
+        "$SSTRK_ADDRESS" \
+        0x0)
+
+    log_success "Yield tokens and SY tokens deployed"
+
+    # -------------------------------------------------------------------------
+    # Mint tokens to test recipient
+    # -------------------------------------------------------------------------
+
+    log_info "Minting tokens to test recipient: $TEST_RECIPIENT"
+
+    # Mint 1,000,000 STRK (base token)
+    MINT_AMOUNT="u256:1000000000000000000000000"
+
+    starkli invoke "$STRK_ADDRESS" mint \
+        "$TEST_RECIPIENT" "$MINT_AMOUNT" \
+        $STARKLI_COMMON
+    log_success "Minted 1,000,000 STRK"
+
+    # Mint 100,000 nstSTRK shares
+    starkli invoke "$NST_STRK_ADDRESS" mint_shares \
+        "$TEST_RECIPIENT" "u256:100000000000000000000000" \
+        $STARKLI_COMMON
+    log_success "Minted 100,000 nstSTRK"
+
+    # Mint 100,000 sSTRK shares
+    starkli invoke "$SSTRK_ADDRESS" mint_shares \
+        "$TEST_RECIPIENT" "u256:100000000000000000000000" \
+        $STARKLI_COMMON
+    log_success "Minted 100,000 sSTRK"
+
+    # -------------------------------------------------------------------------
+    # Create PT/YT Pairs for both SY tokens
+    # -------------------------------------------------------------------------
+
+    log_info "Creating PT/YT pairs..."
 
     # Expiry: 30 days from now
     CURRENT_TIME=$(date +%s)
     EXPIRY_TIMESTAMP=$((CURRENT_TIME + 30 * 24 * 60 * 60))
     update_env "EXPIRY_TIMESTAMP" "$EXPIRY_TIMESTAMP"
 
-    log_info "Expiry: $EXPIRY_TIMESTAMP"
+    log_info "Expiry: $EXPIRY_TIMESTAMP ($(date -d "@$EXPIRY_TIMESTAMP" 2>/dev/null || date -r "$EXPIRY_TIMESTAMP"))"
 
-    # Invoke Factory.create_yield_contracts(sy, expiry)
-    log_info "Calling Factory.create_yield_contracts..."
-
+    # Create PT/YT for SY-nstSTRK
+    log_info "Creating PT/YT for SY-nstSTRK..."
     starkli invoke "$FACTORY_ADDRESS" create_yield_contracts \
-        "$SY_ADDRESS" "$EXPIRY_TIMESTAMP" \
+        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
         $STARKLI_COMMON
 
-    # Get PT address
     sleep 1
-    log_info "Fetching PT address..."
-    PT_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_pt \
-        "$SY_ADDRESS" "$EXPIRY_TIMESTAMP" \
+    PT_NST_STRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_pt \
+        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
         --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
-    update_env "PT_ADDRESS" "$PT_ADDRESS"
-    log_success "PT: $PT_ADDRESS"
+    update_env "PT_NST_STRK_ADDRESS" "$PT_NST_STRK_ADDRESS"
+    log_success "PT-nstSTRK: $PT_NST_STRK_ADDRESS"
 
-    # Get YT address
-    log_info "Fetching YT address..."
-    YT_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_yt \
-        "$SY_ADDRESS" "$EXPIRY_TIMESTAMP" \
+    YT_NST_STRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_yt \
+        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
         --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
-    update_env "YT_ADDRESS" "$YT_ADDRESS"
-    log_success "YT: $YT_ADDRESS"
+    update_env "YT_NST_STRK_ADDRESS" "$YT_NST_STRK_ADDRESS"
+    log_success "YT-nstSTRK: $YT_NST_STRK_ADDRESS"
+
+    # Create PT/YT for SY-sSTRK
+    log_info "Creating PT/YT for SY-sSTRK..."
+    starkli invoke "$FACTORY_ADDRESS" create_yield_contracts \
+        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
+        $STARKLI_COMMON
+
+    sleep 1
+    PT_SSTRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_pt \
+        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
+        --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    update_env "PT_SSTRK_ADDRESS" "$PT_SSTRK_ADDRESS"
+    log_success "PT-sSTRK: $PT_SSTRK_ADDRESS"
+
+    YT_SSTRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_yt \
+        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
+        --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    update_env "YT_SSTRK_ADDRESS" "$YT_SSTRK_ADDRESS"
+    log_success "YT-sSTRK: $YT_SSTRK_ADDRESS"
 
     # -------------------------------------------------------------------------
-    # Create Market
+    # Create Markets for both PT tokens
     # -------------------------------------------------------------------------
 
-    if [[ -n "$PT_ADDRESS" && "$PT_ADDRESS" != "0x0" ]]; then
-        log_info "Creating Market..."
+    log_info "Creating Markets..."
 
-        SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
-        INITIAL_ANCHOR="${MARKET_INITIAL_ANCHOR:-50000000000000000}"
-        FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
+    SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
+    INITIAL_ANCHOR="${MARKET_INITIAL_ANCHOR:-50000000000000000}"
+    FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
 
+    # Market for PT-nstSTRK
+    if [[ -n "$PT_NST_STRK_ADDRESS" && "$PT_NST_STRK_ADDRESS" != "0x0" ]]; then
+        log_info "Creating Market for PT-nstSTRK..."
         starkli invoke "$MARKET_FACTORY_ADDRESS" create_market \
-            "$PT_ADDRESS" \
+            "$PT_NST_STRK_ADDRESS" \
             "u256:$SCALAR_ROOT" \
             "u256:$INITIAL_ANCHOR" \
             "u256:$FEE_RATE" \
             $STARKLI_COMMON
 
         sleep 1
-        log_info "Fetching Market address..."
-        MARKET_ADDRESS=$(starkli call "$MARKET_FACTORY_ADDRESS" get_market \
-            "$PT_ADDRESS" \
+        MARKET_NST_STRK_ADDRESS=$(starkli call "$MARKET_FACTORY_ADDRESS" get_market \
+            "$PT_NST_STRK_ADDRESS" \
             --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
 
-        if [[ -n "$MARKET_ADDRESS" && "$MARKET_ADDRESS" != "0x0" ]]; then
-            update_env "MARKET_ADDRESS" "$MARKET_ADDRESS"
-            log_success "Market: $MARKET_ADDRESS"
+        if [[ -n "$MARKET_NST_STRK_ADDRESS" && "$MARKET_NST_STRK_ADDRESS" != "0x0" ]]; then
+            update_env "MARKET_NST_STRK_ADDRESS" "$MARKET_NST_STRK_ADDRESS"
+            log_success "Market-nstSTRK: $MARKET_NST_STRK_ADDRESS"
         else
-            log_warning "Market not created"
+            log_warning "Market for nstSTRK not created"
+        fi
+    fi
+
+    # Market for PT-sSTRK
+    if [[ -n "$PT_SSTRK_ADDRESS" && "$PT_SSTRK_ADDRESS" != "0x0" ]]; then
+        log_info "Creating Market for PT-sSTRK..."
+        starkli invoke "$MARKET_FACTORY_ADDRESS" create_market \
+            "$PT_SSTRK_ADDRESS" \
+            "u256:$SCALAR_ROOT" \
+            "u256:$INITIAL_ANCHOR" \
+            "u256:$FEE_RATE" \
+            $STARKLI_COMMON
+
+        sleep 1
+        MARKET_SSTRK_ADDRESS=$(starkli call "$MARKET_FACTORY_ADDRESS" get_market \
+            "$PT_SSTRK_ADDRESS" \
+            --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+
+        if [[ -n "$MARKET_SSTRK_ADDRESS" && "$MARKET_SSTRK_ADDRESS" != "0x0" ]]; then
+            update_env "MARKET_SSTRK_ADDRESS" "$MARKET_SSTRK_ADDRESS"
+            log_success "Market-sSTRK: $MARKET_SSTRK_ADDRESS"
+        else
+            log_warning "Market for sSTRK not created"
         fi
     fi
 fi
@@ -299,6 +454,7 @@ cat > "$JSON_FILE" << EOF
   "rpcUrl": "$STARKNET_RPC_URL",
   "deployedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "classHashes": {
+    "MockERC20": "$MOCK_ERC20_CLASS_HASH",
     "MockYieldToken": "$MOCK_YIELD_TOKEN_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
@@ -314,11 +470,46 @@ cat > "$JSON_FILE" << EOF
     "Router": "$ROUTER_ADDRESS"
   },
   "testSetup": {
-    "MockYieldToken": "${MOCK_YIELD_TOKEN_ADDRESS:-}",
-    "SY": "${SY_ADDRESS:-}",
-    "PT": "${PT_ADDRESS:-}",
-    "YT": "${YT_ADDRESS:-}",
-    "Market": "${MARKET_ADDRESS:-}",
+    "testRecipient": "$TEST_RECIPIENT",
+    "baseToken": {
+      "STRK": "${STRK_ADDRESS:-}"
+    },
+    "yieldTokens": {
+      "nstSTRK": {
+        "name": "Nostra Staked STRK",
+        "symbol": "nstSTRK",
+        "address": "${NST_STRK_ADDRESS:-}",
+        "isERC4626": true
+      },
+      "sSTRK": {
+        "name": "Staked Starknet Token",
+        "symbol": "sSTRK",
+        "address": "${SSTRK_ADDRESS:-}",
+        "isERC4626": false
+      }
+    },
+    "syTokens": {
+      "SY-nstSTRK": {
+        "address": "${SY_NST_STRK_ADDRESS:-}",
+        "underlying": "${NST_STRK_ADDRESS:-}"
+      },
+      "SY-sSTRK": {
+        "address": "${SY_SSTRK_ADDRESS:-}",
+        "underlying": "${SSTRK_ADDRESS:-}"
+      }
+    },
+    "markets": {
+      "nstSTRK": {
+        "PT": "${PT_NST_STRK_ADDRESS:-}",
+        "YT": "${YT_NST_STRK_ADDRESS:-}",
+        "Market": "${MARKET_NST_STRK_ADDRESS:-}"
+      },
+      "sSTRK": {
+        "PT": "${PT_SSTRK_ADDRESS:-}",
+        "YT": "${YT_SSTRK_ADDRESS:-}",
+        "Market": "${MARKET_SSTRK_ADDRESS:-}"
+      }
+    },
     "expiry": ${EXPIRY_TIMESTAMP:-0}
   }
 }
@@ -345,13 +536,26 @@ echo "  Router:         $ROUTER_ADDRESS"
 
 if [[ "$NETWORK" != "mainnet" ]]; then
     echo ""
-    echo "Test Setup:"
-    echo "  MockYieldToken: $MOCK_YIELD_TOKEN_ADDRESS"
-    echo "  SY:             $SY_ADDRESS"
-    echo "  PT:             $PT_ADDRESS"
-    echo "  YT:             $YT_ADDRESS"
-    echo "  Market:         $MARKET_ADDRESS"
-    echo "  Expiry:         $EXPIRY_TIMESTAMP"
+    echo "Test Recipient:   $TEST_RECIPIENT"
+    echo ""
+    echo "Base Token:"
+    echo "  STRK:           $STRK_ADDRESS"
+    echo ""
+    echo "Yield Token 1 (ERC-4626):"
+    echo "  nstSTRK:        $NST_STRK_ADDRESS"
+    echo "  SY-nstSTRK:     $SY_NST_STRK_ADDRESS"
+    echo "  PT-nstSTRK:     $PT_NST_STRK_ADDRESS"
+    echo "  YT-nstSTRK:     $YT_NST_STRK_ADDRESS"
+    echo "  Market:         $MARKET_NST_STRK_ADDRESS"
+    echo ""
+    echo "Yield Token 2 (Index Oracle):"
+    echo "  sSTRK:          $SSTRK_ADDRESS"
+    echo "  SY-sSTRK:       $SY_SSTRK_ADDRESS"
+    echo "  PT-sSTRK:       $PT_SSTRK_ADDRESS"
+    echo "  YT-sSTRK:       $YT_SSTRK_ADDRESS"
+    echo "  Market:         $MARKET_SSTRK_ADDRESS"
+    echo ""
+    echo "Expiry:           $EXPIRY_TIMESTAMP"
 fi
 
 echo ""
