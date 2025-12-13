@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { WalletAccount } from 'starknet';
 
 import { useStarknet } from './useStarknet';
@@ -13,24 +13,22 @@ export interface UseAccountReturn {
 
 export function useAccount(): UseAccountReturn {
   const { provider, wallet, address, isConnected } = useStarknet();
+  const [account, setAccount] = useState<WalletAccount | null>(null);
 
-  const account = useMemo(() => {
+  useEffect(() => {
     if (!wallet || !address) {
-      return null;
+      setAccount(null);
+      return;
     }
 
-    // Use the static connectSilent method as the constructor is deprecated
-    // Note: We return null here and let the component handle async connection
-    // For sync access, we use a cached account approach
-    try {
-      // WalletAccount.connect is async, but we need sync access in useMemo
-      // The wallet already has the account connected, so we create a wrapper
-      // that will use the wallet's request method for signing
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
-      return new WalletAccount(provider, wallet);
-    } catch {
-      return null;
-    }
+    // Use the new static connectSilent method instead of deprecated constructor
+    WalletAccount.connectSilent(provider, wallet)
+      .then((walletAccount) => {
+        setAccount(walletAccount);
+      })
+      .catch(() => {
+        setAccount(null);
+      });
   }, [provider, wallet, address]);
 
   return {
