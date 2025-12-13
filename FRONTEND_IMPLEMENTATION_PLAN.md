@@ -1203,7 +1203,7 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 - [ ] `scripts/generate-types.ts`
 
 ### Priority 3 (Pages)
-- [ ] `src/app/mint/page.tsx`
+- [x] `src/app/mint/page.tsx`
 - [ ] `src/app/trade/page.tsx`
 - [ ] `src/app/pools/page.tsx`
 - [ ] `src/app/portfolio/page.tsx`
@@ -1212,11 +1212,15 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 - [x] `src/components/ui/Button.tsx`
 - [x] `src/components/ui/Card.tsx`
 - [x] `src/components/ui/Skeleton.tsx`
-- [ ] `src/components/ui/*` (remaining base components: Input, Modal, Toast)
-- [ ] `src/components/forms/*` (all form components)
+- [x] `src/components/ui/Input.tsx`
+- [ ] `src/components/ui/*` (remaining base components: Modal, Toast)
+- [x] `src/components/forms/TokenInput.tsx`
+- [x] `src/components/forms/MintForm.tsx`
+- [ ] `src/components/forms/*` (remaining: SwapForm, AddLiquidityForm, RemoveLiquidityForm)
 - [x] `src/components/display/TokenAmount.tsx`
 - [x] `src/components/display/ExpiryCountdown.tsx`
-- [ ] `src/components/display/*` (remaining: TxStatus, ImpliedYield)
+- [x] `src/components/display/TxStatus.tsx`
+- [ ] `src/components/display/*` (remaining: ImpliedYield)
 - [x] `src/components/markets/MarketCard.tsx`
 - [x] `src/components/markets/MarketList.tsx`
 - [x] `src/components/markets/StatsOverview.tsx`
@@ -1224,9 +1228,13 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 ### Priority 5 (Hooks & Types)
 - [x] `src/hooks/useMarket.ts`
 - [x] `src/hooks/useMarkets.ts`
+- [x] `src/hooks/useMint.ts`
+- [x] `src/hooks/useTokenBalance.ts`
 - [x] `src/types/market.ts`
 - [ ] `src/hooks/usePositions.ts`
 - [ ] `src/hooks/useYield.ts`
+- [ ] `src/hooks/useSwap.ts`
+- [ ] `src/hooks/useLiquidity.ts`
 
 ---
 
