@@ -16,6 +16,8 @@ export function QueryProvider({ children }: QueryProviderProps): React.ReactNode
             staleTime: 1000 * 60, // 1 minute
             refetchOnWindowFocus: false,
             retry: 1,
+            // Disable structural sharing globally to prevent BigInt serialization issues
+            structuralSharing: false,
           },
         },
       })
