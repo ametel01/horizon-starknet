@@ -1,8 +1,8 @@
-# Frontend Implementation Plan - Yield Tokenization Protocol
+# Frontend Implementation Plan - Horizon Protocol
 
 ## Overview
 
-This document outlines the implementation plan for a clean, minimal frontend for the Yield Tokenization Protocol on Starknet. The design prioritizes simplicity, leveraging Starknet's unique capabilities like multicalls for optimal UX.
+This document outlines the implementation plan for a clean, minimal frontend for Horizon Protocol on Starknet. The design prioritizes simplicity, leveraging Starknet's unique capabilities like multicalls for optimal UX.
 
 ---
 

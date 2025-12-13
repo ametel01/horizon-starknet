@@ -1,8 +1,8 @@
-# Yield Tokenization Protocol - Starknet
+# Horizon Protocol - Starknet
 
 ## Project Overview
 
-A Pendle-like yield tokenization protocol implemented in Cairo for Starknet. The protocol enables users to split yield-bearing assets into Principal Tokens (PT) and Yield Tokens (YT), enabling fixed-yield strategies and yield trading.
+Horizon is a Pendle-style yield tokenization protocol implemented in Cairo for Starknet. The protocol enables users to split yield-bearing assets into Principal Tokens (PT) and Yield Tokens (YT), enabling fixed-yield strategies and yield trading.
 
 ## Architecture
 

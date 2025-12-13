@@ -1,14 +1,14 @@
-# Yield Tokenization Protocol for Starknet
+# Horizon Protocol
 
-A Pendle-style yield tokenization protocol implemented in Cairo for Starknet. This protocol allows users to separate yield-bearing assets into their principal and yield components, enabling advanced yield trading strategies.
+A Pendle-style yield tokenization protocol implemented in Cairo for Starknet. Horizon allows users to separate yield-bearing assets into their principal and yield components, enabling advanced yield trading strategies.
 
-[![Build](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/build.yml/badge.svg)](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/build.yml)
-[![Test](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/test.yml/badge.svg)](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/test.yml)
-[![Format](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/fmt.yml/badge.svg)](https://github.com/ametel01/yield-tokenization-starknet/actions/workflows/fmt.yml)
+[![Build](https://github.com/ametel01/horizon-starknet/actions/workflows/build.yml/badge.svg)](https://github.com/ametel01/horizon-starknet/actions/workflows/build.yml)
+[![Test](https://github.com/ametel01/horizon-starknet/actions/workflows/test.yml/badge.svg)](https://github.com/ametel01/horizon-starknet/actions/workflows/test.yml)
+[![Format](https://github.com/ametel01/horizon-starknet/actions/workflows/fmt.yml/badge.svg)](https://github.com/ametel01/horizon-starknet/actions/workflows/fmt.yml)
 
 ## Overview
 
-Yield tokenization splits yield-bearing assets into two components:
+Horizon splits yield-bearing assets into two components:
 - **Principal**: The base value of your deposit
 - **Yield**: The future interest/rewards your deposit will generate
 
@@ -142,7 +142,7 @@ scarb build
 snforge test
 
 # Run specific test
-snforge test test_full_yield_tokenization_flow
+snforge test test_full_flow
 ```
 
 ### Formatting
@@ -154,24 +154,28 @@ scarb fmt
 ## Project Structure
 
 ```
-├── src/
-│   ├── contracts/       # Core protocol contracts
-│   │   ├── sy.cairo     # Standardized Yield token
-│   │   ├── pt.cairo     # Principal Token
-│   │   ├── yt.cairo     # Yield Token
-│   │   ├── market.cairo # AMM for PT/SY trading
-│   │   ├── factory.cairo
-│   │   ├── market_factory.cairo
-│   │   └── router.cairo
-│   ├── interfaces/      # Contract interfaces
-│   ├── libraries/       # Shared utilities
-│   │   ├── math.cairo   # WAD math, exp, ln functions
-│   │   └── market_math.cairo
-│   └── mocks/           # Test mocks
-├── tests/
-│   ├── integration/     # End-to-end flow tests
-│   └── *.cairo          # Unit tests
-└── .github/workflows/   # CI pipelines
+├── contracts/
+│   ├── src/
+│   │   ├── contracts/       # Core protocol contracts
+│   │   │   ├── sy.cairo     # Standardized Yield token
+│   │   │   ├── pt.cairo     # Principal Token
+│   │   │   ├── yt.cairo     # Yield Token
+│   │   │   ├── market.cairo # AMM for PT/SY trading
+│   │   │   ├── factory.cairo
+│   │   │   ├── market_factory.cairo
+│   │   │   └── router.cairo
+│   │   ├── interfaces/      # Contract interfaces
+│   │   ├── libraries/       # Shared utilities
+│   │   │   ├── math.cairo   # WAD math, exp, ln functions
+│   │   │   └── market_math.cairo
+│   │   └── mocks/           # Test mocks
+│   └── tests/
+│       ├── integration/     # End-to-end flow tests
+│       └── *.cairo          # Unit tests
+├── packages/
+│   └── frontend/            # Next.js frontend application
+├── deploy/                  # Deployment scripts
+└── .github/workflows/       # CI pipelines
 ```
 
 ## Security Considerations

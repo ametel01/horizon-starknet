@@ -1,8 +1,8 @@
-# Yield Tokenization Protocol - Bounty Gap Analysis & Implementation Plan
+# Horizon Protocol - Bounty Gap Analysis & Implementation Plan
 
 ## Executive Summary
 
-This document evaluates the current state of the Yield Tokenization Starknet project against the StarkWare bounty requirements and provides a detailed implementation plan to meet all mandatory criteria.
+This document evaluates the current state of the Horizon Protocol Starknet project against the StarkWare bounty requirements and provides a detailed implementation plan to meet all mandatory criteria.
 
 **Current State**: Smart contracts are feature-complete (MVP) with 245 tests
 **Missing**: Frontend, mainnet deployment, real user testing

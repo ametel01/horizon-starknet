@@ -1,28 +1,8 @@
 {
-  "network": "katana",
-  "rpcUrl": "http://katana:5050",
-  "deployedAt": "2025-12-13T09:20:54Z",
-  "classHashes": {
-    "MockYieldToken": "0x01e91d69387a0a29779d8f5a4440eaa6130ec5675633ac4c009f05fe07092469",
-    "SY": "0x00cd1b35b3d3586f1fec62850d8a8a678cecbdf561c4d2d0e65ca66fbb90f60b",
-    "PT": "0x071441dd5ce9940afffda6d473b5de8910b1be363ee2f572d2d9765a651ce12c",
-    "YT": "0x000ed82a49dce0de85be6a8de250626413cc6574bca4aa11cd066488b0a3d349",
-    "Market": "0x0689c456510140d76f1d0fd01fbed8311936bfb719d55fad8ae2fcdbf34c40f4",
-    "Factory": "0x041b1a0d58d6f1a2ff2e9d56a3709ba275276fe2c42bd6f2fc42e44ade420569",
-    "MarketFactory": "0x070aa0f74071f405716f7ee1e61206969c099a2d942b666722b3146e06ebfd93",
-    "Router": "0x061dc3cee8b55468e0e6bffa51e109f9290be59311a0287b6523653a272282b8"
-  },
-  "contracts": {
-    "Factory": "0x04a77c607df9cc955fbcbb789619b59a29d03536e82d229c28e00957680758a7",
-    "MarketFactory": "0x012dd53290206f777a325f4f4c836288fd70b1ad551a70d0c1e396981a414b58",
-    "Router": "0x0251b2fa73980775878cbc925201816bf02760552a3d36cb73bf9d6c30e6121d"
-  },
-  "testSetup": {
-    "MockYieldToken": "0x00049f49d4d468a74b34a5d0c98cec012f414a255e504afacd23beeb58c36190",
-    "SY": "0x04378bf7a80d6a4089883015d1521198ebda0710a3bb709048cf1d949bdae674",
-    "PT": "0x006b291421f4687386d40363bf87fa5f20b482bd1448c8b8176621d0b17c0a5f",
-    "YT": "0x02b11eb8e56cc418be8ab4c364035015bc74fe68dc669f5dc4d57b8042a7e7ad",
-    "Market": "0x07466825624023e41f8141f00dc0d0e4a6f9a41e145136f668856fef6711cf4e",
-    "expiry": 1768209652
-  }
+  "network": "",
+  "rpcUrl": "",
+  "deployedAt": "",
+  "classHashes": {},
+  "contracts": {},
+  "testSetup": {}
 }

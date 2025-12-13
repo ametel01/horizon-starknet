@@ -1,6 +1,6 @@
 # Deployment Scripts
 
-This directory contains deployment scripts for the Yield Tokenization Protocol.
+This directory contains deployment scripts for Horizon Protocol.
 
 ## Directory Structure
 

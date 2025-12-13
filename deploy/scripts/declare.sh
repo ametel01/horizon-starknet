@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# Yield Tokenization Protocol - Declare Classes Script
+# Horizon Protocol - Declare Classes Script
 # =============================================================================
 # Usage: ./deploy/scripts/declare.sh [network]
 #

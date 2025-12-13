@@ -13,7 +13,7 @@ MAX_RETRIES="${MAX_RETRIES:-30}"
 RETRY_INTERVAL="${RETRY_INTERVAL:-2}"
 
 echo "=========================================="
-echo "Yield Tokenization - Docker Deployment"
+echo "Horizon Protocol - Docker Deployment"
 echo "=========================================="
 echo "Katana URL: $KATANA_URL"
 

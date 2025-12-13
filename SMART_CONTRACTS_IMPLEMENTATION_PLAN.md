@@ -1,6 +1,6 @@
-# Implementation Plan: Yield Tokenization Protocol
+# Implementation Plan: Horizon Protocol
 
-This document outlines the implementation plan for a minimal Pendle-like yield tokenization protocol on Starknet.
+This document outlines the implementation plan for Horizon, a Pendle-style yield tokenization protocol on Starknet.
 
 ---
 

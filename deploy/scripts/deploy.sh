@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# Yield Tokenization Protocol - Deployment Script
+# Horizon Protocol - Deployment Script
 # =============================================================================
 # Usage: ./deploy/scripts/deploy.sh [network]
 #   network: katana (default) | sepolia | mainnet
@@ -27,7 +27,7 @@ NETWORK="${1:-katana}"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}Yield Tokenization Protocol Deployment${NC}"
+echo -e "${BLUE}Horizon Protocol Deployment${NC}"
 echo -e "${BLUE}Network: $NETWORK${NC}"
 echo -e "${BLUE}========================================${NC}"
 
