@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Contract } from 'starknet';
 
 import {
   getFactoryContract,
@@ -15,6 +14,13 @@ import {
   getTestSYContract,
   getTestYTContract,
   getYTContract,
+  type TypedFactory,
+  type TypedMarket,
+  type TypedMarketFactory,
+  type TypedPT,
+  type TypedRouter,
+  type TypedSY,
+  type TypedYT,
 } from '@/lib/starknet/contracts';
 
 import { useAccount } from './useAccount';
@@ -22,26 +28,26 @@ import { useStarknet } from './useStarknet';
 
 export interface UseContractsReturn {
   // Core protocol contracts (for writes, needs account)
-  factory: Contract | null;
-  marketFactory: Contract | null;
-  router: Contract | null;
+  factory: TypedFactory | null;
+  marketFactory: TypedMarketFactory | null;
+  router: TypedRouter | null;
 
   // Read-only versions (uses provider)
-  factoryRead: Contract;
-  marketFactoryRead: Contract;
-  routerRead: Contract;
+  factoryRead: TypedFactory;
+  marketFactoryRead: TypedMarketFactory;
+  routerRead: TypedRouter;
 
   // Dynamic contract getters
-  getMarket: (address: string) => Contract;
-  getSY: (address: string) => Contract;
-  getPT: (address: string) => Contract;
-  getYT: (address: string) => Contract;
+  getMarket: (address: string) => TypedMarket;
+  getSY: (address: string) => TypedSY;
+  getPT: (address: string) => TypedPT;
+  getYT: (address: string) => TypedYT;
 
   // Test setup contracts (katana only)
-  testSY: Contract | null;
-  testPT: Contract | null;
-  testYT: Contract | null;
-  testMarket: Contract | null;
+  testSY: TypedSY | null;
+  testPT: TypedPT | null;
+  testYT: TypedYT | null;
+  testMarket: TypedMarket | null;
 }
 
 export function useContracts(): UseContractsReturn {

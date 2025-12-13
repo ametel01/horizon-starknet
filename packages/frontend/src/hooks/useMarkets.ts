@@ -2,7 +2,7 @@
 
 import { useQueries } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
-import type { Contract, ProviderInterface } from 'starknet';
+import { uint256, type ProviderInterface } from 'starknet';
 
 import { getTestSetup } from '@/lib/constants/addresses';
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
@@ -11,17 +11,13 @@ import type { MarketData, MarketInfo, MarketState } from '@/types/market';
 
 import { useStarknet } from './useStarknet';
 
-// Helper to call contract methods with proper typing
-async function callContract<T>(contract: Contract, method: string): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const result = (await contract[method]()) as T;
-  return result;
-}
-
-// Type for tuple return from Cairo contracts
-interface TupleResult {
-  '0': bigint;
-  '1': bigint;
+// Helper to convert Uint256 or bigint to bigint
+function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
+  if (typeof value === 'bigint') {
+    return value;
+  }
+  // Handle Uint256 struct
+  return uint256.uint256ToBN(value);
 }
 
 async function fetchMarketData(
@@ -30,37 +26,38 @@ async function fetchMarketData(
 ): Promise<MarketData> {
   const market = getMarketContract(marketAddress, provider);
 
-  // Fetch all market data in parallel
+  // Fetch all market data in parallel using typed contract calls
   const [syAddress, ptAddress, ytAddress, expiry, isExpiredVal, reserves, totalLpSupply, lnRate] =
     await Promise.all([
-      callContract<bigint>(market, 'sy'),
-      callContract<bigint>(market, 'pt'),
-      callContract<bigint>(market, 'yt'),
-      callContract<bigint>(market, 'expiry'),
-      callContract<boolean>(market, 'is_expired'),
-      callContract<TupleResult>(market, 'get_reserves'),
-      callContract<bigint>(market, 'total_lp_supply'),
-      callContract<bigint>(market, 'get_ln_implied_rate'),
+      market.sy(),
+      market.pt(),
+      market.yt(),
+      market.expiry(),
+      market.is_expired(),
+      market.get_reserves(),
+      market.total_lp_supply(),
+      market.get_ln_implied_rate(),
     ]);
 
   const info: MarketInfo = {
     address: marketAddress,
-    syAddress: '0x' + syAddress.toString(16),
-    ptAddress: '0x' + ptAddress.toString(16),
-    ytAddress: '0x' + ytAddress.toString(16),
+    syAddress,
+    ptAddress,
+    ytAddress,
     expiry: Number(expiry),
     isExpired: isExpiredVal,
   };
 
-  // Reserves are returned as a tuple { '0': sy_reserve, '1': pt_reserve }
+  // Reserves are returned as a tuple [sy_reserve, pt_reserve]
+  const reservesArr = reserves as unknown[];
   const state: MarketState = {
-    syReserve: reserves['0'],
-    ptReserve: reserves['1'],
-    totalLpSupply,
-    lnImpliedRate: lnRate,
+    syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
+    ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
+    totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
+    lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
   };
 
-  const impliedApy = lnRateToApy(lnRate);
+  const impliedApy = lnRateToApy(state.lnImpliedRate);
   const days = daysToExpiry(info.expiry);
   const tvlSy = state.syReserve + state.ptReserve;
 
@@ -102,6 +99,8 @@ export function useMarkets(
       refetchInterval,
       staleTime: 10000,
       enabled: isClient,
+      // Disable structural sharing to prevent BigInt serialization issues
+      structuralSharing: false,
     })),
   });
 

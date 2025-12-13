@@ -1,24 +1,26 @@
 'use client';
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import type { Contract } from 'starknet';
+import { uint256 } from 'starknet';
 
 import { getERC20Contract } from '@/lib/starknet/contracts';
 
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
 
-// Helper to call contract methods with proper typing
-async function callContract<T>(contract: Contract, method: string, args?: unknown[]): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const result = (await contract[method](...(args ?? []))) as T;
-  return result;
-}
-
 interface TokenInfo {
   name: string;
   symbol: string;
   decimals: number;
+}
+
+// Helper to convert Uint256 or bigint to bigint
+function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
+  if (typeof value === 'bigint') {
+    return value;
+  }
+  // Handle Uint256 struct
+  return uint256.uint256ToBN(value);
 }
 
 export function useTokenBalance(
@@ -37,12 +39,14 @@ export function useTokenBalance(
       }
 
       const token = getERC20Contract(tokenAddress, provider);
-      const balance = await callContract<bigint>(token, 'balanceOf', [address]);
-      return balance;
+      const balance = await token.balance_of(address);
+      return toBigInt(balance as bigint | { low: bigint; high: bigint });
     },
     enabled: enabled && !!tokenAddress && !!address,
     refetchInterval,
     staleTime: 5000,
+    // Disable structural sharing to prevent BigInt serialization issues
+    structuralSharing: false,
   });
 }
 
@@ -63,12 +67,14 @@ export function useTokenAllowance(
       }
 
       const token = getERC20Contract(tokenAddress, provider);
-      const allowance = await callContract<bigint>(token, 'allowance', [address, spenderAddress]);
-      return allowance;
+      const allowance = await token.allowance(address, spenderAddress);
+      return toBigInt(allowance as bigint | { low: bigint; high: bigint });
     },
     enabled: enabled && !!tokenAddress && !!address && !!spenderAddress,
     refetchInterval,
     staleTime: 5000,
+    // Disable structural sharing to prevent BigInt serialization issues
+    structuralSharing: false,
   });
 }
 
@@ -89,19 +95,20 @@ export function useTokenInfo(
       const token = getERC20Contract(tokenAddress, provider);
 
       const [name, symbol, decimals] = await Promise.all([
-        callContract<bigint>(token, 'name'),
-        callContract<bigint>(token, 'symbol'),
-        callContract<number>(token, 'decimals'),
+        token.name(),
+        token.symbol(),
+        token.decimals(),
       ]);
 
-      // Convert felt252 to string
-      const nameStr = feltToString(name);
-      const symbolStr = feltToString(symbol);
+      // Name and symbol may be returned as felt252 (bigint) or ByteArray (string)
+      const nameStr = typeof name === 'string' ? name : feltToString(name as unknown as bigint);
+      const symbolStr =
+        typeof symbol === 'string' ? symbol : feltToString(symbol as unknown as bigint);
 
       return {
         name: nameStr,
         symbol: symbolStr,
-        decimals,
+        decimals: Number(decimals),
       };
     },
     enabled: enabled && !!tokenAddress,

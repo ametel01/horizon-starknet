@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import type { Contract, ProviderInterface } from 'starknet';
+import { uint256, type ProviderInterface } from 'starknet';
 
 import { getERC20Contract, getMarketContract, getYTContract } from '@/lib/starknet/contracts';
 import type { MarketData } from '@/types/market';
@@ -9,11 +9,13 @@ import type { MarketData } from '@/types/market';
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
 
-// Helper to call contract methods with proper typing
-async function callContract<T>(contract: Contract, method: string, args?: unknown[]): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const result = (await contract[method](...(args ?? []))) as T;
-  return result;
+// Helper to convert Uint256 or bigint to bigint
+function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
+  if (typeof value === 'bigint') {
+    return value;
+  }
+  // Handle Uint256 struct
+  return uint256.uint256ToBN(value);
 }
 
 export interface TokenPosition {
@@ -51,14 +53,21 @@ async function fetchMarketPosition(
   const ytContract = getYTContract(market.ytAddress, provider);
   const marketContract = getMarketContract(market.address, provider);
 
-  // Fetch all balances in parallel
-  const [syBalance, ptBalance, ytBalance, lpBalance, claimableYield] = await Promise.all([
-    callContract<bigint>(syContract, 'balanceOf', [userAddress]),
-    callContract<bigint>(ptContract, 'balanceOf', [userAddress]),
-    callContract<bigint>(ytContract, 'balanceOf', [userAddress]),
-    callContract<bigint>(marketContract, 'balanceOf', [userAddress]),
-    callContract<bigint>(ytContract, 'get_user_interest', [userAddress]).catch(() => BigInt(0)),
-  ]);
+  // Fetch all balances in parallel using typed contract calls
+  const [syBalanceResult, ptBalanceResult, ytBalanceResult, lpBalanceResult, claimableYieldResult] =
+    await Promise.all([
+      syContract.balance_of(userAddress),
+      ptContract.balance_of(userAddress),
+      ytContract.balance_of(userAddress),
+      marketContract.balance_of(userAddress),
+      ytContract.get_user_interest(userAddress).catch(() => BigInt(0)),
+    ]);
+
+  const syBalance = toBigInt(syBalanceResult as bigint | { low: bigint; high: bigint });
+  const ptBalance = toBigInt(ptBalanceResult as bigint | { low: bigint; high: bigint });
+  const ytBalance = toBigInt(ytBalanceResult as bigint | { low: bigint; high: bigint });
+  const lpBalance = toBigInt(lpBalanceResult as bigint | { low: bigint; high: bigint });
+  const claimableYield = toBigInt(claimableYieldResult as bigint | { low: bigint; high: bigint });
 
   // Determine redemption options
   const hasMatchingPtYt = ptBalance > BigInt(0) && ytBalance > BigInt(0);
@@ -127,6 +136,8 @@ export function usePositions(
     enabled: !!address && markets.length > 0,
     refetchInterval,
     staleTime: 10000,
+    // Disable structural sharing to prevent BigInt serialization issues
+    structuralSharing: false,
   });
 }
 
