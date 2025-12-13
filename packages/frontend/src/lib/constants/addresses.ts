@@ -1,6 +1,29 @@
-import katanaAddresses from '@deploy/addresses/katana.json';
+import katanaAddressesRaw from '@deploy/addresses/katana.json';
 
 import type { NetworkId } from '../starknet/provider';
+
+// Type definition for the katana.json structure
+interface KatanaAddresses {
+  network: string;
+  rpcUrl: string;
+  deployedAt: string;
+  classHashes: Record<string, string>;
+  contracts: {
+    Factory?: string;
+    MarketFactory?: string;
+    Router?: string;
+  };
+  testSetup: {
+    MockYieldToken?: string;
+    SY?: string;
+    PT?: string;
+    YT?: string;
+    Market?: string;
+    expiry?: number;
+  };
+}
+
+const katanaAddresses = katanaAddressesRaw as KatanaAddresses;
 
 export interface ContractAddresses {
   factory: string;
@@ -17,37 +40,42 @@ export interface TestSetupAddresses {
   expiry: number;
 }
 
+// Placeholder for undeployed contracts
+const ZERO_ADDRESS = '0x0';
+
 // Core protocol addresses per network
 const ADDRESSES: Record<NetworkId, ContractAddresses> = {
   katana: {
-    factory: katanaAddresses.contracts.Factory,
-    marketFactory: katanaAddresses.contracts.MarketFactory,
-    router: katanaAddresses.contracts.Router,
+    factory: katanaAddresses.contracts.Factory ?? ZERO_ADDRESS,
+    marketFactory: katanaAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
+    router: katanaAddresses.contracts.Router ?? ZERO_ADDRESS,
   },
   sepolia: {
     // TODO: Update after sepolia deployment
-    factory: '0x0',
-    marketFactory: '0x0',
-    router: '0x0',
+    factory: ZERO_ADDRESS,
+    marketFactory: ZERO_ADDRESS,
+    router: ZERO_ADDRESS,
   },
   mainnet: {
     // TODO: Update after mainnet deployment
-    factory: '0x0',
-    marketFactory: '0x0',
-    router: '0x0',
+    factory: ZERO_ADDRESS,
+    marketFactory: ZERO_ADDRESS,
+    router: ZERO_ADDRESS,
   },
 };
 
 // Test setup addresses (only for katana)
 const TEST_SETUP: Record<NetworkId, TestSetupAddresses | null> = {
-  katana: {
-    mockYieldToken: katanaAddresses.testSetup.MockYieldToken,
-    sy: katanaAddresses.testSetup.SY,
-    pt: katanaAddresses.testSetup.PT,
-    yt: katanaAddresses.testSetup.YT,
-    market: katanaAddresses.testSetup.Market,
-    expiry: katanaAddresses.testSetup.expiry,
-  },
+  katana: katanaAddresses.testSetup.SY
+    ? {
+        mockYieldToken: katanaAddresses.testSetup.MockYieldToken ?? ZERO_ADDRESS,
+        sy: katanaAddresses.testSetup.SY ?? ZERO_ADDRESS,
+        pt: katanaAddresses.testSetup.PT ?? ZERO_ADDRESS,
+        yt: katanaAddresses.testSetup.YT ?? ZERO_ADDRESS,
+        market: katanaAddresses.testSetup.Market ?? ZERO_ADDRESS,
+        expiry: katanaAddresses.testSetup.expiry ?? 0,
+      }
+    : null,
   sepolia: null,
   mainnet: null,
 };

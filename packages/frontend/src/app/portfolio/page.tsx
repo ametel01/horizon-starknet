@@ -346,11 +346,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
 function PortfolioContent(): ReactNode {
   const { isConnected } = useStarknet();
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
-  const {
-    data: portfolio,
-    isLoading: positionsLoading,
-    isError,
-  } = usePositions(markets);
+  const { data: portfolio, isLoading: positionsLoading, isError } = usePositions(markets);
 
   const {
     claimAllYield,

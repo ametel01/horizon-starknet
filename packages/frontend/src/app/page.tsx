@@ -11,9 +11,7 @@ export default function HomePage(): ReactNode {
     <div className="mx-auto max-w-7xl px-4 py-12">
       {/* Hero Section */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-100">
-          Horizon Protocol
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight text-neutral-100">Horizon Protocol</h1>
         <p className="mt-4 text-lg text-neutral-400">
           Split yield-bearing assets into Principal and Yield Tokens
         </p>

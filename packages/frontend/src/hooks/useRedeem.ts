@@ -191,10 +191,7 @@ export function useRedeemPtPostExpiry(): UseRedeemPtPostExpiryReturn {
  * Calculate minimum SY output with slippage protection for redemption
  * For PT redemption, 1 PT should equal approximately 1 SY at the current exchange rate
  */
-export function calculateMinSyOut(
-  amount: bigint,
-  slippageBps: number
-): bigint {
+export function calculateMinSyOut(amount: bigint, slippageBps: number): bigint {
   // Apply slippage to expected 1:1 redemption
   const slippageMultiplier = BigInt(10000 - slippageBps);
   return (amount * slippageMultiplier) / BigInt(10000);
