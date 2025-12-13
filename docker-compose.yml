@@ -1,0 +1,44 @@
+services:
+  # ===========================================================================
+  # Katana - Local Starknet Devnet
+  # ===========================================================================
+  katana:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.katana
+    container_name: katana
+    ports:
+      - "5050:5050"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5050 || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+      start_period: 5s
+    networks:
+      - yield-network
+
+  # ===========================================================================
+  # Deployer - Builds and deploys contracts
+  # ===========================================================================
+  deployer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.deployer
+    container_name: deployer
+    environment:
+      - KATANA_URL=http://katana:5050
+      - ENV_FILE=.env.katana
+    volumes:
+      # Mount output directory for addresses
+      - ./deploy/addresses:/output
+      - ./.env.katana:/app/.env.katana
+    depends_on:
+      katana:
+        condition: service_healthy
+    networks:
+      - yield-network
+
+networks:
+  yield-network:
+    driver: bridge

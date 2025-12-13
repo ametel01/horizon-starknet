@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts (will be rebuilt in container)
+contracts/target
+target
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# Node modules (for frontend)
+node_modules
+packages/*/node_modules
+
+# Env files (except katana template)
+.env
+.env.local
+.env.sepolia
+.env.mainnet
+
+# Documentation
+*.md
+!deploy/README.md
+
+# Claude
+.claude
+
+# Cache
+.snfoundry_cache
+.cache

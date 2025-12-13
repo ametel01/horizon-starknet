@@ -1,0 +1,45 @@
+# =============================================================================
+# Deployer image with scarb and starkli
+# =============================================================================
+
+FROM debian:bookworm-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    ca-certificates \
+    jq \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install scarb
+ENV SCARB_VERSION=2.14.0
+RUN curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | bash -s -- -v ${SCARB_VERSION}
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Install starkli (pinned version for katana compatibility)
+ENV STARKLI_VERSION=v0.4.2
+RUN curl https://get.starkli.sh | sh && \
+    /root/.starkli/bin/starkliup --version ${STARKLI_VERSION} && \
+    ln -s /root/.starkli/bin/starkli /usr/local/bin/starkli
+
+# Verify installations
+RUN scarb --version && starkli --version
+
+# Set working directory
+WORKDIR /app
+
+# Copy contracts and deploy scripts
+COPY contracts/ ./contracts/
+COPY deploy/ ./deploy/
+COPY .env.katana ./.env.katana
+
+# Make scripts executable
+RUN chmod +x ./deploy/scripts/*.sh
+
+# Build contracts during image build
+RUN cd contracts && scarb build
+
+# Default command
+CMD ["./deploy/scripts/docker-deploy.sh"]

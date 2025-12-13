@@ -1,0 +1,23 @@
+# Builder stage - download katana binary
+FROM debian:trixie-slim AS builder
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Download and extract katana release
+ENV KATANA_VERSION=v1.6.3
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+        amd64) KATANA_ARCH="amd64" ;; \
+        arm64) KATANA_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    echo "Downloading katana ${KATANA_VERSION} for linux_${KATANA_ARCH}" && \
+    curl -L "https://github.com/dojoengine/katana/releases/download/${KATANA_VERSION}/katana_${KATANA_VERSION}_linux_${KATANA_ARCH}.tar.gz" | tar -xz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/katana
+
+# Final runtime stage
+FROM debian:trixie-slim
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local/bin/katana /usr/local/bin/katana
+EXPOSE 5050
+CMD ["katana", "--dev", "--dev.no-fee", "--dev.no-account-validation", "--http.addr", "0.0.0.0"]
