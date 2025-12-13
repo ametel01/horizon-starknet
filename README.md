@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="Horizon Protocol" width="100%">
+</p>
+
 # Horizon Protocol
 
 A Pendle-style yield tokenization protocol implemented in Cairo for Starknet. Horizon allows users to separate yield-bearing assets into their principal and yield components, enabling advanced yield trading strategies.
