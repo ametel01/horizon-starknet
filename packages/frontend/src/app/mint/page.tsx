@@ -5,13 +5,18 @@ import { useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { MintForm } from '@/components/forms/MintForm';
+import { WrapToSyForm } from '@/components/forms/WrapToSyForm';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
+
+type TabType = 'wrap' | 'mint';
 
 function MintPageContent(): ReactNode {
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
+  const tabParam = searchParams.get('tab');
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>(tabParam === 'mint' ? 'mint' : 'wrap');
 
   useEffect(() => {
     setMounted(true);
@@ -29,8 +34,37 @@ function MintPageContent(): ReactNode {
 
   return (
     <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
-      {/* Mint Form */}
+      {/* Form Section */}
       <div className="w-full max-w-lg">
+        {/* Tabs */}
+        <div className="mb-4 flex rounded-lg border border-neutral-800 bg-neutral-900 p-1">
+          <button
+            onClick={() => {
+              setActiveTab('wrap');
+            }}
+            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'wrap'
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            1. Wrap to SY
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('mint');
+            }}
+            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'mint'
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            2. Mint PT + YT
+          </button>
+        </div>
+
+        {/* Form */}
         {!mounted || isLoading ? (
           <SkeletonCard className="h-[500px]" />
         ) : isError ? (
@@ -44,6 +78,8 @@ function MintPageContent(): ReactNode {
               Markets will appear here once they are created.
             </p>
           </div>
+        ) : activeTab === 'wrap' ? (
+          <WrapToSyForm market={selectedMarket} />
         ) : (
           <MintForm market={selectedMarket} />
         )}
@@ -55,22 +91,34 @@ function MintPageContent(): ReactNode {
           <h2 className="text-lg font-semibold text-neutral-100">How Minting Works</h2>
           <div className="mt-4 space-y-4 text-sm text-neutral-400">
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                  activeTab === 'wrap'
+                    ? 'bg-blue-500/30 text-blue-400'
+                    : 'bg-blue-500/20 text-blue-500'
+                }`}
+              >
                 1
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Deposit SY Tokens</p>
+                <p className="font-medium text-neutral-200">Wrap to SY</p>
                 <p className="mt-1">
-                  SY (Standardized Yield) tokens represent yield-bearing assets like staked tokens.
+                  Wrap your yield-bearing tokens (like nstSTRK) into Standardized Yield (SY) tokens.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                  activeTab === 'mint'
+                    ? 'bg-blue-500/30 text-blue-400'
+                    : 'bg-blue-500/20 text-blue-500'
+                }`}
+              >
                 2
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Receive PT + YT</p>
+                <p className="font-medium text-neutral-200">Mint PT + YT</p>
                 <p className="mt-1">
                   For each SY deposited, you receive 1 Principal Token (PT) and 1 Yield Token (YT).
                 </p>
@@ -92,6 +140,10 @@ function MintPageContent(): ReactNode {
           <div className="mt-6 rounded-lg bg-neutral-800/50 p-4">
             <h3 className="text-sm font-medium text-neutral-200">Token Details</h3>
             <dl className="mt-2 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-neutral-400">SY (Standardized Yield)</dt>
+                <dd className="text-neutral-200">1:1 with underlying</dd>
+              </div>
               <div className="flex justify-between">
                 <dt className="text-neutral-400">PT (Principal Token)</dt>
                 <dd className="text-neutral-200">Redeemable for 1 SY at maturity</dd>
@@ -127,9 +179,9 @@ export default function MintPage(): ReactNode {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-bold text-neutral-100">Mint Tokens</h1>
+        <h1 className="text-3xl font-bold text-neutral-100">Wrap & Mint</h1>
         <p className="mt-2 text-neutral-400">
-          Deposit SY tokens to mint Principal Tokens (PT) and Yield Tokens (YT)
+          Wrap yield-bearing tokens to SY, then mint Principal Tokens (PT) and Yield Tokens (YT)
         </p>
       </div>
 
