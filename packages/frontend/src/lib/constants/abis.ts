@@ -1,13 +1,13 @@
 // Import contract class files directly from contracts build output
 // These contain the ABI in the 'abi' field
-import FactoryContract from '@contracts/yield_tokenization_Factory.contract_class.json';
-import MarketContract from '@contracts/yield_tokenization_Market.contract_class.json';
-import MarketFactoryContract from '@contracts/yield_tokenization_MarketFactory.contract_class.json';
-import MockYieldTokenContract from '@contracts/yield_tokenization_MockYieldToken.contract_class.json';
-import PTContract from '@contracts/yield_tokenization_PT.contract_class.json';
-import RouterContract from '@contracts/yield_tokenization_Router.contract_class.json';
-import SYContract from '@contracts/yield_tokenization_SY.contract_class.json';
-import YTContract from '@contracts/yield_tokenization_YT.contract_class.json';
+import FactoryContract from '@contracts/horizon_Factory.contract_class.json';
+import MarketContract from '@contracts/horizon_Market.contract_class.json';
+import MarketFactoryContract from '@contracts/horizon_MarketFactory.contract_class.json';
+import MockYieldTokenContract from '@contracts/horizon_MockYieldToken.contract_class.json';
+import PTContract from '@contracts/horizon_PT.contract_class.json';
+import RouterContract from '@contracts/horizon_Router.contract_class.json';
+import SYContract from '@contracts/horizon_SY.contract_class.json';
+import YTContract from '@contracts/horizon_YT.contract_class.json';
 import type { Abi } from 'starknet';
 
 // Extract ABIs from contract class files

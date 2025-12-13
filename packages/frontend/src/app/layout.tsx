@@ -17,7 +17,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Yield Tokenization Protocol',
+  title: 'Horizon Protocol',
   description: 'Split yield-bearing assets into Principal and Yield Tokens on Starknet',
 };
 
