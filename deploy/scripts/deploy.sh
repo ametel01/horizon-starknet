@@ -87,7 +87,7 @@ log_success "Contracts built"
 declare_class() {
     local name=$1
     local env_var=$2
-    local file="$BUILD_DIR/yield_tokenization_${name}.contract_class.json"
+    local file="$BUILD_DIR/horizon_${name}.contract_class.json"
 
     if [[ ! -f "$file" ]]; then
         log_error "File not found: $file"
