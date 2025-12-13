@@ -1165,39 +1165,41 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 ## File Checklist
 
 ### Priority 0 (Tooling & Config - MUST be first)
-- [ ] `package.json` with all scripts
-- [ ] `tsconfig.json` (strict mode)
-- [ ] `eslint.config.mjs` (flat config, strict rules)
-- [ ] `.prettierrc`
-- [ ] `.lintstagedrc`
-- [ ] `.husky/pre-commit`
-- [ ] `.husky/pre-push`
-- [ ] `tailwind.config.ts`
-- [ ] `next.config.ts`
-- [ ] `.env.example`
-- [ ] `.gitignore`
+- [x] `package.json` with all scripts
+- [x] `tsconfig.json` (strict mode)
+- [x] `eslint.config.mjs` (flat config, strict rules)
+- [x] `.prettierrc`
+- [x] `.lintstagedrc`
+- [x] `.husky/pre-commit`
+- [x] `.husky/pre-push`
+- [x] `tailwind.config.ts`
+- [x] `next.config.ts`
+- [x] `.env.example`
+- [x] `.gitignore`
+- [x] `.github/workflows/frontend-ci.yml` (CI pipeline)
+- [x] `.github/workflows/frontend-deploy.yml` (Vercel deployment)
 
 ### Priority 1 (Core Application)
-- [ ] `src/app/layout.tsx`
-- [ ] `src/app/page.tsx` (dashboard)
-- [ ] `src/providers/StarknetProvider.tsx`
-- [ ] `src/providers/QueryProvider.tsx`
-- [ ] `src/hooks/useStarknet.ts`
-- [ ] `src/hooks/useAccount.ts`
-- [ ] `src/lib/starknet/provider.ts`
-- [ ] `src/lib/starknet/wallet.ts`
-- [ ] `src/components/wallet/ConnectButton.tsx`
-- [ ] `src/components/layout/Header.tsx`
+- [x] `src/app/layout.tsx`
+- [x] `src/app/page.tsx` (dashboard placeholder)
+- [x] `src/providers/StarknetProvider.tsx`
+- [x] `src/providers/QueryProvider.tsx`
+- [x] `src/hooks/useStarknet.ts`
+- [x] `src/hooks/useAccount.ts`
+- [x] `src/lib/starknet/provider.ts`
+- [x] `src/lib/starknet/wallet.ts`
+- [x] `src/components/wallet/ConnectButton.tsx`
+- [x] `src/components/layout/Header.tsx`
 
 ### Priority 2 (Contract Integration)
-- [ ] `src/lib/constants/addresses.ts`
-- [ ] `src/lib/constants/abis/*.json`
-- [ ] `src/lib/starknet/contracts.ts`
-- [ ] `src/hooks/useContracts.ts`
-- [ ] `src/hooks/useTransaction.ts`
-- [ ] `src/lib/math/wad.ts`
-- [ ] `src/lib/math/yield.ts`
-- [ ] `scripts/export-abis.ts`
+- [x] `src/lib/constants/addresses.ts`
+- [x] `src/lib/constants/abis.ts` (imports from @contracts via webpack alias)
+- [x] `src/lib/starknet/contracts.ts`
+- [x] `src/hooks/useContracts.ts`
+- [x] `src/hooks/useTransaction.ts`
+- [x] `src/lib/math/wad.ts`
+- [x] `src/lib/math/yield.ts`
+- [x] ~~`scripts/export-abis.ts`~~ (not needed - using direct @contracts imports)
 - [ ] `scripts/generate-types.ts`
 
 ### Priority 3 (Pages)
@@ -1207,10 +1209,24 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x...
 - [ ] `src/app/portfolio/page.tsx`
 
 ### Priority 4 (Components)
-- [ ] `src/components/ui/*` (all base components)
+- [x] `src/components/ui/Button.tsx`
+- [x] `src/components/ui/Card.tsx`
+- [x] `src/components/ui/Skeleton.tsx`
+- [ ] `src/components/ui/*` (remaining base components: Input, Modal, Toast)
 - [ ] `src/components/forms/*` (all form components)
-- [ ] `src/components/display/*` (all display components)
-- [ ] `src/components/markets/*` (market components)
+- [x] `src/components/display/TokenAmount.tsx`
+- [x] `src/components/display/ExpiryCountdown.tsx`
+- [ ] `src/components/display/*` (remaining: TxStatus, ImpliedYield)
+- [x] `src/components/markets/MarketCard.tsx`
+- [x] `src/components/markets/MarketList.tsx`
+- [x] `src/components/markets/StatsOverview.tsx`
+
+### Priority 5 (Hooks & Types)
+- [x] `src/hooks/useMarket.ts`
+- [x] `src/hooks/useMarkets.ts`
+- [x] `src/types/market.ts`
+- [ ] `src/hooks/usePositions.ts`
+- [ ] `src/hooks/useYield.ts`
 
 ---
 
