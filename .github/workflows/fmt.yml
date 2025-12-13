@@ -3,12 +3,17 @@ name: Format
 on:
   push:
     branches: [main]
+    paths: [contracts/**]
   pull_request:
     branches: [main]
+    paths: [contracts/**]
 
 jobs:
   fmt:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
       - uses: actions/checkout@v4
 
