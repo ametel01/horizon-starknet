@@ -5,111 +5,30 @@ use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
-use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
+use starknet::ContractAddress;
+use super::utils::{
+    CURRENT_TIME, ONE_YEAR, mint_and_deposit_sy, mint_yield_token_to_user, setup_full, user1, user2,
+    zero_address,
+};
 
-// Test addresses
-fn user1() -> ContractAddress {
-    'user1'.try_into().unwrap()
-}
+// ============ Setup Functions ============
 
-fn user2() -> ContractAddress {
-    'user2'.try_into().unwrap()
-}
-
-fn zero_address() -> ContractAddress {
-    0.try_into().unwrap()
-}
-
-// Helper to serialize ByteArray for calldata
-fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
-    calldata.append(0); // data array length
-    calldata.append(value); // pending_word
-    calldata.append(len.into()); // pending_word_len
-}
-
-// Time constants
-const CURRENT_TIME: u64 = 1000000;
-const ONE_YEAR: u64 = 365 * 86400;
-
-// Deploy mock yield token (underlying asset)
-fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
-    let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
-    let mut calldata = array![];
-    append_bytearray(ref calldata, 'MockYieldToken', 14);
-    append_bytearray(ref calldata, 'MYT', 3);
-
-    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
-    IMockYieldTokenDispatcher { contract_address }
-}
-
-// Deploy SY token
-fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDispatcher {
-    let contract = declare("SY").unwrap_syscall().contract_class();
-    let mut calldata = array![];
-    append_bytearray(ref calldata, 'SY Token', 8);
-    append_bytearray(ref calldata, 'SY', 2);
-    calldata.append(underlying.into());
-    calldata.append(initial_exchange_rate.low.into());
-    calldata.append(initial_exchange_rate.high.into());
-
-    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
-    ISYDispatcher { contract_address }
-}
-
-// Get PT class hash for YT deployment
-fn get_pt_class_hash() -> ClassHash {
-    let contract = declare("PT").unwrap_syscall().contract_class();
-    *contract.class_hash
-}
-
-// Deploy YT token (which also deploys PT)
-fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTDispatcher {
-    start_cheat_block_timestamp_global(CURRENT_TIME);
-
-    let contract = declare("YT").unwrap_syscall().contract_class();
-    let mut calldata = array![];
-    append_bytearray(ref calldata, 'YT Token', 8);
-    append_bytearray(ref calldata, 'YT', 2);
-    calldata.append(sy.into());
-    calldata.append(pt_class_hash.into());
-    calldata.append(expiry.into());
-
-    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
-    IYTDispatcher { contract_address }
-}
-
-// Full setup: deploy underlying, SY, and YT (with PT)
 fn setup() -> (IMockYieldTokenDispatcher, ISYDispatcher, IYTDispatcher) {
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address, WAD); // 1:1 rate
-    let pt_class_hash = get_pt_class_hash();
-    let expiry = CURRENT_TIME + ONE_YEAR;
-    let yt = deploy_yt(sy.contract_address, pt_class_hash, expiry);
-    (underlying, sy, yt)
+    let (_, yield_token, sy, yt) = setup_full();
+    (yield_token, sy, yt)
 }
 
-// Setup with minted SY tokens for a user
 fn setup_with_sy(
     user: ContractAddress, amount: u256,
 ) -> (IMockYieldTokenDispatcher, ISYDispatcher, IYTDispatcher) {
-    let (underlying, sy, yt) = setup();
+    let (yield_token, sy, yt) = setup();
 
-    // Mint underlying to user
-    underlying.mint(user, amount);
+    // Mint yield token and deposit to SY
+    mint_and_deposit_sy(yield_token, sy, user, amount);
 
-    // User approves and deposits to SY
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
-
-    start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
-    stop_cheat_caller_address(sy.contract_address);
-
-    (underlying, sy, yt)
+    (yield_token, sy, yt)
 }
 
 // ============ Constructor Tests ============
@@ -226,13 +145,14 @@ fn test_yt_mint_py_to_different_receiver() {
 fn test_yt_mint_py_multiple_times() {
     let user = user1();
     let amount = 100 * WAD;
-    let (underlying, sy, yt) = setup_with_sy(user, amount);
+    let (yield_token, sy, yt) = setup_with_sy(user, amount);
 
-    // Mint more underlying for additional deposits
-    underlying.mint(user, amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    // Mint more yield token for additional deposits
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, amount);

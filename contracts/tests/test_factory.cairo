@@ -4,6 +4,7 @@ use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
+use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
@@ -14,6 +15,10 @@ use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
 // Test addresses
 fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
+}
+
+fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
 }
 
 fn zero_address() -> ContractAddress {
@@ -35,26 +40,47 @@ fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
 const CURRENT_TIME: u64 = 1000000;
 const ONE_YEAR: u64 = 365 * 86400;
 
+// Deploy mock ERC20
+fn deploy_mock_erc20() -> IMockERC20Dispatcher {
+    let contract = declare("MockERC20").unwrap_syscall().contract_class();
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'Mock USDC', 10);
+    append_bytearray(ref calldata, 'USDC', 4);
+
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
+    IMockERC20Dispatcher { contract_address }
+}
+
 // Deploy mock yield token
-fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
+fn deploy_mock_yield_token(
+    underlying: ContractAddress, admin_addr: ContractAddress,
+) -> IMockYieldTokenDispatcher {
     let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'MockYieldToken', 14);
     append_bytearray(ref calldata, 'MYT', 3);
+    calldata.append(underlying.into());
+    calldata.append(admin_addr.into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockYieldTokenDispatcher { contract_address }
 }
 
+// Deploy yield token stack (MockERC20 + MockYieldToken)
+fn deploy_yield_token_stack() -> IMockYieldTokenDispatcher {
+    let underlying = deploy_mock_erc20();
+    let admin_addr = admin();
+    deploy_mock_yield_token(underlying.contract_address, admin_addr)
+}
+
 // Deploy SY token
-fn deploy_sy(underlying: ContractAddress) -> ISYDispatcher {
+fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'SY Token', 8);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
-    calldata.append(WAD.low.into());
-    calldata.append(WAD.high.into());
+    calldata.append(index_oracle.into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -80,10 +106,20 @@ fn deploy_factory(yt_class_hash: ClassHash, pt_class_hash: ClassHash) -> IFactor
     IFactoryDispatcher { contract_address }
 }
 
+// Helper to mint yield token shares to user as admin
+fn mint_yield_token_to_user(
+    yield_token: IMockYieldTokenDispatcher, user: ContractAddress, amount: u256,
+) {
+    let admin_addr = admin();
+    start_cheat_caller_address(yield_token.contract_address, admin_addr);
+    yield_token.mint_shares(user, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+}
+
 // Full setup
 fn setup() -> (IMockYieldTokenDispatcher, ISYDispatcher, IFactoryDispatcher) {
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let (yt_class_hash, pt_class_hash) = get_class_hashes();
     let factory = deploy_factory(yt_class_hash, pt_class_hash);
     (underlying, sy, factory)
@@ -187,10 +223,10 @@ fn test_factory_create_multiple_expiries() {
 
 #[test]
 fn test_factory_create_multiple_sy_tokens() {
-    let underlying1 = deploy_mock_yield_token();
-    let underlying2 = deploy_mock_yield_token();
-    let sy1 = deploy_sy(underlying1.contract_address);
-    let sy2 = deploy_sy(underlying2.contract_address);
+    let underlying1 = deploy_yield_token_stack();
+    let underlying2 = deploy_yield_token_stack();
+    let sy1 = deploy_sy(underlying1.contract_address, underlying1.contract_address);
+    let sy2 = deploy_sy(underlying2.contract_address, underlying2.contract_address);
     let (yt_class_hash, pt_class_hash) = get_class_hashes();
     let factory = deploy_factory(yt_class_hash, pt_class_hash);
 
@@ -257,7 +293,7 @@ fn test_factory_created_contracts_are_functional() {
     let pt = IPTDispatcher { contract_address: pt_addr };
 
     // Setup: mint underlying, deposit to SY
-    underlying.mint(user, amount);
+    mint_yield_token_to_user(underlying, user, amount);
     start_cheat_caller_address(underlying.contract_address, user);
     underlying.approve(sy.contract_address, amount);
     stop_cheat_caller_address(underlying.contract_address);
@@ -301,7 +337,7 @@ fn test_factory_post_expiry_redemption() {
     let yt = IYTDispatcher { contract_address: yt_addr };
     let pt = IPTDispatcher { contract_address: pt_addr };
 
-    underlying.mint(user, amount);
+    mint_yield_token_to_user(underlying, user, amount);
     start_cheat_caller_address(underlying.contract_address, user);
     underlying.approve(sy.contract_address, amount);
     stop_cheat_caller_address(underlying.contract_address);

@@ -1,5 +1,6 @@
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use horizon::libraries::math::WAD;
+use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
@@ -8,6 +9,10 @@ use snforge_std::{
 use starknet::{ContractAddress, SyscallResultTrait};
 
 // Test addresses
+fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
+}
+
 fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
 }
@@ -21,91 +26,117 @@ fn zero_address() -> ContractAddress {
 }
 
 // Helper to serialize ByteArray for calldata
-// ByteArray = { data: Array<bytes31>, pending_word: felt252, pending_word_len: u32 }
-// For short strings (< 31 bytes): data_len=0, pending_word=string, pending_word_len=len
 fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
-    calldata.append(0); // data array length (0 for short strings)
+    calldata.append(0); // data array length
     calldata.append(value); // pending_word
     calldata.append(len.into()); // pending_word_len
 }
 
-// Deploy mock yield token
-fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
+// Deploy mock ERC20 (base asset like USDC/ETH)
+fn deploy_mock_erc20() -> IMockERC20Dispatcher {
+    let contract = declare("MockERC20").unwrap_syscall().contract_class();
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'Mock USDC', 9);
+    append_bytearray(ref calldata, 'USDC', 4);
+
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
+    IMockERC20Dispatcher { contract_address }
+}
+
+// Deploy mock yield token (yield-bearing asset like wstETH/aUSDC)
+fn deploy_mock_yield_token(
+    underlying: ContractAddress, admin_addr: ContractAddress,
+) -> IMockYieldTokenDispatcher {
     let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
     let mut calldata = array![];
-    // name: "MockYieldToken" (14 chars)
     append_bytearray(ref calldata, 'MockYieldToken', 14);
-    // symbol: "MYT" (3 chars)
     append_bytearray(ref calldata, 'MYT', 3);
+    calldata.append(underlying.into());
+    calldata.append(admin_addr.into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockYieldTokenDispatcher { contract_address }
 }
 
 // Deploy SY token
-fn deploy_sy(underlying: ContractAddress, initial_exchange_rate: u256) -> ISYDispatcher {
+fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
-    // name: "SY Token" (8 chars)
     append_bytearray(ref calldata, 'SY Token', 8);
-    // symbol: "SY" (2 chars)
     append_bytearray(ref calldata, 'SY', 2);
-    // underlying address
     calldata.append(underlying.into());
-    // initial_exchange_rate (u256 = 2 felts: low, high)
-    calldata.append(initial_exchange_rate.low.into());
-    calldata.append(initial_exchange_rate.high.into());
+    calldata.append(index_oracle.into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
 
-// Deploy both tokens with initial setup
-fn setup() -> (IMockYieldTokenDispatcher, ISYDispatcher) {
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address, WAD); // 1:1 exchange rate
-    (underlying, sy)
+// Deploy full stack: MockERC20 -> MockYieldToken -> SY
+// For native yield tokens, underlying == index_oracle (same address)
+fn setup() -> (IMockERC20Dispatcher, IMockYieldTokenDispatcher, ISYDispatcher) {
+    let base_asset = deploy_mock_erc20();
+    let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
+    let sy = deploy_sy(yield_token.contract_address, yield_token.contract_address);
+    (base_asset, yield_token, sy)
+}
+
+// Helper to mint yield token shares to a user (admin mints shares directly)
+fn mint_yield_token_to_user(
+    yield_token: IMockYieldTokenDispatcher, user: ContractAddress, amount: u256,
+) {
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.mint_shares(user, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 }
 
 // ============ Constructor Tests ============
 
 #[test]
 fn test_sy_constructor() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
 
     assert(sy.name() == "SY Token", 'Wrong name');
     assert(sy.symbol() == "SY", 'Wrong symbol');
     assert(sy.decimals() == 18, 'Wrong decimals');
     assert(sy.total_supply() == 0, 'Wrong initial supply');
     assert(sy.exchange_rate() == WAD, 'Wrong exchange rate');
-    assert(sy.underlying_asset() == underlying.contract_address, 'Wrong underlying');
+    assert(sy.underlying_asset() == yield_token.contract_address, 'Wrong underlying');
 }
 
 #[test]
-fn test_sy_constructor_custom_exchange_rate() {
-    let underlying = deploy_mock_yield_token();
-    let custom_rate = 2 * WAD; // 2:1 exchange rate
-    let sy = deploy_sy(underlying.contract_address, custom_rate);
+fn test_sy_exchange_rate_from_underlying() {
+    let (_, yield_token, sy) = setup();
 
-    assert(sy.exchange_rate() == custom_rate, 'Wrong custom exchange rate');
+    // Initial index is WAD (1:1)
+    assert(sy.exchange_rate() == WAD, 'Initial rate should be WAD');
+
+    // Simulate yield accrual by setting index on yield token
+    let new_index = 2 * WAD; // 2:1 (100% yield)
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_index(new_index);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // SY should now reflect the new exchange rate
+    assert(sy.exchange_rate() == new_index, 'Rate should match underlying');
 }
 
 // ============ ERC20 Tests ============
 
 #[test]
 fn test_sy_transfer() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
     let recipient = user2();
     let amount = 100 * WAD;
 
-    // Mint underlying to user and approve SY
-    underlying.mint(user, amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    // Mint yield token shares to user
+    mint_yield_token_to_user(yield_token, user, amount);
 
-    // Deposit to get SY tokens
+    // Approve SY contract and deposit
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
     start_cheat_caller_address(sy.contract_address, user);
     let sy_amount = sy.deposit(user, amount);
 
@@ -119,16 +150,17 @@ fn test_sy_transfer() {
 
 #[test]
 fn test_sy_approve_and_transfer_from() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let owner = user1();
     let spender = user2();
     let amount = 100 * WAD;
 
-    // Setup: mint underlying, approve, deposit
-    underlying.mint(owner, amount);
-    start_cheat_caller_address(underlying.contract_address, owner);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    // Setup: mint yield token, approve, deposit
+    mint_yield_token_to_user(yield_token, owner, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, owner);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, owner);
     let sy_amount = sy.deposit(owner, amount);
@@ -148,66 +180,43 @@ fn test_sy_approve_and_transfer_from() {
 
 #[test]
 fn test_sy_deposit_1_to_1() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
     let deposit_amount = 100 * WAD;
 
-    // Mint underlying to user
-    underlying.mint(user, deposit_amount);
-    assert(underlying.balance_of(user) == deposit_amount, 'Mint failed');
+    // Mint yield token to user
+    mint_yield_token_to_user(yield_token, user, deposit_amount);
+    assert(yield_token.balance_of(user) == deposit_amount, 'Mint failed');
 
-    // Approve SY contract to spend underlying
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, deposit_amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    // Approve SY contract to spend yield token
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, deposit_amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
-    // Deposit underlying to get SY
+    // Deposit yield token to get SY
     start_cheat_caller_address(sy.contract_address, user);
     let sy_minted = sy.deposit(user, deposit_amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // With 1:1 exchange rate, should get equal amount of SY
+    // SY is 1:1 with underlying shares
     assert(sy_minted == deposit_amount, 'Wrong SY minted');
     assert(sy.balance_of(user) == deposit_amount, 'Wrong SY balance');
     assert(sy.total_supply() == deposit_amount, 'Wrong total supply');
-    assert(underlying.balance_of(user) == 0, 'Underlying not transferred');
-}
-
-#[test]
-fn test_sy_deposit_with_exchange_rate() {
-    let underlying = deploy_mock_yield_token();
-    let exchange_rate = 2 * WAD; // 1 SY = 2 underlying
-    let sy = deploy_sy(underlying.contract_address, exchange_rate);
-    let user = user1();
-    let deposit_amount = 100 * WAD;
-
-    // Mint and approve
-    underlying.mint(user, deposit_amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, deposit_amount);
-    stop_cheat_caller_address(underlying.contract_address);
-
-    // Deposit
-    start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, deposit_amount);
-    stop_cheat_caller_address(sy.contract_address);
-
-    // With 2:1 exchange rate, 100 underlying = 50 SY
-    assert(sy_minted == 50 * WAD, 'Wrong SY for 2:1 rate');
-    assert(sy.balance_of(user) == 50 * WAD, 'Wrong balance for 2:1');
+    assert(yield_token.balance_of(user) == 0, 'Yield token not transferred');
 }
 
 #[test]
 fn test_sy_deposit_to_different_receiver() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let depositor = user1();
     let receiver = user2();
     let deposit_amount = 100 * WAD;
 
-    underlying.mint(depositor, deposit_amount);
-    start_cheat_caller_address(underlying.contract_address, depositor);
-    underlying.approve(sy.contract_address, deposit_amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, depositor, deposit_amount);
+
+    start_cheat_caller_address(yield_token.contract_address, depositor);
+    yield_token.approve(sy.contract_address, deposit_amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     // Deposit but send SY to different receiver
     start_cheat_caller_address(sy.contract_address, depositor);
@@ -221,7 +230,7 @@ fn test_sy_deposit_to_different_receiver() {
 #[test]
 #[should_panic(expected: 'SY: zero deposit')]
 fn test_sy_deposit_zero() {
-    let (_, sy) = setup();
+    let (_, _, sy) = setup();
     let user = user1();
 
     start_cheat_caller_address(sy.contract_address, user);
@@ -231,13 +240,14 @@ fn test_sy_deposit_zero() {
 #[test]
 #[should_panic(expected: 'YT: zero address')]
 fn test_sy_deposit_zero_receiver() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
 
-    underlying.mint(user, WAD);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, WAD);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, user, WAD);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, WAD);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(zero_address(), WAD);
@@ -247,90 +257,68 @@ fn test_sy_deposit_zero_receiver() {
 
 #[test]
 fn test_sy_redeem_1_to_1() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
     let amount = 100 * WAD;
 
     // Setup: deposit first
-    underlying.mint(user, amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, amount);
 
-    // Redeem SY for underlying
-    let underlying_received = sy.redeem(user, amount);
+    // Redeem SY for yield token
+    let shares_received = sy.redeem(user, amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // With 1:1 exchange rate, should get equal amount back
-    assert(underlying_received == amount, 'Wrong underlying received');
+    // SY is 1:1 with underlying shares
+    assert(shares_received == amount, 'Wrong shares received');
     assert(sy.balance_of(user) == 0, 'SY should be burned');
     assert(sy.total_supply() == 0, 'Total supply should be 0');
-    assert(underlying.balance_of(user) == amount, 'Should have underlying back');
-}
-
-#[test]
-fn test_sy_redeem_with_exchange_rate() {
-    let underlying = deploy_mock_yield_token();
-    let exchange_rate = 2 * WAD; // 1 SY = 2 underlying
-    let sy = deploy_sy(underlying.contract_address, exchange_rate);
-    let user = user1();
-    let deposit_amount = 100 * WAD;
-
-    // Setup: deposit
-    underlying.mint(user, deposit_amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, deposit_amount);
-    stop_cheat_caller_address(underlying.contract_address);
-
-    start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, deposit_amount); // 50 SY
-
-    // Redeem all SY
-    let underlying_received = sy.redeem(user, sy_minted);
-    stop_cheat_caller_address(sy.contract_address);
-
-    // With 2:1 exchange rate, 50 SY = 100 underlying
-    assert(underlying_received == deposit_amount, 'Wrong redeem amount');
+    assert(yield_token.balance_of(user) == amount, 'Should have yield token back');
 }
 
 #[test]
 fn test_sy_redeem_to_different_receiver() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let redeemer = user1();
     let receiver = user2();
     let amount = 100 * WAD;
 
     // Setup: deposit
-    underlying.mint(redeemer, amount);
-    start_cheat_caller_address(underlying.contract_address, redeemer);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, redeemer, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, redeemer);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, redeemer);
     sy.deposit(redeemer, amount);
 
-    // Redeem but send underlying to different receiver
+    // Redeem but send yield token to different receiver
     sy.redeem(receiver, amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    assert(underlying.balance_of(redeemer) == 0, 'Redeemer should have 0');
-    assert(underlying.balance_of(receiver) == amount, 'Receiver should have underlying');
+    assert(yield_token.balance_of(redeemer) == 0, 'Redeemer should have 0');
+    assert(yield_token.balance_of(receiver) == amount, 'Receiver has yield tkn');
 }
 
 #[test]
 #[should_panic(expected: 'SY: zero redeem')]
 fn test_sy_redeem_zero() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
 
     // Need some SY first
-    underlying.mint(user, WAD);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, WAD);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, user, WAD);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, WAD);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, WAD);
@@ -340,13 +328,14 @@ fn test_sy_redeem_zero() {
 #[test]
 #[should_panic(expected: 'YT: zero address')]
 fn test_sy_redeem_zero_receiver() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
 
-    underlying.mint(user, WAD);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, WAD);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, user, WAD);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, WAD);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, WAD);
@@ -356,13 +345,14 @@ fn test_sy_redeem_zero_receiver() {
 #[test]
 #[should_panic(expected: 'ERC20: insufficient balance')]
 fn test_sy_redeem_insufficient_balance() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
 
-    underlying.mint(user, WAD);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, WAD);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, user, WAD);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, WAD);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, WAD);
@@ -374,15 +364,16 @@ fn test_sy_redeem_insufficient_balance() {
 
 #[test]
 fn test_sy_partial_redeem() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
     let amount = 100 * WAD;
 
     // Setup: deposit
-    underlying.mint(user, amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, amount);
@@ -392,22 +383,24 @@ fn test_sy_partial_redeem() {
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount / 2, 'Wrong remaining SY');
-    assert(underlying.balance_of(user) == amount / 2, 'Wrong underlying balance');
+    assert(yield_token.balance_of(user) == amount / 2, 'Wrong yield token balance');
 }
 
 #[test]
 fn test_sy_multiple_deposits() {
-    let (underlying, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
     let amount = 100 * WAD;
 
-    // First deposit
-    underlying.mint(user, amount);
-    start_cheat_caller_address(underlying.contract_address, user);
-    underlying.approve(sy.contract_address, amount);
-    stop_cheat_caller_address(underlying.contract_address);
+    // Mint yield token
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
+    // First deposit
     sy.deposit(user, amount / 2);
     assert(sy.balance_of(user) == amount / 2, 'Wrong balance after 1st');
 
@@ -417,4 +410,62 @@ fn test_sy_multiple_deposits() {
 
     assert(sy.balance_of(user) == amount, 'Wrong balance after 2nd');
     assert(sy.total_supply() == amount, 'Wrong total supply');
+}
+
+// ============ Yield Accrual Tests ============
+
+#[test]
+fn test_sy_exchange_rate_increases_with_yield() {
+    let (_, yield_token, sy) = setup();
+
+    // Initial exchange rate
+    let initial_rate = sy.exchange_rate();
+    assert(initial_rate == WAD, 'Initial rate wrong');
+
+    // Simulate 10% yield
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_index(WAD + WAD / 10); // 1.1 WAD
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Exchange rate should reflect the yield
+    let new_rate = sy.exchange_rate();
+    assert(new_rate == WAD + WAD / 10, 'Rate should be 1.1 WAD');
+}
+
+#[test]
+fn test_sy_yield_accrual_with_deposit() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // User deposits yield token
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // SY balance is 1:1 with deposited shares
+    assert(sy.balance_of(user) == amount, 'SY balance wrong');
+
+    // Simulate 50% yield
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_index(WAD + WAD / 2); // 1.5 WAD
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // SY balance unchanged (non-rebasing), but exchange rate increased
+    assert(sy.balance_of(user) == amount, 'SY balance should not change');
+    assert(sy.exchange_rate() == WAD + WAD / 2, 'Exchange rate should be 1.5');
+
+    // When user redeems, they get back same number of shares (yield token)
+    // but those shares are now worth more in terms of the base asset
+    start_cheat_caller_address(sy.contract_address, user);
+    let shares_received = sy.redeem(user, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(shares_received == amount, 'Should get back same shares');
 }

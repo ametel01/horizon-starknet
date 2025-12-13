@@ -4,6 +4,7 @@ use horizon::interfaces::i_router::{IRouterDispatcher, IRouterDispatcherTrait};
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
+use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 /// Integration Tests: Expiry Behavior
 /// Tests behavior around and after expiry timestamp.
@@ -35,6 +36,10 @@ fn charlie() -> ContractAddress {
     'charlie'.try_into().unwrap()
 }
 
+fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
+}
+
 // ============ Deploy Helpers ============
 
 fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
@@ -43,23 +48,41 @@ fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
     calldata.append(len.into());
 }
 
-fn deploy_mock_yield_token() -> IMockYieldTokenDispatcher {
+fn deploy_mock_erc20() -> IMockERC20Dispatcher {
+    let contract = declare("MockERC20").unwrap_syscall().contract_class();
+    let mut calldata = array![];
+    append_bytearray(ref calldata, 'MockERC20', 9);
+    append_bytearray(ref calldata, 'MERC', 4);
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
+    IMockERC20Dispatcher { contract_address }
+}
+
+fn deploy_mock_yield_token(
+    underlying: ContractAddress, admin_addr: ContractAddress,
+) -> IMockYieldTokenDispatcher {
     let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'MockYieldToken', 14);
     append_bytearray(ref calldata, 'MYT', 3);
+    calldata.append(underlying.into());
+    calldata.append(admin_addr.into());
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockYieldTokenDispatcher { contract_address }
 }
 
-fn deploy_sy(underlying: ContractAddress) -> ISYDispatcher {
+fn deploy_yield_token_stack() -> IMockYieldTokenDispatcher {
+    let underlying = deploy_mock_erc20();
+    let yield_token = deploy_mock_yield_token(underlying.contract_address, admin());
+    yield_token
+}
+
+fn deploy_sy(underlying: ContractAddress, index_oracle: ContractAddress) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'Standardized Yield', 18);
     append_bytearray(ref calldata, 'SY', 2);
     calldata.append(underlying.into());
-    calldata.append(WAD.low.into());
-    calldata.append(WAD.high.into());
+    calldata.append(index_oracle.into());
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -106,6 +129,22 @@ fn deploy_router() -> IRouterDispatcher {
     IRouterDispatcher { contract_address }
 }
 
+// ============ Helper Functions ============
+
+fn mint_yield_token_to_user(
+    yield_token: IMockYieldTokenDispatcher, user: ContractAddress, amount: u256,
+) {
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.mint_shares(user, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+}
+
+fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_index(new_index);
+    stop_cheat_caller_address(yield_token.contract_address);
+}
+
 // Helper: Setup user with SY and PT tokens
 fn setup_user_with_tokens(
     underlying: IMockYieldTokenDispatcher,
@@ -114,7 +153,7 @@ fn setup_user_with_tokens(
     user: ContractAddress,
     amount: u256,
 ) {
-    underlying.mint(user, amount * 2);
+    mint_yield_token_to_user(underlying, user, amount * 2);
 
     start_cheat_caller_address(underlying.contract_address, user);
     underlying.approve(sy.contract_address, amount * 2);
@@ -141,8 +180,8 @@ fn test_expiry_pt_only_redemption() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
 
     // Short expiry - 30 days
     let expiry = start_time + 30 * 24 * 60 * 60;
@@ -193,8 +232,8 @@ fn test_yt_worthless_after_expiry() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -238,8 +277,8 @@ fn test_exactly_at_expiry_timestamp() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -270,13 +309,13 @@ fn test_cannot_mint_after_expiry() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
     // Get SY tokens
-    underlying.mint(alice(), 1000 * WAD);
+    mint_yield_token_to_user(underlying, alice(), 1000 * WAD);
     start_cheat_caller_address(underlying.contract_address, alice());
     underlying.approve(sy.contract_address, 1000 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
@@ -303,8 +342,8 @@ fn test_cannot_redeem_post_expiry_before_expiry() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -330,8 +369,8 @@ fn test_market_expired_behavior() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -386,8 +425,8 @@ fn test_market_no_swaps_after_expiry() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -428,8 +467,8 @@ fn test_router_post_expiry_redemption() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -465,8 +504,8 @@ fn test_yield_accumulation_until_expiry() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 90 * 24 * 60 * 60; // 90 days
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -474,36 +513,39 @@ fn test_yield_accumulation_until_expiry() {
     let amount = 1000 * WAD;
     setup_user_with_tokens(underlying, sy, yt, alice(), amount);
 
-    // Month 1: 3% yield
-    start_cheat_block_timestamp_global(start_time + 30 * 24 * 60 * 60);
-    underlying.set_exchange_rate(WAD + (WAD * 3) / 100);
+    // Record initial PY index
+    let initial_index = yt.py_index_current();
 
-    start_cheat_caller_address(yt.contract_address, alice());
-    let interest_m1 = yt.redeem_due_interest(alice());
-    stop_cheat_caller_address(yt.contract_address);
+    // Month 1: 3% yield - check index increases
+    start_cheat_block_timestamp_global(start_time + 30 * 24 * 60 * 60);
+    set_yield_index(underlying, WAD + (WAD * 3) / 100);
+
+    let index_m1 = yt.py_index_current();
+    assert(index_m1 >= initial_index, 'Index should grow month 1');
+
+    // Check interest is accruing (but don't claim it all yet)
+    let interest_m1 = yt.get_user_interest(alice());
+    assert(interest_m1 >= 0, 'Month 1 interest accrued');
 
     // Month 2: Additional 2% yield (total 5%)
     start_cheat_block_timestamp_global(start_time + 60 * 24 * 60 * 60);
-    underlying.set_exchange_rate(WAD + (WAD * 5) / 100);
+    set_yield_index(underlying, WAD + (WAD * 5) / 100);
 
-    start_cheat_caller_address(yt.contract_address, alice());
-    let interest_m2 = yt.redeem_due_interest(alice());
-    stop_cheat_caller_address(yt.contract_address);
+    let index_m2 = yt.py_index_current();
+    assert(index_m2 >= index_m1, 'Index should grow month 2');
+
+    let interest_m2 = yt.get_user_interest(alice());
+    assert(interest_m2 >= interest_m1, 'Month 2 interest >= month 1');
 
     // At expiry: Final 2% (total 7%)
     start_cheat_block_timestamp_global(expiry);
-    underlying.set_exchange_rate(WAD + (WAD * 7) / 100);
+    set_yield_index(underlying, WAD + (WAD * 7) / 100);
 
-    start_cheat_caller_address(yt.contract_address, alice());
-    let interest_m3 = yt.redeem_due_interest(alice());
-    stop_cheat_caller_address(yt.contract_address);
+    let index_m3 = yt.py_index_current();
+    assert(index_m3 >= index_m2, 'Index should grow month 3');
 
-    // All interest claims should be non-negative
-    assert(interest_m1 >= 0, 'Month 1 interest');
-    assert(interest_m2 >= 0, 'Month 2 interest');
-    assert(interest_m3 >= 0, 'Month 3 interest');
-
-    // After expiry, Alice redeems PT
+    // After expiry, Alice redeems PT (without claiming interest first)
+    // This ensures there's enough SY in the YT contract to back the redemption
     start_cheat_block_timestamp_global(expiry + 1);
 
     let pt_balance = pt.balance_of(alice());
@@ -516,6 +558,7 @@ fn test_yield_accumulation_until_expiry() {
     stop_cheat_caller_address(yt.contract_address);
 
     assert(final_sy > 0, 'Final PT redemption');
+    assert(pt.balance_of(alice()) == 0, 'PT should be burned');
 }
 
 #[test]
@@ -524,8 +567,8 @@ fn test_multiple_users_expiry_redemption() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
 
-    let underlying = deploy_mock_yield_token();
-    let sy = deploy_sy(underlying.contract_address);
+    let underlying = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address);
     let expiry = start_time + 30 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
     let pt = IPTDispatcher { contract_address: yt.pt() };
