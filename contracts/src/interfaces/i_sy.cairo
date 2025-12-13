@@ -17,7 +17,7 @@ pub trait ISY<TContractState> {
 
     // SY-specific
     fn deposit(
-        ref self: TContractState, receiver: ContractAddress, amount_token_to_deposit: u256,
+        ref self: TContractState, receiver: ContractAddress, amount_shares_to_deposit: u256,
     ) -> u256;
     fn redeem(
         ref self: TContractState, receiver: ContractAddress, amount_sy_to_redeem: u256,

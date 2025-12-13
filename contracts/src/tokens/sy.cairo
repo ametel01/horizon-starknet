@@ -2,14 +2,21 @@ use starknet::ContractAddress;
 
 /// Standardized Yield (SY) Token
 /// Wraps yield-bearing tokens into a standardized interface.
-/// 1 SY represents a claim to the underlying yield-bearing asset.
-/// The exchange_rate tracks how much underlying 1 SY is worth.
+/// 1 SY represents 1 share of the underlying yield-bearing asset.
+///
+/// The exchange_rate can come from two sources:
+/// 1. Native yield tokens: The underlying token itself implements index()
+/// 2. Bridged tokens (like wstETH): A separate oracle provides the index
+///
+/// Constructor takes an `index_oracle` parameter:
+/// - For native tokens: pass underlying address (implements IIndexOracle)
+/// - For bridged tokens: pass oracle address that syncs from L1
 #[starknet::contract]
 pub mod SY {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_index_oracle::{IIndexOracleDispatcher, IIndexOracleDispatcherTrait};
     use horizon::interfaces::i_sy::ISY;
     use horizon::libraries::errors::Errors;
-    use horizon::libraries::math::{WAD, wad_div, wad_mul};
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -26,11 +33,12 @@ pub mod SY {
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
-        // The underlying yield-bearing token address
+        // The underlying yield-bearing token address (ERC20)
         underlying: ContractAddress,
-        // Current exchange rate: how much underlying per 1 SY (in WAD)
-        // Starts at 1 WAD (1:1) and increases as yield accrues
-        exchange_rate_stored: u256,
+        // The index oracle address (implements IIndexOracle)
+        // Can be same as underlying for native yield tokens,
+        // or a separate oracle for bridged tokens
+        index_oracle: ContractAddress,
     }
 
     #[event]
@@ -40,7 +48,6 @@ pub mod SY {
         ERC20Event: ERC20Component::Event,
         Deposit: Deposit,
         Redeem: Redeem,
-        ExchangeRateUpdated: ExchangeRateUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -63,34 +70,26 @@ pub mod SY {
         pub amount_redeemed: u256,
     }
 
-    #[derive(Drop, starknet::Event)]
-    pub struct ExchangeRateUpdated {
-        pub old_rate: u256,
-        pub new_rate: u256,
-    }
-
+    /// @param name SY token name
+    /// @param symbol SY token symbol
+    /// @param underlying The underlying yield-bearing token (ERC20)
+    /// @param index_oracle The index source (same as underlying for native, or oracle for bridged)
     #[constructor]
     fn constructor(
         ref self: ContractState,
         name: ByteArray,
         symbol: ByteArray,
         underlying: ContractAddress,
-        initial_exchange_rate: u256,
+        index_oracle: ContractAddress,
     ) {
         // Initialize ERC20
         self.erc20.initializer(name, symbol);
 
         // Initialize SY state
         assert(!underlying.is_zero(), Errors::ZERO_ADDRESS);
+        assert(!index_oracle.is_zero(), Errors::ZERO_ADDRESS);
         self.underlying.write(underlying);
-
-        // Set initial exchange rate (default to 1 WAD if not specified)
-        let rate = if initial_exchange_rate == 0 {
-            WAD
-        } else {
-            initial_exchange_rate
-        };
-        self.exchange_rate_stored.write(rate);
+        self.index_oracle.write(index_oracle);
     }
 
     #[abi(embed_v0)]
@@ -145,29 +144,28 @@ pub mod SY {
             true
         }
 
-        /// Deposit underlying tokens to mint SY
+        /// Deposit underlying yield-bearing tokens to mint SY
+        /// SY is 1:1 with the underlying shares (not assets).
         /// @param receiver Address to receive the minted SY
-        /// @param amount_token_to_deposit Amount of underlying to deposit
-        /// @return Amount of SY minted
+        /// @param amount_shares_to_deposit Amount of underlying shares to deposit
+        /// @return Amount of SY minted (equal to shares deposited)
         fn deposit(
-            ref self: ContractState, receiver: ContractAddress, amount_token_to_deposit: u256,
+            ref self: ContractState, receiver: ContractAddress, amount_shares_to_deposit: u256,
         ) -> u256 {
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_token_to_deposit > 0, Errors::SY_ZERO_DEPOSIT);
+            assert(amount_shares_to_deposit > 0, Errors::SY_ZERO_DEPOSIT);
 
             let caller = get_caller_address();
 
-            // Transfer underlying from caller to this contract
+            // Transfer underlying shares from caller to this contract
             let underlying_addr = self.underlying.read();
-            let mut underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
+            let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
             let success = underlying_token
-                .transfer_from(caller, get_contract_address(), amount_token_to_deposit);
+                .transfer_from(caller, get_contract_address(), amount_shares_to_deposit);
             assert(success, Errors::SY_INSUFFICIENT_BALANCE);
 
-            // Calculate SY to mint based on exchange rate
-            // sy_amount = underlying_amount / exchange_rate
-            let exchange_rate = self.exchange_rate_stored.read();
-            let sy_to_mint = wad_div(amount_token_to_deposit, exchange_rate);
+            // SY is 1:1 with underlying shares
+            let sy_to_mint = amount_shares_to_deposit;
 
             // Mint SY to receiver
             self.erc20.mint(receiver, sy_to_mint);
@@ -177,7 +175,7 @@ pub mod SY {
                     Deposit {
                         caller,
                         receiver,
-                        amount_deposited: amount_token_to_deposit,
+                        amount_deposited: amount_shares_to_deposit,
                         amount_sy_minted: sy_to_mint,
                     },
                 );
@@ -185,10 +183,10 @@ pub mod SY {
             sy_to_mint
         }
 
-        /// Redeem SY for underlying tokens
+        /// Redeem SY for underlying yield-bearing tokens
         /// @param receiver Address to receive the underlying tokens
         /// @param amount_sy_to_redeem Amount of SY to burn
-        /// @return Amount of underlying redeemed
+        /// @return Amount of underlying shares redeemed (equal to SY burned)
         fn redeem(
             ref self: ContractState, receiver: ContractAddress, amount_sy_to_redeem: u256,
         ) -> u256 {
@@ -197,18 +195,16 @@ pub mod SY {
 
             let caller = get_caller_address();
 
-            // Calculate underlying to return based on exchange rate
-            // underlying_amount = sy_amount * exchange_rate
-            let exchange_rate = self.exchange_rate_stored.read();
-            let underlying_to_return = wad_mul(amount_sy_to_redeem, exchange_rate);
-
             // Burn SY from caller
             self.erc20.burn(caller, amount_sy_to_redeem);
 
+            // SY is 1:1 with underlying shares
+            let shares_to_return = amount_sy_to_redeem;
+
             // Transfer underlying to receiver
             let underlying_addr = self.underlying.read();
-            let mut underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
-            let success = underlying_token.transfer(receiver, underlying_to_return);
+            let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
+            let success = underlying_token.transfer(receiver, shares_to_return);
             assert(success, Errors::SY_INSUFFICIENT_BALANCE);
 
             self
@@ -217,16 +213,19 @@ pub mod SY {
                         caller,
                         receiver,
                         amount_sy_burned: amount_sy_to_redeem,
-                        amount_redeemed: underlying_to_return,
+                        amount_redeemed: shares_to_return,
                     },
                 );
 
-            underlying_to_return
+            shares_to_return
         }
 
-        /// Get the current exchange rate (underlying per SY in WAD)
+        /// Get the current exchange rate (assets per share in WAD)
+        /// This reads from the configured index oracle
         fn exchange_rate(self: @ContractState) -> u256 {
-            self.exchange_rate_stored.read()
+            let oracle_addr = self.index_oracle.read();
+            let oracle = IIndexOracleDispatcher { contract_address: oracle_addr };
+            oracle.index()
         }
 
         /// Get the underlying token address
@@ -238,28 +237,19 @@ pub mod SY {
     // Internal functions
     #[generate_trait]
     pub impl InternalImpl of InternalTrait {
-        /// Update the exchange rate (called when yield accrues)
-        /// Only increases - the rate should never decrease (watermark)
-        fn update_exchange_rate(ref self: ContractState, new_rate: u256) {
-            let old_rate = self.exchange_rate_stored.read();
-
-            // Watermark: exchange rate can only increase
-            if new_rate > old_rate {
-                self.exchange_rate_stored.write(new_rate);
-                self.emit(ExchangeRateUpdated { old_rate, new_rate });
-            }
-        }
-
-        /// Preview how much SY would be minted for a deposit
+        /// Preview how much SY would be minted for a deposit (1:1)
         fn preview_deposit(self: @ContractState, amount_to_deposit: u256) -> u256 {
-            let exchange_rate = self.exchange_rate_stored.read();
-            wad_div(amount_to_deposit, exchange_rate)
+            amount_to_deposit
         }
 
-        /// Preview how much underlying would be returned for a redemption
+        /// Preview how much underlying would be returned for a redemption (1:1)
         fn preview_redeem(self: @ContractState, amount_sy: u256) -> u256 {
-            let exchange_rate = self.exchange_rate_stored.read();
-            wad_mul(amount_sy, exchange_rate)
+            amount_sy
+        }
+
+        /// Get the index oracle address
+        fn get_index_oracle(self: @ContractState) -> ContractAddress {
+            self.index_oracle.read()
         }
     }
 }
