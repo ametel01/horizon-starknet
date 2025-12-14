@@ -31,6 +31,7 @@ pub enum AggregationMode {
 /// Known pair IDs (felt252 representations)
 pub const WSTETH_USD_PAIR_ID: felt252 = 412383036120118613857092;
 pub const SSTRK_USD_PAIR_ID: felt252 = 1537084272803954643780;
+pub const STRK_USD_PAIR_ID: felt252 = 6004514686061859652;
 
 /// Time constants
 const SECONDS_PER_YEAR: u64 = 31536000; // 365 days
@@ -72,7 +73,7 @@ pub mod MockPragmaSummaryStats {
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use super::{
         AggregationMode, DataType, IMockPragmaSummaryStats, PRICE_DECIMALS, SECONDS_PER_YEAR,
-        SSTRK_USD_PAIR_ID, WSTETH_USD_PAIR_ID,
+        SSTRK_USD_PAIR_ID, STRK_USD_PAIR_ID, WSTETH_USD_PAIR_ID,
     };
 
     #[storage]
@@ -114,6 +115,7 @@ pub mod MockPragmaSummaryStats {
         admin: ContractAddress,
         wsteth_base_price: u128, // e.g., 400000000000 = $4000 with 8 decimals
         sstrk_base_price: u128, // e.g., 50000000 = $0.50 with 8 decimals
+        strk_base_price: u128, // e.g., 50000000 = $0.50 with 8 decimals (base token, no yield)
         wsteth_yield_bps: u32, // e.g., 400 = 4% APR
         sstrk_yield_bps: u32 // e.g., 800 = 8% APR
     ) {
@@ -123,10 +125,13 @@ pub mod MockPragmaSummaryStats {
         // Set initial base prices
         self.base_prices.write(WSTETH_USD_PAIR_ID, wsteth_base_price);
         self.base_prices.write(SSTRK_USD_PAIR_ID, sstrk_base_price);
+        self.base_prices.write(STRK_USD_PAIR_ID, strk_base_price);
 
         // Set initial yield rates
+        // Note: STRK has 0% yield as it's the base token
         self.annual_yield_rate_bps.write(WSTETH_USD_PAIR_ID, wsteth_yield_bps);
         self.annual_yield_rate_bps.write(SSTRK_USD_PAIR_ID, sstrk_yield_bps);
+        self.annual_yield_rate_bps.write(STRK_USD_PAIR_ID, 0);
     }
 
     #[abi(embed_v0)]
@@ -136,8 +141,8 @@ pub mod MockPragmaSummaryStats {
         /// The price increases linearly based on time elapsed since deployment:
         /// current_price = base_price * (1 + yield_rate * time_elapsed / year)
         ///
-        /// For a more realistic simulation, we calculate the average price over
-        /// the requested time window [start_time, start_time + time]
+        /// For mock purposes, we use current block timestamp to calculate yield
+        /// (ignoring the TWAP window parameters since this is for testing)
         fn calculate_twap(
             self: @ContractState,
             data_type: DataType,
@@ -145,6 +150,8 @@ pub mod MockPragmaSummaryStats {
             time: u64,
             start_time: u64,
         ) -> (u128, u32) {
+            // Note: aggregation_mode, time, start_time are ignored for mock - we use current time
+            let _ = (aggregation_mode, time, start_time);
             // Extract pair_id from data_type
             let pair_id = match data_type {
                 DataType::SpotEntry(id) => id,
@@ -156,14 +163,11 @@ pub mod MockPragmaSummaryStats {
 
             let yield_rate_bps = self.annual_yield_rate_bps.read(pair_id);
             let deployment_ts = self.deployment_timestamp.read();
+            let current_time = get_block_timestamp();
 
-            // Calculate the midpoint of the time window for TWAP approximation
-            let _end_time = start_time + time;
-            let midpoint = start_time + (time / 2);
-
-            // Time elapsed from deployment to midpoint
-            let time_elapsed = if midpoint > deployment_ts {
-                midpoint - deployment_ts
+            // Time elapsed from deployment to current block
+            let time_elapsed = if current_time > deployment_ts {
+                current_time - deployment_ts
             } else {
                 0
             };
@@ -175,10 +179,6 @@ pub mod MockPragmaSummaryStats {
             // SECONDS_PER_YEAR)
 
             let yield_accrual = if yield_rate_bps > 0 && time_elapsed > 0 {
-                // Calculate: base_price * yield_rate_bps * time_elapsed / (10000 * 31536000)
-                // We need to be careful about overflow, so we'll rearrange:
-                // = (base_price * time_elapsed / SECONDS_PER_YEAR) * yield_rate_bps / 10000
-
                 let time_elapsed_u256: u256 = time_elapsed.into();
                 let base_u256: u256 = base_price.into();
                 let yield_bps_u256: u256 = yield_rate_bps.into();

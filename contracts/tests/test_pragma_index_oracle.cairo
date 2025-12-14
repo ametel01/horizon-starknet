@@ -41,10 +41,12 @@ fn deploy_mock_pragma() -> IMockPragmaSummaryStatsDispatcher {
     // Set up prices for wstETH and a custom pair for stETH
     // WSTETH: $4000, 4% APR
     // SSTRK will be used as "stETH" for testing: $3800 base, 4% APR
+    // STRK: $3800 base, 0% APR (base token for ratio)
     let mut calldata: Array<felt252> = array![];
     ADMIN().serialize(ref calldata);
     WSTETH_BASE_PRICE.serialize(ref calldata); // wsteth
     STETH_BASE_PRICE.serialize(ref calldata); // sstrk as "steth"
+    STETH_BASE_PRICE.serialize(ref calldata); // strk base price (same as steth for testing)
     400_u32.serialize(ref calldata); // wsteth yield
     400_u32.serialize(ref calldata); // sstrk yield
 
