@@ -205,6 +205,10 @@ ROUTER_CLASS_HASH=$(declare_class "Router" "ROUTER_CLASS_HASH")
 
 log_success "All classes declared"
 
+# Wait for block to be mined (devnet mines every 10 seconds)
+log_info "Waiting for declarations to be mined..."
+sleep 12
+
 # =============================================================================
 # Deploy Contracts
 # =============================================================================
@@ -362,13 +366,15 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Deploy Mock Pragma Oracle (for devnet testing)
     # -------------------------------------------------------------------------
 
-    # MockPragmaSummaryStats: constructor(admin, wsteth_base_price, sstrk_base_price, wsteth_yield_bps, sstrk_yield_bps)
+    # MockPragmaSummaryStats: constructor(admin, wsteth_base_price, sstrk_base_price, strk_base_price, wsteth_yield_bps, sstrk_yield_bps)
     # WSTETH: $4000 = 400000000000 (8 decimals), 4% APR = 400 bps
     # SSTRK: $0.50 = 50000000 (8 decimals), 8% APR = 800 bps
+    # STRK: $0.50 = 50000000 (8 decimals), 0% APR (base token)
     log_info "Deploying MockPragmaSummaryStats..."
     MOCK_PRAGMA_ADDRESS=$(deploy_contract "$MOCK_PRAGMA_CLASS_HASH" "MockPragmaSummaryStats" "MOCK_PRAGMA_ADDRESS" \
         "$DEPLOYER_ADDRESS" \
         0x5d21dba000 \
+        0x2faf080 \
         0x2faf080 \
         0x190 \
         0x320)
@@ -378,15 +384,17 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # -------------------------------------------------------------------------
 
     # PragmaIndexOracle: constructor(admin, pragma_oracle, numerator_pair_id, denominator_pair_id, initial_index)
-    # For sSTRK: single-feed mode (denominator = 0), using SSTRK/USD pair
-    # SSTRK_USD_PAIR_ID = 1537084272803954643780 = 0x152053545524b2f555344
+    # For sSTRK: dual-feed mode to calculate sSTRK/STRK exchange rate
+    # index = SSTRK/USD price / STRK/USD price = sSTRK/STRK exchange rate
+    # SSTRK_USD_PAIR_ID = 1537084272803954643780
+    # STRK_USD_PAIR_ID = 6004514686061859652
     # Initial index = 1 WAD = 1000000000000000000 = 0xde0b6b3a7640000
     log_info "Deploying PragmaIndexOracle for sSTRK..."
     PRAGMA_SSTRK_ORACLE_ADDRESS=$(deploy_contract "$PRAGMA_INDEX_ORACLE_CLASS_HASH" "PragmaIndexOracle-sSTRK" "PRAGMA_SSTRK_ORACLE_ADDRESS" \
         "$DEPLOYER_ADDRESS" \
         "$MOCK_PRAGMA_ADDRESS" \
         1537084272803954643780 \
-        0x0 \
+        6004514686061859652 \
         0xde0b6b3a7640000 0x0)
 
     # -------------------------------------------------------------------------
