@@ -127,8 +127,11 @@ fn mint_yield_token_to_user(
 }
 
 /// Set yield token index (simulate yield accrual)
+/// Also disables time-based yield to get precise control over the index
 fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
 }

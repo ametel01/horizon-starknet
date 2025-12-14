@@ -1,11 +1,18 @@
 use horizon::libraries::math::WAD;
 use starknet::ContractAddress;
 
+/// Time constants
+const SECONDS_PER_YEAR: u64 = 31536000; // 365 days
+const DEFAULT_YIELD_RATE_BPS: u32 = 500; // 5% APR default
+
 /// Mock yield-bearing token for testing (ERC-4626 compatible)
 /// A non-rebasing, value-accruing shares token with:
 /// - An underlying ERC20 asset
-/// - An externally settable index for yield simulation
+/// - Time-based yield simulation (index increases over time)
 /// - Full ERC-4626 deposit/mint/withdraw/redeem functions
+///
+/// The index automatically increases based on deployment timestamp:
+///   current_index = base_index * (1 + annual_yield_rate * time_elapsed / year)
 ///
 /// Mimics Nostra's nstSTRK and other ERC-4626 vaults.
 /// Can be used as:
@@ -19,8 +26,10 @@ pub mod MockYieldToken {
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use super::{IERC20Dispatcher, IERC20DispatcherTrait, WAD};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use super::{
+        DEFAULT_YIELD_RATE_BPS, IERC20Dispatcher, IERC20DispatcherTrait, SECONDS_PER_YEAR, WAD,
+    };
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 
@@ -32,9 +41,13 @@ pub mod MockYieldToken {
         erc20: ERC20Component::Storage,
         // The underlying asset (e.g., STRK)
         underlying: ContractAddress,
-        // The index in WAD (starts at 1e18, increases to represent yield)
-        // assets = shares * index / WAD
-        index_wad: u256,
+        // The base index in WAD (starts at 1e18)
+        // This is the baseline - actual index increases over time
+        base_index_wad: u256,
+        // Deployment timestamp for yield calculation
+        deployment_timestamp: u64,
+        // Annual yield rate in basis points (e.g., 500 = 5% APR)
+        annual_yield_rate_bps: u32,
         // Admin address for test controls
         admin: ContractAddress,
     }
@@ -87,7 +100,9 @@ pub mod MockYieldToken {
     ) {
         self.erc20.initializer(name, symbol);
         self.underlying.write(underlying);
-        self.index_wad.write(WAD); // Start at 1:1
+        self.base_index_wad.write(WAD); // Start at 1:1
+        self.deployment_timestamp.write(get_block_timestamp());
+        self.annual_yield_rate_bps.write(DEFAULT_YIELD_RATE_BPS); // 5% APR default
         self.admin.write(admin);
     }
 
@@ -152,16 +167,16 @@ pub mod MockYieldToken {
         }
 
         fn total_assets(self: @ContractState) -> u256 {
-            // Total assets = total shares * index / WAD
+            // Total assets = total shares * current_index / WAD
             let total_shares = self.erc20.ERC20_total_supply.read();
-            let index = self.index_wad.read();
+            let index = InternalImpl::_get_current_index(self);
             (total_shares * index) / WAD
         }
 
         // ============ ERC-4626 Conversion Functions ============
 
         fn convert_to_shares(self: @ContractState, assets: u256) -> u256 {
-            let index = self.index_wad.read();
+            let index = InternalImpl::_get_current_index(self);
             if index == 0 {
                 return assets; // 1:1 if index is 0
             }
@@ -169,7 +184,7 @@ pub mod MockYieldToken {
         }
 
         fn convert_to_assets(self: @ContractState, shares: u256) -> u256 {
-            let index = self.index_wad.read();
+            let index = InternalImpl::_get_current_index(self);
             (shares * index) / WAD
         }
 
@@ -328,34 +343,57 @@ pub mod MockYieldToken {
     #[abi(embed_v0)]
     impl MockYieldTokenExtImpl of super::IMockYieldTokenExt<ContractState> {
         /// Get the current index (for compatibility with IIndexOracle)
+        /// Index increases over time based on deployment timestamp and yield rate
         fn index(self: @ContractState) -> u256 {
-            self.index_wad.read()
+            InternalImpl::_get_current_index(self)
         }
 
-        /// Set the index (admin only, for testing)
+        /// Get the base index (without time-based yield)
+        fn base_index(self: @ContractState) -> u256 {
+            self.base_index_wad.read()
+        }
+
+        /// Set the base index (admin only, for testing)
         fn set_index(ref self: ContractState, new_index_wad: u256) {
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'MYT: not admin');
 
-            let old_index = self.index_wad.read();
+            let old_index = self.base_index_wad.read();
             // Enforce monotonic non-decreasing (can be removed for negative yield tests)
             assert(new_index_wad >= old_index, 'MYT: index can only increase');
 
-            self.index_wad.write(new_index_wad);
+            self.base_index_wad.write(new_index_wad);
             self.emit(IndexUpdated { old_index, new_index: new_index_wad });
         }
 
-        /// Increase index by basis points (admin only, for testing)
+        /// Increase base index by basis points (admin only, for testing)
         fn increase_index_bps(ref self: ContractState, bps: u32) {
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'MYT: not admin');
 
-            let old_index = self.index_wad.read();
+            let old_index = self.base_index_wad.read();
             // new_index = old_index * (10000 + bps) / 10000
             let new_index = (old_index * (10000 + bps.into())) / 10000;
 
-            self.index_wad.write(new_index);
+            self.base_index_wad.write(new_index);
             self.emit(IndexUpdated { old_index, new_index });
+        }
+
+        /// Set the annual yield rate in basis points (admin only, for testing)
+        fn set_yield_rate_bps(ref self: ContractState, rate_bps: u32) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'MYT: not admin');
+            self.annual_yield_rate_bps.write(rate_bps);
+        }
+
+        /// Get the annual yield rate in basis points
+        fn get_yield_rate_bps(self: @ContractState) -> u32 {
+            self.annual_yield_rate_bps.read()
+        }
+
+        /// Get the deployment timestamp
+        fn get_deployment_timestamp(self: @ContractState) -> u64 {
+            self.deployment_timestamp.read()
         }
 
         /// Mint shares directly to an address (admin only, for testing)
@@ -371,6 +409,43 @@ pub mod MockYieldToken {
             self.admin.read()
         }
     }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        /// Calculate the current index with time-based yield accrual
+        /// current_index = base_index * (1 + annual_yield_rate * time_elapsed / year)
+        fn _get_current_index(self: @ContractState) -> u256 {
+            let base_index = self.base_index_wad.read();
+            let yield_rate_bps = self.annual_yield_rate_bps.read();
+            let deployment_ts = self.deployment_timestamp.read();
+            let current_time = get_block_timestamp();
+
+            // Time elapsed since deployment
+            let time_elapsed = if current_time > deployment_ts {
+                current_time - deployment_ts
+            } else {
+                0
+            };
+
+            // Calculate yield accrual
+            // yield = base_index * yield_rate_bps * time_elapsed / (10000 * SECONDS_PER_YEAR)
+            if yield_rate_bps > 0 && time_elapsed > 0 {
+                let time_elapsed_u256: u256 = time_elapsed.into();
+                let base_u256: u256 = base_index;
+                let yield_bps_u256: u256 = yield_rate_bps.into();
+                let seconds_per_year_u256: u256 = SECONDS_PER_YEAR.into();
+
+                // Calculate yield: base * rate * time / (10000 * year)
+                let numerator: u256 = base_u256 * yield_bps_u256 * time_elapsed_u256;
+                let denominator: u256 = 10000_u256 * seconds_per_year_u256;
+                let yield_accrual: u256 = numerator / denominator;
+
+                base_index + yield_accrual
+            } else {
+                base_index
+            }
+        }
+    }
 }
 
 /// Extended interface for MockYieldToken (includes test controls)
@@ -378,6 +453,12 @@ pub mod MockYieldToken {
 pub trait IMockYieldTokenExt<TContractState> {
     // Index access (for IIndexOracle compatibility)
     fn index(self: @TContractState) -> u256;
+    fn base_index(self: @TContractState) -> u256;
+
+    // Yield rate controls
+    fn set_yield_rate_bps(ref self: TContractState, rate_bps: u32);
+    fn get_yield_rate_bps(self: @TContractState) -> u32;
+    fn get_deployment_timestamp(self: @TContractState) -> u64;
 
     // Test controls (admin only)
     fn set_index(ref self: TContractState, new_index_wad: u256);
@@ -437,6 +518,12 @@ pub trait IMockYieldToken<TContractState> {
 
     // Index (IIndexOracle compatibility)
     fn index(self: @TContractState) -> u256;
+    fn base_index(self: @TContractState) -> u256;
+
+    // Yield rate controls
+    fn set_yield_rate_bps(ref self: TContractState, rate_bps: u32);
+    fn get_yield_rate_bps(self: @TContractState) -> u32;
+    fn get_deployment_timestamp(self: @TContractState) -> u64;
 
     // Test controls (admin only)
     fn set_index(ref self: TContractState, new_index_wad: u256);

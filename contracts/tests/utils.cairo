@@ -135,6 +135,9 @@ pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> 
 /// MockYieldToken serves as both underlying AND index oracle (same address)
 /// Uses ERC-4626 mode since MockYieldToken implements the full ERC-4626 interface
 pub fn setup_sy() -> (IMockERC20Dispatcher, IMockYieldTokenDispatcher, ISYDispatcher) {
+    // Set timestamp before deploying MockYieldToken so it records correct deployment time
+    start_cheat_block_timestamp_global(CURRENT_TIME);
+
     let base_asset = deploy_mock_erc20();
     let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
     // For ERC-4626 tokens, underlying == index_oracle, is_erc4626 = true
