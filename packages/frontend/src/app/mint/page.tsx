@@ -10,7 +10,7 @@ import { WrapToSyForm } from '@/components/forms/WrapToSyForm';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 
-type TabType = 'wrap' | 'mint' | 'unwrap';
+type TabType = 'wrap' | 'split' | 'unwrap';
 
 function MintPageContent(): ReactNode {
   const searchParams = useSearchParams();
@@ -18,7 +18,7 @@ function MintPageContent(): ReactNode {
   const tabParam = searchParams.get('tab');
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam === 'mint' ? 'mint' : tabParam === 'unwrap' ? 'unwrap' : 'wrap'
+    tabParam === 'split' ? 'split' : tabParam === 'unwrap' ? 'unwrap' : 'wrap'
   );
   const [selectedMarketAddress, setSelectedMarketAddress] = useState<string | null>(marketParam);
 
@@ -87,15 +87,15 @@ function MintPageContent(): ReactNode {
           </button>
           <button
             onClick={() => {
-              setActiveTab('mint');
+              setActiveTab('split');
             }}
             className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'mint'
+              activeTab === 'split'
                 ? 'bg-blue-600 text-white'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Mint
+            Split
           </button>
           <button
             onClick={() => {
@@ -127,7 +127,7 @@ function MintPageContent(): ReactNode {
           </div>
         ) : activeTab === 'wrap' ? (
           <WrapToSyForm market={selectedMarket} />
-        ) : activeTab === 'mint' ? (
+        ) : activeTab === 'split' ? (
           <MintForm market={selectedMarket} />
         ) : (
           <UnwrapSyForm market={selectedMarket} />
@@ -138,7 +138,7 @@ function MintPageContent(): ReactNode {
       <div className="mt-8 w-full max-w-md lg:mt-0">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
           <h2 className="text-lg font-semibold text-neutral-100">
-            {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Minting Works'}
+            {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Splitting Works'}
           </h2>
 
           {activeTab === 'unwrap' ? (
@@ -197,7 +197,7 @@ function MintPageContent(): ReactNode {
               <div className="flex gap-3">
                 <div
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                    activeTab === 'mint'
+                    activeTab === 'split'
                       ? 'bg-blue-500/30 text-blue-400'
                       : 'bg-blue-500/20 text-blue-500'
                   }`}
@@ -205,7 +205,7 @@ function MintPageContent(): ReactNode {
                   2
                 </div>
                 <div>
-                  <p className="font-medium text-neutral-200">Mint PT + YT</p>
+                  <p className="font-medium text-neutral-200">Split into PT + YT</p>
                   <p className="mt-1">
                     For each token deposited, you receive 1 Principal Token (PT) and 1 Yield Token
                     (YT).
@@ -264,9 +264,9 @@ export default function MintPage(): ReactNode {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-bold text-neutral-100">Deposit & Mint</h1>
+        <h1 className="text-3xl font-bold text-neutral-100">Deposit & Split</h1>
         <p className="mt-2 text-neutral-400">
-          Deposit yield-bearing tokens, then mint Principal Tokens (PT) and Yield Tokens (YT)
+          Deposit yield-bearing tokens, then split into Principal Tokens (PT) and Yield Tokens (YT)
         </p>
       </div>
 

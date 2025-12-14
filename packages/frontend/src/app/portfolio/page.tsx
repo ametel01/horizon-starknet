@@ -483,7 +483,7 @@ function PortfolioContent(): ReactNode {
             <div className="rounded-lg bg-neutral-800/50 p-4">
               <div className="text-sm text-neutral-400">Total Claimable Yield</div>
               <div className="mt-1 text-2xl font-semibold text-green-400">
-                {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} tokens
+                {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY
               </div>
             </div>
             <div className="rounded-lg bg-neutral-800/50 p-4">
@@ -506,7 +506,7 @@ function PortfolioContent(): ReactNode {
                   ? 'Claiming All...'
                   : claimAllSuccess
                     ? 'All Claimed!'
-                    : `Claim All Yield (${formatWad(portfolio.totalClaimableYield, 4)} tokens)`}
+                    : `Claim All Yield (${formatWad(portfolio.totalClaimableYield, 4)} SY)`}
               </Button>
               {claimAllTxStatus !== 'idle' && (
                 <div className="mt-2">
