@@ -3,6 +3,7 @@ pub mod i_factory;
 pub mod i_index_oracle;
 pub mod i_market;
 pub mod i_market_factory;
+pub mod i_pragma_summary_stats;
 pub mod i_pt;
 pub mod i_router;
 pub mod i_sy;

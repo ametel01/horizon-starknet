@@ -48,4 +48,16 @@ pub mod Errors {
     pub const FACTORY_ALREADY_EXISTS: felt252 = 'Factory: already exists';
     pub const FACTORY_INVALID_EXPIRY: felt252 = 'Factory: invalid expiry';
     pub const FACTORY_DEPLOY_FAILED: felt252 = 'Factory: deploy failed';
+
+    // PragmaIndexOracle errors
+    pub const PIO_ZERO_ADMIN: felt252 = 'PIO: zero admin';
+    pub const PIO_ZERO_ORACLE: felt252 = 'PIO: zero oracle';
+    pub const PIO_ZERO_PAIR: felt252 = 'PIO: zero numerator pair';
+    pub const PIO_INVALID_INDEX: felt252 = 'PIO: invalid initial index';
+    pub const PIO_NOT_ADMIN: felt252 = 'PIO: not admin';
+    pub const PIO_PAUSED: felt252 = 'PIO: paused';
+    pub const PIO_WINDOW_TOO_SHORT: felt252 = 'PIO: window too short';
+    pub const PIO_STALENESS_INVALID: felt252 = 'PIO: staleness < window';
+    pub const PIO_ZERO_DENOM_PRICE: felt252 = 'PIO: zero denominator price';
+    pub const PIO_INDEX_BELOW_WAD: felt252 = 'PIO: index below WAD';
 }

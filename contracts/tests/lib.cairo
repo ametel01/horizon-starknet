@@ -10,6 +10,8 @@ mod test_market;
 mod test_market_factory;
 mod test_market_math;
 mod test_math;
+mod test_mock_pragma;
+mod test_pragma_index_oracle;
 mod test_pt;
 mod test_router;
 mod test_sy;
