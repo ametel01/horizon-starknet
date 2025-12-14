@@ -1,20 +1,8 @@
 name: Frontend Deploy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'packages/frontend/**'
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'preview'
-        type: choice
-        options:
-          - preview
-          - production
+  release:
+    types: [published]
 
 jobs:
   deploy:
@@ -24,7 +12,7 @@ jobs:
       run:
         working-directory: packages/frontend
     environment:
-      name: ${{ github.event.inputs.environment || 'preview' }}
+      name: production
       url: ${{ steps.deploy.outputs.url }}
 
     steps:
@@ -46,13 +34,13 @@ jobs:
         run: bun add -g vercel@latest
 
       - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=${{ github.event.inputs.environment || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build with Vercel
-        run: vercel build ${{ github.event.inputs.environment == 'production' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -60,7 +48,7 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt ${{ github.event.inputs.environment == 'production' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
