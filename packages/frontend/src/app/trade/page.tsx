@@ -61,8 +61,8 @@ function TradePageContent(): ReactNode {
               <div>
                 <p className="font-medium text-neutral-200">Principal Token (PT)</p>
                 <p className="mt-1">
-                  Buy PT at a discount for fixed yield. PT redeems for 1 SY at expiry. PT price
-                  rises when rates fall and falls when rates rise.
+                  Buy PT at a discount for fixed yield. PT redeems for the underlying token at
+                  expiry. PT price rises when rates fall and falls when rates rise.
                 </p>
               </div>
             </div>
@@ -100,8 +100,8 @@ function TradePageContent(): ReactNode {
           <div className="mt-6 rounded-lg bg-neutral-800/50 p-4">
             <h3 className="text-sm font-medium text-neutral-200">Implied Yield</h3>
             <p className="mt-2 text-sm text-neutral-400">
-              The implied yield is derived from the PT/SY exchange rate. Buying PT at a lower price
-              means a higher implied yield for your investment.
+              The implied yield is derived from the PT price. Buying PT at a lower price means a
+              higher implied yield for your investment.
             </p>
             {selectedMarket && (
               <div className="mt-3 flex justify-between text-sm">

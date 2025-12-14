@@ -17,10 +17,10 @@ import { formatWad } from '@/lib/math/wad';
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get token symbols from metadata
+  // Get token symbols from metadata - hide SY, show underlying
   const tokenSymbol = position.market.metadata?.yieldTokenSymbol ?? 'Token';
   const tokenName = position.market.metadata?.yieldTokenName ?? 'Unknown Market';
-  const sySymbol = `SY-${tokenSymbol}`;
+  const depositedLabel = `Deposited ${tokenSymbol}`;
   const ptSymbol = `PT-${tokenSymbol}`;
   const ytSymbol = `YT-${tokenSymbol}`;
 
@@ -203,7 +203,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
           <h4 className="text-sm font-medium text-neutral-300">Token Balances</h4>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">{sySymbol}</div>
+              <div className="text-neutral-500">{depositedLabel}</div>
               <div className="font-mono text-neutral-100">{formatWad(position.syBalance, 4)}</div>
             </div>
             <div className="rounded-lg bg-neutral-800/50 p-3">
@@ -228,7 +228,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
               <div>
                 <div className="text-sm text-green-400">Claimable Yield</div>
                 <div className="font-mono text-lg text-green-300">
-                  {formatWad(position.claimableYield, 6)} {sySymbol}
+                  {formatWad(position.claimableYield, 6)} {tokenSymbol}
                 </div>
               </div>
               <Button
@@ -265,7 +265,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
                       Redeem {ptSymbol} + {ytSymbol}
                     </div>
                     <div className="text-xs text-neutral-400">
-                      Burn matching {ptSymbol} & {ytSymbol} to receive {sySymbol}
+                      Burn matching {ptSymbol} & {ytSymbol} to receive {tokenSymbol}
                     </div>
                     <div className="mt-1 font-mono text-sm text-blue-300">
                       Max:{' '}
@@ -309,7 +309,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
                       Redeem {ptSymbol} for underlying asset
                     </div>
                     <div className="mt-1 font-mono text-sm text-yellow-300">
-                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {sySymbol}
+                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {tokenSymbol}
                     </div>
                   </div>
                   <Button
@@ -483,7 +483,7 @@ function PortfolioContent(): ReactNode {
             <div className="rounded-lg bg-neutral-800/50 p-4">
               <div className="text-sm text-neutral-400">Total Claimable Yield</div>
               <div className="mt-1 text-2xl font-semibold text-green-400">
-                {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY
+                {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} tokens
               </div>
             </div>
             <div className="rounded-lg bg-neutral-800/50 p-4">
@@ -506,7 +506,7 @@ function PortfolioContent(): ReactNode {
                   ? 'Claiming All...'
                   : claimAllSuccess
                     ? 'All Claimed!'
-                    : `Claim All Yield (${formatWad(portfolio.totalClaimableYield, 4)} SY)`}
+                    : `Claim All Yield (${formatWad(portfolio.totalClaimableYield, 4)} tokens)`}
               </Button>
               {claimAllTxStatus !== 'idle' && (
                 <div className="mt-2">

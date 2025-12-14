@@ -52,11 +52,11 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     reset: resetSwap,
   } = useSwap();
 
-  // Get token symbol from metadata
-  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? '';
-  const syLabel = tokenSymbol ? `SY-${tokenSymbol}` : 'SY';
-  const ptLabel = tokenSymbol ? `PT-${tokenSymbol}` : 'PT';
-  const ytLabel = tokenSymbol ? `YT-${tokenSymbol}` : 'YT';
+  // Get token symbol from metadata - hide SY, just show underlying
+  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const underlyingLabel = tokenSymbol; // Use underlying symbol instead of SY
+  const ptLabel = `PT-${tokenSymbol}`;
+  const ytLabel = `YT-${tokenSymbol}`;
 
   // Get input/output token addresses and labels based on direction
   const inputToken = isBuying
@@ -64,8 +64,8 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     : tokenType === 'PT'
       ? market.ptAddress
       : market.ytAddress;
-  const inputLabel = isBuying ? syLabel : tokenType === 'PT' ? ptLabel : ytLabel;
-  const outputLabel = isBuying ? (tokenType === 'PT' ? ptLabel : ytLabel) : syLabel;
+  const inputLabel = isBuying ? underlyingLabel : tokenType === 'PT' ? ptLabel : ytLabel;
+  const outputLabel = isBuying ? (tokenType === 'PT' ? ptLabel : ytLabel) : underlyingLabel;
 
   // Fetch balance for input token
   const { data: inputBalance } = useTokenBalance(inputToken);
@@ -408,12 +408,12 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
               <div>
                 <p className="font-medium text-yellow-400">Collateral Required</p>
                 <p className="mt-1 text-yellow-200/80">
-                  Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
-                  collateral. This will be refunded after the swap.
+                  Selling YT requires {formatWad(collateralRequired, 4)} {underlyingLabel} as
+                  temporary collateral. This will be refunded after the swap.
                 </p>
                 {hasInsufficientCollateral && (
                   <p className="mt-1 text-red-400">
-                    Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
+                    Insufficient {underlyingLabel} balance. You have {formatWad(syBalance, 4)}.
                   </p>
                 )}
               </div>

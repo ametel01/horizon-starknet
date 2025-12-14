@@ -55,7 +55,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
       const amountWad = toWad(amount);
 
       if (syBalance !== undefined && amountWad > syBalance) {
-        return 'Insufficient SY balance';
+        return 'Insufficient balance';
       }
     } catch {
       return 'Invalid amount';
@@ -89,46 +89,35 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
   const buttonText = useMemo(() => {
     if (!isConnected) return 'Connect Wallet';
     if (underlyingLoading) return 'Loading...';
-    if (!underlyingAddress) return 'No Underlying Found';
-    if (isLoading) return status === 'signing' ? 'Confirm in Wallet...' : 'Unwrapping...';
+    if (!underlyingAddress) return 'Token not found';
+    if (isLoading) return 'Withdrawing...';
     if (validationError) return validationError;
     if (!amount || amount === '0') return 'Enter Amount';
-    return 'Unwrap SY';
-  }, [
-    isConnected,
-    underlyingLoading,
-    underlyingAddress,
-    isLoading,
-    status,
-    validationError,
-    amount,
-  ]);
+    return 'Withdraw';
+  }, [isConnected, underlyingLoading, underlyingAddress, isLoading, validationError, amount]);
 
   // Get token symbols from metadata
-  const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Underlying';
-  const sySymbol = `SY-${market.metadata?.yieldTokenSymbol ?? 'Token'}`;
+  const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
     <Card className="w-full max-w-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>
-            Unwrap {sySymbol} to {underlyingSymbol}
-          </CardTitle>
+          <CardTitle>Withdraw {underlyingSymbol}</CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
         <p className="text-sm text-neutral-400">
-          Unwrap your Standardized Yield (SY) tokens back to{' '}
-          {market.metadata?.yieldTokenName ?? 'yield-bearing tokens'}
+          Withdraw your deposited {tokenName} from the protocol
         </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* Input */}
         <TokenInput
-          label="You redeem"
+          label="You withdraw"
           tokenAddress={market.syAddress}
-          tokenSymbol={sySymbol}
+          tokenSymbol={underlyingSymbol}
           value={amount}
           onChange={setAmount}
           disabled={isLoading}
@@ -166,15 +155,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
         <div className="rounded-lg bg-neutral-800/50 p-3 text-sm">
           <div className="flex justify-between text-neutral-400">
             <span>Exchange Rate</span>
-            <span className="text-neutral-200">
-              1 {sySymbol} = 1 {underlyingSymbol}
-            </span>
-          </div>
-          <div className="mt-1 flex justify-between text-neutral-400">
-            <span>SY Contract</span>
-            <span className="font-mono text-xs text-neutral-200">
-              {market.syAddress.slice(0, 6)}...{market.syAddress.slice(-4)}
-            </span>
+            <span className="text-neutral-200">1:1</span>
           </div>
         </div>
 
@@ -184,7 +165,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
         {/* Actions */}
         {status === 'success' ? (
           <Button onClick={handleReset} className="w-full">
-            Unwrap More
+            Withdraw More
           </Button>
         ) : (
           <Button onClick={handleUnwrap} disabled={buttonDisabled} className="w-full">

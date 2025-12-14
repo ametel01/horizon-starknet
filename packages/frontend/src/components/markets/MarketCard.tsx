@@ -43,19 +43,15 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
           {/* TVL */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-neutral-400">TVL</span>
-            <TokenAmount
-              amount={market.tvlSy}
-              symbol={`SY-${tokenSymbol}`}
-              className="text-neutral-100"
-            />
+            <TokenAmount amount={market.tvlSy} symbol={tokenSymbol} className="text-neutral-100" />
           </div>
 
           {/* Reserves */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-400">SY Reserve</span>
+            <span className="text-sm text-neutral-400">Liquidity</span>
             <TokenAmount
               amount={market.state.syReserve}
-              symbol={`SY-${tokenSymbol}`}
+              symbol={tokenSymbol}
               className="text-neutral-300"
             />
           </div>

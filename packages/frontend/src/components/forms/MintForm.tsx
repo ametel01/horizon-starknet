@@ -21,17 +21,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
   const { isConnected } = useAccount();
   const [amountSy, setAmountSy] = useState('');
 
-  const {
-    syBalance,
-    syBalanceLoading,
-    needsApproval,
-    mint,
-    status,
-    txHash,
-    error,
-    isLoading,
-    reset,
-  } = useMint({
+  const { syBalance, syBalanceLoading, mint, status, txHash, error, isLoading, reset } = useMint({
     syAddress: market.syAddress,
     ytAddress: market.ytAddress,
   });
@@ -58,7 +48,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
       const amountWad = toWad(amountSy);
 
       if (syBalance !== undefined && amountWad > syBalance) {
-        return 'Insufficient SY balance';
+        return 'Insufficient balance';
       }
     } catch {
       return 'Invalid amount';
@@ -66,17 +56,6 @@ export function MintForm({ market }: MintFormProps): ReactNode {
 
     return null;
   }, [amountSy, syBalance]);
-
-  // Check if approval is needed
-  const requiresApproval = useMemo(() => {
-    if (!amountSy || amountSy === '0') return false;
-    try {
-      const amountWad = toWad(amountSy);
-      return needsApproval(amountWad);
-    } catch {
-      return false;
-    }
-  }, [amountSy, needsApproval]);
 
   // Handle mint
   const handleMint = useCallback(async () => {
@@ -96,16 +75,14 @@ export function MintForm({ market }: MintFormProps): ReactNode {
 
   const buttonText = useMemo(() => {
     if (!isConnected) return 'Connect Wallet';
-    if (isLoading) return status === 'signing' ? 'Confirm in Wallet...' : 'Minting...';
+    if (isLoading) return 'Minting...';
     if (validationError) return validationError;
     if (!amountSy || amountSy === '0') return 'Enter Amount';
-    if (requiresApproval) return 'Approve & Mint';
     return 'Mint PT + YT';
-  }, [isConnected, isLoading, status, validationError, amountSy, requiresApproval]);
+  }, [isConnected, isLoading, validationError, amountSy]);
 
   // Get token symbols from metadata
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
-  const sySymbol = `SY-${tokenSymbol}`;
   const ptSymbol = `PT-${tokenSymbol}`;
   const ytSymbol = `YT-${tokenSymbol}`;
 
@@ -113,22 +90,20 @@ export function MintForm({ market }: MintFormProps): ReactNode {
     <Card className="w-full max-w-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>
-            Mint {ptSymbol} + {ytSymbol}
-          </CardTitle>
+          <CardTitle>Mint PT + YT</CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
         <p className="text-sm text-neutral-400">
-          Deposit {sySymbol} to receive Principal Tokens and Yield Tokens
+          Split your deposit into Principal Token and Yield Token
         </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* Input */}
         <TokenInput
-          label="You deposit"
+          label="You use"
           tokenAddress={market.syAddress}
-          tokenSymbol={sySymbol}
+          tokenSymbol={tokenSymbol}
           value={amountSy}
           onChange={setAmountSy}
           disabled={isLoading}
@@ -169,13 +144,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
         <div className="rounded-lg bg-neutral-800/50 p-3 text-sm">
           <div className="flex justify-between text-neutral-400">
             <span>Exchange Rate</span>
-            <span className="text-neutral-200">
-              1 {sySymbol} = 1 {ptSymbol} + 1 {ytSymbol}
-            </span>
-          </div>
-          <div className="mt-1 flex justify-between text-neutral-400">
-            <span>Slippage Tolerance</span>
-            <span className="text-neutral-200">0.5%</span>
+            <span className="text-neutral-200">1 : 1 PT + 1 YT</span>
           </div>
         </div>
 

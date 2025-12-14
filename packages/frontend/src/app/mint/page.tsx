@@ -83,7 +83,7 @@ function MintPageContent(): ReactNode {
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Wrap
+            Deposit
           </button>
           <button
             onClick={() => {
@@ -107,7 +107,7 @@ function MintPageContent(): ReactNode {
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Unwrap
+            Withdraw
           </button>
         </div>
 
@@ -138,7 +138,7 @@ function MintPageContent(): ReactNode {
       <div className="mt-8 w-full max-w-md lg:mt-0">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
           <h2 className="text-lg font-semibold text-neutral-100">
-            {activeTab === 'unwrap' ? 'How Unwrapping Works' : 'How Minting Works'}
+            {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Minting Works'}
           </h2>
 
           {activeTab === 'unwrap' ? (
@@ -148,10 +148,10 @@ function MintPageContent(): ReactNode {
                   1
                 </div>
                 <div>
-                  <p className="font-medium text-neutral-200">Unwrap SY</p>
+                  <p className="font-medium text-neutral-200">Withdraw Your Tokens</p>
                   <p className="mt-1">
-                    Convert your Standardized Yield (SY) tokens back to the underlying yield-bearing
-                    token (like nstSTRK).
+                    Convert your deposited tokens back to the underlying yield-bearing token (like
+                    nstSTRK).
                   </p>
                 </div>
               </div>
@@ -170,8 +170,8 @@ function MintPageContent(): ReactNode {
 
               <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
                 <p className="text-sm text-yellow-400">
-                  <span className="font-medium">Note:</span> Unwrapping only converts SY back to the
-                  underlying token. To get SY from PT+YT, use the Redeem function in Portfolio.
+                  <span className="font-medium">Note:</span> Withdrawing only converts deposited
+                  tokens back. To convert PT+YT back, use the Redeem function in Portfolio.
                 </p>
               </div>
             </div>
@@ -188,10 +188,9 @@ function MintPageContent(): ReactNode {
                   1
                 </div>
                 <div>
-                  <p className="font-medium text-neutral-200">Wrap to SY</p>
+                  <p className="font-medium text-neutral-200">Deposit Tokens</p>
                   <p className="mt-1">
-                    Wrap your yield-bearing tokens (like nstSTRK) into Standardized Yield (SY)
-                    tokens.
+                    Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
                   </p>
                 </div>
               </div>
@@ -208,7 +207,7 @@ function MintPageContent(): ReactNode {
                 <div>
                   <p className="font-medium text-neutral-200">Mint PT + YT</p>
                   <p className="mt-1">
-                    For each SY deposited, you receive 1 Principal Token (PT) and 1 Yield Token
+                    For each token deposited, you receive 1 Principal Token (PT) and 1 Yield Token
                     (YT).
                   </p>
                 </div>
@@ -231,12 +230,8 @@ function MintPageContent(): ReactNode {
             <h3 className="text-sm font-medium text-neutral-200">Token Details</h3>
             <dl className="mt-2 space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-neutral-400">SY (Standardized Yield)</dt>
-                <dd className="text-neutral-200">1:1 with underlying</dd>
-              </div>
-              <div className="flex justify-between">
                 <dt className="text-neutral-400">PT (Principal Token)</dt>
-                <dd className="text-neutral-200">Redeemable for 1 SY at maturity</dd>
+                <dd className="text-neutral-200">Redeemable for underlying at maturity</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-neutral-400">YT (Yield Token)</dt>
@@ -269,9 +264,9 @@ export default function MintPage(): ReactNode {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-bold text-neutral-100">Wrap & Mint</h1>
+        <h1 className="text-3xl font-bold text-neutral-100">Deposit & Mint</h1>
         <p className="mt-2 text-neutral-400">
-          Wrap yield-bearing tokens to SY, then mint Principal Tokens (PT) and Yield Tokens (YT)
+          Deposit yield-bearing tokens, then mint Principal Tokens (PT) and Yield Tokens (YT)
         </p>
       </div>
 

@@ -30,7 +30,6 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
   const {
     underlyingBalance,
     underlyingBalanceLoading,
-    needsApproval,
     wrap,
     status,
     txHash,
@@ -73,17 +72,6 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
     return null;
   }, [amount, underlyingBalance]);
 
-  // Check if approval is needed
-  const requiresApproval = useMemo(() => {
-    if (!amount || amount === '0') return false;
-    try {
-      const amountWad = toWad(amount);
-      return needsApproval(amountWad);
-    } catch {
-      return false;
-    }
-  }, [amount, needsApproval]);
-
   // Handle wrap
   const handleWrap = useCallback(async () => {
     if (validationError || !underlyingAddress) return;
@@ -109,40 +97,25 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
   const buttonText = useMemo(() => {
     if (!isConnected) return 'Connect Wallet';
     if (underlyingLoading) return 'Loading...';
-    if (!underlyingAddress) return 'No Underlying Found';
-    if (isLoading) return status === 'signing' ? 'Confirm in Wallet...' : 'Wrapping...';
+    if (!underlyingAddress) return 'Token not found';
+    if (isLoading) return 'Depositing...';
     if (validationError) return validationError;
     if (!amount || amount === '0') return 'Enter Amount';
-    if (requiresApproval) return 'Approve & Wrap';
-    return 'Wrap to SY';
-  }, [
-    isConnected,
-    underlyingLoading,
-    underlyingAddress,
-    isLoading,
-    status,
-    validationError,
-    amount,
-    requiresApproval,
-  ]);
+    return 'Deposit';
+  }, [isConnected, underlyingLoading, underlyingAddress, isLoading, validationError, amount]);
 
   // Get token symbols from metadata
-  const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Underlying';
-  const sySymbol = `SY-${market.metadata?.yieldTokenSymbol ?? 'Token'}`;
+  const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
     <Card className="w-full max-w-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>
-            Wrap {underlyingSymbol} to {sySymbol}
-          </CardTitle>
+          <CardTitle>Deposit {underlyingSymbol}</CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
-        <p className="text-sm text-neutral-400">
-          Wrap your {market.metadata?.yieldTokenName ?? 'yield-bearing tokens'} into Standardized
-          Yield (SY) tokens
-        </p>
+        <p className="text-sm text-neutral-400">Deposit your {tokenName} to use in the protocol</p>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -178,9 +151,9 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
 
         {/* Output */}
         <TokenOutput
-          label="You receive"
+          label="Available to mint"
           amount={outputAmount}
-          tokenSymbol={sySymbol}
+          tokenSymbol={underlyingSymbol}
           isLoading={underlyingBalanceLoading}
         />
 
@@ -188,15 +161,7 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
         <div className="rounded-lg bg-neutral-800/50 p-3 text-sm">
           <div className="flex justify-between text-neutral-400">
             <span>Exchange Rate</span>
-            <span className="text-neutral-200">
-              1 {underlyingSymbol} = 1 {sySymbol}
-            </span>
-          </div>
-          <div className="mt-1 flex justify-between text-neutral-400">
-            <span>SY Contract</span>
-            <span className="font-mono text-xs text-neutral-200">
-              {market.syAddress.slice(0, 6)}...{market.syAddress.slice(-4)}
-            </span>
+            <span className="text-neutral-200">1:1</span>
           </div>
         </div>
 
@@ -206,7 +171,7 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
         {/* Actions */}
         {status === 'success' ? (
           <Button onClick={handleReset} className="w-full">
-            Wrap More
+            Deposit More
           </Button>
         ) : (
           <Button onClick={handleWrap} disabled={buttonDisabled} className="w-full">
