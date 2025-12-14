@@ -3,34 +3,34 @@
 # =============================================================================
 # Docker Deployment Script
 # =============================================================================
-# Waits for Katana to be ready, then deploys all contracts
+# Waits for Devnet to be ready, then deploys all contracts
 # =============================================================================
 
 set -e
 
-KATANA_URL="${KATANA_URL:-http://katana:5050}"
+DEVNET_URL="${DEVNET_URL:-http://devnet:5050}"
 MAX_RETRIES="${MAX_RETRIES:-30}"
 RETRY_INTERVAL="${RETRY_INTERVAL:-2}"
 
 echo "=========================================="
 echo "Horizon Protocol - Docker Deployment"
 echo "=========================================="
-echo "Katana URL: $KATANA_URL"
+echo "Devnet URL: $DEVNET_URL"
 
 # =============================================================================
-# Wait for Katana
+# Wait for Devnet
 # =============================================================================
 
-echo "Waiting for Katana to be ready..."
+echo "Waiting for Starknet Devnet to be ready..."
 
 for i in $(seq 1 $MAX_RETRIES); do
-    if curl -s "$KATANA_URL" > /dev/null 2>&1; then
-        echo "Katana is ready!"
+    if curl -s "$DEVNET_URL/is_alive" > /dev/null 2>&1; then
+        echo "Starknet Devnet is ready!"
         break
     fi
 
     if [ $i -eq $MAX_RETRIES ]; then
-        echo "Error: Katana not available after $MAX_RETRIES attempts"
+        echo "Error: Devnet not available after $MAX_RETRIES attempts"
         exit 1
     fi
 
@@ -39,10 +39,10 @@ for i in $(seq 1 $MAX_RETRIES); do
 done
 
 # =============================================================================
-# Update .env with Docker Katana URL
+# Update .env with Docker Devnet URL
 # =============================================================================
 
-ENV_FILE="${ENV_FILE:-.env.katana}"
+ENV_FILE="${ENV_FILE:-.env.devnet}"
 
 # Reset addresses first
 ./deploy/scripts/reset-env.sh "$ENV_FILE"
@@ -50,11 +50,11 @@ ENV_FILE="${ENV_FILE:-.env.katana}"
 # Update RPC URL for Docker network (use temp file for bind mount compatibility)
 TEMP_FILE=$(mktemp)
 cp "$ENV_FILE" "$TEMP_FILE"
-sed "s|^STARKNET_RPC_URL=.*|STARKNET_RPC_URL=$KATANA_URL|" "$TEMP_FILE" > "${TEMP_FILE}.new"
+sed "s|^STARKNET_RPC_URL=.*|STARKNET_RPC_URL=$DEVNET_URL|" "$TEMP_FILE" > "${TEMP_FILE}.new"
 cat "${TEMP_FILE}.new" > "$ENV_FILE"
 rm -f "$TEMP_FILE" "${TEMP_FILE}.new"
 
-echo "Updated RPC URL to: $KATANA_URL"
+echo "Updated RPC URL to: $DEVNET_URL"
 
 # =============================================================================
 # Deploy Contracts
@@ -64,7 +64,7 @@ echo ""
 echo "Starting deployment..."
 echo ""
 
-./deploy/scripts/deploy.sh katana
+./deploy/scripts/deploy.sh devnet
 
 # =============================================================================
 # Copy output to mounted volume if exists
@@ -74,7 +74,7 @@ if [ -d "/output" ]; then
     echo ""
     echo "Copying addresses to /output..."
     cp "$ENV_FILE" /output/
-    cp deploy/addresses/katana.json /output/ 2>/dev/null || true
+    cp deploy/addresses/devnet.json /output/ 2>/dev/null || true
     echo "Files copied to /output/"
 fi
 

@@ -11,7 +11,7 @@ deploy/
 │   ├── declare.sh          # Declare classes only
 │   └── export-addresses.sh # Export addresses to JSON
 ├── addresses/
-│   ├── katana.json         # Deployed addresses (generated)
+│   ├── devnet.json         # Deployed addresses (generated)
 │   ├── sepolia.json
 │   └── mainnet.json
 └── README.md
@@ -31,20 +31,20 @@ deploy/
    ```
 
 3. **Running network**
-   - Katana: `katana` (local devnet)
+   - Devnet: `docker-compose up` (local starknet-devnet-rs)
    - Sepolia: Public testnet (no setup needed)
    - Mainnet: Starknet mainnet
 
 ## Environment Setup
 
-### Katana (Local Development)
+### Devnet (Local Development)
 
-1. Start Katana in a separate terminal:
+1. Start devnet via Docker:
    ```bash
-   katana
+   docker-compose up
    ```
 
-2. The `.env.katana` file is pre-configured with Katana's prefunded accounts.
+2. The `.env.devnet` file is pre-configured with devnet's prefunded accounts.
 
 ### Sepolia (Testnet)
 
@@ -81,8 +81,8 @@ deploy/
 Deploys all contracts including test setup:
 
 ```bash
-# Deploy to Katana
-./deploy/scripts/deploy.sh katana
+# Deploy to Devnet
+./deploy/scripts/deploy.sh devnet
 
 # Deploy to Sepolia
 ./deploy/scripts/deploy.sh sepolia
@@ -96,7 +96,7 @@ Deploys all contracts including test setup:
 Only declares contract classes (useful for upgrades or debugging):
 
 ```bash
-./deploy/scripts/declare.sh katana
+./deploy/scripts/declare.sh devnet
 ```
 
 ### Export Addresses
@@ -104,7 +104,7 @@ Only declares contract classes (useful for upgrades or debugging):
 Export deployed addresses to JSON format for frontend:
 
 ```bash
-./deploy/scripts/export-addresses.sh katana
+./deploy/scripts/export-addresses.sh devnet
 ```
 
 ## Deployment Order
@@ -174,7 +174,7 @@ cd contracts && scarb build
 
 Check if the network is accessible:
 ```bash
-# Katana
+# Devnet
 curl http://localhost:5050
 
 # Sepolia

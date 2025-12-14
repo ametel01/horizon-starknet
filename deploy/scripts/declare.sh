@@ -22,7 +22,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONTRACTS_DIR="$ROOT_DIR/contracts"
 BUILD_DIR="$CONTRACTS_DIR/target/dev"
 
-NETWORK="${1:-katana}"
+NETWORK="${1:-devnet}"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
 
 echo -e "${BLUE}========================================${NC}"

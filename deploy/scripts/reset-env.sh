@@ -4,7 +4,7 @@
 # Reset all addresses in an .env file and corresponding addresses JSON
 # =============================================================================
 # Usage: ./deploy/scripts/reset-env.sh <env-file>
-#   e.g.: ./deploy/scripts/reset-env.sh .env.katana
+#   e.g.: ./deploy/scripts/reset-env.sh .env.devnet
 # =============================================================================
 
 set -e
@@ -12,7 +12,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ADDRESSES_DIR="$SCRIPT_DIR/../addresses"
 
-ENV_FILE="${1:-.env.katana}"
+ENV_FILE="${1:-.env.devnet}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
     echo "Error: File not found: $ENV_FILE"
@@ -74,7 +74,7 @@ rm -f "$TEMP_FILE"
 echo "Done resetting $ENV_FILE!"
 
 # Reset corresponding addresses JSON file
-# Extract network name from env file (e.g., .env.katana -> katana)
+# Extract network name from env file (e.g., .env.devnet -> devnet)
 NETWORK=$(basename "$ENV_FILE" | sed 's/^\.env\.//')
 ADDRESSES_FILE="$ADDRESSES_DIR/${NETWORK}.json"
 

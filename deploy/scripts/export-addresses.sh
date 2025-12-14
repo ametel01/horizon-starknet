@@ -11,7 +11,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-NETWORK="${1:-katana}"
+NETWORK="${1:-devnet}"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
 OUTPUT_FILE="$ROOT_DIR/deploy/addresses/$NETWORK.json"
 

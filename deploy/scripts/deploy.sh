@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# Horizon Protocol - Deployment Script
+# Horizon Protocol - Deployment Script (sncast version)
 # =============================================================================
 # Usage: ./deploy/scripts/deploy.sh [network]
-#   network: katana (default) | sepolia | mainnet
+#   network: devnet (default) | sepolia | mainnet
 # =============================================================================
 
 set -e
@@ -20,17 +20,17 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONTRACTS_DIR="$ROOT_DIR/contracts"
-BUILD_DIR="$CONTRACTS_DIR/target/dev"
 
 # Network
-NETWORK="${1:-katana}"
+NETWORK="${1:-devnet}"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
+ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
-# Test recipient address for minting tokens
-TEST_RECIPIENT="0x0715140EF3b872C34c0E82CB2650c4bEB0E9F60d5a157414af6913E9326cd691"
+# Test recipient address for minting tokens (predeployed devnet account #0)
+TEST_RECIPIENT="0x064b48806902a367c8598f4F95C305e8c1a1aCbA5f082D294a43793113115691"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}Horizon Protocol Deployment${NC}"
+echo -e "${BLUE}Horizon Protocol Deployment (sncast)${NC}"
 echo -e "${BLUE}Network: $NETWORK${NC}"
 echo -e "${BLUE}========================================${NC}"
 
@@ -57,11 +57,6 @@ update_env() {
     fi
 }
 
-# Convert string to hex for ByteArray pending_word
-string_to_hex() {
-    echo -n "$1" | xxd -p | tr -d '\n'
-}
-
 # =============================================================================
 # Load Environment
 # =============================================================================
@@ -74,37 +69,70 @@ fi
 source "$ENV_FILE"
 
 log_info "RPC: $STARKNET_RPC_URL"
-log_info "Account: $DEPLOYER_ACCOUNT"
 
-# Build starkli common args
-STARKLI_COMMON="--rpc $STARKNET_RPC_URL --account $DEPLOYER_ACCOUNT"
+# =============================================================================
+# Setup Account for sncast
+# =============================================================================
 
-# Get deployer address for admin purposes
-# For katana, use the well-known account addresses
-if [[ "$NETWORK" == "katana" ]]; then
-    # Katana default accounts (deterministic)
-    case "$DEPLOYER_ACCOUNT" in
-        "katana-0")
-            DEPLOYER_ADDRESS="0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
-            ;;
-        "katana-1")
-            DEPLOYER_ADDRESS="0x13d9ee239f33fea4f8785b9e3870ade909e20a9599ae7cd62c1c292b73af1b7"
-            ;;
-        *)
-            # Try starkli for other accounts
-            DEPLOYER_ADDRESS=$(starkli account address "$DEPLOYER_ACCOUNT" 2>/dev/null || echo "")
-            ;;
-    esac
+if [[ "$NETWORK" == "devnet" ]]; then
+    # Fetch predeployed accounts from devnet via JSON-RPC
+    log_info "Fetching predeployed accounts from devnet..."
+
+    ACCOUNTS_RESPONSE=$(curl -s -X POST "$STARKNET_RPC_URL" \
+        -H "Content-Type: application/json" \
+        -d '{"jsonrpc":"2.0","id":"1","method":"devnet_getPredeployedAccounts","params":{}}' 2>/dev/null)
+
+    # Extract result array from JSON-RPC response
+    ACCOUNTS_ARRAY=$(echo "$ACCOUNTS_RESPONSE" | jq -r '.result // empty')
+
+    if [[ -z "$ACCOUNTS_ARRAY" || "$ACCOUNTS_ARRAY" == "null" ]]; then
+        log_error "Failed to fetch predeployed accounts from devnet"
+        echo "$ACCOUNTS_RESPONSE" >&2
+        exit 1
+    fi
+
+    # Extract first account details using jq
+    DEPLOYER_ADDRESS=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].address')
+    DEPLOYER_PRIVATE_KEY=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].private_key')
+    DEPLOYER_PUBLIC_KEY=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].public_key')
+    ACCOUNT_CLASS_HASH=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].class_hash // "0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f"')
+
+    if [[ -z "$DEPLOYER_ADDRESS" || "$DEPLOYER_ADDRESS" == "null" ]]; then
+        log_error "Could not parse deployer address from devnet response"
+        echo "$ACCOUNTS_RESPONSE" >&2
+        exit 1
+    fi
 else
-    # For other networks, fetch from starkli
-    DEPLOYER_ADDRESS=$(starkli account address "$DEPLOYER_ACCOUNT" 2>/dev/null || echo "")
-fi
-
-if [[ -z "$DEPLOYER_ADDRESS" ]]; then
-    log_error "Could not get deployer address for account: $DEPLOYER_ACCOUNT"
+    log_error "Non-devnet networks not yet configured for sncast"
     exit 1
 fi
+
 log_info "Deployer address: $DEPLOYER_ADDRESS"
+
+# Create accounts directory if not exists
+mkdir -p "$(dirname "$ACCOUNTS_FILE")"
+
+# Create sncast accounts file
+# Note: starknet-devnet-rs uses chain ID SN_SEPOLIA, so sncast detects as alpha-sepolia
+cat > "$ACCOUNTS_FILE" << EOF
+{
+  "alpha-mainnet": {},
+  "alpha-sepolia": {
+    "deployer": {
+      "address": "$DEPLOYER_ADDRESS",
+      "class_hash": "$ACCOUNT_CLASS_HASH",
+      "deployed": true,
+      "legacy": false,
+      "private_key": "$DEPLOYER_PRIVATE_KEY",
+      "public_key": "$DEPLOYER_PUBLIC_KEY",
+      "salt": "0x0",
+      "type": "open_zeppelin"
+    }
+  }
+}
+EOF
+
+# sncast will use these via command line
 
 # =============================================================================
 # Build Contracts
@@ -122,30 +150,35 @@ log_success "Contracts built"
 declare_class() {
     local name=$1
     local env_var=$2
-    local file="$BUILD_DIR/horizon_${name}.contract_class.json"
-
-    if [[ ! -f "$file" ]]; then
-        log_error "File not found: $file"
-        exit 1
-    fi
 
     log_info "Declaring $name..." >&2
 
     local output hash
 
     set +e
-    output=$(starkli declare "$file" $STARKLI_COMMON 2>&1)
+    output=$(sncast -a deployer -f "$ACCOUNTS_FILE" declare -u "$STARKNET_RPC_URL" --package horizon -c "$name" 2>&1)
     local status=$?
     set -e
 
-    hash=$(echo "$output" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    # Extract class hash from output (sncast outputs JSON-like format)
+    hash=$(echo "$output" | grep -oE 'class_hash: 0x[a-fA-F0-9]+' | grep -oE '0x[a-fA-F0-9]+' | head -1)
+
+    # If not found in that format, try alternative patterns
+    if [[ -z "$hash" ]]; then
+        hash=$(echo "$output" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    fi
 
     if [[ -n "$hash" ]]; then
         update_env "$env_var" "$hash"
         if [[ $status -eq 0 ]]; then
             log_success "$name: $hash" >&2
         else
-            log_warning "$name (exists): $hash" >&2
+            # Check if it's already declared
+            if echo "$output" | grep -qi "already declared\|already exists"; then
+                log_warning "$name (exists): $hash" >&2
+            else
+                log_success "$name: $hash" >&2
+            fi
         fi
         echo "$hash"
         return 0
@@ -185,7 +218,11 @@ deploy_contract() {
 
     local output
     set +e
-    output=$(starkli deploy "$class_hash" "${calldata[@]}" $STARKLI_COMMON 2>&1)
+    if [[ ${#calldata[@]} -eq 0 ]]; then
+        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" deploy -u "$STARKNET_RPC_URL" -g "$class_hash" 2>&1)
+    else
+        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" deploy -u "$STARKNET_RPC_URL" -g "$class_hash" -c "${calldata[@]}" 2>&1)
+    fi
     local status=$?
     set -e
 
@@ -196,7 +233,9 @@ deploy_contract() {
     fi
 
     local address
-    address=$(echo "$output" | grep -oE '0x[a-fA-F0-9]{64}' | tail -1)
+    # Extract contract address from sncast output
+    # sncast outputs: "Contract Address: 0x..."
+    address=$(echo "$output" | grep -oE 'Contract Address: 0x[a-fA-F0-9]+' | grep -oE '0x[a-fA-F0-9]+' | head -1)
 
     if [[ -z "$address" ]]; then
         log_error "Could not extract address for $name"
@@ -207,6 +246,50 @@ deploy_contract() {
     update_env "$env_var" "$address"
     log_success "$name: $address" >&2
     echo "$address"
+}
+
+# Helper to call a contract and extract result
+call_contract() {
+    local contract_address=$1
+    local function=$2
+    shift 2
+    local calldata=("$@")
+
+    local output
+    if [[ ${#calldata[@]} -eq 0 ]]; then
+        output=$(sncast call -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" 2>&1)
+    else
+        output=$(sncast call -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" -c "${calldata[@]}" 2>&1)
+    fi
+
+    # Extract the response value (format: "response: [0x...]")
+    local result
+    result=$(echo "$output" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    echo "$result"
+}
+
+# Helper to invoke a contract
+invoke_contract() {
+    local contract_address=$1
+    local function=$2
+    shift 2
+    local calldata=("$@")
+
+    local output
+    set +e
+    if [[ ${#calldata[@]} -eq 0 ]]; then
+        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" 2>&1)
+    else
+        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" -c "${calldata[@]}" 2>&1)
+    fi
+    local status=$?
+    set -e
+    if [[ $status -ne 0 ]]; then
+        log_error "Failed to invoke $function on $contract_address"
+        echo "$output" >&2
+        return 1
+    fi
+    return 0
 }
 
 # -----------------------------------------------------------------------------
@@ -236,15 +319,13 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     log_info "Deploying test setup with 2 yield tokens and 2 markets..."
 
     # -------------------------------------------------------------------------
-    # Deploy Base Token (STRK mock)
+    # Use Predeployed STRK Token
     # -------------------------------------------------------------------------
 
-    # MockERC20: constructor(name: ByteArray, symbol: ByteArray)
-    # ByteArray format: data_len (0 for short strings), pending_word (hex), pending_word_len
-    log_info "Deploying base token (STRK)..."
-    STRK_ADDRESS=$(deploy_contract "$MOCK_ERC20_CLASS_HASH" "STRK" "STRK_ADDRESS" \
-        0x0 0x537461726b6e6574 0x8 \
-        0x0 0x5354524b 0x4)
+    # starknet-devnet-rs has predeployed STRK at this address
+    STRK_ADDRESS="0x4718F5A0FC34CC1AF16A1CDEE98FFB20C31F5CD61D6AB07201858F4287C938D"
+    update_env "STRK_ADDRESS" "$STRK_ADDRESS"
+    log_info "Using predeployed STRK at: $STRK_ADDRESS"
 
     # -------------------------------------------------------------------------
     # Deploy Yield Token 1: nstSTRK (ERC-4626 - Nostra style)
@@ -312,24 +393,17 @@ if [[ "$NETWORK" != "mainnet" ]]; then
 
     log_info "Minting tokens to test recipient: $TEST_RECIPIENT"
 
-    # Mint 1,000,000 STRK (base token)
-    MINT_AMOUNT="u256:1000000000000000000000000"
-
-    starkli invoke "$STRK_ADDRESS" mint \
-        "$TEST_RECIPIENT" "$MINT_AMOUNT" \
-        $STARKLI_COMMON
-    log_success "Minted 1,000,000 STRK"
+    # Note: STRK is predeployed and we can't mint it
+    # Predeployed accounts already have STRK balance
 
     # Mint 100,000 nstSTRK shares
-    starkli invoke "$NST_STRK_ADDRESS" mint_shares \
-        "$TEST_RECIPIENT" "u256:100000000000000000000000" \
-        $STARKLI_COMMON
+    invoke_contract "$NST_STRK_ADDRESS" mint_shares \
+        "$TEST_RECIPIENT" 0x152d02c7e14af6800000 0x0
     log_success "Minted 100,000 nstSTRK"
 
     # Mint 100,000 sSTRK shares
-    starkli invoke "$SSTRK_ADDRESS" mint_shares \
-        "$TEST_RECIPIENT" "u256:100000000000000000000000" \
-        $STARKLI_COMMON
+    invoke_contract "$SSTRK_ADDRESS" mint_shares \
+        "$TEST_RECIPIENT" 0x152d02c7e14af6800000 0x0
     log_success "Minted 100,000 sSTRK"
 
     # -------------------------------------------------------------------------
@@ -347,39 +421,33 @@ if [[ "$NETWORK" != "mainnet" ]]; then
 
     # Create PT/YT for SY-nstSTRK
     log_info "Creating PT/YT for SY-nstSTRK..."
-    starkli invoke "$FACTORY_ADDRESS" create_yield_contracts \
-        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
-        $STARKLI_COMMON
+    invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
+        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP"
 
     sleep 1
-    PT_NST_STRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_pt \
-        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
-        --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    PT_NST_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
+        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
     update_env "PT_NST_STRK_ADDRESS" "$PT_NST_STRK_ADDRESS"
     log_success "PT-nstSTRK: $PT_NST_STRK_ADDRESS"
 
-    YT_NST_STRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_yt \
-        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
-        --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    YT_NST_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
+        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
     update_env "YT_NST_STRK_ADDRESS" "$YT_NST_STRK_ADDRESS"
     log_success "YT-nstSTRK: $YT_NST_STRK_ADDRESS"
 
     # Create PT/YT for SY-sSTRK
     log_info "Creating PT/YT for SY-sSTRK..."
-    starkli invoke "$FACTORY_ADDRESS" create_yield_contracts \
-        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
-        $STARKLI_COMMON
+    invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
+        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP"
 
     sleep 1
-    PT_SSTRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_pt \
-        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
-        --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    PT_SSTRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
+        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP")
     update_env "PT_SSTRK_ADDRESS" "$PT_SSTRK_ADDRESS"
     log_success "PT-sSTRK: $PT_SSTRK_ADDRESS"
 
-    YT_SSTRK_ADDRESS=$(starkli call "$FACTORY_ADDRESS" get_yt \
-        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP" \
-        --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+    YT_SSTRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
+        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP")
     update_env "YT_SSTRK_ADDRESS" "$YT_SSTRK_ADDRESS"
     log_success "YT-sSTRK: $YT_SSTRK_ADDRESS"
 
@@ -393,20 +461,23 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     INITIAL_ANCHOR="${MARKET_INITIAL_ANCHOR:-50000000000000000}"
     FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
 
+    # Convert to hex for u256 (low, high format)
+    SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
+    INITIAL_ANCHOR_HEX=$(printf "0x%x" "$INITIAL_ANCHOR")
+    FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
+
     # Market for PT-nstSTRK
     if [[ -n "$PT_NST_STRK_ADDRESS" && "$PT_NST_STRK_ADDRESS" != "0x0" ]]; then
         log_info "Creating Market for PT-nstSTRK..."
-        starkli invoke "$MARKET_FACTORY_ADDRESS" create_market \
+        invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
             "$PT_NST_STRK_ADDRESS" \
-            "u256:$SCALAR_ROOT" \
-            "u256:$INITIAL_ANCHOR" \
-            "u256:$FEE_RATE" \
-            $STARKLI_COMMON
+            "$SCALAR_ROOT_HEX" 0x0 \
+            "$INITIAL_ANCHOR_HEX" 0x0 \
+            "$FEE_RATE_HEX" 0x0
 
         sleep 1
-        MARKET_NST_STRK_ADDRESS=$(starkli call "$MARKET_FACTORY_ADDRESS" get_market \
-            "$PT_NST_STRK_ADDRESS" \
-            --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+        MARKET_NST_STRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
+            "$PT_NST_STRK_ADDRESS")
 
         if [[ -n "$MARKET_NST_STRK_ADDRESS" && "$MARKET_NST_STRK_ADDRESS" != "0x0" ]]; then
             update_env "MARKET_NST_STRK_ADDRESS" "$MARKET_NST_STRK_ADDRESS"
@@ -419,17 +490,15 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Market for PT-sSTRK
     if [[ -n "$PT_SSTRK_ADDRESS" && "$PT_SSTRK_ADDRESS" != "0x0" ]]; then
         log_info "Creating Market for PT-sSTRK..."
-        starkli invoke "$MARKET_FACTORY_ADDRESS" create_market \
+        invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
             "$PT_SSTRK_ADDRESS" \
-            "u256:$SCALAR_ROOT" \
-            "u256:$INITIAL_ANCHOR" \
-            "u256:$FEE_RATE" \
-            $STARKLI_COMMON
+            "$SCALAR_ROOT_HEX" 0x0 \
+            "$INITIAL_ANCHOR_HEX" 0x0 \
+            "$FEE_RATE_HEX" 0x0
 
         sleep 1
-        MARKET_SSTRK_ADDRESS=$(starkli call "$MARKET_FACTORY_ADDRESS" get_market \
-            "$PT_SSTRK_ADDRESS" \
-            --rpc "$STARKNET_RPC_URL" | grep -oE '0x[a-fA-F0-9]+' | head -1)
+        MARKET_SSTRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
+            "$PT_SSTRK_ADDRESS")
 
         if [[ -n "$MARKET_SSTRK_ADDRESS" && "$MARKET_SSTRK_ADDRESS" != "0x0" ]]; then
             update_env "MARKET_SSTRK_ADDRESS" "$MARKET_SSTRK_ADDRESS"
