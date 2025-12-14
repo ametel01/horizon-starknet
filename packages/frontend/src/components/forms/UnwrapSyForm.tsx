@@ -114,7 +114,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
           <CardTitle>Withdraw {underlyingSymbol}</CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
-        <p className="text-sm text-neutral-400">
+        <p className="text-muted-foreground text-sm">
           Withdraw your deposited {tokenName} from the protocol
         </p>
       </CardHeader>
@@ -133,9 +133,9 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
 
         {/* Arrow */}
         <div className="flex justify-center">
-          <div className="rounded-full border border-neutral-700 bg-neutral-800 p-2">
+          <Button variant="ghost" size="icon" className="rounded-full" disabled>
             <svg
-              className="h-4 w-4 text-neutral-400"
+              className="text-muted-foreground h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -147,7 +147,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
                 d="M19 14l-7 7m0 0l-7-7m7 7V3"
               />
             </svg>
-          </div>
+          </Button>
         </div>
 
         {/* Output */}
@@ -159,12 +159,14 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
         />
 
         {/* Info */}
-        <div className="rounded-lg bg-neutral-800/50 p-3 text-sm">
-          <div className="flex justify-between text-neutral-400">
-            <span>Exchange Rate</span>
-            <span className="text-neutral-200">1:1</span>
-          </div>
-        </div>
+        <Card size="sm" className="bg-muted">
+          <CardContent className="p-3 text-sm">
+            <div className="text-muted-foreground flex justify-between">
+              <span>Exchange Rate</span>
+              <span className="text-foreground">1:1</span>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Transaction Status */}
         {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}

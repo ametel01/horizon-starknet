@@ -3,6 +3,7 @@
 import { type ReactNode, useId } from 'react';
 
 import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
 import { NumberInput } from '@/components/ui/Input';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -40,63 +41,68 @@ export function TokenInput({
   };
 
   return (
-    <div
-      className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4"
-      role="group"
-      aria-labelledby={`${inputId}-label`}
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <label id={`${inputId}-label`} htmlFor={inputId} className="text-sm text-neutral-400">
-          {label}
-        </label>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-neutral-500">Balance:</span>
-          {balanceLoading ? (
-            <Skeleton className="h-4 w-16" aria-label="Loading balance" />
-          ) : (
-            <span
-              className="font-mono text-sm text-neutral-300"
-              aria-label={`Balance: ${balance !== undefined ? formatWad(balance, 4) : '0.0000'} ${tokenSymbol}`}
-            >
-              {balance !== undefined ? formatWad(balance, 4) : '0.0000'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <NumberInput
-          id={inputId}
-          value={value}
-          onChange={onChange}
-          placeholder="0.0"
-          disabled={disabled}
-          aria-invalid={error !== undefined}
-          aria-describedby={error !== undefined ? errorId : undefined}
-          className="border-0 bg-transparent text-2xl focus:ring-0"
-        />
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleMaxClick}
-            disabled={disabled || balance === undefined || balance === BigInt(0)}
-            aria-label={`Set maximum ${tokenSymbol} amount`}
+    <Card size="sm" className="bg-muted" role="group" aria-labelledby={`${inputId}-label`}>
+      <CardContent className="p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <label
+            id={`${inputId}-label`}
+            htmlFor={inputId}
+            className="text-muted-foreground text-sm"
           >
-            MAX
-          </Button>
-          <span className="min-w-[60px] text-right font-medium text-neutral-100" aria-hidden="true">
-            {tokenSymbol}
-          </span>
+            {label}
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-sm">Balance:</span>
+            {balanceLoading ? (
+              <Skeleton className="h-4 w-16" aria-label="Loading balance" />
+            ) : (
+              <span
+                className="text-foreground font-mono text-sm"
+                aria-label={`Balance: ${balance !== undefined ? formatWad(balance, 4) : '0.0000'} ${tokenSymbol}`}
+              >
+                {balance !== undefined ? formatWad(balance, 4) : '0.0000'}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
-      {error !== undefined ? (
-        <p id={errorId} className="mt-2 text-sm text-red-500" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
+        <div className="flex items-center gap-2">
+          <NumberInput
+            id={inputId}
+            value={value}
+            onChange={onChange}
+            placeholder="0.0"
+            disabled={disabled}
+            aria-invalid={error !== undefined}
+            aria-describedby={error !== undefined ? errorId : undefined}
+            className="border-0 bg-transparent text-2xl focus-visible:ring-0"
+          />
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleMaxClick}
+              disabled={disabled || balance === undefined || balance === BigInt(0)}
+              aria-label={`Set maximum ${tokenSymbol} amount`}
+            >
+              MAX
+            </Button>
+            <span
+              className="text-foreground min-w-[60px] text-right font-medium"
+              aria-hidden="true"
+            >
+              {tokenSymbol}
+            </span>
+          </div>
+        </div>
+
+        {error !== undefined ? (
+          <p id={errorId} className="text-destructive mt-2 text-sm" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -116,25 +122,28 @@ export function TokenOutput({
   const formattedAmount = formatWad(amount, 4);
 
   return (
-    <div
-      className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4"
+    <Card
+      size="sm"
+      className="bg-muted"
       role="status"
       aria-label={`${label}: ${formattedAmount} ${tokenSymbol}`}
     >
-      <div className="mb-2">
-        <span className="text-sm text-neutral-400">{label}</span>
-      </div>
+      <CardContent className="p-4">
+        <div className="mb-2">
+          <span className="text-muted-foreground text-sm">{label}</span>
+        </div>
 
-      <div className="flex items-center justify-between">
-        {isLoading ? (
-          <Skeleton className="h-8 w-32" aria-label="Loading amount" />
-        ) : (
-          <span className="font-mono text-2xl text-neutral-100">{formattedAmount}</span>
-        )}
-        <span className="font-medium text-neutral-100" aria-hidden="true">
-          {tokenSymbol}
-        </span>
-      </div>
-    </div>
+        <div className="flex items-center justify-between">
+          {isLoading ? (
+            <Skeleton className="h-8 w-32" aria-label="Loading amount" />
+          ) : (
+            <span className="text-foreground font-mono text-2xl">{formattedAmount}</span>
+          )}
+          <span className="text-foreground font-medium" aria-hidden="true">
+            {tokenSymbol}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

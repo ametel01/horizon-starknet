@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { TxStatus } from '@/components/display/TxStatus';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { calculateMinOutputs, useRemoveLiquidity } from '@/hooks/useLiquidity';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -148,80 +149,82 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
         {/* Percentage Buttons */}
         <div className="flex gap-2">
           {PERCENTAGE_OPTIONS.map((option) => (
-            <button
+            <Button
               key={option.value}
-              type="button"
+              variant="outline"
+              size="sm"
               onClick={(): void => {
                 handlePercentage(option.value);
               }}
-              className="flex-1 rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+              className="flex-1"
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Output Preview */}
-        <div className="rounded-lg bg-neutral-800/50 p-4">
-          <div className="mb-2 text-sm text-neutral-400">You will receive</div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-neutral-100">
-                {formatWad(expectedSyOut, 6)} SY
-              </span>
-              <span className="text-sm text-neutral-500">min: {formatWad(minSyOut, 6)}</span>
+        <Card size="sm" className="bg-muted">
+          <CardContent className="p-4">
+            <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-foreground text-lg font-semibold">
+                  {formatWad(expectedSyOut, 6)} SY
+                </span>
+                <span className="text-muted-foreground text-sm">min: {formatWad(minSyOut, 6)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-foreground text-lg font-semibold">
+                  {formatWad(expectedPtOut, 6)} PT
+                </span>
+                <span className="text-muted-foreground text-sm">min: {formatWad(minPtOut, 6)}</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-neutral-100">
-                {formatWad(expectedPtOut, 6)} PT
-              </span>
-              <span className="text-sm text-neutral-500">min: {formatWad(minPtOut, 6)}</span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Pool Info */}
         {isValidAmount && (
-          <div className="space-y-2 rounded-lg bg-neutral-800/30 p-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Pool Share Removed</span>
-              <span className="text-neutral-200">{poolShareRemoved.toFixed(4)}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Current Pool Reserves</span>
-              <span className="text-neutral-200">
-                {formatWad(market.state.syReserve, 2)} SY / {formatWad(market.state.ptReserve, 2)}{' '}
-                PT
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Slippage Tolerance</span>
-              <span className="text-neutral-200">{slippageBps / 100}%</span>
-            </div>
-          </div>
+          <Card size="sm" className="bg-muted/30">
+            <CardContent className="space-y-2 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pool Share Removed</span>
+                <span className="text-foreground">{poolShareRemoved.toFixed(4)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Current Pool Reserves</span>
+                <span className="text-foreground">
+                  {formatWad(market.state.syReserve, 2)} SY / {formatWad(market.state.ptReserve, 2)}{' '}
+                  PT
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Slippage Tolerance</span>
+                <span className="text-foreground">{slippageBps / 100}%</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Slippage Settings */}
         <div>
-          <div className="mb-2 text-sm text-neutral-400">Slippage Tolerance</div>
-          <div className="flex gap-2">
+          <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+          <ToggleGroup className="flex gap-1">
             {SLIPPAGE_OPTIONS.map((option) => (
-              <button
+              <ToggleGroupItem
                 key={option.value}
-                type="button"
-                onClick={(): void => {
+                pressed={slippageBps === option.value}
+                onPressedChange={() => {
                   setSlippageBps(option.value);
                 }}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  slippageBps === option.value
-                    ? 'bg-blue-500/20 text-blue-500'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                }`}
+                variant="outline"
+                size="sm"
               >
                 {option.label}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         {/* Transaction Status */}
