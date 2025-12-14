@@ -2,6 +2,7 @@
 
 import { type ReactNode } from 'react';
 
+import { Card, CardContent } from '@/components/ui/Card';
 import type { TxStatus as TxStatusType } from '@/hooks/useTransaction';
 import { cn } from '@/lib/utils';
 
@@ -18,56 +19,58 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
   }
 
   return (
-    <div
+    <Card
+      size="sm"
       className={cn(
-        'rounded-lg border p-4',
-        status === 'signing' && 'border-yellow-500/20 bg-yellow-500/10',
-        status === 'pending' && 'border-blue-500/20 bg-blue-500/10',
-        status === 'success' && 'border-green-500/20 bg-green-500/10',
-        status === 'error' && 'border-red-500/20 bg-red-500/10',
+        status === 'signing' && 'border-chart-1/20 bg-chart-1/10',
+        status === 'pending' && 'border-secondary/20 bg-secondary/10',
+        status === 'success' && 'border-primary/20 bg-primary/10',
+        status === 'error' && 'border-destructive/20 bg-destructive/10',
         className
       )}
     >
-      <div className="flex items-center gap-3">
-        <StatusIcon status={status} />
-        <div className="flex-1">
-          <p
-            className={cn(
-              'font-medium',
-              status === 'signing' && 'text-yellow-500',
-              status === 'pending' && 'text-blue-500',
-              status === 'success' && 'text-green-500',
-              status === 'error' && 'text-red-500'
-            )}
-          >
-            {getStatusText(status)}
-          </p>
-          {txHash ? (
-            <p className="mt-1 font-mono text-sm text-neutral-400">
-              Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <StatusIcon status={status} />
+          <div className="flex-1">
+            <p
+              className={cn(
+                'font-medium',
+                status === 'signing' && 'text-chart-1',
+                status === 'pending' && 'text-muted-foreground',
+                status === 'success' && 'text-primary',
+                status === 'error' && 'text-destructive'
+              )}
+            >
+              {getStatusText(status)}
             </p>
-          ) : null}
-          {error ? <p className="mt-1 text-sm text-red-400">{error.message}</p> : null}
+            {txHash ? (
+              <p className="text-muted-foreground mt-1 font-mono text-sm">
+                Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+              </p>
+            ) : null}
+            {error ? <p className="text-destructive mt-1 text-sm">{error.message}</p> : null}
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
 function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'signing') {
-    return <div className="h-5 w-5 animate-pulse rounded-full bg-yellow-500" />;
+    return <div className="bg-chart-1 h-5 w-5 animate-pulse rounded-full" />;
   }
 
   if (status === 'pending') {
     return (
-      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      <div className="border-muted-foreground h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
     );
   }
 
   if (status === 'success') {
     return (
-      <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="text-primary h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
     );
@@ -75,7 +78,12 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
 
   if (status === 'error') {
     return (
-      <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg
+        className="text-destructive h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -115,7 +123,7 @@ export function TxLink({ txHash, network = 'sepolia', className }: TxLinkProps):
 
   if (!explorerUrl) {
     return (
-      <span className={cn('font-mono text-sm text-neutral-400', className)}>
+      <span className={cn('text-muted-foreground font-mono text-sm', className)}>
         {txHash.slice(0, 10)}...{txHash.slice(-8)}
       </span>
     );
@@ -126,10 +134,7 @@ export function TxLink({ txHash, network = 'sepolia', className }: TxLinkProps):
       href={explorerUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={cn(
-        'font-mono text-sm text-blue-500 hover:text-blue-400 hover:underline',
-        className
-      )}
+      className={cn('text-primary hover:text-primary font-mono text-sm hover:underline', className)}
     >
       {txHash.slice(0, 10)}...{txHash.slice(-8)} ↗
     </a>
