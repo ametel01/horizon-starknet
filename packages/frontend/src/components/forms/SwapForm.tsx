@@ -184,19 +184,12 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     });
   };
 
-  // Reset form on success
+  // Clear input on success
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => {
-        setInputAmount('');
-        resetSwap();
-      }, 5000);
-      return (): void => {
-        clearTimeout(timer);
-      };
+      setInputAmount('');
     }
-    return undefined;
-  }, [isSuccess, resetSwap]);
+  }, [isSuccess]);
 
   // Handle direction change (flip buy/sell)
   const toggleDirection = (): void => {

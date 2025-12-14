@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
@@ -77,6 +77,13 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
     if (validationError || !underlyingAddress) return;
     await wrap(amount);
   }, [amount, wrap, validationError, underlyingAddress]);
+
+  // Clear input on success
+  useEffect(() => {
+    if (status === 'success') {
+      setAmount('');
+    }
+  }, [status]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

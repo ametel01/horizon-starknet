@@ -36,15 +36,8 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
   const [lpAmount, setLpAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
 
-  const {
-    removeLiquidity,
-    isRemoving,
-    isSuccess,
-    isError,
-    error,
-    transactionHash,
-    reset: resetRemoveLiquidity,
-  } = useRemoveLiquidity();
+  const { removeLiquidity, isRemoving, isSuccess, isError, error, transactionHash } =
+    useRemoveLiquidity();
 
   // Fetch LP balance (market is the LP token)
   const { data: lpBalance } = useTokenBalance(market.address);
@@ -129,19 +122,12 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
     }
   };
 
-  // Reset form on success
+  // Clear input on success
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => {
-        setLpAmount('');
-        resetRemoveLiquidity();
-      }, 5000);
-      return (): void => {
-        clearTimeout(timer);
-      };
+      setLpAmount('');
     }
-    return undefined;
-  }, [isSuccess, resetRemoveLiquidity]);
+  }, [isSuccess]);
 
   return (
     <Card>

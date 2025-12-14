@@ -31,15 +31,7 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
   const [isBalanced, setIsBalanced] = useState(true);
 
-  const {
-    addLiquidity,
-    isAdding,
-    isSuccess,
-    isError,
-    error,
-    transactionHash,
-    reset: resetAddLiquidity,
-  } = useAddLiquidity();
+  const { addLiquidity, isAdding, isSuccess, isError, error, transactionHash } = useAddLiquidity();
 
   // Fetch balances
   const { data: syBalance } = useTokenBalance(market.syAddress);
@@ -155,20 +147,13 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
     });
   };
 
-  // Reset form on success
+  // Clear inputs on success
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => {
-        setSyAmount('');
-        setPtAmount('');
-        resetAddLiquidity();
-      }, 5000);
-      return (): void => {
-        clearTimeout(timer);
-      };
+      setSyAmount('');
+      setPtAmount('');
     }
-    return undefined;
-  }, [isSuccess, resetAddLiquidity]);
+  }, [isSuccess]);
 
   return (
     <Card>

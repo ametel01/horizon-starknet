@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
@@ -62,6 +62,13 @@ export function MintForm({ market }: MintFormProps): ReactNode {
     if (validationError) return;
     await mint(amountSy);
   }, [amountSy, mint, validationError]);
+
+  // Clear input on success
+  useEffect(() => {
+    if (status === 'success') {
+      setAmountSy('');
+    }
+  }, [status]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
@@ -69,6 +69,13 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
     if (validationError || !underlyingAddress) return;
     await unwrap(amount);
   }, [amount, unwrap, validationError, underlyingAddress]);
+
+  // Clear input on success
+  useEffect(() => {
+    if (status === 'success') {
+      setAmount('');
+    }
+  }, [status]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {
