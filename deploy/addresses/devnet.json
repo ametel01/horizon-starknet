@@ -1,0 +1,64 @@
+{
+  "network": "devnet",
+  "rpcUrl": "http://devnet:5050",
+  "deployedAt": "2025-12-14T02:12:12Z",
+  "classHashes": {
+    "MockERC20": "0x027f2ec34254c029c8707200a342c34c6b504a8e7242850c005b6c750ff7d3c0",
+    "MockYieldToken": "0x01c000af7e9b5e0c042a2ffda2e53b717b1cf9ce83facec60267797be6433fa8",
+    "SY": "0x04d0b1a8c6dce08b23de9c6597ce028fb2072bc346726808f81a6f6c48b1e02b",
+    "PT": "0x0452a52cf4d365656e5efa14bcad9ce3a31cedbbd5226918f4c45b7c317008c8",
+    "YT": "0x067c54ddc99d65e75134de8620ae70e6ddf65852de544eb21bc39a5f29b6f3ab",
+    "Market": "0x07dc4fe6b7fbc6d3722d3e55aa1c1be3daff4a61d38a163d844839e0231a2b47",
+    "Factory": "0x00e12604077e54d030cad6dd9a305ec6f2d16e454774ea846532485a1c53911e",
+    "MarketFactory": "0x0026351593425fc9b01548cd2a53a45edfd005bab52f435253308a1eea512543",
+    "Router": "0x063fa254629a73f5611ed3e2e4123ac98638ee37e395855a74db350f75a027c5"
+  },
+  "contracts": {
+    "Factory": "0x02d82d7cd464cbda48ac51b25e7ad955bd465275efb5e98bb1e995f58229aa6c",
+    "MarketFactory": "0x06738c8c5de0d29a76ae7b9fbe73213dca129e3c688909d193874bc1145c7bec",
+    "Router": "0x01272b774002bf20dec4e5c07a6a52540f35ab41f379068da3d239c31c1a90bc"
+  },
+  "testSetup": {
+    "testRecipient": "0x064b48806902a367c8598f4F95C305e8c1a1aCbA5f082D294a43793113115691",
+    "baseToken": {
+      "STRK": "0x4718F5A0FC34CC1AF16A1CDEE98FFB20C31F5CD61D6AB07201858F4287C938D"
+    },
+    "yieldTokens": {
+      "nstSTRK": {
+        "name": "Nostra Staked STRK",
+        "symbol": "nstSTRK",
+        "address": "0x01b901168e0c630de914701e9f83756db383b4e95f03fac5fcd4307a323c9323",
+        "isERC4626": true
+      },
+      "sSTRK": {
+        "name": "Staked Starknet Token",
+        "symbol": "sSTRK",
+        "address": "0x0294cc81a218e19970d6232a767753c659123ccffc12eb070847110b7e3cf812",
+        "isERC4626": false
+      }
+    },
+    "syTokens": {
+      "SY-nstSTRK": {
+        "address": "0x042c743af9d62e2693605f98ebe1ee33e8a9a9de7d6dda26321c513dc9140304",
+        "underlying": "0x01b901168e0c630de914701e9f83756db383b4e95f03fac5fcd4307a323c9323"
+      },
+      "SY-sSTRK": {
+        "address": "0x0042371669ff83073ec982bb4631dab0389d6e68d25550a4b16474e1efd6efd5",
+        "underlying": "0x0294cc81a218e19970d6232a767753c659123ccffc12eb070847110b7e3cf812"
+      }
+    },
+    "markets": {
+      "nstSTRK": {
+        "PT": "0x3d13e44e66e6d0fa138f947bee79c5356188af760e14c946684548bad608a24",
+        "YT": "0x6f81d9d2296fcba883ce75cf12b9c49a911eeede0d47be8fe512ec87f8d1830",
+        "Market": "0x6b44a393b43842633a16a647a0748cd0dd0ba1baf77ab756accfb240eab0765"
+      },
+      "sSTRK": {
+        "PT": "0x311aa5d84a17b07c7c22a193c88802472458c232a7376832a3610589f9e13af",
+        "YT": "0x203a2f08e5cea91180be8fad2992cebf5bd2692897304ea639822526a513c3c",
+        "Market": "0x527836da697940a4e08ef2ed1062408dce88ccf1a7b18c645058ef5c4fa496f"
+      }
+    },
+    "expiry": 1768270328
+  }
+}

@@ -15,7 +15,7 @@ target
 node_modules
 packages/*/node_modules
 
-# Env files (except katana template)
+# Env files (except devnet template)
 .env
 .env.local
 .env.sepolia

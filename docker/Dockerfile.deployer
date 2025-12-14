@@ -1,5 +1,5 @@
 # =============================================================================
-# Deployer image with scarb and starkli
+# Deployer image with scarb and starknet-foundry (sncast)
 # =============================================================================
 
 FROM debian:bookworm-slim
@@ -18,14 +18,13 @@ ENV SCARB_VERSION=2.14.0
 RUN curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | bash -s -- -v ${SCARB_VERSION}
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Install starkli (pinned version for katana compatibility)
-ENV STARKLI_VERSION=v0.4.2
-RUN curl https://get.starkli.sh | sh && \
-    /root/.starkli/bin/starkliup --version ${STARKLI_VERSION} && \
-    ln -s /root/.starkli/bin/starkli /usr/local/bin/starkli
+# Install starknet-foundry (includes sncast and snforge)
+ENV SNFOUNDRY_VERSION=0.54.0
+RUN curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh && \
+    /root/.local/bin/snfoundryup -v ${SNFOUNDRY_VERSION}
 
 # Verify installations
-RUN scarb --version && starkli --version
+RUN scarb --version && sncast --version && snforge --version
 
 # Set working directory
 WORKDIR /app
@@ -33,7 +32,7 @@ WORKDIR /app
 # Copy contracts and deploy scripts
 COPY contracts/ ./contracts/
 COPY deploy/ ./deploy/
-COPY .env.katana ./.env.katana
+COPY .env.devnet ./.env.devnet
 
 # Make scripts executable
 RUN chmod +x ./deploy/scripts/*.sh

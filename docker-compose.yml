@@ -1,16 +1,19 @@
 services:
   # ===========================================================================
-  # Katana - Local Starknet Devnet
+  # Starknet Devnet - Local Starknet Development Network
   # ===========================================================================
-  katana:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.katana
-    container_name: katana
+  devnet:
+    image: shardlabs/starknet-devnet-rs:0.7.1-seed0
+    container_name: starknet-devnet
     ports:
       - "5050:5050"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5050
+      - SEED=0
+      - PREDECLARE_ARGENT=true
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5050 || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5050/is_alive || exit 1"]
       interval: 2s
       timeout: 5s
       retries: 60
@@ -27,14 +30,14 @@ services:
       dockerfile: docker/Dockerfile.deployer
     container_name: deployer
     environment:
-      - KATANA_URL=http://katana:5050
-      - ENV_FILE=.env.katana
+      - DEVNET_URL=http://devnet:5050
+      - ENV_FILE=.env.devnet
     volumes:
       # Mount output directory for addresses
       - ./deploy/addresses:/output
-      - ./.env.katana:/app/.env.katana
+      - ./.env.devnet:/app/.env.devnet
     depends_on:
-      katana:
+      devnet:
         condition: service_healthy
     networks:
       - yield-network
