@@ -8,17 +8,17 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAccount } from '@/hooks/useAccount';
 import { useUnderlyingAddress } from '@/hooks/useUnderlying';
-import { useWrapToSy } from '@/hooks/useWrapToSy';
+import { useUnwrapSy } from '@/hooks/useUnwrapSy';
 import { toWad } from '@/lib/math/wad';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput, TokenOutput } from './TokenInput';
 
-interface WrapToSyFormProps {
+interface UnwrapSyFormProps {
   market: MarketData;
 }
 
-export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
+export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
   const { isConnected } = useAccount();
   const [amount, setAmount] = useState('');
 
@@ -27,20 +27,11 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
     market.syAddress
   );
 
-  const {
-    underlyingBalance,
-    underlyingBalanceLoading,
-    needsApproval,
-    wrap,
-    status,
-    txHash,
-    error,
-    isLoading,
-    reset,
-  } = useWrapToSy({
-    underlyingAddress: underlyingAddress ?? '',
-    syAddress: market.syAddress,
-  });
+  const { syBalance, syBalanceLoading, unwrap, status, txHash, error, isLoading, reset } =
+    useUnwrapSy({
+      underlyingAddress: underlyingAddress ?? '',
+      syAddress: market.syAddress,
+    });
 
   // Calculate output amount (1:1 ratio for SY)
   const outputAmount = useMemo(() => {
@@ -63,32 +54,21 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
     try {
       const amountWad = toWad(amount);
 
-      if (underlyingBalance !== undefined && amountWad > underlyingBalance) {
-        return 'Insufficient balance';
+      if (syBalance !== undefined && amountWad > syBalance) {
+        return 'Insufficient SY balance';
       }
     } catch {
       return 'Invalid amount';
     }
 
     return null;
-  }, [amount, underlyingBalance]);
+  }, [amount, syBalance]);
 
-  // Check if approval is needed
-  const requiresApproval = useMemo(() => {
-    if (!amount || amount === '0') return false;
-    try {
-      const amountWad = toWad(amount);
-      return needsApproval(amountWad);
-    } catch {
-      return false;
-    }
-  }, [amount, needsApproval]);
-
-  // Handle wrap
-  const handleWrap = useCallback(async () => {
+  // Handle unwrap
+  const handleUnwrap = useCallback(async () => {
     if (validationError || !underlyingAddress) return;
-    await wrap(amount);
-  }, [amount, wrap, validationError, underlyingAddress]);
+    await unwrap(amount);
+  }, [amount, unwrap, validationError, underlyingAddress]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {
@@ -110,11 +90,10 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
     if (!isConnected) return 'Connect Wallet';
     if (underlyingLoading) return 'Loading...';
     if (!underlyingAddress) return 'No Underlying Found';
-    if (isLoading) return status === 'signing' ? 'Confirm in Wallet...' : 'Wrapping...';
+    if (isLoading) return status === 'signing' ? 'Confirm in Wallet...' : 'Unwrapping...';
     if (validationError) return validationError;
     if (!amount || amount === '0') return 'Enter Amount';
-    if (requiresApproval) return 'Approve & Wrap';
-    return 'Wrap to SY';
+    return 'Unwrap SY';
   }, [
     isConnected,
     underlyingLoading,
@@ -123,7 +102,6 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
     status,
     validationError,
     amount,
-    requiresApproval,
   ]);
 
   // Get token symbols from metadata
@@ -135,25 +113,25 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>
-            Wrap {underlyingSymbol} to {sySymbol}
+            Unwrap {sySymbol} to {underlyingSymbol}
           </CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
         <p className="text-sm text-neutral-400">
-          Wrap your {market.metadata?.yieldTokenName ?? 'yield-bearing tokens'} into Standardized
-          Yield (SY) tokens
+          Unwrap your Standardized Yield (SY) tokens back to{' '}
+          {market.metadata?.yieldTokenName ?? 'yield-bearing tokens'}
         </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* Input */}
         <TokenInput
-          label="You deposit"
-          tokenAddress={underlyingAddress ?? ''}
-          tokenSymbol={underlyingSymbol}
+          label="You redeem"
+          tokenAddress={market.syAddress}
+          tokenSymbol={sySymbol}
           value={amount}
           onChange={setAmount}
-          disabled={isLoading || !underlyingAddress}
+          disabled={isLoading}
           error={validationError ?? undefined}
         />
 
@@ -180,8 +158,8 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
         <TokenOutput
           label="You receive"
           amount={outputAmount}
-          tokenSymbol={sySymbol}
-          isLoading={underlyingBalanceLoading}
+          tokenSymbol={underlyingSymbol}
+          isLoading={syBalanceLoading}
         />
 
         {/* Info */}
@@ -189,7 +167,7 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
           <div className="flex justify-between text-neutral-400">
             <span>Exchange Rate</span>
             <span className="text-neutral-200">
-              1 {underlyingSymbol} = 1 {sySymbol}
+              1 {sySymbol} = 1 {underlyingSymbol}
             </span>
           </div>
           <div className="mt-1 flex justify-between text-neutral-400">
@@ -206,10 +184,10 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
         {/* Actions */}
         {status === 'success' ? (
           <Button onClick={handleReset} className="w-full">
-            Wrap More
+            Unwrap More
           </Button>
         ) : (
-          <Button onClick={handleWrap} disabled={buttonDisabled} className="w-full">
+          <Button onClick={handleUnwrap} disabled={buttonDisabled} className="w-full">
             {buttonText}
           </Button>
         )}

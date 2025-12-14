@@ -5,18 +5,22 @@ import { useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { MintForm } from '@/components/forms/MintForm';
+import { UnwrapSyForm } from '@/components/forms/UnwrapSyForm';
 import { WrapToSyForm } from '@/components/forms/WrapToSyForm';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 
-type TabType = 'wrap' | 'mint';
+type TabType = 'wrap' | 'mint' | 'unwrap';
 
 function MintPageContent(): ReactNode {
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
   const tabParam = searchParams.get('tab');
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>(tabParam === 'mint' ? 'mint' : 'wrap');
+  const [activeTab, setActiveTab] = useState<TabType>(
+    tabParam === 'mint' ? 'mint' : tabParam === 'unwrap' ? 'unwrap' : 'wrap'
+  );
+  const [selectedMarketAddress, setSelectedMarketAddress] = useState<string | null>(marketParam);
 
   useEffect(() => {
     setMounted(true);
@@ -24,18 +28,49 @@ function MintPageContent(): ReactNode {
 
   const { markets, isLoading, isError } = useDashboardMarkets();
 
-  // Select market based on URL param or default to first market
+  // Select market based on state or URL param or default to first market
   const selectedMarket = useMemo(() => {
+    if (selectedMarketAddress) {
+      return markets.find((m) => m.address === selectedMarketAddress);
+    }
     if (marketParam) {
       return markets.find((m) => m.address === marketParam);
     }
     return markets[0];
-  }, [markets, marketParam]);
+  }, [markets, marketParam, selectedMarketAddress]);
+
+  // Update selected market address when markets load and no selection
+  useEffect(() => {
+    if (markets.length > 0 && !selectedMarketAddress && !marketParam) {
+      setSelectedMarketAddress(markets[0]?.address ?? null);
+    }
+  }, [markets, selectedMarketAddress, marketParam]);
 
   return (
     <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
       {/* Form Section */}
       <div className="w-full max-w-lg">
+        {/* Market Selector */}
+        {markets.length > 1 && (
+          <div className="mb-4">
+            <label className="mb-2 block text-sm font-medium text-neutral-300">Select Asset</label>
+            <select
+              value={selectedMarket?.address ?? ''}
+              onChange={(e) => {
+                setSelectedMarketAddress(e.target.value);
+              }}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3 text-neutral-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {markets.map((m) => (
+                <option key={m.address} value={m.address}>
+                  {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                  {m.metadata?.yieldTokenName ?? 'Unknown'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="mb-4 flex rounded-lg border border-neutral-800 bg-neutral-900 p-1">
           <button
@@ -48,7 +83,7 @@ function MintPageContent(): ReactNode {
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            1. Wrap to SY
+            Wrap
           </button>
           <button
             onClick={() => {
@@ -60,7 +95,19 @@ function MintPageContent(): ReactNode {
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            2. Mint PT + YT
+            Mint
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('unwrap');
+            }}
+            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'unwrap'
+                ? 'bg-orange-600 text-white'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            Unwrap
           </button>
         </div>
 
@@ -80,62 +127,105 @@ function MintPageContent(): ReactNode {
           </div>
         ) : activeTab === 'wrap' ? (
           <WrapToSyForm market={selectedMarket} />
-        ) : (
+        ) : activeTab === 'mint' ? (
           <MintForm market={selectedMarket} />
+        ) : (
+          <UnwrapSyForm market={selectedMarket} />
         )}
       </div>
 
       {/* Info Panel */}
       <div className="mt-8 w-full max-w-md lg:mt-0">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
-          <h2 className="text-lg font-semibold text-neutral-100">How Minting Works</h2>
-          <div className="mt-4 space-y-4 text-sm text-neutral-400">
-            <div className="flex gap-3">
-              <div
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                  activeTab === 'wrap'
-                    ? 'bg-blue-500/30 text-blue-400'
-                    : 'bg-blue-500/20 text-blue-500'
-                }`}
-              >
-                1
+          <h2 className="text-lg font-semibold text-neutral-100">
+            {activeTab === 'unwrap' ? 'How Unwrapping Works' : 'How Minting Works'}
+          </h2>
+
+          {activeTab === 'unwrap' ? (
+            <div className="mt-4 space-y-4 text-sm text-neutral-400">
+              <div className="flex gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-500/30 text-xs font-medium text-orange-400">
+                  1
+                </div>
+                <div>
+                  <p className="font-medium text-neutral-200">Unwrap SY</p>
+                  <p className="mt-1">
+                    Convert your Standardized Yield (SY) tokens back to the underlying yield-bearing
+                    token (like nstSTRK).
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-neutral-200">Wrap to SY</p>
-                <p className="mt-1">
-                  Wrap your yield-bearing tokens (like nstSTRK) into Standardized Yield (SY) tokens.
+              <div className="flex gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-xs font-medium text-orange-500">
+                  2
+                </div>
+                <div>
+                  <p className="font-medium text-neutral-200">Continue Earning</p>
+                  <p className="mt-1">
+                    Your yield-bearing tokens will continue earning yield in your wallet or can be
+                    used in other DeFi protocols.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
+                <p className="text-sm text-yellow-400">
+                  <span className="font-medium">Note:</span> Unwrapping only converts SY back to the
+                  underlying token. To get SY from PT+YT, use the Redeem function in Portfolio.
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <div
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                  activeTab === 'mint'
-                    ? 'bg-blue-500/30 text-blue-400'
-                    : 'bg-blue-500/20 text-blue-500'
-                }`}
-              >
-                2
+          ) : (
+            <div className="mt-4 space-y-4 text-sm text-neutral-400">
+              <div className="flex gap-3">
+                <div
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                    activeTab === 'wrap'
+                      ? 'bg-blue-500/30 text-blue-400'
+                      : 'bg-blue-500/20 text-blue-500'
+                  }`}
+                >
+                  1
+                </div>
+                <div>
+                  <p className="font-medium text-neutral-200">Wrap to SY</p>
+                  <p className="mt-1">
+                    Wrap your yield-bearing tokens (like nstSTRK) into Standardized Yield (SY)
+                    tokens.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-neutral-200">Mint PT + YT</p>
-                <p className="mt-1">
-                  For each SY deposited, you receive 1 Principal Token (PT) and 1 Yield Token (YT).
-                </p>
+              <div className="flex gap-3">
+                <div
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                    activeTab === 'mint'
+                      ? 'bg-blue-500/30 text-blue-400'
+                      : 'bg-blue-500/20 text-blue-500'
+                  }`}
+                >
+                  2
+                </div>
+                <div>
+                  <p className="font-medium text-neutral-200">Mint PT + YT</p>
+                  <p className="mt-1">
+                    For each SY deposited, you receive 1 Principal Token (PT) and 1 Yield Token
+                    (YT).
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
+                  3
+                </div>
+                <div>
+                  <p className="font-medium text-neutral-200">Use Your Tokens</p>
+                  <p className="mt-1">
+                    PT can be traded or held until maturity. YT earns yield until expiry.
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
-                3
-              </div>
-              <div>
-                <p className="font-medium text-neutral-200">Use Your Tokens</p>
-                <p className="mt-1">
-                  PT can be traded or held until maturity. YT earns yield until expiry.
-                </p>
-              </div>
-            </div>
-          </div>
+          )}
 
           <div className="mt-6 rounded-lg bg-neutral-800/50 p-4">
             <h3 className="text-sm font-medium text-neutral-200">Token Details</h3>
