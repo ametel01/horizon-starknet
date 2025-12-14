@@ -12,6 +12,7 @@ services:
       - PORT=5050
       - SEED=0
       - PREDECLARE_ARGENT=true
+      - BLOCK_GENERATION_ON=10  # Generate new block every 10 seconds for yield simulation
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5050/is_alive || exit 1"]
       interval: 2s

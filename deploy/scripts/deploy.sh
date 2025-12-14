@@ -193,6 +193,8 @@ log_info "Declaring contract classes..."
 
 MOCK_ERC20_CLASS_HASH=$(declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH")
 MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
+MOCK_PRAGMA_CLASS_HASH=$(declare_class "MockPragmaSummaryStats" "MOCK_PRAGMA_CLASS_HASH")
+PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
 SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
 PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
 YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
@@ -357,6 +359,37 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$DEPLOYER_ADDRESS")
 
     # -------------------------------------------------------------------------
+    # Deploy Mock Pragma Oracle (for devnet testing)
+    # -------------------------------------------------------------------------
+
+    # MockPragmaSummaryStats: constructor(admin, wsteth_base_price, sstrk_base_price, wsteth_yield_bps, sstrk_yield_bps)
+    # WSTETH: $4000 = 400000000000 (8 decimals), 4% APR = 400 bps
+    # SSTRK: $0.50 = 50000000 (8 decimals), 8% APR = 800 bps
+    log_info "Deploying MockPragmaSummaryStats..."
+    MOCK_PRAGMA_ADDRESS=$(deploy_contract "$MOCK_PRAGMA_CLASS_HASH" "MockPragmaSummaryStats" "MOCK_PRAGMA_ADDRESS" \
+        "$DEPLOYER_ADDRESS" \
+        0x5d21dba000 \
+        0x2faf080 \
+        0x190 \
+        0x320)
+
+    # -------------------------------------------------------------------------
+    # Deploy PragmaIndexOracle for sSTRK
+    # -------------------------------------------------------------------------
+
+    # PragmaIndexOracle: constructor(admin, pragma_oracle, numerator_pair_id, denominator_pair_id, initial_index)
+    # For sSTRK: single-feed mode (denominator = 0), using SSTRK/USD pair
+    # SSTRK_USD_PAIR_ID = 1537084272803954643780 = 0x152053545524b2f555344
+    # Initial index = 1 WAD = 1000000000000000000 = 0xde0b6b3a7640000
+    log_info "Deploying PragmaIndexOracle for sSTRK..."
+    PRAGMA_SSTRK_ORACLE_ADDRESS=$(deploy_contract "$PRAGMA_INDEX_ORACLE_CLASS_HASH" "PragmaIndexOracle-sSTRK" "PRAGMA_SSTRK_ORACLE_ADDRESS" \
+        "$DEPLOYER_ADDRESS" \
+        "$MOCK_PRAGMA_ADDRESS" \
+        1537084272803954643780 \
+        0x0 \
+        0xde0b6b3a7640000 0x0)
+
+    # -------------------------------------------------------------------------
     # Deploy SY 1: SY-nstSTRK (wraps nstSTRK, ERC-4626 mode)
     # -------------------------------------------------------------------------
 
@@ -372,17 +405,18 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         0x1)
 
     # -------------------------------------------------------------------------
-    # Deploy SY 2: SY-sSTRK (wraps sSTRK, uses index() oracle mode)
+    # Deploy SY 2: SY-sSTRK (wraps sSTRK, uses PragmaIndexOracle)
     # -------------------------------------------------------------------------
 
     # "SY Staked Starknet Token" = 24 chars
     # "SY-sSTRK" = 8 chars
+    # Uses PragmaIndexOracle for exchange rate (is_erc4626 = false)
     log_info "Deploying SY-sSTRK..."
     SY_SSTRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-sSTRK" "SY_SSTRK_ADDRESS" \
         0x0 0x5359205374616b656420537461726b6e657420546f6b656e 0x18 \
         0x0 0x53592d735354524b 0x8 \
         "$SSTRK_ADDRESS" \
-        "$SSTRK_ADDRESS" \
+        "$PRAGMA_SSTRK_ORACLE_ADDRESS" \
         0x0)
 
     log_success "Yield tokens and SY tokens deployed"
@@ -525,6 +559,8 @@ cat > "$JSON_FILE" << EOF
   "classHashes": {
     "MockERC20": "$MOCK_ERC20_CLASS_HASH",
     "MockYieldToken": "$MOCK_YIELD_TOKEN_CLASS_HASH",
+    "MockPragmaSummaryStats": "$MOCK_PRAGMA_CLASS_HASH",
+    "PragmaIndexOracle": "$PRAGMA_INDEX_ORACLE_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
     "YT": "$YT_CLASS_HASH",
@@ -543,28 +579,38 @@ cat > "$JSON_FILE" << EOF
     "baseToken": {
       "STRK": "${STRK_ADDRESS:-}"
     },
+    "oracles": {
+      "MockPragma": "${MOCK_PRAGMA_ADDRESS:-}",
+      "sSTRK": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
+    },
     "yieldTokens": {
       "nstSTRK": {
         "name": "Nostra Staked STRK",
         "symbol": "nstSTRK",
         "address": "${NST_STRK_ADDRESS:-}",
-        "isERC4626": true
+        "isERC4626": true,
+        "oracle": null
       },
       "sSTRK": {
         "name": "Staked Starknet Token",
         "symbol": "sSTRK",
         "address": "${SSTRK_ADDRESS:-}",
-        "isERC4626": false
+        "isERC4626": false,
+        "oracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
       }
     },
     "syTokens": {
       "SY-nstSTRK": {
         "address": "${SY_NST_STRK_ADDRESS:-}",
-        "underlying": "${NST_STRK_ADDRESS:-}"
+        "underlying": "${NST_STRK_ADDRESS:-}",
+        "indexOracle": "${NST_STRK_ADDRESS:-}",
+        "isERC4626": true
       },
       "SY-sSTRK": {
         "address": "${SY_SSTRK_ADDRESS:-}",
-        "underlying": "${SSTRK_ADDRESS:-}"
+        "underlying": "${SSTRK_ADDRESS:-}",
+        "indexOracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}",
+        "isERC4626": false
       }
     },
     "markets": {
@@ -610,6 +656,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     echo "Base Token:"
     echo "  STRK:           $STRK_ADDRESS"
     echo ""
+    echo "Oracles:"
+    echo "  MockPragma:     $MOCK_PRAGMA_ADDRESS"
+    echo "  sSTRK Oracle:   $PRAGMA_SSTRK_ORACLE_ADDRESS"
+    echo ""
     echo "Yield Token 1 (ERC-4626):"
     echo "  nstSTRK:        $NST_STRK_ADDRESS"
     echo "  SY-nstSTRK:     $SY_NST_STRK_ADDRESS"
@@ -617,8 +667,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     echo "  YT-nstSTRK:     $YT_NST_STRK_ADDRESS"
     echo "  Market:         $MARKET_NST_STRK_ADDRESS"
     echo ""
-    echo "Yield Token 2 (Index Oracle):"
+    echo "Yield Token 2 (PragmaIndexOracle):"
     echo "  sSTRK:          $SSTRK_ADDRESS"
+    echo "  Oracle:         $PRAGMA_SSTRK_ORACLE_ADDRESS"
     echo "  SY-sSTRK:       $SY_SSTRK_ADDRESS"
     echo "  PT-sSTRK:       $PT_SSTRK_ADDRESS"
     echo "  YT-sSTRK:       $YT_SSTRK_ADDRESS"

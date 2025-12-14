@@ -35,6 +35,8 @@ cat > "$OUTPUT_FILE" << EOF
   "classHashes": {
     "MockERC20": "${MOCK_ERC20_CLASS_HASH:-}",
     "MockYieldToken": "${MOCK_YIELD_TOKEN_CLASS_HASH:-}",
+    "MockPragmaSummaryStats": "${MOCK_PRAGMA_CLASS_HASH:-}",
+    "PragmaIndexOracle": "${PRAGMA_INDEX_ORACLE_CLASS_HASH:-}",
     "SY": "${SY_CLASS_HASH:-}",
     "PT": "${PT_CLASS_HASH:-}",
     "YT": "${YT_CLASS_HASH:-}",
@@ -53,28 +55,38 @@ cat > "$OUTPUT_FILE" << EOF
     "baseToken": {
       "STRK": "${STRK_ADDRESS:-}"
     },
+    "oracles": {
+      "MockPragma": "${MOCK_PRAGMA_ADDRESS:-}",
+      "sSTRK": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
+    },
     "yieldTokens": {
       "nstSTRK": {
         "name": "Nostra Staked STRK",
         "symbol": "nstSTRK",
         "address": "${NST_STRK_ADDRESS:-}",
-        "isERC4626": true
+        "isERC4626": true,
+        "oracle": null
       },
       "sSTRK": {
         "name": "Staked Starknet Token",
         "symbol": "sSTRK",
         "address": "${SSTRK_ADDRESS:-}",
-        "isERC4626": false
+        "isERC4626": false,
+        "oracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
       }
     },
     "syTokens": {
       "SY-nstSTRK": {
         "address": "${SY_NST_STRK_ADDRESS:-}",
-        "underlying": "${NST_STRK_ADDRESS:-}"
+        "underlying": "${NST_STRK_ADDRESS:-}",
+        "indexOracle": "${NST_STRK_ADDRESS:-}",
+        "isERC4626": true
       },
       "SY-sSTRK": {
         "address": "${SY_SSTRK_ADDRESS:-}",
-        "underlying": "${SSTRK_ADDRESS:-}"
+        "underlying": "${SSTRK_ADDRESS:-}",
+        "indexOracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}",
+        "isERC4626": false
       }
     },
     "markets": {

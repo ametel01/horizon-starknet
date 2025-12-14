@@ -26,6 +26,8 @@ KEYS=(
     # Class hashes
     "MOCK_ERC20_CLASS_HASH"
     "MOCK_YIELD_TOKEN_CLASS_HASH"
+    "MOCK_PRAGMA_CLASS_HASH"
+    "PRAGMA_INDEX_ORACLE_CLASS_HASH"
     "SY_CLASS_HASH"
     "PT_CLASS_HASH"
     "YT_CLASS_HASH"
@@ -37,6 +39,9 @@ KEYS=(
     "FACTORY_ADDRESS"
     "MARKET_FACTORY_ADDRESS"
     "ROUTER_ADDRESS"
+    # Oracle addresses
+    "MOCK_PRAGMA_ADDRESS"
+    "PRAGMA_SSTRK_ORACLE_ADDRESS"
     # Base token
     "STRK_ADDRESS"
     # Yield Token 1: nstSTRK (ERC-4626 style)
@@ -45,7 +50,7 @@ KEYS=(
     "PT_NST_STRK_ADDRESS"
     "YT_NST_STRK_ADDRESS"
     "MARKET_NST_STRK_ADDRESS"
-    # Yield Token 2: sSTRK (Index oracle style)
+    # Yield Token 2: sSTRK (PragmaIndexOracle style)
     "SSTRK_ADDRESS"
     "SY_SSTRK_ADDRESS"
     "PT_SSTRK_ADDRESS"
