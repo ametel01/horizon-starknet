@@ -9,6 +9,7 @@ import { AddLiquidityForm } from '@/components/forms/AddLiquidityForm';
 import { RemoveLiquidityForm } from '@/components/forms/RemoveLiquidityForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -79,47 +80,32 @@ function PoolsPageContent(): ReactNode {
         {!mounted || isLoading ? (
           <SkeletonCard className="h-[600px]" />
         ) : isError ? (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-8 text-center">
-            <p className="text-red-500">Failed to load markets. Please try again.</p>
+          <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+            <p className="text-destructive">Failed to load markets. Please try again.</p>
           </div>
         ) : !selectedMarket ? (
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-8 text-center">
-            <p className="text-neutral-400">No markets available.</p>
-            <p className="mt-2 text-sm text-neutral-500">
+          <div className="border-border bg-card rounded-lg border p-8 text-center">
+            <p className="text-muted-foreground">No markets available.</p>
+            <p className="text-muted-foreground mt-2 text-sm">
               Markets will appear here once they are created.
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Tab Navigation */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={(): void => {
-                  setActiveTab('add');
-                }}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'add'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value as PoolTab);
+            }}
+            className="space-y-4"
+          >
+            <TabsList className="w-full">
+              <TabsTrigger value="add" className="flex-1">
                 Add Liquidity
-              </button>
-              <button
-                type="button"
-                onClick={(): void => {
-                  setActiveTab('remove');
-                }}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'remove'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
+              </TabsTrigger>
+              <TabsTrigger value="remove" className="flex-1">
                 Remove Liquidity
-              </button>
-            </div>
+              </TabsTrigger>
+            </TabsList>
 
             {/* Form */}
             {activeTab === 'add' ? (
@@ -127,7 +113,7 @@ function PoolsPageContent(): ReactNode {
             ) : (
               <RemoveLiquidityForm market={selectedMarket} />
             )}
-          </div>
+          </Tabs>
         )}
       </div>
 
@@ -142,33 +128,33 @@ function PoolsPageContent(): ReactNode {
             <CardContent>
               {lpBalanceLoading ? (
                 <div className="space-y-2">
-                  <div className="h-6 w-32 animate-pulse rounded bg-neutral-800" />
-                  <div className="h-4 w-24 animate-pulse rounded bg-neutral-800" />
+                  <div className="bg-muted h-6 w-32 animate-pulse rounded" />
+                  <div className="bg-muted h-4 w-24 animate-pulse rounded" />
                 </div>
               ) : lpBalance !== undefined && lpBalance > BigInt(0) ? (
                 <div className="space-y-3">
                   <div>
-                    <div className="text-2xl font-semibold text-neutral-100">
+                    <div className="text-foreground text-2xl font-semibold">
                       {formatWad(lpBalance, 6)} LP
                     </div>
-                    <div className="text-sm text-neutral-400">
+                    <div className="text-muted-foreground text-sm">
                       {userPoolShare.toFixed(4)}% of pool
                     </div>
                   </div>
-                  <div className="rounded-lg bg-neutral-800/50 p-3">
-                    <div className="mb-1 text-xs text-neutral-500">Your share of reserves</div>
+                  <div className="bg-muted rounded-lg p-3">
+                    <div className="text-muted-foreground mb-1 text-xs">Your share of reserves</div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-neutral-400">SY:</span>
-                      <span className="text-neutral-200">{formatWad(userReserves.sy, 4)}</span>
+                      <span className="text-muted-foreground">SY:</span>
+                      <span className="text-foreground">{formatWad(userReserves.sy, 4)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-neutral-400">PT:</span>
-                      <span className="text-neutral-200">{formatWad(userReserves.pt, 4)}</span>
+                      <span className="text-muted-foreground">PT:</span>
+                      <span className="text-foreground">{formatWad(userReserves.pt, 4)}</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-neutral-500">No LP position in this market</div>
+                <div className="text-muted-foreground">No LP position in this market</div>
               )}
             </CardContent>
           </Card>
@@ -182,69 +168,69 @@ function PoolsPageContent(): ReactNode {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-neutral-400">Total Liquidity</span>
-                <span className="text-neutral-200">
+                <span className="text-muted-foreground">Total Liquidity</span>
+                <span className="text-foreground">
                   {formatWad(selectedMarket.state.totalLpSupply, 4)} LP
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">SY Reserve</span>
-                <span className="text-neutral-200">
+                <span className="text-muted-foreground">SY Reserve</span>
+                <span className="text-foreground">
                   {formatWad(selectedMarket.state.syReserve, 4)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">PT Reserve</span>
-                <span className="text-neutral-200">
+                <span className="text-muted-foreground">PT Reserve</span>
+                <span className="text-foreground">
                   {formatWad(selectedMarket.state.ptReserve, 4)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Implied APY</span>
-                <span className="font-medium text-green-500">
+                <span className="text-muted-foreground">Implied APY</span>
+                <span className="text-primary font-medium">
                   {selectedMarket.impliedApy.toFixed(2)}%
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Days to Expiry</span>
-                <span className="text-neutral-200">{selectedMarket.daysToExpiry.toFixed(0)}</span>
+                <span className="text-muted-foreground">Days to Expiry</span>
+                <span className="text-foreground">{selectedMarket.daysToExpiry.toFixed(0)}</span>
               </div>
             </CardContent>
           </Card>
         )}
 
         {/* Info Panel */}
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
-          <h2 className="text-lg font-semibold text-neutral-100">How Liquidity Works</h2>
-          <div className="mt-4 space-y-4 text-sm text-neutral-400">
+        <div className="border-border bg-card rounded-lg border p-6">
+          <h2 className="text-foreground text-lg font-semibold">How Liquidity Works</h2>
+          <div className="text-muted-foreground mt-4 space-y-4 text-sm">
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
+              <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                 1
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Provide SY + PT</p>
+                <p className="text-foreground font-medium">Provide SY + PT</p>
                 <p className="mt-1">
                   Deposit both SY and PT tokens in the current pool ratio to receive LP tokens.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
+              <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                 2
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Earn Trading Fees</p>
+                <p className="text-foreground font-medium">Earn Trading Fees</p>
                 <p className="mt-1">
                   LP tokens represent your share of the pool. You earn fees from every swap.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
+              <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                 3
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Withdraw Anytime</p>
+                <p className="text-foreground font-medium">Withdraw Anytime</p>
                 <p className="mt-1">
                   Remove liquidity to receive your proportional share of SY and PT from the pool.
                 </p>
@@ -252,9 +238,9 @@ function PoolsPageContent(): ReactNode {
             </div>
           </div>
 
-          <div className="mt-6 rounded-lg bg-neutral-800/50 p-4">
-            <h3 className="text-sm font-medium text-neutral-200">Impermanent Loss</h3>
-            <p className="mt-2 text-sm text-neutral-400">
+          <div className="bg-muted mt-6 rounded-lg p-4">
+            <h3 className="text-foreground text-sm font-medium">Impermanent Loss</h3>
+            <p className="text-muted-foreground mt-2 text-sm">
               As PT approaches maturity, its price converges to 1 SY. This natural price movement
               can result in impermanent loss for LPs, especially for pools with longer time to
               expiry.
@@ -273,7 +259,7 @@ export default function PoolsPage(): ReactNode {
       <div className="mb-8">
         <Link
           href="/"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200"
+          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -285,8 +271,8 @@ export default function PoolsPage(): ReactNode {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-bold text-neutral-100">Liquidity Pools</h1>
-        <p className="mt-2 text-neutral-400">
+        <h1 className="text-foreground text-3xl font-bold">Liquidity Pools</h1>
+        <p className="text-muted-foreground mt-2">
           Provide liquidity to earn trading fees from PT/SY swaps
         </p>
       </div>

@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/Button';
+
 import { ConnectButton } from '../wallet/ConnectButton';
 
 const navLinks = [
@@ -18,7 +20,7 @@ export function Header(): React.ReactNode {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-background/80 sticky top-0 z-50 border-b border-border backdrop-blur-sm">
+    <header className="bg-background/80 border-border sticky top-0 z-50 border-b backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
@@ -37,7 +39,7 @@ export function Header(): React.ReactNode {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm text-muted transition-colors hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
               >
                 {link.label}
               </Link>
@@ -49,9 +51,10 @@ export function Header(): React.ReactNode {
           <ConnectButton />
 
           {/* Mobile menu button */}
-          <button
-            type="button"
-            className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 md:hidden"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
             onClick={() => {
               setMobileMenuOpen(!mobileMenuOpen);
             }}
@@ -90,19 +93,19 @@ export function Header(): React.ReactNode {
                 <line x1="4" y1="18" x2="20" y2="18" />
               </svg>
             )}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Mobile navigation */}
       {mobileMenuOpen && (
-        <nav className="border-t border-border bg-background px-4 py-4 md:hidden">
+        <nav className="border-border bg-background border-t px-4 py-4 md:hidden">
           <div className="flex flex-col gap-2">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-lg px-4 py-3 text-sm text-muted transition-colors hover:bg-neutral-800 hover:text-foreground"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg px-4 py-3 text-sm transition-colors"
                 onClick={() => {
                   setMobileMenuOpen(false);
                 }}
