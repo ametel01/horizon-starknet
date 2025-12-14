@@ -103,15 +103,23 @@ export function MintForm({ market }: MintFormProps): ReactNode {
     return 'Mint PT + YT';
   }, [isConnected, isLoading, status, validationError, amountSy, requiresApproval]);
 
+  // Get token symbols from metadata
+  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${tokenSymbol}`;
+  const ptSymbol = `PT-${tokenSymbol}`;
+  const ytSymbol = `YT-${tokenSymbol}`;
+
   return (
     <Card className="w-full max-w-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Mint PT + YT</CardTitle>
+          <CardTitle>
+            Mint {ptSymbol} + {ytSymbol}
+          </CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
         <p className="text-sm text-neutral-400">
-          Deposit SY to receive Principal Tokens and Yield Tokens
+          Deposit {sySymbol} to receive Principal Tokens and Yield Tokens
         </p>
       </CardHeader>
 
@@ -120,7 +128,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
         <TokenInput
           label="You deposit"
           tokenAddress={market.syAddress}
-          tokenSymbol="SY"
+          tokenSymbol={sySymbol}
           value={amountSy}
           onChange={setAmountSy}
           disabled={isLoading}
@@ -151,17 +159,19 @@ export function MintForm({ market }: MintFormProps): ReactNode {
           <TokenOutput
             label="You receive"
             amount={outputAmount}
-            tokenSymbol="PT"
+            tokenSymbol={ptSymbol}
             isLoading={syBalanceLoading}
           />
-          <TokenOutput label="You receive" amount={outputAmount} tokenSymbol="YT" />
+          <TokenOutput label="You receive" amount={outputAmount} tokenSymbol={ytSymbol} />
         </div>
 
         {/* Info */}
         <div className="rounded-lg bg-neutral-800/50 p-3 text-sm">
           <div className="flex justify-between text-neutral-400">
             <span>Exchange Rate</span>
-            <span className="text-neutral-200">1 SY = 1 PT + 1 YT</span>
+            <span className="text-neutral-200">
+              1 {sySymbol} = 1 {ptSymbol} + 1 {ytSymbol}
+            </span>
           </div>
           <div className="mt-1 flex justify-between text-neutral-400">
             <span>Slippage Tolerance</span>

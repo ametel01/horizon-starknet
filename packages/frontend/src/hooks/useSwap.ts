@@ -9,12 +9,13 @@ import { getERC20Contract, getRouterContract } from '@/lib/starknet/contracts';
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
 
-export type SwapDirection = 'buy_pt' | 'sell_pt';
+export type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';
 
 interface SwapParams {
   marketAddress: string;
   syAddress: string;
   ptAddress: string;
+  ytAddress: string;
   direction: SwapDirection;
   amountIn: bigint;
   minAmountOut: bigint;
@@ -72,7 +73,7 @@ export function useSwap(): UseSwapReturn {
           uint256.bnToUint256(params.minAmountOut),
         ]);
         calls.push(swapCall);
-      } else {
+      } else if (params.direction === 'sell_pt') {
         // Swap PT for SY: approve PT, then swap
         const ptContract = getERC20Contract(params.ptAddress, account);
 
@@ -85,6 +86,57 @@ export function useSwap(): UseSwapReturn {
 
         // Add swap call
         const swapCall = router.populate('swap_exact_pt_for_sy', [
+          params.marketAddress,
+          address,
+          uint256.bnToUint256(params.amountIn),
+          uint256.bnToUint256(params.minAmountOut),
+        ]);
+        calls.push(swapCall);
+      } else if (params.direction === 'buy_yt') {
+        // Swap SY for YT via flash swap: approve SY, then swap
+        const syContract = getERC20Contract(params.syAddress, account);
+
+        // Add approval call for SY
+        const approveCall = syContract.populate('approve', [
+          routerAddress,
+          uint256.bnToUint256(params.amountIn),
+        ]);
+        calls.push(approveCall);
+
+        // Add swap call - swap_exact_sy_for_yt(yt, market, receiver, exact_sy_in, min_yt_out)
+        const swapCall = router.populate('swap_exact_sy_for_yt', [
+          params.ytAddress,
+          params.marketAddress,
+          address,
+          uint256.bnToUint256(params.amountIn),
+          uint256.bnToUint256(params.minAmountOut),
+        ]);
+        calls.push(swapCall);
+      } else {
+        // direction === 'sell_yt'
+        // Swap YT for SY via flash swap: approve YT and SY (for collateral), then swap
+        const ytContract = getERC20Contract(params.ytAddress, account);
+        const syContract = getERC20Contract(params.syAddress, account);
+
+        // The router needs YT approval for the YT being sold
+        const approveYtCall = ytContract.populate('approve', [
+          routerAddress,
+          uint256.bnToUint256(params.amountIn),
+        ]);
+        calls.push(approveYtCall);
+
+        // The router also needs SY approval for collateral (4x the YT amount for safety margin)
+        // This collateral is refunded after the flash swap
+        const collateralAmount = params.amountIn * BigInt(4);
+        const approveSyCall = syContract.populate('approve', [
+          routerAddress,
+          uint256.bnToUint256(collateralAmount),
+        ]);
+        calls.push(approveSyCall);
+
+        // Add swap call - swap_exact_yt_for_sy(yt, market, receiver, exact_yt_in, min_sy_out)
+        const swapCall = router.populate('swap_exact_yt_for_sy', [
+          params.ytAddress,
           params.marketAddress,
           address,
           uint256.bnToUint256(params.amountIn),

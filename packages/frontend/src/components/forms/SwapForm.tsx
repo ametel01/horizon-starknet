@@ -24,11 +24,23 @@ const SLIPPAGE_OPTIONS = [
   { label: '1%', value: 100 },
 ];
 
+type TokenType = 'PT' | 'YT';
+
 export function SwapForm({ market }: SwapFormProps): ReactNode {
   const { isConnected } = useStarknet();
-  const [direction, setDirection] = useState<SwapDirection>('buy_pt');
+  const [tokenType, setTokenType] = useState<TokenType>('PT');
+  const [isBuying, setIsBuying] = useState(true);
   const [inputAmount, setInputAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
+
+  // Derive swap direction from token type and buy/sell
+  const direction: SwapDirection = isBuying
+    ? tokenType === 'PT'
+      ? 'buy_pt'
+      : 'buy_yt'
+    : tokenType === 'PT'
+      ? 'sell_pt'
+      : 'sell_yt';
 
   const {
     swap,
@@ -40,13 +52,26 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     reset: resetSwap,
   } = useSwap();
 
-  // Get input/output token addresses based on direction
-  const inputToken = direction === 'buy_pt' ? market.syAddress : market.ptAddress;
-  const inputLabel = direction === 'buy_pt' ? 'SY' : 'PT';
-  const outputLabel = direction === 'buy_pt' ? 'PT' : 'SY';
+  // Get token symbol from metadata
+  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? '';
+  const syLabel = tokenSymbol ? `SY-${tokenSymbol}` : 'SY';
+  const ptLabel = tokenSymbol ? `PT-${tokenSymbol}` : 'PT';
+  const ytLabel = tokenSymbol ? `YT-${tokenSymbol}` : 'YT';
+
+  // Get input/output token addresses and labels based on direction
+  const inputToken = isBuying
+    ? market.syAddress
+    : tokenType === 'PT'
+      ? market.ptAddress
+      : market.ytAddress;
+  const inputLabel = isBuying ? syLabel : tokenType === 'PT' ? ptLabel : ytLabel;
+  const outputLabel = isBuying ? (tokenType === 'PT' ? ptLabel : ytLabel) : syLabel;
 
   // Fetch balance for input token
   const { data: inputBalance } = useTokenBalance(inputToken);
+
+  // For selling YT, we also need SY balance for collateral
+  const { data: syBalance } = useTokenBalance(market.syAddress);
 
   // Parse input amount
   const parsedInputAmount = useMemo(() => {
@@ -71,11 +96,30 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
       // Using constant product approximation: pt_out = (pt_reserve * sy_in) / (sy_reserve + sy_in)
       if (syReserve === BigInt(0)) return BigInt(0);
       return (ptReserve * parsedInputAmount) / (syReserve + parsedInputAmount);
-    } else {
+    } else if (direction === 'sell_pt') {
       // Selling PT for SY
       // pt_in for sy_out: sy_out = (sy_reserve * pt_in) / (pt_reserve + pt_in)
       if (ptReserve === BigInt(0)) return BigInt(0);
       return (syReserve * parsedInputAmount) / (ptReserve + parsedInputAmount);
+    } else if (direction === 'buy_yt') {
+      // Buy YT with SY via flash swap
+      // Simplified: YT amount ≈ SY in (since we mint 1:1 then sell PT)
+      // The actual output depends on PT market price, but for estimation:
+      // yt_out ≈ sy_in * (1 + pt_price), where pt_price < 1
+      if (syReserve === BigInt(0) || ptReserve === BigInt(0)) return BigInt(0);
+      // PT price in terms of SY ≈ syReserve / ptReserve
+      // Since PT < 1 SY, yt_out > sy_in
+      const ptPriceScaled = (syReserve * BigInt(1e18)) / ptReserve;
+      // yt_out ≈ sy_in / (1 - pt_discount), simplified to sy_in * 1.05 for estimation
+      return (parsedInputAmount * (BigInt(1e18) + (BigInt(1e18) - ptPriceScaled))) / BigInt(1e18);
+    } else {
+      // Sell YT for SY via flash swap
+      // Simplified: SY out ≈ YT in * (1 - PT price)
+      // YT value = SY value - PT value
+      if (syReserve === BigInt(0) || ptReserve === BigInt(0)) return BigInt(0);
+      const ptPriceScaled = (syReserve * BigInt(1e18)) / ptReserve;
+      // sy_out ≈ yt_in * (1 - pt_price)
+      return (parsedInputAmount * (BigInt(1e18) - ptPriceScaled)) / BigInt(1e18);
     }
   }, [parsedInputAmount, market.state, direction]);
 
@@ -104,8 +148,18 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
   const hasInsufficientBalance = inputBalance !== undefined && parsedInputAmount > inputBalance;
   const isValidAmount = parsedInputAmount > BigInt(0);
 
+  // For selling YT, check collateral requirement (4x the YT amount)
+  const collateralRequired = direction === 'sell_yt' ? parsedInputAmount * BigInt(4) : BigInt(0);
+  const hasInsufficientCollateral =
+    direction === 'sell_yt' && syBalance !== undefined && collateralRequired > syBalance;
+
   const canSwap =
-    isConnected && isValidAmount && !hasInsufficientBalance && !isSwapping && !isSuccess;
+    isConnected &&
+    isValidAmount &&
+    !hasInsufficientBalance &&
+    !hasInsufficientCollateral &&
+    !isSwapping &&
+    !isSuccess;
 
   // Determine transaction status for TxStatus component
   const txStatus = useMemo(() => {
@@ -123,6 +177,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
       marketAddress: market.address,
       syAddress: market.syAddress,
       ptAddress: market.ptAddress,
+      ytAddress: market.ytAddress,
       direction,
       amountIn: parsedInputAmount,
       minAmountOut: minOutput,
@@ -143,9 +198,16 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     return undefined;
   }, [isSuccess, resetSwap]);
 
-  // Handle direction change
+  // Handle direction change (flip buy/sell)
   const toggleDirection = (): void => {
-    setDirection((prev) => (prev === 'buy_pt' ? 'sell_pt' : 'buy_pt'));
+    setIsBuying((prev) => !prev);
+    setInputAmount('');
+    resetSwap();
+  };
+
+  // Handle token type change
+  const handleTokenTypeChange = (newType: TokenType): void => {
+    setTokenType(newType);
     setInputAmount('');
     resetSwap();
   };
@@ -156,33 +218,67 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
         <CardTitle>Swap</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Direction Toggle */}
+        {/* Token Type Selector (PT vs YT) */}
         <div className="flex gap-2">
           <button
             type="button"
             onClick={(): void => {
-              setDirection('buy_pt');
+              handleTokenTypeChange('PT');
             }}
             className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              direction === 'buy_pt'
-                ? 'bg-blue-500 text-white'
+              tokenType === 'PT'
+                ? 'bg-neutral-700 text-white'
                 : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Buy PT
+            PT (Principal)
           </button>
           <button
             type="button"
             onClick={(): void => {
-              setDirection('sell_pt');
+              handleTokenTypeChange('YT');
             }}
             className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              direction === 'sell_pt'
-                ? 'bg-blue-500 text-white'
+              tokenType === 'YT'
+                ? 'bg-neutral-700 text-white'
                 : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Sell PT
+            YT (Yield)
+          </button>
+        </div>
+
+        {/* Buy/Sell Toggle */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={(): void => {
+              setIsBuying(true);
+              setInputAmount('');
+              resetSwap();
+            }}
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              isBuying
+                ? 'bg-green-600 text-white'
+                : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            Buy {tokenType}
+          </button>
+          <button
+            type="button"
+            onClick={(): void => {
+              setIsBuying(false);
+              setInputAmount('');
+              resetSwap();
+            }}
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              !isBuying
+                ? 'bg-red-600 text-white'
+                : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            Sell {tokenType}
           </button>
         </div>
 
@@ -292,6 +388,39 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
           </div>
         </div>
 
+        {/* YT Sell Collateral Warning */}
+        {direction === 'sell_yt' && isValidAmount && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm">
+            <div className="flex items-start gap-2">
+              <svg
+                className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <p className="font-medium text-yellow-400">Collateral Required</p>
+                <p className="mt-1 text-yellow-200/80">
+                  Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
+                  collateral. This will be refunded after the swap.
+                </p>
+                {hasInsufficientCollateral && (
+                  <p className="mt-1 text-red-400">
+                    Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Transaction Status */}
         {txStatus !== 'idle' && (
           <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
@@ -307,9 +436,11 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                 ? 'Enter Amount'
                 : hasInsufficientBalance
                   ? 'Insufficient Balance'
-                  : isSuccess
-                    ? 'Swapped!'
-                    : `Swap ${inputLabel} for ${outputLabel}`}
+                  : hasInsufficientCollateral
+                    ? 'Insufficient Collateral'
+                    : isSuccess
+                      ? 'Swapped!'
+                      : `Swap ${inputLabel} for ${outputLabel}`}
         </Button>
       </CardContent>
     </Card>

@@ -4,8 +4,10 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
+import { getMarketInfoByAddress } from '@/lib/constants/addresses';
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
 import { getMarketContract, getMarketFactoryContract } from '@/lib/starknet/contracts';
+import type { NetworkId } from '@/lib/starknet/provider';
 import type { MarketData, MarketInfo, MarketState } from '@/types/market';
 
 import { useStarknet } from './useStarknet';
@@ -19,9 +21,18 @@ function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
   return uint256.uint256ToBN(value);
 }
 
+// Helper to convert address (bigint or string) to hex string
+function toHexAddress(value: unknown): string {
+  if (typeof value === 'bigint') {
+    return '0x' + value.toString(16).padStart(64, '0');
+  }
+  return String(value);
+}
+
 async function fetchMarketData(
   marketAddress: string,
-  provider: ProviderInterface
+  provider: ProviderInterface,
+  network: NetworkId
 ): Promise<MarketData> {
   const market = getMarketContract(marketAddress, provider);
 
@@ -41,9 +52,9 @@ async function fetchMarketData(
 
     const info: MarketInfo = {
       address: marketAddress,
-      syAddress,
-      ptAddress,
-      ytAddress,
+      syAddress: toHexAddress(syAddress),
+      ptAddress: toHexAddress(ptAddress),
+      ytAddress: toHexAddress(ytAddress),
       expiry: Number(expiry),
       isExpired: isExpiredVal,
     };
@@ -61,13 +72,31 @@ async function fetchMarketData(
     const days = daysToExpiry(info.expiry);
     const tvlSy = state.syReserve + state.ptReserve;
 
-    return {
+    // Get token metadata from static config if available
+    const staticInfo = getMarketInfoByAddress(network, marketAddress);
+
+    const baseData = {
       ...info,
       state,
       impliedApy,
       tvlSy,
       daysToExpiry: days,
     };
+
+    if (staticInfo) {
+      return {
+        ...baseData,
+        metadata: {
+          key: staticInfo.key,
+          underlyingAddress: staticInfo.underlyingAddress,
+          yieldTokenName: staticInfo.yieldTokenName,
+          yieldTokenSymbol: staticInfo.yieldTokenSymbol,
+          isERC4626: staticInfo.isERC4626,
+        },
+      };
+    }
+
+    return baseData;
   } catch (error) {
     console.error('[fetchMarketData] Error for market:', marketAddress, error);
     throw error;
@@ -90,7 +119,7 @@ export function useMarkets(
   marketAddresses: string[],
   options: UseMarketsOptions = {}
 ): UseMarketsReturn {
-  const { provider } = useStarknet();
+  const { provider, network } = useStarknet();
   const { refetchInterval = 30000 } = options;
 
   // Only run queries on client side to avoid SSR issues with localhost RPC
@@ -98,8 +127,8 @@ export function useMarkets(
 
   const queries = useQueries({
     queries: marketAddresses.map((address) => ({
-      queryKey: ['market', address],
-      queryFn: () => fetchMarketData(address, provider),
+      queryKey: ['market', address, network],
+      queryFn: () => fetchMarketData(address, provider, network),
       refetchInterval,
       staleTime: 10000,
       enabled: isClient && address !== '0x0',
