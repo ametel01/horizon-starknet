@@ -16,12 +16,23 @@ export interface MarketState {
   lnImpliedRate: bigint;
 }
 
+// Token metadata for display
+export interface MarketTokenMetadata {
+  key: string; // e.g. "nstSTRK", "sSTRK"
+  underlyingAddress: string;
+  yieldTokenName: string; // e.g. "Nostra Staked STRK"
+  yieldTokenSymbol: string; // e.g. "nstSTRK"
+  isERC4626: boolean;
+}
+
 export interface MarketData extends MarketInfo {
   state: MarketState;
   // Computed values
   impliedApy: BigNumber;
   tvlSy: bigint; // Total SY in pool (reserves + implicit from PT)
   daysToExpiry: number;
+  // Token metadata (optional, may not be available for unknown markets)
+  metadata?: MarketTokenMetadata;
 }
 
 export interface TokenMetadata {

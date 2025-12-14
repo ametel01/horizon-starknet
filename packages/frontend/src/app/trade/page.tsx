@@ -56,37 +56,42 @@ function TradePageContent(): ReactNode {
           <div className="mt-4 space-y-4 text-sm text-neutral-400">
             <div className="flex gap-3">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
-                1
+                PT
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Buy PT for Fixed Yield</p>
+                <p className="font-medium text-neutral-200">Principal Token (PT)</p>
                 <p className="mt-1">
-                  Buy PT at a discount and hold until maturity. PT redeems for 1 SY at expiry,
-                  locking in a fixed return.
+                  Buy PT at a discount for fixed yield. PT redeems for 1 SY at expiry. PT price
+                  rises when rates fall and falls when rates rise.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
-                2
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500/20 text-xs font-medium text-green-500">
+                YT
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Sell PT for Liquidity</p>
+                <p className="font-medium text-neutral-200">Yield Token (YT)</p>
                 <p className="mt-1">
-                  If you need liquidity before maturity, you can sell your PT back to the pool for
-                  SY tokens.
+                  Buy YT to speculate on rising yields. YT gives you the right to claim all yield
+                  until expiry. YT expires worthless but can be very profitable if yields are high.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-500">
-                3
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs font-medium text-purple-500">
+                $
               </div>
               <div>
-                <p className="font-medium text-neutral-200">Rate Speculation</p>
+                <p className="font-medium text-neutral-200">Trading Strategies</p>
                 <p className="mt-1">
-                  Trade PT to speculate on yield rate movements. PT price rises when rates fall and
-                  falls when rates rise.
+                  <span className="text-neutral-300">Fixed Yield:</span> Buy PT, hold to expiry.
+                  <br />
+                  <span className="text-neutral-300">Yield Bull:</span> Buy YT, profit if yields
+                  exceed implied APY.
+                  <br />
+                  <span className="text-neutral-300">Yield Bear:</span> Sell YT, profit if yields
+                  stay low.
                 </p>
               </div>
             </div>
@@ -142,7 +147,7 @@ export default function TradePage(): ReactNode {
         </Link>
         <h1 className="text-3xl font-bold text-neutral-100">Trade</h1>
         <p className="mt-2 text-neutral-400">
-          Swap between SY and PT tokens to lock in fixed yields or exit positions
+          Trade PT for fixed yields or YT to speculate on yield rates
         </p>
       </div>
 

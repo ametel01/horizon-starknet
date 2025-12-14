@@ -1,34 +1,72 @@
-import { RpcProvider } from 'starknet';
+import { RpcProvider, type BlockTag, type Call, type CallContractResponse } from 'starknet';
 
-export type NetworkId = 'mainnet' | 'sepolia' | 'katana';
+export type NetworkId = 'mainnet' | 'sepolia' | 'devnet';
 
 const RPC_URLS: Record<NetworkId, string> = {
   mainnet:
     process.env.NEXT_PUBLIC_RPC_URL ?? 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7',
   sepolia:
     process.env.NEXT_PUBLIC_RPC_URL ?? 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
-  katana: process.env.NEXT_PUBLIC_RPC_URL ?? 'http://localhost:5050',
+  devnet: process.env.NEXT_PUBLIC_RPC_URL ?? 'http://localhost:5050',
 };
 
 const CHAIN_IDS: Record<NetworkId, string> = {
   mainnet: '0x534e5f4d41494e',
   sepolia: '0x534e5f5345504f4c4941',
-  katana: '0x4b4154414e41', // "KATANA" in hex
+  devnet: '0x534e5f5345504f4c4941', // starknet-devnet-rs uses SN_SEPOLIA chain ID
+};
+
+// starknet-devnet-rs doesn't support 'pending' block tag
+const DEFAULT_BLOCK: Record<NetworkId, BlockTag> = {
+  mainnet: 'pending',
+  sepolia: 'pending',
+  devnet: 'latest',
 };
 
 export function getNetworkId(): NetworkId {
   const network = process.env.NEXT_PUBLIC_NETWORK;
-  if (network === 'mainnet' || network === 'sepolia' || network === 'katana') {
+  if (network === 'mainnet' || network === 'sepolia' || network === 'devnet') {
     return network;
   }
-  return 'katana'; // Default to katana for local development
+  return 'devnet'; // Default to devnet for local development
+}
+
+export function getDefaultBlock(network?: NetworkId): BlockTag {
+  const networkId = network ?? getNetworkId();
+  return DEFAULT_BLOCK[networkId];
+}
+
+/**
+ * Custom RpcProvider that uses 'latest' block tag for devnet
+ * (starknet-devnet-rs doesn't support 'pending')
+ */
+class DevnetRpcProvider extends RpcProvider {
+  private defaultBlockTag: BlockTag;
+
+  constructor(nodeUrl: string, defaultBlock: BlockTag) {
+    super({ nodeUrl, batch: 0 });
+    this.defaultBlockTag = defaultBlock;
+  }
+
+  async callContract(call: Call, blockIdentifier?: BlockTag): Promise<CallContractResponse> {
+    // Use our default block if none specified
+    const block = blockIdentifier ?? this.defaultBlockTag;
+    return super.callContract(call, block);
+  }
 }
 
 export function createProvider(network?: NetworkId): RpcProvider {
   const networkId = network ?? getNetworkId();
+  const defaultBlock = DEFAULT_BLOCK[networkId];
+
+  // Use custom provider for devnet to handle block tag
+  if (networkId === 'devnet') {
+    return new DevnetRpcProvider(RPC_URLS[networkId], defaultBlock);
+  }
+
   return new RpcProvider({
     nodeUrl: RPC_URLS[networkId],
-    batch: 0, // Enable auto-batching for efficient multicalls
+    batch: 0,
   });
 }
 
@@ -44,8 +82,8 @@ export function getExplorerUrl(network?: NetworkId): string {
       return 'https://starkscan.co';
     case 'sepolia':
       return 'https://sepolia.starkscan.co';
-    case 'katana':
-      return ''; // No explorer for local katana
+    case 'devnet':
+      return ''; // No explorer for local devnet
   }
 }
 

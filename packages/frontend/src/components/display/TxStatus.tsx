@@ -106,7 +106,7 @@ function getStatusText(status: TxStatusType): string {
 
 interface TxLinkProps {
   txHash: string;
-  network?: 'mainnet' | 'sepolia' | 'katana';
+  network?: 'mainnet' | 'sepolia' | 'devnet';
   className?: string;
 }
 
@@ -142,8 +142,8 @@ function getExplorerUrl(network: string, txHash: string): string | null {
       return `https://starkscan.co/tx/${txHash}`;
     case 'sepolia':
       return `https://sepolia.starkscan.co/tx/${txHash}`;
-    case 'katana':
-      return null; // No explorer for local katana
+    case 'devnet':
+      return null; // No explorer for local devnet
     default:
       return null;
   }

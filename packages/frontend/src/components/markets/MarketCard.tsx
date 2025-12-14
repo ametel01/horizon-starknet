@@ -16,16 +16,19 @@ interface MarketCardProps {
 
 export function MarketCard({ market, className }: MarketCardProps): ReactNode {
   const shortAddress = `${market.address.slice(0, 6)}...${market.address.slice(-4)}`;
+  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'PT';
+  const tokenName = market.metadata?.yieldTokenName ?? 'Principal Token';
 
   return (
     <Card className={cn('transition-colors hover:border-neutral-700', className)}>
       <CardHeader className="flex flex-row items-start justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
-            <span>PT Market</span>
+            <span>PT-{tokenSymbol}</span>
             <ExpiryBadge expiryTimestamp={market.expiry} />
           </CardTitle>
-          <p className="mt-1 font-mono text-xs text-neutral-500">{shortAddress}</p>
+          <p className="mt-1 text-sm text-neutral-400">{tokenName}</p>
+          <p className="mt-0.5 font-mono text-xs text-neutral-500">{shortAddress}</p>
         </div>
       </CardHeader>
 
@@ -40,18 +43,30 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
           {/* TVL */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-neutral-400">TVL</span>
-            <TokenAmount amount={market.tvlSy} symbol="SY" className="text-neutral-100" />
+            <TokenAmount
+              amount={market.tvlSy}
+              symbol={`SY-${tokenSymbol}`}
+              className="text-neutral-100"
+            />
           </div>
 
           {/* Reserves */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-neutral-400">SY Reserve</span>
-            <TokenAmount amount={market.state.syReserve} symbol="SY" className="text-neutral-300" />
+            <TokenAmount
+              amount={market.state.syReserve}
+              symbol={`SY-${tokenSymbol}`}
+              className="text-neutral-300"
+            />
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-sm text-neutral-400">PT Reserve</span>
-            <TokenAmount amount={market.state.ptReserve} symbol="PT" className="text-neutral-300" />
+            <TokenAmount
+              amount={market.state.ptReserve}
+              symbol={`PT-${tokenSymbol}`}
+              className="text-neutral-300"
+            />
           </div>
 
           {/* Days to Expiry */}

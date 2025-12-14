@@ -1,8 +1,18 @@
-import katanaAddressesRaw from '@deploy/addresses/katana.json';
+import devnetAddressesRaw from '@deploy/addresses/devnet.json';
 
 import type { NetworkId } from '../starknet/provider';
 
-// Type definitions for the new dual-market JSON structure
+/**
+ * Normalize a Starknet address for comparison
+ * Converts to lowercase and removes leading zeros after 0x
+ */
+function normalizeAddress(address: string): string {
+  // Remove 0x prefix, strip leading zeros, add back 0x, lowercase
+  const hex = address.toLowerCase().replace(/^0x0*/, '');
+  return '0x' + hex;
+}
+
+// Type definitions for the dual-market JSON structure
 interface YieldTokenInfo {
   name: string;
   symbol: string;
@@ -21,7 +31,7 @@ interface MarketAddresses {
   Market: string;
 }
 
-interface KatanaAddresses {
+interface DevnetAddresses {
   network: string;
   rpcUrl: string;
   deployedAt: string;
@@ -57,7 +67,7 @@ interface KatanaAddresses {
   };
 }
 
-const katanaAddresses = katanaAddressesRaw as KatanaAddresses;
+const devnetAddresses = devnetAddressesRaw as DevnetAddresses;
 
 export interface ContractAddresses {
   factory: string;
@@ -84,10 +94,10 @@ const ZERO_ADDRESS = '0x0';
 
 // Core protocol addresses per network
 const ADDRESSES: Record<NetworkId, ContractAddresses> = {
-  katana: {
-    factory: katanaAddresses.contracts.Factory ?? ZERO_ADDRESS,
-    marketFactory: katanaAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
-    router: katanaAddresses.contracts.Router ?? ZERO_ADDRESS,
+  devnet: {
+    factory: devnetAddresses.contracts.Factory ?? ZERO_ADDRESS,
+    marketFactory: devnetAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
+    router: devnetAddresses.contracts.Router ?? ZERO_ADDRESS,
   },
   sepolia: {
     // TODO: Update after sepolia deployment
@@ -111,17 +121,73 @@ export function getAddresses(network: NetworkId): ContractAddresses {
  * Get base token address (STRK)
  */
 export function getBaseTokenAddress(network: NetworkId): string {
-  if (network !== 'katana') return ZERO_ADDRESS;
-  return katanaAddresses.testSetup.baseToken?.STRK ?? ZERO_ADDRESS;
+  if (network !== 'devnet') return ZERO_ADDRESS;
+  return devnetAddresses.testSetup.baseToken?.STRK ?? ZERO_ADDRESS;
 }
 
 /**
  * Get test recipient address
  */
 export function getTestRecipient(network: NetworkId): string {
-  if (network !== 'katana') return ZERO_ADDRESS;
-  return katanaAddresses.testSetup.testRecipient ?? ZERO_ADDRESS;
+  if (network !== 'devnet') return ZERO_ADDRESS;
+  return devnetAddresses.testSetup.testRecipient ?? ZERO_ADDRESS;
+}
+
+/**
+ * Get all market infos with token metadata for a network
+ */
+export function getMarketInfos(network: NetworkId): MarketInfo[] {
+  if (network !== 'devnet') return [];
+
+  const markets: MarketInfo[] = [];
+  const { testSetup } = devnetAddresses;
+
+  // nstSTRK market
+  if (testSetup.markets?.nstSTRK?.Market && testSetup.yieldTokens?.nstSTRK) {
+    markets.push({
+      key: 'nstSTRK',
+      marketAddress: testSetup.markets.nstSTRK.Market,
+      ptAddress: testSetup.markets.nstSTRK.PT,
+      ytAddress: testSetup.markets.nstSTRK.YT,
+      syAddress: testSetup.syTokens?.['SY-nstSTRK']?.address ?? '',
+      underlyingAddress: testSetup.yieldTokens.nstSTRK.address,
+      yieldTokenName: testSetup.yieldTokens.nstSTRK.name,
+      yieldTokenSymbol: testSetup.yieldTokens.nstSTRK.symbol,
+      isERC4626: testSetup.yieldTokens.nstSTRK.isERC4626,
+      expiry: testSetup.expiry ?? 0,
+    });
+  }
+
+  // sSTRK market
+  if (testSetup.markets?.sSTRK?.Market && testSetup.yieldTokens?.sSTRK) {
+    markets.push({
+      key: 'sSTRK',
+      marketAddress: testSetup.markets.sSTRK.Market,
+      ptAddress: testSetup.markets.sSTRK.PT,
+      ytAddress: testSetup.markets.sSTRK.YT,
+      syAddress: testSetup.syTokens?.['SY-sSTRK']?.address ?? '',
+      underlyingAddress: testSetup.yieldTokens.sSTRK.address,
+      yieldTokenName: testSetup.yieldTokens.sSTRK.name,
+      yieldTokenSymbol: testSetup.yieldTokens.sSTRK.symbol,
+      isERC4626: testSetup.yieldTokens.sSTRK.isERC4626,
+      expiry: testSetup.expiry ?? 0,
+    });
+  }
+
+  return markets;
+}
+
+/**
+ * Get market info by market address
+ */
+export function getMarketInfoByAddress(
+  network: NetworkId,
+  marketAddress: string
+): MarketInfo | undefined {
+  const markets = getMarketInfos(network);
+  const normalizedTarget = normalizeAddress(marketAddress);
+  return markets.find((m) => normalizeAddress(m.marketAddress) === normalizedTarget);
 }
 
 // Re-export for convenience
-export { katanaAddresses };
+export { devnetAddresses };

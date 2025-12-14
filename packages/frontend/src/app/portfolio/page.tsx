@@ -17,6 +17,13 @@ import { formatWad } from '@/lib/math/wad';
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Get token symbols from metadata
+  const tokenSymbol = position.market.metadata?.yieldTokenSymbol ?? 'Token';
+  const tokenName = position.market.metadata?.yieldTokenName ?? 'Unknown Market';
+  const sySymbol = `SY-${tokenSymbol}`;
+  const ptSymbol = `PT-${tokenSymbol}`;
+  const ytSymbol = `YT-${tokenSymbol}`;
+
   const {
     claimYield,
     isClaiming: isClaimingYield,
@@ -158,9 +165,10 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
       >
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">
-              Market: {position.market.address.slice(0, 10)}...
-            </CardTitle>
+            <div>
+              <CardTitle className="text-base">{ptSymbol} Market</CardTitle>
+              <p className="text-sm text-neutral-400">{tokenName}</p>
+            </div>
             <div className="flex items-center gap-2">
               {position.market.isExpired ? (
                 <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-400">
@@ -195,19 +203,19 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
           <h4 className="text-sm font-medium text-neutral-300">Token Balances</h4>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">SY</div>
+              <div className="text-neutral-500">{sySymbol}</div>
               <div className="font-mono text-neutral-100">{formatWad(position.syBalance, 4)}</div>
             </div>
             <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">PT</div>
+              <div className="text-neutral-500">{ptSymbol}</div>
               <div className="font-mono text-neutral-100">{formatWad(position.ptBalance, 4)}</div>
             </div>
             <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">YT</div>
+              <div className="text-neutral-500">{ytSymbol}</div>
               <div className="font-mono text-neutral-100">{formatWad(position.ytBalance, 4)}</div>
             </div>
             <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">LP</div>
+              <div className="text-neutral-500">LP-{tokenSymbol}</div>
               <div className="font-mono text-neutral-100">{formatWad(position.lpBalance, 4)}</div>
             </div>
           </div>
@@ -220,7 +228,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
               <div>
                 <div className="text-sm text-green-400">Claimable Yield</div>
                 <div className="font-mono text-lg text-green-300">
-                  {formatWad(position.claimableYield, 6)} SY
+                  {formatWad(position.claimableYield, 6)} {sySymbol}
                 </div>
               </div>
               <Button
@@ -253,9 +261,11 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
               <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-blue-400">Redeem PT + YT</div>
+                    <div className="text-sm text-blue-400">
+                      Redeem {ptSymbol} + {ytSymbol}
+                    </div>
                     <div className="text-xs text-neutral-400">
-                      Burn matching PT & YT to receive SY
+                      Burn matching {ptSymbol} & {ytSymbol} to receive {sySymbol}
                     </div>
                     <div className="mt-1 font-mono text-sm text-blue-300">
                       Max:{' '}
@@ -265,7 +275,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
                           : position.ytBalance,
                         4
                       )}{' '}
-                      PT+YT
+                      {ptSymbol}+{ytSymbol}
                     </div>
                   </div>
                   <Button
@@ -294,10 +304,12 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
               <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-yellow-400">Redeem Expired PT</div>
-                    <div className="text-xs text-neutral-400">Redeem PT for underlying asset</div>
+                    <div className="text-sm text-yellow-400">Redeem Expired {ptSymbol}</div>
+                    <div className="text-xs text-neutral-400">
+                      Redeem {ptSymbol} for underlying asset
+                    </div>
                     <div className="mt-1 font-mono text-sm text-yellow-300">
-                      {formatWad(position.ptBalance, 4)} PT → SY
+                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {sySymbol}
                     </div>
                   </div>
                   <Button
