@@ -1,0 +1,53 @@
+{
+  "network": "fork",
+  "rpcUrl": "http://devnet:5050",
+  "mainnetRpcUrl": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_9/usuQSZ2cdSmSR8rNpstjp",
+  "deployedAt": "2025-12-15T04:07:30Z",
+  "pragmaTwap": "0x49eefafae944d07744d07cc72a5bf14728a6fb463c3eae5bca13552f5d455fd",
+  "classHashes": {
+    "PragmaIndexOracle": "0x01636d846c62dd85ba540a56c12d3907b396f8e796483d446a39ad20c615ffed",
+    "SY": "0x04d0b1a8c6dce08b23de9c6597ce028fb2072bc346726808f81a6f6c48b1e02b",
+    "PT": "0x0452a52cf4d365656e5efa14bcad9ce3a31cedbbd5226918f4c45b7c317008c8",
+    "YT": "0x067c54ddc99d65e75134de8620ae70e6ddf65852de544eb21bc39a5f29b6f3ab",
+    "Market": "0x07dc4fe6b7fbc6d3722d3e55aa1c1be3daff4a61d38a163d844839e0231a2b47",
+    "Factory": "0x058e85e13f070049e7e6e8d57885dcf5a904b8f541803f7507de4df01a6ca4af",
+    "MarketFactory": "0x06ccf69e7d517d23d84e5bf6384118ded1a1b3e20c03757c921ad3c9762b3b52",
+    "Router": "0x000ff2d55a0557ca6c171088da5d6e23478a3f1f1d3d028be9a2e44d8180d434"
+  },
+  "contracts": {
+    "Factory": "0x06ac49e50485953541b9e98959a8132d1f4addfe04c15b515c544d419ca393fe",
+    "MarketFactory": "0x05c62c7659fb051f9ff583511abcef40bcd132f4fb5f44b98e5eec70e307fcde",
+    "Router": "0x036f9575b04fe5cce215f5cfe865492cb42e0e18de39ba8f5e42dffc4be07ea6"
+  },
+  "mainnetTokens": {
+    "sSTRK": "0x0356f304b154d29d2A8fe22F1CB9107A9B564A733Cf6b4CC47fd121Ac1af90C9",
+    "wstETH": "0x0057912720381Af14B0E5C87aa4718ED5E527eaB60B3801ebF702AB09139E38b",
+    "nstSTRK": "0x04619E9cE4109590219C5263787050726bE63382148538f3F936c22aA87D2fC2"
+  },
+  "oracles": {
+    "sSTRK": "0x02bdc96372d4e63f5e3805e4bd0186b6a15e1bd9df8cce5f47011d9ffe9f6841",
+    "wstETH": "0x057dae96cb12fe201ae628ad65d16aa2da46db3af357b813b44bde93a5fc8f72",
+    "nstSTRK": "0x067ebdb6ad988afa7b9fada8f1c67f8c7c1dbe9bbc8d8aad06a7c896458baa11"
+  },
+  "markets": {
+    "sSTRK": {
+      "SY": "0x044e1befaa3f4f978890cbc3429be5d642fbf78a0bfbe97d8fa4270fafa1f117",
+      "PT": "0xcb46c270e17b75f863c85e836f2a79d1a53bf1908e1ca132c89021ff2a3463",
+      "YT": "0x22e6205ae41a3945f40f18127667ea329686b90f3a810b55ca3ab13918277ae",
+      "Market": "0x2ea3fefe8812130319001a3008b11bce018f381074c2d41db0cd758d00cb37c"
+    },
+    "wstETH": {
+      "SY": "0x06a82d02bad2fbcf7026c7d9fb95c4254e266b646622ac8d5a0134d84b4975ee",
+      "PT": "0x133b502edd34af7efc1fc41350c44e40bd49c9da3b3daa77c33d04849033a9c",
+      "YT": "0x24fb3dc65c19777c74b605da9acd96a6260597573b0f09c367bc1944e2aec21",
+      "Market": "0x7fc3ad368f19301bf712a07006ffc4233d2e61c8ea6ce82d6ba1b7646957b97"
+    },
+    "nstSTRK": {
+      "SY": "0x07383d1153724809dcae335194575d8cd3922c8506853221b8adcb2f1737148a",
+      "PT": "0x6bfd8d00a8303e122ee8ac2c2e5b8e58a3b66002d202d99876ec4d5c0613a64",
+      "YT": "0x265d6d2d0176432422a76d6aa35333ffe39a6814276a06e29928d68b29ad541",
+      "Market": "0x125b0f4c10386227fef96e94e56b85031311e1e754b380bae07e79b0c32a310"
+    }
+  },
+  "expiry": 1768363617
+}
