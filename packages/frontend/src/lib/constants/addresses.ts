@@ -1,7 +1,72 @@
 import devnetAddressesRaw from '@deploy/addresses/devnet.json';
 import forkAddressesRaw from '@deploy/addresses/fork.json';
+import sepoliaAddressesRaw from '@deploy/addresses/sepolia.json';
 
 import type { NetworkId } from '../starknet/provider';
+
+// Type definition for sepolia addresses JSON structure
+interface SepoliaYieldTokenInfo {
+  name: string;
+  symbol: string;
+  address: string;
+  isERC4626: boolean;
+}
+
+interface SepoliaSYTokenInfo {
+  address: string;
+  underlying: string;
+  isERC4626: boolean;
+}
+
+interface SepoliaMarketAddresses {
+  PT: string;
+  YT: string;
+  Market: string;
+  initialAnchor: string;
+}
+
+interface SepoliaAddresses {
+  network: string;
+  rpcUrl: string;
+  deployedAt: string;
+  classHashes: Record<string, string>;
+  contracts: {
+    Factory: string;
+    MarketFactory: string;
+    Router: string;
+  };
+  testSetup: {
+    testRecipient: string;
+    baseToken: {
+      STRK: string;
+      ETH: string;
+    };
+    yieldTokens: {
+      nstSTRK: SepoliaYieldTokenInfo;
+      sSTRK: SepoliaYieldTokenInfo;
+      wstETH: SepoliaYieldTokenInfo;
+    };
+    syTokens: {
+      'SY-nstSTRK': SepoliaSYTokenInfo;
+      'SY-sSTRK': SepoliaSYTokenInfo;
+      'SY-wstETH': SepoliaSYTokenInfo;
+    };
+    markets: {
+      nstSTRK: SepoliaMarketAddresses;
+      sSTRK: SepoliaMarketAddresses;
+      wstETH: SepoliaMarketAddresses;
+    };
+    marketParams: {
+      scalarRoot: string;
+      feeRate: string;
+    };
+    liquidity: {
+      seeded: boolean;
+      seedAmount: string;
+    };
+    expiry: number;
+  };
+}
 
 /**
  * Normalize a Starknet address for comparison
@@ -105,6 +170,7 @@ interface ForkAddresses {
 }
 
 const forkAddresses = forkAddressesRaw as ForkAddresses;
+const sepoliaAddresses = sepoliaAddressesRaw as SepoliaAddresses;
 
 export interface ContractAddresses {
   factory: string;
@@ -142,10 +208,9 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
     router: forkAddresses.contracts.Router,
   },
   sepolia: {
-    // TODO: Update after sepolia deployment
-    factory: ZERO_ADDRESS,
-    marketFactory: ZERO_ADDRESS,
-    router: ZERO_ADDRESS,
+    factory: sepoliaAddresses.contracts.Factory,
+    marketFactory: sepoliaAddresses.contracts.MarketFactory,
+    router: sepoliaAddresses.contracts.Router,
   },
   mainnet: {
     // TODO: Update after mainnet deployment
@@ -192,6 +257,11 @@ export function getMarketInfos(network: NetworkId): MarketInfo[] {
   // Handle devnet mode
   if (network === 'devnet') {
     return getDevnetMarketInfos();
+  }
+
+  // Handle sepolia mode
+  if (network === 'sepolia') {
+    return getSepoliaMarketInfos();
   }
 
   return [];
@@ -297,6 +367,55 @@ function getForkMarketInfos(): MarketInfo[] {
 }
 
 /**
+ * Get market infos for sepolia (ERC-4626 mock tokens)
+ */
+function getSepoliaMarketInfos(): MarketInfo[] {
+  const { testSetup } = sepoliaAddresses;
+
+  return [
+    // nstSTRK market
+    {
+      key: 'nstSTRK',
+      marketAddress: testSetup.markets.nstSTRK.Market,
+      ptAddress: testSetup.markets.nstSTRK.PT,
+      ytAddress: testSetup.markets.nstSTRK.YT,
+      syAddress: testSetup.syTokens['SY-nstSTRK'].address,
+      underlyingAddress: testSetup.yieldTokens.nstSTRK.address,
+      yieldTokenName: testSetup.yieldTokens.nstSTRK.name,
+      yieldTokenSymbol: testSetup.yieldTokens.nstSTRK.symbol,
+      isERC4626: testSetup.yieldTokens.nstSTRK.isERC4626,
+      expiry: testSetup.expiry,
+    },
+    // sSTRK market
+    {
+      key: 'sSTRK',
+      marketAddress: testSetup.markets.sSTRK.Market,
+      ptAddress: testSetup.markets.sSTRK.PT,
+      ytAddress: testSetup.markets.sSTRK.YT,
+      syAddress: testSetup.syTokens['SY-sSTRK'].address,
+      underlyingAddress: testSetup.yieldTokens.sSTRK.address,
+      yieldTokenName: testSetup.yieldTokens.sSTRK.name,
+      yieldTokenSymbol: testSetup.yieldTokens.sSTRK.symbol,
+      isERC4626: testSetup.yieldTokens.sSTRK.isERC4626,
+      expiry: testSetup.expiry,
+    },
+    // wstETH market
+    {
+      key: 'wstETH',
+      marketAddress: testSetup.markets.wstETH.Market,
+      ptAddress: testSetup.markets.wstETH.PT,
+      ytAddress: testSetup.markets.wstETH.YT,
+      syAddress: testSetup.syTokens['SY-wstETH'].address,
+      underlyingAddress: testSetup.yieldTokens.wstETH.address,
+      yieldTokenName: testSetup.yieldTokens.wstETH.name,
+      yieldTokenSymbol: testSetup.yieldTokens.wstETH.symbol,
+      isERC4626: testSetup.yieldTokens.wstETH.isERC4626,
+      expiry: testSetup.expiry,
+    },
+  ];
+}
+
+/**
  * Get market info by market address
  */
 export function getMarketInfoByAddress(
@@ -309,4 +428,4 @@ export function getMarketInfoByAddress(
 }
 
 // Re-export for convenience
-export { devnetAddresses, forkAddresses };
+export { devnetAddresses, forkAddresses, sepoliaAddresses };
