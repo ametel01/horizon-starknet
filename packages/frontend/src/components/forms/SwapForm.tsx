@@ -307,7 +307,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
             </TabsTrigger>
             <TabsTrigger
               value="sell"
-              className="data-active:bg-destructive flex-1 data-active:text-white"
+              className="data-active:bg-destructive data-active:text-primary-foreground flex-1"
             >
               Sell {tokenType}
             </TabsTrigger>
@@ -401,9 +401,9 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                     <span
                       className={
                         impliedApyAfter > impliedApyBefore
-                          ? 'text-green-600'
+                          ? 'text-primary'
                           : impliedApyAfter < impliedApyBefore
-                            ? 'text-red-500'
+                            ? 'text-destructive'
                             : ''
                       }
                     >
