@@ -12,9 +12,13 @@ services:
       - PORT=5050
       - SEED=0
       - PREDECLARE_ARGENT=true
-      - BLOCK_GENERATION_ON=10  # Generate new block every 10 seconds for yield simulation
+      - BLOCK_GENERATION_ON=10 # Generate new block every 10 seconds for yield simulation
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5050/is_alive || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://127.0.0.1:5050/is_alive || exit 1",
+        ]
       interval: 2s
       timeout: 5s
       retries: 60
@@ -33,6 +37,12 @@ services:
     environment:
       - DEVNET_URL=http://devnet:5050
       - ENV_FILE=.env.devnet
+      # Liquidity seeding (default: 10,000 tokens per market)
+      - SEED_LIQUIDITY=true
+      - SEED_LIQUIDITY_AMOUNT=1000000000000000000000000
+      # Market anchors are read from .env.devnet (mounted below):
+      #   MARKET_INITIAL_ANCHOR_NST_STRK (~8% APY)
+      #   MARKET_INITIAL_ANCHOR_SSTRK (~6% APY)
     volumes:
       # Mount output directory for addresses
       - ./deploy/addresses:/output
