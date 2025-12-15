@@ -23,15 +23,17 @@ export function Header(): React.ReactNode {
     <header className="bg-background/80 border-border sticky top-0 z-50 border-b backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <Image
-              src="/logo-32.png"
-              alt="Horizon"
-              width={32}
-              height={32}
-              className="h-8 w-8"
-              priority
-            />
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+            <div className="h-9 w-10 overflow-hidden">
+              <Image
+                src="/logo-64.png"
+                alt="Horizon"
+                width={40}
+                height={48}
+                className="h-12 w-10 object-cover object-top"
+                priority
+              />
+            </div>
             <span>Horizon</span>
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
