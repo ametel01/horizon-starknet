@@ -7,6 +7,9 @@ pub mod Factory {
     use horizon::interfaces::i_factory::IFactory;
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
@@ -14,8 +17,20 @@ pub mod Factory {
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // Class hash for YT contract deployment
         yt_class_hash: ClassHash,
         // Class hash for PT contract (passed to YT constructor)
@@ -36,6 +51,11 @@ pub mod Factory {
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         YieldContractsCreated: YieldContractsCreated,
+        ClassHashesUpdated: ClassHashesUpdated,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -49,14 +69,34 @@ pub mod Factory {
         pub creator: ContractAddress,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct ClassHashesUpdated {
+        pub yt_class_hash: ClassHash,
+        pub pt_class_hash: ClassHash,
+    }
+
     #[constructor]
-    fn constructor(ref self: ContractState, yt_class_hash: ClassHash, pt_class_hash: ClassHash) {
+    fn constructor(
+        ref self: ContractState,
+        owner: ContractAddress,
+        yt_class_hash: ClassHash,
+        pt_class_hash: ClassHash,
+    ) {
         assert(!yt_class_hash.is_zero(), Errors::ZERO_ADDRESS);
         assert(!pt_class_hash.is_zero(), Errors::ZERO_ADDRESS);
 
+        self.ownable.initializer(owner);
         self.yt_class_hash.write(yt_class_hash);
         self.pt_class_hash.write(pt_class_hash);
         self.deploy_count.write(0);
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
     #[abi(embed_v0)]
@@ -154,6 +194,30 @@ pub mod Factory {
         /// Check if a YT address was deployed by this factory
         fn is_valid_yt(self: @ContractState, yt: ContractAddress) -> bool {
             self.valid_yts.read(yt)
+        }
+
+        /// Get the YT class hash used for deployments
+        fn yt_class_hash(self: @ContractState) -> ClassHash {
+            self.yt_class_hash.read()
+        }
+
+        /// Get the PT class hash used for deployments
+        fn pt_class_hash(self: @ContractState) -> ClassHash {
+            self.pt_class_hash.read()
+        }
+
+        /// Set new class hashes for PT/YT deployments (owner only)
+        fn set_class_hashes(
+            ref self: ContractState, yt_class_hash: ClassHash, pt_class_hash: ClassHash,
+        ) {
+            self.ownable.assert_only_owner();
+            assert(!yt_class_hash.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!pt_class_hash.is_zero(), Errors::ZERO_ADDRESS);
+
+            self.yt_class_hash.write(yt_class_hash);
+            self.pt_class_hash.write(pt_class_hash);
+
+            self.emit(ClassHashesUpdated { yt_class_hash, pt_class_hash });
         }
     }
 }

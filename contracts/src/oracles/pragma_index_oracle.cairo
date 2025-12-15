@@ -7,8 +7,6 @@ pub trait IPragmaIndexOracleAdmin<TContractState> {
     fn update_index(ref self: TContractState) -> u256;
     /// Update TWAP window and staleness parameters
     fn set_config(ref self: TContractState, twap_window: u64, max_staleness: u64);
-    /// Transfer admin role
-    fn transfer_admin(ref self: TContractState, new_admin: ContractAddress);
     /// Pause the oracle (returns stored index instead of fetching)
     fn pause(ref self: TContractState);
     /// Unpause the oracle
@@ -24,7 +22,6 @@ pub trait IPragmaIndexOracleAdmin<TContractState> {
     fn get_max_staleness(self: @TContractState) -> u64;
     fn get_stored_index(self: @TContractState) -> u256;
     fn get_last_update_timestamp(self: @TContractState) -> u64;
-    fn get_admin(self: @TContractState) -> ContractAddress;
     fn is_paused(self: @TContractState) -> bool;
 }
 
@@ -47,8 +44,19 @@ pub mod PragmaIndexOracle {
         IPragmaSummaryStatsDispatcherTrait,
     };
     use horizon::libraries::math::{WAD, max};
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     // Constants
     const WAD_DECIMALS: u32 = 18;
@@ -58,6 +66,10 @@ pub mod PragmaIndexOracle {
 
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         /// Pragma Summary Stats contract address
         pragma_oracle: ContractAddress,
         /// Primary pair ID (numerator in ratio calculation)
@@ -72,8 +84,6 @@ pub mod PragmaIndexOracle {
         stored_index: u256,
         /// Last update timestamp
         last_update_timestamp: u64,
-        /// Admin address
-        admin: ContractAddress,
         /// Paused state for emergencies
         paused: bool,
     }
@@ -83,9 +93,12 @@ pub mod PragmaIndexOracle {
     pub enum Event {
         IndexUpdated: IndexUpdated,
         ConfigUpdated: ConfigUpdated,
-        AdminTransferred: AdminTransferred,
         Paused: Paused,
         Unpaused: Unpaused,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -104,14 +117,6 @@ pub mod PragmaIndexOracle {
     }
 
     #[derive(Drop, starknet::Event)]
-    pub struct AdminTransferred {
-        #[key]
-        pub old_admin: ContractAddress,
-        #[key]
-        pub new_admin: ContractAddress,
-    }
-
-    #[derive(Drop, starknet::Event)]
     pub struct Paused {
         #[key]
         pub by: ContractAddress,
@@ -126,19 +131,18 @@ pub mod PragmaIndexOracle {
     #[constructor]
     fn constructor(
         ref self: ContractState,
-        admin: ContractAddress,
+        owner: ContractAddress,
         pragma_oracle: ContractAddress,
         numerator_pair_id: felt252,
         denominator_pair_id: felt252,
         initial_index: u256,
     ) {
         // Validate inputs
-        assert(!admin.is_zero(), 'PIO: zero admin');
         assert(!pragma_oracle.is_zero(), 'PIO: zero oracle');
         assert(numerator_pair_id != 0, 'PIO: zero numerator pair');
         assert(initial_index >= WAD, 'PIO: invalid initial index');
 
-        self.admin.write(admin);
+        self.ownable.initializer(owner);
         self.pragma_oracle.write(pragma_oracle);
         self.numerator_pair_id.write(numerator_pair_id);
         self.denominator_pair_id.write(denominator_pair_id);
@@ -147,6 +151,14 @@ pub mod PragmaIndexOracle {
         self.stored_index.write(initial_index);
         self.last_update_timestamp.write(get_block_timestamp());
         self.paused.write(false);
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
     #[abi(embed_v0)]
@@ -197,7 +209,7 @@ pub mod PragmaIndexOracle {
 
         /// Update TWAP window and staleness parameters
         fn set_config(ref self: ContractState, twap_window: u64, max_staleness: u64) {
-            self._assert_admin();
+            self.ownable.assert_only_owner();
             assert(twap_window >= MIN_TWAP_WINDOW, 'PIO: window too short');
             assert(max_staleness >= twap_window, 'PIO: staleness < window');
 
@@ -207,34 +219,23 @@ pub mod PragmaIndexOracle {
             self.emit(ConfigUpdated { twap_window, max_staleness });
         }
 
-        /// Transfer admin role
-        fn transfer_admin(ref self: ContractState, new_admin: ContractAddress) {
-            self._assert_admin();
-            assert(!new_admin.is_zero(), 'PIO: zero admin');
-
-            let old_admin = self.admin.read();
-            self.admin.write(new_admin);
-
-            self.emit(AdminTransferred { old_admin, new_admin });
-        }
-
         /// Pause the oracle
         fn pause(ref self: ContractState) {
-            self._assert_admin();
+            self.ownable.assert_only_owner();
             self.paused.write(true);
             self.emit(Paused { by: get_caller_address() });
         }
 
         /// Unpause the oracle
         fn unpause(ref self: ContractState) {
-            self._assert_admin();
+            self.ownable.assert_only_owner();
             self.paused.write(false);
             self.emit(Unpaused { by: get_caller_address() });
         }
 
         /// Emergency index update (admin only)
         fn emergency_set_index(ref self: ContractState, new_index: u256) {
-            self._assert_admin();
+            self.ownable.assert_only_owner();
             assert(new_index >= WAD, 'PIO: index below WAD');
 
             let old_index = self.stored_index.read();
@@ -279,10 +280,6 @@ pub mod PragmaIndexOracle {
 
         fn get_last_update_timestamp(self: @ContractState) -> u64 {
             self.last_update_timestamp.read()
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            self.admin.read()
         }
 
         fn is_paused(self: @ContractState) -> bool {
@@ -391,12 +388,6 @@ pub mod PragmaIndexOracle {
                 i = i + 1;
             }
             result
-        }
-
-        /// Assert caller is admin
-        fn _assert_admin(self: @ContractState) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'PIO: not admin');
         }
     }
 }

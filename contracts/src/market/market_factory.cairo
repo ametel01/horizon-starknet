@@ -7,6 +7,9 @@ pub mod MarketFactory {
     use horizon::interfaces::i_market_factory::IMarketFactory;
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
@@ -14,8 +17,20 @@ pub mod MarketFactory {
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // Class hash for Market contract deployment
         market_class_hash: ClassHash,
         // Mapping: PT address -> Market address
@@ -34,6 +49,11 @@ pub mod MarketFactory {
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         MarketCreated: MarketCreated,
+        MarketClassHashUpdated: MarketClassHashUpdated,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -47,12 +67,27 @@ pub mod MarketFactory {
         pub fee_rate: u256,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct MarketClassHashUpdated {
+        pub old_class_hash: ClassHash,
+        pub new_class_hash: ClassHash,
+    }
+
     #[constructor]
-    fn constructor(ref self: ContractState, market_class_hash: ClassHash) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, market_class_hash: ClassHash) {
         assert(!market_class_hash.is_zero(), Errors::ZERO_ADDRESS);
+        self.ownable.initializer(owner);
         self.market_class_hash.write(market_class_hash);
         self.deploy_count.write(0);
         self.market_count.write(0);
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
     #[abi(embed_v0)]
@@ -187,6 +222,17 @@ pub mod MarketFactory {
         fn get_market_at(self: @ContractState, index: u32) -> ContractAddress {
             assert(index < self.market_count.read(), Errors::INDEX_OUT_OF_BOUNDS);
             self.market_list.read(index)
+        }
+
+        /// Set new market class hash (owner only)
+        fn set_market_class_hash(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            assert(!new_class_hash.is_zero(), Errors::ZERO_ADDRESS);
+
+            let old_class_hash = self.market_class_hash.read();
+            self.market_class_hash.write(new_class_hash);
+
+            self.emit(MarketClassHashUpdated { old_class_hash, new_class_hash });
         }
     }
 }
