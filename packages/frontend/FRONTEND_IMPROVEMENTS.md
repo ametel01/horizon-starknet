@@ -450,23 +450,29 @@ export function useSwapWithSdk(marketAddress: string) {
 
 ## 2. Accurate Price Impact Calculation
 
-### Current State
+**Status: ✅ Completed**
+
+### Current State (Before)
 
 ```typescript
-// Current simplified calculation in SwapForm.tsx
+// Previous simplified calculation in SwapForm.tsx
 const ptOut = (ptReserve * syIn) / (syReserve + syIn);
-// This is basic constant product, doesn't match AMM curve
+// This was basic constant product, didn't match AMM curve
 ```
 
-### Target State
-- Match on-chain AMM curve exactly
-- Show accurate price impact %
-- Display implied APY change
-- Show effective rate vs spot rate
+### Target State ✅
+- ✅ Match on-chain AMM curve exactly
+- ✅ Show accurate price impact %
+- ✅ Display implied APY change
+- ✅ Show effective rate vs spot rate
 
 ### Implementation Plan
 
 #### 2.1 Port AMM Math from Contracts
+
+**Status: ✅ Completed**
+
+Created `src/lib/math/amm.ts` with full AMM curve math ported from Cairo contracts.
 
 ```typescript
 // packages/frontend/src/lib/math/amm.ts
@@ -602,139 +608,218 @@ function exp(x: BigNumber): BigNumber {
 
 #### 2.2 Update SwapForm Component
 
+**Status: ✅ Completed**
+
+The SwapForm component has been updated to use accurate AMM math and semantic theme colors.
+
+Key changes:
+- Uses `calcSwapExactSyForPt` and `calcSwapExactPtForSy` from `@/lib/math/amm`
+- Reads `initialAnchor` from market metadata (per-market configuration)
+- Displays implied APY change (before → after)
+- Integrates with `PriceImpactWarning` component
+- Uses only semantic shadcn theme colors (no hardcoded colors)
+
 ```typescript
 // packages/frontend/src/components/forms/SwapForm.tsx
 
-import { calculateSwapExactSyForPt } from '@/lib/math/amm';
-import { lnRateToApy } from '@/lib/math/yield';
+import { calcSwapExactSyForPt, calcSwapExactPtForSy, getImpliedApy } from '@/lib/math/amm';
 
-export function SwapForm({ market }: { market: MarketData }) {
-  const [amountIn, setAmountIn] = useState<bigint>(0n);
-  const [quote, setQuote] = useState<SwapQuote | null>(null);
+// Build AMM market state for accurate calculations
+const ammState: AmmMarketState = useMemo(() => ({
+  syReserve: market.state.syReserve,
+  ptReserve: market.state.ptReserve,
+  totalLp: market.state.totalLpSupply,
+  scalarRoot: marketParams.scalarRoot,
+  // Use market-specific initialAnchor from metadata, or current ln rate as fallback
+  initialAnchor: market.metadata?.initialAnchor ?? market.state.lnImpliedRate,
+  feeRate: marketParams.feeRate,
+  expiry: BigInt(market.expiry),
+  lastLnImpliedRate: market.state.lnImpliedRate,
+}), [market.state, market.expiry, market.metadata?.initialAnchor, marketParams]);
 
-  // Calculate quote when amount changes
-  useEffect(() => {
-    if (amountIn === 0n || !market.state) {
-      setQuote(null);
-      return;
+// Price impact display with semantic colors
+<div className="flex justify-between">
+  <span className="text-muted-foreground">Price Impact</span>
+  <span
+    className={
+      priceImpactSeverity === 'very-high'
+        ? 'text-destructive font-medium'
+        : priceImpactSeverity === 'high'
+          ? 'text-destructive'
+          : priceImpactSeverity === 'medium'
+            ? 'text-chart-1'
+            : 'text-foreground'
     }
+  >
+    {formatPriceImpact(priceImpact)}
+  </span>
+</div>
 
-    const result = calculateSwapExactSyForPt({
-      syReserve: market.state.syReserve,
-      ptReserve: market.state.ptReserve,
-      scalarRoot: market.scalarRoot,
-      initialAnchor: market.initialAnchor,
-      feeRate: market.feeRate,
-      expiry: market.expiry,
-      currentTime: BigInt(Math.floor(Date.now() / 1000)),
-    }, amountIn);
+// Implied APY change with semantic colors
+<div className="flex justify-between">
+  <span className="text-muted-foreground">Implied APY</span>
+  <span className="text-foreground">
+    {(impliedApyBefore * 100).toFixed(2)}%{' '}
+    <span className="text-muted-foreground">→</span>{' '}
+    <span
+      className={
+        impliedApyAfter > impliedApyBefore
+          ? 'text-primary'           // Semantic: positive change
+          : impliedApyAfter < impliedApyBefore
+            ? 'text-destructive'     // Semantic: negative change
+            : ''
+      }
+    >
+      {(impliedApyAfter * 100).toFixed(2)}%
+    </span>
+  </span>
+</div>
 
-    const apyBefore = lnRateToApy(market.state.lnImpliedRate);
-    const apyAfter = lnRateToApy(result.newLnImpliedRate);
-
-    setQuote({
-      amountOut: result.ptOut,
-      priceImpact: result.priceImpact,
-      fee: result.fee,
-      impliedApy: { before: apyBefore, after: apyAfter },
-    });
-  }, [amountIn, market]);
-
-  return (
-    <div>
-      <TokenInput
-        value={amountIn}
-        onChange={setAmountIn}
-        token={market.syAddress}
-        label="You pay"
-      />
-
-      {quote && (
-        <div className="mt-4 space-y-2">
-          {/* Output */}
-          <div className="flex justify-between">
-            <span>You receive</span>
-            <span>{formatWad(quote.amountOut)} PT</span>
-          </div>
-
-          {/* Price Impact */}
-          <div className="flex justify-between">
-            <span>Price Impact</span>
-            <span className={quote.priceImpact > 0.01 ? 'text-red-500' : ''}>
-              {(quote.priceImpact * 100).toFixed(2)}%
-            </span>
-          </div>
-
-          {/* Implied APY Change */}
-          <div className="flex justify-between">
-            <span>Implied APY</span>
-            <span>
-              {(quote.impliedApy.before * 100).toFixed(2)}% →{' '}
-              {(quote.impliedApy.after * 100).toFixed(2)}%
-            </span>
-          </div>
-
-          {/* Fee */}
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>Swap Fee</span>
-            <span>{formatWad(quote.fee)} PT</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// Fee info with semantic colors
+{swapResult && swapResult.fee > 0n && (
+  <div className="text-muted-foreground flex justify-between">
+    <span>Swap Fee</span>
+    <span>{formatWad(swapResult.fee, 6)}</span>
+  </div>
+)}
 ```
 
+**Semantic Color Usage:**
+- `text-foreground` - Primary text
+- `text-muted-foreground` - Secondary/label text
+- `text-primary` - Positive changes (APY increase)
+- `text-destructive` - Negative changes, errors, high price impact
+- `text-chart-1` - Warnings (medium price impact)
+- `text-primary-foreground` - Text on primary/destructive backgrounds
+- `bg-muted` - Muted background sections
+
 #### 2.3 Add Price Impact Warning Component
+
+**Status: ✅ Completed**
+
+The `PriceImpactWarning` component has been implemented with semantic shadcn theme colors and a companion `usePriceImpactWarning` hook.
 
 ```typescript
 // packages/frontend/src/components/display/PriceImpactWarning.tsx
 
 interface PriceImpactWarningProps {
   priceImpact: number;
+  onAcknowledge?: () => void;
+  acknowledged?: boolean;
+  className?: string;
 }
 
-export function PriceImpactWarning({ priceImpact }: PriceImpactWarningProps) {
-  if (priceImpact < 0.01) return null; // < 1%
+// Severity thresholds: <1% low, 1-3% medium, 3-5% high, >5% very-high
+const SEVERITY_CONFIG: Record<Exclude<PriceImpactSeverity, 'low'>, SeverityConfig> = {
+  medium: {
+    icon: <AlertIcon className="h-5 w-5" />,
+    title: 'Moderate Price Impact',
+    description: 'This trade has a moderate price impact...',
+    variant: 'warning',
+  },
+  high: {
+    icon: <WarningIcon className="h-5 w-5" />,
+    title: 'High Price Impact',
+    description: 'This trade has significant price impact...',
+    variant: 'warning',
+  },
+  'very-high': {
+    icon: <WarningIcon className="h-5 w-5" />,
+    title: 'Very High Price Impact',
+    description: 'This trade has extremely high price impact...',
+    variant: 'destructive',
+  },
+};
 
-  const severity = priceImpact < 0.03 ? 'warning' : 'error';
-  const colors = {
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-  };
+export function PriceImpactWarning({ priceImpact, ... }: PriceImpactWarningProps) {
+  const severity = getPriceImpactSeverity(priceImpact);
+  if (severity === 'low') return null;
+
+  const config = SEVERITY_CONFIG[severity];
+  const isDestructive = config.variant === 'destructive';
 
   return (
-    <div className={`p-3 rounded-lg border ${colors[severity]}`}>
-      <div className="flex items-center gap-2">
-        <AlertTriangle className="w-4 h-4" />
-        <span className="font-medium">High Price Impact</span>
-      </div>
-      <p className="text-sm mt-1">
-        This trade has a {(priceImpact * 100).toFixed(2)}% price impact.
-        {severity === 'error' && ' Consider reducing your trade size.'}
-      </p>
-    </div>
+    <Card
+      size="sm"
+      className={cn(
+        'border',
+        isDestructive
+          ? 'border-destructive/30 bg-destructive/10'  // Semantic: error styling
+          : 'border-chart-1/30 bg-chart-1/10',         // Semantic: warning styling
+        className
+      )}
+    >
+      <CardContent className="p-3">
+        <div className={cn('mt-0.5 shrink-0', isDestructive ? 'text-destructive' : 'text-chart-1')}>
+          {config.icon}
+        </div>
+        <span className={cn('font-medium', isDestructive ? 'text-destructive' : 'text-chart-1')}>
+          {config.title}
+        </span>
+        {/* Very-high severity requires acknowledgment before swap */}
+        {requiresAcknowledgment && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAcknowledge}
+            className="border-destructive/30 text-destructive hover:bg-destructive/20 w-full"
+          >
+            I understand the risks, proceed anyway
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
+
+// Companion hook for managing acknowledgment state
+export function usePriceImpactWarning(priceImpact: number) {
+  const [acknowledged, setAcknowledged] = useState(false);
+  const severity = getPriceImpactSeverity(priceImpact);
+  const requiresAcknowledgment = severity === 'very-high';
+
+  return {
+    severity,
+    requiresAcknowledgment,
+    acknowledged,
+    acknowledge: () => setAcknowledged(true),
+    reset: () => setAcknowledged(false),
+    canProceed: !requiresAcknowledgment || acknowledged,
+  };
+}
 ```
+
+**Semantic Color Usage:**
+- `border-chart-1/30 bg-chart-1/10 text-chart-1` - Warning variant (medium/high)
+- `border-destructive/30 bg-destructive/10 text-destructive` - Error variant (very-high)
+- No hardcoded colors like `yellow-*`, `red-*`, `orange-*`
 
 ---
 
 ## 3. APY Breakdown Display
 
-### Current State
+**Status: ✅ Completed**
+
+### Current State (Before)
 
 ```typescript
-// Only shows single implied APY
+// Only showed single implied APY
 <div>Implied APY: {formatPercent(market.impliedApy)}</div>
 ```
 
-### Target State
-- Show all APY components
-- Underlying yield breakdown
-- Swap fee APY for LPs
-- Total combined APY
+### Target State ✅
+- ✅ Show all APY components
+- ✅ Underlying yield breakdown
+- ✅ Swap fee APY for LPs
+- ✅ Total combined APY
+
+### Implementation
+
+Created the following files:
+- `src/types/apy.ts` - APY data types
+- `src/lib/math/apy-breakdown.ts` - APY calculation functions
+- `src/components/display/ApyBreakdown.tsx` - APY Breakdown component with semantic colors
+- `src/hooks/useApyBreakdown.ts` - React hooks for fetching and calculating APY data
 
 ### Implementation Plan
 
@@ -886,10 +971,13 @@ export function calculateApyBreakdown(
 
 #### 3.3 APY Breakdown Component
 
+Uses semantic shadcn theme colors instead of hardcoded colors.
+
 ```typescript
 // packages/frontend/src/components/display/ApyBreakdown.tsx
 
 import { MarketApyBreakdown } from '@/types/apy';
+import { cn } from '@/lib/utils';
 
 interface ApyBreakdownProps {
   breakdown: MarketApyBreakdown;
@@ -899,49 +987,53 @@ interface ApyBreakdownProps {
 export function ApyBreakdown({ breakdown, view }: ApyBreakdownProps) {
   return (
     <div className="space-y-4">
+      {/* PT Fixed APY - uses primary color */}
       {view === 'pt' && (
-        <div className="p-4 bg-green-50 rounded-lg">
-          <div className="text-sm text-green-600">Fixed APY</div>
-          <div className="text-2xl font-bold text-green-700">
+        <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
+          <div className="text-sm text-primary">Fixed APY</div>
+          <div className="text-2xl font-bold text-primary">
             {formatPercent(breakdown.ptFixedApy)}
           </div>
-          <div className="text-xs text-green-600 mt-1">
+          <div className="mt-1 text-xs text-primary/80">
             Guaranteed at maturity
           </div>
         </div>
       )}
 
+      {/* YT Long Yield APY - uses accent color */}
       {view === 'yt' && (
         <div className="space-y-3">
-          <div className="p-4 bg-purple-50 rounded-lg">
-            <div className="text-sm text-purple-600">Long Yield APY</div>
-            <div className={`text-2xl font-bold ${
-              breakdown.ytApy.longYieldApy >= 0 ? 'text-green-700' : 'text-red-700'
-            }`}>
+          <div className="rounded-lg border border-accent/30 bg-accent/10 p-4">
+            <div className="text-sm text-accent">Long Yield APY</div>
+            <div className={cn(
+              'text-2xl font-bold',
+              breakdown.ytApy.longYieldApy >= 0 ? 'text-primary' : 'text-destructive'
+            )}>
               {formatPercent(breakdown.ytApy.longYieldApy)}
             </div>
           </div>
           <div className="flex justify-between text-sm">
-            <span>Break-even APY</span>
-            <span>{formatPercent(breakdown.ytApy.breakEvenApy)}</span>
+            <span className="text-muted-foreground">Break-even APY</span>
+            <span className="text-foreground">{formatPercent(breakdown.ytApy.breakEvenApy)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span>Current Underlying APY</span>
-            <span>{formatPercent(breakdown.underlying.totalApy)}</span>
+            <span className="text-muted-foreground">Current Underlying APY</span>
+            <span className="text-foreground">{formatPercent(breakdown.underlying.totalApy)}</span>
           </div>
         </div>
       )}
 
+      {/* LP APY - uses secondary color */}
       {view === 'lp' && (
         <div className="space-y-3">
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <div className="text-sm text-blue-600">Total LP APY</div>
-            <div className="text-2xl font-bold text-blue-700">
+          <div className="rounded-lg border border-secondary bg-secondary p-4">
+            <div className="text-sm text-secondary-foreground/80">Total LP APY</div>
+            <div className="text-2xl font-bold text-secondary-foreground">
               {formatPercent(breakdown.lpApy.total)}
             </div>
           </div>
 
-          <div className="text-sm font-medium">Breakdown</div>
+          <div className="text-sm font-medium text-foreground">Breakdown</div>
 
           <div className="space-y-2">
             <ApyRow
@@ -971,16 +1063,16 @@ export function ApyBreakdown({ breakdown, view }: ApyBreakdownProps) {
       )}
 
       {/* Underlying breakdown (always shown) */}
-      <div className="border-t pt-3 mt-3">
-        <div className="text-xs text-gray-500 mb-2">Underlying Asset Yield</div>
+      <div className="mt-3 border-t border-border pt-3">
+        <div className="mb-2 text-xs text-muted-foreground">Underlying Asset Yield</div>
         <div className="flex justify-between text-sm">
-          <span>Interest APY</span>
-          <span>{formatPercent(breakdown.underlying.interestApy)}</span>
+          <span className="text-muted-foreground">Interest APY</span>
+          <span className="text-foreground">{formatPercent(breakdown.underlying.interestApy)}</span>
         </div>
         {breakdown.underlying.rewardsApr > 0 && (
           <div className="flex justify-between text-sm">
-            <span>Rewards APR</span>
-            <span>{formatPercent(breakdown.underlying.rewardsApr)}</span>
+            <span className="text-muted-foreground">Rewards APR</span>
+            <span className="text-foreground">{formatPercent(breakdown.underlying.rewardsApr)}</span>
           </div>
         )}
       </div>
@@ -994,14 +1086,14 @@ function ApyRow({ label, value, tooltip }: {
   tooltip: string;
 }) {
   return (
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-gray-600 flex items-center gap-1">
+    <div className="flex items-center justify-between">
+      <span className="flex items-center gap-1 text-sm text-muted-foreground">
         {label}
         <Tooltip content={tooltip}>
-          <Info className="w-3 h-3" />
+          <Info className="h-3 w-3" />
         </Tooltip>
       </span>
-      <span className="text-sm font-medium">
+      <span className="text-sm font-medium text-foreground">
         {formatPercent(value)}
       </span>
     </div>
@@ -1012,6 +1104,17 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
 }
 ```
+
+**Semantic Color Mapping:**
+| Hardcoded | Semantic | Usage |
+|-----------|----------|-------|
+| `bg-green-50`, `text-green-600/700` | `bg-primary/10`, `text-primary` | PT Fixed APY |
+| `bg-purple-50`, `text-purple-600` | `bg-accent/10`, `text-accent` | YT Long Yield |
+| `bg-blue-50`, `text-blue-600/700` | `bg-secondary`, `text-secondary-foreground` | LP APY |
+| `text-green-700` | `text-primary` | Positive values |
+| `text-red-700` | `text-destructive` | Negative values |
+| `text-gray-500/600` | `text-muted-foreground` | Labels, secondary text |
+| `border-t` | `border-t border-border` | Dividers |
 
 #### 3.4 Hook for APY Data
 
@@ -1505,6 +1608,8 @@ export function useEnhancedPositions(): {
 
 #### 4.6 Portfolio Dashboard Component
 
+Uses semantic shadcn theme colors for consistent styling.
+
 ```typescript
 // packages/frontend/src/components/portfolio/PortfolioDashboard.tsx
 
@@ -1550,7 +1655,7 @@ export function PortfolioDashboard() {
 
       {/* Position List */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Your Positions</h2>
+        <h2 className="text-lg font-semibold text-foreground">Your Positions</h2>
         {portfolio.positions.map((position) => (
           <PositionCard key={position.market.address} position={position} />
         ))}
@@ -1562,10 +1667,13 @@ export function PortfolioDashboard() {
 
 #### 4.7 Position Card Component
 
+Uses semantic shadcn theme colors instead of hardcoded colors.
+
 ```typescript
 // packages/frontend/src/components/portfolio/PositionCard.tsx
 
 import { EnhancedPosition } from '@/types/position';
+import { cn } from '@/lib/utils';
 
 interface PositionCardProps {
   position: EnhancedPosition;
@@ -1575,20 +1683,23 @@ export function PositionCard({ position }: PositionCardProps) {
   const { market, sy, pt, yt, lp, yield: yieldData, pnl, lpDetails } = position;
 
   return (
-    <div className="border rounded-lg p-4">
+    <div className="rounded-lg border border-border p-4">
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="font-medium">{market.metadata?.yieldTokenSymbol}</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="font-medium text-foreground">{market.metadata?.yieldTokenSymbol}</h3>
+          <p className="text-sm text-muted-foreground">
             Expires {formatExpiry(market.expiry)}
           </p>
         </div>
         <div className="text-right">
-          <div className="font-medium">
+          <div className="font-medium text-foreground">
             {formatUsd(sy.valueUsd + pt.valueUsd + yt.valueUsd + lp.valueUsd)}
           </div>
-          <div className={`text-sm ${pnl.unrealizedUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={cn(
+            'text-sm',
+            pnl.unrealizedUsd >= 0 ? 'text-primary' : 'text-destructive'
+          )}>
             {pnl.unrealizedUsd >= 0 ? '+' : ''}{formatUsd(pnl.unrealizedUsd)}
             ({pnl.totalPnlPercent.toFixed(2)}%)
           </div>
@@ -1618,16 +1729,16 @@ export function PositionCard({ position }: PositionCardProps) {
 
       {/* LP Details */}
       {lp.amount > 0n && (
-        <div className="bg-gray-50 rounded p-3 mb-4">
-          <div className="text-sm font-medium mb-2">LP Composition</div>
+        <div className="rounded bg-muted p-3 mb-4">
+          <div className="text-sm font-medium text-foreground mb-2">LP Composition</div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
-              <span className="text-gray-500">SY:</span>{' '}
-              {formatWad(lpDetails.underlyingSy)}
+              <span className="text-muted-foreground">SY:</span>{' '}
+              <span className="text-foreground">{formatWad(lpDetails.underlyingSy)}</span>
             </div>
             <div>
-              <span className="text-gray-500">PT:</span>{' '}
-              {formatWad(lpDetails.underlyingPt)}
+              <span className="text-muted-foreground">PT:</span>{' '}
+              <span className="text-foreground">{formatWad(lpDetails.underlyingPt)}</span>
             </div>
           </div>
         </div>
@@ -1635,12 +1746,12 @@ export function PositionCard({ position }: PositionCardProps) {
 
       {/* Yield Section */}
       {yt.amount > 0n && yieldData.claimable > 0n && (
-        <div className="flex items-center justify-between p-3 bg-green-50 rounded mb-4">
+        <div className="flex items-center justify-between p-3 rounded border border-primary/30 bg-primary/10 mb-4">
           <div>
-            <div className="text-sm text-green-600">Claimable Yield</div>
-            <div className="font-medium text-green-700">
+            <div className="text-sm text-primary">Claimable Yield</div>
+            <div className="font-medium text-primary">
               {formatWad(yieldData.claimable)} SY
-              <span className="text-sm ml-1">
+              <span className="text-sm text-primary/80 ml-1">
                 ({formatUsd(yieldData.claimableUsd)})
               </span>
             </div>
@@ -1686,14 +1797,27 @@ function TokenBalance({
 }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="font-medium">{formatWadCompact(amount)}</div>
-      <div className="text-xs text-gray-400">{formatUsd(valueUsd)}</div>
-      {subtitle && <div className="text-xs text-gray-400">{subtitle}</div>}
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="font-medium text-foreground">{formatWadCompact(amount)}</div>
+      <div className="text-xs text-muted-foreground">{formatUsd(valueUsd)}</div>
+      {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
     </div>
   );
 }
 ```
+
+**Semantic Color Mapping:**
+| Hardcoded | Semantic | Usage |
+|-----------|----------|-------|
+| `text-gray-500` | `text-muted-foreground` | Labels, secondary text |
+| `text-gray-400` | `text-muted-foreground` | USD values, subtitles |
+| `text-green-600` | `text-primary` | Positive P&L, claimable yield label |
+| `text-green-700` | `text-primary` | Claimable yield value |
+| `text-red-600` | `text-destructive` | Negative P&L |
+| `bg-gray-50` | `bg-muted` | LP composition background |
+| `bg-green-50` | `bg-primary/10` | Claimable yield section |
+| `border` | `border border-border` | Card border |
+| n/a | `border-primary/30` | Highlight border for claimable yield |
 
 ---
 
@@ -1779,15 +1903,15 @@ NEXT_PUBLIC_PRAGMA_API_KEY=your_key
    - [ ] 80%+ test coverage
    - [ ] Documentation site
 
-2. **Price Impact**
-   - [ ] Quote matches on-chain output within 0.1%
-   - [ ] Price impact displayed for all swaps
-   - [ ] Warning shown for >1% impact
+2. **Price Impact** ✅
+   - [x] Quote matches on-chain output within 0.1%
+   - [x] Price impact displayed for all swaps
+   - [x] Warning shown for >1% impact
 
-3. **APY Breakdown**
-   - [ ] Shows all APY components
-   - [ ] Updates in real-time
-   - [ ] Tooltips explain each component
+3. **APY Breakdown** ✅
+   - [x] Shows all APY components
+   - [x] Updates in real-time
+   - [x] Tooltips explain each component
 
 4. **Position Tracking**
    - [ ] USD values for all positions
