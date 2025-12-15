@@ -1,6 +1,6 @@
 import { RpcProvider, type BlockTag, type Call, type CallContractResponse } from 'starknet';
 
-export type NetworkId = 'mainnet' | 'sepolia' | 'devnet';
+export type NetworkId = 'mainnet' | 'sepolia' | 'devnet' | 'fork';
 
 const RPC_URLS: Record<NetworkId, string> = {
   mainnet:
@@ -8,12 +8,14 @@ const RPC_URLS: Record<NetworkId, string> = {
   sepolia:
     process.env.NEXT_PUBLIC_RPC_URL ?? 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
   devnet: process.env.NEXT_PUBLIC_RPC_URL ?? 'http://localhost:5050',
+  fork: process.env.NEXT_PUBLIC_RPC_URL ?? 'http://localhost:5050',
 };
 
 const CHAIN_IDS: Record<NetworkId, string> = {
   mainnet: '0x534e5f4d41494e',
   sepolia: '0x534e5f5345504f4c4941',
   devnet: '0x534e5f5345504f4c4941', // starknet-devnet-rs uses SN_SEPOLIA chain ID
+  fork: '0x534e5f4d41494e', // fork mode uses mainnet chain ID
 };
 
 // starknet-devnet-rs doesn't support 'pending' block tag
@@ -21,11 +23,17 @@ const DEFAULT_BLOCK: Record<NetworkId, BlockTag> = {
   mainnet: 'pending',
   sepolia: 'pending',
   devnet: 'latest',
+  fork: 'latest',
 };
 
 export function getNetworkId(): NetworkId {
   const network = process.env.NEXT_PUBLIC_NETWORK;
-  if (network === 'mainnet' || network === 'sepolia' || network === 'devnet') {
+  if (
+    network === 'mainnet' ||
+    network === 'sepolia' ||
+    network === 'devnet' ||
+    network === 'fork'
+  ) {
     return network;
   }
   return 'devnet'; // Default to devnet for local development
@@ -59,8 +67,8 @@ export function createProvider(network?: NetworkId): RpcProvider {
   const networkId = network ?? getNetworkId();
   const defaultBlock = DEFAULT_BLOCK[networkId];
 
-  // Use custom provider for devnet to handle block tag
-  if (networkId === 'devnet') {
+  // Use custom provider for devnet/fork to handle block tag
+  if (networkId === 'devnet' || networkId === 'fork') {
     return new DevnetRpcProvider(RPC_URLS[networkId], defaultBlock);
   }
 
@@ -83,7 +91,8 @@ export function getExplorerUrl(network?: NetworkId): string {
     case 'sepolia':
       return 'https://sepolia.starkscan.co';
     case 'devnet':
-      return ''; // No explorer for local devnet
+    case 'fork':
+      return ''; // No explorer for local devnet/fork
   }
 }
 

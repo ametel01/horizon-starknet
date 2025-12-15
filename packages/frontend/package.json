@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:fork": "NEXT_PUBLIC_NETWORK=fork next dev",
     "dev:turbo": "next dev --turbo",
+    "dev:fork:turbo": "NEXT_PUBLIC_NETWORK=fork next dev --turbo",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
