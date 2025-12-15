@@ -4,18 +4,21 @@
 # Docker Deployment Script
 # =============================================================================
 # Waits for Devnet to be ready, then deploys all contracts
+# Supports both regular devnet and fork mode
 # =============================================================================
 
 set -e
 
 DEVNET_URL="${DEVNET_URL:-http://devnet:5050}"
-MAX_RETRIES="${MAX_RETRIES:-30}"
-RETRY_INTERVAL="${RETRY_INTERVAL:-2}"
+MAX_RETRIES="${MAX_RETRIES:-60}"
+RETRY_INTERVAL="${RETRY_INTERVAL:-3}"
+DEPLOY_SCRIPT="${DEPLOY_SCRIPT:-deploy.sh}"  # Can be deploy.sh or deploy-fork.sh
 
 echo "=========================================="
 echo "Horizon Protocol - Docker Deployment"
 echo "=========================================="
 echo "Devnet URL: $DEVNET_URL"
+echo "Deploy Script: $DEPLOY_SCRIPT"
 
 # =============================================================================
 # Wait for Devnet
@@ -61,10 +64,17 @@ echo "Updated RPC URL to: $DEVNET_URL"
 # =============================================================================
 
 echo ""
-echo "Starting deployment..."
+echo "Starting deployment with $DEPLOY_SCRIPT..."
 echo ""
 
-./deploy/scripts/deploy.sh devnet
+# Determine network name from env file
+if [[ "$ENV_FILE" == *"fork"* ]]; then
+    NETWORK="fork"
+else
+    NETWORK="devnet"
+fi
+
+./deploy/scripts/$DEPLOY_SCRIPT $NETWORK
 
 # =============================================================================
 # Copy output to mounted volume if exists
@@ -74,7 +84,7 @@ if [ -d "/output" ]; then
     echo ""
     echo "Copying addresses to /output..."
     cp "$ENV_FILE" /output/
-    cp deploy/addresses/devnet.json /output/ 2>/dev/null || true
+    cp deploy/addresses/$NETWORK.json /output/ 2>/dev/null || true
     echo "Files copied to /output/"
 fi
 
