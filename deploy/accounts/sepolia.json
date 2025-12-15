@@ -1,0 +1,15 @@
+{
+  "alpha-mainnet": {},
+  "alpha-sepolia": {
+    "deployer": {
+      "address": "0x058B0a00fed3899ee61946bE22b2A312Eab9d81804fd5322CdAE2ac3F0C41713",
+      "class_hash": "0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+      "deployed": true,
+      "legacy": false,
+      "private_key": "0x054dcc188ca4e42ac4b175bb724fa3dfac969d5bb6d3cc2bc1383565cbbeb42f",
+      "public_key": "0x0",
+      "salt": "0x0",
+      "type": "open_zeppelin"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "network": "sepolia",
+  "rpcUrl": "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/usuQSZ2cdSmSR8rNpstjp",
+  "deployedAt": "2025-12-15T07:04:59Z",
+  "classHashes": {
+    "MockERC20": "0x058b0a00fed3899ee61946be22b2a312eab9d81804fd5322cdae2ac3f0c41713",
+    "MockYieldToken": "0x048ccbfc6ec8acdf319e3c0c472535a2d1c25de2f62e6aa987d292ccfb965e42",
+    "MockPragmaSummaryStats": "",
+    "PragmaIndexOracle": "",
+    "SY": "0x04d0b1a8c6dce08b23de9c6597ce028fb2072bc346726808f81a6f6c48b1e02b",
+    "PT": "0x0452a52cf4d365656e5efa14bcad9ce3a31cedbbd5226918f4c45b7c317008c8",
+    "YT": "0x067c54ddc99d65e75134de8620ae70e6ddf65852de544eb21bc39a5f29b6f3ab",
+    "Market": "0x07dc4fe6b7fbc6d3722d3e55aa1c1be3daff4a61d38a163d844839e0231a2b47",
+    "Factory": "0x058e85e13f070049e7e6e8d57885dcf5a904b8f541803f7507de4df01a6ca4af",
+    "MarketFactory": "0x06ccf69e7d517d23d84e5bf6384118ded1a1b3e20c03757c921ad3c9762b3b52",
+    "Router": "0x000ff2d55a0557ca6c171088da5d6e23478a3f1f1d3d028be9a2e44d8180d434"
+  },
+  "contracts": {
+    "Factory": "0x01b125c52c9e0fd8a8dfd53c3ee3343db13c75cfabcab19761465b0f39c903a1",
+    "MarketFactory": "0x07a850616cff71012722a444293e157a7a3039c0e20ddfea000dbd84e433c23c",
+    "Router": "0x0613196a2b9b63cdfd63bead325b0db2b357e1e9a2cfa136e7731de063d6dfc5"
+  },
+  "testSetup": {
+    "testRecipient": "0x0715140EF3b872C34c0E82CB2650c4bEB0E9F60d5a157414af6913E9326cd691",
+    "baseToken": {
+      "STRK": "0x4718F5A0FC34CC1AF16A1CDEE98FFB20C31F5CD61D6AB07201858F4287C938D",
+      "ETH": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+    },
+    "yieldTokens": {
+      "nstSTRK": {
+        "name": "Nostra Staked STRK",
+        "symbol": "nstSTRK",
+        "address": "0x044b31a57163af529c256f8e48dc9d4a151b7688a0fe5dfee8b7cfa8d42c5ab3",
+        "isERC4626": true
+      },
+      "sSTRK": {
+        "name": "Staked Starknet Token",
+        "symbol": "sSTRK",
+        "address": "0x0680665554521a788cfcafbbf94c26b70ad366895777e81d60186b6ac89ea835",
+        "isERC4626": true
+      },
+      "wstETH": {
+        "name": "Starknet Wrapped Staked Ether",
+        "symbol": "wstETH",
+        "address": "0x071a58307cfcbd34985b08c702214340e893bbf2e40643c89d950f70907a9b93",
+        "isERC4626": true
+      }
+    },
+    "syTokens": {
+      "SY-nstSTRK": {
+        "address": "0x0739c59ca8c085e225615ad5de0b665652e7b931592ee2f8552da52a0f72168b",
+        "underlying": "0x044b31a57163af529c256f8e48dc9d4a151b7688a0fe5dfee8b7cfa8d42c5ab3",
+        "isERC4626": true
+      },
+      "SY-sSTRK": {
+        "address": "0x06a9f9733c53e3840ae3fa931bfe76f644b22a81be3ae3ca69e55289c4317ceb",
+        "underlying": "0x0680665554521a788cfcafbbf94c26b70ad366895777e81d60186b6ac89ea835",
+        "isERC4626": true
+      },
+      "SY-wstETH": {
+        "address": "0x04e32e39a1632af68f7d570814ed65111a533afce0808d257c307e43f4fc4c7e",
+        "underlying": "0x071a58307cfcbd34985b08c702214340e893bbf2e40643c89d950f70907a9b93",
+        "isERC4626": true
+      }
+    },
+    "markets": {
+      "nstSTRK": {
+        "PT": "0x27a2a02e750e21b5dee6d7a76ab335ee70f379560513c06aa420d2c40499021",
+        "YT": "0x5d22862520da80d9a7a55e0b03a72a55e6b74785599b12e74635c12f572bb1",
+        "Market": "0x736ed7abe3698c5986a5b8e5d599380a97fb09c1355843ad5f18982d45dcc15",
+        "initialAnchor": "76961041136128000"
+      },
+      "sSTRK": {
+        "PT": "0xd96523a00b7e471ed59bf540f82617670a52b31b074e2c1492c07a47b898a4",
+        "YT": "0x3790ebf8cdcde71ad0398a4129139ecf4ce079ad503225ab1ac141746c555b6",
+        "Market": "0x49352e2fc0ac1dd2d1e2faf67c5a0e3a297583ab575a697438901f790b217bb",
+        "initialAnchor": "76961041136128000"
+      },
+      "wstETH": {
+        "PT": "0xdc871c6dda58d22c95639e2d4765b4981cccc6f46a415c0017d49d9fe7dd56",
+        "YT": "0x7bbf8aac428db73dea00bd4a7e75d43ecb0c474945b7a2f875335284322939b",
+        "Market": "0x67b66a449a4f42cc4c80ce60cda2343baac9c727066ae028a55887ff9feb330",
+        "initialAnchor": "38480520568064000"
+      }
+    },
+    "marketParams": {
+      "scalarRoot": "5000000000000000000",
+      "feeRate": "3000000000000000"
+    },
+    "liquidity": {
+      "seeded": true,
+      "seedAmount": "10000000000000000000000"
+    },
+    "expiry": 1768374157
+  }
+}
