@@ -75,6 +75,7 @@ DEVNET_ONLY_KEYS=(
     "NST_STRK_ADDRESS"
     "SSTRK_ADDRESS"
     "STRK_ADDRESS"
+    "WSTETH_ADDRESS"
 )
 
 # Determine if this is fork mode

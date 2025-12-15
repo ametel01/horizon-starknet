@@ -104,8 +104,35 @@ if [[ "$NETWORK" == "devnet" ]]; then
         echo "$ACCOUNTS_RESPONSE" >&2
         exit 1
     fi
+elif [[ "$NETWORK" == "sepolia" ]]; then
+    # Use deployer credentials from environment file
+    log_info "Using deployer credentials from $ENV_FILE..."
+
+    if [[ -z "$DEPLOYER_ADDRESS" || -z "$DEPLOYER_PRIVATE_KEY" ]]; then
+        log_error "DEPLOYER_ADDRESS and DEPLOYER_PRIVATE_KEY must be set in $ENV_FILE for Sepolia"
+        exit 1
+    fi
+
+    # Generate public key from private key using starkli (if available) or use placeholder
+    if command -v starkli &> /dev/null; then
+        DEPLOYER_PUBLIC_KEY=$(starkli signer keystore inspect-private --raw <<< "$DEPLOYER_PRIVATE_KEY" 2>/dev/null | grep -oE '0x[a-fA-F0-9]+' || echo "0x0")
+    else
+        # For sncast, we just need the private key - public key is derived
+        DEPLOYER_PUBLIC_KEY="0x0"
+    fi
+
+    # Default OZ account class hash for Sepolia
+    ACCOUNT_CLASS_HASH="0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f"
+
+    # Use TEST_RECIPIENT from env file if set
+    if [[ -n "$TEST_RECIPIENT" ]]; then
+        log_info "Using TEST_RECIPIENT from env: $TEST_RECIPIENT"
+    else
+        TEST_RECIPIENT="$DEPLOYER_ADDRESS"
+        log_warning "TEST_RECIPIENT not set, using deployer address"
+    fi
 else
-    log_error "Non-devnet networks not yet configured for sncast"
+    log_error "Network '$NETWORK' not yet configured for sncast"
     exit 1
 fi
 
@@ -192,25 +219,46 @@ declare_class() {
     exit 1
 }
 
-log_info "Declaring contract classes..."
+# =============================================================================
+# Declare Classes (skip if already declared)
+# =============================================================================
 
-MOCK_ERC20_CLASS_HASH=$(declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH")
-MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
-MOCK_PRAGMA_CLASS_HASH=$(declare_class "MockPragmaSummaryStats" "MOCK_PRAGMA_CLASS_HASH")
-PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
-SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
-PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
-YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
-MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
-FACTORY_CLASS_HASH=$(declare_class "Factory" "FACTORY_CLASS_HASH")
-MARKET_FACTORY_CLASS_HASH=$(declare_class "MarketFactory" "MARKET_FACTORY_CLASS_HASH")
-ROUTER_CLASS_HASH=$(declare_class "Router" "ROUTER_CLASS_HASH")
+# Check if all required class hashes are already set
+if [[ -n "$MOCK_ERC20_CLASS_HASH" && -n "$MOCK_YIELD_TOKEN_CLASS_HASH" && \
+      -n "$SY_CLASS_HASH" && -n "$PT_CLASS_HASH" && -n "$YT_CLASS_HASH" && \
+      -n "$MARKET_CLASS_HASH" && -n "$FACTORY_CLASS_HASH" && \
+      -n "$MARKET_FACTORY_CLASS_HASH" && -n "$ROUTER_CLASS_HASH" ]]; then
+    log_info "All class hashes found in env, skipping declarations"
+    log_info "  MockERC20: $MOCK_ERC20_CLASS_HASH"
+    log_info "  MockYieldToken: $MOCK_YIELD_TOKEN_CLASS_HASH"
+    log_info "  SY: $SY_CLASS_HASH"
+    log_info "  PT: $PT_CLASS_HASH"
+    log_info "  YT: $YT_CLASS_HASH"
+    log_info "  Market: $MARKET_CLASS_HASH"
+    log_info "  Factory: $FACTORY_CLASS_HASH"
+    log_info "  MarketFactory: $MARKET_FACTORY_CLASS_HASH"
+    log_info "  Router: $ROUTER_CLASS_HASH"
+else
+    log_info "Declaring contract classes..."
 
-log_success "All classes declared"
+    MOCK_ERC20_CLASS_HASH=$(declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH")
+    MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
+    MOCK_PRAGMA_CLASS_HASH=$(declare_class "MockPragmaSummaryStats" "MOCK_PRAGMA_CLASS_HASH")
+    PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
+    SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
+    PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
+    YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
+    MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
+    FACTORY_CLASS_HASH=$(declare_class "Factory" "FACTORY_CLASS_HASH")
+    MARKET_FACTORY_CLASS_HASH=$(declare_class "MarketFactory" "MARKET_FACTORY_CLASS_HASH")
+    ROUTER_CLASS_HASH=$(declare_class "Router" "ROUTER_CLASS_HASH")
 
-# Wait for block to be mined (devnet mines every 10 seconds)
-log_info "Waiting for declarations to be mined..."
-sleep 12
+    log_success "All classes declared"
+
+    # Wait for block to be mined (devnet mines every 10 seconds)
+    log_info "Waiting for declarations to be mined..."
+    sleep 12
+fi
 
 # =============================================================================
 # Deploy Contracts
@@ -222,6 +270,15 @@ deploy_contract() {
     local env_var=$3
     shift 3
     local calldata=("$@")
+
+    # Check if already deployed (env var is set)
+    local existing_address
+    existing_address=$(eval echo "\$$env_var")
+    if [[ -n "$existing_address" && "$existing_address" != "" && "$existing_address" != "0x0" ]]; then
+        log_warning "$name (already deployed): $existing_address" >&2
+        echo "$existing_address"
+        return 0
+    fi
 
     log_info "Deploying $name..." >&2
 
@@ -307,16 +364,17 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
 
-# MarketFactory: constructor(market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
 
-# Router: constructor() - no args
-ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS")
+# Router: constructor(owner)
+ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
+    "$DEPLOYER_ADDRESS")
 
 log_success "Core infrastructure deployed"
 
@@ -366,47 +424,13 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$DEPLOYER_ADDRESS")
 
     # -------------------------------------------------------------------------
-    # Deploy Mock Pragma Oracle (for devnet testing)
-    # -------------------------------------------------------------------------
-
-    # MockPragmaSummaryStats: constructor(admin, wsteth_base_price, sstrk_base_price, strk_base_price, wsteth_yield_bps, sstrk_yield_bps)
-    # WSTETH: $4000 = 400000000000 (8 decimals), 4% APR = 400 bps
-    # SSTRK: $0.50 = 50000000 (8 decimals), 8% APR = 800 bps
-    # STRK: $0.50 = 50000000 (8 decimals), 0% APR (base token)
-    log_info "Deploying MockPragmaSummaryStats..."
-    MOCK_PRAGMA_ADDRESS=$(deploy_contract "$MOCK_PRAGMA_CLASS_HASH" "MockPragmaSummaryStats" "MOCK_PRAGMA_ADDRESS" \
-        "$DEPLOYER_ADDRESS" \
-        0x5d21dba000 \
-        0x2faf080 \
-        0x2faf080 \
-        0x190 \
-        0x320)
-
-    # -------------------------------------------------------------------------
-    # Deploy PragmaIndexOracle for sSTRK
-    # -------------------------------------------------------------------------
-
-    # PragmaIndexOracle: constructor(admin, pragma_oracle, numerator_pair_id, denominator_pair_id, initial_index)
-    # For sSTRK: dual-feed mode to calculate sSTRK/STRK exchange rate
-    # index = SSTRK/USD price / STRK/USD price = sSTRK/STRK exchange rate
-    # SSTRK_USD_PAIR_ID = 1537084272803954643780
-    # STRK_USD_PAIR_ID = 6004514686061859652
-    # Initial index = 1 WAD = 1000000000000000000 = 0xde0b6b3a7640000
-    log_info "Deploying PragmaIndexOracle for sSTRK..."
-    PRAGMA_SSTRK_ORACLE_ADDRESS=$(deploy_contract "$PRAGMA_INDEX_ORACLE_CLASS_HASH" "PragmaIndexOracle-sSTRK" "PRAGMA_SSTRK_ORACLE_ADDRESS" \
-        "$DEPLOYER_ADDRESS" \
-        "$MOCK_PRAGMA_ADDRESS" \
-        1537084272803954643780 \
-        6004514686061859652 \
-        0xde0b6b3a7640000 0x0)
-
-    # -------------------------------------------------------------------------
     # Deploy SY 1: SY-nstSTRK (wraps nstSTRK, ERC-4626 mode)
     # -------------------------------------------------------------------------
 
     # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626)
     # "SY Nostra Staked STRK" = 21 chars
     # "SY-nstSTRK" = 10 chars
+    # ERC-4626 mode: uses yield token's convertToAssets() for exchange rate
     log_info "Deploying SY-nstSTRK..."
     SY_NST_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-nstSTRK" "SY_NST_STRK_ADDRESS" \
         0x0 0x5359204e6f73747261205374616b6564205354524b 0x15 \
@@ -416,19 +440,59 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         0x1)
 
     # -------------------------------------------------------------------------
-    # Deploy SY 2: SY-sSTRK (wraps sSTRK, uses PragmaIndexOracle)
+    # Deploy SY 2: SY-sSTRK (wraps sSTRK, ERC-4626 mode)
     # -------------------------------------------------------------------------
 
     # "SY Staked Starknet Token" = 24 chars
     # "SY-sSTRK" = 8 chars
-    # Uses PragmaIndexOracle for exchange rate (is_erc4626 = false)
+    # ERC-4626 mode: uses yield token's convertToAssets() for exchange rate
     log_info "Deploying SY-sSTRK..."
     SY_SSTRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-sSTRK" "SY_SSTRK_ADDRESS" \
         0x0 0x5359205374616b656420537461726b6e657420546f6b656e 0x18 \
         0x0 0x53592d735354524b 0x8 \
         "$SSTRK_ADDRESS" \
-        "$PRAGMA_SSTRK_ORACLE_ADDRESS" \
-        0x0)
+        "$SSTRK_ADDRESS" \
+        0x1)
+
+    # -------------------------------------------------------------------------
+    # Deploy Yield Token 3: wstETH (Starknet Wrapped Staked Ether)
+    # -------------------------------------------------------------------------
+
+    # MockYieldToken: constructor(name: ByteArray, symbol: ByteArray, underlying: ContractAddress, admin: ContractAddress)
+    # "Starknet Wrapped Staked Ether" = 29 chars = 0x1d
+    # "wstETH" = 6 chars = 0x6
+    # Uses ETH as underlying for wstETH
+    log_info "Deploying wstETH (ERC-4626 yield token)..."
+
+    # Get ETH address (use predeployed on devnet/sepolia)
+    if [[ -z "$ETH_ADDRESS" ]]; then
+        ETH_ADDRESS="0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+        update_env "ETH_ADDRESS" "$ETH_ADDRESS"
+    fi
+
+    # "Starknet Wrapped Staked Ether" hex: 537461726b6e6574205772617070656420537461 6b6564204574686572
+    # Split for ByteArray: pending_word=0, data=0x537461726b6e6574205772617070656420537461 6b65642045746865, pending_word_len=1, last byte=0x72
+    # Actually simpler: 0x0 (no pending), full_data, len
+    WSTETH_ADDRESS=$(deploy_contract "$MOCK_YIELD_TOKEN_CLASS_HASH" "wstETH" "WSTETH_ADDRESS" \
+        0x0 0x537461726b6e6574205772617070656420537461 0x14 \
+        0x0 0x777374455448 0x6 \
+        "$ETH_ADDRESS" \
+        "$DEPLOYER_ADDRESS")
+
+    # -------------------------------------------------------------------------
+    # Deploy SY 3: SY-wstETH (wraps wstETH, ERC-4626 mode)
+    # -------------------------------------------------------------------------
+
+    # "SY Starknet Wrapped Staked Ether" = 32 chars = 0x20
+    # "SY-wstETH" = 9 chars = 0x9
+    # ERC-4626 mode: uses yield token's convertToAssets() for exchange rate
+    log_info "Deploying SY-wstETH..."
+    SY_WSTETH_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-wstETH" "SY_WSTETH_ADDRESS" \
+        0x0 0x535920537461726b6e6574205772617070656420 0x14 \
+        0x0 0x53592d777374455448 0x9 \
+        "$WSTETH_ADDRESS" \
+        "$WSTETH_ADDRESS" \
+        0x1)
 
     log_success "Yield tokens and SY tokens deployed"
 
@@ -451,6 +515,11 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$TEST_RECIPIENT" 0x152d02c7e14af6800000 0x0
     log_success "Minted 100,000 sSTRK"
 
+    # Mint 100,000 wstETH shares
+    invoke_contract "$WSTETH_ADDRESS" mint_shares \
+        "$TEST_RECIPIENT" 0x152d02c7e14af6800000 0x0
+    log_success "Minted 100,000 wstETH"
+
     # -------------------------------------------------------------------------
     # Create PT/YT Pairs for both SY tokens
     # -------------------------------------------------------------------------
@@ -464,40 +533,74 @@ if [[ "$NETWORK" != "mainnet" ]]; then
 
     log_info "Expiry: $EXPIRY_TIMESTAMP ($(date -d "@$EXPIRY_TIMESTAMP" 2>/dev/null || date -r "$EXPIRY_TIMESTAMP"))"
 
-    # Create PT/YT for SY-nstSTRK
-    log_info "Creating PT/YT for SY-nstSTRK..."
-    invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
-        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP"
+    # Create PT/YT for SY-nstSTRK (skip if already exists)
+    if [[ -n "$PT_NST_STRK_ADDRESS" && "$PT_NST_STRK_ADDRESS" != "" && "$PT_NST_STRK_ADDRESS" != "0x0" ]]; then
+        log_warning "PT/YT for nstSTRK already exists, skipping..."
+        log_info "  PT-nstSTRK: $PT_NST_STRK_ADDRESS"
+        log_info "  YT-nstSTRK: $YT_NST_STRK_ADDRESS"
+    else
+        log_info "Creating PT/YT for SY-nstSTRK..."
+        invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
+            "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP"
 
-    sleep 1
-    PT_NST_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
-        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
-    update_env "PT_NST_STRK_ADDRESS" "$PT_NST_STRK_ADDRESS"
-    log_success "PT-nstSTRK: $PT_NST_STRK_ADDRESS"
+        sleep 1
+        PT_NST_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
+            "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
+        update_env "PT_NST_STRK_ADDRESS" "$PT_NST_STRK_ADDRESS"
+        log_success "PT-nstSTRK: $PT_NST_STRK_ADDRESS"
 
-    YT_NST_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
-        "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
-    update_env "YT_NST_STRK_ADDRESS" "$YT_NST_STRK_ADDRESS"
-    log_success "YT-nstSTRK: $YT_NST_STRK_ADDRESS"
+        YT_NST_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
+            "$SY_NST_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
+        update_env "YT_NST_STRK_ADDRESS" "$YT_NST_STRK_ADDRESS"
+        log_success "YT-nstSTRK: $YT_NST_STRK_ADDRESS"
+    fi
 
-    # Create PT/YT for SY-sSTRK
-    log_info "Creating PT/YT for SY-sSTRK..."
-    invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
-        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP"
+    # Create PT/YT for SY-sSTRK (skip if already exists)
+    if [[ -n "$PT_SSTRK_ADDRESS" && "$PT_SSTRK_ADDRESS" != "" && "$PT_SSTRK_ADDRESS" != "0x0" ]]; then
+        log_warning "PT/YT for sSTRK already exists, skipping..."
+        log_info "  PT-sSTRK: $PT_SSTRK_ADDRESS"
+        log_info "  YT-sSTRK: $YT_SSTRK_ADDRESS"
+    else
+        log_info "Creating PT/YT for SY-sSTRK..."
+        invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
+            "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP"
 
-    sleep 1
-    PT_SSTRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
-        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP")
-    update_env "PT_SSTRK_ADDRESS" "$PT_SSTRK_ADDRESS"
-    log_success "PT-sSTRK: $PT_SSTRK_ADDRESS"
+        sleep 1
+        PT_SSTRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
+            "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP")
+        update_env "PT_SSTRK_ADDRESS" "$PT_SSTRK_ADDRESS"
+        log_success "PT-sSTRK: $PT_SSTRK_ADDRESS"
 
-    YT_SSTRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
-        "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP")
-    update_env "YT_SSTRK_ADDRESS" "$YT_SSTRK_ADDRESS"
-    log_success "YT-sSTRK: $YT_SSTRK_ADDRESS"
+        YT_SSTRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
+            "$SY_SSTRK_ADDRESS" "$EXPIRY_TIMESTAMP")
+        update_env "YT_SSTRK_ADDRESS" "$YT_SSTRK_ADDRESS"
+        log_success "YT-sSTRK: $YT_SSTRK_ADDRESS"
+    fi
+
+    # Create PT/YT for SY-wstETH (skip if already exists)
+    if [[ -n "$PT_WSTETH_ADDRESS" && "$PT_WSTETH_ADDRESS" != "" && "$PT_WSTETH_ADDRESS" != "0x0" ]]; then
+        log_warning "PT/YT for wstETH already exists, skipping..."
+        log_info "  PT-wstETH: $PT_WSTETH_ADDRESS"
+        log_info "  YT-wstETH: $YT_WSTETH_ADDRESS"
+    else
+        log_info "Creating PT/YT for SY-wstETH..."
+        invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
+            "$SY_WSTETH_ADDRESS" "$EXPIRY_TIMESTAMP"
+
+        sleep 1
+        PT_WSTETH_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
+            "$SY_WSTETH_ADDRESS" "$EXPIRY_TIMESTAMP")
+        update_env "PT_WSTETH_ADDRESS" "$PT_WSTETH_ADDRESS"
+        log_success "PT-wstETH: $PT_WSTETH_ADDRESS"
+
+        YT_WSTETH_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_yt \
+            "$SY_WSTETH_ADDRESS" "$EXPIRY_TIMESTAMP")
+        update_env "YT_WSTETH_ADDRESS" "$YT_WSTETH_ADDRESS"
+        log_success "YT-wstETH: $YT_WSTETH_ADDRESS"
+    fi
 
     # -------------------------------------------------------------------------
-    # Create Markets for both PT tokens
+    # Create Markets for all PT tokens
     # -------------------------------------------------------------------------
 
     log_info "Creating Markets..."
@@ -511,13 +614,16 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Use calc-anchor.sh to calculate: ./deploy/scripts/calc-anchor.sh <apy%>
     ANCHOR_NST_STRK="${MARKET_INITIAL_ANCHOR_NST_STRK:-$DEFAULT_ANCHOR}"
     ANCHOR_SSTRK="${MARKET_INITIAL_ANCHOR_SSTRK:-$DEFAULT_ANCHOR}"
+    ANCHOR_WSTETH="${MARKET_INITIAL_ANCHOR_WSTETH:-38480520568064000}"  # ~4% APY for wstETH
 
     # Convert common params to hex
     SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
     FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
 
-    # Market for PT-nstSTRK
-    if [[ -n "$PT_NST_STRK_ADDRESS" && "$PT_NST_STRK_ADDRESS" != "0x0" ]]; then
+    # Market for PT-nstSTRK (skip if already exists)
+    if [[ -n "$MARKET_NST_STRK_ADDRESS" && "$MARKET_NST_STRK_ADDRESS" != "" && "$MARKET_NST_STRK_ADDRESS" != "0x0" ]]; then
+        log_warning "Market for nstSTRK already exists: $MARKET_NST_STRK_ADDRESS"
+    elif [[ -n "$PT_NST_STRK_ADDRESS" && "$PT_NST_STRK_ADDRESS" != "0x0" ]]; then
         ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_NST_STRK")
         log_info "Creating Market for PT-nstSTRK (anchor: $ANCHOR_NST_STRK)..."
         invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
@@ -538,8 +644,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         fi
     fi
 
-    # Market for PT-sSTRK
-    if [[ -n "$PT_SSTRK_ADDRESS" && "$PT_SSTRK_ADDRESS" != "0x0" ]]; then
+    # Market for PT-sSTRK (skip if already exists)
+    if [[ -n "$MARKET_SSTRK_ADDRESS" && "$MARKET_SSTRK_ADDRESS" != "" && "$MARKET_SSTRK_ADDRESS" != "0x0" ]]; then
+        log_warning "Market for sSTRK already exists: $MARKET_SSTRK_ADDRESS"
+    elif [[ -n "$PT_SSTRK_ADDRESS" && "$PT_SSTRK_ADDRESS" != "0x0" ]]; then
         ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_SSTRK")
         log_info "Creating Market for PT-sSTRK (anchor: $ANCHOR_SSTRK)..."
         invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
@@ -557,6 +665,30 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             log_success "Market-sSTRK: $MARKET_SSTRK_ADDRESS"
         else
             log_warning "Market for sSTRK not created"
+        fi
+    fi
+
+    # Market for PT-wstETH (skip if already exists)
+    if [[ -n "$MARKET_WSTETH_ADDRESS" && "$MARKET_WSTETH_ADDRESS" != "" && "$MARKET_WSTETH_ADDRESS" != "0x0" ]]; then
+        log_warning "Market for wstETH already exists: $MARKET_WSTETH_ADDRESS"
+    elif [[ -n "$PT_WSTETH_ADDRESS" && "$PT_WSTETH_ADDRESS" != "0x0" ]]; then
+        ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_WSTETH")
+        log_info "Creating Market for PT-wstETH (anchor: $ANCHOR_WSTETH)..."
+        invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
+            "$PT_WSTETH_ADDRESS" \
+            "$SCALAR_ROOT_HEX" 0x0 \
+            "$ANCHOR_HEX" 0x0 \
+            "$FEE_RATE_HEX" 0x0
+
+        sleep 1
+        MARKET_WSTETH_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
+            "$PT_WSTETH_ADDRESS")
+
+        if [[ -n "$MARKET_WSTETH_ADDRESS" && "$MARKET_WSTETH_ADDRESS" != "0x0" ]]; then
+            update_env "MARKET_WSTETH_ADDRESS" "$MARKET_WSTETH_ADDRESS"
+            log_success "Market-wstETH: $MARKET_WSTETH_ADDRESS"
+        else
+            log_warning "Market for wstETH not created"
         fi
     fi
 
@@ -690,6 +822,17 @@ if [[ "$NETWORK" != "mainnet" ]]; then
                 "sSTRK"
         fi
 
+        # Seed wstETH market
+        if [[ -n "$MARKET_WSTETH_ADDRESS" && "$MARKET_WSTETH_ADDRESS" != "0x0" ]]; then
+            seed_market_liquidity \
+                "$WSTETH_ADDRESS" \
+                "$SY_WSTETH_ADDRESS" \
+                "$YT_WSTETH_ADDRESS" \
+                "$PT_WSTETH_ADDRESS" \
+                "$MARKET_WSTETH_ADDRESS" \
+                "wstETH"
+        fi
+
         log_success "Initial liquidity seeded"
     else
         log_info "Skipping liquidity seeding (SEED_LIQUIDITY=false)"
@@ -730,40 +873,44 @@ cat > "$JSON_FILE" << EOF
   "testSetup": {
     "testRecipient": "$TEST_RECIPIENT",
     "baseToken": {
-      "STRK": "${STRK_ADDRESS:-}"
-    },
-    "oracles": {
-      "MockPragma": "${MOCK_PRAGMA_ADDRESS:-}",
-      "sSTRK": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
+      "STRK": "${STRK_ADDRESS:-}",
+      "ETH": "${ETH_ADDRESS:-}"
     },
     "yieldTokens": {
       "nstSTRK": {
         "name": "Nostra Staked STRK",
         "symbol": "nstSTRK",
         "address": "${NST_STRK_ADDRESS:-}",
-        "isERC4626": true,
-        "oracle": null
+        "isERC4626": true
       },
       "sSTRK": {
         "name": "Staked Starknet Token",
         "symbol": "sSTRK",
         "address": "${SSTRK_ADDRESS:-}",
-        "isERC4626": false,
-        "oracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
+        "isERC4626": true
+      },
+      "wstETH": {
+        "name": "Starknet Wrapped Staked Ether",
+        "symbol": "wstETH",
+        "address": "${WSTETH_ADDRESS:-}",
+        "isERC4626": true
       }
     },
     "syTokens": {
       "SY-nstSTRK": {
         "address": "${SY_NST_STRK_ADDRESS:-}",
         "underlying": "${NST_STRK_ADDRESS:-}",
-        "indexOracle": "${NST_STRK_ADDRESS:-}",
         "isERC4626": true
       },
       "SY-sSTRK": {
         "address": "${SY_SSTRK_ADDRESS:-}",
         "underlying": "${SSTRK_ADDRESS:-}",
-        "indexOracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}",
-        "isERC4626": false
+        "isERC4626": true
+      },
+      "SY-wstETH": {
+        "address": "${SY_WSTETH_ADDRESS:-}",
+        "underlying": "${WSTETH_ADDRESS:-}",
+        "isERC4626": true
       }
     },
     "markets": {
@@ -778,6 +925,12 @@ cat > "$JSON_FILE" << EOF
         "YT": "${YT_SSTRK_ADDRESS:-}",
         "Market": "${MARKET_SSTRK_ADDRESS:-}",
         "initialAnchor": "${ANCHOR_SSTRK:-}"
+      },
+      "wstETH": {
+        "PT": "${PT_WSTETH_ADDRESS:-}",
+        "YT": "${YT_WSTETH_ADDRESS:-}",
+        "Market": "${MARKET_WSTETH_ADDRESS:-}",
+        "initialAnchor": "${ANCHOR_WSTETH:-}"
       }
     },
     "marketParams": {
@@ -819,10 +972,6 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     echo "Base Token:"
     echo "  STRK:           $STRK_ADDRESS"
     echo ""
-    echo "Oracles:"
-    echo "  MockPragma:     $MOCK_PRAGMA_ADDRESS"
-    echo "  sSTRK Oracle:   $PRAGMA_SSTRK_ORACLE_ADDRESS"
-    echo ""
     echo "Yield Token 1 (ERC-4626):"
     echo "  nstSTRK:        $NST_STRK_ADDRESS"
     echo "  SY-nstSTRK:     $SY_NST_STRK_ADDRESS"
@@ -830,19 +979,26 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     echo "  YT-nstSTRK:     $YT_NST_STRK_ADDRESS"
     echo "  Market:         $MARKET_NST_STRK_ADDRESS"
     echo ""
-    echo "Yield Token 2 (PragmaIndexOracle):"
+    echo "Yield Token 2 (ERC-4626):"
     echo "  sSTRK:          $SSTRK_ADDRESS"
-    echo "  Oracle:         $PRAGMA_SSTRK_ORACLE_ADDRESS"
     echo "  SY-sSTRK:       $SY_SSTRK_ADDRESS"
     echo "  PT-sSTRK:       $PT_SSTRK_ADDRESS"
     echo "  YT-sSTRK:       $YT_SSTRK_ADDRESS"
     echo "  Market:         $MARKET_SSTRK_ADDRESS"
+    echo ""
+    echo "Yield Token 3 (ERC-4626 - wstETH):"
+    echo "  wstETH:         $WSTETH_ADDRESS"
+    echo "  SY-wstETH:      $SY_WSTETH_ADDRESS"
+    echo "  PT-wstETH:      $PT_WSTETH_ADDRESS"
+    echo "  YT-wstETH:      $YT_WSTETH_ADDRESS"
+    echo "  Market:         $MARKET_WSTETH_ADDRESS"
     echo ""
     echo "Market Parameters:"
     echo "  Scalar Root:    $SCALAR_ROOT"
     echo "  Fee Rate:       $FEE_RATE"
     echo "  nstSTRK Anchor: $ANCHOR_NST_STRK"
     echo "  sSTRK Anchor:   $ANCHOR_SSTRK"
+    echo "  wstETH Anchor:  $ANCHOR_WSTETH"
     echo ""
     echo "Expiry:           $EXPIRY_TIMESTAMP"
     echo ""
