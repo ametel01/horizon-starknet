@@ -106,6 +106,7 @@ fn deploy_factory(yt_class_hash: ClassHash, pt_class_hash: ClassHash) -> IFactor
 
     let contract = declare("Factory").unwrap_syscall().contract_class();
     let mut calldata = array![];
+    calldata.append(admin().into()); // owner
     calldata.append(yt_class_hash.into());
     calldata.append(pt_class_hash.into());
 

@@ -21,8 +21,8 @@ fi
 
 echo "Resetting addresses in $ENV_FILE..."
 
-# List of keys to reset
-KEYS=(
+# Keys to reset in ALL environments (deployed by our scripts)
+COMMON_KEYS=(
     # Class hashes
     "MOCK_ERC20_CLASS_HASH"
     "MOCK_YIELD_TOKEN_CLASS_HASH"
@@ -39,26 +39,56 @@ KEYS=(
     "FACTORY_ADDRESS"
     "MARKET_FACTORY_ADDRESS"
     "ROUTER_ADDRESS"
-    # Oracle addresses
+    # Oracle addresses (deployed by us)
     "MOCK_PRAGMA_ADDRESS"
     "PRAGMA_SSTRK_ORACLE_ADDRESS"
-    # Base token
-    "STRK_ADDRESS"
-    # Yield Token 1: nstSTRK (ERC-4626 style)
-    "NST_STRK_ADDRESS"
+    "PRAGMA_WSTETH_ORACLE_ADDRESS"
+    "PRAGMA_NST_STRK_ORACLE_ADDRESS"
+    # SY tokens (deployed by us)
     "SY_NST_STRK_ADDRESS"
+    "SY_SSTRK_ADDRESS"
+    "SY_WSTETH_ADDRESS"
+    # PT/YT/Market for nstSTRK
     "PT_NST_STRK_ADDRESS"
     "YT_NST_STRK_ADDRESS"
     "MARKET_NST_STRK_ADDRESS"
-    # Yield Token 2: sSTRK (PragmaIndexOracle style)
-    "SSTRK_ADDRESS"
-    "SY_SSTRK_ADDRESS"
+    # PT/YT/Market for sSTRK
     "PT_SSTRK_ADDRESS"
     "YT_SSTRK_ADDRESS"
     "MARKET_SSTRK_ADDRESS"
+    # PT/YT/Market for wstETH
+    "PT_WSTETH_ADDRESS"
+    "YT_WSTETH_ADDRESS"
+    "MARKET_WSTETH_ADDRESS"
     # Expiry timestamp
     "EXPIRY_TIMESTAMP"
+    # Legacy single-token addresses
+    "MOCK_YIELD_TOKEN_ADDRESS"
+    "SY_ADDRESS"
+    "PT_ADDRESS"
+    "YT_ADDRESS"
+    "MARKET_ADDRESS"
 )
+
+# Keys to reset ONLY in devnet mode (mock tokens - NOT in fork mode where these are mainnet addresses)
+DEVNET_ONLY_KEYS=(
+    "NST_STRK_ADDRESS"
+    "SSTRK_ADDRESS"
+    "STRK_ADDRESS"
+)
+
+# Determine if this is fork mode
+IS_FORK=false
+if [[ "$ENV_FILE" == *".env.fork"* ]]; then
+    IS_FORK=true
+    echo "Fork mode detected - preserving mainnet token addresses"
+fi
+
+# Build the final list of keys to reset
+KEYS=("${COMMON_KEYS[@]}")
+if [[ "$IS_FORK" == false ]]; then
+    KEYS+=("${DEVNET_ONLY_KEYS[@]}")
+fi
 
 # Create temp file for modifications (works with Docker bind mounts)
 TEMP_FILE=$(mktemp)

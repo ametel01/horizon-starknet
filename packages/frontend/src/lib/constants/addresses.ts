@@ -1,4 +1,5 @@
 import devnetAddressesRaw from '@deploy/addresses/devnet.json';
+import forkAddressesRaw from '@deploy/addresses/fork.json';
 
 import type { NetworkId } from '../starknet/provider';
 
@@ -69,6 +70,42 @@ interface DevnetAddresses {
 
 const devnetAddresses = devnetAddressesRaw as DevnetAddresses;
 
+// Type definition for fork addresses JSON structure
+interface ForkMarketAddresses {
+  SY: string;
+  PT: string;
+  YT: string;
+  Market: string;
+}
+
+interface ForkAddresses {
+  network: string;
+  rpcUrl: string;
+  mainnetRpcUrl: string;
+  deployedAt: string;
+  pragmaTwap: string;
+  classHashes: Record<string, string>;
+  contracts: {
+    Factory: string;
+    MarketFactory: string;
+    Router: string;
+  };
+  mainnetTokens: {
+    sSTRK: string;
+    wstETH: string;
+    nstSTRK: string;
+  };
+  oracles: Record<string, string>;
+  markets: {
+    sSTRK: ForkMarketAddresses;
+    wstETH: ForkMarketAddresses;
+    nstSTRK: ForkMarketAddresses;
+  };
+  expiry: number;
+}
+
+const forkAddresses = forkAddressesRaw as ForkAddresses;
+
 export interface ContractAddresses {
   factory: string;
   marketFactory: string;
@@ -99,6 +136,11 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
     marketFactory: devnetAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
     router: devnetAddresses.contracts.Router ?? ZERO_ADDRESS,
   },
+  fork: {
+    factory: forkAddresses.contracts.Factory,
+    marketFactory: forkAddresses.contracts.MarketFactory,
+    router: forkAddresses.contracts.Router,
+  },
   sepolia: {
     // TODO: Update after sepolia deployment
     factory: ZERO_ADDRESS,
@@ -121,24 +163,44 @@ export function getAddresses(network: NetworkId): ContractAddresses {
  * Get base token address (STRK)
  */
 export function getBaseTokenAddress(network: NetworkId): string {
-  if (network !== 'devnet') return ZERO_ADDRESS;
-  return devnetAddresses.testSetup.baseToken?.STRK ?? ZERO_ADDRESS;
+  if (network === 'devnet') {
+    return devnetAddresses.testSetup.baseToken?.STRK ?? ZERO_ADDRESS;
+  }
+  // Fork mode doesn't have a base STRK token (uses mainnet tokens)
+  return ZERO_ADDRESS;
 }
 
 /**
  * Get test recipient address
  */
 export function getTestRecipient(network: NetworkId): string {
-  if (network !== 'devnet') return ZERO_ADDRESS;
-  return devnetAddresses.testSetup.testRecipient ?? ZERO_ADDRESS;
+  if (network === 'devnet') {
+    return devnetAddresses.testSetup.testRecipient ?? ZERO_ADDRESS;
+  }
+  return ZERO_ADDRESS;
 }
 
 /**
  * Get all market infos with token metadata for a network
  */
 export function getMarketInfos(network: NetworkId): MarketInfo[] {
-  if (network !== 'devnet') return [];
+  // Handle fork mode
+  if (network === 'fork') {
+    return getForkMarketInfos();
+  }
 
+  // Handle devnet mode
+  if (network === 'devnet') {
+    return getDevnetMarketInfos();
+  }
+
+  return [];
+}
+
+/**
+ * Get market infos for devnet (mock tokens)
+ */
+function getDevnetMarketInfos(): MarketInfo[] {
   const markets: MarketInfo[] = [];
   const { testSetup } = devnetAddresses;
 
@@ -178,6 +240,63 @@ export function getMarketInfos(network: NetworkId): MarketInfo[] {
 }
 
 /**
+ * Get market infos for fork mode (mainnet tokens)
+ */
+function getForkMarketInfos(): MarketInfo[] {
+  const markets: MarketInfo[] = [];
+
+  // sSTRK market
+  if (forkAddresses.markets.sSTRK.Market) {
+    markets.push({
+      key: 'sSTRK',
+      marketAddress: forkAddresses.markets.sSTRK.Market,
+      ptAddress: forkAddresses.markets.sSTRK.PT,
+      ytAddress: forkAddresses.markets.sSTRK.YT,
+      syAddress: forkAddresses.markets.sSTRK.SY,
+      underlyingAddress: forkAddresses.mainnetTokens.sSTRK,
+      yieldTokenName: 'Staked STRK',
+      yieldTokenSymbol: 'sSTRK',
+      isERC4626: false, // mainnet sSTRK uses oracle
+      expiry: forkAddresses.expiry,
+    });
+  }
+
+  // wstETH market
+  if (forkAddresses.markets.wstETH.Market) {
+    markets.push({
+      key: 'wstETH',
+      marketAddress: forkAddresses.markets.wstETH.Market,
+      ptAddress: forkAddresses.markets.wstETH.PT,
+      ytAddress: forkAddresses.markets.wstETH.YT,
+      syAddress: forkAddresses.markets.wstETH.SY,
+      underlyingAddress: forkAddresses.mainnetTokens.wstETH,
+      yieldTokenName: 'Wrapped stETH',
+      yieldTokenSymbol: 'wstETH',
+      isERC4626: false, // mainnet wstETH uses oracle
+      expiry: forkAddresses.expiry,
+    });
+  }
+
+  // nstSTRK market
+  if (forkAddresses.markets.nstSTRK.Market) {
+    markets.push({
+      key: 'nstSTRK',
+      marketAddress: forkAddresses.markets.nstSTRK.Market,
+      ptAddress: forkAddresses.markets.nstSTRK.PT,
+      ytAddress: forkAddresses.markets.nstSTRK.YT,
+      syAddress: forkAddresses.markets.nstSTRK.SY,
+      underlyingAddress: forkAddresses.mainnetTokens.nstSTRK,
+      yieldTokenName: 'Nostra Staked STRK',
+      yieldTokenSymbol: 'nstSTRK',
+      isERC4626: false, // mainnet nstSTRK uses oracle
+      expiry: forkAddresses.expiry,
+    });
+  }
+
+  return markets;
+}
+
+/**
  * Get market info by market address
  */
 export function getMarketInfoByAddress(
@@ -190,4 +309,4 @@ export function getMarketInfoByAddress(
 }
 
 // Re-export for convenience
-export { devnetAddresses };
+export { devnetAddresses, forkAddresses };

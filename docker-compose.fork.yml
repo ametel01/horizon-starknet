@@ -1,0 +1,49 @@
+services:
+  # ===========================================================================
+  # Starknet Devnet - Fork Mode (Mainnet Fork)
+  # ===========================================================================
+  devnet:
+    image: shardlabs/starknet-devnet-rs:0.7.1-seed0
+    container_name: starknet-devnet-fork
+    ports:
+      - "5050:5050"
+    environment:
+      - FORK_NETWORK=https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/usuQSZ2cdSmSR8rNpstjp
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://127.0.0.1:5050/is_alive || exit 1",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
+    networks:
+      - fork-network
+
+  # ===========================================================================
+  # Deployer - Builds and deploys contracts on forked network
+  # ===========================================================================
+  deployer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.deployer
+    container_name: deployer-fork
+    environment:
+      - DEVNET_URL=http://devnet:5050
+      - ENV_FILE=.env.fork
+      - DEPLOY_SCRIPT=deploy-fork.sh
+      - SEED_LIQUIDITY=false
+    volumes:
+      - ./deploy/addresses:/output
+      - ./.env.fork:/app/.env.fork
+    depends_on:
+      devnet:
+        condition: service_healthy
+    networks:
+      - fork-network
+
+networks:
+  fork-network:
+    driver: bridge

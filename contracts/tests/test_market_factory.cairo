@@ -120,6 +120,7 @@ fn deploy_market_factory() -> IMarketFactoryDispatcher {
     let factory_class = declare("MarketFactory").unwrap_syscall().contract_class();
 
     let mut calldata = array![];
+    calldata.append(admin().into()); // owner
     calldata.append((*market_class.class_hash).into());
 
     let (contract_address, _) = factory_class.deploy(@calldata).unwrap_syscall();

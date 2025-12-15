@@ -137,6 +137,7 @@ fn deploy_market_factory() -> IMarketFactoryDispatcher {
     let market_class = declare("Market").unwrap_syscall().contract_class();
     let contract = declare("MarketFactory").unwrap_syscall().contract_class();
     let mut calldata = array![];
+    calldata.append(admin().into()); // owner
     calldata.append((*market_class.class_hash).into());
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketFactoryDispatcher { contract_address }
@@ -144,7 +145,8 @@ fn deploy_market_factory() -> IMarketFactoryDispatcher {
 
 fn deploy_router() -> IRouterDispatcher {
     let contract = declare("Router").unwrap_syscall().contract_class();
-    let calldata = array![];
+    let mut calldata = array![];
+    calldata.append(admin().into()); // owner
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IRouterDispatcher { contract_address }
 }

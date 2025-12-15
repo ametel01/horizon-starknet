@@ -11,6 +11,7 @@
 .env.devnet
 .env.sepolia
 .env.mainnet
+.env.fork
 
 # Keep examples
 !.env.example
