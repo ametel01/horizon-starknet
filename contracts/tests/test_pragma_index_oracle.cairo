@@ -7,6 +7,7 @@ use horizon::mocks::mock_pragma::{
 use horizon::oracles::pragma_index_oracle::{
     IPragmaIndexOracleAdminDispatcher, IPragmaIndexOracleAdminDispatcherTrait,
 };
+use openzeppelin_access::ownable::interface::{IOwnableDispatcher, IOwnableDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,
@@ -251,19 +252,20 @@ fn test_admin_can_pause_unpause() {
 }
 
 #[test]
-fn test_admin_can_transfer_admin() {
+fn test_admin_can_transfer_ownership() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
         pragma.contract_address, WSTETH_USD_PAIR_ID, SSTRK_USD_PAIR_ID,
     );
 
-    let new_admin: ContractAddress = 'NEW_ADMIN'.try_into().unwrap();
+    let new_owner: ContractAddress = 'NEW_OWNER'.try_into().unwrap();
+    let ownable = IOwnableDispatcher { contract_address: admin.contract_address };
 
     start_cheat_caller_address(admin.contract_address, ADMIN());
-    admin.transfer_admin(new_admin);
+    ownable.transfer_ownership(new_owner);
     stop_cheat_caller_address(admin.contract_address);
 
-    assert(admin.get_admin() == new_admin, 'admin not transferred');
+    assert(ownable.owner() == new_owner, 'owner not transferred');
 }
 
 #[test]
@@ -291,7 +293,7 @@ fn test_admin_emergency_set_index() {
 // ============ Access Control Tests ============
 
 #[test]
-#[should_panic(expected: 'PIO: not admin')]
+#[should_panic(expected: 'Caller is not the owner')]
 fn test_non_admin_cannot_set_config() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -303,7 +305,7 @@ fn test_non_admin_cannot_set_config() {
 }
 
 #[test]
-#[should_panic(expected: 'PIO: not admin')]
+#[should_panic(expected: 'Caller is not the owner')]
 fn test_non_admin_cannot_pause() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -315,7 +317,7 @@ fn test_non_admin_cannot_pause() {
 }
 
 #[test]
-#[should_panic(expected: 'PIO: not admin')]
+#[should_panic(expected: 'Caller is not the owner')]
 fn test_non_admin_cannot_emergency_set() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -373,13 +375,15 @@ fn test_view_functions() {
         pragma.contract_address, WSTETH_USD_PAIR_ID, SSTRK_USD_PAIR_ID,
     );
 
+    let ownable = IOwnableDispatcher { contract_address: admin.contract_address };
+
     assert(admin.get_pragma_oracle() == pragma.contract_address, 'wrong pragma oracle');
     assert(admin.get_numerator_pair_id() == WSTETH_USD_PAIR_ID, 'wrong numerator pair');
     assert(admin.get_denominator_pair_id() == SSTRK_USD_PAIR_ID, 'wrong denominator pair');
     assert(admin.get_twap_window() == 3600, 'wrong default twap window');
     assert(admin.get_max_staleness() == 86400, 'wrong default max staleness');
     assert(admin.get_stored_index() == WAD, 'wrong initial stored index');
-    assert(admin.get_admin() == ADMIN(), 'wrong admin');
+    assert(ownable.owner() == ADMIN(), 'wrong owner');
     assert(!admin.is_paused(), 'should not be paused');
 }
 // ============ Constructor Validation ============

@@ -131,7 +131,8 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
 
 fn deploy_router() -> IRouterDispatcher {
     let contract = declare("Router").unwrap_syscall().contract_class();
-    let calldata = array![];
+    let mut calldata = array![];
+    calldata.append(admin().into()); // owner
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IRouterDispatcher { contract_address }
 }
