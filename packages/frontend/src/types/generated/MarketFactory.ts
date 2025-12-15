@@ -1,6 +1,29 @@
 export const MARKETFACTORY_ABI = [
   {
     type: 'impl',
+    name: 'UpgradeableImpl',
+    interface_name: 'openzeppelin_upgrades::interface::IUpgradeable',
+  },
+  {
+    type: 'interface',
+    name: 'openzeppelin_upgrades::interface::IUpgradeable',
+    items: [
+      {
+        type: 'function',
+        name: 'upgrade',
+        inputs: [
+          {
+            name: 'new_class_hash',
+            type: 'core::starknet::class_hash::ClassHash',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+    ],
+  },
+  {
+    type: 'impl',
     name: 'MarketFactoryImpl',
     interface_name: 'horizon::interfaces::i_market_factory::IMarketFactory',
   },
@@ -145,12 +168,69 @@ export const MARKETFACTORY_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'set_market_class_hash',
+        inputs: [
+          {
+            name: 'new_class_hash',
+            type: 'core::starknet::class_hash::ClassHash',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+    ],
+  },
+  {
+    type: 'impl',
+    name: 'OwnableImpl',
+    interface_name: 'openzeppelin_access::ownable::interface::IOwnable',
+  },
+  {
+    type: 'interface',
+    name: 'openzeppelin_access::ownable::interface::IOwnable',
+    items: [
+      {
+        type: 'function',
+        name: 'owner',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'transfer_ownership',
+        inputs: [
+          {
+            name: 'new_owner',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'renounce_ownership',
+        inputs: [],
+        outputs: [],
+        state_mutability: 'external',
+      },
     ],
   },
   {
     type: 'constructor',
     name: 'constructor',
     inputs: [
+      {
+        name: 'owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
       {
         name: 'market_class_hash',
         type: 'core::starknet::class_hash::ClassHash',
@@ -196,6 +276,98 @@ export const MARKETFACTORY_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::market::market_factory::MarketFactory::MarketClassHashUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_class_hash',
+        type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+      {
+        name: 'new_class_hash',
+        type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferred',
+    kind: 'struct',
+    members: [
+      {
+        name: 'previous_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'new_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferStarted',
+    kind: 'struct',
+    members: [
+      {
+        name: 'previous_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'new_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_access::ownable::ownable::OwnableComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'OwnershipTransferred',
+        type: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferred',
+        kind: 'nested',
+      },
+      {
+        name: 'OwnershipTransferStarted',
+        type: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferStarted',
+        kind: 'nested',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded',
+    kind: 'struct',
+    members: [
+      {
+        name: 'class_hash',
+        type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'Upgraded',
+        type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded',
+        kind: 'nested',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::market::market_factory::MarketFactory::Event',
     kind: 'enum',
     variants: [
@@ -203,6 +375,21 @@ export const MARKETFACTORY_ABI = [
         name: 'MarketCreated',
         type: 'horizon::market::market_factory::MarketFactory::MarketCreated',
         kind: 'nested',
+      },
+      {
+        name: 'MarketClassHashUpdated',
+        type: 'horizon::market::market_factory::MarketFactory::MarketClassHashUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'OwnableEvent',
+        type: 'openzeppelin_access::ownable::ownable::OwnableComponent::Event',
+        kind: 'flat',
+      },
+      {
+        name: 'UpgradeableEvent',
+        type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
+        kind: 'flat',
       },
     ],
   },

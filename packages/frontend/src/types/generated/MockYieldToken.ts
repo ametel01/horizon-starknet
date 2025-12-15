@@ -492,6 +492,51 @@ export const MOCKYIELDTOKEN_ABI = [
       },
       {
         type: 'function',
+        name: 'base_index',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_yield_rate_bps',
+        inputs: [
+          {
+            name: 'rate_bps',
+            type: 'core::integer::u32',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_yield_rate_bps',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u32',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_deployment_timestamp',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u64',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
         name: 'set_index',
         inputs: [
           {
