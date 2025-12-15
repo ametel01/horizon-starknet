@@ -5,13 +5,18 @@ import { useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { SwapForm } from '@/components/forms/SwapForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
+import { usePositions } from '@/hooks/usePositions';
+import { useStarknet } from '@/hooks/useStarknet';
+import { formatWadCompact } from '@/lib/math/wad';
 
 function TradePageContent(): ReactNode {
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
   const [mounted, setMounted] = useState(false);
+  const { isConnected } = useStarknet();
 
   useEffect(() => {
     setMounted(true);
@@ -26,6 +31,17 @@ function TradePageContent(): ReactNode {
     }
     return markets[0];
   }, [markets, marketParam]);
+
+  // Fetch user's position for the selected market
+  const marketsToQuery = useMemo(() => (selectedMarket ? [selectedMarket] : []), [selectedMarket]);
+  const { data: portfolio } = usePositions(marketsToQuery);
+  const position = portfolio?.positions[0];
+
+  // Get token symbols
+  const tokenSymbol = selectedMarket?.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${tokenSymbol}`;
+  const ptSymbol = `PT-${tokenSymbol}`;
+  const ytSymbol = `YT-${tokenSymbol}`;
 
   return (
     <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
@@ -51,6 +67,83 @@ function TradePageContent(): ReactNode {
 
       {/* Info Panel */}
       <div className="mt-8 w-full max-w-md lg:mt-0">
+        {/* Your Position */}
+        {isConnected && selectedMarket && position && (
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Your Position</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="bg-muted rounded-lg p-2">
+                  <div className="text-muted-foreground text-xs">{sySymbol}</div>
+                  <div className="text-foreground font-mono">
+                    {formatWadCompact(position.syBalance)}
+                  </div>
+                </div>
+                <div className="bg-muted rounded-lg p-2">
+                  <div className="text-muted-foreground text-xs">{ptSymbol}</div>
+                  <div className="text-foreground font-mono">
+                    {formatWadCompact(position.ptBalance)}
+                  </div>
+                </div>
+                <div className="bg-muted rounded-lg p-2">
+                  <div className="text-muted-foreground text-xs">{ytSymbol}</div>
+                  <div className="text-foreground font-mono">
+                    {formatWadCompact(position.ytBalance)}
+                  </div>
+                </div>
+                <div className="bg-muted rounded-lg p-2">
+                  <div className="text-muted-foreground text-xs">LP Tokens</div>
+                  <div className="text-foreground font-mono">
+                    {formatWadCompact(position.lpBalance)}
+                  </div>
+                </div>
+              </div>
+              {/* LP Value breakdown if user has LP */}
+              {position.lpBalance > BigInt(0) && (
+                <div className="border-chart-2/30 bg-chart-2/10 mt-3 rounded-lg border p-3">
+                  <div className="text-chart-2 mb-2 text-xs font-medium">
+                    LP Value (
+                    {position.lpSharePercent < 0.01 ? '< 0.01' : position.lpSharePercent.toFixed(2)}
+                    % of pool)
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{sySymbol}:</span>
+                    <span className="text-foreground font-mono">
+                      {formatWadCompact(position.lpValueSy)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{ptSymbol}:</span>
+                    <span className="text-foreground font-mono">
+                      {formatWadCompact(position.lpValuePt)}
+                    </span>
+                  </div>
+                  <div className="border-chart-2/20 mt-2 border-t pt-2">
+                    <div className="text-chart-2 flex items-center gap-1 text-xs">
+                      <svg
+                        className="h-3 w-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                        />
+                      </svg>
+                      Swap fees auto-compound into LP
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="border-border bg-card rounded-lg border p-6">
           <h2 className="text-foreground text-lg font-semibold">How Trading Works</h2>
           <div className="text-muted-foreground mt-4 space-y-4 text-sm">
@@ -107,7 +200,7 @@ function TradePageContent(): ReactNode {
               <div className="mt-3 flex justify-between text-sm">
                 <span className="text-muted-foreground">Current Implied APY:</span>
                 <span className="text-primary font-medium">
-                  {selectedMarket.impliedApy.toFixed(2)}%
+                  {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
                 </span>
               </div>
             )}

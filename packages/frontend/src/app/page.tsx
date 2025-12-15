@@ -27,7 +27,9 @@ export default function HomePage(): ReactNode {
       <div className="mt-12">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-foreground text-xl font-semibold">Active Markets</h2>
-          <Button nativeButton={false} render={<Link href="/mint" />}>Mint PT + YT</Button>
+          <Button nativeButton={false} render={<Link href="/mint" />}>
+            Mint PT + YT
+          </Button>
         </div>
         <MarketList />
       </div>

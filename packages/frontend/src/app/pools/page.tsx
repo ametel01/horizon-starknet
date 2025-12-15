@@ -2,22 +2,39 @@
 
 import BigNumber from 'bignumber.js';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AddLiquidityForm } from '@/components/forms/AddLiquidityForm';
 import { RemoveLiquidityForm } from '@/components/forms/RemoveLiquidityForm';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { formatWad } from '@/lib/math/wad';
+import { formatWadCompact } from '@/lib/math/wad';
+import type { MarketData } from '@/types/market';
 
 type PoolTab = 'add' | 'remove';
 
+// Helper to get pool display name
+function getPoolName(market: MarketData): string {
+  if (market.metadata) {
+    return `${market.metadata.yieldTokenSymbol} Pool`;
+  }
+  // Fallback to truncated address
+  return `${market.address.slice(0, 6)}...${market.address.slice(-4)}`;
+}
+
+// Helper to get pool symbol
+function getPoolSymbol(market: MarketData): string {
+  return market.metadata?.yieldTokenSymbol ?? market.address.slice(0, 8);
+}
+
 function PoolsPageContent(): ReactNode {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
   const [activeTab, setActiveTab] = useState<PoolTab>('add');
@@ -37,6 +54,14 @@ function PoolsPageContent(): ReactNode {
     }
     return markets[0];
   }, [markets, marketParam]);
+
+  // Handle market selection change
+  const handleMarketChange = useCallback(
+    (marketAddress: string) => {
+      router.push(`/pools?market=${marketAddress}`);
+    },
+    [router]
+  );
 
   // Fetch LP balance for selected market
   const { data: lpBalance, isLoading: lpBalanceLoading } = useTokenBalance(
@@ -91,29 +116,65 @@ function PoolsPageContent(): ReactNode {
             </p>
           </div>
         ) : (
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => {
-              setActiveTab(value as PoolTab);
-            }}
-            className="space-y-4"
-          >
-            <TabsList className="w-full">
-              <TabsTrigger value="add" className="flex-1">
-                Add Liquidity
-              </TabsTrigger>
-              <TabsTrigger value="remove" className="flex-1">
-                Remove Liquidity
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-4">
+            {/* Pool Selector */}
+            <Card>
+              <CardContent className="pt-4">
+                <label className="text-muted-foreground mb-2 block text-sm font-medium">
+                  Select Pool
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {markets.map((market) => (
+                    <Button
+                      key={market.address}
+                      variant={market.address === selectedMarket.address ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        handleMarketChange(market.address);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="font-medium">{getPoolSymbol(market)}</span>
+                      <span
+                        className={
+                          market.address === selectedMarket.address
+                            ? 'text-primary-foreground/70'
+                            : 'text-muted-foreground'
+                        }
+                      >
+                        {market.impliedApy.multipliedBy(100).toFixed(1)}%
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Form */}
-            {activeTab === 'add' ? (
-              <AddLiquidityForm market={selectedMarket} />
-            ) : (
-              <RemoveLiquidityForm market={selectedMarket} />
-            )}
-          </Tabs>
+            {/* Add/Remove Tabs */}
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => {
+                setActiveTab(value as PoolTab);
+              }}
+              className="space-y-4"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="add" className="flex-1">
+                  Add Liquidity
+                </TabsTrigger>
+                <TabsTrigger value="remove" className="flex-1">
+                  Remove Liquidity
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Form */}
+              {activeTab === 'add' ? (
+                <AddLiquidityForm market={selectedMarket} />
+              ) : (
+                <RemoveLiquidityForm market={selectedMarket} />
+              )}
+            </Tabs>
+          </div>
         )}
       </div>
 
@@ -132,27 +193,64 @@ function PoolsPageContent(): ReactNode {
                   <div className="bg-muted h-4 w-24 animate-pulse rounded" />
                 </div>
               ) : lpBalance !== undefined && lpBalance > BigInt(0) ? (
-                <div className="space-y-3">
-                  <div>
-                    <div className="text-foreground text-2xl font-semibold">
-                      {formatWad(lpBalance, 6)} LP
+                (() => {
+                  const formattedLp = formatWadCompact(lpBalance);
+                  // If LP balance is effectively zero, show "no position"
+                  if (formattedLp === '0' || formattedLp === '< 0.01') {
+                    return <div className="text-muted-foreground">No significant LP position</div>;
+                  }
+                  return (
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-foreground text-2xl font-semibold">
+                          {formattedLp} LP
+                        </div>
+                        <div className="text-muted-foreground text-sm">
+                          {userPoolShare.lt(0.01) ? '< 0.01' : userPoolShare.toFixed(2)}% of pool
+                        </div>
+                      </div>
+                      <div className="bg-muted rounded-lg p-3">
+                        <div className="text-muted-foreground mb-1 text-xs">
+                          Your share of reserves
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">SY:</span>
+                          <span className="text-foreground">
+                            {formatWadCompact(userReserves.sy)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">PT:</span>
+                          <span className="text-foreground">
+                            {formatWadCompact(userReserves.pt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="border-chart-2/30 bg-chart-2/10 rounded-lg border p-3">
+                        <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                            />
+                          </svg>
+                          LP Rewards
+                        </div>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          Swap fees auto-compound into your position, growing your share of
+                          reserves.
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-muted-foreground text-sm">
-                      {userPoolShare.toFixed(4)}% of pool
-                    </div>
-                  </div>
-                  <div className="bg-muted rounded-lg p-3">
-                    <div className="text-muted-foreground mb-1 text-xs">Your share of reserves</div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">SY:</span>
-                      <span className="text-foreground">{formatWad(userReserves.sy, 4)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">PT:</span>
-                      <span className="text-foreground">{formatWad(userReserves.pt, 4)}</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()
               ) : (
                 <div className="text-muted-foreground">No LP position in this market</div>
               )}
@@ -164,36 +262,38 @@ function PoolsPageContent(): ReactNode {
         {selectedMarket && (
           <Card className="mb-4">
             <CardHeader>
-              <CardTitle className="text-base">Pool Statistics</CardTitle>
+              <CardTitle className="text-base">{getPoolName(selectedMarket)} Statistics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Liquidity</span>
                 <span className="text-foreground">
-                  {formatWad(selectedMarket.state.totalLpSupply, 4)} LP
+                  {formatWadCompact(selectedMarket.state.totalLpSupply)} LP
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">SY Reserve</span>
                 <span className="text-foreground">
-                  {formatWad(selectedMarket.state.syReserve, 4)}
+                  {formatWadCompact(selectedMarket.state.syReserve)} SY-
+                  {getPoolSymbol(selectedMarket)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">PT Reserve</span>
                 <span className="text-foreground">
-                  {formatWad(selectedMarket.state.ptReserve, 4)}
+                  {formatWadCompact(selectedMarket.state.ptReserve)} PT-
+                  {getPoolSymbol(selectedMarket)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Implied APY</span>
                 <span className="text-primary font-medium">
-                  {selectedMarket.impliedApy.toFixed(2)}%
+                  {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Days to Expiry</span>
-                <span className="text-foreground">{selectedMarket.daysToExpiry.toFixed(0)}</span>
+                <span className="text-foreground">{Math.ceil(selectedMarket.daysToExpiry)}</span>
               </div>
             </CardContent>
           </Card>

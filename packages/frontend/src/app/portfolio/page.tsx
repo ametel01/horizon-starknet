@@ -12,15 +12,15 @@ import { type MarketPosition, usePositions } from '@/hooks/usePositions';
 import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@/hooks/useRedeem';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
-import { formatWad } from '@/lib/math/wad';
+import { formatWad, formatWadCompact } from '@/lib/math/wad';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get token symbols from metadata - hide SY, show underlying
+  // Get token symbols from metadata
   const tokenSymbol = position.market.metadata?.yieldTokenSymbol ?? 'Token';
   const tokenName = position.market.metadata?.yieldTokenName ?? 'Unknown Market';
-  const depositedLabel = `Deposited ${tokenSymbol}`;
+  const sySymbol = `SY-${tokenSymbol}`;
   const ptSymbol = `PT-${tokenSymbol}`;
   const ytSymbol = `YT-${tokenSymbol}`;
 
@@ -198,38 +198,104 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
       </button>
 
       <CardContent className={isExpanded ? '' : 'hidden'}>
+        {/* LP Position (shown prominently if user has LP) */}
+        {position.lpBalance > BigInt(0) && (
+          <div className="border-chart-2/30 bg-chart-2/10 mb-4 rounded-lg border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-chart-2 font-medium">LP Position</h4>
+              <span className="text-muted-foreground text-sm">
+                {position.lpSharePercent < 0.01 ? '< 0.01' : position.lpSharePercent.toFixed(2)}% of
+                pool
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="bg-background/50 rounded-lg p-3">
+                <div className="text-muted-foreground text-xs">LP Tokens</div>
+                <div className="text-foreground font-mono text-lg">
+                  {formatWadCompact(position.lpBalance)}
+                </div>
+              </div>
+              <div className="bg-background/50 rounded-lg p-3">
+                <div className="text-muted-foreground text-xs">Value in {sySymbol}</div>
+                <div className="text-foreground font-mono text-lg">
+                  {formatWadCompact(position.lpValueSy)}
+                </div>
+              </div>
+              <div className="bg-background/50 rounded-lg p-3">
+                <div className="text-muted-foreground text-xs">Value in {ptSymbol}</div>
+                <div className="text-foreground font-mono text-lg">
+                  {formatWadCompact(position.lpValuePt)}
+                </div>
+              </div>
+            </div>
+            <div className="bg-background/50 mt-3 rounded-lg p-3">
+              <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                  />
+                </svg>
+                LP Rewards
+              </div>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Swap fees are automatically compounded into your LP position, increasing your share
+                of pool reserves over time.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Token Balances */}
         <div className="space-y-2">
           <h4 className="text-foreground text-sm font-medium">Token Balances</h4>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="bg-muted rounded-lg p-3">
-              <div className="text-muted-foreground">{depositedLabel}</div>
-              <div className="text-foreground font-mono">{formatWad(position.syBalance, 4)}</div>
+              <div className="text-muted-foreground">{sySymbol}</div>
+              <div className="text-foreground font-mono">
+                {formatWadCompact(position.syBalance)}
+              </div>
             </div>
             <div className="bg-muted rounded-lg p-3">
               <div className="text-muted-foreground">{ptSymbol}</div>
-              <div className="text-foreground font-mono">{formatWad(position.ptBalance, 4)}</div>
+              <div className="text-foreground font-mono">
+                {formatWadCompact(position.ptBalance)}
+              </div>
             </div>
             <div className="bg-muted rounded-lg p-3">
               <div className="text-muted-foreground">{ytSymbol}</div>
-              <div className="text-foreground font-mono">{formatWad(position.ytBalance, 4)}</div>
+              <div className="text-foreground font-mono">
+                {formatWadCompact(position.ytBalance)}
+              </div>
             </div>
-            <div className="bg-muted rounded-lg p-3">
-              <div className="text-muted-foreground">LP-{tokenSymbol}</div>
-              <div className="text-foreground font-mono">{formatWad(position.lpBalance, 4)}</div>
-            </div>
+            {position.lpBalance === BigInt(0) && (
+              <div className="bg-muted rounded-lg p-3">
+                <div className="text-muted-foreground">LP-{tokenSymbol}</div>
+                <div className="text-muted-foreground font-mono">0</div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Claimable Yield */}
+        {/* Claimable Yield from YT */}
         {position.claimableYield > BigInt(0) && (
           <div className="border-primary/30 bg-primary/10 mt-4 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-primary text-sm">Claimable Yield</div>
-                <div className="text-primary font-mono text-lg">
-                  {formatWad(position.claimableYield, 6)} {tokenSymbol}
+                <div className="text-primary flex items-center gap-1.5 text-sm">
+                  <span className="bg-primary/30 rounded px-1.5 py-0.5 text-xs font-medium">
+                    YT
+                  </span>
+                  Accrued Yield
                 </div>
+                <div className="text-primary font-mono text-lg">
+                  {formatWad(position.claimableYield, 6)} {sySymbol}
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Interest earned from holding {ytSymbol}
+                </p>
               </div>
               <Button
                 onClick={handleClaimYield}
@@ -265,7 +331,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
                       Redeem {ptSymbol} + {ytSymbol}
                     </div>
                     <div className="text-muted-foreground text-xs">
-                      Burn matching {ptSymbol} & {ytSymbol} to receive {tokenSymbol}
+                      Burn matching {ptSymbol} & {ytSymbol} to receive {sySymbol}
                     </div>
                     <div className="text-foreground mt-1 font-mono text-sm">
                       Max:{' '}
@@ -306,10 +372,10 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
                   <div>
                     <div className="text-chart-1 text-sm">Redeem Expired {ptSymbol}</div>
                     <div className="text-muted-foreground text-xs">
-                      Redeem {ptSymbol} for underlying asset
+                      Redeem {ptSymbol} for {sySymbol}
                     </div>
                     <div className="text-chart-1 mt-1 font-mono text-sm">
-                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {tokenSymbol}
+                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {sySymbol}
                     </div>
                   </div>
                   <Button
@@ -454,7 +520,9 @@ function PortfolioContent(): ReactNode {
           Start by minting PT+YT, trading, or providing liquidity.
         </p>
         <div className="mt-4 flex justify-center gap-3">
-          <Button nativeButton={false} render={<Link href="/mint" />}>Mint PT + YT</Button>
+          <Button nativeButton={false} render={<Link href="/mint" />}>
+            Mint PT + YT
+          </Button>
           <Button variant="secondary" nativeButton={false} render={<Link href="/trade" />}>
             Trade
           </Button>
@@ -479,7 +547,12 @@ function PortfolioContent(): ReactNode {
               </div>
             </div>
             <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground text-sm">Total Claimable Yield</div>
+              <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                <span className="bg-primary/20 text-primary rounded px-1 py-0.5 text-xs font-medium">
+                  YT
+                </span>
+                Claimable Yield
+              </div>
               <div className="text-primary mt-1 text-2xl font-semibold">
                 {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY
               </div>
