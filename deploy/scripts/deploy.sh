@@ -27,6 +27,7 @@ ENV_FILE="$ROOT_DIR/.env.$NETWORK"
 ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
 # Test recipient address for minting tokens (predeployed devnet account #0)
+# This represents a user account for testing, separate from the deployer
 TEST_RECIPIENT="0x064b48806902a367c8598f4F95C305e8c1a1aCbA5f082D294a43793113115691"
 
 echo -e "${BLUE}========================================${NC}"
@@ -91,14 +92,15 @@ if [[ "$NETWORK" == "devnet" ]]; then
         exit 1
     fi
 
-    # Extract first account details using jq
-    DEPLOYER_ADDRESS=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].address')
-    DEPLOYER_PRIVATE_KEY=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].private_key')
-    DEPLOYER_PUBLIC_KEY=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].public_key')
-    ACCOUNT_CLASS_HASH=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[0].class_hash // "0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f"')
+    # Extract second account as deployer (account #1) - used for deployments and seed liquidity
+    # Account #0 is reserved as the test user
+    DEPLOYER_ADDRESS=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[1].address')
+    DEPLOYER_PRIVATE_KEY=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[1].private_key')
+    DEPLOYER_PUBLIC_KEY=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[1].public_key')
+    ACCOUNT_CLASS_HASH=$(echo "$ACCOUNTS_ARRAY" | jq -r '.[1].class_hash // "0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f"')
 
     if [[ -z "$DEPLOYER_ADDRESS" || "$DEPLOYER_ADDRESS" == "null" ]]; then
-        log_error "Could not parse deployer address from devnet response"
+        log_error "Could not parse deployer address from devnet response (need at least 2 predeployed accounts)"
         echo "$ACCOUNTS_RESPONSE" >&2
         exit 1
     fi
@@ -108,6 +110,7 @@ else
 fi
 
 log_info "Deployer address: $DEPLOYER_ADDRESS"
+log_info "Test recipient:   $TEST_RECIPIENT"
 
 # Create accounts directory if not exists
 mkdir -p "$(dirname "$ACCOUNTS_FILE")"
@@ -204,6 +207,10 @@ MARKET_FACTORY_CLASS_HASH=$(declare_class "MarketFactory" "MARKET_FACTORY_CLASS_
 ROUTER_CLASS_HASH=$(declare_class "Router" "ROUTER_CLASS_HASH")
 
 log_success "All classes declared"
+
+# Wait for block to be mined (devnet mines every 10 seconds)
+log_info "Waiting for declarations to be mined..."
+sleep 12
 
 # =============================================================================
 # Deploy Contracts
@@ -362,13 +369,15 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Deploy Mock Pragma Oracle (for devnet testing)
     # -------------------------------------------------------------------------
 
-    # MockPragmaSummaryStats: constructor(admin, wsteth_base_price, sstrk_base_price, wsteth_yield_bps, sstrk_yield_bps)
+    # MockPragmaSummaryStats: constructor(admin, wsteth_base_price, sstrk_base_price, strk_base_price, wsteth_yield_bps, sstrk_yield_bps)
     # WSTETH: $4000 = 400000000000 (8 decimals), 4% APR = 400 bps
     # SSTRK: $0.50 = 50000000 (8 decimals), 8% APR = 800 bps
+    # STRK: $0.50 = 50000000 (8 decimals), 0% APR (base token)
     log_info "Deploying MockPragmaSummaryStats..."
     MOCK_PRAGMA_ADDRESS=$(deploy_contract "$MOCK_PRAGMA_CLASS_HASH" "MockPragmaSummaryStats" "MOCK_PRAGMA_ADDRESS" \
         "$DEPLOYER_ADDRESS" \
         0x5d21dba000 \
+        0x2faf080 \
         0x2faf080 \
         0x190 \
         0x320)
@@ -378,15 +387,17 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # -------------------------------------------------------------------------
 
     # PragmaIndexOracle: constructor(admin, pragma_oracle, numerator_pair_id, denominator_pair_id, initial_index)
-    # For sSTRK: single-feed mode (denominator = 0), using SSTRK/USD pair
-    # SSTRK_USD_PAIR_ID = 1537084272803954643780 = 0x152053545524b2f555344
+    # For sSTRK: dual-feed mode to calculate sSTRK/STRK exchange rate
+    # index = SSTRK/USD price / STRK/USD price = sSTRK/STRK exchange rate
+    # SSTRK_USD_PAIR_ID = 1537084272803954643780
+    # STRK_USD_PAIR_ID = 6004514686061859652
     # Initial index = 1 WAD = 1000000000000000000 = 0xde0b6b3a7640000
     log_info "Deploying PragmaIndexOracle for sSTRK..."
     PRAGMA_SSTRK_ORACLE_ADDRESS=$(deploy_contract "$PRAGMA_INDEX_ORACLE_CLASS_HASH" "PragmaIndexOracle-sSTRK" "PRAGMA_SSTRK_ORACLE_ADDRESS" \
         "$DEPLOYER_ADDRESS" \
         "$MOCK_PRAGMA_ADDRESS" \
         1537084272803954643780 \
-        0x0 \
+        6004514686061859652 \
         0xde0b6b3a7640000 0x0)
 
     # -------------------------------------------------------------------------
@@ -491,22 +502,28 @@ if [[ "$NETWORK" != "mainnet" ]]; then
 
     log_info "Creating Markets..."
 
+    # Common market parameters
     SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
-    INITIAL_ANCHOR="${MARKET_INITIAL_ANCHOR:-50000000000000000}"
     FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
+    DEFAULT_ANCHOR="${MARKET_INITIAL_ANCHOR:-76961041136128000}"  # ~8% APY default
 
-    # Convert to hex for u256 (low, high format)
+    # Per-market initial anchors (override with MARKET_INITIAL_ANCHOR_<NAME>)
+    # Use calc-anchor.sh to calculate: ./deploy/scripts/calc-anchor.sh <apy%>
+    ANCHOR_NST_STRK="${MARKET_INITIAL_ANCHOR_NST_STRK:-$DEFAULT_ANCHOR}"
+    ANCHOR_SSTRK="${MARKET_INITIAL_ANCHOR_SSTRK:-$DEFAULT_ANCHOR}"
+
+    # Convert common params to hex
     SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
-    INITIAL_ANCHOR_HEX=$(printf "0x%x" "$INITIAL_ANCHOR")
     FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
 
     # Market for PT-nstSTRK
     if [[ -n "$PT_NST_STRK_ADDRESS" && "$PT_NST_STRK_ADDRESS" != "0x0" ]]; then
-        log_info "Creating Market for PT-nstSTRK..."
+        ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_NST_STRK")
+        log_info "Creating Market for PT-nstSTRK (anchor: $ANCHOR_NST_STRK)..."
         invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
             "$PT_NST_STRK_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
-            "$INITIAL_ANCHOR_HEX" 0x0 \
+            "$ANCHOR_HEX" 0x0 \
             "$FEE_RATE_HEX" 0x0
 
         sleep 1
@@ -523,11 +540,12 @@ if [[ "$NETWORK" != "mainnet" ]]; then
 
     # Market for PT-sSTRK
     if [[ -n "$PT_SSTRK_ADDRESS" && "$PT_SSTRK_ADDRESS" != "0x0" ]]; then
-        log_info "Creating Market for PT-sSTRK..."
+        ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_SSTRK")
+        log_info "Creating Market for PT-sSTRK (anchor: $ANCHOR_SSTRK)..."
         invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
             "$PT_SSTRK_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
-            "$INITIAL_ANCHOR_HEX" 0x0 \
+            "$ANCHOR_HEX" 0x0 \
             "$FEE_RATE_HEX" 0x0
 
         sleep 1
@@ -540,6 +558,141 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         else
             log_warning "Market for sSTRK not created"
         fi
+    fi
+
+    # -------------------------------------------------------------------------
+    # Seed Initial Liquidity (optional, controlled by SEED_LIQUIDITY env var)
+    # -------------------------------------------------------------------------
+
+    SEED_LIQUIDITY="${SEED_LIQUIDITY:-true}"
+    SEED_AMOUNT="${SEED_LIQUIDITY_AMOUNT:-10000000000000000000000}"  # 10,000 tokens default (18 decimals)
+
+    if [[ "$SEED_LIQUIDITY" == "true" ]]; then
+        log_info "Seeding initial liquidity to markets..."
+
+        # Helper: Convert decimal string to hex (handles large numbers)
+        to_hex() {
+            python3 -c "print(hex(int('$1')))" 2>/dev/null || \
+            printf "0x%x" "$1" 2>/dev/null || \
+            echo "0x0"
+        }
+
+        # Helper: Divide large number by 2
+        half_of() {
+            python3 -c "print(int('$1') // 2)" 2>/dev/null || \
+            echo $(($1 / 2))
+        }
+
+        # Calculate hex values for large numbers
+        SEED_HEX=$(to_hex "$SEED_AMOUNT")
+        HALF_AMOUNT=$(half_of "$SEED_AMOUNT")
+        HALF_HEX=$(to_hex "$HALF_AMOUNT")
+
+        log_info "Seed amount: $SEED_AMOUNT ($SEED_HEX)"
+        log_info "Half amount: $HALF_AMOUNT ($HALF_HEX)"
+
+        # Helper: Seed liquidity to a single market
+        # Flow: YieldToken -> SY -> PT+YT -> Market LP
+        seed_market_liquidity() {
+            local yield_token=$1
+            local sy_token=$2
+            local yt_token=$3
+            local pt_token=$4
+            local market=$5
+            local market_name=$6
+
+            log_info "Seeding $market_name market..."
+
+            # Step 1: Mint yield tokens to deployer
+            log_info "  Minting yield tokens to deployer..."
+            if ! invoke_contract "$yield_token" mint_shares \
+                "$DEPLOYER_ADDRESS" "$SEED_HEX" 0x0; then
+                log_error "  Failed to mint yield tokens"
+                return 1
+            fi
+
+            # Step 2: Approve SY to spend yield tokens
+            log_info "  Approving SY to spend yield tokens..."
+            if ! invoke_contract "$yield_token" approve \
+                "$sy_token" "$SEED_HEX" 0x0; then
+                log_error "  Failed to approve SY"
+                return 1
+            fi
+
+            # Step 3: Deposit yield tokens to get SY
+            log_info "  Depositing to SY..."
+            if ! invoke_contract "$sy_token" deposit \
+                "$DEPLOYER_ADDRESS" "$SEED_HEX" 0x0; then
+                log_error "  Failed to deposit to SY"
+                return 1
+            fi
+
+            # Step 4: Approve YT to spend SY (for minting PT+YT)
+            log_info "  Approving YT to spend SY..."
+            if ! invoke_contract "$sy_token" approve \
+                "$yt_token" "$HALF_HEX" 0x0; then
+                log_error "  Failed to approve YT"
+                return 1
+            fi
+
+            # Step 5: Mint PT+YT from SY
+            log_info "  Minting PT+YT..."
+            if ! invoke_contract "$yt_token" mint_py \
+                "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0; then
+                log_error "  Failed to mint PT+YT"
+                return 1
+            fi
+
+            # Step 6: Approve Market to spend SY and PT
+            log_info "  Approving Market to spend SY and PT..."
+            if ! invoke_contract "$sy_token" approve \
+                "$market" "$HALF_HEX" 0x0; then
+                log_error "  Failed to approve Market for SY"
+                return 1
+            fi
+            if ! invoke_contract "$pt_token" approve \
+                "$market" "$HALF_HEX" 0x0; then
+                log_error "  Failed to approve Market for PT"
+                return 1
+            fi
+
+            # Step 7: Add liquidity to market (SY + PT -> LP)
+            # Market.mint(receiver, sy_desired, pt_desired) returns (lp_minted, sy_used, pt_used)
+            log_info "  Adding liquidity to market..."
+            if ! invoke_contract "$market" mint \
+                "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0 "$HALF_HEX" 0x0; then
+                log_error "  Failed to add liquidity"
+                return 1
+            fi
+
+            log_success "  $market_name market seeded with liquidity"
+        }
+
+        # Seed nstSTRK market
+        if [[ -n "$MARKET_NST_STRK_ADDRESS" && "$MARKET_NST_STRK_ADDRESS" != "0x0" ]]; then
+            seed_market_liquidity \
+                "$NST_STRK_ADDRESS" \
+                "$SY_NST_STRK_ADDRESS" \
+                "$YT_NST_STRK_ADDRESS" \
+                "$PT_NST_STRK_ADDRESS" \
+                "$MARKET_NST_STRK_ADDRESS" \
+                "nstSTRK"
+        fi
+
+        # Seed sSTRK market
+        if [[ -n "$MARKET_SSTRK_ADDRESS" && "$MARKET_SSTRK_ADDRESS" != "0x0" ]]; then
+            seed_market_liquidity \
+                "$SSTRK_ADDRESS" \
+                "$SY_SSTRK_ADDRESS" \
+                "$YT_SSTRK_ADDRESS" \
+                "$PT_SSTRK_ADDRESS" \
+                "$MARKET_SSTRK_ADDRESS" \
+                "sSTRK"
+        fi
+
+        log_success "Initial liquidity seeded"
+    else
+        log_info "Skipping liquidity seeding (SEED_LIQUIDITY=false)"
     fi
 fi
 
@@ -617,13 +770,23 @@ cat > "$JSON_FILE" << EOF
       "nstSTRK": {
         "PT": "${PT_NST_STRK_ADDRESS:-}",
         "YT": "${YT_NST_STRK_ADDRESS:-}",
-        "Market": "${MARKET_NST_STRK_ADDRESS:-}"
+        "Market": "${MARKET_NST_STRK_ADDRESS:-}",
+        "initialAnchor": "${ANCHOR_NST_STRK:-}"
       },
       "sSTRK": {
         "PT": "${PT_SSTRK_ADDRESS:-}",
         "YT": "${YT_SSTRK_ADDRESS:-}",
-        "Market": "${MARKET_SSTRK_ADDRESS:-}"
+        "Market": "${MARKET_SSTRK_ADDRESS:-}",
+        "initialAnchor": "${ANCHOR_SSTRK:-}"
       }
+    },
+    "marketParams": {
+      "scalarRoot": "${SCALAR_ROOT:-}",
+      "feeRate": "${FEE_RATE:-}"
+    },
+    "liquidity": {
+      "seeded": ${SEED_LIQUIDITY:-false},
+      "seedAmount": "${SEED_AMOUNT:-0}"
     },
     "expiry": ${EXPIRY_TIMESTAMP:-0}
   }
@@ -675,7 +838,21 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     echo "  YT-sSTRK:       $YT_SSTRK_ADDRESS"
     echo "  Market:         $MARKET_SSTRK_ADDRESS"
     echo ""
+    echo "Market Parameters:"
+    echo "  Scalar Root:    $SCALAR_ROOT"
+    echo "  Fee Rate:       $FEE_RATE"
+    echo "  nstSTRK Anchor: $ANCHOR_NST_STRK"
+    echo "  sSTRK Anchor:   $ANCHOR_SSTRK"
+    echo ""
     echo "Expiry:           $EXPIRY_TIMESTAMP"
+    echo ""
+    if [[ "$SEED_LIQUIDITY" == "true" ]]; then
+        echo "Initial Liquidity:"
+        echo "  Seed Amount:    $SEED_AMOUNT (per market)"
+        echo "  Status:         Seeded"
+    else
+        echo "Initial Liquidity: Not seeded (SEED_LIQUIDITY=false)"
+    fi
 fi
 
 echo ""

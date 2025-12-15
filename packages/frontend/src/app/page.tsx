@@ -5,14 +5,15 @@ import type { ReactNode } from 'react';
 
 import { MarketList } from '@/components/markets/MarketList';
 import { StatsOverview } from '@/components/markets/StatsOverview';
+import { Button } from '@/components/ui/Button';
 
 export default function HomePage(): ReactNode {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12">
       {/* Hero Section */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-100">Horizon Protocol</h1>
-        <p className="mt-4 text-lg text-neutral-400">
+        <h1 className="text-foreground text-4xl font-bold tracking-tight">Horizon Protocol</h1>
+        <p className="text-muted-foreground mt-4 text-lg">
           Split yield-bearing assets into Principal and Yield Tokens
         </p>
       </div>
@@ -25,20 +26,17 @@ export default function HomePage(): ReactNode {
       {/* Markets Section */}
       <div className="mt-12">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-neutral-100">Active Markets</h2>
-          <Link
-            href="/mint"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
+          <h2 className="text-foreground text-xl font-semibold">Active Markets</h2>
+          <Button nativeButton={false} render={<Link href="/mint" />}>
             Mint PT + YT
-          </Link>
+          </Button>
         </div>
         <MarketList />
       </div>
 
       {/* Features */}
       <div className="mt-16">
-        <h2 className="text-xl font-semibold text-neutral-100">What you can do</h2>
+        <h2 className="text-foreground text-xl font-semibold">What you can do</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <FeatureCard
             title="Mint PT + YT"
@@ -76,10 +74,10 @@ function FeatureCard({ title, description, href }: FeatureCardProps): ReactNode 
   return (
     <Link
       href={href}
-      className="group rounded-lg border border-neutral-800 bg-neutral-900 p-6 transition-colors hover:border-blue-600"
+      className="group border-border bg-card hover:border-primary rounded-lg border p-6 transition-colors"
     >
-      <h3 className="font-semibold text-neutral-100 group-hover:text-blue-500">{title}</h3>
-      <p className="mt-2 text-sm text-neutral-400">{description}</p>
+      <h3 className="text-foreground group-hover:text-primary font-semibold">{title}</h3>
+      <p className="text-muted-foreground mt-2 text-sm">{description}</p>
     </Link>
   );
 }

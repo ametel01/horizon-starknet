@@ -6,6 +6,8 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { TxStatus } from '@/components/display/TxStatus';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@/hooks/useLiquidity';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -31,15 +33,7 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
   const [isBalanced, setIsBalanced] = useState(true);
 
-  const {
-    addLiquidity,
-    isAdding,
-    isSuccess,
-    isError,
-    error,
-    transactionHash,
-    reset: resetAddLiquidity,
-  } = useAddLiquidity();
+  const { addLiquidity, isAdding, isSuccess, isError, error, transactionHash } = useAddLiquidity();
 
   // Fetch balances
   const { data: syBalance } = useTokenBalance(market.syAddress);
@@ -155,20 +149,13 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
     });
   };
 
-  // Reset form on success
+  // Clear inputs on success
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => {
-        setSyAmount('');
-        setPtAmount('');
-        resetAddLiquidity();
-      }, 5000);
-      return (): void => {
-        clearTimeout(timer);
-      };
+      setSyAmount('');
+      setPtAmount('');
     }
-    return undefined;
-  }, [isSuccess, resetAddLiquidity]);
+  }, [isSuccess]);
 
   return (
     <Card>
@@ -178,22 +165,8 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
       <CardContent className="space-y-4">
         {/* Balanced Mode Toggle */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={(): void => {
-              setIsBalanced(!isBalanced);
-            }}
-            className={`relative h-6 w-11 rounded-full transition-colors ${
-              isBalanced ? 'bg-blue-500' : 'bg-neutral-700'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                isBalanced ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
-          <span className="text-sm text-neutral-400">Balanced deposit</span>
+          <Switch checked={isBalanced} onCheckedChange={setIsBalanced} />
+          <span className="text-muted-foreground text-sm">Balanced deposit</span>
         </div>
 
         {/* SY Input */}
@@ -222,58 +195,61 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
         />
 
         {/* Output Preview */}
-        <div className="rounded-lg bg-neutral-800/50 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-400">Expected LP Tokens</span>
-            <span className="text-sm text-neutral-400">Min: {formatWad(minLpOut, 6)} LP</span>
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-neutral-100">
-            {formatWad(expectedLpOut, 6)} LP
-          </div>
-        </div>
+        <Card size="sm" className="bg-muted">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
+              <span className="text-muted-foreground text-sm">
+                Min: {formatWad(minLpOut, 6)} LP
+              </span>
+            </div>
+            <div className="text-foreground mt-2 text-2xl font-semibold">
+              {formatWad(expectedLpOut, 6)} LP
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Pool Info */}
         {isValidAmount && (
-          <div className="space-y-2 rounded-lg bg-neutral-800/30 p-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Share of Pool</span>
-              <span className="text-neutral-200">{poolShare.toFixed(4)}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Pool Reserves</span>
-              <span className="text-neutral-200">
-                {formatWad(market.state.syReserve, 2)} SY / {formatWad(market.state.ptReserve, 2)}{' '}
-                PT
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Slippage Tolerance</span>
-              <span className="text-neutral-200">{slippageBps / 100}%</span>
-            </div>
-          </div>
+          <Card size="sm" className="bg-muted/30">
+            <CardContent className="space-y-2 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Share of Pool</span>
+                <span className="text-foreground">{poolShare.toFixed(4)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pool Reserves</span>
+                <span className="text-foreground">
+                  {formatWad(market.state.syReserve, 2)} SY / {formatWad(market.state.ptReserve, 2)}{' '}
+                  PT
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Slippage Tolerance</span>
+                <span className="text-foreground">{slippageBps / 100}%</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Slippage Settings */}
         <div>
-          <div className="mb-2 text-sm text-neutral-400">Slippage Tolerance</div>
-          <div className="flex gap-2">
+          <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+          <ToggleGroup className="flex gap-1">
             {SLIPPAGE_OPTIONS.map((option) => (
-              <button
+              <ToggleGroupItem
                 key={option.value}
-                type="button"
-                onClick={(): void => {
+                pressed={slippageBps === option.value}
+                onPressedChange={() => {
                   setSlippageBps(option.value);
                 }}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  slippageBps === option.value
-                    ? 'bg-blue-500/20 text-blue-500'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                }`}
+                variant="outline"
+                size="sm"
               >
                 {option.label}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         {/* Transaction Status */}

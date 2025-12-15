@@ -42,7 +42,7 @@ export function ImpliedYield({
       className={cn(
         'font-mono',
         sizeClasses[size],
-        isPositive ? 'text-green-500' : 'text-red-500',
+        isPositive ? 'text-primary' : 'text-destructive',
         className
       )}
     >
@@ -98,7 +98,7 @@ export function ImpliedYieldFromPrice({
       className={cn(
         'font-mono',
         sizeClasses[size],
-        isPositive ? 'text-green-500' : 'text-red-500',
+        isPositive ? 'text-primary' : 'text-destructive',
         className
       )}
     >
@@ -130,7 +130,7 @@ export function YieldComparison({
 
   return (
     <div className={cn('flex items-center gap-2 font-mono text-sm', className)}>
-      <span className={currentApy >= 0 ? 'text-green-500' : 'text-red-500'}>
+      <span className={currentApy >= 0 ? 'text-primary' : 'text-destructive'}>
         {currentApy.toFixed(decimals)}%
       </span>
       <svg
@@ -143,15 +143,15 @@ export function YieldComparison({
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-neutral-500"
+        className="text-muted-foreground"
       >
         <line x1="5" y1="12" x2="19" y2="12" />
         <polyline points="12 5 19 12 12 19" />
       </svg>
-      <span className={newApy >= 0 ? 'text-green-500' : 'text-red-500'}>
+      <span className={newApy >= 0 ? 'text-primary' : 'text-destructive'}>
         {newApy.toFixed(decimals)}%
       </span>
-      <span className={cn('ml-1 text-xs', isIncrease ? 'text-green-500' : 'text-red-500')}>
+      <span className={cn('ml-1 text-xs', isIncrease ? 'text-primary' : 'text-destructive')}>
         ({isIncrease ? '+' : ''}
         {change.toFixed(decimals)}%)
       </span>

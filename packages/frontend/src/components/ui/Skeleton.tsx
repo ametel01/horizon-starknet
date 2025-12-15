@@ -1,49 +1,35 @@
-import { type ReactNode } from 'react';
+import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-interface SkeletonProps {
-  className?: string;
-  'aria-label'?: string;
-}
-
-export function Skeleton({ className, 'aria-label': ariaLabel }: SkeletonProps): ReactNode {
+function Skeleton({ className, ...props }: React.ComponentProps<'div'>): React.JSX.Element {
   return (
     <div
-      className={cn('animate-pulse rounded bg-neutral-800', className)}
-      role="status"
-      aria-label={ariaLabel ?? 'Loading'}
-    >
-      <span className="sr-only">{ariaLabel ?? 'Loading...'}</span>
-    </div>
+      data-slot="skeleton"
+      className={cn('bg-muted animate-pulse rounded-xl', className)}
+      {...props}
+    />
   );
 }
 
-export function SkeletonText({ className }: SkeletonProps): ReactNode {
-  return <Skeleton className={cn('h-4 w-full', className)} />;
-}
-
-export function SkeletonCard({ className }: SkeletonProps): ReactNode {
+function SkeletonCard({ className, ...props }: React.ComponentProps<'div'>): React.JSX.Element {
   return (
-    <div className={cn('rounded-lg border border-neutral-800 bg-neutral-900 p-4', className)}>
-      <div className="mb-4 space-y-2">
-        <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-4 w-32" />
-      </div>
-      <div className="space-y-3">
-        <div className="flex justify-between">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-20" />
-        </div>
-        <div className="flex justify-between">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-20" />
-        </div>
-        <div className="flex justify-between">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-20" />
+    <div
+      data-slot="skeleton-card"
+      className={cn('border-border bg-card animate-pulse rounded-2xl border p-6', className)}
+      {...props}
+    >
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-1/3" />
+        <Skeleton className="h-4 w-2/3" />
+        <div className="space-y-3 pt-4">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
         </div>
       </div>
     </div>
   );
 }
+
+export { Skeleton, SkeletonCard };

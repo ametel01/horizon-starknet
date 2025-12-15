@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { Card, CardContent } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 
@@ -35,9 +36,11 @@ export function MarketList({ className }: MarketListProps): ReactNode {
   if (isError) {
     return (
       <div className={className}>
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-center">
-          <p className="text-red-500">Failed to load markets. Please try again.</p>
-        </div>
+        <Card className="border-destructive/20 bg-destructive/10">
+          <CardContent className="p-4 text-center">
+            <p className="text-destructive">Failed to load markets. Please try again.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -45,12 +48,14 @@ export function MarketList({ className }: MarketListProps): ReactNode {
   if (markets.length === 0) {
     return (
       <div className={className}>
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-8 text-center">
-          <p className="text-neutral-400">No markets available.</p>
-          <p className="mt-2 text-sm text-neutral-500">
-            Markets will appear here once they are created.
-          </p>
-        </div>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">No markets available.</p>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Markets will appear here once they are created.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

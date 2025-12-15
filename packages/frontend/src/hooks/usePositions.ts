@@ -34,6 +34,10 @@ export interface MarketPosition {
   claimableYield: bigint;
   canRedeemPtYt: boolean; // Has both PT and YT to redeem before expiry
   canRedeemPtPostExpiry: boolean; // Has PT and market is expired
+  // LP position details
+  lpSharePercent: number; // User's share of pool as percentage
+  lpValueSy: bigint; // User's share of SY reserves
+  lpValuePt: bigint; // User's share of PT reserves
 }
 
 export interface PortfolioData {
@@ -74,6 +78,21 @@ async function fetchMarketPosition(
   const canRedeemPtYt = hasMatchingPtYt && !market.isExpired;
   const canRedeemPtPostExpiry = ptBalance > BigInt(0) && market.isExpired;
 
+  // Calculate LP position value
+  const totalLpSupply = market.state.totalLpSupply;
+  let lpSharePercent = 0;
+  let lpValueSy = BigInt(0);
+  let lpValuePt = BigInt(0);
+
+  if (lpBalance > BigInt(0) && totalLpSupply > BigInt(0)) {
+    // Calculate share as percentage
+    lpSharePercent = Number((lpBalance * BigInt(10000)) / totalLpSupply) / 100;
+
+    // Calculate user's share of reserves
+    lpValueSy = (lpBalance * market.state.syReserve) / totalLpSupply;
+    lpValuePt = (lpBalance * market.state.ptReserve) / totalLpSupply;
+  }
+
   return {
     market,
     syBalance,
@@ -83,6 +102,9 @@ async function fetchMarketPosition(
     claimableYield,
     canRedeemPtYt,
     canRedeemPtPostExpiry,
+    lpSharePercent,
+    lpValueSy,
+    lpValuePt,
   };
 }
 

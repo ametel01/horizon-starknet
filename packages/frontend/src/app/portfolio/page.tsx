@@ -12,15 +12,15 @@ import { type MarketPosition, usePositions } from '@/hooks/usePositions';
 import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@/hooks/useRedeem';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
-import { formatWad } from '@/lib/math/wad';
+import { formatWad, formatWadCompact } from '@/lib/math/wad';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get token symbols from metadata - hide SY, show underlying
+  // Get token symbols from metadata
   const tokenSymbol = position.market.metadata?.yieldTokenSymbol ?? 'Token';
   const tokenName = position.market.metadata?.yieldTokenName ?? 'Unknown Market';
-  const depositedLabel = `Deposited ${tokenSymbol}`;
+  const sySymbol = `SY-${tokenSymbol}`;
   const ptSymbol = `PT-${tokenSymbol}`;
   const ytSymbol = `YT-${tokenSymbol}`;
 
@@ -167,20 +167,20 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">{ptSymbol} Market</CardTitle>
-              <p className="text-sm text-neutral-400">{tokenName}</p>
+              <p className="text-muted-foreground text-sm">{tokenName}</p>
             </div>
             <div className="flex items-center gap-2">
               {position.market.isExpired ? (
-                <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-400">
+                <span className="bg-destructive/20 text-destructive rounded px-2 py-0.5 text-xs">
                   Expired
                 </span>
               ) : (
-                <span className="rounded bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
+                <span className="bg-primary/20 text-primary rounded px-2 py-0.5 text-xs">
                   {position.market.daysToExpiry.toFixed(0)} days left
                 </span>
               )}
               <svg
-                className={`h-5 w-5 text-neutral-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                className={`text-muted-foreground h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -198,38 +198,104 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
       </button>
 
       <CardContent className={isExpanded ? '' : 'hidden'}>
+        {/* LP Position (shown prominently if user has LP) */}
+        {position.lpBalance > BigInt(0) && (
+          <div className="border-chart-2/30 bg-chart-2/10 mb-4 rounded-lg border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-chart-2 font-medium">LP Position</h4>
+              <span className="text-muted-foreground text-sm">
+                {position.lpSharePercent < 0.01 ? '< 0.01' : position.lpSharePercent.toFixed(2)}% of
+                pool
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="bg-background/50 rounded-lg p-3">
+                <div className="text-muted-foreground text-xs">LP Tokens</div>
+                <div className="text-foreground font-mono text-lg">
+                  {formatWadCompact(position.lpBalance)}
+                </div>
+              </div>
+              <div className="bg-background/50 rounded-lg p-3">
+                <div className="text-muted-foreground text-xs">Value in {sySymbol}</div>
+                <div className="text-foreground font-mono text-lg">
+                  {formatWadCompact(position.lpValueSy)}
+                </div>
+              </div>
+              <div className="bg-background/50 rounded-lg p-3">
+                <div className="text-muted-foreground text-xs">Value in {ptSymbol}</div>
+                <div className="text-foreground font-mono text-lg">
+                  {formatWadCompact(position.lpValuePt)}
+                </div>
+              </div>
+            </div>
+            <div className="bg-background/50 mt-3 rounded-lg p-3">
+              <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                  />
+                </svg>
+                LP Rewards
+              </div>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Swap fees are automatically compounded into your LP position, increasing your share
+                of pool reserves over time.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Token Balances */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-neutral-300">Token Balances</h4>
+          <h4 className="text-foreground text-sm font-medium">Token Balances</h4>
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">{depositedLabel}</div>
-              <div className="font-mono text-neutral-100">{formatWad(position.syBalance, 4)}</div>
+            <div className="bg-muted rounded-lg p-3">
+              <div className="text-muted-foreground">{sySymbol}</div>
+              <div className="text-foreground font-mono">
+                {formatWadCompact(position.syBalance)}
+              </div>
             </div>
-            <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">{ptSymbol}</div>
-              <div className="font-mono text-neutral-100">{formatWad(position.ptBalance, 4)}</div>
+            <div className="bg-muted rounded-lg p-3">
+              <div className="text-muted-foreground">{ptSymbol}</div>
+              <div className="text-foreground font-mono">
+                {formatWadCompact(position.ptBalance)}
+              </div>
             </div>
-            <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">{ytSymbol}</div>
-              <div className="font-mono text-neutral-100">{formatWad(position.ytBalance, 4)}</div>
+            <div className="bg-muted rounded-lg p-3">
+              <div className="text-muted-foreground">{ytSymbol}</div>
+              <div className="text-foreground font-mono">
+                {formatWadCompact(position.ytBalance)}
+              </div>
             </div>
-            <div className="rounded-lg bg-neutral-800/50 p-3">
-              <div className="text-neutral-500">LP-{tokenSymbol}</div>
-              <div className="font-mono text-neutral-100">{formatWad(position.lpBalance, 4)}</div>
-            </div>
+            {position.lpBalance === BigInt(0) && (
+              <div className="bg-muted rounded-lg p-3">
+                <div className="text-muted-foreground">LP-{tokenSymbol}</div>
+                <div className="text-muted-foreground font-mono">0</div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Claimable Yield */}
+        {/* Claimable Yield from YT */}
         {position.claimableYield > BigInt(0) && (
-          <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+          <div className="border-primary/30 bg-primary/10 mt-4 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-green-400">Claimable Yield</div>
-                <div className="font-mono text-lg text-green-300">
-                  {formatWad(position.claimableYield, 6)} {tokenSymbol}
+                <div className="text-primary flex items-center gap-1.5 text-sm">
+                  <span className="bg-primary/30 rounded px-1.5 py-0.5 text-xs font-medium">
+                    YT
+                  </span>
+                  Accrued Yield
                 </div>
+                <div className="text-primary font-mono text-lg">
+                  {formatWad(position.claimableYield, 6)} {sySymbol}
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Interest earned from holding {ytSymbol}
+                </p>
               </div>
               <Button
                 onClick={handleClaimYield}
@@ -254,20 +320,20 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
         {/* Redemption Options */}
         {(position.canRedeemPtYt || position.canRedeemPtPostExpiry) && (
           <div className="mt-4 space-y-3">
-            <h4 className="text-sm font-medium text-neutral-300">Redemption Options</h4>
+            <h4 className="text-foreground text-sm font-medium">Redemption Options</h4>
 
             {/* Redeem PT + YT (before expiry) */}
             {position.canRedeemPtYt && (
-              <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+              <div className="border-secondary/30 bg-secondary/10 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-blue-400">
+                    <div className="text-muted-foreground text-sm">
                       Redeem {ptSymbol} + {ytSymbol}
                     </div>
-                    <div className="text-xs text-neutral-400">
-                      Burn matching {ptSymbol} & {ytSymbol} to receive {tokenSymbol}
+                    <div className="text-muted-foreground text-xs">
+                      Burn matching {ptSymbol} & {ytSymbol} to receive {sySymbol}
                     </div>
-                    <div className="mt-1 font-mono text-sm text-blue-300">
+                    <div className="text-foreground mt-1 font-mono text-sm">
                       Max:{' '}
                       {formatWad(
                         position.ptBalance < position.ytBalance
@@ -301,15 +367,15 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
 
             {/* Redeem PT post expiry */}
             {position.canRedeemPtPostExpiry && (
-              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+              <div className="border-chart-1/30 bg-chart-1/10 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-yellow-400">Redeem Expired {ptSymbol}</div>
-                    <div className="text-xs text-neutral-400">
-                      Redeem {ptSymbol} for underlying asset
+                    <div className="text-chart-1 text-sm">Redeem Expired {ptSymbol}</div>
+                    <div className="text-muted-foreground text-xs">
+                      Redeem {ptSymbol} for {sySymbol}
                     </div>
-                    <div className="mt-1 font-mono text-sm text-yellow-300">
-                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {tokenSymbol}
+                    <div className="text-chart-1 mt-1 font-mono text-sm">
+                      {formatWad(position.ptBalance, 4)} {ptSymbol} → {sySymbol}
                     </div>
                   </div>
                   <Button
@@ -337,18 +403,24 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
 
         {/* Quick Actions */}
         <div className="mt-4 flex gap-2">
-          <Link
-            href={`/trade?market=${position.market.address}`}
-            className="flex-1 rounded-lg bg-neutral-800 px-3 py-2 text-center text-sm text-neutral-300 transition-colors hover:bg-neutral-700"
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+            nativeButton={false}
+            render={<Link href={`/trade?market=${position.market.address}`} />}
           >
             Trade
-          </Link>
-          <Link
-            href={`/pools?market=${position.market.address}`}
-            className="flex-1 rounded-lg bg-neutral-800 px-3 py-2 text-center text-sm text-neutral-300 transition-colors hover:bg-neutral-700"
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+            nativeButton={false}
+            render={<Link href={`/pools?market=${position.market.address}`} />}
           >
             Manage LP
-          </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -412,8 +484,8 @@ function PortfolioContent(): ReactNode {
 
   if (!isConnected) {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-8 text-center">
-        <p className="text-neutral-400">Connect your wallet to view your portfolio.</p>
+      <div className="border-border bg-card rounded-lg border p-8 text-center">
+        <p className="text-muted-foreground">Connect your wallet to view your portfolio.</p>
       </div>
     );
   }
@@ -442,24 +514,18 @@ function PortfolioContent(): ReactNode {
   // - Or there are no active positions
   if (isError || activePositions.length === 0) {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-8 text-center">
-        <p className="text-neutral-400">You have no positions yet.</p>
-        <p className="mt-2 text-sm text-neutral-500">
+      <div className="border-border bg-card rounded-lg border p-8 text-center">
+        <p className="text-muted-foreground">You have no positions yet.</p>
+        <p className="text-muted-foreground mt-2 text-sm">
           Start by minting PT+YT, trading, or providing liquidity.
         </p>
         <div className="mt-4 flex justify-center gap-3">
-          <Link
-            href="/mint"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
+          <Button nativeButton={false} render={<Link href="/mint" />}>
             Mint PT + YT
-          </Link>
-          <Link
-            href="/trade"
-            className="rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-600"
-          >
+          </Button>
+          <Button variant="secondary" nativeButton={false} render={<Link href="/trade" />}>
             Trade
-          </Link>
+          </Button>
         </div>
       </div>
     );
@@ -474,21 +540,26 @@ function PortfolioContent(): ReactNode {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg bg-neutral-800/50 p-4">
-              <div className="text-sm text-neutral-400">Active Positions</div>
-              <div className="mt-1 text-2xl font-semibold text-neutral-100">
+            <div className="bg-muted rounded-lg p-4">
+              <div className="text-muted-foreground text-sm">Active Positions</div>
+              <div className="text-foreground mt-1 text-2xl font-semibold">
                 {activePositions.length}
               </div>
             </div>
-            <div className="rounded-lg bg-neutral-800/50 p-4">
-              <div className="text-sm text-neutral-400">Total Claimable Yield</div>
-              <div className="mt-1 text-2xl font-semibold text-green-400">
+            <div className="bg-muted rounded-lg p-4">
+              <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                <span className="bg-primary/20 text-primary rounded px-1 py-0.5 text-xs font-medium">
+                  YT
+                </span>
+                Claimable Yield
+              </div>
+              <div className="text-primary mt-1 text-2xl font-semibold">
                 {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY
               </div>
             </div>
-            <div className="rounded-lg bg-neutral-800/50 p-4">
-              <div className="text-sm text-neutral-400">Redeemable</div>
-              <div className="mt-1 text-2xl font-semibold text-neutral-100">
+            <div className="bg-muted rounded-lg p-4">
+              <div className="text-muted-foreground text-sm">Redeemable</div>
+              <div className="text-foreground mt-1 text-2xl font-semibold">
                 {portfolio?.hasRedeemablePositions ? 'Yes' : 'No'}
               </div>
             </div>
@@ -524,7 +595,7 @@ function PortfolioContent(): ReactNode {
 
       {/* Position Cards */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-neutral-100">Your Positions</h2>
+        <h2 className="text-foreground text-lg font-semibold">Your Positions</h2>
         {activePositions.map((position) => (
           <PositionCard key={position.market.address} position={position} />
         ))}
@@ -540,7 +611,7 @@ export default function PortfolioPage(): ReactNode {
       <div className="mb-8">
         <Link
           href="/"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200"
+          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -552,8 +623,8 @@ export default function PortfolioPage(): ReactNode {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-bold text-neutral-100">Portfolio</h1>
-        <p className="mt-2 text-neutral-400">
+        <h1 className="text-foreground text-3xl font-bold">Portfolio</h1>
+        <p className="text-muted-foreground mt-2">
           View your positions, claim accrued yield, and manage redemptions
         </p>
       </div>

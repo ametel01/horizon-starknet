@@ -21,7 +21,7 @@ export function TokenAmount({
   return (
     <span className={cn('font-mono', className)}>
       {formatted}
-      {symbol ? <span className="ml-1 text-neutral-400">{symbol}</span> : null}
+      {symbol ? <span className="text-muted-foreground ml-1">{symbol}</span> : null}
     </span>
   );
 }
@@ -39,7 +39,7 @@ export function ApyDisplay({ apy, className }: ApyDisplayProps): ReactNode {
     <span
       className={cn(
         'font-mono font-semibold',
-        isPositive ? 'text-green-500' : 'text-red-500',
+        isPositive ? 'text-primary' : 'text-destructive',
         className
       )}
     >

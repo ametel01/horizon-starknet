@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <div className="flex min-h-[400px] items-center justify-center p-4">
           <Card className="max-w-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-500">
+              <CardTitle className="text-destructive flex items-center gap-2">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="20"
@@ -70,8 +70,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </CardHeader>
             <CardContent>
               {this.state.error ? (
-                <div className="rounded-md bg-neutral-950 p-3">
-                  <code className="text-xs text-red-400">{this.state.error.message}</code>
+                <div className="bg-background rounded-md p-3">
+                  <code className="text-destructive text-xs">{this.state.error.message}</code>
                 </div>
               ) : null}
             </CardContent>
@@ -102,7 +102,7 @@ export function PageErrorBoundary({ children }: PageErrorBoundaryProps): ReactNo
       fallback={
         <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center gap-6 p-4">
           <div className="text-center">
-            <div className="mb-4 text-6xl text-red-500">
+            <div className="text-destructive mb-4 text-6xl">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="64"
@@ -120,8 +120,8 @@ export function PageErrorBoundary({ children }: PageErrorBoundaryProps): ReactNo
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
-            <h1 className="mb-2 text-2xl font-semibold text-neutral-100">Page Error</h1>
-            <p className="text-neutral-400">Something went wrong loading this page.</p>
+            <h1 className="text-foreground mb-2 text-2xl font-semibold">Page Error</h1>
+            <p className="text-muted-foreground">Something went wrong loading this page.</p>
           </div>
           <div className="flex gap-3">
             <Button

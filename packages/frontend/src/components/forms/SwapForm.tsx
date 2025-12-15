@@ -6,6 +6,8 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { TxStatus } from '@/components/display/TxStatus';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useStarknet } from '@/hooks/useStarknet';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@/hooks/useSwap';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -184,19 +186,12 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     });
   };
 
-  // Reset form on success
+  // Clear input on success
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => {
-        setInputAmount('');
-        resetSwap();
-      }, 5000);
-      return (): void => {
-        clearTimeout(timer);
-      };
+      setInputAmount('');
     }
-    return undefined;
-  }, [isSuccess, resetSwap]);
+  }, [isSuccess]);
 
   // Handle direction change (flip buy/sell)
   const toggleDirection = (): void => {
@@ -219,68 +214,48 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Token Type Selector (PT vs YT) */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={(): void => {
-              handleTokenTypeChange('PT');
-            }}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              tokenType === 'PT'
-                ? 'bg-neutral-700 text-white'
-                : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            PT (Principal)
-          </button>
-          <button
-            type="button"
-            onClick={(): void => {
-              handleTokenTypeChange('YT');
-            }}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              tokenType === 'YT'
-                ? 'bg-neutral-700 text-white'
-                : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            YT (Yield)
-          </button>
-        </div>
+        <Tabs
+          value={tokenType}
+          onValueChange={(value) => {
+            handleTokenTypeChange(value as TokenType);
+          }}
+          className="w-full"
+        >
+          <TabsList className="w-full">
+            <TabsTrigger value="PT" className="flex-1">
+              PT (Principal)
+            </TabsTrigger>
+            <TabsTrigger value="YT" className="flex-1">
+              YT (Yield)
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Buy/Sell Toggle */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={(): void => {
-              setIsBuying(true);
-              setInputAmount('');
-              resetSwap();
-            }}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              isBuying
-                ? 'bg-green-600 text-white'
-                : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            Buy {tokenType}
-          </button>
-          <button
-            type="button"
-            onClick={(): void => {
-              setIsBuying(false);
-              setInputAmount('');
-              resetSwap();
-            }}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              !isBuying
-                ? 'bg-red-600 text-white'
-                : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            Sell {tokenType}
-          </button>
-        </div>
+        <Tabs
+          value={isBuying ? 'buy' : 'sell'}
+          onValueChange={(value) => {
+            setIsBuying(value === 'buy');
+            setInputAmount('');
+            resetSwap();
+          }}
+          className="w-full"
+        >
+          <TabsList className="w-full">
+            <TabsTrigger
+              value="buy"
+              className="data-active:bg-primary data-active:text-primary-foreground flex-1"
+            >
+              Buy {tokenType}
+            </TabsTrigger>
+            <TabsTrigger
+              value="sell"
+              className="data-active:bg-destructive flex-1 data-active:text-white"
+            >
+              Sell {tokenType}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Input Token */}
         <TokenInput
@@ -294,18 +269,14 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
 
         {/* Swap Direction Indicator */}
         <div className="flex justify-center">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleDirection}
-            className="rounded-full bg-neutral-800 p-2 transition-colors hover:bg-neutral-700"
+            className="rounded-full"
             aria-label="Toggle swap direction"
           >
-            <svg
-              className="h-5 w-5 text-neutral-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -313,87 +284,88 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                 d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
               />
             </svg>
-          </button>
+          </Button>
         </div>
 
         {/* Output Preview */}
-        <div className="rounded-lg bg-neutral-800/50 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-400">To ({outputLabel})</span>
-            <span className="text-sm text-neutral-400">
-              Min: {formatWad(minOutput, 6)} {outputLabel}
-            </span>
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-neutral-100">
-            {formatWad(expectedOutput, 6)} {outputLabel}
-          </div>
-        </div>
+        <Card size="sm" className="bg-muted">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-sm">To ({outputLabel})</span>
+              <span className="text-muted-foreground text-sm">
+                Min: {formatWad(minOutput, 6)} {outputLabel}
+              </span>
+            </div>
+            <div className="text-foreground mt-2 text-2xl font-semibold">
+              {formatWad(expectedOutput, 6)} {outputLabel}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Price Impact & Rate */}
         {isValidAmount && (
-          <div className="space-y-2 rounded-lg bg-neutral-800/30 p-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Rate</span>
-              <span className="text-neutral-200">
-                1 {inputLabel} ={' '}
-                {parsedInputAmount > BigInt(0)
-                  ? new BigNumber(expectedOutput.toString())
-                      .dividedBy(parsedInputAmount.toString())
-                      .toFixed(6)
-                  : '0'}{' '}
-                {outputLabel}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Price Impact</span>
-              <span
-                className={
-                  priceImpact.gt(3)
-                    ? 'text-red-500'
-                    : priceImpact.gt(1)
-                      ? 'text-yellow-500'
-                      : 'text-neutral-200'
-                }
-              >
-                {priceImpact.toFixed(2)}%
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">Slippage Tolerance</span>
-              <span className="text-neutral-200">{slippageBps / 100}%</span>
-            </div>
-          </div>
+          <Card size="sm" className="bg-muted/30">
+            <CardContent className="space-y-2 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Rate</span>
+                <span className="text-foreground">
+                  1 {inputLabel} ={' '}
+                  {parsedInputAmount > BigInt(0)
+                    ? new BigNumber(expectedOutput.toString())
+                        .dividedBy(parsedInputAmount.toString())
+                        .toFixed(6)
+                    : '0'}{' '}
+                  {outputLabel}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Price Impact</span>
+                <span
+                  className={
+                    priceImpact.gt(3)
+                      ? 'text-destructive'
+                      : priceImpact.gt(1)
+                        ? 'text-chart-1'
+                        : 'text-foreground'
+                  }
+                >
+                  {priceImpact.toFixed(2)}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Slippage Tolerance</span>
+                <span className="text-foreground">{slippageBps / 100}%</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Slippage Settings */}
         <div>
-          <div className="mb-2 text-sm text-neutral-400">Slippage Tolerance</div>
-          <div className="flex gap-2">
+          <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+          <ToggleGroup className="flex gap-1">
             {SLIPPAGE_OPTIONS.map((option) => (
-              <button
+              <ToggleGroupItem
                 key={option.value}
-                type="button"
-                onClick={(): void => {
+                pressed={slippageBps === option.value}
+                onPressedChange={() => {
                   setSlippageBps(option.value);
                 }}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  slippageBps === option.value
-                    ? 'bg-blue-500/20 text-blue-500'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                }`}
+                variant="outline"
+                size="sm"
               >
                 {option.label}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         {/* YT Sell Collateral Warning */}
         {direction === 'sell_yt' && isValidAmount && (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm">
-            <div className="flex items-start gap-2">
+          <Card size="sm" className="border-chart-1/30 bg-chart-1/10">
+            <CardContent className="flex items-start gap-2 p-3 text-sm">
               <svg
-                className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500"
+                className="text-chart-1 mt-0.5 h-4 w-4 shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -406,19 +378,19 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                 />
               </svg>
               <div>
-                <p className="font-medium text-yellow-400">Collateral Required</p>
-                <p className="mt-1 text-yellow-200/80">
+                <p className="text-chart-1 font-medium">Collateral Required</p>
+                <p className="text-chart-1/80 mt-1">
                   Selling YT requires {formatWad(collateralRequired, 4)} {underlyingLabel} as
                   temporary collateral. This will be refunded after the swap.
                 </p>
                 {hasInsufficientCollateral && (
-                  <p className="mt-1 text-red-400">
+                  <p className="text-destructive mt-1">
                     Insufficient {underlyingLabel} balance. You have {formatWad(syBalance, 4)}.
                   </p>
                 )}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Transaction Status */}

@@ -33,6 +33,47 @@ export function formatWad(value: bigint | string, decimals = 4): string {
 }
 
 /**
+ * Format a WAD value for display with smart formatting
+ * - Shows "0" for zero values
+ * - Uses compact notation for large numbers (1.2K, 5.5M)
+ * - Reduces decimals for larger numbers
+ * - Shows "< 0.01" for very small non-zero numbers
+ */
+export function formatWadCompact(value: bigint | string): string {
+  const num = fromWad(value);
+
+  // Zero or effectively zero
+  if (num.isZero() || num.abs().lt(0.000001)) {
+    return '0';
+  }
+
+  const absNum = num.abs();
+
+  // Very large numbers (millions)
+  if (absNum.gte(1_000_000)) {
+    return num.dividedBy(1_000_000).toFixed(2) + 'M';
+  }
+
+  // Large numbers (thousands)
+  if (absNum.gte(1_000)) {
+    return num.dividedBy(1_000).toFixed(2) + 'K';
+  }
+
+  // Medium numbers (>= 1)
+  if (absNum.gte(1)) {
+    return num.toFixed(2);
+  }
+
+  // Small numbers (>= 0.01)
+  if (absNum.gte(0.01)) {
+    return num.toFixed(4);
+  }
+
+  // Very small numbers - show "< 0.01" instead of confusing decimals
+  return '< 0.01';
+}
+
+/**
  * Format a WAD value as a percentage
  */
 export function formatWadPercent(value: bigint | string, decimals = 2): string {

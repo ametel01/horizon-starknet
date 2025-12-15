@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { formatWad } from '@/lib/math/wad';
+import { cn } from '@/lib/utils';
 
 export function StatsOverview(): ReactNode {
   const { markets, totalTvl, avgApy, isLoading } = useDashboardMarkets();
@@ -33,7 +34,7 @@ export function StatsOverview(): ReactNode {
       <StatCard
         label="Avg. Implied APY"
         value={`${avgApy.multipliedBy(100).toFixed(2)}%`}
-        valueClassName="text-green-500"
+        valueClassName="text-primary"
       />
     </div>
   );
@@ -49,10 +50,8 @@ function StatCard({ label, value, valueClassName }: StatCardProps): ReactNode {
   return (
     <Card>
       <CardContent className="pt-4">
-        <p className="text-sm text-neutral-400">{label}</p>
-        <p className={`mt-1 text-2xl font-semibold ${valueClassName ?? 'text-neutral-100'}`}>
-          {value}
-        </p>
+        <p className="text-muted-foreground text-sm">{label}</p>
+        <p className={cn('text-foreground mt-1 text-2xl font-semibold', valueClassName)}>{value}</p>
       </CardContent>
     </Card>
   );

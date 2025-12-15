@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 
+import { Badge } from '@/components/ui/badge';
 import { formatExpiry, formatTimeToExpiry, isExpired } from '@/lib/math/yield';
 import { cn } from '@/lib/utils';
 
@@ -20,10 +21,10 @@ export function ExpiryCountdown({
 
   return (
     <div className={cn('text-sm', className)}>
-      <span className={cn('font-medium', expired ? 'text-red-500' : 'text-neutral-100')}>
+      <span className={cn('font-medium', expired ? 'text-destructive' : 'text-foreground')}>
         {timeRemaining}
       </span>
-      {showDate && !expired && <span className="ml-2 text-neutral-500">({expiryDate})</span>}
+      {showDate && !expired && <span className="text-muted-foreground ml-2">({expiryDate})</span>}
     </div>
   );
 }
@@ -38,14 +39,8 @@ export function ExpiryBadge({ expiryTimestamp, className }: ExpiryBadgeProps): R
   const timeRemaining = formatTimeToExpiry(expiryTimestamp);
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-        expired ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500',
-        className
-      )}
-    >
+    <Badge variant={expired ? 'destructive' : 'default'} className={cn(className)}>
       {timeRemaining}
-    </span>
+    </Badge>
   );
 }

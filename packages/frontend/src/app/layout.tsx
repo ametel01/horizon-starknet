@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Public_Sans } from 'next/font/google';
 
 import { Header } from '@/components/layout/Header';
-import { Toaster } from '@/components/ui/Toaster';
+import { Toaster } from '@/components/ui/sonner';
+import { cn } from '@/lib/utils';
 import { Providers } from '@/providers';
 
 import './globals.css';
+
+const publicSans = Public_Sans({ subsets: ['latin'], variable: '--font-sans' });
 
 const inter = Inter({
   subsets: ['latin'],
@@ -36,7 +39,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps): React.ReactNode {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={cn('dark', publicSans.variable)}>
       <body className={`${inter.variable} ${mono.variable} font-sans`}>
         <Providers>
           <Header />

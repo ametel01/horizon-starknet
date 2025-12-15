@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
@@ -63,6 +63,13 @@ export function MintForm({ market }: MintFormProps): ReactNode {
     await mint(amountSy);
   }, [amountSy, mint, validationError]);
 
+  // Clear input on success
+  useEffect(() => {
+    if (status === 'success') {
+      setAmountSy('');
+    }
+  }, [status]);
+
   // Handle reset after success
   const handleReset = useCallback(() => {
     setAmountSy('');
@@ -93,7 +100,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
           <CardTitle>Mint PT + YT</CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
         </div>
-        <p className="text-sm text-neutral-400">
+        <p className="text-muted-foreground text-sm">
           Split your deposit into Principal Token and Yield Token
         </p>
       </CardHeader>
@@ -112,9 +119,9 @@ export function MintForm({ market }: MintFormProps): ReactNode {
 
         {/* Arrow */}
         <div className="flex justify-center">
-          <div className="rounded-full border border-neutral-700 bg-neutral-800 p-2">
+          <Button variant="ghost" size="icon" className="rounded-full" disabled>
             <svg
-              className="h-4 w-4 text-neutral-400"
+              className="text-muted-foreground h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -126,7 +133,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
                 d="M19 14l-7 7m0 0l-7-7m7 7V3"
               />
             </svg>
-          </div>
+          </Button>
         </div>
 
         {/* Outputs */}
@@ -141,12 +148,14 @@ export function MintForm({ market }: MintFormProps): ReactNode {
         </div>
 
         {/* Info */}
-        <div className="rounded-lg bg-neutral-800/50 p-3 text-sm">
-          <div className="flex justify-between text-neutral-400">
-            <span>Exchange Rate</span>
-            <span className="text-neutral-200">1 : 1 PT + 1 YT</span>
-          </div>
-        </div>
+        <Card size="sm" className="bg-muted">
+          <CardContent className="p-3 text-sm">
+            <div className="text-muted-foreground flex justify-between">
+              <span>Exchange Rate</span>
+              <span className="text-foreground">1 : 1 PT + 1 YT</span>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Transaction Status */}
         {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
