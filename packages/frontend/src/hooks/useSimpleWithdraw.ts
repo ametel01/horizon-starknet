@@ -106,8 +106,8 @@ export function useSimpleWithdraw({
       const result = await execute(calls);
 
       if (result) {
-        // Refetch balances after successful withdraw
-        await Promise.all([
+        // Refetch balances after successful withdraw (use allSettled to ensure all refetches are attempted)
+        await Promise.allSettled([
           refetchPtBalance(),
           refetchYtBalance(),
           refetchUnderlyingBalance(),

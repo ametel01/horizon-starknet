@@ -74,7 +74,13 @@ export function useSimpleDeposit({
         return;
       }
 
-      const amountWad = toWad(amount);
+      let amountWad: bigint;
+      try {
+        amountWad = toWad(amount);
+      } catch {
+        // Invalid amount format
+        return;
+      }
 
       // Use transaction builder to create calls
       const calls = buildDepositAndEarnCalls({
@@ -91,8 +97,8 @@ export function useSimpleDeposit({
       const result = await execute(calls);
 
       if (result) {
-        // Refetch balances after successful deposit
-        await Promise.all([
+        // Refetch balances after successful deposit (use allSettled to ensure all refetches are attempted)
+        await Promise.allSettled([
           refetchUnderlyingBalance(),
           refetchUnderlyingAllowance(),
           refetchSyAllowance(),
