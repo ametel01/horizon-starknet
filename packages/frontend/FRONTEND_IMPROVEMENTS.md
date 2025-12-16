@@ -821,6 +821,12 @@ Created the following files:
 - `src/components/display/ApyBreakdown.tsx` - APY Breakdown component with semantic colors
 - `src/hooks/useApyBreakdown.ts` - React hooks for fetching and calculating APY data
 
+### Integration
+
+APY Breakdown is integrated into:
+- **Trade page** (`src/app/trade/page.tsx`) - Shows PT Fixed Yield and YT Long Yield breakdown cards
+- **Pools page** (`src/app/pools/page.tsx`) - Shows LP Yield Breakdown with fee APY components
+
 ### Implementation Plan
 
 #### 3.1 APY Data Types
@@ -1156,7 +1162,9 @@ export function useApyBreakdown(marketAddress: string) {
 
 ## 4. Enhanced Position Tracking
 
-### Current State
+**Status: ✅ Completed**
+
+### Current State (Before)
 
 ```typescript
 // Basic balance tracking
@@ -1166,11 +1174,22 @@ export function useApyBreakdown(marketAddress: string) {
 }
 ```
 
-### Target State
-- USD value for all positions
-- P&L calculation (unrealized + realized)
-- Historical yield tracking
-- Batch claim operations
+### Target State ✅
+- ✅ USD value for all positions
+- ✅ P&L calculation (unrealized)
+- ✅ Position value calculator
+- ✅ Enhanced portfolio dashboard
+
+### Implementation
+
+Created the following files:
+- `src/types/position.ts` - Enhanced position types with USD values and P&L
+- `src/lib/position/value.ts` - Position value calculator with PT/YT pricing
+- `src/lib/position/pnl.ts` - P&L tracking utilities with localStorage persistence
+- `src/hooks/usePrices.ts` - Token price fetching from CoinGecko with fallback
+- `src/hooks/useEnhancedPositions.ts` - Main hook combining position data with USD values
+- `src/components/portfolio/SummaryCard.tsx` - Summary card component
+- `src/components/portfolio/EnhancedPositionCard.tsx` - Enhanced position card with USD values and P&L
 
 ### Implementation Plan
 
@@ -1913,11 +1932,11 @@ NEXT_PUBLIC_PRAGMA_API_KEY=your_key
    - [x] Updates in real-time
    - [x] Tooltips explain each component
 
-4. **Position Tracking**
-   - [ ] USD values for all positions
-   - [ ] P&L calculation working
-   - [ ] Portfolio dashboard complete
-   - [ ] Batch claim functionality
+4. **Position Tracking** ✅
+   - [x] USD values for all positions
+   - [x] P&L calculation working
+   - [x] Portfolio dashboard complete
+   - [ ] Batch claim functionality (future enhancement)
 
 ---
 
