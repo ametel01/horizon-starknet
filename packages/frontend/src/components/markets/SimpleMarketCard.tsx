@@ -79,6 +79,7 @@ export function SimpleMarketCard({ market, className }: SimpleMarketCardProps): 
               <TokenAmount
                 amount={market.tvlSy}
                 symbol={tokenSymbol}
+                compact
                 className="text-foreground font-medium"
               />
             </div>
@@ -87,6 +88,7 @@ export function SimpleMarketCard({ market, className }: SimpleMarketCardProps): 
               <TokenAmount
                 amount={market.state.syReserve}
                 symbol={tokenSymbol}
+                compact
                 className="text-foreground font-medium"
               />
             </div>
