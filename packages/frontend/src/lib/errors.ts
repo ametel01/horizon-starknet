@@ -97,23 +97,25 @@ export function getModeAwareErrorMessage(
 }
 
 /**
+ * Validation error simplifications (at module scope for better performance)
+ */
+const validationSimplifications: Record<string, string> = {
+  'Insufficient balance': 'Not enough tokens',
+  'Amount exceeds balance': 'Not enough tokens',
+  'Invalid amount': 'Enter a valid amount',
+  'Amount required': 'Enter an amount',
+  'Exceeds Fixed-Rate Position balance': 'Exceeds available position',
+  'Exceeds Variable-Rate Position balance': 'Exceeds available position',
+};
+
+/**
  * Format a validation error for display
  */
 export function formatValidationError(error: string | null, isSimple: boolean): string | null {
   if (!error) return null;
 
   if (isSimple) {
-    // Simplify common validation errors
-    const simplifications: Record<string, string> = {
-      'Insufficient balance': 'Not enough tokens',
-      'Amount exceeds balance': 'Not enough tokens',
-      'Invalid amount': 'Enter a valid amount',
-      'Amount required': 'Enter an amount',
-      'Exceeds Fixed-Rate Position balance': 'Exceeds available position',
-      'Exceeds Variable-Rate Position balance': 'Exceeds available position',
-    };
-
-    for (const [key, value] of Object.entries(simplifications)) {
+    for (const [key, value] of Object.entries(validationSimplifications)) {
       if (error.toLowerCase().includes(key.toLowerCase())) {
         return value;
       }

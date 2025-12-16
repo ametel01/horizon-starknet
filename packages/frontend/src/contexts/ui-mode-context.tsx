@@ -35,13 +35,17 @@ export function UIModeProvider({
 
   // Load from localStorage on mount
   useEffect(() => {
-    const storedMode = localStorage.getItem(STORAGE_KEY);
-    if (storedMode === 'simple' || storedMode === 'advanced') {
-      setModeState(storedMode);
-    }
+    try {
+      const storedMode = localStorage.getItem(STORAGE_KEY);
+      if (storedMode === 'simple' || storedMode === 'advanced') {
+        setModeState(storedMode);
+      }
 
-    const seenOnboarding = localStorage.getItem(ONBOARDING_KEY);
-    setHasSeenOnboarding(seenOnboarding === 'true');
+      const seenOnboarding = localStorage.getItem(ONBOARDING_KEY);
+      setHasSeenOnboarding(seenOnboarding === 'true');
+    } catch {
+      // localStorage unavailable (private browsing, disabled cookies, etc.), use defaults
+    }
 
     setIsHydrated(true);
   }, []);
@@ -49,7 +53,11 @@ export function UIModeProvider({
   // Persist mode to localStorage on change
   const setMode = useCallback((newMode: UIMode) => {
     setModeState(newMode);
-    localStorage.setItem(STORAGE_KEY, newMode);
+    try {
+      localStorage.setItem(STORAGE_KEY, newMode);
+    } catch {
+      // localStorage unavailable, mode still works in memory
+    }
   }, []);
 
   const toggleMode = useCallback(() => {
@@ -57,14 +65,22 @@ export function UIModeProvider({
     // Dismiss onboarding when user interacts with toggle
     if (!hasSeenOnboarding) {
       setHasSeenOnboarding(true);
-      localStorage.setItem(ONBOARDING_KEY, 'true');
+      try {
+        localStorage.setItem(ONBOARDING_KEY, 'true');
+      } catch {
+        // localStorage unavailable
+      }
     }
   }, [mode, setMode, hasSeenOnboarding]);
 
   // Dismiss onboarding tooltip
   const dismissOnboarding = useCallback(() => {
     setHasSeenOnboarding(true);
-    localStorage.setItem(ONBOARDING_KEY, 'true');
+    try {
+      localStorage.setItem(ONBOARDING_KEY, 'true');
+    } catch {
+      // localStorage unavailable
+    }
   }, []);
 
   const value: UIModeContextValue = {
