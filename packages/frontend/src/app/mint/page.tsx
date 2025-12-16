@@ -259,7 +259,7 @@ function AdvancedModeContent(): ReactNode {
               onChange={(e) => {
                 setSelectedMarketAddress(e.target.value);
               }}
-              className="border-border bg-muted text-muted-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
+              className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
             >
               {markets.map((m) => (
                 <option key={m.address} value={m.address}>
