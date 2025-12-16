@@ -206,7 +206,7 @@ function TradePageContent(): ReactNode {
         )}
 
         {/* APY Breakdown Cards */}
-        {selectedMarket !== undefined && apyBreakdown !== undefined && (
+        {selectedMarket !== undefined && apyBreakdown !== null && (
           <div className="mb-4 space-y-4">
             <ApyBreakdownCard breakdown={apyBreakdown} view="pt" title="PT Fixed Yield" />
             <ApyBreakdownCard breakdown={apyBreakdown} view="yt" title="YT Long Yield" />
