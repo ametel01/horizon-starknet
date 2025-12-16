@@ -71,7 +71,7 @@ pub mod MockYieldToken {
     #[derive(Drop, starknet::Event)]
     pub struct Deposit {
         #[key]
-        pub caller: ContractAddress,
+        pub sender: ContractAddress,
         #[key]
         pub owner: ContractAddress,
         pub assets: u256,
@@ -81,7 +81,7 @@ pub mod MockYieldToken {
     #[derive(Drop, starknet::Event)]
     pub struct Withdraw {
         #[key]
-        pub caller: ContractAddress,
+        pub sender: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
         #[key]
@@ -216,7 +216,7 @@ pub mod MockYieldToken {
             // Mint shares to receiver
             self.erc20.mint(receiver, shares);
 
-            self.emit(Deposit { caller, owner: receiver, assets, shares });
+            self.emit(Deposit { sender: caller, owner: receiver, assets, shares });
 
             shares
         }
@@ -249,7 +249,7 @@ pub mod MockYieldToken {
             // Mint shares to receiver
             self.erc20.mint(receiver, shares);
 
-            self.emit(Deposit { caller, owner: receiver, assets, shares });
+            self.emit(Deposit { sender: caller, owner: receiver, assets, shares });
 
             assets
         }
@@ -292,7 +292,7 @@ pub mod MockYieldToken {
             let success = underlying.transfer(receiver, assets);
             assert(success, 'MYT: transfer failed');
 
-            self.emit(Withdraw { caller, receiver, owner, assets, shares });
+            self.emit(Withdraw { sender: caller, receiver, owner, assets, shares });
 
             shares
         }
@@ -334,7 +334,7 @@ pub mod MockYieldToken {
             let success = underlying.transfer(receiver, assets);
             assert(success, 'MYT: transfer failed');
 
-            self.emit(Withdraw { caller, receiver, owner, assets, shares });
+            self.emit(Withdraw { sender: caller, receiver, owner, assets, shares });
 
             assets
         }
