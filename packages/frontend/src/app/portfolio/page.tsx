@@ -5,10 +5,12 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
 import { EnhancedPositionCard } from '@/components/portfolio/EnhancedPositionCard';
+import { SimplePortfolio } from '@/components/portfolio/SimplePortfolio';
 import { SummaryCard } from '@/components/portfolio/SummaryCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useUIMode } from '@/contexts/ui-mode-context';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { type MarketPosition, usePositions } from '@/hooks/usePositions';
@@ -548,14 +550,11 @@ function EnhancedPositionCardWrapper({
 
 function PortfolioContent(): ReactNode {
   const { isConnected } = useStarknet();
+  const { isSimple } = useUIMode();
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
   const { data: portfolio, isLoading: positionsLoading, isError } = usePositions(markets);
   const { data: enhancedPortfolio, isLoading: enhancedLoading } = useEnhancedPositions(markets);
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const {
     claimAllYield,
@@ -566,6 +565,10 @@ function PortfolioContent(): ReactNode {
     transactionHash: claimAllTxHash,
     reset: resetClaimAll,
   } = useClaimAllYield();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Claim all status
   const claimAllTxStatus = useMemo(() => {
@@ -587,6 +590,11 @@ function PortfolioContent(): ReactNode {
     }
     return undefined;
   }, [claimAllSuccess, resetClaimAll]);
+
+  // Simple mode renders SimplePortfolio
+  if (isSimple) {
+    return <SimplePortfolio markets={markets} />;
+  }
 
   const handleClaimAll = (): void => {
     if (!portfolio) return;
@@ -727,6 +735,8 @@ function PortfolioContent(): ReactNode {
 }
 
 export default function PortfolioPage(): ReactNode {
+  const { isSimple } = useUIMode();
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
       {/* Header */}
@@ -743,11 +753,13 @@ export default function PortfolioPage(): ReactNode {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Dashboard
+          Back to {isSimple ? 'Markets' : 'Dashboard'}
         </Link>
         <h1 className="text-foreground text-3xl font-bold">Portfolio</h1>
         <p className="text-muted-foreground mt-2">
-          View your positions, claim accrued yield, and manage redemptions
+          {isSimple
+            ? 'View and manage your yield positions'
+            : 'View your positions, claim accrued yield, and manage redemptions'}
         </p>
       </div>
 
