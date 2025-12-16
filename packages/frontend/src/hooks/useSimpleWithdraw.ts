@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { type Call, uint256 } from 'starknet';
 
 import { getAddresses } from '@/lib/constants/addresses';
+import { buildWithdrawCalls } from '@/lib/transaction-builder';
 
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
@@ -82,123 +82,27 @@ export function useSimpleWithdraw({
 
   const balancesLoading = ptLoading || ytLoading;
 
-  // Check if approval is needed
-  const needsPtApproval = useCallback(
-    (amount: bigint): boolean => {
-      if (ptAllowance === undefined) return true;
-      return ptAllowance < amount;
-    },
-    [ptAllowance]
-  );
-
-  const needsYtApproval = useCallback(
-    (amount: bigint): boolean => {
-      if (ytAllowance === undefined) return true;
-      return ytAllowance < amount;
-    },
-    [ytAllowance]
-  );
-
-  // Build withdraw calls
-  const buildWithdrawCalls = useCallback(
-    (amount: bigint): Call[] => {
-      if (!userAddress) {
-        throw new Error('Wallet not connected');
-      }
-
-      const calls: Call[] = [];
-      const u256Amount = uint256.bnToUint256(amount);
-
-      // Default slippage: 0.5%
-      const minSyOut = (amount * BigInt(995)) / BigInt(1000);
-      const u256MinSy = uint256.bnToUint256(minSyOut);
-
-      if (isExpired) {
-        // Post-expiry: Only need PT approval and redeem
-        if (needsPtApproval(amount)) {
-          calls.push({
-            contractAddress: ptAddress,
-            entrypoint: 'approve',
-            calldata: [routerAddress, u256Amount.low, u256Amount.high],
-          });
-        }
-
-        // Redeem PT post expiry → SY
-        calls.push({
-          contractAddress: routerAddress,
-          entrypoint: 'redeem_pt_post_expiry',
-          calldata: [
-            ytAddress,
-            userAddress,
-            u256Amount.low,
-            u256Amount.high,
-            u256MinSy.low,
-            u256MinSy.high,
-          ],
-        });
-      } else {
-        // Pre-expiry: Need both PT and YT approval and redeem
-        if (needsPtApproval(amount)) {
-          calls.push({
-            contractAddress: ptAddress,
-            entrypoint: 'approve',
-            calldata: [routerAddress, u256Amount.low, u256Amount.high],
-          });
-        }
-
-        if (needsYtApproval(amount)) {
-          calls.push({
-            contractAddress: ytAddress,
-            entrypoint: 'approve',
-            calldata: [routerAddress, u256Amount.low, u256Amount.high],
-          });
-        }
-
-        // Redeem PT + YT → SY
-        calls.push({
-          contractAddress: routerAddress,
-          entrypoint: 'redeem_py_to_sy',
-          calldata: [
-            ytAddress,
-            userAddress,
-            u256Amount.low,
-            u256Amount.high,
-            u256MinSy.low,
-            u256MinSy.high,
-          ],
-        });
-      }
-
-      // Unwrap SY → underlying
-      // After redeem, we expect ~amount of SY (with slippage already accounted for above)
-      calls.push({
-        contractAddress: syAddress,
-        entrypoint: 'redeem',
-        calldata: [userAddress, u256MinSy.low, u256MinSy.high],
-      });
-
-      return calls;
-    },
-    [
-      userAddress,
-      isExpired,
-      ptAddress,
-      ytAddress,
-      syAddress,
-      routerAddress,
-      needsPtApproval,
-      needsYtApproval,
-    ]
-  );
-
   // Execute withdraw
   const withdraw = useCallback(
     async (amount: bigint): Promise<void> => {
-      if (amount === BigInt(0)) {
+      if (amount === BigInt(0) || !userAddress) {
         return;
       }
 
-      const calls = buildWithdrawCalls(amount);
+      // Use transaction builder to create calls
+      const calls = buildWithdrawCalls({
+        userAddress,
+        underlyingAddress,
+        syAddress,
+        ptAddress,
+        ytAddress,
+        routerAddress,
+        amount,
+        isExpired,
+        ptAllowance,
+        ytAllowance,
+      });
+
       const result = await execute(calls);
 
       if (result) {
@@ -213,7 +117,15 @@ export function useSimpleWithdraw({
       }
     },
     [
-      buildWithdrawCalls,
+      userAddress,
+      underlyingAddress,
+      syAddress,
+      ptAddress,
+      ytAddress,
+      routerAddress,
+      isExpired,
+      ptAllowance,
+      ytAllowance,
       execute,
       refetchPtBalance,
       refetchYtBalance,
