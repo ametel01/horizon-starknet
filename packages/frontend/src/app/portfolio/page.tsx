@@ -4,15 +4,20 @@ import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
+import { EnhancedPositionCard } from '@/components/portfolio/EnhancedPositionCard';
+import { SummaryCard } from '@/components/portfolio/SummaryCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { type MarketPosition, usePositions } from '@/hooks/usePositions';
 import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@/hooks/useRedeem';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
 import { formatWad, formatWadCompact } from '@/lib/math/wad';
+import { formatUsd, formatPercent } from '@/lib/position/value';
+import type { EnhancedPosition } from '@/types/position';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -427,10 +432,125 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   );
 }
 
+/**
+ * Wrapper component that provides transaction handlers to EnhancedPositionCard
+ */
+function EnhancedPositionCardWrapper({
+  position,
+  legacyPosition,
+}: {
+  position: EnhancedPosition;
+  legacyPosition: MarketPosition | undefined;
+}): ReactNode {
+  const {
+    claimYield,
+    isClaiming: isClaimingYield,
+    isSuccess: claimSuccess,
+    reset: resetClaim,
+  } = useClaimYield();
+
+  const {
+    redeemPy,
+    isRedeeming: isRedeemingPy,
+    isSuccess: redeemPySuccess,
+    reset: resetRedeemPy,
+  } = useRedeemPy();
+
+  const {
+    redeemPtPostExpiry,
+    isRedeeming: isRedeemingPt,
+    isSuccess: redeemPtSuccess,
+    reset: resetRedeemPt,
+  } = useRedeemPtPostExpiry();
+
+  // Reset states after success
+  useEffect(() => {
+    if (claimSuccess) {
+      const timer = setTimeout(() => {
+        resetClaim();
+      }, 5000);
+      return (): void => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [claimSuccess, resetClaim]);
+
+  useEffect(() => {
+    if (redeemPySuccess) {
+      const timer = setTimeout(() => {
+        resetRedeemPy();
+      }, 5000);
+      return (): void => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [redeemPySuccess, resetRedeemPy]);
+
+  useEffect(() => {
+    if (redeemPtSuccess) {
+      const timer = setTimeout(() => {
+        resetRedeemPt();
+      }, 5000);
+      return (): void => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [redeemPtSuccess, resetRedeemPt]);
+
+  const handleClaimYield = (): void => {
+    claimYield({ ytAddress: position.market.ytAddress });
+  };
+
+  const handleRedeemPtYt = (): void => {
+    if (!legacyPosition) return;
+    const amount =
+      legacyPosition.ptBalance < legacyPosition.ytBalance
+        ? legacyPosition.ptBalance
+        : legacyPosition.ytBalance;
+    const minSyOut = calculateMinSyOut(amount, 50);
+
+    redeemPy({
+      ytAddress: position.market.ytAddress,
+      ptAddress: position.market.ptAddress,
+      amount,
+      minSyOut,
+    });
+  };
+
+  const handleRedeemPt = (): void => {
+    if (!legacyPosition) return;
+    const minSyOut = calculateMinSyOut(legacyPosition.ptBalance, 50);
+
+    redeemPtPostExpiry({
+      ytAddress: position.market.ytAddress,
+      ptAddress: position.market.ptAddress,
+      amount: legacyPosition.ptBalance,
+      minSyOut,
+    });
+  };
+
+  const isRedeeming = isRedeemingPy || isRedeemingPt || redeemPySuccess || redeemPtSuccess;
+
+  return (
+    <EnhancedPositionCard
+      position={position}
+      onClaimYield={handleClaimYield}
+      onRedeemPtYt={handleRedeemPtYt}
+      onRedeemPt={handleRedeemPt}
+      isClaimingYield={isClaimingYield || claimSuccess}
+      isRedeeming={isRedeeming}
+    />
+  );
+}
+
 function PortfolioContent(): ReactNode {
   const { isConnected } = useStarknet();
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
   const { data: portfolio, isLoading: positionsLoading, isError } = usePositions(markets);
+  const { data: enhancedPortfolio, isLoading: enhancedLoading } = useEnhancedPositions(markets);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -480,7 +600,7 @@ function PortfolioContent(): ReactNode {
     }
   };
 
-  const isLoading = !mounted || marketsLoading || positionsLoading;
+  const isLoading = !mounted || marketsLoading || positionsLoading || enhancedLoading;
 
   if (!isConnected) {
     return (
@@ -531,74 +651,76 @@ function PortfolioContent(): ReactNode {
     );
   }
 
+  // Get enhanced positions or fall back to empty array
+  const enhancedPositions = enhancedPortfolio?.positions ?? [];
+
   return (
     <div className="space-y-6">
-      {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Portfolio Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground text-sm">Active Positions</div>
-              <div className="text-foreground mt-1 text-2xl font-semibold">
-                {activePositions.length}
-              </div>
-            </div>
-            <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
-                <span className="bg-primary/20 text-primary rounded px-1 py-0.5 text-xs font-medium">
-                  YT
-                </span>
-                Claimable Yield
-              </div>
-              <div className="text-primary mt-1 text-2xl font-semibold">
-                {formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY
-              </div>
-            </div>
-            <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground text-sm">Redeemable</div>
-              <div className="text-foreground mt-1 text-2xl font-semibold">
-                {portfolio?.hasRedeemablePositions ? 'Yes' : 'No'}
-              </div>
-            </div>
-          </div>
-
-          {/* Claim All Button */}
-          {portfolio?.hasClaimableYield && (
-            <div className="mt-4">
+      {/* Enhanced Summary Cards with USD Values */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard label="Total Value" value={formatUsd(enhancedPortfolio?.totalValueUsd ?? 0)} />
+        <SummaryCard
+          label="Unrealized P&L"
+          value={formatUsd(enhancedPortfolio?.totalPnlUsd ?? 0)}
+          subValue={formatPercent(enhancedPortfolio?.totalPnlPercent ?? 0)}
+          variant={(enhancedPortfolio?.totalPnlUsd ?? 0) >= 0 ? 'positive' : 'negative'}
+        />
+        <SummaryCard
+          label="Claimable Yield"
+          value={formatUsd(enhancedPortfolio?.totalClaimableUsd ?? 0)}
+          subValue={`${formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY`}
+          variant="positive"
+          action={
+            portfolio?.hasClaimableYield === true ? (
               <Button
+                nativeButton
                 onClick={handleClaimAll}
                 disabled={isClaimingAll || claimAllSuccess}
+                size="sm"
                 className="w-full"
               >
-                {isClaimingAll
-                  ? 'Claiming All...'
-                  : claimAllSuccess
-                    ? 'All Claimed!'
-                    : `Claim All Yield (${formatWad(portfolio.totalClaimableYield, 4)} SY)`}
+                {isClaimingAll ? 'Claiming...' : claimAllSuccess ? 'Claimed!' : 'Claim All'}
               </Button>
-              {claimAllTxStatus !== 'idle' && (
-                <div className="mt-2">
-                  <TxStatus
-                    status={claimAllTxStatus}
-                    txHash={claimAllTxHash ?? null}
-                    error={claimAllErrorMsg}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : undefined
+          }
+        />
+        <SummaryCard label="Active Positions" value={activePositions.length.toString()} />
+      </div>
 
-      {/* Position Cards */}
+      {/* Claim All Transaction Status */}
+      {claimAllTxStatus !== 'idle' && (
+        <Card>
+          <CardContent className="p-4">
+            <TxStatus
+              status={claimAllTxStatus}
+              txHash={claimAllTxHash ?? null}
+              error={claimAllErrorMsg}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Position Cards - Use enhanced positions with USD values */}
       <div className="space-y-4">
         <h2 className="text-foreground text-lg font-semibold">Your Positions</h2>
-        {activePositions.map((position) => (
-          <PositionCard key={position.market.address} position={position} />
-        ))}
+        {enhancedPositions.length > 0
+          ? enhancedPositions.map((position) => {
+              // Find the matching legacy position for transaction handlers
+              const legacyPosition = activePositions.find(
+                (p) => p.market.address === position.market.address
+              );
+              return (
+                <EnhancedPositionCardWrapper
+                  key={position.market.address}
+                  position={position}
+                  legacyPosition={legacyPosition}
+                />
+              );
+            })
+          : // Fall back to legacy position cards if enhanced data not available
+            activePositions.map((position) => (
+              <PositionCard key={position.market.address} position={position} />
+            ))}
       </div>
     </div>
   );

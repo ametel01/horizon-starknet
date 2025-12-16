@@ -469,5 +469,24 @@ export function getMarketParams(network: NetworkId): MarketParams {
   return DEFAULT_MARKET_PARAMS;
 }
 
+// =============================================================================
+// ESTIMATED YIELD APYs
+// =============================================================================
+
+// Estimated base APYs for yield tokens
+// Note: In production, these should come from an on-chain oracle
+// integrated at the smart contract level (e.g., pragma_index_oracle.cairo)
+// These should be updated periodically based on actual protocol yields
+export const ESTIMATED_YIELD_APYS: Record<string, number> = {
+  // wstETH: Lido ETH staking yield (~3.5% as of late 2024)
+  wstETH: 0.035,
+
+  // sSTRK: Endur staked STRK yield (~8% estimated)
+  sSTRK: 0.08,
+
+  // nstSTRK: Nostra staked STRK yield (~12% estimated)
+  nstSTRK: 0.12,
+};
+
 // Re-export for convenience
 export { devnetAddresses, forkAddresses, sepoliaAddresses };
