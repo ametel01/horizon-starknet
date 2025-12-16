@@ -3,7 +3,9 @@
 import { type ReactNode } from 'react';
 
 import { Card, CardContent } from '@/components/ui/Card';
+import { useUIMode } from '@/contexts/ui-mode-context';
 import type { TxStatus as TxStatusType } from '@/hooks/useTransaction';
+import { getModeAwareErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 
 interface TxStatusProps {
@@ -14,9 +16,17 @@ interface TxStatusProps {
 }
 
 export function TxStatus({ status, txHash, error, className }: TxStatusProps): ReactNode {
+  const { isSimple } = useUIMode();
+
   if (status === 'idle') {
     return null;
   }
+
+  // Get mode-aware status text
+  const statusText = getStatusText(status, isSimple);
+
+  // Get mode-aware error message
+  const errorMessage = error ? getModeAwareErrorMessage(error, isSimple) : null;
 
   return (
     <Card
@@ -42,14 +52,14 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
                 status === 'error' && 'text-destructive'
               )}
             >
-              {getStatusText(status)}
+              {statusText}
             </p>
             {txHash ? (
               <p className="text-muted-foreground mt-1 font-mono text-sm">
                 Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
               </p>
             ) : null}
-            {error ? <p className="text-destructive mt-1 text-sm">{error.message}</p> : null}
+            {errorMessage ? <p className="text-destructive mt-1 text-sm">{errorMessage}</p> : null}
           </div>
         </div>
       </CardContent>
@@ -97,16 +107,16 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   return null;
 }
 
-function getStatusText(status: TxStatusType): string {
+function getStatusText(status: TxStatusType, isSimple: boolean): string {
   switch (status) {
     case 'signing':
-      return 'Waiting for signature...';
+      return isSimple ? 'Confirm in wallet...' : 'Waiting for signature...';
     case 'pending':
-      return 'Transaction pending...';
+      return isSimple ? 'Processing...' : 'Transaction pending...';
     case 'success':
-      return 'Transaction successful!';
+      return isSimple ? 'Success!' : 'Transaction successful!';
     case 'error':
-      return 'Transaction failed';
+      return isSimple ? 'Failed' : 'Transaction failed';
     default:
       return '';
   }
