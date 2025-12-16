@@ -16,6 +16,7 @@ import { getMarketParams } from '@/lib/constants/addresses';
 import {
   calcSwapExactPtForSy,
   calcSwapExactSyForPt,
+  calcSwapSyForExactPt,
   formatPriceImpact,
   getImpliedApy,
   getPriceImpactSeverity,
@@ -152,27 +153,25 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
         };
       } else {
         // Sell YT for SY via flash swap
-        // Step 1: Buy PT to match YT amount
-        // Step 2: Redeem PT+YT for SY (1:1)
+        // Step 1: Buy PT to match YT amount (need parsedInputAmount PT to pair with YT)
+        // Step 2: Redeem PT+YT for SY (1:1 redemption gives parsedInputAmount SY)
         // Net result: SY_out = redemption_value - PT_purchase_cost
-        const ptPurchaseResult = calcSwapExactSyForPt(ammState, parsedInputAmount);
-        // If we can buy ptPurchaseResult.amountOut PT with parsedInputAmount SY,
-        // then selling YT means: buy PT_needed, redeem, get SY back
-        // SY_out ≈ YT_in - cost_to_buy_PT
-        const ptNeeded = parsedInputAmount; // Need PT equal to YT to redeem
-        // Estimate SY needed to buy that much PT
-        const syForPt =
-          ptNeeded > 0n && ptPurchaseResult.amountOut > 0n
-            ? (parsedInputAmount * parsedInputAmount) / ptPurchaseResult.amountOut
-            : parsedInputAmount;
-        const syOut = parsedInputAmount > syForPt ? parsedInputAmount - syForPt : 0n;
+        const ptNeeded = parsedInputAmount; // Need PT equal to YT amount to redeem
+
+        // Calculate SY cost to buy the required PT using exact output function
+        const ptPurchaseResult = calcSwapSyForExactPt(ammState, ptNeeded);
+        const syNeededForPt = ptPurchaseResult.amountOut; // SY required to buy PT
+
+        // After redemption, we get ptNeeded SY (1:1), minus what we spent buying PT
+        const syOut = ptNeeded > syNeededForPt ? ptNeeded - syNeededForPt : 0n;
+
         return {
           amountOut: syOut,
           fee: ptPurchaseResult.fee,
           newLnImpliedRate: ptPurchaseResult.newLnImpliedRate,
           priceImpact: ptPurchaseResult.priceImpact,
-          effectivePrice: syOut > 0n ? (parsedInputAmount * WAD_BIGINT) / syOut : WAD_BIGINT,
-          spotPrice: WAD_BIGINT - ptPurchaseResult.spotPrice,
+          effectivePrice: syOut > 0n ? (syNeededForPt * WAD_BIGINT) / syOut : WAD_BIGINT,
+          spotPrice: WAD_BIGINT - ptPurchaseResult.spotPrice, // YT price ≈ 1 - PT price
         };
       }
     } catch {
