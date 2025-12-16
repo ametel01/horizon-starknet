@@ -5,15 +5,216 @@ import { useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { MintForm } from '@/components/forms/MintForm';
+import { SimpleEarnForm } from '@/components/forms/SimpleEarnForm';
+import { SimpleWithdrawForm } from '@/components/forms/SimpleWithdrawForm';
 import { UnwrapSyForm } from '@/components/forms/UnwrapSyForm';
 import { WrapToSyForm } from '@/components/forms/WrapToSyForm';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUIMode } from '@/contexts/ui-mode-context';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 
 type TabType = 'wrap' | 'split' | 'unwrap';
+type SimpleTabType = 'earn' | 'withdraw';
 
-function MintPageContent(): ReactNode {
+/**
+ * Simple mode content - streamlined deposit/withdraw flow
+ */
+function SimpleModeContent(): ReactNode {
+  const searchParams = useSearchParams();
+  const marketParam = searchParams.get('market');
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<SimpleTabType>('earn');
+  const [selectedMarketAddress, setSelectedMarketAddress] = useState<string | null>(marketParam);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const { markets, isLoading, isError } = useDashboardMarkets();
+
+  const selectedMarket = useMemo(() => {
+    if (selectedMarketAddress) {
+      return markets.find((m) => m.address === selectedMarketAddress);
+    }
+    if (marketParam) {
+      return markets.find((m) => m.address === marketParam);
+    }
+    return markets[0];
+  }, [markets, marketParam, selectedMarketAddress]);
+
+  useEffect(() => {
+    if (markets.length > 0 && !selectedMarketAddress && !marketParam) {
+      setSelectedMarketAddress(markets[0]?.address ?? null);
+    }
+  }, [markets, selectedMarketAddress, marketParam]);
+
+  return (
+    <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
+      {/* Form Section */}
+      <div className="w-full max-w-lg">
+        {/* Market Selector */}
+        {markets.length > 1 && (
+          <div className="mb-4">
+            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+            <select
+              value={selectedMarket?.address ?? ''}
+              onChange={(e) => {
+                setSelectedMarketAddress(e.target.value);
+              }}
+              className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
+            >
+              {markets.map((m) => (
+                <option key={m.address} value={m.address}>
+                  {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                  {m.metadata?.yieldTokenName ?? 'Unknown'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Simple Tabs */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value as SimpleTabType);
+          }}
+          className="mb-4"
+        >
+          <TabsList className="w-full">
+            <TabsTrigger value="earn" className="flex-1">
+              Deposit
+            </TabsTrigger>
+            <TabsTrigger
+              value="withdraw"
+              className="data-active:bg-chart-1 data-active:text-foreground flex-1"
+            >
+              Withdraw
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Form */}
+        {!mounted || isLoading ? (
+          <SkeletonCard className="h-[500px]" />
+        ) : isError ? (
+          <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+            <p className="text-destructive">Failed to load markets. Please try again.</p>
+          </div>
+        ) : !selectedMarket ? (
+          <div className="border-border bg-card rounded-lg border p-8 text-center">
+            <p className="text-muted-foreground">No markets available.</p>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Markets will appear here once they are created.
+            </p>
+          </div>
+        ) : activeTab === 'earn' ? (
+          <SimpleEarnForm market={selectedMarket} />
+        ) : (
+          <SimpleWithdrawForm market={selectedMarket} />
+        )}
+      </div>
+
+      {/* Info Panel - Simplified */}
+      <div className="mt-8 w-full max-w-md lg:mt-0">
+        <div className="border-border bg-card rounded-lg border p-6">
+          <h2 className="text-foreground text-lg font-semibold">
+            {activeTab === 'withdraw' ? 'How Withdrawing Works' : 'How Earning Works'}
+          </h2>
+
+          {activeTab === 'withdraw' ? (
+            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+              <div className="flex gap-3">
+                <div className="bg-chart-1/30 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                  1
+                </div>
+                <div>
+                  <p className="text-foreground font-medium">Select Amount</p>
+                  <p className="mt-1">Choose how much of your position you want to withdraw.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                  2
+                </div>
+                <div>
+                  <p className="text-foreground font-medium">Receive Tokens</p>
+                  <p className="mt-1">
+                    Your position is converted back to the original tokens in a single transaction.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-chart-1/30 bg-chart-1/10 mt-4 rounded-lg border p-3">
+                <p className="text-chart-1 text-sm">
+                  <span className="font-medium">Note:</span> Withdrawing before maturity requires
+                  equal Fixed-Rate and Variable-Rate positions.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+              <div className="flex gap-3">
+                <div className="bg-primary/30 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                  1
+                </div>
+                <div>
+                  <p className="text-foreground font-medium">Deposit Tokens</p>
+                  <p className="mt-1">
+                    Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                  2
+                </div>
+                <div>
+                  <p className="text-foreground font-medium">Receive Positions</p>
+                  <p className="mt-1">
+                    You receive a Fixed-Rate Position (guaranteed yield) and a Variable-Rate
+                    Position (floating yield).
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                  3
+                </div>
+                <div>
+                  <p className="text-foreground font-medium">Earn Yield</p>
+                  <p className="mt-1">
+                    Hold until maturity to earn the fixed rate, or withdraw anytime.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-muted mt-6 rounded-lg p-4">
+            <h3 className="text-foreground text-sm font-medium">Position Types</h3>
+            <dl className="mt-2 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Fixed-Rate</dt>
+                <dd className="text-foreground">Guaranteed yield at maturity</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Variable-Rate</dt>
+                <dd className="text-foreground">Floating yield until maturity</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Advanced mode content - original tabbed interface
+ */
+function AdvancedModeContent(): ReactNode {
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
   const tabParam = searchParams.get('tab');
@@ -29,7 +230,6 @@ function MintPageContent(): ReactNode {
 
   const { markets, isLoading, isError } = useDashboardMarkets();
 
-  // Select market based on state or URL param or default to first market
   const selectedMarket = useMemo(() => {
     if (selectedMarketAddress) {
       return markets.find((m) => m.address === selectedMarketAddress);
@@ -40,7 +240,6 @@ function MintPageContent(): ReactNode {
     return markets[0];
   }, [markets, marketParam, selectedMarketAddress]);
 
-  // Update selected market address when markets load and no selection
   useEffect(() => {
     if (markets.length > 0 && !selectedMarketAddress && !marketParam) {
       setSelectedMarketAddress(markets[0]?.address ?? null);
@@ -230,7 +429,15 @@ function MintPageContent(): ReactNode {
   );
 }
 
+function MintPageContent(): ReactNode {
+  const { isSimple } = useUIMode();
+
+  return isSimple ? <SimpleModeContent /> : <AdvancedModeContent />;
+}
+
 export default function MintPage(): ReactNode {
+  const { isSimple } = useUIMode();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12">
       {/* Header */}
@@ -247,11 +454,15 @@ export default function MintPage(): ReactNode {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Dashboard
+          Back to {isSimple ? 'Markets' : 'Dashboard'}
         </Link>
-        <h1 className="text-foreground text-3xl font-bold">Deposit & Split</h1>
+        <h1 className="text-foreground text-3xl font-bold">
+          {isSimple ? 'Earn Fixed Yield' : 'Deposit & Split'}
+        </h1>
         <p className="text-muted-foreground mt-2">
-          Deposit yield-bearing tokens, then split into Principal Tokens (PT) and Yield Tokens (YT)
+          {isSimple
+            ? 'Deposit tokens to earn a guaranteed fixed rate'
+            : 'Deposit yield-bearing tokens, then split into Principal Tokens (PT) and Yield Tokens (YT)'}
         </p>
       </div>
 
