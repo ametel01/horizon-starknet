@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useAccount } from '@/hooks/useAccount';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useSimpleWithdraw } from '@/hooks/useSimpleWithdraw';
+import { useClaimYield } from '@/hooks/useYield';
 import { formatWadCompact } from '@/lib/math/wad';
 import { formatExpiry } from '@/lib/math/yield';
 import { formatUsd } from '@/lib/position/value';
@@ -151,7 +152,7 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
   const {
     withdraw,
     status: withdrawStatus,
-    txHash,
+    txHash: withdrawTxHash,
     error: withdrawError,
     isLoading: withdrawLoading,
     reset: resetWithdraw,
@@ -163,6 +164,16 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
     isExpired: market.isExpired,
   });
 
+  // Claim yield hook
+  const {
+    claimYield,
+    isClaiming,
+    isSuccess: claimSuccess,
+    transactionHash: claimTxHash,
+    error: claimError,
+    reset: resetClaim,
+  } = useClaimYield();
+
   const handleWithdraw = useCallback(async () => {
     if (withdrawableAmount === BigInt(0)) return;
     setIsWithdrawing(true);
@@ -170,9 +181,14 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
     setIsWithdrawing(false);
   }, [withdraw, withdrawableAmount]);
 
+  const handleClaim = useCallback(() => {
+    claimYield({ ytAddress: market.ytAddress });
+  }, [claimYield, market.ytAddress]);
+
   const handleReset = useCallback(() => {
     resetWithdraw();
-  }, [resetWithdraw]);
+    resetClaim();
+  }, [resetWithdraw, resetClaim]);
 
   const totalValue = pt.valueUsd + yt.valueUsd;
   const hasClaimableYield = yieldData.claimable > 0n;
@@ -224,17 +240,28 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
                   {formatWadCompact(yieldData.claimable)} {tokenSymbol}
                 </div>
               </div>
-              <Button size="sm" variant="default">
-                Claim
+              <Button size="sm" variant="default" onClick={handleClaim} disabled={isClaiming}>
+                {isClaiming ? 'Claiming...' : 'Claim'}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Transaction Status */}
+        {/* Claim Status */}
+        {(claimSuccess || claimError) && (
+          <div className="mb-4">
+            <TxStatus
+              status={claimSuccess ? 'success' : 'error'}
+              txHash={claimTxHash ?? null}
+              error={claimError}
+            />
+          </div>
+        )}
+
+        {/* Withdraw Transaction Status */}
         {withdrawStatus !== 'idle' && (
           <div className="mb-4">
-            <TxStatus status={withdrawStatus} txHash={txHash} error={withdrawError} />
+            <TxStatus status={withdrawStatus} txHash={withdrawTxHash} error={withdrawError} />
             {withdrawStatus === 'success' && (
               <Button onClick={handleReset} variant="ghost" size="sm" className="mt-2 w-full">
                 Done
