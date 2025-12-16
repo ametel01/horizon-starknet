@@ -3,6 +3,8 @@
 // IMPORTANT: Import BigInt polyfill before any React Query code
 import '@/lib/polyfills/bigint-json';
 
+import { UIModeProvider } from '@/contexts/ui-mode-context';
+
 import { QueryProvider } from './QueryProvider';
 import { StarknetProvider } from './StarknetProvider';
 
@@ -13,7 +15,9 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps): React.ReactNode {
   return (
     <QueryProvider>
-      <StarknetProvider>{children}</StarknetProvider>
+      <StarknetProvider>
+        <UIModeProvider>{children}</UIModeProvider>
+      </StarknetProvider>
     </QueryProvider>
   );
 }

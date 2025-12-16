@@ -1,12 +1,14 @@
 import { type ReactNode } from 'react';
 
-import { formatWad } from '@/lib/math/wad';
+import { formatWad, formatWadCompact } from '@/lib/math/wad';
 import { cn } from '@/lib/utils';
 
 interface TokenAmountProps {
   amount: bigint | string;
   symbol?: string;
   decimals?: number;
+  /** Use compact formatting (e.g., 1.5M, 500K) for large numbers */
+  compact?: boolean;
   className?: string;
 }
 
@@ -14,9 +16,10 @@ export function TokenAmount({
   amount,
   symbol,
   decimals = 4,
+  compact = false,
   className,
 }: TokenAmountProps): ReactNode {
-  const formatted = formatWad(amount, decimals);
+  const formatted = compact ? formatWadCompact(amount) : formatWad(amount, decimals);
 
   return (
     <span className={cn('font-mono', className)}>

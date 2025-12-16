@@ -4,20 +4,38 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { ModeToggle } from '@/components/mode-toggle';
 import { Button } from '@/components/ui/Button';
+import { useUIMode } from '@/contexts/ui-mode-context';
 
 import { ConnectButton } from '../wallet/ConnectButton';
 
-const navLinks = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/mint', label: 'Mint' },
-  { href: '/trade', label: 'Trade' },
-  { href: '/pools', label: 'Pools' },
+interface NavLink {
+  href: string;
+  label: string;
+  simpleLabel?: string; // Alternative label for simple mode
+  advancedOnly?: boolean; // Hide in simple mode
+}
+
+const navLinks: NavLink[] = [
+  { href: '/', label: 'Dashboard', simpleLabel: 'Markets' },
+  { href: '/mint', label: 'Mint', simpleLabel: 'Earn' },
+  { href: '/trade', label: 'Trade', advancedOnly: true },
+  { href: '/pools', label: 'Pools', advancedOnly: true },
   { href: '/portfolio', label: 'Portfolio' },
-] as const;
+];
 
 export function Header(): React.ReactNode {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isSimple } = useUIMode();
+
+  // Filter and transform nav links based on mode
+  const visibleLinks = navLinks
+    .filter((link) => !link.advancedOnly || !isSimple)
+    .map((link) => ({
+      ...link,
+      displayLabel: isSimple && link.simpleLabel ? link.simpleLabel : link.label,
+    }));
 
   return (
     <header className="bg-background/80 border-border sticky top-0 z-50 border-b backdrop-blur-sm">
@@ -37,19 +55,20 @@ export function Header(): React.ReactNode {
             <span>Horizon</span>
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
-            {navLinks.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className="text-muted-foreground hover:text-foreground text-sm transition-colors"
               >
-                {link.label}
+                {link.displayLabel}
               </Link>
             ))}
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <ModeToggle className="hidden sm:flex" />
           <ConnectButton />
 
           {/* Mobile menu button */}
@@ -103,7 +122,7 @@ export function Header(): React.ReactNode {
       {mobileMenuOpen && (
         <nav className="border-border bg-background border-t px-4 py-4 md:hidden">
           <div className="flex flex-col gap-2">
-            {navLinks.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -112,9 +131,15 @@ export function Header(): React.ReactNode {
                   setMobileMenuOpen(false);
                 }}
               >
-                {link.label}
+                {link.displayLabel}
               </Link>
             ))}
+            <div className="border-border mt-2 border-t pt-4 sm:hidden">
+              <div className="flex items-center justify-between px-4">
+                <span className="text-muted-foreground text-sm">Interface Mode</span>
+                <ModeToggle />
+              </div>
+            </div>
           </div>
         </nav>
       )}

@@ -11,7 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@/hooks/useLiquidity';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { formatWad, parseWad } from '@/lib/math/wad';
+import { formatWad, formatWadCompact, parseWad } from '@/lib/math/wad';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput } from './TokenInput';
@@ -220,8 +220,8 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pool Reserves</span>
                 <span className="text-foreground">
-                  {formatWad(market.state.syReserve, 2)} SY / {formatWad(market.state.ptReserve, 2)}{' '}
-                  PT
+                  {formatWadCompact(market.state.syReserve)} SY /{' '}
+                  {formatWadCompact(market.state.ptReserve)} PT
                 </span>
               </div>
               <div className="flex justify-between">

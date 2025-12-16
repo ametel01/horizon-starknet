@@ -5,7 +5,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { formatWad } from '@/lib/math/wad';
+import { formatWadCompact } from '@/lib/math/wad';
 import { cn } from '@/lib/utils';
 
 export function StatsOverview(): ReactNode {
@@ -30,7 +30,7 @@ export function StatsOverview(): ReactNode {
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       <StatCard label="Total Markets" value={String(markets.length)} />
-      <StatCard label="Total TVL" value={`${formatWad(totalTvl, 2)} SY`} />
+      <StatCard label="Total TVL" value={`${formatWadCompact(totalTvl)} SY`} />
       <StatCard
         label="Avg. Implied APY"
         value={`${avgApy.multipliedBy(100).toFixed(2)}%`}
