@@ -51,9 +51,12 @@ export function needsApproval(allowance: bigint | undefined, amount: bigint): bo
 /**
  * Calculate minimum output with slippage protection
  * @param amount - Input amount
- * @param slippageBps - Slippage in basis points (e.g., 50 = 0.5%)
+ * @param slippageBps - Slippage in basis points (e.g., 50 = 0.5%). Must be 0-9999.
  */
 export function calculateMinOutput(amount: bigint, slippageBps = 50): bigint {
+  if (slippageBps < 0 || slippageBps >= 10000) {
+    throw new Error(`Invalid slippageBps: ${String(slippageBps)}. Must be between 0 and 9999.`);
+  }
   const slippageMultiplier = BigInt(10000 - slippageBps);
   return (amount * slippageMultiplier) / BigInt(10000);
 }
