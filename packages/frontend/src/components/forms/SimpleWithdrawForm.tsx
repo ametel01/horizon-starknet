@@ -252,9 +252,14 @@ export function SimpleWithdrawForm({ market }: SimpleWithdrawFormProps): ReactNo
               <span className="text-muted-foreground text-sm">You&apos;ll receive (estimated)</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-foreground font-mono text-2xl">{formatWad(amountWad, 4)}</span>
+              <span className="text-foreground font-mono text-2xl">~{formatWad(amountWad, 4)}</span>
               <span className="text-foreground font-medium">{tokenSymbol}</span>
             </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              {market.isExpired
+                ? 'Actual amount may vary slightly based on the redemption rate at maturity.'
+                : 'Based on 1:1 redemption. Actual amount depends on current exchange rate.'}
+            </p>
           </CardContent>
         </Card>
 
