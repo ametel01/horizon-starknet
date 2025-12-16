@@ -48,13 +48,13 @@ async function fetchMarketPositionData(
   const ytContract = getYTContract(market.ytAddress, provider);
   const marketContract = getMarketContract(market.address, provider);
 
-  // Fetch all balances in parallel
+  // Fetch all balances in parallel with error handling for graceful degradation
   const [syBalanceResult, ptBalanceResult, ytBalanceResult, lpBalanceResult, claimableYieldResult] =
     await Promise.all([
-      syContract.balance_of(userAddress),
-      ptContract.balance_of(userAddress),
-      ytContract.balance_of(userAddress),
-      marketContract.balance_of(userAddress),
+      syContract.balance_of(userAddress).catch(() => BigInt(0)),
+      ptContract.balance_of(userAddress).catch(() => BigInt(0)),
+      ytContract.balance_of(userAddress).catch(() => BigInt(0)),
+      marketContract.balance_of(userAddress).catch(() => BigInt(0)),
       ytContract.get_user_interest(userAddress).catch(() => BigInt(0)),
     ]);
 
