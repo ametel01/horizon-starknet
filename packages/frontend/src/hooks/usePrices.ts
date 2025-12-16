@@ -41,8 +41,9 @@ async function fetchTokenPrices(): Promise<TokenPrices> {
         wstEth: ethPrice * 1.12,
       };
     }
-  } catch {
+  } catch (error) {
     // API call failed, use fallback prices
+    console.warn('Failed to fetch token prices, using fallback:', error);
   }
 
   // Fallback mock prices for development/testing
@@ -92,23 +93,23 @@ export function getSyPriceUsd(
   // Map yield token symbols to prices
   const symbolLower = yieldTokenSymbol.toLowerCase();
 
-  if (symbolLower.includes('nststrk') || symbolLower === 'nststrk') {
+  if (symbolLower.includes('nststrk')) {
     return prices.nstStrk;
   }
 
-  if (symbolLower.includes('sstrk') || symbolLower === 'sstrk') {
+  if (symbolLower.includes('sstrk')) {
     return prices.sStrk;
   }
 
-  if (symbolLower.includes('wsteth') || symbolLower === 'wsteth') {
+  if (symbolLower.includes('wsteth')) {
     return prices.wstEth;
   }
 
-  if (symbolLower.includes('strk') || symbolLower === 'strk') {
+  if (symbolLower.includes('strk')) {
     return prices.strk;
   }
 
-  if (symbolLower.includes('eth') || symbolLower === 'eth') {
+  if (symbolLower.includes('eth')) {
     return prices.eth;
   }
 

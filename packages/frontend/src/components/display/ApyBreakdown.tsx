@@ -20,9 +20,12 @@ interface TooltipProps {
 
 function Tooltip({ content, children }: TooltipProps): ReactNode {
   return (
-    <span className="group relative cursor-help">
+    <span className="group relative cursor-help" tabIndex={0} role="button" aria-label={content}>
       {children}
-      <span className="bg-popover text-popover-foreground pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+      <span
+        className="bg-popover text-popover-foreground pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100"
+        role="tooltip"
+      >
         {content}
       </span>
     </span>

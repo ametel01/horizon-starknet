@@ -6,7 +6,7 @@
 
 import type { CostBasis } from '@/types/position';
 
-import { WAD_BIGINT, fromWad, wadDiv } from '../math/wad';
+import { WAD_BIGINT, fromWad, wadDiv, wadMul } from '../math/wad';
 
 const COST_BASIS_KEY = 'horizon_cost_basis';
 
@@ -147,11 +147,11 @@ export function reduceCostBasis(
     return 0n; // No cost basis to reduce
   }
 
-  // Calculate cost basis for sold amount
+  // Calculate cost basis for sold amount using WAD precision
   const costBasisUsed =
     amountSold >= existing.totalAmount
       ? existing.totalCost
-      : (existing.totalCost * amountSold) / existing.totalAmount;
+      : wadMul(existing.totalCost, wadDiv(amountSold, existing.totalAmount));
 
   // Reduce totals
   const newTotalAmount = existing.totalAmount > amountSold ? existing.totalAmount - amountSold : 0n;
@@ -198,11 +198,11 @@ export function calculateUnrealizedPnl(
     return { pnlSy: 0n, pnlPercent: 0 };
   }
 
-  // Current value in SY
-  const currentValue = (currentAmount * currentPriceInSy) / WAD_BIGINT;
+  // Current value in SY (using WAD precision)
+  const currentValue = wadMul(currentAmount, currentPriceInSy);
 
-  // Cost basis for current amount
-  const costValue = (currentAmount * costBasis.avgCost) / WAD_BIGINT;
+  // Cost basis for current amount (using WAD precision)
+  const costValue = wadMul(currentAmount, costBasis.avgCost);
 
   // P&L
   const pnlSy = currentValue - costValue;

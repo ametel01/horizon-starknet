@@ -50,6 +50,7 @@ export function EnhancedPositionCard({
       <button
         type="button"
         className="w-full cursor-pointer text-left"
+        aria-expanded={isExpanded}
         onClick={(): void => {
           setIsExpanded(!isExpanded);
         }}
@@ -84,7 +85,7 @@ export function EnhancedPositionCard({
                   </span>
                 ) : (
                   <span className="bg-primary/20 text-primary rounded px-2 py-0.5 text-xs">
-                    {market.daysToExpiry.toFixed(0)} days left
+                    {Math.max(0, market.daysToExpiry).toFixed(0)} days left
                   </span>
                 )}
                 <svg

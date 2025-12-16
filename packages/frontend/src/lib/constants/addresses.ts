@@ -386,7 +386,7 @@ function getSepoliaMarketInfos(): MarketInfo[] {
       yieldTokenSymbol: testSetup.yieldTokens.nstSTRK.symbol,
       isERC4626: testSetup.yieldTokens.nstSTRK.isERC4626,
       expiry: testSetup.expiry,
-      initialAnchor: BigInt(testSetup.markets.nstSTRK.initialAnchor),
+      initialAnchor: BigInt(testSetup.markets.nstSTRK.initialAnchor || '0'),
     },
     // sSTRK market
     {
@@ -400,7 +400,7 @@ function getSepoliaMarketInfos(): MarketInfo[] {
       yieldTokenSymbol: testSetup.yieldTokens.sSTRK.symbol,
       isERC4626: testSetup.yieldTokens.sSTRK.isERC4626,
       expiry: testSetup.expiry,
-      initialAnchor: BigInt(testSetup.markets.sSTRK.initialAnchor),
+      initialAnchor: BigInt(testSetup.markets.sSTRK.initialAnchor || '0'),
     },
     // wstETH market
     {
@@ -414,7 +414,7 @@ function getSepoliaMarketInfos(): MarketInfo[] {
       yieldTokenSymbol: testSetup.yieldTokens.wstETH.symbol,
       isERC4626: testSetup.yieldTokens.wstETH.isERC4626,
       expiry: testSetup.expiry,
-      initialAnchor: BigInt(testSetup.markets.wstETH.initialAnchor),
+      initialAnchor: BigInt(testSetup.markets.wstETH.initialAnchor || '0'),
     },
   ];
 }

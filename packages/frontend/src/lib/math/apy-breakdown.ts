@@ -208,8 +208,7 @@ export function formatApyPercent(apy: number, decimals = 2): string {
     return percent > 0 ? '< 0.01%' : '> -0.01%';
   }
 
-  const sign = percent >= 0 ? '' : '';
-  return `${sign}${percent.toFixed(decimals)}%`;
+  return `${percent.toFixed(decimals)}%`;
 }
 
 /**

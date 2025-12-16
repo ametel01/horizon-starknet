@@ -264,7 +264,7 @@ function PoolsPageContent(): ReactNode {
         )}
 
         {/* LP APY Breakdown */}
-        {selectedMarket !== undefined && apyBreakdown !== null && (
+        {selectedMarket !== undefined && apyBreakdown !== undefined && (
           <ApyBreakdownCard
             breakdown={apyBreakdown}
             view="lp"

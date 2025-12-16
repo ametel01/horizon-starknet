@@ -4,7 +4,7 @@
  * Calculates position values in SY and USD terms.
  */
 
-import { WAD_BIGINT, fromWad, wadMul } from '../math/wad';
+import { WAD_BIGINT, fromWad, wadDiv, wadMul } from '../math/wad';
 
 const SECONDS_PER_YEAR = 31_536_000;
 
@@ -85,16 +85,17 @@ export function calculateLpValue(
     };
   }
 
-  // LP share of reserves
-  const underlyingSy = (lpBalance * syReserve) / totalLp;
-  const underlyingPt = (lpBalance * ptReserve) / totalLp;
+  // LP share of reserves (using WAD precision for proportional calculations)
+  const lpShare = wadDiv(lpBalance, totalLp);
+  const underlyingSy = wadMul(lpShare, syReserve);
+  const underlyingPt = wadMul(lpShare, ptReserve);
 
   // Value in SY terms (SY + PT * ptPrice)
   const ptValueInSy = wadMul(underlyingPt, ptPriceInSy);
   const valueInSy = underlyingSy + ptValueInSy;
 
-  // Share percentage
-  const sharePercent = Number((lpBalance * 10000n) / totalLp) / 100;
+  // Share percentage (using WAD precision)
+  const sharePercent = fromWad(lpShare).toNumber() * 100;
 
   return {
     valueInSy,

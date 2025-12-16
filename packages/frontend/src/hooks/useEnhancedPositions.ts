@@ -158,7 +158,7 @@ export function useEnhancedPositions(
   const { refetchInterval = 30000 } = options;
 
   return useQuery({
-    queryKey: ['enhanced-positions', address, markets.map((m) => m.address).join(',')],
+    queryKey: ['enhanced-positions', address, [...markets.map((m) => m.address)].sort().join(',')],
     queryFn: async (): Promise<PortfolioSummary> => {
       if (!address || markets.length === 0 || !prices) {
         return {
