@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -168,6 +168,13 @@ export function usePriceImpactWarning(priceImpact: number): {
   const [acknowledged, setAcknowledged] = useState(false);
   const severity = getPriceImpactSeverity(priceImpact);
   const requiresAcknowledgment = severity === 'very-high';
+
+  // Reset acknowledgment when price impact increases to very-high
+  useEffect(() => {
+    if (severity === 'very-high') {
+      setAcknowledged(false);
+    }
+  }, [priceImpact, severity]);
 
   return {
     severity,
