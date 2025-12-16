@@ -23,6 +23,7 @@ export interface MarketTokenMetadata {
   yieldTokenName: string; // e.g. "Nostra Staked STRK"
   yieldTokenSymbol: string; // e.g. "nstSTRK"
   isERC4626: boolean;
+  initialAnchor?: bigint; // AMM initial ln(implied rate) parameter
 }
 
 export interface MarketData extends MarketInfo {

@@ -92,6 +92,9 @@ async function fetchMarketData(
           yieldTokenName: staticInfo.yieldTokenName,
           yieldTokenSymbol: staticInfo.yieldTokenSymbol,
           isERC4626: staticInfo.isERC4626,
+          ...(staticInfo.initialAnchor !== undefined && {
+            initialAnchor: staticInfo.initialAnchor,
+          }),
         },
       };
     }

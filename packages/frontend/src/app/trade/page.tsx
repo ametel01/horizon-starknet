@@ -1,18 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
 import { SwapForm } from '@/components/forms/SwapForm';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useApyBreakdown } from '@/hooks/useApyBreakdown';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { usePositions } from '@/hooks/usePositions';
 import { useStarknet } from '@/hooks/useStarknet';
 import { formatWadCompact } from '@/lib/math/wad';
 
+// Helper to get market symbol
+function getMarketSymbol(market: {
+  metadata?: { yieldTokenSymbol?: string };
+  address: string;
+}): string {
+  return market.metadata?.yieldTokenSymbol ?? market.address.slice(0, 8);
+}
+
 function TradePageContent(): ReactNode {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const marketParam = searchParams.get('market');
   const [mounted, setMounted] = useState(false);
@@ -23,6 +35,14 @@ function TradePageContent(): ReactNode {
   }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
+
+  // Handle market selection change
+  const handleMarketChange = useCallback(
+    (marketAddress: string) => {
+      router.push(`/trade?market=${marketAddress}`);
+    },
+    [router]
+  );
 
   // Select market based on URL param or default to first market
   const selectedMarket = useMemo(() => {
@@ -36,6 +56,9 @@ function TradePageContent(): ReactNode {
   const marketsToQuery = useMemo(() => (selectedMarket ? [selectedMarket] : []), [selectedMarket]);
   const { data: portfolio } = usePositions(marketsToQuery);
   const position = portfolio?.positions[0];
+
+  // Fetch APY breakdown for the selected market
+  const { data: apyBreakdown } = useApyBreakdown(selectedMarket);
 
   // Get token symbols
   const tokenSymbol = selectedMarket?.metadata?.yieldTokenSymbol ?? 'Token';
@@ -61,7 +84,45 @@ function TradePageContent(): ReactNode {
             </p>
           </div>
         ) : (
-          <SwapForm market={selectedMarket} />
+          <div className="space-y-4">
+            {/* Market Selector */}
+            {markets.length > 1 && (
+              <Card>
+                <CardContent className="pt-4">
+                  <label className="text-muted-foreground mb-2 block text-sm font-medium">
+                    Select Market
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {markets.map((market) => (
+                      <Button
+                        key={market.address}
+                        variant={market.address === selectedMarket.address ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          handleMarketChange(market.address);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <span className="font-medium">{getMarketSymbol(market)}</span>
+                        <span
+                          className={
+                            market.address === selectedMarket.address
+                              ? 'text-primary-foreground/70'
+                              : 'text-muted-foreground'
+                          }
+                        >
+                          {market.impliedApy.multipliedBy(100).toFixed(1)}%
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Swap Form */}
+            <SwapForm market={selectedMarket} />
+          </div>
         )}
       </div>
 
@@ -142,6 +203,14 @@ function TradePageContent(): ReactNode {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* APY Breakdown Cards */}
+        {selectedMarket !== undefined && apyBreakdown !== null && (
+          <div className="mb-4 space-y-4">
+            <ApyBreakdownCard breakdown={apyBreakdown} view="pt" title="PT Fixed Yield" />
+            <ApyBreakdownCard breakdown={apyBreakdown} view="yt" title="YT Long Yield" />
+          </div>
         )}
 
         <div className="border-border bg-card rounded-lg border p-6">

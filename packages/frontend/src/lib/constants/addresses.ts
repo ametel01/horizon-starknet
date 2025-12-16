@@ -190,6 +190,7 @@ export interface MarketInfo {
   yieldTokenSymbol: string;
   isERC4626: boolean;
   expiry: number;
+  initialAnchor?: bigint; // AMM initial ln(implied rate) parameter
 }
 
 // Placeholder for undeployed contracts
@@ -385,6 +386,7 @@ function getSepoliaMarketInfos(): MarketInfo[] {
       yieldTokenSymbol: testSetup.yieldTokens.nstSTRK.symbol,
       isERC4626: testSetup.yieldTokens.nstSTRK.isERC4626,
       expiry: testSetup.expiry,
+      initialAnchor: BigInt(testSetup.markets.nstSTRK.initialAnchor || '0'),
     },
     // sSTRK market
     {
@@ -398,6 +400,7 @@ function getSepoliaMarketInfos(): MarketInfo[] {
       yieldTokenSymbol: testSetup.yieldTokens.sSTRK.symbol,
       isERC4626: testSetup.yieldTokens.sSTRK.isERC4626,
       expiry: testSetup.expiry,
+      initialAnchor: BigInt(testSetup.markets.sSTRK.initialAnchor || '0'),
     },
     // wstETH market
     {
@@ -411,6 +414,7 @@ function getSepoliaMarketInfos(): MarketInfo[] {
       yieldTokenSymbol: testSetup.yieldTokens.wstETH.symbol,
       isERC4626: testSetup.yieldTokens.wstETH.isERC4626,
       expiry: testSetup.expiry,
+      initialAnchor: BigInt(testSetup.markets.wstETH.initialAnchor || '0'),
     },
   ];
 }
@@ -426,6 +430,63 @@ export function getMarketInfoByAddress(
   const normalizedTarget = normalizeAddress(marketAddress);
   return markets.find((m) => normalizeAddress(m.marketAddress) === normalizedTarget);
 }
+
+/**
+ * Get market parameters (scalarRoot, feeRate, initialAnchor) for a network
+ * These are the AMM curve parameters used during deployment
+ */
+export interface MarketParams {
+  scalarRoot: bigint;
+  feeRate: bigint;
+  initialAnchor: bigint;
+}
+
+const DEFAULT_MARKET_PARAMS: MarketParams = {
+  scalarRoot: BigInt('1000000000000000000'), // 1 WAD
+  feeRate: BigInt('3000000000000000'), // 0.3% (0.003 WAD)
+  initialAnchor: BigInt('50000000000000000'), // 5% APY (0.05 WAD ln rate)
+};
+
+export function getMarketParams(network: NetworkId): MarketParams {
+  if (network === 'sepolia') {
+    const params = sepoliaAddresses.testSetup.marketParams;
+    return {
+      scalarRoot: BigInt(params.scalarRoot),
+      feeRate: BigInt(params.feeRate),
+      // Initial anchor varies per market, use a reasonable default
+      initialAnchor: DEFAULT_MARKET_PARAMS.initialAnchor,
+    };
+  }
+
+  if (network === 'devnet' && devnetAddresses.marketParams) {
+    return {
+      scalarRoot: BigInt(devnetAddresses.marketParams.scalarRoot ?? '1000000000000000000'),
+      feeRate: BigInt(devnetAddresses.marketParams.feeRate ?? '3000000000000000'),
+      initialAnchor: BigInt(devnetAddresses.marketParams.initialAnchor ?? '50000000000000000'),
+    };
+  }
+
+  return DEFAULT_MARKET_PARAMS;
+}
+
+// =============================================================================
+// ESTIMATED YIELD APYs
+// =============================================================================
+
+// Estimated base APYs for yield tokens
+// Note: In production, these should come from an on-chain oracle
+// integrated at the smart contract level (e.g., pragma_index_oracle.cairo)
+// These should be updated periodically based on actual protocol yields
+export const ESTIMATED_YIELD_APYS: Record<string, number> = {
+  // wstETH: Lido ETH staking yield (~3.5% as of late 2024)
+  wstETH: 0.035,
+
+  // sSTRK: Endur staked STRK yield (~8% estimated)
+  sSTRK: 0.08,
+
+  // nstSTRK: Nostra staked STRK yield (~12% estimated)
+  nstSTRK: 0.12,
+};
 
 // Re-export for convenience
 export { devnetAddresses, forkAddresses, sepoliaAddresses };

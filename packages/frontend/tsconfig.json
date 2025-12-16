@@ -6,6 +6,9 @@
       "dom.iterable",
       "ES2022"
     ],
+    "types": [
+      "bun-types"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,

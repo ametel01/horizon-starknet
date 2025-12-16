@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
 import { AddLiquidityForm } from '@/components/forms/AddLiquidityForm';
 import { RemoveLiquidityForm } from '@/components/forms/RemoveLiquidityForm';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useApyBreakdown } from '@/hooks/useApyBreakdown';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -67,6 +69,9 @@ function PoolsPageContent(): ReactNode {
   const { data: lpBalance, isLoading: lpBalanceLoading } = useTokenBalance(
     selectedMarket?.address ?? null
   );
+
+  // Fetch APY breakdown for the selected market
+  const { data: apyBreakdown } = useApyBreakdown(selectedMarket);
 
   // Calculate user's share of pool
   const userPoolShare = useMemo(() => {
@@ -256,6 +261,16 @@ function PoolsPageContent(): ReactNode {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* LP APY Breakdown */}
+        {selectedMarket !== undefined && apyBreakdown !== null && (
+          <ApyBreakdownCard
+            breakdown={apyBreakdown}
+            view="lp"
+            title="LP Yield Breakdown"
+            className="mb-4"
+          />
         )}
 
         {/* Pool Info */}

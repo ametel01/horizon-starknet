@@ -3,6 +3,7 @@
 import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
+import { PriceImpactWarning, usePriceImpactWarning } from '@/components/display/PriceImpactWarning';
 import { TxStatus } from '@/components/display/TxStatus';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -11,7 +12,18 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useStarknet } from '@/hooks/useStarknet';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@/hooks/useSwap';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { formatWad, parseWad } from '@/lib/math/wad';
+import { getMarketParams } from '@/lib/constants/addresses';
+import {
+  calcSwapExactPtForSy,
+  calcSwapExactSyForPt,
+  calcSwapSyForExactPt,
+  formatPriceImpact,
+  getImpliedApy,
+  getPriceImpactSeverity,
+  type MarketState as AmmMarketState,
+  type SwapResult,
+} from '@/lib/math/amm';
+import { formatWad, parseWad, WAD_BIGINT } from '@/lib/math/wad';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput } from './TokenInput';
@@ -29,7 +41,7 @@ const SLIPPAGE_OPTIONS = [
 type TokenType = 'PT' | 'YT';
 
 export function SwapForm({ market }: SwapFormProps): ReactNode {
-  const { isConnected } = useStarknet();
+  const { isConnected, network } = useStarknet();
   const [tokenType, setTokenType] = useState<TokenType>('PT');
   const [isBuying, setIsBuying] = useState(true);
   const [inputAmount, setInputAmount] = useState('');
@@ -75,6 +87,9 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
   // For selling YT, we also need SY balance for collateral
   const { data: syBalance } = useTokenBalance(market.syAddress);
 
+  // Get market params for AMM calculations
+  const marketParams = useMemo(() => getMarketParams(network), [network]);
+
   // Parse input amount
   const parsedInputAmount = useMemo(() => {
     if (!inputAmount || inputAmount === '') return BigInt(0);
@@ -85,66 +100,103 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     }
   }, [inputAmount]);
 
-  // Calculate expected output (simplified - using constant product for now)
-  // In a real implementation, this would call the market contract to get the quote
-  const expectedOutput = useMemo(() => {
-    if (parsedInputAmount === BigInt(0)) return BigInt(0);
-    // For a proper implementation, we'd need to call the market to get the actual quote
-    // For now, we use a simplified calculation based on reserves
-    const { syReserve, ptReserve } = market.state;
+  // Build AMM market state for accurate calculations
+  const ammState: AmmMarketState = useMemo(
+    () => ({
+      syReserve: market.state.syReserve,
+      ptReserve: market.state.ptReserve,
+      totalLp: market.state.totalLpSupply,
+      scalarRoot: marketParams.scalarRoot,
+      // Use market-specific initialAnchor from metadata, or current ln rate as fallback
+      initialAnchor: market.metadata?.initialAnchor ?? market.state.lnImpliedRate,
+      feeRate: marketParams.feeRate,
+      expiry: BigInt(market.expiry),
+      lastLnImpliedRate: market.state.lnImpliedRate,
+    }),
+    [market.state, market.expiry, market.metadata?.initialAnchor, marketParams]
+  );
 
-    if (direction === 'buy_pt') {
-      // Selling SY for PT
-      // Using constant product approximation: pt_out = (pt_reserve * sy_in) / (sy_reserve + sy_in)
-      if (syReserve === BigInt(0)) return BigInt(0);
-      return (ptReserve * parsedInputAmount) / (syReserve + parsedInputAmount);
-    } else if (direction === 'sell_pt') {
-      // Selling PT for SY
-      // pt_in for sy_out: sy_out = (sy_reserve * pt_in) / (pt_reserve + pt_in)
-      if (ptReserve === BigInt(0)) return BigInt(0);
-      return (syReserve * parsedInputAmount) / (ptReserve + parsedInputAmount);
-    } else if (direction === 'buy_yt') {
-      // Buy YT with SY via flash swap
-      // Simplified: YT amount ≈ SY in (since we mint 1:1 then sell PT)
-      // The actual output depends on PT market price, but for estimation:
-      // yt_out ≈ sy_in * (1 + pt_price), where pt_price < 1
-      if (syReserve === BigInt(0) || ptReserve === BigInt(0)) return BigInt(0);
-      // PT price in terms of SY ≈ syReserve / ptReserve
-      // Since PT < 1 SY, yt_out > sy_in
-      const ptPriceScaled = (syReserve * BigInt(1e18)) / ptReserve;
-      // yt_out ≈ sy_in / (1 - pt_discount), simplified to sy_in * 1.05 for estimation
-      return (parsedInputAmount * (BigInt(1e18) + (BigInt(1e18) - ptPriceScaled))) / BigInt(1e18);
-    } else {
-      // Sell YT for SY via flash swap
-      // Simplified: SY out ≈ YT in * (1 - PT price)
-      // YT value = SY value - PT value
-      if (syReserve === BigInt(0) || ptReserve === BigInt(0)) return BigInt(0);
-      const ptPriceScaled = (syReserve * BigInt(1e18)) / ptReserve;
-      // sy_out ≈ yt_in * (1 - pt_price)
-      return (parsedInputAmount * (BigInt(1e18) - ptPriceScaled)) / BigInt(1e18);
+  // Calculate swap quote using accurate AMM math
+  const swapResult: SwapResult | null = useMemo(() => {
+    if (parsedInputAmount === BigInt(0)) return null;
+
+    const { syReserve, ptReserve } = market.state;
+    if (syReserve === BigInt(0) || ptReserve === BigInt(0)) return null;
+
+    try {
+      if (direction === 'buy_pt') {
+        // Buy PT with SY - use accurate AMM calculation
+        return calcSwapExactSyForPt(ammState, parsedInputAmount);
+      } else if (direction === 'sell_pt') {
+        // Sell PT for SY - use accurate AMM calculation
+        return calcSwapExactPtForSy(ammState, parsedInputAmount);
+      } else if (direction === 'buy_yt') {
+        // Buy YT with SY via flash swap
+        // Step 1: Mint PT+YT from SY (1:1)
+        // Step 2: Sell PT back to market
+        // Net result: YT amount ≈ SY_in, cost = SY_in - PT_sale_proceeds
+        // For estimation: YT_out ≈ SY_in (since minted 1:1)
+        // Use PT price to estimate net cost
+        const ptSaleResult = calcSwapExactPtForSy(ammState, parsedInputAmount);
+        // YT out = amount minted (same as SY in, since 1:1 mint)
+        // Effective cost = SY_in - SY_recovered_from_PT_sale
+        return {
+          amountOut: parsedInputAmount, // YT received = SY deposited for minting
+          fee: ptSaleResult.fee,
+          newLnImpliedRate: ptSaleResult.newLnImpliedRate,
+          priceImpact: ptSaleResult.priceImpact,
+          effectivePrice:
+            parsedInputAmount > 0n
+              ? ((parsedInputAmount - ptSaleResult.amountOut) * WAD_BIGINT) / parsedInputAmount
+              : WAD_BIGINT, // Cost per YT
+          spotPrice: WAD_BIGINT - ptSaleResult.spotPrice, // YT price ≈ 1 - PT price
+        };
+      } else {
+        // Sell YT for SY via flash swap
+        // Step 1: Buy PT to match YT amount (need parsedInputAmount PT to pair with YT)
+        // Step 2: Redeem PT+YT for SY (1:1 redemption gives parsedInputAmount SY)
+        // Net result: SY_out = redemption_value - PT_purchase_cost
+        const ptNeeded = parsedInputAmount; // Need PT equal to YT amount to redeem
+
+        // Calculate SY cost to buy the required PT using exact output function
+        const ptPurchaseResult = calcSwapSyForExactPt(ammState, ptNeeded);
+        const syNeededForPt = ptPurchaseResult.amountOut; // SY required to buy PT
+
+        // After redemption, we get ptNeeded SY (1:1), minus what we spent buying PT
+        const syOut = ptNeeded > syNeededForPt ? ptNeeded - syNeededForPt : 0n;
+
+        return {
+          amountOut: syOut,
+          fee: ptPurchaseResult.fee,
+          newLnImpliedRate: ptPurchaseResult.newLnImpliedRate,
+          priceImpact: ptPurchaseResult.priceImpact,
+          effectivePrice: syOut > 0n ? (syNeededForPt * WAD_BIGINT) / syOut : WAD_BIGINT,
+          spotPrice: WAD_BIGINT - ptPurchaseResult.spotPrice, // YT price ≈ 1 - PT price
+        };
+      }
+    } catch {
+      return null;
     }
-  }, [parsedInputAmount, market.state, direction]);
+  }, [parsedInputAmount, market.state, direction, ammState]);
+
+  // Extract values from swap result
+  const expectedOutput = swapResult?.amountOut ?? BigInt(0);
+  const priceImpact = swapResult?.priceImpact ?? 0;
+  const priceImpactSeverity = getPriceImpactSeverity(priceImpact);
+
+  // Price impact warning management
+  const priceImpactWarning = usePriceImpactWarning(priceImpact);
+
+  // Calculate implied APY change
+  const impliedApyBefore = getImpliedApy(market.state.lnImpliedRate);
+  const impliedApyAfter = swapResult
+    ? getImpliedApy(swapResult.newLnImpliedRate)
+    : impliedApyBefore;
 
   // Calculate minimum output with slippage
   const minOutput = useMemo(() => {
     return calculateMinOutput(expectedOutput, slippageBps);
   }, [expectedOutput, slippageBps]);
-
-  // Calculate price impact
-  const priceImpact = useMemo(() => {
-    if (parsedInputAmount === BigInt(0) || expectedOutput === BigInt(0)) return new BigNumber(0);
-
-    // Simple price impact calculation
-    const inputBn = new BigNumber(parsedInputAmount.toString());
-    const outputBn = new BigNumber(expectedOutput.toString());
-
-    // Effective price vs spot price
-    // For simplicity, we compare to 1:1 rate
-    const effectiveRate = outputBn.dividedBy(inputBn);
-    const impact = new BigNumber(1).minus(effectiveRate).abs().multipliedBy(100);
-
-    return impact;
-  }, [parsedInputAmount, expectedOutput]);
 
   // Validation
   const hasInsufficientBalance = inputBalance !== undefined && parsedInputAmount > inputBalance;
@@ -161,7 +213,8 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     !hasInsufficientBalance &&
     !hasInsufficientCollateral &&
     !isSwapping &&
-    !isSuccess;
+    !isSuccess &&
+    priceImpactWarning.canProceed;
 
   // Determine transaction status for TxStatus component
   const txStatus = useMemo(() => {
@@ -198,6 +251,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     setIsBuying((prev) => !prev);
     setInputAmount('');
     resetSwap();
+    priceImpactWarning.reset();
   };
 
   // Handle token type change
@@ -205,6 +259,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     setTokenType(newType);
     setInputAmount('');
     resetSwap();
+    priceImpactWarning.reset();
   };
 
   return (
@@ -238,6 +293,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
             setIsBuying(value === 'buy');
             setInputAmount('');
             resetSwap();
+            priceImpactWarning.reset();
           }}
           className="w-full"
         >
@@ -250,7 +306,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
             </TabsTrigger>
             <TabsTrigger
               value="sell"
-              className="data-active:bg-destructive flex-1 data-active:text-white"
+              className="data-active:bg-destructive data-active:text-primary-foreground flex-1"
             >
               Sell {tokenType}
             </TabsTrigger>
@@ -322,22 +378,61 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                 <span className="text-muted-foreground">Price Impact</span>
                 <span
                   className={
-                    priceImpact.gt(3)
-                      ? 'text-destructive'
-                      : priceImpact.gt(1)
-                        ? 'text-chart-1'
-                        : 'text-foreground'
+                    priceImpactSeverity === 'very-high'
+                      ? 'text-destructive font-medium'
+                      : priceImpactSeverity === 'high'
+                        ? 'text-destructive'
+                        : priceImpactSeverity === 'medium'
+                          ? 'text-chart-1'
+                          : 'text-foreground'
                   }
                 >
-                  {priceImpact.toFixed(2)}%
+                  {formatPriceImpact(priceImpact)}
                 </span>
               </div>
+              {/* Implied APY Change */}
+              {(direction === 'buy_pt' || direction === 'sell_pt') && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Implied APY</span>
+                  <span className="text-foreground">
+                    {(impliedApyBefore * 100).toFixed(2)}%{' '}
+                    <span className="text-muted-foreground">→</span>{' '}
+                    <span
+                      className={
+                        impliedApyAfter > impliedApyBefore
+                          ? 'text-primary'
+                          : impliedApyAfter < impliedApyBefore
+                            ? 'text-destructive'
+                            : ''
+                      }
+                    >
+                      {(impliedApyAfter * 100).toFixed(2)}%
+                    </span>
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Slippage Tolerance</span>
                 <span className="text-foreground">{slippageBps / 100}%</span>
               </div>
+              {/* Fee info */}
+              {swapResult && swapResult.fee > 0n && (
+                <div className="text-muted-foreground flex justify-between">
+                  <span>Swap Fee</span>
+                  <span>{formatWad(swapResult.fee, 6)}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Price Impact Warning */}
+        {isValidAmount && priceImpactWarning.severity !== 'low' && (
+          <PriceImpactWarning
+            priceImpact={priceImpact}
+            onAcknowledge={priceImpactWarning.acknowledge}
+            acknowledged={priceImpactWarning.acknowledged}
+          />
         )}
 
         {/* Slippage Settings */}
@@ -410,9 +505,11 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                   ? 'Insufficient Balance'
                   : hasInsufficientCollateral
                     ? 'Insufficient Collateral'
-                    : isSuccess
-                      ? 'Swapped!'
-                      : `Swap ${inputLabel} for ${outputLabel}`}
+                    : priceImpactWarning.requiresAcknowledgment && !priceImpactWarning.acknowledged
+                      ? 'Acknowledge Price Impact'
+                      : isSuccess
+                        ? 'Swapped!'
+                        : `Swap ${inputLabel} for ${outputLabel}`}
         </Button>
       </CardContent>
     </Card>

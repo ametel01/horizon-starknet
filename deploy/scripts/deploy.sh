@@ -697,7 +697,7 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # -------------------------------------------------------------------------
 
     SEED_LIQUIDITY="${SEED_LIQUIDITY:-true}"
-    SEED_AMOUNT="${SEED_LIQUIDITY_AMOUNT:-10000000000000000000000}"  # 10,000 tokens default (18 decimals)
+    SEED_AMOUNT="${SEED_LIQUIDITY_AMOUNT:-1000000000000000000000000}"  # 1,000,000 tokens default (18 decimals)
 
     if [[ "$SEED_LIQUIDITY" == "true" ]]; then
         log_info "Seeding initial liquidity to markets..."
