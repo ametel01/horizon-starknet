@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useAccount } from '@/hooks/useAccount';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useSimpleWithdraw } from '@/hooks/useSimpleWithdraw';
-import { formatWad } from '@/lib/math/wad';
+import { formatWadCompact } from '@/lib/math/wad';
 import { formatExpiry } from '@/lib/math/yield';
 import { formatUsd } from '@/lib/position/value';
 import { cn } from '@/lib/utils';
@@ -203,12 +203,12 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-muted-foreground">Fixed-Rate Position</span>
-              <div className="text-foreground font-mono">{formatWad(pt.amount, 4)}</div>
+              <div className="text-foreground font-mono">{formatWadCompact(pt.amount)}</div>
               <div className="text-muted-foreground text-xs">{formatUsd(pt.valueUsd)}</div>
             </div>
             <div>
               <span className="text-muted-foreground">Variable-Rate Position</span>
-              <div className="text-foreground font-mono">{formatWad(yt.amount, 4)}</div>
+              <div className="text-foreground font-mono">{formatWadCompact(yt.amount)}</div>
               <div className="text-muted-foreground text-xs">{formatUsd(yt.valueUsd)}</div>
             </div>
           </div>
@@ -221,7 +221,7 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
               <div>
                 <div className="text-primary text-sm">Claimable Yield</div>
                 <div className="text-primary font-medium">
-                  {formatWad(yieldData.claimable, 4)} {tokenSymbol}
+                  {formatWadCompact(yieldData.claimable)} {tokenSymbol}
                 </div>
               </div>
               <Button size="sm" variant="default">
