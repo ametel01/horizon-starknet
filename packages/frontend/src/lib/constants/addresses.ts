@@ -581,5 +581,34 @@ export const ESTIMATED_YIELD_APYS: Record<string, number> = {
   hrzSTRK: 0.08,
 };
 
+// =============================================================================
+// FAUCET
+// =============================================================================
+
+export interface FaucetInfo {
+  faucetAddress: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+  tokenName: string;
+  dailyLimit: string;
+}
+
+/**
+ * Get faucet info for mainnet (only available on mainnet for hrzSTRK)
+ */
+export function getFaucetInfo(network: NetworkId): FaucetInfo | null {
+  if (network !== 'mainnet') {
+    return null;
+  }
+
+  return {
+    faucetAddress: mainnetAddresses.contracts.Faucet,
+    tokenAddress: mainnetAddresses.tokens.hrzSTRK.address,
+    tokenSymbol: mainnetAddresses.tokens.hrzSTRK.symbol,
+    tokenName: mainnetAddresses.tokens.hrzSTRK.name,
+    dailyLimit: mainnetAddresses.tokens.hrzSTRK.faucetDailyLimit,
+  };
+}
+
 // Re-export for convenience
 export { devnetAddresses, forkAddresses, mainnetAddresses, sepoliaAddresses };
