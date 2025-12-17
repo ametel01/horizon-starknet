@@ -594,12 +594,12 @@ Each: 1-2 sentence definition + link to relevant docs page.
 ### Phase 3: Technical Depth (Week 3-4 equivalent effort)
 
 **Tasks:**
-- [ ] Write: All 3 Mechanics pages
-- [ ] Build YieldCalculator component
-- [ ] Build PriceSimulator component
-- [ ] Create AMM Curve diagram
-- [ ] Create Redemption diagram
-- [ ] Add formula rendering (KaTeX optional)
+- [x] Write: All 3 Mechanics pages
+- [x] Build YieldCalculator component
+- [x] Build PriceSimulator component
+- [x] Create AMM Curve diagram
+- [x] Create Redemption diagram
+- [x] Add formula rendering (KaTeX optional)
 
 **Deliverable:** Technical documentation with interactive elements.
 
