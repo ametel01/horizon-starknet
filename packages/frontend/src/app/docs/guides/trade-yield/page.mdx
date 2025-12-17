@@ -1,5 +1,6 @@
 import { DocsNavigation } from '@/components/docs/DocsNavigation';
 import { Callout } from '@/components/docs/Callout';
+import { TryItButton } from '@/components/docs/TryItButton';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
 
 # Trade Yield
@@ -141,5 +142,9 @@ If yield drops to 4%, your YT could be worth only ~50 SY — a 50% loss.
 - Check implied yield vs underlying yield before trading
 - Set reasonable slippage (0.5-1% for most trades)
 - Monitor your YT positions — they expire at maturity
+
+<div className="mt-6">
+  <TryItButton href="/trade">Go to Trade</TryItButton>
+</div>
 
 <DocsNavigation />
