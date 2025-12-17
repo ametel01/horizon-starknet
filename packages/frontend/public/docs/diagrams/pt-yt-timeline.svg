@@ -1,46 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300">
   <!-- Background -->
-  <rect width="600" height="300" fill="transparent"/>
+  <rect width="600" height="300" fill="#18181b"/>
 
   <!-- Axes -->
-  <line x1="60" y1="240" x2="560" y2="240" stroke="currentColor" stroke-width="2" class="text-border"/>
-  <line x1="60" y1="40" x2="60" y2="240" stroke="currentColor" stroke-width="2" class="text-border"/>
+  <line x1="60" y1="240" x2="560" y2="240" stroke="#71717a" stroke-width="2"/>
+  <line x1="60" y1="40" x2="60" y2="240" stroke="#71717a" stroke-width="2"/>
 
   <!-- Y-axis labels -->
-  <text x="45" y="245" text-anchor="end" fill="currentColor" font-size="12" class="text-muted-foreground">0</text>
-  <text x="45" y="145" text-anchor="end" fill="currentColor" font-size="12" class="text-muted-foreground">0.5</text>
-  <text x="45" y="50" text-anchor="end" fill="currentColor" font-size="12" class="text-muted-foreground">1.0</text>
+  <text x="45" y="245" text-anchor="end" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">0</text>
+  <text x="45" y="145" text-anchor="end" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">0.5</text>
+  <text x="45" y="50" text-anchor="end" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">1.0</text>
 
   <!-- X-axis labels -->
-  <text x="60" y="260" text-anchor="middle" fill="currentColor" font-size="12" class="text-muted-foreground">Now</text>
-  <text x="310" y="260" text-anchor="middle" fill="currentColor" font-size="12" class="text-muted-foreground">Time</text>
-  <text x="540" y="260" text-anchor="middle" fill="currentColor" font-size="12" class="text-muted-foreground">Maturity</text>
+  <text x="60" y="265" text-anchor="middle" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">Now</text>
+  <text x="310" y="265" text-anchor="middle" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">Time</text>
+  <text x="540" y="265" text-anchor="middle" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">Maturity</text>
 
   <!-- Y-axis title -->
-  <text x="20" y="145" text-anchor="middle" fill="currentColor" font-size="12" transform="rotate(-90, 20, 145)" class="text-muted-foreground">Price (SY)</text>
+  <text x="20" y="145" text-anchor="middle" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif" transform="rotate(-90, 20, 145)">Price (SY)</text>
 
   <!-- Grid lines (dashed) -->
-  <line x1="60" y1="140" x2="560" y2="140" stroke="currentColor" stroke-width="1" stroke-dasharray="4,4" opacity="0.3" class="text-border"/>
-  <line x1="540" y1="40" x2="540" y2="240" stroke="currentColor" stroke-width="1" stroke-dasharray="4,4" opacity="0.3" class="text-border"/>
+  <line x1="60" y1="140" x2="560" y2="140" stroke="#52525b" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="60" y1="45" x2="560" y2="45" stroke="#52525b" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="540" y1="40" x2="540" y2="240" stroke="#52525b" stroke-width="1" stroke-dasharray="4,4"/>
 
-  <!-- PT curve (starts at ~0.9, curves up to 1.0) -->
-  <path d="M 60 80 Q 200 70, 310 60 Q 420 52, 540 45" stroke="hsl(var(--primary))" stroke-width="3" fill="none"/>
+  <!-- PT curve (starts at ~0.9, curves up to 1.0) - Green -->
+  <path d="M 60 80 Q 200 70, 310 60 Q 420 52, 540 45" stroke="#4ade80" stroke-width="4" fill="none"/>
 
-  <!-- YT curve (starts at ~0.1, curves down to 0) -->
-  <path d="M 60 200 Q 200 210, 310 220 Q 420 232, 540 240" stroke="hsl(var(--destructive))" stroke-width="3" fill="none"/>
+  <!-- YT curve (starts at ~0.1, curves down to 0) - Orange -->
+  <path d="M 60 200 Q 200 210, 310 220 Q 420 232, 540 240" stroke="#fbbf24" stroke-width="4" fill="none"/>
 
-  <!-- Legend -->
-  <rect x="380" y="80" width="160" height="60" rx="4" fill="transparent" stroke="currentColor" stroke-width="1" class="text-border"/>
+  <!-- Legend box -->
+  <rect x="400" y="160" width="150" height="70" rx="8" fill="#27272a" stroke="#52525b" stroke-width="1"/>
 
   <!-- PT legend -->
-  <line x1="395" y1="100" x2="425" y2="100" stroke="hsl(var(--primary))" stroke-width="3"/>
-  <text x="435" y="104" fill="currentColor" font-size="13" class="text-foreground">PT → 1.0</text>
+  <line x1="415" y1="185" x2="450" y2="185" stroke="#4ade80" stroke-width="4"/>
+  <text x="460" y="190" fill="#fafafa" font-size="14" font-family="system-ui, sans-serif">PT → 1.0</text>
 
   <!-- YT legend -->
-  <line x1="395" y1="125" x2="425" y2="125" stroke="hsl(var(--destructive))" stroke-width="3"/>
-  <text x="435" y="129" fill="currentColor" font-size="13" class="text-foreground">YT → 0</text>
+  <line x1="415" y1="215" x2="450" y2="215" stroke="#fbbf24" stroke-width="4"/>
+  <text x="460" y="220" fill="#fafafa" font-size="14" font-family="system-ui, sans-serif">YT → 0</text>
 
-  <!-- Maturity marker -->
-  <circle cx="540" cy="45" r="5" fill="hsl(var(--primary))"/>
-  <circle cx="540" cy="240" r="5" fill="hsl(var(--destructive))"/>
+  <!-- Maturity markers -->
+  <circle cx="540" cy="45" r="8" fill="#4ade80"/>
+  <circle cx="540" cy="240" r="8" fill="#fbbf24"/>
 </svg>
