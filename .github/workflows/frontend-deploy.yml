@@ -2,7 +2,7 @@ name: Frontend Deploy
 
 on:
   push:
-    branches: [develop]
+    branches: [main, develop]
     paths: ["packages/frontend/**"]
   pull_request:
     branches: [main]
@@ -45,7 +45,7 @@ jobs:
   # Deploy to Staging (Sepolia) on push to develop or manual trigger
   deploy-staging:
     if: |
-      github.event_name == 'push' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     name: Deploy to Sepolia (Staging)
     runs-on: ubuntu-latest
@@ -95,10 +95,11 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
 
-  # Deploy to Production (Mainnet) - only via manual trigger or merge to main
+  # Deploy to Production (Mainnet) - on push to main or manual trigger
   deploy-production:
     if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     name: Deploy to Mainnet (Production)
     runs-on: ubuntu-latest
     defaults:
