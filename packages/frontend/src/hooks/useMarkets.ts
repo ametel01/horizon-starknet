@@ -4,7 +4,7 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
-import { getMarketInfoByAddress } from '@/lib/constants/addresses';
+import { getMarketInfoByAddress, getMarketInfos } from '@/lib/constants/addresses';
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
 import { getMarketContract, getMarketFactoryContract } from '@/lib/starknet/contracts';
 import type { NetworkId } from '@/lib/starknet/provider';
@@ -161,7 +161,16 @@ export function useMarkets(
 }
 
 /**
+ * Get static market addresses from config as fallback
+ */
+function getStaticMarketAddresses(network: NetworkId): string[] {
+  const marketInfos = getMarketInfos(network);
+  return marketInfos.map((m) => m.marketAddress).filter((addr) => addr !== '' && addr !== '0x0');
+}
+
+/**
  * Hook to fetch all market addresses from the MarketFactory on-chain
+ * Falls back to static addresses from config if on-chain call fails or returns empty
  */
 export function useMarketAddresses(): {
   addresses: string[];
@@ -171,43 +180,68 @@ export function useMarketAddresses(): {
   const { provider, network } = useStarknet();
   const isClient = typeof window !== 'undefined';
 
+  // Get static addresses as fallback
+  const staticAddresses = getStaticMarketAddresses(network);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['marketFactory', 'allMarkets', network],
     queryFn: async () => {
-      const marketFactory = getMarketFactoryContract(provider, network);
-      const result = await marketFactory.get_all_markets();
+      try {
+        const marketFactory = getMarketFactoryContract(provider, network);
+        const result = await marketFactory.get_all_markets();
 
-      // The result is an array of market addresses
-      let addresses: string[];
-      if (Array.isArray(result)) {
-        addresses = result
-          .map((addr: unknown) => {
-            // Handle both string and bigint addresses
-            if (typeof addr === 'bigint') {
-              return '0x' + addr.toString(16).padStart(64, '0');
-            }
-            return String(addr);
-          })
-          .filter(
-            (addr) =>
-              addr !== '0x0' &&
-              addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+        // The result is an array of market addresses
+        let addresses: string[];
+        if (Array.isArray(result)) {
+          addresses = result
+            .map((addr: unknown) => {
+              // Handle both string and bigint addresses
+              if (typeof addr === 'bigint') {
+                return '0x' + addr.toString(16).padStart(64, '0');
+              }
+              return String(addr);
+            })
+            .filter(
+              (addr) =>
+                addr !== '0x0' &&
+                addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+            );
+        } else {
+          addresses = [];
+        }
+
+        // If on-chain returns empty, use static addresses as fallback
+        if (addresses.length === 0 && staticAddresses.length > 0) {
+          console.warn(
+            '[useMarketAddresses] On-chain returned empty, using static addresses:',
+            staticAddresses
           );
-      } else {
-        addresses = [];
-      }
+          return staticAddresses;
+        }
 
-      return addresses;
+        return addresses;
+      } catch (error) {
+        console.error('[useMarketAddresses] Error fetching from chain:', error);
+        // Return static addresses on error
+        if (staticAddresses.length > 0) {
+          console.warn('[useMarketAddresses] Using static addresses as fallback:', staticAddresses);
+          return staticAddresses;
+        }
+        throw error;
+      }
     },
     enabled: isClient,
     staleTime: 60000,
     retry: 2,
   });
 
+  // Final fallback: if query failed and we have static addresses, use them
+  const addresses = data ?? (isError ? staticAddresses : []);
+
   return {
-    addresses: data ?? [],
+    addresses,
     isLoading,
-    isError,
+    isError: isError && staticAddresses.length === 0,
   };
 }
 

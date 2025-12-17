@@ -1,5 +1,6 @@
 import devnetAddressesRaw from '@deploy/addresses/devnet.json';
 import forkAddressesRaw from '@deploy/addresses/fork.json';
+import mainnetAddressesRaw from '@deploy/addresses/mainnet.json';
 import sepoliaAddressesRaw from '@deploy/addresses/sepolia.json';
 
 import type { NetworkId } from '../starknet/provider';
@@ -172,6 +173,64 @@ interface ForkAddresses {
 const forkAddresses = forkAddressesRaw as ForkAddresses;
 const sepoliaAddresses = sepoliaAddressesRaw as SepoliaAddresses;
 
+// Type definition for mainnet addresses JSON structure
+interface MainnetYieldTokenInfo {
+  name: string;
+  symbol: string;
+  address: string;
+  isERC4626: boolean;
+  faucet: string;
+  faucetDailyLimit: string;
+}
+
+interface MainnetSYTokenInfo {
+  address: string;
+  underlying: string;
+  isERC4626: boolean;
+}
+
+interface MainnetMarketAddresses {
+  PT: string;
+  YT: string;
+  Market: string;
+  initialAnchor: string;
+}
+
+interface MainnetAddresses {
+  network: string;
+  rpcUrl: string;
+  deployedAt: string;
+  classHashes: Record<string, string>;
+  contracts: {
+    Factory: string;
+    MarketFactory: string;
+    Router: string;
+    Faucet: string;
+  };
+  tokens: {
+    STRK: string;
+    hrzSTRK: MainnetYieldTokenInfo;
+  };
+  syTokens: {
+    'SY-hrzSTRK': MainnetSYTokenInfo;
+  };
+  markets: {
+    hrzSTRK: MainnetMarketAddresses;
+  };
+  marketParams: {
+    scalarRoot: string;
+    feeRate: string;
+  };
+  liquidity: {
+    seeded: boolean;
+    seedAmount: string;
+  };
+  testRecipient: string;
+  expiry: number;
+}
+
+const mainnetAddresses = mainnetAddressesRaw as MainnetAddresses;
+
 export interface ContractAddresses {
   factory: string;
   marketFactory: string;
@@ -214,10 +273,9 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
     router: sepoliaAddresses.contracts.Router,
   },
   mainnet: {
-    // TODO: Update after mainnet deployment
-    factory: ZERO_ADDRESS,
-    marketFactory: ZERO_ADDRESS,
-    router: ZERO_ADDRESS,
+    factory: mainnetAddresses.contracts.Factory,
+    marketFactory: mainnetAddresses.contracts.MarketFactory,
+    router: mainnetAddresses.contracts.Router,
   },
 };
 
@@ -265,7 +323,8 @@ export function getMarketInfos(network: NetworkId): MarketInfo[] {
     return getSepoliaMarketInfos();
   }
 
-  return [];
+  // Default to mainnet
+  return getMainnetMarketInfos();
 }
 
 /**
@@ -420,6 +479,28 @@ function getSepoliaMarketInfos(): MarketInfo[] {
 }
 
 /**
+ * Get market infos for mainnet (hrzSTRK mock token for testing)
+ */
+function getMainnetMarketInfos(): MarketInfo[] {
+  return [
+    // hrzSTRK market (Horizon Mock Staked STRK)
+    {
+      key: 'hrzSTRK',
+      marketAddress: mainnetAddresses.markets.hrzSTRK.Market,
+      ptAddress: mainnetAddresses.markets.hrzSTRK.PT,
+      ytAddress: mainnetAddresses.markets.hrzSTRK.YT,
+      syAddress: mainnetAddresses.syTokens['SY-hrzSTRK'].address,
+      underlyingAddress: mainnetAddresses.tokens.hrzSTRK.address,
+      yieldTokenName: mainnetAddresses.tokens.hrzSTRK.name,
+      yieldTokenSymbol: mainnetAddresses.tokens.hrzSTRK.symbol,
+      isERC4626: mainnetAddresses.tokens.hrzSTRK.isERC4626,
+      expiry: mainnetAddresses.expiry,
+      initialAnchor: BigInt(mainnetAddresses.markets.hrzSTRK.initialAnchor || '0'),
+    },
+  ];
+}
+
+/**
  * Get market info by market address
  */
 export function getMarketInfoByAddress(
@@ -458,6 +539,15 @@ export function getMarketParams(network: NetworkId): MarketParams {
     };
   }
 
+  if (network === 'mainnet') {
+    const params = mainnetAddresses.marketParams;
+    return {
+      scalarRoot: BigInt(params.scalarRoot),
+      feeRate: BigInt(params.feeRate),
+      initialAnchor: BigInt(mainnetAddresses.markets.hrzSTRK.initialAnchor || '0'),
+    };
+  }
+
   if (network === 'devnet' && devnetAddresses.marketParams) {
     return {
       scalarRoot: BigInt(devnetAddresses.marketParams.scalarRoot ?? '1000000000000000000'),
@@ -486,7 +576,10 @@ export const ESTIMATED_YIELD_APYS: Record<string, number> = {
 
   // nstSTRK: Nostra staked STRK yield (~12% estimated)
   nstSTRK: 0.12,
+
+  // hrzSTRK: Horizon Mock Staked STRK (~8% for mainnet testing)
+  hrzSTRK: 0.08,
 };
 
 // Re-export for convenience
-export { devnetAddresses, forkAddresses, sepoliaAddresses };
+export { devnetAddresses, forkAddresses, mainnetAddresses, sepoliaAddresses };
