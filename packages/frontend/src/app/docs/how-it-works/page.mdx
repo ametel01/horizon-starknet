@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { DocsNavigation } from '@/components/docs/DocsNavigation';
 import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
 
 # How It Works
 
@@ -31,13 +32,11 @@ Understand how Horizon transforms yield-bearing assets into tradeable tokens.
 
 At any time before maturity:
 
-```
-PT Price + YT Price = 1 SY
-```
+<Formula display>{"P_{PT} + P_{YT} = 1 \\text{ SY}"}</Formula>
 
 This means you can always:
-- **Split:** 1 SY → 1 PT + 1 YT
-- **Combine:** 1 PT + 1 YT → 1 SY
+- **Split:** <Formula>{"1 \\text{ SY} \\to 1 \\text{ PT} + 1 \\text{ YT}"}</Formula>
+- **Combine:** <Formula>{"1 \\text{ PT} + 1 \\text{ YT} \\to 1 \\text{ SY}"}</Formula>
 
 ---
 

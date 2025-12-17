@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { DocsNavigation } from '@/components/docs/DocsNavigation';
 import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
 
 # Yield Tokens
@@ -87,9 +88,7 @@ SY is the wrapper that makes different yield tokens compatible with Horizon. You
 
 ## The Key Equation
 
-```
-PT + YT = SY (always, before maturity)
-```
+<Formula display>{"\\text{PT} + \\text{YT} = \\text{SY} \\quad \\text{(always, before maturity)}"}</Formula>
 
 This is enforced by arbitrage. If prices drift, traders profit by splitting or combining until balance is restored.
 

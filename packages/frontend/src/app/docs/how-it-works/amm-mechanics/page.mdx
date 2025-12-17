@@ -1,5 +1,6 @@
 import { DocsNavigation } from '@/components/docs/DocsNavigation';
 import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
 
 # AMM Mechanics
 
@@ -11,9 +12,7 @@ Horizon uses a specialized market maker designed for time-decaying assets like P
 
 The AMM pairs **PT** with **SY** (not YT directly). YT price is derived:
 
-```
-YT Price = 1 - PT Price
-```
+<Formula display>{"P_{YT} = 1 - P_{PT}"}</Formula>
 
 When you trade:
 - **Buy PT** → PT price rises, implied yield drops
@@ -25,9 +24,7 @@ When you trade:
 
 The AMM expresses prices as **implied yield** — the annualized return if you hold PT to maturity.
 
-```
-Implied APY = (1 / PT_Price)^(365/days_to_expiry) - 1
-```
+<Formula display>{"\\text{Implied APY} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
 
 **Example:** PT at 0.95 with 180 days to expiry = ~10.8% implied APY
 
