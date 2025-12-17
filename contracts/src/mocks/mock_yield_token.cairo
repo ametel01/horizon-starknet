@@ -10,6 +10,7 @@ const DEFAULT_YIELD_RATE_BPS: u32 = 500; // 5% APR default
 /// - An underlying ERC20 asset
 /// - Time-based yield simulation (index increases over time)
 /// - Full ERC-4626 deposit/mint/withdraw/redeem functions
+/// - OpenZeppelin Ownable for access control
 ///
 /// The index automatically increases based on deployment timestamp:
 ///   current_index = base_index * (1 + annual_yield_rate * time_elapsed / year)
@@ -22,9 +23,11 @@ const DEFAULT_YIELD_RATE_BPS: u32 = 500; // 5% APR default
 pub mod MockYieldToken {
     use core::num::traits::Bounded;
     use horizon::interfaces::i_erc4626::IERC4626;
+    use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{
-        StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use super::{
@@ -32,13 +35,21 @@ pub mod MockYieldToken {
     };
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
 
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
+
+    // Ownable
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
         // The underlying asset (e.g., STRK)
         underlying: ContractAddress,
         // The base index in WAD (starts at 1e18)
@@ -48,8 +59,8 @@ pub mod MockYieldToken {
         deployment_timestamp: u64,
         // Annual yield rate in basis points (e.g., 500 = 5% APR)
         annual_yield_rate_bps: u32,
-        // Admin address for test controls
-        admin: ContractAddress,
+        // Authorized minters (can call mint_shares)
+        minters: Map<ContractAddress, bool>,
     }
 
     #[event]
@@ -57,9 +68,13 @@ pub mod MockYieldToken {
     pub enum Event {
         #[flat]
         ERC20Event: ERC20Component::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
         IndexUpdated: IndexUpdated,
         Deposit: Deposit,
         Withdraw: Withdraw,
+        MinterAdded: MinterAdded,
+        MinterRemoved: MinterRemoved,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -90,20 +105,32 @@ pub mod MockYieldToken {
         pub shares: u256,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct MinterAdded {
+        #[key]
+        pub minter: ContractAddress,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct MinterRemoved {
+        #[key]
+        pub minter: ContractAddress,
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
         name: ByteArray,
         symbol: ByteArray,
         underlying: ContractAddress,
-        admin: ContractAddress,
+        owner: ContractAddress,
     ) {
         self.erc20.initializer(name, symbol);
+        self.ownable.initializer(owner);
         self.underlying.write(underlying);
         self.base_index_wad.write(WAD); // Start at 1:1
         self.deployment_timestamp.write(get_block_timestamp());
         self.annual_yield_rate_bps.write(DEFAULT_YIELD_RATE_BPS); // 5% APR default
-        self.admin.write(admin);
     }
 
     #[abi(embed_v0)]
@@ -353,10 +380,9 @@ pub mod MockYieldToken {
             self.base_index_wad.read()
         }
 
-        /// Set the base index (admin only, for testing)
+        /// Set the base index (owner only, for testing)
         fn set_index(ref self: ContractState, new_index_wad: u256) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'MYT: not admin');
+            self.ownable.assert_only_owner();
 
             let old_index = self.base_index_wad.read();
             // Enforce monotonic non-decreasing (can be removed for negative yield tests)
@@ -366,10 +392,9 @@ pub mod MockYieldToken {
             self.emit(IndexUpdated { old_index, new_index: new_index_wad });
         }
 
-        /// Increase base index by basis points (admin only, for testing)
+        /// Increase base index by basis points (owner only, for testing)
         fn increase_index_bps(ref self: ContractState, bps: u32) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'MYT: not admin');
+            self.ownable.assert_only_owner();
 
             let old_index = self.base_index_wad.read();
             // new_index = old_index * (10000 + bps) / 10000
@@ -379,10 +404,9 @@ pub mod MockYieldToken {
             self.emit(IndexUpdated { old_index, new_index });
         }
 
-        /// Set the annual yield rate in basis points (admin only, for testing)
+        /// Set the annual yield rate in basis points (owner only, for testing)
         fn set_yield_rate_bps(ref self: ContractState, rate_bps: u32) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'MYT: not admin');
+            self.ownable.assert_only_owner();
             self.annual_yield_rate_bps.write(rate_bps);
         }
 
@@ -396,17 +420,34 @@ pub mod MockYieldToken {
             self.deployment_timestamp.read()
         }
 
-        /// Mint shares directly to an address (admin only, for testing)
-        /// Bypasses deposit flow - useful for test setup
+        /// Mint shares directly to an address (owner or authorized minter)
+        /// Bypasses deposit flow - useful for test setup and faucet
         fn mint_shares(ref self: ContractState, to: ContractAddress, shares: u256) {
             let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'MYT: not admin');
+            let is_owner = caller == self.ownable.owner();
+            let is_minter = self.minters.read(caller);
+            assert(is_owner || is_minter, 'MYT: not authorized to mint');
             self.erc20.mint(to, shares);
         }
 
-        /// Get the admin address
-        fn admin(self: @ContractState) -> ContractAddress {
-            self.admin.read()
+        /// Add an authorized minter (owner only)
+        fn add_minter(ref self: ContractState, minter: ContractAddress) {
+            self.ownable.assert_only_owner();
+            assert(minter.into() != 0_felt252, 'MYT: zero address');
+            self.minters.write(minter, true);
+            self.emit(MinterAdded { minter });
+        }
+
+        /// Remove an authorized minter (owner only)
+        fn remove_minter(ref self: ContractState, minter: ContractAddress) {
+            self.ownable.assert_only_owner();
+            self.minters.write(minter, false);
+            self.emit(MinterRemoved { minter });
+        }
+
+        /// Check if an address is an authorized minter
+        fn is_minter(self: @ContractState, account: ContractAddress) -> bool {
+            self.minters.read(account)
         }
     }
 
@@ -460,11 +501,17 @@ pub trait IMockYieldTokenExt<TContractState> {
     fn get_yield_rate_bps(self: @TContractState) -> u32;
     fn get_deployment_timestamp(self: @TContractState) -> u64;
 
-    // Test controls (admin only)
+    // Test controls (owner only)
     fn set_index(ref self: TContractState, new_index_wad: u256);
     fn increase_index_bps(ref self: TContractState, bps: u32);
+
+    // Minting (owner or authorized minter)
     fn mint_shares(ref self: TContractState, to: ContractAddress, shares: u256);
-    fn admin(self: @TContractState) -> ContractAddress;
+
+    // Minter management (owner only)
+    fn add_minter(ref self: TContractState, minter: ContractAddress);
+    fn remove_minter(ref self: TContractState, minter: ContractAddress);
+    fn is_minter(self: @TContractState, account: ContractAddress) -> bool;
 }
 
 /// Combined interface for testing convenience
@@ -525,11 +572,17 @@ pub trait IMockYieldToken<TContractState> {
     fn get_yield_rate_bps(self: @TContractState) -> u32;
     fn get_deployment_timestamp(self: @TContractState) -> u64;
 
-    // Test controls (admin only)
+    // Test controls (owner only)
     fn set_index(ref self: TContractState, new_index_wad: u256);
     fn increase_index_bps(ref self: TContractState, bps: u32);
+
+    // Minting (owner or authorized minter)
     fn mint_shares(ref self: TContractState, to: ContractAddress, shares: u256);
-    fn admin(self: @TContractState) -> ContractAddress;
+
+    // Minter management (owner only)
+    fn add_minter(ref self: TContractState, minter: ContractAddress);
+    fn remove_minter(ref self: TContractState, minter: ContractAddress);
+    fn is_minter(self: @TContractState, account: ContractAddress) -> bool;
 }
 
 /// Interface for calling external ERC20 tokens
