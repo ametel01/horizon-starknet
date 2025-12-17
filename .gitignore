@@ -16,6 +16,12 @@
 # Keep examples
 !.env.example
 
+# Deployment accounts (contain secrets/private keys)
+deploy/accounts/*.json
+
+# Keep deployment examples
+!deploy/accounts/example.json
+
 # -----------------------------------------------------------------------------
 # Cairo / Starknet
 # -----------------------------------------------------------------------------
