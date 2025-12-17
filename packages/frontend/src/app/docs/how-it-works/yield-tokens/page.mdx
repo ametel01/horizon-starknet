@@ -1,0 +1,121 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Yield Tokens
+
+When you deposit, Horizon creates two tokens from your position. Here's what each one does.
+
+---
+
+## Principal Token (PT)
+
+**Your guaranteed principal.** PT redeems for exactly 1 unit of underlying at maturity.
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Property</TableHead>
+      <TableHead>Value</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>At maturity</TableCell>
+      <TableCell>Redeems 1:1 for underlying</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Before maturity</TableCell>
+      <TableCell>Trades at a discount</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Your yield</TableCell>
+      <TableCell>The discount IS your fixed return</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+**Example:** Buy PT at 0.95. At maturity, redeem for 1.00. That's 5.26% profit, locked in.
+
+<Callout type="tip">
+PT is ideal if you want **predictable returns** and can hold until maturity.
+</Callout>
+
+---
+
+## Yield Token (YT)
+
+**Your yield rights.** YT collects all variable yield from the underlying until maturity.
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Property</TableHead>
+      <TableHead>Value</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Before maturity</TableCell>
+      <TableCell>Collects ongoing yield</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>At maturity</TableCell>
+      <TableCell>Expires worthless</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Leverage</TableCell>
+      <TableCell>Small cost, large yield exposure</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+**Example:** If YT costs 5% of underlying, you get 20x exposure to yield changes.
+
+<Callout type="warning">
+YT is higher risk. If yield drops, YT can lose most of its value before maturity.
+</Callout>
+
+---
+
+## Standardized Yield (SY)
+
+SY is the wrapper that makes different yield tokens compatible with Horizon. You don't interact with it directly in Simple mode.
+
+---
+
+## The Key Equation
+
+```
+PT + YT = SY (always, before maturity)
+```
+
+This is enforced by arbitrage. If prices drift, traders profit by splitting or combining until balance is restored.
+
+---
+
+## Summary
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Token</TableHead>
+      <TableHead>Best for</TableHead>
+      <TableHead>Risk level</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**PT**</TableCell>
+      <TableCell>Fixed yield seekers</TableCell>
+      <TableCell>Lower</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**YT**</TableCell>
+      <TableCell>Yield speculators</TableCell>
+      <TableCell>Higher</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+<DocsNavigation />

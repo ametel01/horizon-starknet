@@ -1,0 +1,61 @@
+import Image from 'next/image';
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+
+# How It Works
+
+Understand how Horizon transforms yield-bearing assets into tradeable tokens.
+
+---
+
+## The Flow
+
+```
+Deposit → Wrap to SY → Split into PT + YT → Hold, Trade, or LP
+```
+
+1. **Deposit** your yield-bearing token (e.g., nstSTRK)
+2. **Wrap** it into Standardized Yield (SY)
+3. **Split** SY into Principal Token + Yield Token
+4. **Choose:** hold for yield, trade, or provide liquidity
+
+---
+
+## The Core Rule
+
+At any time before maturity:
+
+```
+PT Price + YT Price = 1 SY
+```
+
+This means you can always:
+- **Split:** 1 SY → 1 PT + 1 YT
+- **Combine:** 1 PT + 1 YT → 1 SY
+
+---
+
+## At Maturity
+
+<Callout type="warning">
+**PT** redeems for full value (1 underlying asset)
+
+**YT** expires worthless — claim any accrued yield before expiry
+</Callout>
+
+---
+
+## Deep Dives
+
+<div className="not-prose grid gap-3 sm:grid-cols-2 mt-4">
+  <a href="/docs/how-it-works/yield-tokens" className="flex flex-col gap-2 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors">
+    <div className="font-medium text-foreground">Yield Tokens</div>
+    <div className="text-sm text-muted-foreground">What are PT, YT, and SY? How do they work together?</div>
+  </a>
+  <a href="/docs/how-it-works/amm-mechanics" className="flex flex-col gap-2 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors">
+    <div className="font-medium text-foreground">AMM Mechanics</div>
+    <div className="text-sm text-muted-foreground">How trading and price discovery work</div>
+  </a>
+</div>
+
+<DocsNavigation />
