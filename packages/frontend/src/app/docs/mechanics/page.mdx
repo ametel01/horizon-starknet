@@ -1,0 +1,49 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Formula } from '@/components/docs/Formula';
+
+# Mechanics
+
+Technical details for users who want to understand the math behind Horizon.
+
+---
+
+<div className="not-prose grid gap-4 sm:grid-cols-3">
+  <a href="/docs/mechanics/pricing" className="flex flex-col gap-2 rounded-lg border border-border p-5 hover:bg-accent/50 transition-colors">
+    <div className="text-lg font-medium text-foreground">Pricing</div>
+    <div className="text-sm text-muted-foreground">How PT and YT prices are calculated</div>
+  </a>
+  <a href="/docs/mechanics/apy-calculation" className="flex flex-col gap-2 rounded-lg border border-border p-5 hover:bg-accent/50 transition-colors">
+    <div className="text-lg font-medium text-foreground">APY Calculation</div>
+    <div className="text-sm text-muted-foreground">Understanding implied and realized yields</div>
+  </a>
+  <a href="/docs/mechanics/redemption" className="flex flex-col gap-2 rounded-lg border border-border p-5 hover:bg-accent/50 transition-colors">
+    <div className="text-lg font-medium text-foreground">Redemption</div>
+    <div className="text-sm text-muted-foreground">How minting and redemption work</div>
+  </a>
+</div>
+
+---
+
+## Key Formulas at a Glance
+
+### Price Relationship
+
+<Formula display>{"P_{PT} + P_{YT} = 1 \\text{ SY}"}</Formula>
+
+### Implied APY
+
+<Formula display>{"\\text{APY}_{implied} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+
+### PT Price from APY
+
+<Formula display>{"P_{PT} = \\frac{1}{(1 + \\text{APY})^{\\frac{d}{365}}}"}</Formula>
+
+### Minting
+
+<Formula display>{"\\text{PT}_{minted} = \\text{SY}_{deposited} \\times \\text{Index}_{PY}"}</Formula>
+
+### Redemption
+
+<Formula display>{"\\text{SY}_{received} = \\frac{\\text{PT}_{burned}}{\\text{Index}_{PY}}"}</Formula>
+
+<DocsNavigation />

@@ -1,0 +1,192 @@
+import Image from 'next/image';
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Redemption
+
+How minting and redemption work in the Horizon protocol.
+
+---
+
+## The PY Index
+
+The protocol tracks a **PY Index** that determines minting and redemption rates:
+
+<Formula display>{"\\text{Index}_{PY} = \\max(\\text{rate}_{current}, \\text{Index}_{stored})"}</Formula>
+
+### Key Properties
+
+- **Monotonically non-decreasing** — Only goes up or stays the same
+- **Captures peak exchange rate** — Protects against temporary drops
+- **Shared across all users** — Same index for everyone in a market
+
+<Callout type="info">
+The PY Index ensures PT holders are protected even if the underlying asset temporarily loses value.
+</Callout>
+
+---
+
+## Redemption Flow
+
+<div className="my-6 rounded-lg border border-border bg-card p-4">
+  <Image
+    src="/docs/diagrams/redemption-flow.svg"
+    alt="Redemption flow: PT+YT → SY before expiry, PT → Underlying after expiry"
+    width={700}
+    height={250}
+    className="w-full"
+  />
+</div>
+
+---
+
+## Minting (Deposit)
+
+When you deposit SY to mint PT and YT:
+
+<Formula display>{"\\text{Amount}_{minted} = \\text{SY}_{deposited} \\times \\text{Index}_{PY}"}</Formula>
+
+You receive **equal amounts** of PT and YT.
+
+### Example
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>SY deposited</TableCell>
+      <TableCell><Formula>{"100 \\text{ SY}"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Current PY Index</TableCell>
+      <TableCell><Formula>{"1.05"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>PT received</TableCell>
+      <TableCell><Formula>{"100 \\times 1.05 = \\textbf{105 PT}"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>YT received</TableCell>
+      <TableCell><Formula>{"\\textbf{105 YT}"}</Formula></TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Pre-Expiry Redemption
+
+Before maturity, you can redeem by combining **equal amounts** of PT and YT:
+
+<Formula display>{"\\text{SY}_{received} = \\frac{\\text{Tokens}_{burned}}{\\text{Index}_{PY}}"}</Formula>
+
+### Requirements
+
+- Must have **matching PT and YT** amounts
+- Same market (token + maturity)
+- Returns **SY tokens**
+
+### Example
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>PT burned</TableCell>
+      <TableCell><Formula>{"105 \\text{ PT}"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>YT burned</TableCell>
+      <TableCell><Formula>{"105 \\text{ YT}"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Current PY Index</TableCell>
+      <TableCell><Formula>{"1.08"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>SY received</TableCell>
+      <TableCell><Formula>{"\\frac{105}{1.08} = \\textbf{97.2 SY}"}</Formula></TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+<Callout type="warning">
+Note: You may receive slightly less SY than you deposited if the PY Index has increased. This is because some yield was distributed to YT holders.
+</Callout>
+
+---
+
+## Post-Expiry Redemption
+
+After maturity, **PT only** can be redeemed:
+
+<Formula display>{"\\text{Underlying}_{received} = \\text{PT}_{amount} \\times 1.0"}</Formula>
+
+### Key Points
+
+- **1:1 redemption** — Each PT redeems for 1 unit of underlying
+- **No YT needed** — YT expires worthless
+- **Direct to underlying** — Receive the base asset, not SY
+
+### Example
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>PT redeemed</TableCell>
+      <TableCell><Formula>{"105 \\text{ PT}"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Underlying received</TableCell>
+      <TableCell><Formula>{"\\textbf{105 nstSTRK}"}</Formula></TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## YT Yield Collection
+
+YT holders can claim accrued yield at any time:
+
+<Formula display>{"\\text{Yield}_{claimable} = \\text{YT}_{balance} \\times \\frac{\\text{Index}_{current} - \\text{Index}_{claimed}}{\\text{Index}_{current}}"}</Formula>
+
+Yield is paid in the **underlying asset**.
+
+---
+
+## Summary of Scenarios
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Scenario</TableHead>
+      <TableHead>What you need</TableHead>
+      <TableHead>What you get</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Mint</TableCell>
+      <TableCell>SY</TableCell>
+      <TableCell>PT + YT (equal amounts)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Redeem (pre-expiry)</TableCell>
+      <TableCell>PT + YT (equal)</TableCell>
+      <TableCell>SY</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Redeem (post-expiry)</TableCell>
+      <TableCell>PT only</TableCell>
+      <TableCell>Underlying (1:1)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Claim yield</TableCell>
+      <TableCell>YT</TableCell>
+      <TableCell>Underlying (accrued)</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+<DocsNavigation />

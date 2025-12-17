@@ -1,0 +1,141 @@
+import Image from 'next/image';
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+import { PriceSimulator } from '@/components/docs/PriceSimulator';
+
+# Pricing
+
+How PT and YT prices are determined by the AMM.
+
+---
+
+## The Fundamental Equation
+
+At any time before maturity:
+
+<Formula display>{"P_{PT} + P_{YT} = 1 \\text{ SY}"}</Formula>
+
+This relationship is enforced by arbitrage. If prices diverge, traders profit by:
+- **Splitting SY** when <Formula>{"P_{PT} + P_{YT} > 1"}</Formula>
+- **Combining PT + YT** when <Formula>{"P_{PT} + P_{YT} < 1"}</Formula>
+
+---
+
+## PT Pricing Formula
+
+PT price is derived from the **implied yield** — the annualized return if held to maturity:
+
+<Formula display>{"P_{PT} = \\frac{1}{(1 + r)^{t}}"}</Formula>
+
+Where:
+- <Formula>{"r"}</Formula> = implied yield (annualized, e.g., 0.10 for 10%)
+- <Formula>{"t"}</Formula> = time to expiry in years (e.g., 0.5 for 6 months)
+
+### Example
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>Implied yield</TableCell>
+      <TableCell><Formula>{"r = 10\\%"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Time to expiry</TableCell>
+      <TableCell><Formula>{"t = 0.5"}</Formula> years</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>PT Price</TableCell>
+      <TableCell><Formula>{"\\frac{1}{(1.10)^{0.5}} = \\textbf{0.9535}"}</Formula></TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## YT Pricing (Derived)
+
+Since <Formula>{"P_{PT} + P_{YT} = 1"}</Formula>:
+
+<Formula display>{"P_{YT} = 1 - P_{PT}"}</Formula>
+
+Using the example above:
+- <Formula>{"P_{YT} = 1 - 0.9535 = \\textbf{0.0465}"}</Formula>
+
+---
+
+## Try It: Price Simulator
+
+<PriceSimulator />
+
+---
+
+## AMM Curve
+
+The Horizon AMM uses a specialized curve optimized for yield trading:
+
+<div className="my-6 rounded-lg border border-border bg-card p-4">
+  <Image
+    src="/docs/diagrams/amm-curve.svg"
+    alt="AMM curve showing PT price vs implied yield"
+    width={600}
+    height={300}
+    className="w-full"
+  />
+</div>
+
+### Key Properties
+
+1. **Rate-based pricing** — Trades move implied yield, not token ratios
+2. **Time decay** — Curve flattens as maturity approaches
+3. **Anchor mechanism** — Rates tend toward an expected "fair" value
+
+---
+
+## Price Sensitivity
+
+How much does PT price change when yield moves?
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Time to Expiry</TableHead>
+      <TableHead>Yield: 5% → 10%</TableHead>
+      <TableHead>PT Price Change</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>1 year</TableCell>
+      <TableCell>0.9524 → 0.9091</TableCell>
+      <TableCell>-4.5%</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>6 months</TableCell>
+      <TableCell>0.9759 → 0.9535</TableCell>
+      <TableCell>-2.3%</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>1 month</TableCell>
+      <TableCell>0.9959 → 0.9921</TableCell>
+      <TableCell>-0.4%</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+<Callout type="info">
+Longer maturities have higher price sensitivity to yield changes. This means more potential profit (or loss) from yield movements.
+</Callout>
+
+---
+
+## At Maturity
+
+As expiry approaches:
+
+- <Formula>{"P_{PT} \\to 1.0"}</Formula> (guaranteed redemption value)
+- <Formula>{"P_{YT} \\to 0"}</Formula> (no remaining yield rights)
+- <Formula>{"r \\to 0"}</Formula> (no time value left)
+
+<DocsNavigation />
