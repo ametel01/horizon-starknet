@@ -606,14 +606,14 @@ Each: 1-2 sentence definition + link to relevant docs page.
 ### Phase 4: Polish (Week 4-5 equivalent effort)
 
 **Tasks:**
-- [ ] Write: Risks page
-- [ ] Write: FAQ
-- [ ] Write: Glossary
-- [ ] Build search functionality
-- [ ] Add TryItButton integration
-- [ ] Mobile responsiveness testing
-- [ ] Cross-link all pages
-- [ ] Review for consistency
+- [x] Write: Risks page
+- [x] Write: FAQ
+- [x] Write: Glossary
+- [x] Build search functionality
+- [x] Add TryItButton integration
+- [x] Mobile responsiveness testing
+- [x] Cross-link all pages
+- [x] Review for consistency
 
 **Deliverable:** Complete, polished documentation.
 
