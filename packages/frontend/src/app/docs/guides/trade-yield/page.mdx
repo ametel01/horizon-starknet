@@ -1,0 +1,145 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Trade Yield
+
+Buy or sell exposure to future yield movements using PT and YT.
+
+---
+
+## When to Use This Strategy
+
+**Buy YT when:**
+- You expect yields to **stay high or increase**
+- You want **leveraged** yield exposure
+
+**Buy PT (sell YT) when:**
+- You expect yields to **drop**
+- You want **fixed, predictable** returns
+
+---
+
+## Trading PT
+
+### To Buy PT (bet on lower rates)
+
+1. Go to **Trade**
+2. Select market
+3. Choose **SY → PT** swap direction
+4. Enter amount
+5. Review price impact and confirm
+
+### To Sell PT (bet on higher rates)
+
+1. Go to **Trade**
+2. Select **PT → SY** swap direction
+3. Enter amount and confirm
+
+---
+
+## Trading YT
+
+<Callout type="info">
+YT trades are executed as PT swaps in reverse. When you buy YT, the protocol buys PT and pairs it with your SY to mint YT.
+</Callout>
+
+### To Buy YT
+
+1. Go to **Trade**
+2. Select market
+3. Choose **Buy YT** tab
+4. Enter amount
+5. Review and confirm
+
+### To Sell YT
+
+1. Go to **Trade**
+2. Select **Sell YT** tab
+3. Enter amount and confirm
+
+---
+
+## Understanding the Trade Screen
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Field</TableHead>
+      <TableHead>Meaning</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Implied APY</TableCell>
+      <TableCell>Current market rate for fixed yield</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Price Impact</TableCell>
+      <TableCell>How much your trade moves the price</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Slippage</TableCell>
+      <TableCell>Max acceptable price movement</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Min Received</TableCell>
+      <TableCell>Guaranteed minimum output</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Price Impact
+
+Large trades move prices significantly.
+
+<Callout type="warning">
+If price impact exceeds 1%, consider splitting into smaller trades.
+</Callout>
+
+---
+
+## Example: Long YT Trade
+
+**Scenario:** You believe nstSTRK yield will average 12% but market implies 8%.
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>YT price</TableCell>
+      <TableCell>0.04 SY</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>You spend</TableCell>
+      <TableCell>100 SY</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>YT received</TableCell>
+      <TableCell>2,500 YT</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>If yield averages 12%</TableCell>
+      <TableCell>YT worth ~150 SY</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Profit**</TableCell>
+      <TableCell>**50 SY (50%)**</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+<Callout type="danger">
+If yield drops to 4%, your YT could be worth only ~50 SY — a 50% loss.
+</Callout>
+
+---
+
+## Tips
+
+- Check implied yield vs underlying yield before trading
+- Set reasonable slippage (0.5-1% for most trades)
+- Monitor your YT positions — they expire at maturity
+
+<DocsNavigation />
