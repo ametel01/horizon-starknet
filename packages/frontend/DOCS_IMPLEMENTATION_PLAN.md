@@ -582,12 +582,12 @@ Each: 1-2 sentence definition + link to relevant docs page.
 ### Phase 2: Core Content (Week 2-3 equivalent effort)
 
 **Tasks:**
-- [ ] Write: How It Works (both sub-pages)
-- [ ] Write: All 4 Guides
-- [ ] Build Step/StepList components
-- [ ] Create PT/YT Timeline diagram
-- [ ] Add TableOfContents component
-- [ ] Add DocsFooter with prev/next
+- [x] Write: How It Works (both sub-pages)
+- [x] Write: All 4 Guides
+- [x] Build Step/StepList components
+- [x] Create PT/YT Timeline diagram
+- [x] Add TableOfContents component
+- [x] Add DocsFooter with prev/next
 
 **Deliverable:** Complete task-oriented documentation.
 
