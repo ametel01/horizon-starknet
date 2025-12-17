@@ -28,6 +28,7 @@ const CONTRACTS = [
   { file: 'horizon_PT.contract_class.json', name: 'PT' },
   { file: 'horizon_YT.contract_class.json', name: 'YT' },
   { file: 'horizon_MockYieldToken.contract_class.json', name: 'MockYieldToken' },
+  { file: 'horizon_Faucet.contract_class.json', name: 'Faucet' },
 ];
 
 function main(): void {

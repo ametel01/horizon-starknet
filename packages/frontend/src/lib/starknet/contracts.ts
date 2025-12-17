@@ -3,6 +3,7 @@ import { Contract } from 'starknet';
 
 import {
   FACTORY_ABI,
+  FAUCET_ABI,
   MARKET_ABI,
   MARKETFACTORY_ABI,
   MOCKYIELDTOKEN_ABI,
@@ -27,6 +28,7 @@ export type TypedSY = TypedContractV2<typeof SY_ABI>;
 export type TypedPT = TypedContractV2<typeof PT_ABI>;
 export type TypedYT = TypedContractV2<typeof YT_ABI>;
 export type TypedMockYieldToken = TypedContractV2<typeof MOCKYIELDTOKEN_ABI>;
+export type TypedFaucet = TypedContractV2<typeof FAUCET_ABI>;
 
 /**
  * Creates a type-safe contract instance using abi-wan-kanabi types.
@@ -96,4 +98,12 @@ export function getMockYieldTokenContract(
 // ERC20 contract - uses SY_ABI as it includes ERC20 functions
 export function getERC20Contract(address: string, providerOrAccount: ProviderOrAccount): TypedSY {
   return new Contract(SY_ABI, address, providerOrAccount).typedv2(SY_ABI);
+}
+
+// Faucet contract for test tokens
+export function getFaucetContract(
+  address: string,
+  providerOrAccount: ProviderOrAccount
+): TypedFaucet {
+  return new Contract(FAUCET_ABI, address, providerOrAccount).typedv2(FAUCET_ABI);
 }
