@@ -20,7 +20,7 @@ const CHAIN_IDS: Record<NetworkId, string> = {
 
 // Use 'latest' for networks where 'pending' isn't well supported
 const DEFAULT_BLOCK: Record<NetworkId, BlockTag> = {
-  mainnet: 'pending',
+  mainnet: 'latest', // Alchemy doesn't support 'pending' for mainnet
   sepolia: 'latest', // Alchemy doesn't support 'pending' for Sepolia
   devnet: 'latest',
   fork: 'latest',
@@ -67,15 +67,9 @@ export function createProvider(network?: NetworkId): RpcProvider {
   const networkId = network ?? getNetworkId();
   const defaultBlock = DEFAULT_BLOCK[networkId];
 
-  // Use custom provider for networks that need explicit block tag handling
-  if (networkId === 'devnet' || networkId === 'fork' || networkId === 'sepolia') {
-    return new DevnetRpcProvider(RPC_URLS[networkId], defaultBlock);
-  }
-
-  return new RpcProvider({
-    nodeUrl: RPC_URLS[networkId],
-    batch: 0,
-  });
+  // Use custom provider for all networks to ensure consistent block tag handling
+  // Alchemy doesn't support 'pending' block tag for most networks
+  return new DevnetRpcProvider(RPC_URLS[networkId], defaultBlock);
 }
 
 export function getChainId(network?: NetworkId): string {
