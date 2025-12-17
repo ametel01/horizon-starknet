@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { DocsSearch } from './DocsSearch';
 import { DocsSidebar } from './DocsSidebar';
 import { TableOfContents } from './TableOfContents';
+import { VersionBadge } from './VersionBadge';
 
 interface DocsLayoutProps {
   children: React.ReactNode;
@@ -71,6 +72,9 @@ export function DocsLayout({ children }: DocsLayoutProps): React.ReactNode {
         <aside className="hidden w-48 shrink-0 xl:block">
           <div className="sticky top-24 py-8">
             <TableOfContents />
+            <div className="mt-8">
+              <VersionBadge />
+            </div>
           </div>
         </aside>
       </div>
