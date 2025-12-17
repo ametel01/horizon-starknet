@@ -7,6 +7,7 @@ import { UIModeProvider } from '@/contexts/ui-mode-context';
 
 import { QueryProvider } from './QueryProvider';
 import { StarknetProvider } from './StarknetProvider';
+import { ThemeProvider } from './theme-provider';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -14,10 +15,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps): React.ReactNode {
   return (
-    <QueryProvider>
-      <StarknetProvider>
-        <UIModeProvider>{children}</UIModeProvider>
-      </StarknetProvider>
-    </QueryProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+      <QueryProvider>
+        <StarknetProvider>
+          <UIModeProvider>{children}</UIModeProvider>
+        </StarknetProvider>
+      </QueryProvider>
+    </ThemeProvider>
   );
 }

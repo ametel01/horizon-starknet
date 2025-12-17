@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { ModeToggle } from '@/components/mode-toggle';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/Button';
 import { useUIMode } from '@/contexts/ui-mode-context';
 
@@ -69,6 +70,7 @@ export function Header(): React.ReactNode {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <ModeToggle className="hidden sm:flex" />
           <ConnectButton />
 
