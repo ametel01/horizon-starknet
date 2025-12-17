@@ -1,0 +1,191 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Risks
+
+Understanding the risks involved in using Horizon Protocol.
+
+---
+
+## Smart Contract Risk
+
+<Callout type="danger">
+Horizon smart contracts have not been audited. Use at your own risk and never deposit more than you can afford to lose.
+</Callout>
+
+**What this means:**
+- Code may contain bugs or vulnerabilities
+- Funds could be lost due to exploits
+- No guarantees of contract behavior
+
+**Mitigation:**
+- Start with small amounts
+- Monitor protocol announcements
+- Understand the code if possible
+
+---
+
+## Market Risks
+
+### Implied Yield Volatility
+
+The implied yield can move significantly based on market sentiment.
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Position</TableHead>
+      <TableHead>Risk if yields rise</TableHead>
+      <TableHead>Risk if yields fall</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**PT holder**</TableCell>
+      <TableCell>Paper loss (PT price drops)</TableCell>
+      <TableCell>None (locked in)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**YT holder**</TableCell>
+      <TableCell>Potential gains</TableCell>
+      <TableCell>Significant losses</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**LP**</TableCell>
+      <TableCell>Impermanent loss</TableCell>
+      <TableCell>Impermanent loss</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### Liquidity Risk
+
+- Low liquidity pools have high price impact
+- Large positions may be difficult to exit
+- Slippage can significantly reduce returns
+
+---
+
+## Underlying Asset Risks
+
+### Depeg Risk
+
+If the underlying yield-bearing asset loses its peg or value:
+- SY value drops proportionally
+- PT redemption value may be affected
+- YT yield distributions decrease
+
+### Protocol Risk
+
+The underlying protocol (e.g., Nostra for nstSTRK) has its own risks:
+- Smart contract vulnerabilities
+- Oracle failures
+- Governance attacks
+
+---
+
+## Position-Specific Risks
+
+### PT Risks
+
+<Callout type="warning">
+**Early exit risk** — If you sell PT before maturity and implied yields have risen, you will realize a loss.
+</Callout>
+
+- **Opportunity cost** — Locked into a fixed rate while market rates may rise
+- **Maturity mismatch** — May need funds before maturity date
+
+See [Earn Fixed Yield guide](/docs/guides/earn-fixed-yield) for PT strategies.
+
+### YT Risks
+
+<Callout type="danger">
+**YT expires worthless** — At maturity, YT has zero value. All unclaimed yield is lost if not collected.
+</Callout>
+
+- **High volatility** — Small yield changes cause large price swings
+- **Time decay** — Value decreases as maturity approaches
+- **Variable returns** — Actual yield may differ from expectations
+
+See [Trade Yield guide](/docs/guides/trade-yield) for YT strategies.
+
+### LP Risks
+
+- **Impermanent loss** — Position underperforms holding assets separately
+- **Complexity** — Multiple sources of returns and risks
+- **Market maker risk** — LPs absorb directional flow
+
+See [Provide Liquidity guide](/docs/guides/provide-liquidity) for LP strategies.
+
+---
+
+## Operational Risks
+
+### Wallet Security
+
+- **Private key loss** — No recovery possible
+- **Phishing** — Always verify URLs and contract addresses
+- **Malicious approvals** — Review all transaction details
+
+### Network Risks
+
+- **Transaction failures** — Gas estimation or network congestion
+- **Reorg risk** — Wait for confirmations on large transactions
+- **RPC issues** — Consider using multiple RPC endpoints
+
+---
+
+## Risk Management Tips
+
+1. **Diversify** — Don't put all funds in one position or market
+2. **Size appropriately** — Only risk what you can afford to lose
+3. **Understand before acting** — Read docs, ask questions
+4. **Monitor positions** — Check regularly, especially near maturity
+5. **Set reminders** — Calendar alerts for maturity dates and yield claims
+
+---
+
+## Risk Comparison
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Strategy</TableHead>
+      <TableHead>Risk Level</TableHead>
+      <TableHead>Primary Risk</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>[Hold PT to maturity](/docs/guides/earn-fixed-yield)</TableCell>
+      <TableCell>Lower</TableCell>
+      <TableCell>Smart contract, underlying depeg</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>[Trade PT/YT](/docs/guides/trade-yield)</TableCell>
+      <TableCell>Medium</TableCell>
+      <TableCell>Yield volatility, timing</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>[Hold YT](/docs/guides/trade-yield)</TableCell>
+      <TableCell>Higher</TableCell>
+      <TableCell>Yield drops, time decay</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>[Provide liquidity](/docs/guides/provide-liquidity)</TableCell>
+      <TableCell>Medium-High</TableCell>
+      <TableCell>Impermanent loss, complexity</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Related
+
+- [FAQ](/docs/faq) — Common questions answered
+- [Glossary](/docs/glossary) — Key terms explained
+- [How It Works](/docs/how-it-works) — Understanding the protocol
+
+<DocsNavigation />
