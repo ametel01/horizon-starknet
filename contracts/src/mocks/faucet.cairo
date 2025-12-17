@@ -16,7 +16,9 @@ pub mod Faucet {
         StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use super::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait, MINT_AMOUNT, SECONDS_PER_DAY};
+    use super::{
+        IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait, MINT_AMOUNT, SECONDS_PER_DAY,
+    };
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
 
@@ -78,7 +80,9 @@ pub mod Faucet {
             let current_day = self._get_current_day();
 
             // Check if already minted today
-            assert(!self.has_minted_today.read((caller, current_day)), 'Faucet: already minted today');
+            assert(
+                !self.has_minted_today.read((caller, current_day)), 'Faucet: already minted today',
+            );
 
             // Mark as minted for today
             self.has_minted_today.write((caller, current_day), true);
