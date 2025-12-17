@@ -23,6 +23,7 @@ const navLinks: NavLink[] = [
   { href: '/trade', label: 'Trade', advancedOnly: true },
   { href: '/pools', label: 'Pools', advancedOnly: true },
   { href: '/portfolio', label: 'Portfolio' },
+  { href: '/docs', label: 'Docs' },
 ];
 
 export function Header(): React.ReactNode {
