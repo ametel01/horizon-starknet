@@ -7,15 +7,6 @@ on:
   pull_request:
     branches: [main]
     paths: ["packages/frontend/**"]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Environment to deploy"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
 
 jobs:
   # Quality checks on PRs to main
@@ -42,11 +33,9 @@ jobs:
       - name: Quality checks
         run: bun run check
 
-  # Deploy to Staging (Sepolia) on push to develop or manual trigger
+  # Deploy to Staging (Sepolia) on push to develop
   deploy-staging:
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     name: Deploy to Sepolia (Staging)
     runs-on: ubuntu-latest
     defaults:
@@ -95,11 +84,9 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
 
-  # Deploy to Production (Mainnet) - on push to main or manual trigger
+  # Deploy to Production (Mainnet) on push to main
   deploy-production:
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Deploy to Mainnet (Production)
     runs-on: ubuntu-latest
     defaults:
