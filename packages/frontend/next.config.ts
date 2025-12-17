@@ -1,7 +1,9 @@
+import createMDX from '@next/mdx';
 import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
+  pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
   reactStrictMode: true,
   typescript: {
     // We run TypeScript separately in CI
@@ -27,4 +29,8 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.resolve(__dirname, '../../'),
 };
 
-export default nextConfig;
+const withMDX = createMDX({
+  extension: /\.mdx?$/,
+});
+
+export default withMDX(nextConfig);
