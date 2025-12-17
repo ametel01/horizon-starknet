@@ -2,14 +2,51 @@ name: Frontend Deploy
 
 on:
   push:
+    branches: [main, develop]
+    paths: ["packages/frontend/**"]
+  pull_request:
     branches: [main]
     paths: ["packages/frontend/**"]
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
+  # Quality checks on PRs to main
+  check:
+    if: github.event_name == 'pull_request'
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Quality checks
+        run: bun run check
+
+  # Deploy to Staging (Sepolia) on push to develop or manual trigger
   deploy-staging:
-    if: github.event_name == 'push'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     name: Deploy to Sepolia (Staging)
     runs-on: ubuntu-latest
     defaults:
@@ -58,8 +95,11 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
 
+  # Deploy to Production (Mainnet) - on push to main or manual trigger
   deploy-production:
-    if: github.event_name == 'release'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     name: Deploy to Mainnet (Production)
     runs-on: ubuntu-latest
     defaults:
