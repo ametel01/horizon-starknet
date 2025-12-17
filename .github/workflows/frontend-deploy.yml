@@ -49,9 +49,6 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     name: Deploy to Sepolia (Staging)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/frontend
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.url }}
@@ -66,22 +63,24 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
+        working-directory: packages/frontend
         run: bun install --frozen-lockfile
 
       - name: Quality checks
+        working-directory: packages/frontend
         run: bun run check
 
       - name: Install Vercel CLI
-        run: bun add -g vercel@latest
+        run: npm install -g vercel@latest
 
       - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN_STAGING }}
+        run: vercel pull --yes --environment=production --cwd packages/frontend --token=${{ secrets.VERCEL_TOKEN_STAGING }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
 
       - name: Build with Vercel
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN_STAGING }}
+        run: vercel build --prod --cwd packages/frontend --token=${{ secrets.VERCEL_TOKEN_STAGING }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
@@ -89,22 +88,19 @@ jobs:
       - name: Deploy to Vercel (Staging)
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN_STAGING }})
+          url=$(vercel deploy --prebuilt --prod --cwd packages/frontend --token=${{ secrets.VERCEL_TOKEN_STAGING }})
           echo "url=$url" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
 
-  # Deploy to Production (Mainnet) - on push to main or manual trigger
+  # Deploy to Production (Mainnet) on push to main or manual trigger
   deploy-production:
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     name: Deploy to Mainnet (Production)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/frontend
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -119,22 +115,24 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
+        working-directory: packages/frontend
         run: bun install --frozen-lockfile
 
       - name: Quality checks
+        working-directory: packages/frontend
         run: bun run check
 
       - name: Install Vercel CLI
-        run: bun add -g vercel@latest
+        run: npm install -g vercel@latest
 
       - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN_PRODUCTION }}
+        run: vercel pull --yes --environment=production --cwd packages/frontend --token=${{ secrets.VERCEL_TOKEN_PRODUCTION }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PRODUCTION }}
 
       - name: Build with Vercel
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN_PRODUCTION }}
+        run: vercel build --prod --cwd packages/frontend --token=${{ secrets.VERCEL_TOKEN_PRODUCTION }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PRODUCTION }}
@@ -142,7 +140,7 @@ jobs:
       - name: Deploy to Vercel (Production)
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN_PRODUCTION }})
+          url=$(vercel deploy --prebuilt --prod --cwd packages/frontend --token=${{ secrets.VERCEL_TOKEN_PRODUCTION }})
           echo "url=$url" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
