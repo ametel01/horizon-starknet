@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { DocsNavigation } from '@/components/docs/DocsNavigation';
 import { Callout } from '@/components/docs/Callout';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
@@ -91,6 +92,22 @@ PT + YT = SY (always, before maturity)
 ```
 
 This is enforced by arbitrage. If prices drift, traders profit by splitting or combining until balance is restored.
+
+---
+
+## Price Over Time
+
+As maturity approaches, PT rises toward 1 and YT falls toward 0:
+
+<div className="my-6 rounded-lg border border-border bg-card p-4">
+  <Image
+    src="/docs/diagrams/pt-yt-timeline.svg"
+    alt="PT price rises to 1, YT price falls to 0 at maturity"
+    width={600}
+    height={300}
+    className="w-full"
+  />
+</div>
 
 ---
 
