@@ -4,7 +4,6 @@ import { Inter, JetBrains_Mono, Public_Sans } from 'next/font/google';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/sonner';
-import { cn } from '@/lib/utils';
 import { Providers } from '@/providers';
 
 import './globals.css';
@@ -40,7 +39,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps): React.ReactNode {
   return (
-    <html lang="en" className={cn('dark', publicSans.variable)}>
+    <html lang="en" className={publicSans.variable} suppressHydrationWarning>
       <body className={`${inter.variable} ${mono.variable} font-sans`}>
         <Providers>
           <Header />
