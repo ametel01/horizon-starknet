@@ -1,0 +1,88 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { TryItButton } from '@/components/docs/TryItButton';
+
+# Getting Started
+
+Make your first deposit in under 5 minutes.
+
+---
+
+## Before You Begin
+
+You'll need:
+- A **Starknet wallet** ([Ready](https://argent.xyz) (ex Argent) or [Braavos](https://braavos.app))
+- **Test tokens** (get free hrzSTRK from the [Faucet](/faucet))
+- Small amount of **STRK for gas**
+
+---
+
+## Step 1: Connect Wallet
+
+Click **Connect** in the top right. Select your wallet and approve the connection.
+
+## Step 2: Go to Earn
+
+Click **Earn** in the navigation bar.
+
+## Step 3: Choose a Market
+
+Select based on:
+- **Token** you want to deposit
+- **APY** offered
+- **Maturity** date that fits your timeline
+
+## Step 4: Enter Amount
+
+Type how much you want to deposit. Review the fixed APY shown.
+
+## Step 5: Confirm
+
+Click **Deposit** and approve the transaction in your wallet.
+
+<Callout type="info">
+First deposit requires two transactions: one to approve the token, one to deposit.
+</Callout>
+
+<div className="mt-6">
+  <TryItButton href="/mint">Start Earning Now</TryItButton>
+</div>
+
+---
+
+## After Depositing
+
+Your deposit is now split into fixed and variable rate positions. View them anytime on the **Portfolio** page.
+
+**At maturity:** Redeem your position for the original amount plus earned yield.
+
+---
+
+## Common Mistakes
+
+- **Withdrawing early** — May get less than expected
+- **Ignoring maturity** — Make sure the date works for you
+- **Low gas** — Keep STRK in wallet for transactions
+
+---
+
+## Next Steps
+
+<div className="not-prose grid gap-3 sm:grid-cols-2 mt-4">
+  <a href="/docs/how-it-works/yield-tokens" className="flex items-center gap-3 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors">
+    <span className="text-2xl">🎓</span>
+    <div>
+      <div className="font-medium text-foreground">Yield Tokens</div>
+      <div className="text-sm text-muted-foreground">Understand PT and YT</div>
+    </div>
+  </a>
+  <a href="/docs/guides/earn-fixed-yield" className="flex items-center gap-3 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors">
+    <span className="text-2xl">📈</span>
+    <div>
+      <div className="font-medium text-foreground">Earn Fixed Yield</div>
+      <div className="text-sm text-muted-foreground">Detailed strategy guide</div>
+    </div>
+  </a>
+</div>
+
+<DocsNavigation />

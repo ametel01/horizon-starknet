@@ -21,3 +21,4 @@ export { SY_ABI } from './SY';
 export { PT_ABI } from './PT';
 export { YT_ABI } from './YT';
 export { MOCKYIELDTOKEN_ABI } from './MockYieldToken';
+export { FAUCET_ABI } from './Faucet';

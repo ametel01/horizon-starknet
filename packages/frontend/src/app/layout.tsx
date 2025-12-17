@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Public_Sans } from 'next/font/google';
 
+import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
         <Providers>
           <Header />
           <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+          <Footer />
           <Toaster />
         </Providers>
       </body>

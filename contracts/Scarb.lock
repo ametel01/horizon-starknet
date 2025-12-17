@@ -3,7 +3,7 @@ version = 1
 
 [[package]]
 name = "horizon"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "openzeppelin_access",
  "openzeppelin_token",

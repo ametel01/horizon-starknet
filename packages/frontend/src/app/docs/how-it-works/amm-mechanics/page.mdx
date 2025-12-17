@@ -1,0 +1,76 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
+
+# AMM Mechanics
+
+Horizon uses a specialized market maker designed for time-decaying assets like PT.
+
+---
+
+## How Trading Works
+
+The AMM pairs **PT** with **SY** (not YT directly). YT price is derived:
+
+<Formula display>{"P_{YT} = 1 - P_{PT}"}</Formula>
+
+When you trade:
+- **Buy PT** → PT price rises, implied yield drops
+- **Sell PT** → PT price falls, implied yield rises
+
+---
+
+## Implied Yield
+
+The AMM expresses prices as **implied yield** — the annualized return if you hold PT to maturity.
+
+<Formula display>{"\\text{Implied APY} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+
+**Example:** PT at 0.95 with 180 days to expiry = ~10.8% implied APY
+
+---
+
+## Time Decay
+
+As maturity approaches:
+
+1. **PT price rises toward 1** — guaranteed convergence
+2. **Price sensitivity decreases** — trades have less impact
+3. **YT price falls toward 0** — yield rights worth less
+
+<Callout type="info">
+This is automatic. The AMM naturally pushes PT toward its redemption value as expiry nears.
+</Callout>
+
+---
+
+## Price Impact
+
+Large trades move the implied yield significantly.
+
+**Before trading, check:**
+- Spot price vs execution price
+- Price impact percentage
+- Slippage tolerance setting
+
+<Callout type="warning">
+High price impact means you're getting a worse rate. Consider splitting large trades.
+</Callout>
+
+---
+
+## For Liquidity Providers
+
+When you add liquidity:
+- Deposit both PT and SY
+- Receive LP tokens
+- Earn fees from every swap
+
+**LP returns come from:**
+- Swap fees (percentage of each trade)
+- Underlying yield (SY keeps earning)
+- PT appreciation toward maturity
+
+See [Provide Liquidity](/docs/guides/provide-liquidity) for the full guide.
+
+<DocsNavigation />

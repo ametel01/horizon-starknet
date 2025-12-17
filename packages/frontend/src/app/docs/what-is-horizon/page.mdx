@@ -1,0 +1,91 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { TryItButton } from '@/components/docs/TryItButton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# What is Horizon?
+
+Horizon lets you **lock in guaranteed yields** or **trade future yield** on Starknet.
+
+---
+
+## The Problem
+
+Yield-bearing tokens like nstSTRK have **variable rates** that change daily. You never know what you'll actually earn.
+
+## The Solution
+
+Horizon splits your deposit into two tokens:
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Token</TableHead>
+      <TableHead>What you get</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**Principal Token (PT)**</TableCell>
+      <TableCell>Fixed yield, guaranteed at maturity</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Yield Token (YT)**</TableCell>
+      <TableCell>Variable yield until maturity</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Three Ways to Use Horizon
+
+### 1. Lock in Fixed Yield
+Buy PT at a discount. Hold until maturity. Redeem for full value. [Learn more →](/docs/guides/earn-fixed-yield)
+
+**Example:** Pay 95 STRK for PT worth 100 STRK at maturity = 5.26% guaranteed return.
+
+### 2. Trade Yield
+Think rates will rise? Buy YT. Think they'll fall? Sell YT. [Learn more →](/docs/guides/trade-yield)
+
+### 3. Earn Fees
+Provide liquidity and earn trading fees from other users. [Learn more →](/docs/guides/provide-liquidity)
+
+---
+
+## What Can Go Wrong
+
+<Callout type="warning">
+- YT loses value if yield drops
+- Exiting PT early may result in losses
+- Smart contract risk exists in all DeFi
+</Callout>
+
+See [Risks](/docs/risks) for full details.
+
+<div className="mt-6">
+  <TryItButton href="/">Launch App</TryItButton>
+</div>
+
+---
+
+## Next Steps
+
+<div className="not-prose grid gap-3 sm:grid-cols-2 mt-4">
+  <a href="/docs/getting-started" className="flex items-center gap-3 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors">
+    <span className="text-2xl">🚀</span>
+    <div>
+      <div className="font-medium text-foreground">Getting Started</div>
+      <div className="text-sm text-muted-foreground">Make your first deposit</div>
+    </div>
+  </a>
+  <a href="/docs/how-it-works" className="flex items-center gap-3 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors">
+    <span className="text-2xl">📖</span>
+    <div>
+      <div className="font-medium text-foreground">How It Works</div>
+      <div className="text-sm text-muted-foreground">Understand the mechanics</div>
+    </div>
+  </a>
+</div>
+
+<DocsNavigation />

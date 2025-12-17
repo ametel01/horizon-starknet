@@ -1,0 +1,173 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Formula } from '@/components/docs/Formula';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+import { YieldCalculator } from '@/components/docs/YieldCalculator';
+
+# APY Calculation
+
+Understanding how yields are calculated and displayed in Horizon.
+
+---
+
+## Types of Yield
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Type</TableHead>
+      <TableHead>What it means</TableHead>
+      <TableHead>Where shown</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**Implied APY**</TableCell>
+      <TableCell>Market's expected yield from PT price</TableCell>
+      <TableCell>Trade page, Market cards</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Underlying APY**</TableCell>
+      <TableCell>Current yield of the base asset</TableCell>
+      <TableCell>Market details</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Fixed APY**</TableCell>
+      <TableCell>Your locked-in return from buying PT</TableCell>
+      <TableCell>Earn page, Portfolio</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**LP APY**</TableCell>
+      <TableCell>Combined return from providing liquidity</TableCell>
+      <TableCell>Pools page</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Implied APY Formula
+
+Derived from PT price and time to maturity:
+
+<Formula display>{"\\text{Implied APY} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+
+Where:
+- <Formula>{"P_{PT}"}</Formula> = PT price in SY terms
+- <Formula>{"d"}</Formula> = days to expiry
+
+### Example
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>PT Price</TableCell>
+      <TableCell><Formula>{"P_{PT} = 0.95"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Days to expiry</TableCell>
+      <TableCell><Formula>{"d = 180"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Calculation</TableCell>
+      <TableCell><Formula>{"\\left( \\frac{1}{0.95} \\right)^{\\frac{365}{180}} - 1"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Implied APY**</TableCell>
+      <TableCell><Formula>{"\\textbf{10.8\\%}"}</Formula></TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Try It: Yield Calculator
+
+<YieldCalculator />
+
+---
+
+## Fixed APY (PT Holders)
+
+When you buy PT at a discount, your fixed APY is:
+
+<Formula display>{"\\text{Fixed APY} = \\left( \\frac{1}{P_{purchase}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+
+<Callout type="tip">
+Your fixed APY is locked in at purchase. It doesn't change regardless of market movements.
+</Callout>
+
+---
+
+## LP APY Components
+
+Liquidity provider returns come from multiple sources:
+
+<Formula display>{"\\text{LP APY} = \\text{Fee APY} + \\text{Underlying Yield} + \\text{PT Appreciation} - \\text{IL}"}</Formula>
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Component</TableHead>
+      <TableHead>Description</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Swap Fee APY</TableCell>
+      <TableCell>Fees earned from trades (typically 0.1-0.3%)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Underlying Yield</TableCell>
+      <TableCell>SY portion continues earning base yield</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>PT Appreciation</TableCell>
+      <TableCell>PT rises toward 1 as maturity approaches</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>IL Drag</TableCell>
+      <TableCell>Impermanent loss if implied yield moves significantly</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## APY vs APR
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Metric</TableHead>
+      <TableHead>Compounding</TableHead>
+      <TableHead>Formula</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>APR</TableCell>
+      <TableCell>None (simple)</TableCell>
+      <TableCell><Formula>{"r \\times t"}</Formula></TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>APY</TableCell>
+      <TableCell>Continuous</TableCell>
+      <TableCell><Formula>{"(1 + r)^t - 1"}</Formula></TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+Horizon displays **APY** (Annual Percentage Yield) which assumes continuous compounding.
+
+---
+
+## Important Notes
+
+<Callout type="warning">
+- **Historical yield ≠ future yield** — Past performance doesn't guarantee future returns
+- **Implied yield is market opinion** — It reflects trader expectations, not guaranteed outcomes
+- **YT yield is variable** — Actual yield collected depends on underlying performance
+</Callout>
+
+<DocsNavigation />

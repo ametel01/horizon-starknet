@@ -577,7 +577,58 @@ export const MOCKYIELDTOKEN_ABI = [
       },
       {
         type: 'function',
-        name: 'admin',
+        name: 'add_minter',
+        inputs: [
+          {
+            name: 'minter',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'remove_minter',
+        inputs: [
+          {
+            name: 'minter',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'is_minter',
+        inputs: [
+          {
+            name: 'account',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+    ],
+  },
+  {
+    type: 'impl',
+    name: 'OwnableImpl',
+    interface_name: 'openzeppelin_access::ownable::interface::IOwnable',
+  },
+  {
+    type: 'interface',
+    name: 'openzeppelin_access::ownable::interface::IOwnable',
+    items: [
+      {
+        type: 'function',
+        name: 'owner',
         inputs: [],
         outputs: [
           {
@@ -585,6 +636,25 @@ export const MOCKYIELDTOKEN_ABI = [
           },
         ],
         state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'transfer_ownership',
+        inputs: [
+          {
+            name: 'new_owner',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'renounce_ownership',
+        inputs: [],
+        outputs: [],
+        state_mutability: 'external',
       },
     ],
   },
@@ -605,7 +675,7 @@ export const MOCKYIELDTOKEN_ABI = [
         type: 'core::starknet::contract_address::ContractAddress',
       },
       {
-        name: 'admin',
+        name: 'owner',
         type: 'core::starknet::contract_address::ContractAddress',
       },
     ],
@@ -673,6 +743,57 @@ export const MOCKYIELDTOKEN_ABI = [
   },
   {
     type: 'event',
+    name: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferred',
+    kind: 'struct',
+    members: [
+      {
+        name: 'previous_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'new_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferStarted',
+    kind: 'struct',
+    members: [
+      {
+        name: 'previous_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'new_owner',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'openzeppelin_access::ownable::ownable::OwnableComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'OwnershipTransferred',
+        type: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferred',
+        kind: 'nested',
+      },
+      {
+        name: 'OwnershipTransferStarted',
+        type: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferStarted',
+        kind: 'nested',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::mocks::mock_yield_token::MockYieldToken::IndexUpdated',
     kind: 'struct',
     members: [
@@ -694,7 +815,7 @@ export const MOCKYIELDTOKEN_ABI = [
     kind: 'struct',
     members: [
       {
-        name: 'caller',
+        name: 'sender',
         type: 'core::starknet::contract_address::ContractAddress',
         kind: 'key',
       },
@@ -721,7 +842,7 @@ export const MOCKYIELDTOKEN_ABI = [
     kind: 'struct',
     members: [
       {
-        name: 'caller',
+        name: 'sender',
         type: 'core::starknet::contract_address::ContractAddress',
         kind: 'key',
       },
@@ -749,12 +870,41 @@ export const MOCKYIELDTOKEN_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::mocks::mock_yield_token::MockYieldToken::MinterAdded',
+    kind: 'struct',
+    members: [
+      {
+        name: 'minter',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::mocks::mock_yield_token::MockYieldToken::MinterRemoved',
+    kind: 'struct',
+    members: [
+      {
+        name: 'minter',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::mocks::mock_yield_token::MockYieldToken::Event',
     kind: 'enum',
     variants: [
       {
         name: 'ERC20Event',
         type: 'openzeppelin_token::erc20::erc20::ERC20Component::Event',
+        kind: 'flat',
+      },
+      {
+        name: 'OwnableEvent',
+        type: 'openzeppelin_access::ownable::ownable::OwnableComponent::Event',
         kind: 'flat',
       },
       {
@@ -770,6 +920,16 @@ export const MOCKYIELDTOKEN_ABI = [
       {
         name: 'Withdraw',
         type: 'horizon::mocks::mock_yield_token::MockYieldToken::Withdraw',
+        kind: 'nested',
+      },
+      {
+        name: 'MinterAdded',
+        type: 'horizon::mocks::mock_yield_token::MockYieldToken::MinterAdded',
+        kind: 'nested',
+      },
+      {
+        name: 'MinterRemoved',
+        type: 'horizon::mocks::mock_yield_token::MockYieldToken::MinterRemoved',
         kind: 'nested',
       },
     ],

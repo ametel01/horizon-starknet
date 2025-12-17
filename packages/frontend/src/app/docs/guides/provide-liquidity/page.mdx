@@ -1,0 +1,125 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { TryItButton } from '@/components/docs/TryItButton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Provide Liquidity
+
+Earn trading fees by adding liquidity to PT/SY pools.
+
+---
+
+## When to Use This Strategy
+
+- You want to earn **passive income** from swap fees
+- You're comfortable with **impermanent loss** risk
+- You plan to hold until **near maturity**
+
+---
+
+## What You Provide
+
+Liquidity pools contain **PT + SY** in a specific ratio.
+
+When you add liquidity:
+- Deposit both PT and SY
+- Receive **LP tokens** representing your share
+- Earn fees from every swap in the pool
+
+---
+
+## Step-by-Step
+
+### 1. Go to Pools
+
+Click **Pools** in the navigation (Advanced mode only).
+
+### 2. Select a Pool
+
+Choose based on:
+- **Fee APY** — trading fee returns
+- **TVL** — total liquidity (higher = more stable)
+- **Maturity** — when the pool expires
+
+### 3. Enter Amounts
+
+Enter how much to deposit. The interface auto-balances to match the pool ratio.
+
+### 4. Confirm
+
+Click **Add Liquidity** and approve in your wallet.
+
+<Callout type="info">
+You may need to approve both PT and SY tokens before depositing.
+</Callout>
+
+---
+
+## Your Returns
+
+LP returns come from three sources:
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Source</TableHead>
+      <TableHead>Description</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Swap fees</TableCell>
+      <TableCell>Percentage of each trade in the pool</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Underlying yield</TableCell>
+      <TableCell>SY in pool continues earning</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>PT appreciation</TableCell>
+      <TableCell>PT rises toward 1 as maturity approaches</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Removing Liquidity
+
+1. Go to **Pools**
+2. Click on your active position
+3. Click **Remove Liquidity**
+4. Choose amount to withdraw
+5. Confirm transaction
+
+You receive PT + SY back in the current pool ratio.
+
+---
+
+## Impermanent Loss
+
+<Callout type="warning">
+If implied yield moves significantly in either direction, your LP position may underperform simply holding PT + SY separately.
+</Callout>
+
+**IL is lower when:**
+- Implied yield stays stable
+- You're closer to maturity (PT converges to 1)
+
+**IL is higher when:**
+- Large yield swings occur
+- Far from maturity
+
+---
+
+## Tips
+
+- Pools near maturity have lower IL risk
+- Higher TVL pools have lower price impact for LPs
+- Monitor your position regularly on the Portfolio page
+
+<div className="mt-6">
+  <TryItButton href="/pools">View Pools</TryItButton>
+</div>
+
+<DocsNavigation />

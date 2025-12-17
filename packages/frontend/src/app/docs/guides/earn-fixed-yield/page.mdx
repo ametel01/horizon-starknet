@@ -1,0 +1,119 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { TryItButton } from '@/components/docs/TryItButton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Earn Fixed Yield
+
+Lock in a guaranteed APY by holding Principal Tokens until maturity.
+
+---
+
+## When to Use This Strategy
+
+- You want **predictable returns**
+- You expect rates to **drop** in the future
+- You can hold until **maturity**
+
+---
+
+## How It Works
+
+1. Buy PT at a discount (e.g., 0.95 per 1 underlying)
+2. Hold until maturity
+3. Redeem for full value (1.00)
+4. Your profit = the discount
+
+**The discount is your fixed yield, locked in from day one.**
+
+---
+
+## Step-by-Step
+
+### 1. Go to Earn
+
+Click **Earn** in the navigation (Simple mode) or **Mint** (Advanced mode).
+
+### 2. Select a Market
+
+Choose based on:
+- **Fixed APY** — higher = better return
+- **Maturity** — must fit your timeline
+- **Token** — the asset you want exposure to
+
+### 3. Enter Amount
+
+Type how much to deposit. The interface shows:
+- Your fixed APY
+- Amount of PT you'll receive
+- Maturity date
+
+### 4. Confirm Deposit
+
+Click **Deposit** and approve in your wallet.
+
+<Callout type="info">
+First-time deposits require two transactions: approve + deposit.
+</Callout>
+
+---
+
+## At Maturity
+
+Go to **Portfolio** and click **Redeem**. Your PT converts to the underlying asset at 1:1.
+
+---
+
+## Example
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>Deposit</TableCell>
+      <TableCell>1,000 nstSTRK</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>PT received</TableCell>
+      <TableCell>1,000 PT</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>PT price</TableCell>
+      <TableCell>0.95</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Cost</TableCell>
+      <TableCell>950 nstSTRK worth</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>At maturity</TableCell>
+      <TableCell>1,000 nstSTRK</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Profit**</TableCell>
+      <TableCell>**50 nstSTRK (5.26%)**</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Risks
+
+<Callout type="warning">
+- **Early exit** — Selling PT before maturity may result in losses if rates have risen
+- **Opportunity cost** — If rates rise significantly, you miss out on higher yields
+</Callout>
+
+---
+
+## Tips
+
+- Choose maturities that match when you'll need the funds
+- Longer maturities usually offer higher fixed APY
+- Check the current implied yield vs underlying yield to assess value
+
+<div className="mt-6">
+  <TryItButton href="/mint">Start Earning</TryItButton>
+</div>
+
+<DocsNavigation />

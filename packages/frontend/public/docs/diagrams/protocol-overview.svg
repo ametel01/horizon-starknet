@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#a1a1aa"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="300" fill="#18181b"/>
+
+  <!-- Deposit Box -->
+  <rect x="40" y="110" width="120" height="80" rx="8" stroke="#71717a" stroke-width="2" fill="#27272a"/>
+  <text x="100" y="145" text-anchor="middle" fill="#fafafa" font-size="14" font-weight="600" font-family="system-ui, sans-serif">Yield Token</text>
+  <text x="100" y="165" text-anchor="middle" fill="#a1a1aa" font-size="12" font-family="system-ui, sans-serif">(e.g., nstSTRK)</text>
+
+  <!-- Arrow 1 -->
+  <line x1="160" y1="150" x2="230" y2="150" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="195" y="138" text-anchor="middle" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">wrap</text>
+
+  <!-- SY Box -->
+  <rect x="240" y="110" width="120" height="80" rx="8" stroke="#60a5fa" stroke-width="2" fill="#1e3a5f"/>
+  <text x="300" y="145" text-anchor="middle" fill="#fafafa" font-size="14" font-weight="600" font-family="system-ui, sans-serif">SY</text>
+  <text x="300" y="165" text-anchor="middle" fill="#a1a1aa" font-size="12" font-family="system-ui, sans-serif">Standardized</text>
+  <text x="300" y="180" text-anchor="middle" fill="#a1a1aa" font-size="12" font-family="system-ui, sans-serif">Yield</text>
+
+  <!-- Arrow 2 -->
+  <line x1="360" y1="150" x2="430" y2="150" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="395" y="138" text-anchor="middle" fill="#d4d4d8" font-size="12" font-family="system-ui, sans-serif">split</text>
+
+  <!-- Split indicator -->
+  <path d="M 440 150 L 480 80 M 440 150 L 480 220" stroke="#a1a1aa" stroke-width="2"/>
+
+  <!-- PT Box -->
+  <rect x="490" y="40" width="140" height="80" rx="8" stroke="#4ade80" stroke-width="2" fill="#14532d"/>
+  <text x="560" y="65" text-anchor="middle" fill="#fafafa" font-size="14" font-weight="600" font-family="system-ui, sans-serif">Principal Token</text>
+  <text x="560" y="85" text-anchor="middle" fill="#a1a1aa" font-size="12" font-family="system-ui, sans-serif">Fixed Yield</text>
+  <text x="560" y="105" text-anchor="middle" fill="#71717a" font-size="11" font-family="system-ui, sans-serif">Redeems at 1:1</text>
+
+  <!-- YT Box -->
+  <rect x="490" y="180" width="140" height="80" rx="8" stroke="#fbbf24" stroke-width="2" fill="#78350f"/>
+  <text x="560" y="205" text-anchor="middle" fill="#fafafa" font-size="14" font-weight="600" font-family="system-ui, sans-serif">Yield Token</text>
+  <text x="560" y="225" text-anchor="middle" fill="#a1a1aa" font-size="12" font-family="system-ui, sans-serif">Variable Yield</text>
+  <text x="560" y="245" text-anchor="middle" fill="#71717a" font-size="11" font-family="system-ui, sans-serif">Expires at maturity</text>
+
+  <!-- Arrow to outcomes -->
+  <line x1="630" y1="80" x2="700" y2="80" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="630" y1="220" x2="700" y2="220" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Outcomes -->
+  <text x="750" y="85" text-anchor="middle" fill="#fafafa" font-size="12" font-weight="500" font-family="system-ui, sans-serif">Hold or Trade</text>
+  <text x="750" y="225" text-anchor="middle" fill="#fafafa" font-size="12" font-weight="500" font-family="system-ui, sans-serif">Hold or Trade</text>
+</svg>

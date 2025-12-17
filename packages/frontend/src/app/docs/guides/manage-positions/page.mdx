@@ -1,0 +1,156 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Manage Positions
+
+Track your holdings, claim yield, and redeem tokens.
+
+---
+
+## Portfolio Overview
+
+Go to **Portfolio** to see all your positions:
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Display</TableHead>
+      <TableHead>Meaning</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>PT Balance</TableCell>
+      <TableCell>Principal tokens you hold</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>YT Balance</TableCell>
+      <TableCell>Yield tokens you hold</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>LP Balance</TableCell>
+      <TableCell>Liquidity pool shares</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Claimable Yield</TableCell>
+      <TableCell>Accrued yield ready to collect</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Maturity</TableCell>
+      <TableCell>When tokens can be redeemed</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Claiming Yield
+
+YT accrues yield continuously from the underlying asset.
+
+### To Claim
+
+1. Go to **Portfolio**
+2. Find position with claimable yield
+3. Click **Claim**
+4. Confirm transaction
+
+<Callout type="info">
+Yield is paid in the underlying asset (e.g., nstSTRK).
+</Callout>
+
+---
+
+## Redeeming at Maturity
+
+After maturity, PT can be redeemed 1:1 for the underlying.
+
+### To Redeem PT
+
+1. Go to **Portfolio**
+2. Find your matured position
+3. Click **Redeem**
+4. Confirm transaction
+
+You receive the underlying asset directly to your wallet.
+
+<Callout type="warning">
+YT expires worthless at maturity. Claim any accrued yield before expiry.
+</Callout>
+
+---
+
+## Early Redemption (Before Maturity)
+
+You can exit early by combining PT + YT back to SY.
+
+### Requirements
+- Equal amounts of PT and YT
+- Same market/maturity
+
+### To Redeem Early
+
+1. Go to **Portfolio**
+2. Click **Redeem** on your position
+3. Select early redemption
+4. Confirm transaction
+
+You receive SY tokens, which can be unwrapped to the underlying.
+
+---
+
+## Selling Positions
+
+If you don't have matching PT + YT, sell on the market instead:
+
+1. Go to **Trade**
+2. Select the token to sell (PT or YT)
+3. Swap for SY
+4. Unwrap SY to underlying
+
+---
+
+## Position Actions Summary
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Action</TableHead>
+      <TableHead>When</TableHead>
+      <TableHead>What You Get</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Claim Yield</TableCell>
+      <TableCell>Anytime (YT only)</TableCell>
+      <TableCell>Underlying asset</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Redeem PT</TableCell>
+      <TableCell>After maturity</TableCell>
+      <TableCell>1 underlying per PT</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Early Redeem</TableCell>
+      <TableCell>Before maturity</TableCell>
+      <TableCell>SY (need PT + YT)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Sell</TableCell>
+      <TableCell>Anytime</TableCell>
+      <TableCell>SY at market price</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Tips
+
+- Set calendar reminders for maturity dates
+- Claim YT yield periodically, especially before maturity
+- Check if selling or redeeming gives better value before maturity
+
+<DocsNavigation />
