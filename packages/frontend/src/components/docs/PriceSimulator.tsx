@@ -26,8 +26,8 @@ export function PriceSimulator(): React.ReactNode {
   const ptPriceDown = 1 / Math.pow(1 + yieldDown, yearsToExpiry);
 
   return (
-    <div className="not-prose my-6 rounded-lg border border-border bg-card p-6">
-      <h3 className="text-foreground font-medium mb-4">Price Simulator</h3>
+    <div className="not-prose border-border bg-card my-6 rounded-lg border p-6">
+      <h3 className="text-foreground mb-4 font-medium">Price Simulator</h3>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
@@ -39,7 +39,9 @@ export function PriceSimulator(): React.ReactNode {
             min="0"
             max="100"
             value={impliedYield}
-            onChange={(e) => setImpliedYield(e.target.value)}
+            onChange={(e) => {
+              setImpliedYield(e.target.value);
+            }}
             className="bg-background"
           />
         </div>
@@ -53,30 +55,32 @@ export function PriceSimulator(): React.ReactNode {
             min="1"
             max="365"
             value={daysToExpiry}
-            onChange={(e) => setDaysToExpiry(e.target.value)}
+            onChange={(e) => {
+              setDaysToExpiry(e.target.value);
+            }}
             className="bg-background"
           />
         </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg bg-muted p-4">
-          <div className="text-sm text-muted-foreground">PT Price</div>
-          <div className="text-2xl font-bold text-primary">
+        <div className="bg-muted rounded-lg p-4">
+          <div className="text-muted-foreground text-sm">PT Price</div>
+          <div className="text-primary text-2xl font-bold">
             {ptPrice > 0 ? ptPrice.toFixed(4) : '—'}
           </div>
         </div>
 
-        <div className="rounded-lg bg-muted p-4">
-          <div className="text-sm text-muted-foreground">YT Price</div>
-          <div className="text-2xl font-bold text-foreground">
+        <div className="bg-muted rounded-lg p-4">
+          <div className="text-muted-foreground text-sm">YT Price</div>
+          <div className="text-foreground text-2xl font-bold">
             {ytPrice > 0 ? ytPrice.toFixed(4) : '—'}
           </div>
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-border p-4">
-        <div className="text-sm font-medium text-foreground mb-3">
+      <div className="border-border mt-4 rounded-lg border p-4">
+        <div className="text-foreground mb-3 text-sm font-medium">
           Price Sensitivity (±2% yield change)
         </div>
         <div className="grid gap-2 text-sm">
@@ -85,7 +89,7 @@ export function PriceSimulator(): React.ReactNode {
               If yield ↑ to {((yieldNum + 0.02) * 100).toFixed(1)}%:
             </span>
             <span className="text-destructive font-medium">
-              PT = {ptPriceUp.toFixed(4)} ({((ptPriceUp - ptPrice) / ptPrice * 100).toFixed(2)}%)
+              PT = {ptPriceUp.toFixed(4)} ({(((ptPriceUp - ptPrice) / ptPrice) * 100).toFixed(2)}%)
             </span>
           </div>
           <div className="flex justify-between">
@@ -93,13 +97,14 @@ export function PriceSimulator(): React.ReactNode {
               If yield ↓ to {(yieldDown * 100).toFixed(1)}%:
             </span>
             <span className="text-primary font-medium">
-              PT = {ptPriceDown.toFixed(4)} (+{((ptPriceDown - ptPrice) / ptPrice * 100).toFixed(2)}%)
+              PT = {ptPriceDown.toFixed(4)} (+
+              {(((ptPriceDown - ptPrice) / ptPrice) * 100).toFixed(2)}%)
             </span>
           </div>
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-muted-foreground">
+      <p className="text-muted-foreground mt-4 text-xs">
         Formula: PT_Price = 1 / (1 + yield)^(days / 365)
       </p>
     </div>

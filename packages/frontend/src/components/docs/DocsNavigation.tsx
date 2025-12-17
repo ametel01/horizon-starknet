@@ -35,16 +35,16 @@ export function DocsNavigation(): React.ReactNode {
   }
 
   return (
-    <nav className="mt-12 flex items-center justify-between border-t border-border pt-6">
+    <nav className="border-border mt-12 flex items-center justify-between border-t pt-6">
       {prevPage ? (
         <Link
           href={prevPage.href}
-          className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="group text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
           <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
           <div>
-            <div className="text-xs text-muted-foreground">Previous</div>
-            <div className="font-medium text-foreground">{prevPage.title}</div>
+            <div className="text-muted-foreground text-xs">Previous</div>
+            <div className="text-foreground font-medium">{prevPage.title}</div>
           </div>
         </Link>
       ) : (
@@ -54,11 +54,11 @@ export function DocsNavigation(): React.ReactNode {
       {nextPage ? (
         <Link
           href={nextPage.href}
-          className="group flex items-center gap-2 text-right text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="group text-muted-foreground hover:text-foreground flex items-center gap-2 text-right text-sm transition-colors"
         >
           <div>
-            <div className="text-xs text-muted-foreground">Next</div>
-            <div className="font-medium text-foreground">{nextPage.title}</div>
+            <div className="text-muted-foreground text-xs">Next</div>
+            <div className="text-foreground font-medium">{nextPage.title}</div>
           </div>
           <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </Link>

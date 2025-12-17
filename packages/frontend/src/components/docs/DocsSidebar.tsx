@@ -110,10 +110,7 @@ function NavItemComponent({ item, level = 0 }: NavItemProps): React.ReactNode {
           </Link>
         ) : (
           <span
-            className={cn(
-              'block flex-1 px-2 py-1.5 text-sm font-medium',
-              !hasChildren && 'ml-5'
-            )}
+            className={cn('block flex-1 px-2 py-1.5 text-sm font-medium', !hasChildren && 'ml-5')}
           >
             {item.title}
           </span>
@@ -121,7 +118,7 @@ function NavItemComponent({ item, level = 0 }: NavItemProps): React.ReactNode {
       </div>
 
       {hasChildren && isOpen && (
-        <div className="ml-4 mt-1 space-y-1 border-l border-border pl-2">
+        <div className="border-border mt-1 ml-4 space-y-1 border-l pl-2">
           {children.map((child) => (
             <NavItemComponent key={child.href} item={child} level={level + 1} />
           ))}
@@ -135,7 +132,7 @@ export function DocsSidebar(): React.ReactNode {
   return (
     <nav className="space-y-1">
       {navigation.map((item) => (
-        <NavItemComponent key={item.href || item.title} item={item} />
+        <NavItemComponent key={item.href ?? item.title} item={item} />
       ))}
     </nav>
   );

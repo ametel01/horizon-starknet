@@ -15,22 +15,29 @@ export function TableOfContents(): React.ReactNode {
   const [activeId, setActiveId] = useState<string>('');
 
   useEffect(() => {
-    // Get all h2 and h3 headings from the article
+    // Get only h2 headings from the main prose content (skip component headings)
     const article = document.querySelector('article');
     if (!article) return;
 
-    const elements = article.querySelectorAll('h2, h3');
+    // Only select direct h2 children or h2s within prose sections
+    const elements = article.querySelectorAll(':scope > h2, .prose > h2, :scope > * > h2');
     const items: TocItem[] = [];
 
     elements.forEach((element) => {
-      const id = element.id || element.textContent?.toLowerCase().replace(/\s+/g, '-') || '';
+      // Skip headings inside not-prose sections (interactive components)
+      if (element.closest('.not-prose')) return;
+
+      const textContent = element.textContent;
+      if (!textContent) return;
+
+      const id = element.id !== '' ? element.id : textContent.toLowerCase().replace(/\s+/g, '-');
       if (!element.id) {
         element.id = id;
       }
       items.push({
         id,
-        text: element.textContent || '',
-        level: element.tagName === 'H2' ? 2 : 3,
+        text: textContent,
+        level: 2,
       });
     });
 
@@ -58,7 +65,9 @@ export function TableOfContents(): React.ReactNode {
       }
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, [headings]);
 
   if (headings.length === 0) {
@@ -66,17 +75,18 @@ export function TableOfContents(): React.ReactNode {
   }
 
   return (
-    <nav className="space-y-1">
-      <p className="text-sm font-medium text-foreground mb-3">On this page</p>
-      <ul className="space-y-2 text-sm">
+    <nav>
+      <p className="text-muted-foreground mb-3 text-xs font-medium tracking-wide uppercase">
+        On this page
+      </p>
+      <ul className="border-border space-y-1 border-l text-sm">
         {headings.map((heading) => (
           <li key={heading.id}>
             <a
               href={`#${heading.id}`}
               className={cn(
-                'block text-muted-foreground hover:text-foreground transition-colors',
-                heading.level === 3 && 'pl-3',
-                activeId === heading.id && 'text-foreground font-medium'
+                'text-muted-foreground hover:text-foreground -ml-px block border-l py-1 pl-3 transition-colors',
+                activeId === heading.id ? 'border-primary text-foreground' : 'border-transparent'
               )}
               onClick={(e) => {
                 e.preventDefault();

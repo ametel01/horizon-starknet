@@ -21,7 +21,7 @@ export function Formula({ children, display = false, className }: FormulaProps):
     return (
       <div
         className={cn(
-          'my-6 overflow-x-auto rounded-lg border border-border bg-muted/30 px-4 py-6 text-center',
+          'border-border bg-muted/30 my-6 overflow-x-auto rounded-lg border px-4 py-6 text-center',
           className
         )}
         dangerouslySetInnerHTML={{ __html: html }}
@@ -29,10 +29,5 @@ export function Formula({ children, display = false, className }: FormulaProps):
     );
   }
 
-  return (
-    <span
-      className={cn('mx-0.5', className)}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+  return <span className={cn('mx-0.5', className)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
