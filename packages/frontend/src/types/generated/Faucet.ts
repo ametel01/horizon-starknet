@@ -1,31 +1,22 @@
-export const FACTORY_ABI = [
+export const FAUCET_ABI = [
   {
     type: 'impl',
-    name: 'UpgradeableImpl',
-    interface_name: 'openzeppelin_upgrades::interface::IUpgradeable',
+    name: 'FaucetImpl',
+    interface_name: 'horizon::mocks::faucet::IFaucet',
   },
   {
-    type: 'interface',
-    name: 'openzeppelin_upgrades::interface::IUpgradeable',
-    items: [
+    type: 'struct',
+    name: 'core::integer::u256',
+    members: [
       {
-        type: 'function',
-        name: 'upgrade',
-        inputs: [
-          {
-            name: 'new_class_hash',
-            type: 'core::starknet::class_hash::ClassHash',
-          },
-        ],
-        outputs: [],
-        state_mutability: 'external',
+        name: 'low',
+        type: 'core::integer::u128',
+      },
+      {
+        name: 'high',
+        type: 'core::integer::u128',
       },
     ],
-  },
-  {
-    type: 'impl',
-    name: 'FactoryImpl',
-    interface_name: 'horizon::interfaces::i_factory::IFactory',
   },
   {
     type: 'enum',
@@ -43,41 +34,19 @@ export const FACTORY_ABI = [
   },
   {
     type: 'interface',
-    name: 'horizon::interfaces::i_factory::IFactory',
+    name: 'horizon::mocks::faucet::IFaucet',
     items: [
       {
         type: 'function',
-        name: 'create_yield_contracts',
-        inputs: [
-          {
-            name: 'sy',
-            type: 'core::starknet::contract_address::ContractAddress',
-          },
-          {
-            name: 'expiry',
-            type: 'core::integer::u64',
-          },
-        ],
-        outputs: [
-          {
-            type: '(core::starknet::contract_address::ContractAddress, core::starknet::contract_address::ContractAddress)',
-          },
-        ],
+        name: 'mint',
+        inputs: [],
+        outputs: [],
         state_mutability: 'external',
       },
       {
         type: 'function',
-        name: 'get_pt',
-        inputs: [
-          {
-            name: 'sy',
-            type: 'core::starknet::contract_address::ContractAddress',
-          },
-          {
-            name: 'expiry',
-            type: 'core::integer::u64',
-          },
-        ],
+        name: 'token',
+        inputs: [],
         outputs: [
           {
             type: 'core::starknet::contract_address::ContractAddress',
@@ -87,30 +56,21 @@ export const FACTORY_ABI = [
       },
       {
         type: 'function',
-        name: 'get_yt',
-        inputs: [
-          {
-            name: 'sy',
-            type: 'core::starknet::contract_address::ContractAddress',
-          },
-          {
-            name: 'expiry',
-            type: 'core::integer::u64',
-          },
-        ],
+        name: 'mint_amount',
+        inputs: [],
         outputs: [
           {
-            type: 'core::starknet::contract_address::ContractAddress',
+            type: 'core::integer::u256',
           },
         ],
         state_mutability: 'view',
       },
       {
         type: 'function',
-        name: 'is_valid_pt',
+        name: 'can_mint',
         inputs: [
           {
-            name: 'pt',
+            name: 'account',
             type: 'core::starknet::contract_address::ContractAddress',
           },
         ],
@@ -123,10 +83,10 @@ export const FACTORY_ABI = [
       },
       {
         type: 'function',
-        name: 'is_valid_yt',
+        name: 'has_minted_today',
         inputs: [
           {
-            name: 'yt',
+            name: 'account',
             type: 'core::starknet::contract_address::ContractAddress',
           },
         ],
@@ -139,39 +99,37 @@ export const FACTORY_ABI = [
       },
       {
         type: 'function',
-        name: 'yt_class_hash',
+        name: 'current_day',
         inputs: [],
         outputs: [
           {
-            type: 'core::starknet::class_hash::ClassHash',
+            type: 'core::integer::u64',
           },
         ],
         state_mutability: 'view',
       },
       {
         type: 'function',
-        name: 'pt_class_hash',
+        name: 'is_paused',
         inputs: [],
         outputs: [
           {
-            type: 'core::starknet::class_hash::ClassHash',
+            type: 'core::bool',
           },
         ],
         state_mutability: 'view',
       },
       {
         type: 'function',
-        name: 'set_class_hashes',
-        inputs: [
-          {
-            name: 'yt_class_hash',
-            type: 'core::starknet::class_hash::ClassHash',
-          },
-          {
-            name: 'pt_class_hash',
-            type: 'core::starknet::class_hash::ClassHash',
-          },
-        ],
+        name: 'pause',
+        inputs: [],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'unpause',
+        inputs: [],
         outputs: [],
         state_mutability: 'external',
       },
@@ -223,65 +181,12 @@ export const FACTORY_ABI = [
     name: 'constructor',
     inputs: [
       {
+        name: 'token',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
         name: 'owner',
         type: 'core::starknet::contract_address::ContractAddress',
-      },
-      {
-        name: 'yt_class_hash',
-        type: 'core::starknet::class_hash::ClassHash',
-      },
-      {
-        name: 'pt_class_hash',
-        type: 'core::starknet::class_hash::ClassHash',
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'horizon::factory::Factory::YieldContractsCreated',
-    kind: 'struct',
-    members: [
-      {
-        name: 'sy',
-        type: 'core::starknet::contract_address::ContractAddress',
-        kind: 'key',
-      },
-      {
-        name: 'expiry',
-        type: 'core::integer::u64',
-        kind: 'key',
-      },
-      {
-        name: 'pt',
-        type: 'core::starknet::contract_address::ContractAddress',
-        kind: 'data',
-      },
-      {
-        name: 'yt',
-        type: 'core::starknet::contract_address::ContractAddress',
-        kind: 'data',
-      },
-      {
-        name: 'creator',
-        type: 'core::starknet::contract_address::ContractAddress',
-        kind: 'data',
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'horizon::factory::Factory::ClassHashesUpdated',
-    kind: 'struct',
-    members: [
-      {
-        name: 'yt_class_hash',
-        type: 'core::starknet::class_hash::ClassHash',
-        kind: 'data',
-      },
-      {
-        name: 'pt_class_hash',
-        type: 'core::starknet::class_hash::ClassHash',
-        kind: 'data',
       },
     ],
   },
@@ -338,52 +243,57 @@ export const FACTORY_ABI = [
   },
   {
     type: 'event',
-    name: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded',
+    name: 'horizon::mocks::faucet::Faucet::Minted',
     kind: 'struct',
     members: [
       {
-        name: 'class_hash',
-        type: 'core::starknet::class_hash::ClassHash',
+        name: 'recipient',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'day',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
   },
   {
     type: 'event',
-    name: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
-    kind: 'enum',
-    variants: [
-      {
-        name: 'Upgraded',
-        type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded',
-        kind: 'nested',
-      },
-    ],
+    name: 'horizon::mocks::faucet::Faucet::Paused',
+    kind: 'struct',
+    members: [],
   },
   {
     type: 'event',
-    name: 'horizon::factory::Factory::Event',
+    name: 'horizon::mocks::faucet::Faucet::Unpaused',
+    kind: 'struct',
+    members: [],
+  },
+  {
+    type: 'event',
+    name: 'horizon::mocks::faucet::Faucet::Event',
     kind: 'enum',
     variants: [
-      {
-        name: 'YieldContractsCreated',
-        type: 'horizon::factory::Factory::YieldContractsCreated',
-        kind: 'nested',
-      },
-      {
-        name: 'ClassHashesUpdated',
-        type: 'horizon::factory::Factory::ClassHashesUpdated',
-        kind: 'nested',
-      },
       {
         name: 'OwnableEvent',
         type: 'openzeppelin_access::ownable::ownable::OwnableComponent::Event',
         kind: 'flat',
       },
       {
-        name: 'UpgradeableEvent',
-        type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
-        kind: 'flat',
+        name: 'Minted',
+        type: 'horizon::mocks::faucet::Faucet::Minted',
+        kind: 'nested',
+      },
+      {
+        name: 'Paused',
+        type: 'horizon::mocks::faucet::Faucet::Paused',
+        kind: 'nested',
+      },
+      {
+        name: 'Unpaused',
+        type: 'horizon::mocks::faucet::Faucet::Unpaused',
+        kind: 'nested',
       },
     ],
   },
