@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 import { DocsSidebar } from './DocsSidebar';
+import { TableOfContents } from './TableOfContents';
 
 interface DocsLayoutProps {
   children: React.ReactNode;
@@ -16,8 +17,8 @@ export function DocsLayout({ children }: DocsLayoutProps): React.ReactNode {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6">
-      <div className="flex gap-10 lg:gap-12">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="flex gap-8 lg:gap-10">
         {/* Mobile sidebar toggle */}
         <Button
           variant="outline"
@@ -29,7 +30,7 @@ export function DocsLayout({ children }: DocsLayoutProps): React.ReactNode {
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
 
-        {/* Sidebar */}
+        {/* Left Sidebar - Navigation */}
         <aside
           className={cn(
             'fixed inset-y-0 left-0 z-40 w-64 shrink-0 overflow-y-auto border-r border-border bg-background p-6 pt-20 transition-transform lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0 lg:border-0 lg:bg-transparent lg:pt-8',
@@ -51,6 +52,13 @@ export function DocsLayout({ children }: DocsLayoutProps): React.ReactNode {
         <main className="min-w-0 flex-1 py-8 lg:py-10">
           <article className="max-w-3xl">{children}</article>
         </main>
+
+        {/* Right Sidebar - Table of Contents */}
+        <aside className="hidden w-48 shrink-0 xl:block">
+          <div className="sticky top-24 py-8">
+            <TableOfContents />
+          </div>
+        </aside>
       </div>
     </div>
   );
