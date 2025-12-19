@@ -2,6 +2,7 @@
 /// Implements the PT/SY trading pool with time-aware pricing.
 /// The market acts as an LP token itself (ERC20) for liquidity providers.
 /// - Pausable: Can be paused in emergencies by PAUSER_ROLE
+/// - Upgradeable: Can be upgraded by owner
 
 #[starknet::contract]
 pub mod Market {
@@ -17,16 +18,23 @@ pub mod Market {
         check_slippage, get_ln_implied_rate, get_time_to_expiry,
     };
     use openzeppelin_access::accesscontrol::AccessControlComponent;
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // ERC20 component for LP token functionality
     #[abi(embed_v0)]
@@ -46,6 +54,14 @@ pub mod Market {
     impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
     impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
 
+    // Ownable - embed the public interface
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    // Upgradeable - internal only
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
         #[substorage(v0)]
@@ -56,6 +72,10 @@ pub mod Market {
         access_control: AccessControlComponent::Storage,
         #[substorage(v0)]
         pausable: PausableComponent::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // Token addresses
         sy: ContractAddress,
         pt: ContractAddress,
@@ -86,6 +106,10 @@ pub mod Market {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         PausableEvent: PausableComponent::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         Mint: Mint,
         Burn: Burn,
         Swap: Swap,
@@ -157,6 +181,9 @@ pub mod Market {
         // Initialize access control - grant admin and pauser roles
         self.access_control._grant_role(DEFAULT_ADMIN_ROLE, pauser);
         self.access_control._grant_role(PAUSER_ROLE, pauser);
+
+        // Initialize ownable for upgrade control
+        self.ownable.initializer(pauser);
 
         // Store addresses
         self.sy.write(sy);
@@ -571,6 +598,16 @@ pub mod Market {
         fn unpause(ref self: ContractState) {
             self.access_control.assert_only_role(PAUSER_ROLE);
             self.pausable.unpause();
+        }
+    }
+
+    // Upgradeable implementation
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        /// Upgrade the contract to a new implementation (owner only)
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 
