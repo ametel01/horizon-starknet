@@ -269,12 +269,20 @@ fn test_calc_mint_lp_first_provider() {
     let state = create_market_state(0, 0, 0, 0, WAD);
     let state_with_zero_lp = MarketState { total_lp: 0, ..state };
 
-    let (lp, sy_used, pt_used) = calc_mint_lp(@state_with_zero_lp, 100 * WAD, 100 * WAD);
+    let (lp, sy_used, pt_used, is_first_mint) = calc_mint_lp(
+        @state_with_zero_lp, 100 * WAD, 100 * WAD,
+    );
 
-    // First provider gets sqrt(sy * pt)
+    // First provider gets sqrt(wad_mul(sy, pt)) - MINIMUM_LIQUIDITY
+    // wad_mul(100 WAD, 100 WAD) = 10000 * WAD = 10^22
+    // sqrt(10^22) = 10^11 = 100_000_000_000
+    // After subtracting MINIMUM_LIQUIDITY (1000): 100_000_000_000 - 1000 = 99_999_999_000
+    let expected_lp: u256 = 100_000_000_000 - 1000; // sqrt(10^22) - 1000
     assert(lp > 0, 'Should mint LP');
+    assert(lp == expected_lp, 'LP should be sqrt - 1000');
     assert(sy_used == 100 * WAD, 'Should use all SY');
     assert(pt_used == 100 * WAD, 'Should use all PT');
+    assert(is_first_mint, 'Should be first mint');
 }
 
 #[test]
@@ -292,12 +300,13 @@ fn test_calc_mint_lp_subsequent() {
     };
 
     // Add proportional liquidity
-    let (lp, sy_used, pt_used) = calc_mint_lp(@state, 50 * WAD, 50 * WAD);
+    let (lp, sy_used, pt_used, is_first_mint) = calc_mint_lp(@state, 50 * WAD, 50 * WAD);
 
     // Should get 50% more LP
     assert(lp == 50 * WAD, 'Should mint 50 LP');
     assert(sy_used == 50 * WAD, 'Should use 50 SY');
     assert(pt_used == 50 * WAD, 'Should use 50 PT');
+    assert(!is_first_mint, 'Should not be first mint');
 }
 
 #[test]
@@ -314,12 +323,13 @@ fn test_calc_mint_lp_unbalanced() {
     };
 
     // Try to add unbalanced (more SY than PT)
-    let (lp, sy_used, pt_used) = calc_mint_lp(@state, 100 * WAD, 50 * WAD);
+    let (lp, sy_used, pt_used, is_first_mint) = calc_mint_lp(@state, 100 * WAD, 50 * WAD);
 
     // Should only use 50 of each (limited by PT)
     assert(lp == 50 * WAD, 'Should mint 50 LP');
     assert(sy_used == 50 * WAD, 'Should use only 50 SY');
     assert(pt_used == 50 * WAD, 'Should use 50 PT');
+    assert(!is_first_mint, 'Should not be first mint');
 }
 
 #[test]

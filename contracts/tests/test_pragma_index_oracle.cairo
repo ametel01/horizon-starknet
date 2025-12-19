@@ -129,17 +129,21 @@ fn test_dual_feed_monotonic_index() {
         pragma.contract_address, WSTETH_USD_PAIR_ID, SSTRK_USD_PAIR_ID,
     );
 
-    // Get initial index
+    // Get initial index from oracle
     let initial_index = oracle.index();
 
-    // Manually lower stored index via emergency_set_index
+    // Set stored index to a higher value
     start_cheat_caller_address(admin.contract_address, ADMIN());
-    admin.emergency_set_index(WAD); // Set to 1.0
+    let high_index = initial_index * 2;
+    admin.emergency_set_index(high_index);
     stop_cheat_caller_address(admin.contract_address);
 
-    // Index should still return the higher oracle value (monotonic)
+    // Index should return the stored value since it's higher than oracle
     let current_index = oracle.index();
-    assert(current_index >= initial_index - (initial_index / 100), 'monotonic violated');
+    assert(current_index == high_index, 'should return stored index');
+
+    // Verify monotonic property - index should be >= initial
+    assert(current_index >= initial_index, 'monotonic violated');
 }
 
 // ============ Single-Feed Mode Tests ============
@@ -364,6 +368,22 @@ fn test_emergency_index_below_wad() {
 
     start_cheat_caller_address(admin.contract_address, ADMIN());
     admin.emergency_set_index(WAD / 2); // 0.5 WAD is invalid
+}
+
+#[test]
+#[should_panic(expected: 'PIO: cannot decrease index')]
+fn test_emergency_index_cannot_decrease() {
+    let pragma = deploy_mock_pragma();
+    let (_oracle, admin) = deploy_pragma_index_oracle_dual(
+        pragma.contract_address, WSTETH_USD_PAIR_ID, SSTRK_USD_PAIR_ID,
+    );
+
+    // First, set a high index
+    start_cheat_caller_address(admin.contract_address, ADMIN());
+    admin.emergency_set_index(WAD * 5); // Set to 5.0
+
+    // Now try to decrease it - should fail
+    admin.emergency_set_index(WAD * 3); // Try to set to 3.0 (lower than 5.0)
 }
 
 // ============ View Function Tests ============
