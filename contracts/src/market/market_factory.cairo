@@ -208,6 +208,9 @@ pub mod MarketFactory {
             calldata.append(fee_rate.low.into());
             calldata.append(fee_rate.high.into());
 
+            // pauser address (factory owner gets PAUSER_ROLE on created markets)
+            calldata.append(self.ownable.owner().into());
+
             // Deploy Market contract
             let salt: felt252 = count.low.into();
             let (market_address, _) =

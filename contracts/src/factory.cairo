@@ -173,6 +173,9 @@ pub mod Factory {
             // Expiry
             yt_calldata.append(expiry.into());
 
+            // Pauser address (factory owner gets PAUSER_ROLE on created YT)
+            yt_calldata.append(self.ownable.owner().into());
+
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();
             let (yt_address, _) =
