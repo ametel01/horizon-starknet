@@ -4,6 +4,17 @@ use starknet::ContractAddress;
 /// Handles approvals, slippage protection, and multi-hop operations
 #[starknet::interface]
 pub trait IRouter<TContractState> {
+    // ============ Admin Functions ============
+
+    /// Pause all router operations (PAUSER_ROLE only)
+    fn pause(ref self: TContractState);
+
+    /// Unpause all router operations (PAUSER_ROLE only)
+    fn unpause(ref self: TContractState);
+
+    /// Initialize RBAC after upgrade (one-time setup)
+    fn initialize_rbac(ref self: TContractState);
+
     // ============ PT/YT Minting & Redemption ============
 
     /// Mint PT and YT from SY tokens

@@ -10,25 +10,52 @@ pub mod Router {
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
 
+    // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
+    component!(path: PausableComponent, storage: pausable, event: PausableEvent);
 
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
+    // AccessControl - embed the full implementation for role management
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
+    // Pausable - embed the public interface
+    #[abi(embed_v0)]
+    impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
+    impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
+        // === EXISTING STORAGE - DO NOT MODIFY ORDER ===
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
+        // === NEW STORAGE - ADDED AT END ===
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        pausable: PausableComponent::Storage,
     }
 
     #[event]
@@ -44,6 +71,12 @@ pub mod Router {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        PausableEvent: PausableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -123,6 +156,11 @@ pub mod Router {
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.ownable.initializer(owner);
+
+        // Initialize AccessControl and grant admin role to owner
+        self.access_control.initializer();
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
+        self.access_control._grant_role(PAUSER_ROLE, owner);
     }
 
     #[abi(embed_v0)]
@@ -135,6 +173,32 @@ pub mod Router {
 
     #[abi(embed_v0)]
     impl RouterImpl of IRouter<ContractState> {
+        // ============ Admin Functions ============
+
+        /// Pause all router operations (PAUSER_ROLE only)
+        fn pause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.pause();
+        }
+
+        /// Unpause all router operations (PAUSER_ROLE only)
+        fn unpause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.unpause();
+        }
+
+        /// Initialize RBAC after upgrade (one-time setup)
+        /// Owner calls this to bootstrap AccessControl roles
+        fn initialize_rbac(ref self: ContractState) {
+            self.ownable.assert_only_owner();
+
+            let owner = self.ownable.owner();
+
+            // Grant admin and pauser roles to current owner
+            self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
+            self.access_control._grant_role(PAUSER_ROLE, owner);
+        }
+
         // ============ PT/YT Minting & Redemption ============
 
         fn mint_py_from_sy(
@@ -144,6 +208,7 @@ pub mod Router {
             amount_sy_in: u256,
             min_py_out: u256,
         ) -> (u256, u256) {
+            self.pausable.assert_not_paused();
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_in > 0, Errors::ZERO_AMOUNT);
@@ -189,6 +254,7 @@ pub mod Router {
             amount_py_in: u256,
             min_sy_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_py_in > 0, Errors::ZERO_AMOUNT);
@@ -225,6 +291,7 @@ pub mod Router {
             amount_pt_in: u256,
             min_sy_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_pt_in > 0, Errors::ZERO_AMOUNT);
@@ -262,6 +329,7 @@ pub mod Router {
             pt_desired: u256,
             min_lp_out: u256,
         ) -> (u256, u256, u256) {
+            self.pausable.assert_not_paused();
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(sy_desired > 0 && pt_desired > 0, Errors::ZERO_AMOUNT);
@@ -316,23 +384,13 @@ pub mod Router {
             min_sy_out: u256,
             min_pt_out: u256,
         ) -> (u256, u256) {
+            self.pausable.assert_not_paused();
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(lp_to_burn > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
             let market_contract = IMarketDispatcher { contract_address: market };
-
-            // For LP tokens, we need to use the market's transfer_from
-            // But Market doesn't expose ERC20 transfer_from in IMarket interface
-            // We'll call burn directly - user must have approved the market
-            // Actually, the market's burn function burns from caller, so user calls market directly
-            // For router pattern, we transfer LP to router then router burns
-
-            // Market is an ERC20 (LP token), but IMarket doesn't expose transfer_from
-            // We need to use a workaround - have user approve market and call burn directly
-            // For now, let's just call burn on market (user must have LP tokens)
-            // The market.burn will burn from msg.sender (this router)
 
             // Transfer LP from caller to router (need LP ERC20 interface)
             // Since Market is ERC20, we can use IPT interface for transfer_from
@@ -366,6 +424,7 @@ pub mod Router {
             exact_sy_in: u256,
             min_pt_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_in > 0, Errors::ZERO_AMOUNT);
@@ -408,6 +467,7 @@ pub mod Router {
             exact_pt_in: u256,
             min_sy_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_in > 0, Errors::ZERO_AMOUNT);
@@ -450,6 +510,7 @@ pub mod Router {
             exact_pt_out: u256,
             max_sy_in: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_out > 0, Errors::ZERO_AMOUNT);
@@ -497,6 +558,7 @@ pub mod Router {
             exact_sy_out: u256,
             max_pt_in: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_out > 0, Errors::ZERO_AMOUNT);
@@ -547,6 +609,7 @@ pub mod Router {
             amount_sy_in: u256,
             min_pt_out: u256,
         ) -> (u256, u256) {
+            self.pausable.assert_not_paused();
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -609,15 +672,6 @@ pub mod Router {
 
         // ============ YT Trading Operations (via Flash Swaps) ============
 
-        /// Buy YT using SY through the PT/SY market
-        /// Mechanism:
-        /// 1. Take SY from user
-        /// 2. Mint PT+YT from all SY
-        /// 3. Sell all PT back to market for SY
-        /// 4. Send YT to receiver
-        /// 5. Return remaining SY to receiver
-        ///
-        /// The user effectively pays: SY_in - SY_from_PT_sale = net cost for YT
         fn swap_exact_sy_for_yt(
             ref self: ContractState,
             yt: ContractAddress,
@@ -626,6 +680,7 @@ pub mod Router {
             exact_sy_in: u256,
             min_yt_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -681,15 +736,6 @@ pub mod Router {
             yt_minted
         }
 
-        /// Sell YT for SY through the PT/SY market
-        /// Mechanism:
-        /// 1. Take YT from user
-        /// 2. Buy PT from market using SY (need to estimate amount)
-        /// 3. Combine PT + YT to redeem SY
-        /// 4. Repay the SY used to buy PT
-        /// 5. Send remaining SY to receiver
-        ///
-        /// The user receives: SY_from_redemption - SY_spent_on_PT = net SY out
         fn swap_exact_yt_for_sy(
             ref self: ContractState,
             yt: ContractAddress,
@@ -698,6 +744,7 @@ pub mod Router {
             exact_yt_in: u256,
             min_sy_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -716,58 +763,10 @@ pub mod Router {
             // 1. Transfer YT from caller to this contract
             yt_contract.transfer_from(caller, this, exact_yt_in);
 
-            // 2. We need PT to pair with YT for redemption
-            // Buy exact PT amount equal to YT (since 1 PT + 1 YT = 1 SY worth)
-            // First, estimate max SY needed - use 4x multiplier to account for AMM curve and fees
-            // PT price in SY can vary significantly based on market conditions
-            let max_sy_for_pt = exact_yt_in * 4; // Generous estimate to handle price impact
-
-            // We need SY to buy PT - borrow from the redemption proceeds
-            // This is a "flash swap" pattern:
-            // - We'll buy PT now, redeem PT+YT for SY, use SY to pay for PT purchase
-
-            // Note: We don't need to track balance since we transfer exact amounts
-
-            // Buy PT from market - we need to have SY first
-            // Since we don't have SY yet, we use swap_pt_for_exact_sy in reverse
-            // Actually, we need to use swap_sy_for_exact_pt, but we don't have SY
-
-            // Alternative approach: Use the market's reserves info to calculate
-            // For simplicity, let's do a two-step process that doesn't require flash loans:
-            // The user needs to provide enough SY upfront or we simulate via redemption first
-
-            // SIMPLIFIED APPROACH for now:
-            // We'll use the market to swap and rely on the AMM math
-            // Buy PT by specifying exact PT out, max SY in = yt_amount (conservative)
-
-            // Actually, we need a source of SY. Let's require caller to also provide some SY
-            // OR we can use a callback/flash loan pattern
-
-            // For MVP: Require the market to have enough liquidity and do iterative approach
-            // The cleanest way: buy PT, redeem, check profit
-
-            // Let's try: swap SY for exact PT where PT_out = exact_yt_in
-            // We need SY to do this. The caller must approve enough SY.
-
-            // REVISED APPROACH - two-phase:
-            // User must provide max_sy_in as collateral, we return the excess
-
-            // For this implementation, we'll need the user to have approved extra SY
-            // Let's add a simpler approach: require caller to also transfer SY for PT purchase
-
-            // FINAL APPROACH for clean implementation:
-            // Calculate how much SY we need to buy exact_yt_in PT
-            // Transfer that SY from caller
-            // Buy PT, redeem, send net SY to receiver
-
-            // Note: We don't check reserves explicitly - the swap will fail if insufficient
-
-            // If not enough PT in reserves, this will fail naturally
-            // Estimate SY needed (this is approximate, actual will be determined by swap)
-            // For safety, we'll transfer max and refund
+            // 2. Estimate max SY needed - use 4x multiplier to account for AMM curve and fees
+            let max_sy_for_pt = exact_yt_in * 4;
 
             // Transfer SY from caller (they need to approve max_sy_for_pt)
-            // We use a generous max - the actual amount will be less
             sy_contract.transfer_from(caller, this, max_sy_for_pt);
 
             // Buy exact PT
@@ -781,12 +780,6 @@ pub mod Router {
             let sy_from_redemption = yt_contract.redeem_py(this, exact_yt_in);
 
             // 4. Calculate net SY out
-            // User provided: max_sy_for_pt SY + exact_yt_in YT
-            // User receives: sy_from_redemption + (max_sy_for_pt - sy_spent_on_pt)
-            // Net from YT sale = sy_from_redemption - sy_spent_on_pt
-
-            // Check if selling YT is profitable (sy_from_redemption >= sy_spent_on_pt)
-            // If PT is too expensive, selling YT results in a loss - revert via slippage
             let effective_sy_from_yt = if sy_from_redemption >= sy_spent_on_pt {
                 sy_from_redemption - sy_spent_on_pt
             } else {
@@ -810,9 +803,9 @@ pub mod Router {
                         receiver,
                         yt,
                         market,
-                        sy_in: max_sy_for_pt, // SY provided as collateral
+                        sy_in: max_sy_for_pt,
                         yt_in: exact_yt_in,
-                        sy_out: net_sy_out, // Total SY returned
+                        sy_out: net_sy_out,
                         yt_out: 0,
                     },
                 );

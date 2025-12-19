@@ -5,14 +5,16 @@ use starknet::ContractAddress;
 pub trait IPragmaIndexOracleAdmin<TContractState> {
     /// Update the stored index from oracle (call periodically to persist watermark)
     fn update_index(ref self: TContractState) -> u256;
-    /// Update TWAP window and staleness parameters
+    /// Update TWAP window and staleness parameters (OPERATOR_ROLE)
     fn set_config(ref self: TContractState, twap_window: u64, max_staleness: u64);
-    /// Pause the oracle (returns stored index instead of fetching)
+    /// Pause the oracle (returns stored index instead of fetching) (PAUSER_ROLE)
     fn pause(ref self: TContractState);
-    /// Unpause the oracle
+    /// Unpause the oracle (PAUSER_ROLE)
     fn unpause(ref self: TContractState);
-    /// Emergency index update (admin only, for recovery scenarios)
+    /// Emergency index update (DEFAULT_ADMIN_ROLE only, for recovery scenarios)
     fn emergency_set_index(ref self: TContractState, new_index: u256);
+    /// Initialize RBAC after upgrade (one-time setup)
+    fn initialize_rbac(ref self: TContractState);
 
     // View functions
     fn get_pragma_oracle(self: @TContractState) -> ContractAddress;
@@ -44,19 +46,31 @@ pub mod PragmaIndexOracle {
         IPragmaSummaryStatsDispatcherTrait,
     };
     use horizon::libraries::math::{WAD, max};
+    use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, OPERATOR_ROLE, PAUSER_ROLE};
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    // AccessControl - embed the full implementation for role management
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
 
     // Constants
     const WAD_DECIMALS: u32 = 18;
@@ -66,6 +80,7 @@ pub mod PragmaIndexOracle {
 
     #[storage]
     struct Storage {
+        // === EXISTING STORAGE - DO NOT MODIFY ORDER ===
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
@@ -86,6 +101,11 @@ pub mod PragmaIndexOracle {
         last_update_timestamp: u64,
         /// Paused state for emergencies
         paused: bool,
+        // === NEW STORAGE - ADDED AT END ===
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
     }
 
     #[event]
@@ -99,6 +119,10 @@ pub mod PragmaIndexOracle {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -151,6 +175,12 @@ pub mod PragmaIndexOracle {
         self.stored_index.write(initial_index);
         self.last_update_timestamp.write(get_block_timestamp());
         self.paused.write(false);
+
+        // Initialize AccessControl and grant roles to owner
+        self.access_control.initializer();
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
+        self.access_control._grant_role(OPERATOR_ROLE, owner);
+        self.access_control._grant_role(PAUSER_ROLE, owner);
     }
 
     #[abi(embed_v0)]
@@ -207,9 +237,9 @@ pub mod PragmaIndexOracle {
             max(oracle_index, old_index)
         }
 
-        /// Update TWAP window and staleness parameters
+        /// Update TWAP window and staleness parameters (OPERATOR_ROLE)
         fn set_config(ref self: ContractState, twap_window: u64, max_staleness: u64) {
-            self.ownable.assert_only_owner();
+            self.access_control.assert_only_role(OPERATOR_ROLE);
             assert(twap_window >= MIN_TWAP_WINDOW, 'PIO: window too short');
             assert(max_staleness >= twap_window, 'PIO: staleness < window');
 
@@ -219,23 +249,23 @@ pub mod PragmaIndexOracle {
             self.emit(ConfigUpdated { twap_window, max_staleness });
         }
 
-        /// Pause the oracle
+        /// Pause the oracle (PAUSER_ROLE)
         fn pause(ref self: ContractState) {
-            self.ownable.assert_only_owner();
+            self.access_control.assert_only_role(PAUSER_ROLE);
             self.paused.write(true);
             self.emit(Paused { by: get_caller_address() });
         }
 
-        /// Unpause the oracle
+        /// Unpause the oracle (PAUSER_ROLE)
         fn unpause(ref self: ContractState) {
-            self.ownable.assert_only_owner();
+            self.access_control.assert_only_role(PAUSER_ROLE);
             self.paused.write(false);
             self.emit(Unpaused { by: get_caller_address() });
         }
 
-        /// Emergency index update (admin only)
+        /// Emergency index update (DEFAULT_ADMIN_ROLE only)
         fn emergency_set_index(ref self: ContractState, new_index: u256) {
-            self.ownable.assert_only_owner();
+            self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
             assert(new_index >= WAD, 'PIO: index below WAD');
 
             let old_index = self.stored_index.read();
@@ -251,6 +281,19 @@ pub mod PragmaIndexOracle {
                         timestamp: get_block_timestamp(),
                     },
                 );
+        }
+
+        /// Initialize RBAC after upgrade (one-time setup)
+        /// Owner calls this to bootstrap AccessControl roles
+        fn initialize_rbac(ref self: ContractState) {
+            self.ownable.assert_only_owner();
+
+            let owner = self.ownable.owner();
+
+            // Grant roles to current owner
+            self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
+            self.access_control._grant_role(OPERATOR_ROLE, owner);
+            self.access_control._grant_role(PAUSER_ROLE, owner);
         }
 
         // View functions

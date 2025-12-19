@@ -7,9 +7,12 @@ pub mod MarketFactory {
     use horizon::interfaces::i_market_factory::IMarketFactory;
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::roles::DEFAULT_ADMIN_ROLE;
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
@@ -17,16 +20,26 @@ pub mod MarketFactory {
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
+    // AccessControl - embed the full implementation for role management
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
+        // === EXISTING STORAGE - DO NOT MODIFY ORDER ===
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
@@ -43,6 +56,11 @@ pub mod MarketFactory {
         market_list: Map<u32, ContractAddress>,
         // Total number of markets created
         market_count: u32,
+        // === NEW STORAGE - ADDED AT END ===
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
     }
 
     #[event]
@@ -54,6 +72,10 @@ pub mod MarketFactory {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -80,6 +102,10 @@ pub mod MarketFactory {
         self.market_class_hash.write(market_class_hash);
         self.deploy_count.write(0);
         self.market_count.write(0);
+
+        // Initialize AccessControl and grant admin role to owner
+        self.access_control.initializer();
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
     }
 
     #[abi(embed_v0)]
@@ -233,6 +259,18 @@ pub mod MarketFactory {
             self.market_class_hash.write(new_class_hash);
 
             self.emit(MarketClassHashUpdated { old_class_hash, new_class_hash });
+        }
+
+        /// Initialize RBAC after upgrade (one-time setup)
+        /// Owner calls this to bootstrap AccessControl roles
+        fn initialize_rbac(ref self: ContractState) {
+            self.ownable.assert_only_owner();
+
+            let owner = self.ownable.owner();
+
+            // Initialize AccessControl if not already done
+            // Grant admin role to current owner
+            self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
         }
     }
 }

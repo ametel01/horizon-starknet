@@ -7,7 +7,7 @@ use horizon::mocks::mock_pragma::{
 use horizon::oracles::pragma_index_oracle::{
     IPragmaIndexOracleAdminDispatcher, IPragmaIndexOracleAdminDispatcherTrait,
 };
-use openzeppelin_access::ownable::interface::{IOwnableDispatcher, IOwnableDispatcherTrait};
+use openzeppelin_interfaces::ownable::{IOwnableDispatcher, IOwnableDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,
@@ -293,7 +293,7 @@ fn test_admin_emergency_set_index() {
 // ============ Access Control Tests ============
 
 #[test]
-#[should_panic(expected: 'Caller is not the owner')]
+#[should_panic(expected: 'Caller is missing role')]
 fn test_non_admin_cannot_set_config() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -305,7 +305,7 @@ fn test_non_admin_cannot_set_config() {
 }
 
 #[test]
-#[should_panic(expected: 'Caller is not the owner')]
+#[should_panic(expected: 'Caller is missing role')]
 fn test_non_admin_cannot_pause() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -317,7 +317,7 @@ fn test_non_admin_cannot_pause() {
 }
 
 #[test]
-#[should_panic(expected: 'Caller is not the owner')]
+#[should_panic(expected: 'Caller is missing role')]
 fn test_non_admin_cannot_emergency_set() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
