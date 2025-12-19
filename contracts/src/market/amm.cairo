@@ -113,6 +113,7 @@ pub mod Market {
         Mint: Mint,
         Burn: Burn,
         Swap: Swap,
+        ImpliedRateUpdated: ImpliedRateUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -148,6 +149,13 @@ pub mod Market {
         pub pt_out: u256,
         pub sy_out: u256,
         pub fee: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ImpliedRateUpdated {
+        pub old_rate: u256,
+        pub new_rate: u256,
+        pub timestamp: u64,
     }
 
     #[constructor]
@@ -630,10 +638,21 @@ pub mod Market {
 
         /// Update the cached implied rate
         fn _update_implied_rate(ref self: ContractState) {
+            let old_rate = self.last_ln_implied_rate.read();
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             let new_rate = get_ln_implied_rate(@state, time_to_expiry);
-            self.last_ln_implied_rate.write(new_rate);
+
+            // Only update and emit if rate has changed
+            if new_rate != old_rate {
+                self.last_ln_implied_rate.write(new_rate);
+                self
+                    .emit(
+                        ImpliedRateUpdated {
+                            old_rate, new_rate, timestamp: get_block_timestamp(),
+                        },
+                    );
+            }
         }
     }
 }
