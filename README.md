@@ -187,7 +187,7 @@ As expiry approaches:
 ### Prerequisites (pinned versions)
 
 - **[Scarb](https://docs.swmansion.com/scarb/)** 2.14.0 (check `.tool-versions`)
-- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.54.0 (snforge + sncast)
+- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.53.0 (snforge + sncast)
 - **[starkli](https://book.cairo-lang.org/appendix-07-starkli.html)** 0.4.2 (deployment tool)
 
 Use `asdf` or your OS package manager to install exact versions:
@@ -195,7 +195,7 @@ Use `asdf` or your OS package manager to install exact versions:
 ```bash
 # Verify installations
 scarb --version     # Should show 2.14.0
-snforge --version   # Should show 0.54.0
+snforge --version   # Should show 0.53.0
 starkli --version   # Should show 0.4.2
 ```
 
@@ -337,7 +337,7 @@ make dev-fork-down
 - Expiry checks prevent minting PT/YT after maturity
 - Access control on PT/YT minting (only YT contract can mint/burn)
 - No pause/emergency functions (immutable design choice)
-- No upgradeable contracts (all code is final at deployment)
+- Core token contracts (SY, PT, YT, Market) are immutable; only operational contracts are upgradeable
 
 ### Security Disclosure
 
