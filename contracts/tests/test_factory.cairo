@@ -88,6 +88,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }

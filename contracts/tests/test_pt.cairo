@@ -7,6 +7,10 @@ use snforge_std::{
 use starknet::{ContractAddress, SyscallResultTrait};
 
 // Test addresses
+fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
+}
+
 fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
 }
@@ -53,6 +57,8 @@ fn deploy_pt(sy: ContractAddress, expiry: u64) -> ContractAddress {
     calldata.append(sy.into());
     // expiry (u64)
     calldata.append(expiry.into());
+    // pauser address
+    calldata.append(admin().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     contract_address
