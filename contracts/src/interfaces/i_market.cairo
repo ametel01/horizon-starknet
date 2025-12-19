@@ -42,3 +42,13 @@ pub trait IMarket<TContractState> {
     // Market state
     fn get_ln_implied_rate(self: @TContractState) -> u256;
 }
+
+/// Admin interface for Market pausability
+#[starknet::interface]
+pub trait IMarketAdmin<TContractState> {
+    /// Pause all market operations (PAUSER_ROLE only)
+    fn pause(ref self: TContractState);
+
+    /// Unpause all market operations (PAUSER_ROLE only)
+    fn unpause(ref self: TContractState);
+}
