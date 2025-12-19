@@ -1,6 +1,11 @@
 /// Router Contract
 /// User-friendly entry point aggregating all protocol operations.
 /// Handles token transfers, approvals, and provides slippage protection.
+///
+/// SECURITY FEATURES:
+/// - ReentrancyGuard: Prevents reentrancy attacks during token transfers
+/// - Deadline: All operations must complete before specified timestamp
+/// - Pausable: Can be paused in emergencies by PAUSER_ROLE
 #[starknet::contract]
 pub mod Router {
     use core::num::traits::Zero;
@@ -16,8 +21,11 @@ pub mod Router {
     use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
+    use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
 
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -25,6 +33,9 @@ pub mod Router {
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+    component!(
+        path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent,
+    );
 
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
@@ -42,6 +53,9 @@ pub mod Router {
     impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
     impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
 
+    // ReentrancyGuard - internal only
+    impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
         // === EXISTING STORAGE - DO NOT MODIFY ORDER ===
@@ -56,6 +70,8 @@ pub mod Router {
         access_control: AccessControlComponent::Storage,
         #[substorage(v0)]
         pausable: PausableComponent::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: ReentrancyGuardComponent::Storage,
     }
 
     #[event]
@@ -77,6 +93,8 @@ pub mod Router {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         PausableEvent: PausableComponent::Event,
+        #[flat]
+        ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -207,8 +225,11 @@ pub mod Router {
             receiver: ContractAddress,
             amount_sy_in: u256,
             min_py_out: u256,
+            deadline: u64,
         ) -> (u256, u256) {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_in > 0, Errors::ZERO_AMOUNT);
@@ -244,6 +265,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             (pt_minted, yt_minted)
         }
 
@@ -253,8 +275,11 @@ pub mod Router {
             receiver: ContractAddress,
             amount_py_in: u256,
             min_sy_out: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_py_in > 0, Errors::ZERO_AMOUNT);
@@ -281,6 +306,7 @@ pub mod Router {
             // Emit event
             self.emit(RedeemPY { sender: caller, receiver, yt, py_in: amount_py_in, sy_out });
 
+            self.reentrancy_guard.end();
             sy_out
         }
 
@@ -290,8 +316,11 @@ pub mod Router {
             receiver: ContractAddress,
             amount_pt_in: u256,
             min_sy_out: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_pt_in > 0, Errors::ZERO_AMOUNT);
@@ -316,6 +345,7 @@ pub mod Router {
             // Emit event
             self.emit(RedeemPY { sender: caller, receiver, yt, py_in: amount_pt_in, sy_out });
 
+            self.reentrancy_guard.end();
             sy_out
         }
 
@@ -328,8 +358,11 @@ pub mod Router {
             sy_desired: u256,
             pt_desired: u256,
             min_lp_out: u256,
+            deadline: u64,
         ) -> (u256, u256, u256) {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(sy_desired > 0 && pt_desired > 0, Errors::ZERO_AMOUNT);
@@ -373,6 +406,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             (sy_used, pt_used, lp_minted)
         }
 
@@ -383,8 +417,11 @@ pub mod Router {
             lp_to_burn: u256,
             min_sy_out: u256,
             min_pt_out: u256,
+            deadline: u64,
         ) -> (u256, u256) {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(lp_to_burn > 0, Errors::ZERO_AMOUNT);
@@ -412,6 +449,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             (sy_out, pt_out)
         }
 
@@ -423,8 +461,11 @@ pub mod Router {
             receiver: ContractAddress,
             exact_sy_in: u256,
             min_pt_out: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_in > 0, Errors::ZERO_AMOUNT);
@@ -457,6 +498,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             pt_out
         }
 
@@ -466,8 +508,11 @@ pub mod Router {
             receiver: ContractAddress,
             exact_pt_in: u256,
             min_sy_out: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_in > 0, Errors::ZERO_AMOUNT);
@@ -500,6 +545,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             sy_out
         }
 
@@ -509,8 +555,11 @@ pub mod Router {
             receiver: ContractAddress,
             exact_pt_out: u256,
             max_sy_in: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_out > 0, Errors::ZERO_AMOUNT);
@@ -548,6 +597,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             sy_spent
         }
 
@@ -557,8 +607,11 @@ pub mod Router {
             receiver: ContractAddress,
             exact_sy_out: u256,
             max_pt_in: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_out > 0, Errors::ZERO_AMOUNT);
@@ -596,6 +649,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             pt_spent
         }
 
@@ -608,8 +662,11 @@ pub mod Router {
             receiver: ContractAddress,
             amount_sy_in: u256,
             min_pt_out: u256,
+            deadline: u64,
         ) -> (u256, u256) {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -645,6 +702,7 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             (pt_minted, yt_minted)
         }
 
@@ -654,9 +712,10 @@ pub mod Router {
             receiver: ContractAddress,
             amount_sy_in: u256,
             min_pt_out: u256,
+            deadline: u64,
         ) -> u256 {
             // This is just a wrapper around swap_exact_sy_for_pt with a friendlier name
-            self.swap_exact_sy_for_pt(market, receiver, amount_sy_in, min_pt_out)
+            self.swap_exact_sy_for_pt(market, receiver, amount_sy_in, min_pt_out, deadline)
         }
 
         fn sell_pt_for_sy(
@@ -665,9 +724,10 @@ pub mod Router {
             receiver: ContractAddress,
             amount_pt_in: u256,
             min_sy_out: u256,
+            deadline: u64,
         ) -> u256 {
             // This is just a wrapper around swap_exact_pt_for_sy with a friendlier name
-            self.swap_exact_pt_for_sy(market, receiver, amount_pt_in, min_sy_out)
+            self.swap_exact_pt_for_sy(market, receiver, amount_pt_in, min_sy_out, deadline)
         }
 
         // ============ YT Trading Operations (via Flash Swaps) ============
@@ -679,8 +739,11 @@ pub mod Router {
             receiver: ContractAddress,
             exact_sy_in: u256,
             min_yt_out: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -733,22 +796,38 @@ pub mod Router {
                     },
                 );
 
+            self.reentrancy_guard.end();
             yt_minted
         }
 
+        /// Sell YT for SY through the PT/SY market
+        /// Mechanism: Buy PT from market using caller's SY collateral, combine with YT to redeem SY
+        /// @param yt The YT contract address
+        /// @param market The PT/SY market address
+        /// @param receiver Address to receive SY
+        /// @param exact_yt_in Exact amount of YT to sell
+        /// @param max_sy_collateral Maximum SY caller will provide as collateral to buy PT
+        /// @param min_sy_out Minimum net SY to receive (slippage protection)
+        /// @param deadline Transaction must complete before this timestamp
+        /// @return Amount of net SY received (after collateral refund)
         fn swap_exact_yt_for_sy(
             ref self: ContractState,
             yt: ContractAddress,
             market: ContractAddress,
             receiver: ContractAddress,
             exact_yt_in: u256,
+            max_sy_collateral: u256,
             min_sy_out: u256,
+            deadline: u64,
         ) -> u256 {
             self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             assert(!market.is_zero(), Errors::ZERO_ADDRESS);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_yt_in > 0, Errors::ZERO_AMOUNT);
+            assert(max_sy_collateral > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
             let this = get_contract_address();
@@ -763,16 +842,14 @@ pub mod Router {
             // 1. Transfer YT from caller to this contract
             yt_contract.transfer_from(caller, this, exact_yt_in);
 
-            // 2. Estimate max SY needed - use 4x multiplier to account for AMM curve and fees
-            let max_sy_for_pt = exact_yt_in * 4;
+            // 2. Transfer SY collateral from caller (user specifies max amount they're willing to
+            // provide)
+            sy_contract.transfer_from(caller, this, max_sy_collateral);
 
-            // Transfer SY from caller (they need to approve max_sy_for_pt)
-            sy_contract.transfer_from(caller, this, max_sy_for_pt);
-
-            // Buy exact PT
-            sy_contract.approve(market, max_sy_for_pt);
+            // Buy exact PT using collateral
+            sy_contract.approve(market, max_sy_collateral);
             let sy_spent_on_pt = market_contract
-                .swap_sy_for_exact_pt(this, exact_yt_in, max_sy_for_pt);
+                .swap_sy_for_exact_pt(this, exact_yt_in, max_sy_collateral);
 
             // 3. Now we have PT and YT - redeem for SY
             pt_contract.approve(yt, exact_yt_in);
@@ -789,7 +866,7 @@ pub mod Router {
             // Slippage check before transferring
             assert(effective_sy_from_yt >= min_sy_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
-            let sy_refund = max_sy_for_pt - sy_spent_on_pt;
+            let sy_refund = max_sy_collateral - sy_spent_on_pt;
             let net_sy_out = sy_from_redemption + sy_refund;
 
             // 5. Send all SY to receiver
@@ -803,13 +880,14 @@ pub mod Router {
                         receiver,
                         yt,
                         market,
-                        sy_in: max_sy_for_pt,
+                        sy_in: max_sy_collateral,
                         yt_in: exact_yt_in,
                         sy_out: net_sy_out,
                         yt_out: 0,
                     },
                 );
 
+            self.reentrancy_guard.end();
             effective_sy_from_yt
         }
     }
