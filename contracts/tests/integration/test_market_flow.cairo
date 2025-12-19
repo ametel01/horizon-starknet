@@ -9,6 +9,8 @@ use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
+/// Default deadline for router operations (far future - effectively no deadline)
+const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
 /// Integration Tests: Market Trading Flow
 /// Tests complete market operations including liquidity and trading.
 ///
@@ -468,7 +470,8 @@ fn test_router_market_operations() {
     let bob_pt_before = pt.balance_of(bob());
 
     start_cheat_caller_address(router.contract_address, bob());
-    let pt_bought = router.buy_pt_from_sy(market.contract_address, bob(), trade_amount, 0);
+    let pt_bought = router
+        .buy_pt_from_sy(market.contract_address, bob(), trade_amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(pt_bought > 0, 'Router bought PT');
@@ -482,7 +485,8 @@ fn test_router_market_operations() {
     let bob_sy_before = sy.balance_of(bob());
 
     start_cheat_caller_address(router.contract_address, bob());
-    let sy_received = router.sell_pt_for_sy(market.contract_address, bob(), pt_bought, 0);
+    let sy_received = router
+        .sell_pt_for_sy(market.contract_address, bob(), pt_bought, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_received > 0, 'Router sold PT');

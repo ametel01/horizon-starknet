@@ -6,6 +6,8 @@ use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
+/// Default deadline for router operations (far future - effectively no deadline)
+const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
 /// Integration Tests: Expiry Behavior
 /// Tests behavior around and after expiry timestamp.
 ///
@@ -498,7 +500,8 @@ fn test_router_post_expiry_redemption() {
     let sy_before = sy.balance_of(alice());
 
     start_cheat_caller_address(router.contract_address, alice());
-    let sy_out = router.redeem_pt_post_expiry(yt.contract_address, alice(), pt_balance, 0);
+    let sy_out = router
+        .redeem_pt_post_expiry(yt.contract_address, alice(), pt_balance, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_out > 0, 'Router redeemed PT');

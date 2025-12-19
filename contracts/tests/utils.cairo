@@ -41,6 +41,9 @@ pub const ONE_YEAR: u64 = 365 * 86400;
 pub const ONE_MONTH: u64 = 30 * 86400;
 pub const ONE_DAY: u64 = 86400;
 
+/// Default deadline for router operations in tests (far future - effectively no deadline)
+pub const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF; // u64::MAX
+
 // ============ ByteArray Helper ============
 
 pub fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
