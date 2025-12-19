@@ -404,9 +404,10 @@ pub mod YT {
 
             // Calculate new interest since last update
             // interest = yt_balance * (current_index - user_index) / user_index
+            // Reordered to maximize precision: (yt_balance * index_diff) / user_index
             if current_index > user_index {
                 let index_diff = current_index - user_index;
-                let new_interest = wad_mul(yt_balance, wad_div(index_diff, user_index));
+                let new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index);
                 accrued + new_interest
             } else {
                 accrued
@@ -441,8 +442,9 @@ pub mod YT {
             // If user has a previous index and YT balance, calculate interest
             if user_index > 0 && yt_balance > 0 && current_index > user_index {
                 // interest = yt_balance * (current_index - user_index) / user_index
+                // Reordered to maximize precision: (yt_balance * index_diff) / user_index
                 let index_diff = current_index - user_index;
-                let new_interest = wad_mul(yt_balance, wad_div(index_diff, user_index));
+                let new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index);
 
                 let accrued = self.user_interest.read(user);
                 self.user_interest.write(user, accrued + new_interest);

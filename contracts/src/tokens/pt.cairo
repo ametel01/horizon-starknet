@@ -37,6 +37,8 @@ pub mod PT {
         yt: ContractAddress,
         // Expiry timestamp (Unix seconds)
         expiry: u64,
+        // The deployer address (YT contract) - can only be set once
+        deployer: ContractAddress,
     }
 
     #[event]
@@ -63,6 +65,8 @@ pub mod PT {
 
         self.sy.write(sy);
         self.expiry.write(expiry);
+        // Store deployer (the YT contract) to restrict initialize_yt access
+        self.deployer.write(get_caller_address());
         // YT address will be set after deployment via initialize_yt
     // This is because YT deploys PT, so PT doesn't know YT's address at construction
     }
@@ -156,7 +160,11 @@ pub mod PT {
     // External initialization function (separate from IPT interface)
     #[abi(embed_v0)]
     impl PTInitImpl of super::IPTInit<ContractState> {
+        /// Initialize the YT address - only callable by deployer (the YT contract)
+        /// This prevents front-running attacks where an attacker could set themselves as YT
         fn initialize_yt(ref self: ContractState, yt: ContractAddress) {
+            // Only the deployer (YT contract) can initialize
+            assert(get_caller_address() == self.deployer.read(), Errors::PT_ONLY_DEPLOYER);
             assert(self.yt.read().is_zero(), Errors::PT_YT_ALREADY_SET);
             assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
             self.yt.write(yt);
