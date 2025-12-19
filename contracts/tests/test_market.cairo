@@ -94,6 +94,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -109,6 +110,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(sy.into());
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -129,6 +131,7 @@ fn deploy_market(
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -278,7 +281,7 @@ fn test_market_mint_subsequent() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user1_addr);
-    let (_, _, lp1) = market.mint(user1_addr, 100 * WAD, 100 * WAD);
+    let (_, _, _) = market.mint(user1_addr, 100 * WAD, 100 * WAD);
     stop_cheat_caller_address(market.contract_address);
 
     // User2 adds more liquidity
