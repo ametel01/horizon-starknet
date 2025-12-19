@@ -1,24 +1,32 @@
 /// AMM Market Contract
 /// Implements the PT/SY trading pool with time-aware pricing.
 /// The market acts as an LP token itself (ERC20) for liquidity providers.
+/// - Pausable: Can be paused in emergencies by PAUSER_ROLE
 
 #[starknet::contract]
 pub mod Market {
     use core::num::traits::Zero;
-    use horizon::interfaces::i_market::IMarket;
+    use horizon::interfaces::i_market::{IMarket, IMarketAdmin};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use horizon::market::market_math::{
         MINIMUM_LIQUIDITY, MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
         calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt,
         check_slippage, get_ln_implied_rate, get_time_to_expiry,
     };
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
+    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
+    component!(path: PausableComponent, storage: pausable, event: PausableEvent);
 
     // ERC20 component for LP token functionality
     #[abi(embed_v0)]
@@ -27,10 +35,27 @@ pub mod Market {
     impl ERC20MetadataImpl = ERC20Component::ERC20MetadataImpl<ContractState>;
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
 
+    // AccessControl - embed the public interface
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
+    // Pausable - embed the public interface
+    #[abi(embed_v0)]
+    impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
+    impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        pausable: PausableComponent::Storage,
         // Token addresses
         sy: ContractAddress,
         pt: ContractAddress,
@@ -55,6 +80,12 @@ pub mod Market {
     pub enum Event {
         #[flat]
         ERC20Event: ERC20Component::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        PausableEvent: PausableComponent::Event,
         Mint: Mint,
         Burn: Burn,
         Swap: Swap,
@@ -104,12 +135,14 @@ pub mod Market {
         scalar_root: u256,
         initial_anchor: u256,
         fee_rate: u256,
+        pauser: ContractAddress,
     ) {
         // Initialize LP token (ERC20)
         self.erc20.initializer(name, symbol);
 
         // Validate inputs
         assert(!pt.is_zero(), Errors::ZERO_ADDRESS);
+        assert(!pauser.is_zero(), Errors::ZERO_ADDRESS);
 
         // Get SY and YT from PT contract
         let pt_contract = IPTDispatcher { contract_address: pt };
@@ -120,6 +153,10 @@ pub mod Market {
         assert(!sy.is_zero(), Errors::ZERO_ADDRESS);
         assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
         assert(expiry > get_block_timestamp(), Errors::MARKET_EXPIRED);
+
+        // Initialize access control - grant admin and pauser roles
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, pauser);
+        self.access_control._grant_role(PAUSER_ROLE, pauser);
 
         // Store addresses
         self.sy.write(sy);
@@ -184,6 +221,9 @@ pub mod Market {
         fn mint(
             ref self: ContractState, receiver: ContractAddress, sy_desired: u256, pt_desired: u256,
         ) -> (u256, u256, u256) {
+            // Check if paused
+            self.pausable.assert_not_paused();
+
             // Validate
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -302,6 +342,7 @@ pub mod Market {
         fn swap_exact_pt_for_sy(
             ref self: ContractState, receiver: ContractAddress, exact_pt_in: u256, min_sy_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_in > 0, Errors::ZERO_AMOUNT);
@@ -355,6 +396,7 @@ pub mod Market {
         fn swap_sy_for_exact_pt(
             ref self: ContractState, receiver: ContractAddress, exact_pt_out: u256, max_sy_in: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_out > 0, Errors::ZERO_AMOUNT);
@@ -408,6 +450,7 @@ pub mod Market {
         fn swap_exact_sy_for_pt(
             ref self: ContractState, receiver: ContractAddress, exact_sy_in: u256, min_pt_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_in > 0, Errors::ZERO_AMOUNT);
@@ -461,6 +504,7 @@ pub mod Market {
         fn swap_pt_for_exact_sy(
             ref self: ContractState, receiver: ContractAddress, exact_sy_out: u256, max_pt_in: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_out > 0, Errors::ZERO_AMOUNT);
@@ -511,6 +555,22 @@ pub mod Market {
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             get_ln_implied_rate(@state, time_to_expiry)
+        }
+    }
+
+    // Admin functions for pausability
+    #[abi(embed_v0)]
+    impl MarketAdminImpl of IMarketAdmin<ContractState> {
+        /// Pause all market operations (PAUSER_ROLE only)
+        fn pause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.pause();
+        }
+
+        /// Unpause all market operations (PAUSER_ROLE only)
+        fn unpause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.unpause();
         }
     }
 
