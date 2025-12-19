@@ -4,7 +4,7 @@ import { Formula } from '@/components/docs/Formula';
 
 # AMM Mechanics
 
-Horizon uses a specialized market maker designed for time-decaying assets like PT.
+Horizon uses a **logit-based AMM curve** specifically designed for trading time-decaying assets like PT. This curve ensures PT naturally converges to its redemption value at expiry.
 
 ---
 
@@ -20,11 +20,42 @@ When you trade:
 
 ---
 
+## The Core Curve: Logit-Based Pricing
+
+Unlike traditional constant-product AMMs (x × y = k), Horizon uses a **logit-based exchange rate**:
+
+<Formula display>{"\\text{exchangeRate} = \\frac{\\ln\\left(\\frac{p}{1-p}\\right)}{\\text{rateScalar}} + \\text{rateAnchor}"}</Formula>
+
+Where:
+- <Formula>{"p"}</Formula> = proportion of PT in the pool: <Formula>{"\\frac{\\text{PT}}{\\text{PT} + \\text{SY}}"}</Formula>
+- <Formula>{"\\text{rateScalar}"}</Formula> = time-adjusted sensitivity parameter
+- <Formula>{"\\text{rateAnchor}"}</Formula> = dynamic anchor maintaining rate continuity
+
+The **logit function** <Formula>{"\\ln(p/(1-p))"}</Formula> maps proportions to an unbounded range, creating smooth price curves that handle extreme market conditions gracefully.
+
+---
+
+## Rate Scalar: Time-Adjusted Sensitivity
+
+The rate scalar controls how sensitive prices are to pool balance changes:
+
+<Formula display>{"\\text{rateScalar} = \\text{scalarRoot} \\times \\frac{\\text{SECONDS\\_PER\\_YEAR}}{\\text{timeToExpiry}}"}</Formula>
+
+As expiry approaches:
+- <Formula>{"\\text{timeToExpiry} \\to 0"}</Formula>
+- <Formula>{"\\text{rateScalar} \\to \\infty"}</Formula>
+- **Curve flattens** — trades have minimal price impact
+- **PT price converges to 1** — guaranteed redemption value
+
+---
+
 ## Implied Yield
 
-The AMM expresses prices as **implied yield** — the annualized return if you hold PT to maturity.
+The AMM expresses prices as **implied yield** — the annualized return if you hold PT to maturity:
 
-<Formula display>{"\\text{Implied APY} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+<Formula display>{"\\text{lnImpliedRate} = \\ln(\\text{exchangeRate}) \\times \\frac{\\text{SECONDS\\_PER\\_YEAR}}{\\text{timeToExpiry}}"}</Formula>
+
+This implied rate is updated after every trade and used to recalculate the rate anchor, ensuring price continuity.
 
 **Example:** PT at 0.95 with 180 days to expiry = ~10.8% implied APY
 
@@ -39,14 +70,31 @@ As maturity approaches:
 3. **YT price falls toward 0** — yield rights worth less
 
 <Callout type="info">
-This is automatic. The AMM naturally pushes PT toward its redemption value as expiry nears.
+This is automatic. The logit curve naturally pushes PT toward its redemption value as the rate scalar increases near expiry.
 </Callout>
+
+---
+
+## Fee Decay
+
+Swap fees also decay linearly toward expiry:
+
+<Formula display>{"\\text{adjustedFeeRate} = \\text{baseFeeRate} \\times \\frac{\\text{timeToExpiry}}{\\text{SECONDS\\_PER\\_YEAR}}"}</Formula>
+
+This means:
+- **1 year out** → Full fee rate applies
+- **6 months out** → ~50% of base fee
+- **At expiry** → Zero fees
+
+This encourages trading near maturity and reduces friction for arbitrageurs maintaining the PT = 1 peg.
 
 ---
 
 ## Price Impact
 
-Large trades move the implied yield significantly.
+Large trades move the implied yield significantly. The logit curve provides natural price impact:
+- Small trades near equilibrium have minimal impact
+- Large trades that push proportion toward extremes face increasing resistance
 
 **Before trading, check:**
 - Spot price vs execution price
@@ -67,7 +115,7 @@ When you add liquidity:
 - Earn fees from every swap
 
 **LP returns come from:**
-- Swap fees (percentage of each trade)
+- Swap fees (time-adjusted, decays toward expiry)
 - Underlying yield (SY keeps earning)
 - PT appreciation toward maturity
 

@@ -81,6 +81,20 @@ Where:
 
 ---
 
+## How the AMM Calculates Implied Rate
+
+Internally, the AMM uses the **natural log of the implied rate** for precision:
+
+<Formula display>{"\\text{lnImpliedRate} = \\ln(\\text{exchangeRate}) \\times \\frac{\\text{SECONDS\\_PER\\_YEAR}}{\\text{timeToExpiry}}"}</Formula>
+
+This is converted to APY using:
+
+<Formula display>{"\\text{Implied APY} = e^{\\text{lnImpliedRate}} - 1"}</Formula>
+
+The AMM stores `lnImpliedRate` after each trade and uses it to maintain rate continuity through the **rate anchor** mechanism.
+
+---
+
 ## Try It: Yield Calculator
 
 <YieldCalculator />
