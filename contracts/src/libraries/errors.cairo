@@ -11,6 +11,7 @@ pub mod Errors {
 
     // PT errors
     pub const PT_ONLY_YT: felt252 = 'PT: only YT';
+    pub const PT_ONLY_DEPLOYER: felt252 = 'PT: only deployer';
     pub const PT_YT_NOT_SET: felt252 = 'PT: YT not set';
     pub const PT_YT_ALREADY_SET: felt252 = 'PT: YT already set';
     pub const PT_INVALID_EXPIRY: felt252 = 'PT: invalid expiry';
@@ -34,6 +35,9 @@ pub mod Errors {
     pub const MARKET_FACTORY_ALREADY_EXISTS: felt252 = 'MktFactory: already exists';
     pub const MARKET_FACTORY_DEPLOY_FAILED: felt252 = 'MktFactory: deploy failed';
     pub const INDEX_OUT_OF_BOUNDS: felt252 = 'MktFactory: index out of bounds';
+    pub const MARKET_FACTORY_INVALID_SCALAR: felt252 = 'MktFactory: invalid scalar';
+    pub const MARKET_FACTORY_INVALID_ANCHOR: felt252 = 'MktFactory: invalid anchor';
+    pub const MARKET_FACTORY_INVALID_FEE: felt252 = 'MktFactory: invalid fee';
 
     // Router errors
     pub const ROUTER_SLIPPAGE_EXCEEDED: felt252 = 'Router: slippage exceeded';
