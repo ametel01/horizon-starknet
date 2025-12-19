@@ -20,6 +20,22 @@ pub mod MarketFactory {
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    // ============ Market Parameter Bounds ============
+    // These constants define valid ranges for market creation parameters
+
+    /// Minimum scalar_root: 1 WAD (ensures some rate sensitivity)
+    const MIN_SCALAR_ROOT: u256 = 1_000_000_000_000_000_000; // 1 WAD
+
+    /// Maximum scalar_root: 1000 WAD (prevents extreme rate sensitivity that could cause overflow)
+    const MAX_SCALAR_ROOT: u256 = 1_000_000_000_000_000_000_000; // 1000 WAD
+
+    /// Maximum initial_anchor (ln implied rate): ~4.6 WAD (corresponds to ~100x implied rate)
+    /// Using same value as market_math::MAX_LN_IMPLIED_RATE
+    const MAX_INITIAL_ANCHOR: u256 = 4_600_000_000_000_000_000; // ~4.6 WAD
+
+    /// Maximum fee rate: 10% = 0.1 WAD (reasonable upper bound for trading fees)
+    const MAX_FEE_RATE: u256 = 100_000_000_000_000_000; // 0.1 WAD = 10%
+
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -131,8 +147,21 @@ pub mod MarketFactory {
             initial_anchor: u256,
             fee_rate: u256,
         ) -> ContractAddress {
-            // Validate inputs
+            // Validate PT address
             assert(!pt.is_zero(), Errors::ZERO_ADDRESS);
+
+            // Validate market parameters to prevent AMM math issues and economic attacks
+            // scalar_root must be within [1 WAD, 1000 WAD] to ensure proper rate sensitivity
+            assert(
+                scalar_root >= MIN_SCALAR_ROOT && scalar_root <= MAX_SCALAR_ROOT,
+                Errors::MARKET_FACTORY_INVALID_SCALAR,
+            );
+
+            // initial_anchor (ln implied rate) must not exceed max to prevent extreme pricing
+            assert(initial_anchor <= MAX_INITIAL_ANCHOR, Errors::MARKET_FACTORY_INVALID_ANCHOR);
+
+            // fee_rate must not exceed 10% to prevent economic attacks
+            assert(fee_rate <= MAX_FEE_RATE, Errors::MARKET_FACTORY_INVALID_FEE);
 
             // Check PT is valid and not expired
             let pt_contract = IPTDispatcher { contract_address: pt };

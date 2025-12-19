@@ -36,6 +36,10 @@ pub const MAX_LN_IMPLIED_RATE: u256 = 4_600_000_000_000_000_000; // ~4.6 WAD
 pub const MIN_PROPORTION: u256 = 1_000_000_000_000_000; // 0.001 WAD (0.1%)
 pub const MAX_PROPORTION: u256 = 999_000_000_000_000_000; // 0.999 WAD (99.9%)
 
+/// Minimum liquidity permanently locked on first deposit (prevents first depositor attacks)
+/// This amount is minted to the zero address and can never be redeemed
+pub const MINIMUM_LIQUIDITY: u256 = 1000;
+
 /// Calculate time to expiry in seconds
 /// @param expiry The expiry timestamp
 /// @param current_time Current block timestamp
@@ -310,12 +314,24 @@ pub fn calc_swap_pt_for_exact_sy(
 /// @param state Current market state
 /// @param sy_amount Amount of SY to add
 /// @param pt_amount Amount of PT to add
-/// @return (lp_to_mint, sy_used, pt_used)
-pub fn calc_mint_lp(state: @MarketState, sy_amount: u256, pt_amount: u256) -> (u256, u256, u256) {
+/// @return (lp_to_mint, sy_used, pt_used, is_first_mint)
+/// Note: For first mint, MINIMUM_LIQUIDITY is subtracted from lp_to_mint
+/// and must be minted to zero address by the caller
+pub fn calc_mint_lp(
+    state: @MarketState, sy_amount: u256, pt_amount: u256,
+) -> (u256, u256, u256, bool) {
     if *state.total_lp == 0 {
         // First liquidity provider - use geometric mean
         let lp = sqrt_u256(wad_mul(sy_amount, pt_amount));
-        return (lp, sy_amount, pt_amount);
+
+        // Require minimum liquidity to prevent first depositor attacks
+        // MINIMUM_LIQUIDITY is permanently locked (minted to zero address by AMM)
+        assert(lp > MINIMUM_LIQUIDITY, 'Market: insufficient initial LP');
+
+        // Subtract MINIMUM_LIQUIDITY from what the user receives
+        let lp_to_user = lp - MINIMUM_LIQUIDITY;
+
+        return (lp_to_user, sy_amount, pt_amount, true);
     }
 
     // Calculate the amount of each token to use based on current ratio
@@ -329,7 +345,7 @@ pub fn calc_mint_lp(state: @MarketState, sy_amount: u256, pt_amount: u256) -> (u
     let pt_used = wad_mul(ratio, *state.pt_reserve);
     let lp_to_mint = wad_mul(ratio, *state.total_lp);
 
-    (lp_to_mint, sy_used, pt_used)
+    (lp_to_mint, sy_used, pt_used, false)
 }
 
 /// Calculate tokens to return for LP burn

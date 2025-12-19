@@ -10,7 +10,7 @@ pub mod Market {
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::market::market_math::{
-        MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
+        MINIMUM_LIQUIDITY, MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
         calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt,
         check_slippage, get_ln_implied_rate, get_time_to_expiry,
     };
@@ -193,7 +193,10 @@ pub mod Market {
             let state = self._get_market_state();
 
             // Calculate LP tokens to mint
-            let (lp_to_mint, sy_used, pt_used) = calc_mint_lp(@state, sy_desired, pt_desired);
+            // For first mint, is_first_mint=true and MINIMUM_LIQUIDITY must be locked
+            let (lp_to_mint, sy_used, pt_used, is_first_mint) = calc_mint_lp(
+                @state, sy_desired, pt_desired,
+            );
             assert(lp_to_mint > 0, Errors::MARKET_ZERO_LIQUIDITY);
 
             // Transfer tokens from caller
@@ -207,7 +210,15 @@ pub mod Market {
             self.sy_reserve.write(self.sy_reserve.read() + sy_used);
             self.pt_reserve.write(self.pt_reserve.read() + pt_used);
 
-            // Mint LP tokens
+            // For first mint, permanently lock MINIMUM_LIQUIDITY by minting to dead address
+            // Using address 1 since OpenZeppelin ERC20 doesn't allow minting to zero address
+            // This prevents first depositor attacks and ensures pool can never be fully drained
+            if is_first_mint {
+                let dead_address: ContractAddress = 1.try_into().unwrap();
+                self.erc20.mint(dead_address, MINIMUM_LIQUIDITY);
+            }
+
+            // Mint LP tokens to receiver
             self.erc20.mint(receiver, lp_to_mint);
 
             // Update implied rate cache
