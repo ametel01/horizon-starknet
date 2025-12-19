@@ -5,7 +5,7 @@ This guide walks you through upgrading your deployed contracts to add Role-Based
 ## Prerequisites
 
 - You are the owner of the deployed contracts
-- You have `starkli` configured with your deployer account
+- You have `sncast` (Starknet Foundry) installed
 - Contracts are already deployed on mainnet (addresses in `.env.mainnet`)
 
 ## Overview
@@ -19,7 +19,53 @@ All existing functionality is preserved. User flows remain permissionless.
 
 ---
 
-## Step 1: Build New Contract Artifacts
+## Step 1: Setup Environment
+
+```bash
+cd /path/to/horizon-starknet
+
+# Source your mainnet environment
+source .env.mainnet
+
+# Verify variables are set
+echo "RPC: $STARKNET_RPC_URL"
+echo "Deployer: $DEPLOYER_ADDRESS"
+```
+
+---
+
+## Step 2: Setup Account File
+
+Create the sncast accounts file (if not already present):
+
+```bash
+ACCOUNTS_FILE="deploy/accounts/mainnet.json"
+mkdir -p deploy/accounts
+
+cat > "$ACCOUNTS_FILE" << EOF
+{
+  "alpha-mainnet": {
+    "deployer": {
+      "address": "$DEPLOYER_ADDRESS",
+      "class_hash": "0x03957f9f5a1cbfe918cedc2015c85200ca51a5f7506ecb6de98a5207b759bf8a",
+      "deployed": true,
+      "legacy": false,
+      "private_key": "$DEPLOYER_PRIVATE_KEY",
+      "public_key": "0x0",
+      "salt": "0x0",
+      "type": "braavos"
+    }
+  },
+  "alpha-sepolia": {}
+}
+EOF
+
+echo "Account file created: $ACCOUNTS_FILE"
+```
+
+---
+
+## Step 3: Build New Contract Artifacts
 
 ```bash
 cd contracts
@@ -30,92 +76,101 @@ This generates new Sierra files with RBAC in `target/dev/`.
 
 ---
 
-## Step 2: Declare New Class Hashes
-
-Source your mainnet environment:
-
-```bash
-source .env.mainnet
-```
+## Step 4: Declare New Class Hashes
 
 Declare each upgraded contract:
 
 ```bash
+ACCOUNTS_FILE="../deploy/accounts/mainnet.json"
+
 # Factory
-starkli declare target/dev/horizon_Factory.contract_class.json \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" declare -u "$STARKNET_RPC_URL" \
+  --package horizon -c Factory
 
 # MarketFactory
-starkli declare target/dev/horizon_MarketFactory.contract_class.json \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" declare -u "$STARKNET_RPC_URL" \
+  --package horizon -c MarketFactory
 
 # Router
-starkli declare target/dev/horizon_Router.contract_class.json \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" declare -u "$STARKNET_RPC_URL" \
+  --package horizon -c Router
 ```
 
 Save the returned class hashes:
 
 ```bash
-export NEW_FACTORY_CLASS_HASH=0x...
-export NEW_MARKET_FACTORY_CLASS_HASH=0x...
-export NEW_ROUTER_CLASS_HASH=0x...
+export NEW_FACTORY_CLASS_HASH=0x7d5345e2319f3915af98f8a3e3409cd5b065932a38bf9ae4fce808af4c25d8b
+export NEW_MARKET_FACTORY_CLASS_HASH=0x750353fd99d07d5f7dfd2ee3eb0152493d27bbf786fcc4764884db18fe3c038
+export NEW_ROUTER_CLASS_HASH=0x60314fa614cc0a13de2d283d4f5e79d21e6ab59b44f98ccc07b4b0f03ceea8a
 ```
 
 ---
 
-## Step 3: Upgrade Contracts
+## Step 5: Upgrade Contracts
 
 Call `upgrade()` on each contract (you must be the owner):
 
 ```bash
+ACCOUNTS_FILE="../deploy/accounts/mainnet.json"
+
 # Upgrade Factory
-starkli invoke $FACTORY_ADDRESS upgrade $NEW_FACTORY_CLASS_HASH \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$FACTORY_ADDRESS" -f upgrade -c "$NEW_FACTORY_CLASS_HASH"
 
 # Upgrade MarketFactory
-starkli invoke $MARKET_FACTORY_ADDRESS upgrade $NEW_MARKET_FACTORY_CLASS_HASH \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$MARKET_FACTORY_ADDRESS" -f upgrade -c "$NEW_MARKET_FACTORY_CLASS_HASH"
 
 # Upgrade Router
-starkli invoke $ROUTER_ADDRESS upgrade $NEW_ROUTER_CLASS_HASH \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f upgrade -c "$NEW_ROUTER_CLASS_HASH"
 ```
 
 ---
 
-## Step 4: Initialize RBAC
+## Step 6: Initialize RBAC
 
 After upgrade, call `initialize_rbac()` on each contract to bootstrap roles:
 
 ```bash
+ACCOUNTS_FILE="../deploy/accounts/mainnet.json"
+
 # Initialize RBAC on Factory
-starkli invoke $FACTORY_ADDRESS initialize_rbac \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$FACTORY_ADDRESS" -f initialize_rbac
 
 # Initialize RBAC on MarketFactory
-starkli invoke $MARKET_FACTORY_ADDRESS initialize_rbac \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$MARKET_FACTORY_ADDRESS" -f initialize_rbac
 
 # Initialize RBAC on Router
-starkli invoke $ROUTER_ADDRESS initialize_rbac \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f initialize_rbac
 ```
 
 This grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the current owner.
 
 ---
 
-## Step 5: Grant Additional Roles (Optional)
+## Step 7: Verify Upgrade
+
+Check that roles are properly set:
+
+```bash
+# Check if deployer has admin role on Router (role 0x0 = DEFAULT_ADMIN_ROLE)
+sncast call -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f has_role -c 0x0 "$DEPLOYER_ADDRESS"
+# Expected output contains: 0x1 (true)
+
+# Check paused state (should be false)
+sncast call -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f is_paused
+# Expected output contains: 0x0 (false)
+```
+
+---
+
+## Step 8: Grant Additional Roles (Optional)
 
 If you want to grant roles to other addresses:
 
@@ -123,44 +178,29 @@ If you want to grant roles to other addresses:
 
 ```
 DEFAULT_ADMIN_ROLE = 0x0
-PAUSER_ROLE = selector!("PAUSER_ROLE") = 0x03ef8c06ec5c17a3e5b1e8d8e7eb67dd1f4f8c3ef5e8e8e8e8e8e8e8e8e8e8e8
-OPERATOR_ROLE = selector!("OPERATOR_ROLE") = 0x02b5ce8e08e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8
+PAUSER_ROLE = selector!("PAUSER_ROLE")
+OPERATOR_ROLE = selector!("OPERATOR_ROLE")
 ```
+
+To get the actual selector values, you can compute them or use the values from contracts.
 
 ### Grant Role Commands
 
 ```bash
+ACCOUNTS_FILE="../deploy/accounts/mainnet.json"
+
 # Grant PAUSER_ROLE to a security address
-starkli invoke $ROUTER_ADDRESS grant_role \
-  0x03ef8c06ec5c17a3e5b1e8d8e7eb67dd1f4f8c3ef5e8e8e8e8e8e8e8e8e8e8e8 \
-  $SECURITY_ADDRESS \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+# First, get PAUSER_ROLE selector (you can compute this from selector!("PAUSER_ROLE"))
+PAUSER_ROLE="0x..." # Compute from Cairo selector
+
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f grant_role -c "$PAUSER_ROLE" "$SECURITY_ADDRESS"
 
 # Grant OPERATOR_ROLE to ops team (for PragmaIndexOracle)
-starkli invoke $ORACLE_ADDRESS grant_role \
-  0x02b5ce8e08e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8 \
-  $OPS_ADDRESS \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
-```
+OPERATOR_ROLE="0x..." # Compute from Cairo selector
 
----
-
-## Step 6: Verify Upgrade
-
-Check that roles are properly set:
-
-```bash
-# Check if deployer has admin role on Router
-starkli call $ROUTER_ADDRESS has_role 0x0 $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
-# Expected: 0x1 (true)
-
-# Check paused state (should be false)
-starkli call $ROUTER_ADDRESS is_paused \
-  --rpc $STARKNET_RPC_URL
-# Expected: 0x0 (false)
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ORACLE_ADDRESS" -f grant_role -c "$OPERATOR_ROLE" "$OPS_ADDRESS"
 ```
 
 ---
@@ -170,19 +210,19 @@ starkli call $ROUTER_ADDRESS is_paused \
 To test the pause functionality:
 
 ```bash
+ACCOUNTS_FILE="../deploy/accounts/mainnet.json"
+
 # Pause the router (only PAUSER_ROLE can do this)
-starkli invoke $ROUTER_ADDRESS pause \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f pause
 
 # Verify paused
-starkli call $ROUTER_ADDRESS is_paused --rpc $STARKNET_RPC_URL
-# Expected: 0x1 (true)
+sncast call -u "$STARKNET_RPC_URL" -d "$ROUTER_ADDRESS" -f is_paused
+# Expected output contains: 0x1 (true)
 
 # Unpause
-starkli invoke $ROUTER_ADDRESS unpause \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f unpause
 ```
 
 ---
@@ -190,7 +230,7 @@ starkli invoke $ROUTER_ADDRESS unpause \
 ## Role Reference
 
 | Role | Contracts | Purpose |
-|------|-----------|---------|
+|------|-----------|------------|
 | `DEFAULT_ADMIN_ROLE` | All | Grant/revoke roles, ultimate authority |
 | `PAUSER_ROLE` | Router, Oracle | Emergency pause/unpause |
 | `OPERATOR_ROLE` | Oracle | Update oracle config (TWAP, staleness) |
@@ -202,9 +242,10 @@ starkli invoke $ROUTER_ADDRESS unpause \
 If needed, you can upgrade back to the previous class hash (stored in `.env.mainnet`):
 
 ```bash
-starkli invoke $ROUTER_ADDRESS upgrade $ROUTER_CLASS_HASH \
-  --account $DEPLOYER_ADDRESS \
-  --rpc $STARKNET_RPC_URL
+ACCOUNTS_FILE="../deploy/accounts/mainnet.json"
+
+sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
+  -d "$ROUTER_ADDRESS" -f upgrade -c "$ROUTER_CLASS_HASH"
 ```
 
 ---
