@@ -36,4 +36,7 @@ pub trait IMarketFactory<TContractState> {
 
     /// Set new market class hash (owner only)
     fn set_market_class_hash(ref self: TContractState, new_class_hash: ClassHash);
+
+    /// Initialize RBAC after upgrade (one-time setup)
+    fn initialize_rbac(ref self: TContractState);
 }
