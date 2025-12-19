@@ -264,11 +264,17 @@ pub mod PragmaIndexOracle {
         }
 
         /// Emergency index update (DEFAULT_ADMIN_ROLE only)
+        /// Note: Index can only increase to maintain monotonic watermark pattern.
+        /// Decreasing the index would allow stealing yield from YT holders.
+        /// If oracle data was corrupted with too-high values, use contract upgrade for recovery.
         fn emergency_set_index(ref self: ContractState, new_index: u256) {
             self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
             assert(new_index >= WAD, 'PIO: index below WAD');
 
             let old_index = self.stored_index.read();
+            // Enforce monotonic watermark - index can only increase
+            assert(new_index >= old_index, 'PIO: cannot decrease index');
+
             self.stored_index.write(new_index);
             self.last_update_timestamp.write(get_block_timestamp());
 
