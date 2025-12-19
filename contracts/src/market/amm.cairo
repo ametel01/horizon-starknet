@@ -648,9 +648,7 @@ pub mod Market {
                 self.last_ln_implied_rate.write(new_rate);
                 self
                     .emit(
-                        ImpliedRateUpdated {
-                            old_rate, new_rate, timestamp: get_block_timestamp(),
-                        },
+                        ImpliedRateUpdated { old_rate, new_rate, timestamp: get_block_timestamp() },
                     );
             }
         }
