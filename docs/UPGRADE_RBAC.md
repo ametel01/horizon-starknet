@@ -148,7 +148,10 @@ sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" \
   -d "$ROUTER_ADDRESS" -f initialize_rbac
 ```
 
-This grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the current owner.
+**Roles granted per contract:**
+- Factory: `DEFAULT_ADMIN_ROLE`
+- MarketFactory: `DEFAULT_ADMIN_ROLE`
+- Router: `DEFAULT_ADMIN_ROLE` + `PAUSER_ROLE`
 
 ---
 
