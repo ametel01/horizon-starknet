@@ -7,8 +7,11 @@ pub mod Factory {
     use horizon::interfaces::i_factory::IFactory;
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::roles::DEFAULT_ADMIN_ROLE;
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
@@ -17,16 +20,26 @@ pub mod Factory {
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
+    // AccessControl - embed the full implementation for role management
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
+        // === EXISTING STORAGE - DO NOT MODIFY ORDER ===
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
@@ -45,6 +58,11 @@ pub mod Factory {
         valid_yts: Map<ContractAddress, bool>,
         // Counter for unique salt generation
         deploy_count: u256,
+        // === NEW STORAGE - ADDED AT END ===
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
     }
 
     #[event]
@@ -56,6 +74,10 @@ pub mod Factory {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -89,6 +111,10 @@ pub mod Factory {
         self.yt_class_hash.write(yt_class_hash);
         self.pt_class_hash.write(pt_class_hash);
         self.deploy_count.write(0);
+
+        // Initialize AccessControl and grant admin role to owner
+        self.access_control.initializer();
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
     }
 
     #[abi(embed_v0)]
@@ -218,6 +244,18 @@ pub mod Factory {
             self.pt_class_hash.write(pt_class_hash);
 
             self.emit(ClassHashesUpdated { yt_class_hash, pt_class_hash });
+        }
+
+        /// Initialize RBAC after upgrade (one-time setup)
+        /// Owner calls this to bootstrap AccessControl roles
+        fn initialize_rbac(ref self: ContractState) {
+            self.ownable.assert_only_owner();
+
+            let owner = self.ownable.owner();
+
+            // Initialize AccessControl if not already done
+            // Grant admin role to current owner
+            self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
         }
     }
 }
