@@ -105,6 +105,7 @@ pub fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -127,6 +128,7 @@ pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> 
     calldata.append(sy.into());
     calldata.append(pt_class_hash.into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
