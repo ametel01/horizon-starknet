@@ -1,0 +1,38 @@
+Business Source License 1.1
+
+License text
+
+The Licensor hereby grants you the right to copy, modify, and distribute the Software under the following conditions:
+
+1. The Software, and any derivative works thereof, must retain the above copyright notice and this license.
+
+2. Any Derivative Work that you distribute, publicly display, publicly perform, or publicly digitally perform must:
+   a. Be licensed as a whole at no charge to all third parties under the terms of this License;
+   b. Include a prominent notice that the Work is made available under the Business Source License; and
+   c. State the effective date the Work ceased being made available under the Business Source License.
+
+3. You may not use any marks, names, logos, or other designations of Licensor to market, endorse, or promote any product or service, except as required by the attribution provision in this License.
+
+4. If the Work includes "NOTICE" text files, the content of these files must be legible, and not obscured by other elements.
+
+5. Any notice or label that you place on modified versions of the Software that you distribute must include:
+   a. A statement that the Software is made available under this Business Source License;
+   b. The specific version number or date of the Business Source License you are using; and
+   c. Statement of changes made, if any.
+
+6. If the software was modified, a notice of what changes were made and the date of those changes.
+
+Licensor's Notice of Change Date
+═══════════════════════════════════════════════════════════════════
+
+Change Date: December 19, 2028
+
+Change License: GNU General Public License v3.0 or later
+
+Additional Use Grant: You may use the Software and Derivative Works solely on the Horizon protocol deployed by Licensor or its affiliates, without the redistribution and modification restrictions of the Change License.
+
+═══════════════════════════════════════════════════════════════════
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For information regarding this Business Source License, see: https://mariadb.com/bsl11

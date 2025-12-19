@@ -4,11 +4,39 @@
 
 # Horizon Protocol
 
-A Pendle-style yield tokenization protocol implemented in Cairo for Starknet. Horizon allows users to separate yield-bearing assets into their principal and yield components, enabling advanced yield trading strategies.
+**A Pendle-style yield tokenization protocol for Starknet** — enabling users to separate yield-bearing assets into principal and yield tokens, unlocking advanced DeFi strategies.
 
 [![Build](https://github.com/ametel01/horizon-starknet/actions/workflows/build.yml/badge.svg)](https://github.com/ametel01/horizon-starknet/actions/workflows/build.yml)
 [![Test](https://github.com/ametel01/horizon-starknet/actions/workflows/test.yml/badge.svg)](https://github.com/ametel01/horizon-starknet/actions/workflows/test.yml)
 [![Format](https://github.com/ametel01/horizon-starknet/actions/workflows/fmt.yml/badge.svg)](https://github.com/ametel01/horizon-starknet/actions/workflows/fmt.yml)
+
+## Quick Links
+
+- **[Documentation](#developer)** — Build, test, deploy
+- **[Whitepaper / Litepaper](#)** — Technical design (TBD)
+- **[Discord](#)** — Community & support (TBD)
+- **[X / Twitter](#)** — Updates (TBD)
+- **[Governance](#governance--upgrades--permissions)** — Upgrade process
+
+## Status & Coverage
+
+| Property | Value |
+|----------|-------|
+| **Status** | Alpha (Mainnet live) |
+| **Network** | Starknet Mainnet |
+| **Safety Model** | Non-custodial; mixed upgradeability (see below) |
+| **License** | [Business Source License 1.1](LICENSE) (converts to GPL-3.0 on 2028-12-19) |
+
+## Quick Facts (Security & Integration Triage)
+
+| Property | Status |
+|----------|--------|
+| **Upgradeable** | Mixed: Factory, MarketFactory, Router, PragmaIndexOracle are upgradeable; SY, PT, YT, Market are immutable |
+| **Admin Keys** | Owner-controlled upgrades on 4 contracts; no pause functions; no parameter controls |
+| **Audits** | Not yet audited (Alpha stage) |
+| **Bug Bounty** | Not yet active (TBD) |
+| **Key Dependencies** | Starknet RPC, Pragma oracle (TWAP price feeds), hrzSTRK (mock staked token for testing) |
+| **Live Addresses** | See [Deployments](#contracts--deployments) section |
 
 ## Overview
 
@@ -74,7 +102,9 @@ A specialized AMM for trading PT against SY. Uses a time-decay pricing curve whe
 2. Earn trading fees from swaps
 3. Remove liquidity anytime
 
-## Contracts
+## Contracts & Deployments
+
+### Contract Roles
 
 | Contract | Description |
 |----------|-------------|
@@ -85,6 +115,32 @@ A specialized AMM for trading PT against SY. Uses a time-decay pricing curve whe
 | `Factory` | Deploys SY/PT/YT token sets for new underlying assets |
 | `MarketFactory` | Deploys markets for PT tokens |
 | `Router` | Aggregates operations with slippage protection |
+
+### Mainnet Deployment (Starknet Mainnet)
+
+| Contract | Address | Upgradeable | Notes |
+|----------|---------|-------------|-------|
+| **Factory** | `0x04624ed3f5facf138a2a2313a2f00fdff04bf7d77288645e5c4a7187c579efc5` | Yes | Deploys SY/PT/YT pairs; owner-upgradeable |
+| **MarketFactory** | `0x00fd35857bbdab29549f1144380f9e06cf5a9eceec0def80ff572995a75df76d` | Yes | Deploys PT/SY AMM markets; owner-upgradeable |
+| **Router** | `0x0745e8e62d68da1f76211d390c985da2f732df0b4a9b47619617d0b7f037e648` | Yes | User entry point; owner-upgradeable |
+
+#### hrzSTRK Market (Mock Staked STRK)
+
+| Contract | Address | Immutable | Purpose |
+|----------|---------|-----------|---------|
+| **hrzSTRK** | `0x01fc0a1862d0cb1419fdb474d9103004cf10e4f42c7aa85f92d105a69efd4f54` | ✓ | ERC-4626 mock yield token (staking vault) |
+| **Faucet** | `0x02bd402c209833f61f33bf371e27bab5032eb415cbaa0d732bf146181e2d3f6e` | No | Test token distributor |
+| **SY (hrzSTRK)** | `0x042ff17c3d3b7a3f6dc7531dc595c80aee91183f2e9e236f081b837d77d6b956` | ✓ | Standardized yield wrapper |
+| **PT (hrzSTRK)** | `0x073b405955f98248bb84018a4f6ecb00ae5434716aa6726eabac82c12c4b5aca` | ✓ | Principal token, redeemable 1:1 at expiry |
+| **YT (hrzSTRK)** | `0x066d135b5aed0826f4880dd70bf48fa5648c12f619572ef4db37c6496c70ea0` | ✓ | Yield token, accrues interest until expiry |
+| **Market (hrzSTRK/SY)** | `0x075384d578bddb9790c2bfb8d11f22f8f767b77d6e617b9059e6c0c1aa29289f` | ✓ | PT/SY AMM trading pool |
+
+**Deployment Info:**
+- Network: Starknet Mainnet
+- Expiry: ~6 months from deployment (~2024-06-12)
+- Deployment: `./deploy/scripts/deploy.sh mainnet`
+- Explorer: Use [Starkscan](https://starkscan.co/) to verify addresses
+- Verification: Run `scarb build` with Scarb 2.14.0 and compare bytecode (see [Reproducible Build](#reproducible-build))
 
 ## Key Functions
 
@@ -126,33 +182,83 @@ As expiry approaches:
 - Implied rate becomes more volatile with smaller trades
 - At expiry, PT = SY in value
 
-## Development
+## Developer
 
-### Prerequisites
+### Prerequisites (pinned versions)
 
-- [Scarb](https://docs.swmansion.com/scarb/) 2.14.0+
-- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/) 0.54.0+
+- **[Scarb](https://docs.swmansion.com/scarb/)** 2.14.0 (check `.tool-versions`)
+- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.54.0 (snforge + sncast)
+- **[starkli](https://book.cairo-lang.org/appendix-07-starkli.html)** 0.4.2 (deployment tool)
 
-### Building
+Use `asdf` or your OS package manager to install exact versions:
 
 ```bash
+# Verify installations
+scarb --version     # Should show 2.14.0
+snforge --version   # Should show 0.54.0
+starkli --version   # Should show 0.4.2
+```
+
+### Install & Build
+
+```bash
+cd contracts
 scarb build
 ```
 
-### Testing
+### Test
 
 ```bash
 # Run all tests
-snforge test
+cd contracts && snforge test
+
+# Run with backtrace on failure
+cd contracts && SNFORGE_BACKTRACE=1 snforge test
 
 # Run specific test
-snforge test test_full_flow
+cd contracts && snforge test test_full_flow
 ```
 
-### Formatting
+### Format & Lint
 
 ```bash
-scarb fmt
+cd contracts && scarb fmt
+```
+
+### Reproducible Build
+
+To verify bytecode matches on-chain deployments:
+
+```bash
+cd contracts
+scarb clean
+scarb build
+# Compare CASM/Sierra artifacts in target/ with on-chain code
+# See deployment tag/commit at https://github.com/ametel01/horizon-starknet/releases
+```
+
+### Local Development (Docker)
+
+```bash
+# Start local devnet + deploy contracts
+make dev-up
+
+# View logs
+make dev-logs
+
+# Stop devnet
+make dev-down
+
+# Fork mainnet (uses real Pragma oracle)
+make dev-fork
+make dev-fork-down
+```
+
+**Example: Deploy to local devnet**
+
+```bash
+./deploy/scripts/deploy.sh devnet
+./deploy/scripts/export-addresses.sh devnet  # Export to JSON
 ```
 
 ## Project Structure
@@ -182,13 +288,185 @@ scarb fmt
 └── .github/workflows/       # CI pipelines
 ```
 
-## Security Considerations
+## Security
 
-- All arithmetic uses WAD (10^18) fixed-point precision to prevent rounding errors
-- Slippage protection on all router operations
+### Audits
+
+- **Current Status:** Not yet audited (Alpha stage, live on mainnet)
+- **Planned:** Security audit in progress / scheduled post-launch
+
+### Bug Bounty
+
+- **Status:** Not yet active
+- **Info:** Will be announced at launch
+
+### Threat Model & Known Risks
+
+**IMPORTANT: Horizon is in Alpha on mainnet with real funds at risk. Carefully evaluate your risk tolerance.**
+
+#### Smart Contract Risks
+
+- **Precision Loss**: All arithmetic uses WAD (10^18) fixed-point math; extreme precision inputs may exhibit rounding
+- **Oracle Risk**: PT/YT pricing depends on accurate yield rate discovery via market AMM; illiquid markets may have poor price discovery
+- **Expiry Handling**: At maturity, YT becomes worthless and PT redeems to underlying; ensure frontend clearly communicates expiry dates
+- **Flash Loan Risk**: Not currently guarded against flash loan exploits in initial release; monitor governance decisions
+- **Upgrade Risk**: Factory, MarketFactory, Router, and PragmaIndexOracle are upgradeable; future upgrades could alter behavior or introduce bugs
+
+#### Protocol-Specific Risks
+
+- **Yield-Bearing Asset Risk**: Underlying assets (stETH, aUSDC, etc.) carry their own smart contract, oracle, and liquidation risks
+- **Liquidation Risk**: Users holding PT into maturity lock in time value; PT value floor is underlying asset's accounting value
+- **Access Control**: Minting/burning PT/YT restricted to YT contract only; ensure YT contract itself is secure
+- **Time Decay**: Market AMM uses time-based pricing; significant price swings expected near expiry
+
+#### Infrastructure Risks
+
+- **Starknet RPC**: Protocol depends on Starknet L2 RPC availability; network outages prevent state updates
+- **Pragma Oracle**: Price feeds sourced from Pragma; oracle downtime affects market pricing
+- **Bridge Risk**: If using cross-chain yield assets, inherits bridge security assumptions
+
+#### Asset-Specific Risks
+
+- **Non-Standard Tokens**: Protocol assumes ERC20 standard; tokens with custom fee-on-transfer or rebasing mechanics untested
+- **Decimals**: Assets with non-18-decimal values may exhibit precision issues; validate before wrapping
+
+### Security Best Practices
+
+- All public functions have comprehensive unit + integration tests
+- Slippage protection enabled on all router operations
 - Expiry checks prevent minting PT/YT after maturity
 - Access control on PT/YT minting (only YT contract can mint/burn)
+- No pause/emergency functions (immutable design choice)
+- No upgradeable contracts (all code is final at deployment)
+
+### Security Disclosure
+
+Report security issues to: **[TBD — add security contact before launch]**
+
+Expected response time: Within 48 hours of report.
+
+**Do not disclose vulnerabilities publicly until a fix is released.**
+
+## Integration
+
+### Core Interfaces
+
+The **Router** contract is the recommended entry point for most integrations:
+
+```cairo
+// Mint PT + YT from SY
+fn mint_py_from_sy(yt: ContractAddress, receiver: ContractAddress, sy_amount: u256, min_py_out: u256)
+
+// Redeem PT + YT back to SY (pre-expiry)
+fn redeem_py_to_sy(yt: ContractAddress, receiver: ContractAddress, py_amount: u256, min_sy_out: u256)
+
+// Redeem PT only (post-expiry)
+fn redeem_pt_post_expiry(yt: ContractAddress, receiver: ContractAddress, pt_amount: u256, min_sy_out: u256)
+
+// Trade SY → PT
+fn buy_pt_from_sy(market: ContractAddress, receiver: ContractAddress, sy_in: u256, min_pt_out: u256)
+
+// Trade PT → SY
+fn sell_pt_for_sy(market: ContractAddress, receiver: ContractAddress, pt_in: u256, min_sy_out: u256)
+
+// Add liquidity (PT/SY pair)
+fn add_liquidity(market: ContractAddress, receiver: ContractAddress, sy_desired: u256, pt_desired: u256, min_lp_out: u256)
+
+// Remove liquidity
+fn remove_liquidity(market: ContractAddress, receiver: ContractAddress, lp_amount: u256, min_sy_out: u256, min_pt_out: u256)
+```
+
+### Key Events to Index
+
+All state changes are emitted as events:
+
+- `PYCreated(yt_address, sy_address, expiry, py_index)`
+- `PYMinted(yt, receiver, py_amount, sy_amount)`
+- `PYRedeemed(yt, receiver, py_amount, sy_out)`
+- `Swap(market, buyer, sell_token, sell_amount, buy_amount, swap_fee)`
+- `LiquidityAdded(market, lp_receiver, sy_in, pt_in, lp_out)`
+- `LiquidityRemoved(market, lp_provider, lp_amount, sy_out, pt_out)`
+
+### Assumptions & Expectations
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| **Decimals** | 18 (WAD) | All token amounts use 18 decimals |
+| **Precision** | Fixed-point WAD math | Rounding toward zero in divisions |
+| **Slippage Protection** | Required on router calls | Caller must provide min_out parameters |
+| **Time Units** | Seconds (u64) | Expiry expressed as Unix timestamp |
+| **RPC Health** | Dependency | Protocol depends on Starknet RPC uptime |
+| **Oracle Freshness** | Pragma feeds | May have staleness; check oracle timestamp |
+
+### Example Integration Flow
+
+```cairo
+// 1. User has SY tokens and wants to split into PT + YT
+let (pt_out, yt_out) = router.mint_py_from_sy(yt, receiver, sy_amount, min_py_out);
+
+// 2. User sells YT on secondary market, keeps PT for maturity
+// (YT price = market discovery of yield rate)
+
+// 3. At expiry, redeem PT for underlying value
+let sy_out = router.redeem_pt_post_expiry(yt, receiver, pt_amount, 0);
+```
+
+## Governance, Upgrades & Permissions
+
+### Upgradeability (Mixed Model)
+
+Horizon uses **selective upgradeability** to balance security and adaptability:
+
+#### Immutable Contracts (Core Tokens & AMM)
+
+These are **permanently immutable** and cannot be upgraded:
+
+- **SY** (Standardized Yield) — Users trust the yield wrapper logic forever
+- **PT** (Principal Token) — Redemption and expiry logic must be unchangeable
+- **YT** (Yield Token) — Complex yield accrual must be immutable
+- **Market (AMM)** — Pricing curves and pool reserves must be permanent
+
+#### Upgradeable Contracts (4)
+
+These use OpenZeppelin's **UUPS proxy pattern** and are owner-upgradeable:
+
+| Contract | Authority | Purpose |
+|----------|-----------|---------|
+| **Factory** | Owner | May adjust deployment validation or add new features |
+| **MarketFactory** | Owner | May optimize market creation or parameters |
+| **Router** | Owner | May add new operations or improve integration |
+| **PragmaIndexOracle** | Owner | May adapt oracle feed logic for new token types |
+
+**Upgrade Process:**
+- Only owner can invoke `upgrade(new_class_hash)`
+- No timelock currently (subject to governance review)
+- Upgrades are logged on-chain as events
+
+### Admin Controls
+
+**Limited privileges:**
+- Owner can upgrade 4 operational contracts only
+- No pause function; no fund freezing capability
+- No authority to change PT/YT/SY/Market logic
+- No parameter changes affecting user funds
+
+### Future Governance (Roadmap)
+
+- Governance forum: TBD (community discussion on upgrade policies)
+- Potential transition to multi-sig or timelock for future upgrades
+- Core tokens (SY/PT/YT/Market) will **never** be upgradeable
+- Any future V2 protocol would be a new smart contract deployment
 
 ## License
 
-MIT
+Horizon is licensed under the **[Business Source License 1.1 (BSL-1.1)](LICENSE)**.
+
+| Aspect | Details |
+|--------|---------|
+| **Source Visibility** | Code is private for the next 2 years (until 2026-12-19) |
+| **Commercial Use** | Restricted; usage on Horizon-deployed instances allowed immediately |
+| **Change Date** | 2028-12-19 |
+| **Change License** | Converts to GPL-3.0 on change date |
+| **Summary** | Private development + competitive protection + automatic open-source transition |
+
+For details, see the [LICENSE](LICENSE) file.
