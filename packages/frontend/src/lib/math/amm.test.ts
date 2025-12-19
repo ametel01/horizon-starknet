@@ -12,10 +12,17 @@ import {
   calcSwapExactPtForSy,
   calcSwapExactSyForPt,
   formatPriceImpact,
+  getExchangeRate,
+  getExchangeRateFromImpliedRate,
   getImpliedApy,
+  getLogit,
   getPriceImpactSeverity,
   getPtPrice,
+  getRateAnchor,
+  getRateScalar,
+  getTimeAdjustedFeeRate,
   getTimeToExpiry,
+  SECONDS_PER_YEAR,
   type MarketState,
 } from './amm';
 import { WAD_BIGINT } from './wad';
@@ -226,6 +233,181 @@ describe('AMM Math', () => {
       // Buying PT should decrease the implied rate (PT becomes more expensive)
       // This means newLnImpliedRate < lastLnImpliedRate
       expect(result.newLnImpliedRate).not.toBe(marketState.lastLnImpliedRate);
+    });
+  });
+
+  describe('Logit-Based AMM Functions', () => {
+    describe('getRateScalar', () => {
+      test('increases as time to expiry decreases', () => {
+        const scalarRoot = WAD_BIGINT;
+        const oneYear = SECONDS_PER_YEAR;
+        const sixMonths = SECONDS_PER_YEAR / 2n;
+
+        const scalarOneYear = getRateScalar(scalarRoot, oneYear);
+        const scalarSixMonths = getRateScalar(scalarRoot, sixMonths);
+
+        // Scalar should be higher with less time (more sensitive)
+        expect(scalarSixMonths).toBeGreaterThan(scalarOneYear);
+      });
+
+      test('equals scalarRoot at exactly one year', () => {
+        const scalarRoot = WAD_BIGINT;
+        const oneYear = SECONDS_PER_YEAR;
+
+        const scalar = getRateScalar(scalarRoot, oneYear);
+
+        // Should be approximately equal to scalarRoot
+        const ratio = Number(scalar) / Number(scalarRoot);
+        expect(ratio).toBeGreaterThan(0.99);
+        expect(ratio).toBeLessThan(1.01);
+      });
+    });
+
+    describe('getLogit', () => {
+      test('returns 0 for 50% proportion', () => {
+        const halfWad = WAD_BIGINT / 2n;
+        const { value } = getLogit(halfWad);
+
+        // logit(0.5) = ln(1) = 0
+        expect(value).toBeLessThan(WAD_BIGINT / 1000n); // Very close to 0
+      });
+
+      test('returns negative for proportion < 50%', () => {
+        const lowProportion = WAD_BIGINT / 4n; // 25%
+        const { isNegative } = getLogit(lowProportion);
+
+        expect(isNegative).toBe(true);
+      });
+
+      test('returns positive for proportion > 50%', () => {
+        const highProportion = (WAD_BIGINT * 3n) / 4n; // 75%
+        const { isNegative } = getLogit(highProportion);
+
+        expect(isNegative).toBe(false);
+      });
+    });
+
+    describe('getExchangeRate', () => {
+      test('returns higher rate for higher proportion', () => {
+        const rateScalar = WAD_BIGINT;
+        const rateAnchor = WAD_BIGINT + WAD_BIGINT / 10n; // 1.1
+
+        const lowProportion = WAD_BIGINT / 4n; // 25%
+        const highProportion = (WAD_BIGINT * 3n) / 4n; // 75%
+
+        const lowRate = getExchangeRate(lowProportion, rateScalar, rateAnchor);
+        const highRate = getExchangeRate(highProportion, rateScalar, rateAnchor);
+
+        expect(highRate).toBeGreaterThan(lowRate);
+      });
+
+      test('returns at least 1.0 WAD', () => {
+        const rateScalar = WAD_BIGINT;
+        const rateAnchor = WAD_BIGINT; // 1.0
+
+        const lowProportion = WAD_BIGINT / 10n; // 10%
+        const rate = getExchangeRate(lowProportion, rateScalar, rateAnchor);
+
+        expect(rate).toBeGreaterThanOrEqual(WAD_BIGINT);
+      });
+    });
+
+    describe('getTimeAdjustedFeeRate', () => {
+      test('returns 0 at expiry', () => {
+        const feeRate = WAD_BIGINT / 100n; // 1%
+        const adjusted = getTimeAdjustedFeeRate(feeRate, 0n);
+
+        expect(adjusted).toBe(0n);
+      });
+
+      test('returns full rate at one year', () => {
+        const feeRate = WAD_BIGINT / 100n; // 1%
+        const adjusted = getTimeAdjustedFeeRate(feeRate, SECONDS_PER_YEAR);
+
+        expect(adjusted).toBe(feeRate);
+      });
+
+      test('returns half rate at six months', () => {
+        const feeRate = WAD_BIGINT / 100n; // 1%
+        const sixMonths = SECONDS_PER_YEAR / 2n;
+        const adjusted = getTimeAdjustedFeeRate(feeRate, sixMonths);
+
+        // Should be approximately half
+        const ratio = Number(adjusted) / Number(feeRate);
+        expect(ratio).toBeGreaterThan(0.49);
+        expect(ratio).toBeLessThan(0.51);
+      });
+
+      test('decays linearly', () => {
+        const feeRate = WAD_BIGINT / 100n;
+        const threeMonths = SECONDS_PER_YEAR / 4n;
+        const sixMonths = SECONDS_PER_YEAR / 2n;
+        const nineMonths = (SECONDS_PER_YEAR * 3n) / 4n;
+
+        const fee3m = getTimeAdjustedFeeRate(feeRate, threeMonths);
+        const fee6m = getTimeAdjustedFeeRate(feeRate, sixMonths);
+        const fee9m = getTimeAdjustedFeeRate(feeRate, nineMonths);
+
+        // Verify proportional relationship
+        expect(fee6m).toBeGreaterThan(fee3m);
+        expect(fee9m).toBeGreaterThan(fee6m);
+
+        // 6 months should be ~2x 3 months
+        const ratio6to3 = Number(fee6m) / Number(fee3m);
+        expect(ratio6to3).toBeGreaterThan(1.9);
+        expect(ratio6to3).toBeLessThan(2.1);
+      });
+    });
+
+    describe('getExchangeRateFromImpliedRate', () => {
+      test('returns 1.0 at expiry', () => {
+        const lnImpliedRate = WAD_BIGINT / 10n; // 10%
+        const rate = getExchangeRateFromImpliedRate(lnImpliedRate, 0n);
+
+        expect(rate).toBe(WAD_BIGINT);
+      });
+
+      test('returns higher rate for higher implied rate', () => {
+        const oneYear = SECONDS_PER_YEAR;
+        const lowRate = WAD_BIGINT / 20n; // 5%
+        const highRate = WAD_BIGINT / 5n; // 20%
+
+        const exchangeLow = getExchangeRateFromImpliedRate(lowRate, oneYear);
+        const exchangeHigh = getExchangeRateFromImpliedRate(highRate, oneYear);
+
+        expect(exchangeHigh).toBeGreaterThan(exchangeLow);
+      });
+    });
+
+    describe('getRateAnchor', () => {
+      test('recalculates anchor from market state', () => {
+        const marketState = createMarketState();
+        const timeToExpiry = getTimeToExpiry(marketState.expiry);
+
+        const anchor = getRateAnchor(marketState, timeToExpiry);
+
+        // Anchor should be positive
+        expect(anchor).toBeGreaterThan(0n);
+        // And at least 1.0 WAD
+        expect(anchor).toBeGreaterThanOrEqual(WAD_BIGINT);
+      });
+    });
+  });
+
+  describe('Fee Decay in Swaps', () => {
+    test('fees are lower near expiry', () => {
+      const marketState = createMarketState();
+      const nearExpiryState = createMarketState({
+        expiry: BigInt(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60), // 30 days
+      });
+
+      const syIn = 10000n * WAD_BIGINT;
+
+      const resultFar = calcSwapExactSyForPt(marketState, syIn);
+      const resultNear = calcSwapExactSyForPt(nearExpiryState, syIn);
+
+      // Fees should be lower near expiry
+      expect(resultNear.fee).toBeLessThan(resultFar.fee);
     });
   });
 });

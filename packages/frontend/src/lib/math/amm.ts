@@ -229,32 +229,28 @@ export function getProportion(state: MarketState): bigint {
 
 /**
  * Calculate the rate scalar adjusted for time to expiry
- * As time passes, the rate becomes less sensitive to price changes
- * rate_scalar = scalar_root / time_to_expiry_years
+ * As time passes, the rate becomes MORE sensitive to price changes
+ * rate_scalar = scalar_root * SECONDS_PER_YEAR / time_to_expiry
  * @param scalarRoot Base scalar value in WAD
  * @param timeToExpiry Time to expiry in seconds
  * @returns Adjusted rate scalar in WAD
  */
 export function getRateScalar(scalarRoot: bigint, timeToExpiry: bigint): bigint {
-  const timeInYears = wadDiv(timeToExpiry * WAD_BIGINT, SECONDS_PER_YEAR * WAD_BIGINT);
-
-  if (timeInYears === 0n) {
-    return scalarRoot * 1000n; // Very large scalar near expiry
+  if (timeToExpiry === 0n) {
+    return scalarRoot * 1000n * WAD_BIGINT; // Very large scalar near expiry
   }
 
-  return wadDiv(scalarRoot, timeInYears);
+  // rateScalar = scalarRoot * SECONDS_PER_YEAR / timeToExpiry
+  return wadDiv(wadMul(scalarRoot, SECONDS_PER_YEAR * WAD_BIGINT), timeToExpiry * WAD_BIGINT);
 }
 
 /**
- * Calculate ln(implied_rate) from market state
- * ln_implied_rate = anchor - rate_scalar * ln(proportion / (1 - proportion))
- * @param state Current market state
- * @param timeToExpiry Time to expiry in seconds
- * @returns ln(implied_rate) in WAD, always non-negative
+ * Calculate the logit function: ln(p / (1-p))
+ * Returns (|logit(p)|, isNegative)
+ * @param proportion Proportion in WAD (between 0 and 1)
+ * @returns Logit value and sign
  */
-export function getLnImpliedRate(state: MarketState, timeToExpiry: bigint): bigint {
-  const proportion = getProportion(state);
-
+export function getLogit(proportion: bigint): { value: bigint; isNegative: boolean } {
   // Clamp proportion to valid range
   const clampedProportion =
     proportion < MIN_PROPORTION
@@ -263,27 +259,179 @@ export function getLnImpliedRate(state: MarketState, timeToExpiry: bigint): bigi
         ? MAX_PROPORTION
         : proportion;
 
-  // Calculate ln(proportion / (1 - proportion)) - the logit function
+  // odds = p / (1 - p)
   const odds = wadDiv(clampedProportion, WAD_BIGINT - clampedProportion);
-  const { value: lnOdds, isNegative } = lnWad(odds);
 
+  // logit(p) = ln(odds)
+  return lnWad(odds);
+}
+
+/**
+ * Calculate the exchange rate from implied rate
+ * exchangeRate = e^(lnImpliedRate * timeToExpiry / SECONDS_PER_YEAR)
+ * @param lnImpliedRate The ln of implied rate in WAD
+ * @param timeToExpiry Time to expiry in seconds
+ * @returns Exchange rate in WAD (PT value in terms of SY)
+ */
+export function getExchangeRateFromImpliedRate(
+  lnImpliedRate: bigint,
+  timeToExpiry: bigint
+): bigint {
+  if (timeToExpiry === 0n || lnImpliedRate === 0n) {
+    return WAD_BIGINT; // At expiry, exchange rate = 1
+  }
+
+  // Cap lnImpliedRate to prevent overflow
+  const cappedLnRate = lnImpliedRate > MAX_LN_IMPLIED_RATE ? MAX_LN_IMPLIED_RATE : lnImpliedRate;
+
+  // exponent = lnImpliedRate * timeToExpiry / SECONDS_PER_YEAR
+  const exponent = wadDiv(
+    wadMul(cappedLnRate, timeToExpiry * WAD_BIGINT),
+    SECONDS_PER_YEAR * WAD_BIGINT
+  );
+
+  // Cap exponent to prevent overflow in exp
+  const cappedExponent = exponent > 135n * WAD_BIGINT ? 135n * WAD_BIGINT : exponent;
+
+  return expWad(cappedExponent);
+}
+
+/**
+ * Calculate the rate anchor from current market state
+ * rateAnchor = exchangeRate - logit(proportion) / rateScalar
+ * @param state Current market state
+ * @param timeToExpiry Time to expiry in seconds
+ * @returns Rate anchor in WAD
+ */
+export function getRateAnchor(state: MarketState, timeToExpiry: bigint): bigint {
+  const proportion = getProportion(state);
   const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
 
-  // ln_implied_rate = anchor - rate_scalar * ln_odds
-  // If proportion > 0.5: ln_odds > 0, so we subtract
-  // If proportion < 0.5: ln_odds < 0 (isNegative=true), so we add
-  const scaledLnOdds = wadMul(rateScalar, lnOdds);
+  // Get exchange rate from cached implied rate
+  const exchangeRate = getExchangeRateFromImpliedRate(state.lastLnImpliedRate, timeToExpiry);
+
+  // Get logit of current proportion
+  const { value: logitValue, isNegative } = getLogit(proportion);
+
+  // scaledLogit = logit / rateScalar
+  const scaledLogit = wadDiv(logitValue, rateScalar);
+
+  // rateAnchor = exchangeRate - scaledLogit (with sign handling)
+  if (isNegative) {
+    // logit is negative, so -logit/rateScalar = +scaledLogit
+    return exchangeRate + scaledLogit;
+  } else {
+    // logit is positive
+    if (scaledLogit >= exchangeRate) {
+      return WAD_BIGINT; // Floor at 1.0
+    }
+    return exchangeRate - scaledLogit;
+  }
+}
+
+/**
+ * Calculate the exchange rate at a given proportion
+ * exchangeRate = logit(proportion) / rateScalar + rateAnchor
+ * @param proportion PT proportion of pool in WAD
+ * @param rateScalar Rate scalar in WAD
+ * @param rateAnchor Rate anchor in WAD
+ * @returns Exchange rate in WAD
+ */
+export function getExchangeRate(
+  proportion: bigint,
+  rateScalar: bigint,
+  rateAnchor: bigint
+): bigint {
+  const { value: logitValue, isNegative } = getLogit(proportion);
+
+  // scaledLogit = logit / rateScalar
+  const scaledLogit = wadDiv(logitValue, rateScalar);
+
+  // exchangeRate = scaledLogit + rateAnchor (with sign handling)
+  let exchangeRate: bigint;
+  if (isNegative) {
+    // logit is negative, so logit/rateScalar is negative
+    if (scaledLogit >= rateAnchor) {
+      exchangeRate = WAD_BIGINT; // Floor at 1.0
+    } else {
+      exchangeRate = rateAnchor - scaledLogit;
+    }
+  } else {
+    // logit is positive
+    exchangeRate = rateAnchor + scaledLogit;
+  }
+
+  // Exchange rate must be at least 1.0 WAD
+  return exchangeRate < WAD_BIGINT ? WAD_BIGINT : exchangeRate;
+}
+
+/**
+ * Calculate time-adjusted fee rate (linear decay toward expiry)
+ * adjustedFeeRate = baseFeeRate * timeToExpiry / SECONDS_PER_YEAR
+ * @param feeRate Base fee rate in WAD
+ * @param timeToExpiry Time to expiry in seconds
+ * @returns Adjusted fee rate in WAD
+ */
+export function getTimeAdjustedFeeRate(feeRate: bigint, timeToExpiry: bigint): bigint {
+  if (timeToExpiry === 0n) {
+    return 0n; // No fees at expiry
+  }
+
+  if (timeToExpiry >= SECONDS_PER_YEAR) {
+    return feeRate; // Full fee rate if more than 1 year out
+  }
+
+  return wadDiv(wadMul(feeRate, timeToExpiry * WAD_BIGINT), SECONDS_PER_YEAR * WAD_BIGINT);
+}
+
+/**
+ * Calculate ln(implied_rate) from exchange rate
+ * lnImpliedRate = ln(exchangeRate) * SECONDS_PER_YEAR / timeToExpiry
+ * @param exchangeRate Exchange rate in WAD
+ * @param timeToExpiry Time to expiry in seconds
+ * @returns ln(implied_rate) in WAD, capped at MAX_LN_IMPLIED_RATE
+ */
+export function getLnImpliedRateFromExchangeRate(
+  exchangeRate: bigint,
+  timeToExpiry: bigint
+): bigint {
+  if (timeToExpiry === 0n || exchangeRate <= WAD_BIGINT) {
+    return 0n;
+  }
+
+  // lnExchangeRate = ln(exchangeRate)
+  const { value: lnExchangeRate, isNegative } = lnWad(exchangeRate);
 
   if (isNegative) {
-    // ln_odds is negative, so -rate_scalar * ln_odds = +scaled_ln_odds
-    return state.initialAnchor + scaledLnOdds;
-  } else if (scaledLnOdds >= state.initialAnchor) {
-    // ln_odds is positive and large enough to drive rate negative - floor at 0
-    return 0n;
-  } else {
-    // ln_odds is positive, so -rate_scalar * ln_odds = -scaled_ln_odds
-    return state.initialAnchor - scaledLnOdds;
+    return 0n; // Exchange rate < 1 means 0 implied rate
   }
+
+  // lnImpliedRate = lnExchangeRate * SECONDS_PER_YEAR / timeToExpiry
+  const result = wadDiv(
+    wadMul(lnExchangeRate, SECONDS_PER_YEAR * WAD_BIGINT),
+    timeToExpiry * WAD_BIGINT
+  );
+
+  // Cap at MAX_LN_IMPLIED_RATE to prevent overflow
+  return result > MAX_LN_IMPLIED_RATE ? MAX_LN_IMPLIED_RATE : result;
+}
+
+/**
+ * Calculate ln(implied_rate) from market state using exchange rate formula
+ * @param state Current market state
+ * @param timeToExpiry Time to expiry in seconds
+ * @returns ln(implied_rate) in WAD, always non-negative
+ */
+export function getLnImpliedRate(state: MarketState, timeToExpiry: bigint): bigint {
+  const proportion = getProportion(state);
+  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
+  const rateAnchor = getRateAnchor(state, timeToExpiry);
+
+  // Get exchange rate at current proportion
+  const exchangeRate = getExchangeRate(proportion, rateScalar, rateAnchor);
+
+  // Calculate ln(implied_rate) from exchange rate
+  return getLnImpliedRateFromExchangeRate(exchangeRate, timeToExpiry);
 }
 
 /**
@@ -334,7 +482,7 @@ export function getImpliedApy(lnImpliedRate: bigint): number {
 
 /**
  * Calculate PT output for exact SY input (buy PT with SY)
- * Matches on-chain calc_swap_exact_sy_for_pt
+ * Uses logit-based exchange rate curve matching on-chain calc_swap_exact_sy_for_pt
  * @param state Current market state
  * @param exactSyIn Amount of SY to sell
  * @param currentTime Current timestamp (optional, defaults to now)
@@ -358,37 +506,72 @@ export function calcSwapExactSyForPt(
 
   const timeToExpiry = getTimeToExpiry(state.expiry, currentTime);
 
-  // Get current implied rate and PT price (spot price)
-  const lnRateBefore = getLnImpliedRate(state, timeToExpiry);
-  const spotPrice = getPtPrice(lnRateBefore, timeToExpiry);
+  // Calculate precomputed values
+  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
+  const rateAnchor = getRateAnchor(state, timeToExpiry);
+  const adjustedFeeRate = getTimeAdjustedFeeRate(state.feeRate, timeToExpiry);
+
+  // Get current proportion and exchange rate (spot)
+  const currentProportion = getProportion(state);
+  const spotExchangeRate = getExchangeRate(currentProportion, rateScalar, rateAnchor);
+  const spotPrice = wadDiv(WAD_BIGINT, spotExchangeRate); // PT price = 1/exchangeRate
 
   // Apply fee first (fee is taken from input)
-  const fee = wadMul(exactSyIn, state.feeRate);
+  const fee = wadMul(exactSyIn, adjustedFeeRate);
   const syInAfterFee = exactSyIn - fee;
 
-  // Basic swap: pt_out = sy_in / pt_price (PT is cheaper than SY before expiry)
-  const grossPtOut = wadDiv(syInAfterFee, spotPrice);
+  // Binary search to find PT output
+  // We need to find ptOut such that the exchange rate at new proportion gives us the right price
+  let low = 0n;
+  let high = state.ptReserve - WAD_BIGINT; // Can't take all PT
+  let ptOut = 0n;
 
-  // Apply price impact using constant product
-  const newSyReserve = state.syReserve + syInAfterFee;
-  const k = wadMul(state.ptReserve, state.syReserve);
-  const newPtReserve = wadDiv(k, newSyReserve);
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2n;
+    if (mid === 0n) break;
 
-  const ptOutWithImpact = newPtReserve < state.ptReserve ? state.ptReserve - newPtReserve : 0n;
+    // New state after taking mid PT
+    const newPtReserve = state.ptReserve - mid;
+    const newSyReserve = state.syReserve + syInAfterFee;
+    const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
 
-  // Use the minimum of gross and impact-adjusted
-  const ptOut = grossPtOut < ptOutWithImpact ? grossPtOut : ptOutWithImpact;
+    // Exchange rate at new proportion
+    const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+
+    // PT value we should get: syInAfterFee * exchangeRate (since exchangeRate is PT/SY)
+    const expectedPtOut = wadMul(syInAfterFee, newExchangeRate);
+
+    if (mid < expectedPtOut) {
+      low = mid + 1n;
+    } else if (mid > expectedPtOut) {
+      high = mid - 1n;
+    } else {
+      ptOut = mid;
+      break;
+    }
+
+    // Use the lower bound as our estimate
+    ptOut = low;
+  }
+
+  // Ensure we don't exceed reserves
+  if (ptOut >= state.ptReserve) {
+    ptOut = state.ptReserve - WAD_BIGINT;
+  }
 
   // Calculate new state for implied rate after swap
-  const newState: MarketState = {
-    ...state,
-    syReserve: newSyReserve,
-    ptReserve: state.ptReserve - ptOut,
-  };
-  const newLnImpliedRate = getLnImpliedRate(newState, timeToExpiry);
+  const newSyReserve = state.syReserve + syInAfterFee;
+  const newPtReserve = state.ptReserve - ptOut;
+  const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+  const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+  const newLnImpliedRate = getLnImpliedRateFromExchangeRate(newExchangeRate, timeToExpiry);
 
-  // Calculate price impact as percentage
-  const priceImpact = grossPtOut > 0n ? Number(grossPtOut - ptOut) / Number(grossPtOut) : 0;
+  // Calculate price impact as percentage difference from spot
+  const effectiveExchangeRate = ptOut > 0n ? wadDiv(ptOut, syInAfterFee) : WAD_BIGINT;
+  const priceImpact =
+    spotExchangeRate > 0n
+      ? Math.abs(Number(effectiveExchangeRate - spotExchangeRate)) / Number(spotExchangeRate)
+      : 0;
 
   // Effective price = SY spent / PT received
   const effectivePrice = ptOut > 0n ? wadDiv(exactSyIn, ptOut) : WAD_BIGINT;
@@ -405,7 +588,7 @@ export function calcSwapExactSyForPt(
 
 /**
  * Calculate SY output for exact PT input (sell PT for SY)
- * Matches on-chain calc_swap_exact_pt_for_sy
+ * Uses logit-based exchange rate curve matching on-chain calc_swap_exact_pt_for_sy
  * @param state Current market state
  * @param exactPtIn Amount of PT to sell
  * @param currentTime Current timestamp (optional, defaults to now)
@@ -429,40 +612,75 @@ export function calcSwapExactPtForSy(
 
   const timeToExpiry = getTimeToExpiry(state.expiry, currentTime);
 
-  // Get current implied rate and PT price (spot price)
-  const lnRateBefore = getLnImpliedRate(state, timeToExpiry);
-  const spotPrice = getPtPrice(lnRateBefore, timeToExpiry);
+  // Calculate precomputed values
+  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
+  const rateAnchor = getRateAnchor(state, timeToExpiry);
+  const adjustedFeeRate = getTimeAdjustedFeeRate(state.feeRate, timeToExpiry);
 
-  // Basic swap: sy_out = pt_in * pt_price (before fees and slippage)
-  const grossSyOut = wadMul(exactPtIn, spotPrice);
+  // Get current proportion and exchange rate (spot)
+  const currentProportion = getProportion(state);
+  const spotExchangeRate = getExchangeRate(currentProportion, rateScalar, rateAnchor);
+  const spotPrice = wadDiv(WAD_BIGINT, spotExchangeRate); // PT price = 1/exchangeRate
 
-  // Apply price impact using constant product
+  // Calculate new proportion after adding PT
   const newPtReserve = state.ptReserve + exactPtIn;
-  const k = wadMul(state.ptReserve, state.syReserve);
-  const newSyReserve = wadDiv(k, newPtReserve);
 
-  const syOutWithImpact = newSyReserve < state.syReserve ? state.syReserve - newSyReserve : 0n;
+  // Binary search to find SY output
+  let low = 0n;
+  let high = state.syReserve - WAD_BIGINT; // Can't take all SY
+  let syOutBeforeFee = 0n;
 
-  // Use the minimum of gross and impact-adjusted
-  const syOutBeforeFee = grossSyOut < syOutWithImpact ? grossSyOut : syOutWithImpact;
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2n;
+    if (mid === 0n) break;
 
-  // Calculate fee from output
-  const fee = wadMul(syOutBeforeFee, state.feeRate);
+    // New state after taking mid SY
+    const newSyReserve = state.syReserve - mid;
+    const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+
+    // Exchange rate at new proportion
+    const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+
+    // SY value we should get: exactPtIn / exchangeRate (since exchangeRate is PT/SY)
+    const expectedSyOut = wadDiv(exactPtIn, newExchangeRate);
+
+    if (mid < expectedSyOut) {
+      low = mid + 1n;
+    } else if (mid > expectedSyOut) {
+      high = mid - 1n;
+    } else {
+      syOutBeforeFee = mid;
+      break;
+    }
+
+    // Use the lower bound as our estimate
+    syOutBeforeFee = low;
+  }
+
+  // Ensure we don't exceed reserves
+  if (syOutBeforeFee >= state.syReserve) {
+    syOutBeforeFee = state.syReserve - WAD_BIGINT;
+  }
+
+  // Apply fee on output
+  const fee = wadMul(syOutBeforeFee, adjustedFeeRate);
   const syOut = syOutBeforeFee - fee;
 
   // Calculate new state for implied rate after swap
-  const newState: MarketState = {
-    ...state,
-    syReserve: state.syReserve - syOutBeforeFee,
-    ptReserve: newPtReserve,
-  };
-  const newLnImpliedRate = getLnImpliedRate(newState, timeToExpiry);
+  const newSyReserve = state.syReserve - syOutBeforeFee;
+  const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+  const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+  const newLnImpliedRate = getLnImpliedRateFromExchangeRate(newExchangeRate, timeToExpiry);
 
-  // Calculate price impact as percentage
+  // Calculate price impact as percentage difference from spot
+  const effectiveExchangeRate =
+    syOutBeforeFee > 0n ? wadDiv(exactPtIn, syOutBeforeFee) : WAD_BIGINT;
   const priceImpact =
-    grossSyOut > 0n ? Number(grossSyOut - syOutBeforeFee) / Number(grossSyOut) : 0;
+    spotExchangeRate > 0n
+      ? Math.abs(Number(effectiveExchangeRate - spotExchangeRate)) / Number(spotExchangeRate)
+      : 0;
 
-  // Effective price = PT spent / SY received (inverted from buy side)
+  // Effective price = PT spent / SY received
   const effectivePrice = syOut > 0n ? wadDiv(exactPtIn, syOut) : WAD_BIGINT;
 
   return {
@@ -477,7 +695,7 @@ export function calcSwapExactPtForSy(
 
 /**
  * Calculate SY input required for exact PT output (buy exact PT)
- * Matches on-chain calc_swap_sy_for_exact_pt
+ * Uses logit-based exchange rate curve matching on-chain calc_swap_sy_for_exact_pt
  * @param state Current market state
  * @param exactPtOut Amount of PT to buy
  * @param currentTime Current timestamp (optional, defaults to now)
@@ -504,32 +722,67 @@ export function calcSwapSyForExactPt(
   }
 
   const timeToExpiry = getTimeToExpiry(state.expiry, currentTime);
-  const lnRateBefore = getLnImpliedRate(state, timeToExpiry);
-  const spotPrice = getPtPrice(lnRateBefore, timeToExpiry);
 
-  // Calculate required SY using constant product
+  // Calculate precomputed values
+  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
+  const rateAnchor = getRateAnchor(state, timeToExpiry);
+  const adjustedFeeRate = getTimeAdjustedFeeRate(state.feeRate, timeToExpiry);
+
+  // Get current proportion and exchange rate (spot)
+  const currentProportion = getProportion(state);
+  const spotExchangeRate = getExchangeRate(currentProportion, rateScalar, rateAnchor);
+  const spotPrice = wadDiv(WAD_BIGINT, spotExchangeRate); // PT price = 1/exchangeRate
+
+  // Calculate new PT reserve after taking exactPtOut
   const newPtReserve = state.ptReserve - exactPtOut;
-  const k = wadMul(state.ptReserve, state.syReserve);
-  const newSyReserve = wadDiv(k, newPtReserve);
 
-  const syInBeforeFee = newSyReserve - state.syReserve;
+  // Binary search to find SY input required
+  let low = 0n;
+  let high = state.syReserve * 10n; // Upper bound for SY input
+  let syInBeforeFee = 0n;
+
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2n;
+    if (mid === 0n) break;
+
+    // New state after adding mid SY
+    const newSyReserve = state.syReserve + mid;
+    const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+
+    // Exchange rate at new proportion
+    const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+
+    // PT we would get for mid SY: mid * exchangeRate
+    const ptOut = wadMul(mid, newExchangeRate);
+
+    if (ptOut < exactPtOut) {
+      low = mid + 1n;
+    } else if (ptOut > exactPtOut) {
+      high = mid - 1n;
+    } else {
+      syInBeforeFee = mid;
+      break;
+    }
+
+    // Use the higher bound as our estimate (need at least this much)
+    syInBeforeFee = high;
+  }
 
   // Add fee (fee is on top of required amount)
-  // sy_in = sy_in_before_fee / (1 - fee_rate)
-  const syIn = wadDiv(syInBeforeFee, WAD_BIGINT - state.feeRate);
+  // syIn = syInBeforeFee / (1 - feeRate)
+  const syIn = wadDiv(syInBeforeFee, WAD_BIGINT - adjustedFeeRate);
   const fee = syIn - syInBeforeFee;
 
   // Calculate new implied rate
-  const newState: MarketState = {
-    ...state,
-    syReserve: newSyReserve,
-    ptReserve: newPtReserve,
-  };
-  const newLnImpliedRate = getLnImpliedRate(newState, timeToExpiry);
+  const newSyReserve = state.syReserve + syInBeforeFee;
+  const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+  const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+  const newLnImpliedRate = getLnImpliedRateFromExchangeRate(newExchangeRate, timeToExpiry);
 
   // Price impact: compare actual price to spot price
   const effectivePrice = wadDiv(syIn, exactPtOut);
-  const priceImpact = spotPrice > 0n ? Number(effectivePrice - spotPrice) / Number(spotPrice) : 0;
+  const priceImpact =
+    spotPrice > 0n ? Math.abs(Number(effectivePrice - spotPrice)) / Number(spotPrice) : 0;
 
   return {
     amountOut: syIn, // Note: for exact output, this is the input required
@@ -543,7 +796,7 @@ export function calcSwapSyForExactPt(
 
 /**
  * Calculate PT input required for exact SY output (sell PT for exact SY)
- * Matches on-chain calc_swap_pt_for_exact_sy
+ * Uses logit-based exchange rate curve matching on-chain calc_swap_pt_for_exact_sy
  * @param state Current market state
  * @param exactSyOut Amount of SY to receive
  * @param currentTime Current timestamp (optional, defaults to now)
@@ -570,31 +823,67 @@ export function calcSwapPtForExactSy(
   }
 
   const timeToExpiry = getTimeToExpiry(state.expiry, currentTime);
-  const lnRateBefore = getLnImpliedRate(state, timeToExpiry);
-  const spotPrice = getPtPrice(lnRateBefore, timeToExpiry);
+
+  // Calculate precomputed values
+  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
+  const rateAnchor = getRateAnchor(state, timeToExpiry);
+  const adjustedFeeRate = getTimeAdjustedFeeRate(state.feeRate, timeToExpiry);
+
+  // Get current proportion and exchange rate (spot)
+  const currentProportion = getProportion(state);
+  const spotExchangeRate = getExchangeRate(currentProportion, rateScalar, rateAnchor);
+  const spotPrice = wadDiv(WAD_BIGINT, spotExchangeRate); // PT price = 1/exchangeRate
 
   // Add fee to output (pool needs to give out more before fee)
-  const syOutBeforeFee = wadDiv(exactSyOut, WAD_BIGINT - state.feeRate);
+  // syOutBeforeFee = exactSyOut / (1 - feeRate)
+  const syOutBeforeFee = wadDiv(exactSyOut, WAD_BIGINT - adjustedFeeRate);
   const fee = syOutBeforeFee - exactSyOut;
 
-  // Calculate required PT using constant product
+  // Calculate new SY reserve
   const newSyReserve = state.syReserve - syOutBeforeFee;
-  const k = wadMul(state.ptReserve, state.syReserve);
-  const newPtReserve = wadDiv(k, newSyReserve);
 
-  const ptIn = newPtReserve - state.ptReserve;
+  // Binary search to find PT input required
+  let low = 0n;
+  let high = state.ptReserve * 10n; // Upper bound for PT input
+  let ptIn = 0n;
+
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2n;
+    if (mid === 0n) break;
+
+    // New state after adding mid PT
+    const newPtReserve = state.ptReserve + mid;
+    const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+
+    // Exchange rate at new proportion
+    const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+
+    // SY we would get for mid PT: mid / exchangeRate
+    const syOut = wadDiv(mid, newExchangeRate);
+
+    if (syOut < syOutBeforeFee) {
+      low = mid + 1n;
+    } else if (syOut > syOutBeforeFee) {
+      high = mid - 1n;
+    } else {
+      ptIn = mid;
+      break;
+    }
+
+    // Use the higher bound as our estimate (need at least this much)
+    ptIn = high;
+  }
 
   // Calculate new implied rate
-  const newState: MarketState = {
-    ...state,
-    syReserve: newSyReserve,
-    ptReserve: newPtReserve,
-  };
-  const newLnImpliedRate = getLnImpliedRate(newState, timeToExpiry);
+  const newPtReserve = state.ptReserve + ptIn;
+  const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
+  const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
+  const newLnImpliedRate = getLnImpliedRateFromExchangeRate(newExchangeRate, timeToExpiry);
 
   // Effective price = PT spent / SY received
   const effectivePrice = wadDiv(ptIn, exactSyOut);
-  const priceImpact = spotPrice > 0n ? Number(effectivePrice - spotPrice) / Number(spotPrice) : 0;
+  const priceImpact =
+    spotPrice > 0n ? Math.abs(Number(effectivePrice - spotPrice)) / Number(spotPrice) : 0;
 
   return {
     amountOut: ptIn, // Note: for exact output, this is the input required
