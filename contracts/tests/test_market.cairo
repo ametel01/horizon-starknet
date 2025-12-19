@@ -254,7 +254,8 @@ fn test_market_mint_initial() {
     let (sy_reserve, pt_reserve) = market.get_reserves();
     assert(sy_reserve == sy_amount, 'Wrong SY reserve');
     assert(pt_reserve == pt_amount, 'Wrong PT reserve');
-    assert(market.total_lp_supply() == lp_minted, 'Wrong LP supply');
+    // total_lp includes MINIMUM_LIQUIDITY (1000) locked to dead address
+    assert(market.total_lp_supply() == lp_minted + 1000, 'Wrong LP supply');
 }
 
 #[test]
@@ -296,8 +297,12 @@ fn test_market_mint_subsequent() {
     // Verify user2 got proportional LP tokens
     assert(sy_used2 == 50 * WAD, 'Wrong SY used');
     assert(pt_used2 == 50 * WAD, 'Wrong PT used');
-    // LP tokens should be proportional (50% of user1's)
-    assert(lp2 == lp1 / 2, 'Wrong LP ratio');
+    // LP = sqrt(wad_mul(100*WAD, 100*WAD)) = 10^11
+    // lp1 = 10^11 - 1000 (user1's share), total_lp = 10^11
+    // For second mint with 50*WAD each:
+    // ratio = wad_div(50*WAD, 100*WAD) = 0.5 * WAD
+    // lp2 = wad_mul(0.5*WAD, 10^11) = 5*10^10 = 50,000,000,000
+    assert(lp2 == 50_000_000_000, 'Wrong LP ratio');
 }
 
 #[test]
@@ -358,22 +363,26 @@ fn test_market_burn() {
     let sy_before = sy.balance_of(user);
     let pt_before = pt.balance_of(user);
 
-    // Remove all liquidity
+    // Remove all user's liquidity (note: MINIMUM_LIQUIDITY=1000 is locked to dead address)
     let (sy_out, pt_out) = market.burn(user, lp_minted);
     stop_cheat_caller_address(market.contract_address);
 
-    // Verify tokens returned
-    assert(sy_out == 100 * WAD, 'Wrong SY returned');
-    assert(pt_out == 100 * WAD, 'Wrong PT returned');
+    // LP = sqrt(wad_mul(100*WAD, 100*WAD)) = sqrt(10^22) = 10^11
+    // lp_minted = 10^11 - 1000, total_lp = 10^11
+    // ratio = lp_minted / total_lp = (10^11 - 1000) / 10^11 = 1 - 10^-8
+    // sy_out = 100*WAD * ratio = 100*WAD - 100*WAD * 10^-8 = 100*WAD - 10^12
+    let locked_reserve: u256 = 1_000_000_000_000; // 10^12 = 100*WAD * (1000/10^11)
+    assert(sy_out == 100 * WAD - locked_reserve, 'Wrong SY returned');
+    assert(pt_out == 100 * WAD - locked_reserve, 'Wrong PT returned');
 
     // Verify balances updated
     assert(sy.balance_of(user) == sy_before + sy_out, 'Wrong SY balance');
     assert(pt.balance_of(user) == pt_before + pt_out, 'Wrong PT balance');
 
-    // Verify reserves emptied
+    // Verify reserves have locked_reserve remaining (locked forever via dead address LP)
     let (sy_reserve, pt_reserve) = market.get_reserves();
-    assert(sy_reserve == 0, 'SY reserve should be 0');
-    assert(pt_reserve == 0, 'PT reserve should be 0');
+    assert(sy_reserve == locked_reserve, 'SY reserve should be locked');
+    assert(pt_reserve == locked_reserve, 'PT reserve should be locked');
 }
 
 #[test]
@@ -395,18 +404,24 @@ fn test_market_burn_partial() {
     start_cheat_caller_address(market.contract_address, user);
     let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
 
-    // Remove half liquidity
+    // Remove half of user's liquidity
+    // LP = sqrt(wad_mul(100*WAD, 100*WAD)) = 10^11
+    // lp_minted = 10^11 - 1000 = 99,999,999,000
+    // lp_burn = lp_minted / 2 = 49,999,999,500
     let (sy_out, pt_out) = market.burn(user, lp_minted / 2);
     stop_cheat_caller_address(market.contract_address);
 
-    // Verify got approximately half back
-    assert(sy_out == 50 * WAD, 'Wrong SY returned');
-    assert(pt_out == 50 * WAD, 'Wrong PT returned');
+    // ratio = lp_burn / total_lp = 49,999,999,500 / 10^11
+    // sy_out = 100*WAD * ratio = 49,999,999,500 * 10^9 = 49,999,999,500,000,000,000
+    // This equals 50*WAD - 500,000,000,000
+    let half_locked: u256 = 500_000_000_000; // 5*10^11
+    assert(sy_out == 50 * WAD - half_locked, 'Wrong SY returned');
+    assert(pt_out == 50 * WAD - half_locked, 'Wrong PT returned');
 
-    // Verify remaining reserves
+    // Verify remaining reserves: 100*WAD - sy_out = 50*WAD + half_locked
     let (sy_reserve, pt_reserve) = market.get_reserves();
-    assert(sy_reserve == 50 * WAD, 'Wrong SY reserve');
-    assert(pt_reserve == 50 * WAD, 'Wrong PT reserve');
+    assert(sy_reserve == 50 * WAD + half_locked, 'Wrong SY reserve');
+    assert(pt_reserve == 50 * WAD + half_locked, 'Wrong PT reserve');
 }
 
 #[test]
@@ -437,8 +452,12 @@ fn test_market_burn_after_expiry() {
     let (sy_out, pt_out) = market.burn(user, lp_minted);
     stop_cheat_caller_address(market.contract_address);
 
-    assert(sy_out == 100 * WAD, 'Should get SY back');
-    assert(pt_out == 100 * WAD, 'Should get PT back');
+    // LP = sqrt(wad_mul(100*WAD, 100*WAD)) = 10^11
+    // lp_minted = 10^11 - 1000, total_lp = 10^11
+    // sy_out = 100*WAD * (lp_minted / total_lp) = 100*WAD - 10^12
+    let locked_reserve: u256 = 1_000_000_000_000; // 10^12
+    assert(sy_out == 100 * WAD - locked_reserve, 'Should get SY back');
+    assert(pt_out == 100 * WAD - locked_reserve, 'Should get PT back');
 }
 
 // ============ Swap Tests ============

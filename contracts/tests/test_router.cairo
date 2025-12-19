@@ -11,6 +11,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
+use super::utils::DEFAULT_DEADLINE;
 
 // Test addresses
 fn user1() -> ContractAddress {
@@ -223,7 +224,8 @@ fn test_router_mint_py_from_sy() {
 
     // Mint PT+YT through router
     start_cheat_caller_address(router.contract_address, user);
-    let (pt_out, yt_out) = router.mint_py_from_sy(yt.contract_address, user, amount, 0);
+    let (pt_out, yt_out) = router
+        .mint_py_from_sy(yt.contract_address, user, amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     // Verify tokens received
@@ -247,7 +249,8 @@ fn test_router_mint_py_to_different_receiver() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(router.contract_address, sender);
-    let (pt_out, yt_out) = router.mint_py_from_sy(yt.contract_address, receiver, amount, 0);
+    let (pt_out, yt_out) = router
+        .mint_py_from_sy(yt.contract_address, receiver, amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     // Verify tokens went to receiver
@@ -271,7 +274,7 @@ fn test_router_mint_py_slippage() {
 
     // Request more PT than possible
     start_cheat_caller_address(router.contract_address, user);
-    router.mint_py_from_sy(yt.contract_address, user, amount, amount * 10);
+    router.mint_py_from_sy(yt.contract_address, user, amount, amount * 10, DEFAULT_DEADLINE);
 }
 
 // ============ Redeem PY Tests ============
@@ -297,7 +300,7 @@ fn test_router_redeem_py_to_sy() {
 
     // Redeem through router
     start_cheat_caller_address(router.contract_address, user);
-    let sy_out = router.redeem_py_to_sy(yt.contract_address, user, amount, 0);
+    let sy_out = router.redeem_py_to_sy(yt.contract_address, user, amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     // Verify SY received
@@ -325,7 +328,8 @@ fn test_router_redeem_pt_post_expiry() {
 
     // Redeem PT only (post expiry)
     start_cheat_caller_address(router.contract_address, user);
-    let sy_out = router.redeem_pt_post_expiry(yt.contract_address, user, amount, 0);
+    let sy_out = router
+        .redeem_pt_post_expiry(yt.contract_address, user, amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_out > 0, 'Should receive SY');
@@ -354,7 +358,7 @@ fn test_router_add_liquidity() {
     // Add liquidity through router
     start_cheat_caller_address(router.contract_address, user);
     let (sy_used, pt_used, lp_out) = router
-        .add_liquidity(market.contract_address, user, amount, amount, 0);
+        .add_liquidity(market.contract_address, user, amount, amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     // Verify liquidity added
@@ -362,8 +366,8 @@ fn test_router_add_liquidity() {
     assert(sy_used <= amount, 'Used too much SY');
     assert(pt_used <= amount, 'Used too much PT');
 
-    // Verify LP tokens received
-    assert(market.total_lp_supply() == lp_out, 'Wrong LP supply');
+    // Verify LP tokens received (total includes MINIMUM_LIQUIDITY=1000 locked to dead address)
+    assert(market.total_lp_supply() == lp_out + 1000, 'Wrong LP supply');
 }
 
 #[test]
@@ -385,7 +389,10 @@ fn test_router_add_liquidity_slippage() {
 
     // Request unrealistic min_lp_out
     start_cheat_caller_address(router.contract_address, user);
-    router.add_liquidity(market.contract_address, user, amount, amount, amount * 1000);
+    router
+        .add_liquidity(
+            market.contract_address, user, amount, amount, amount * 1000, DEFAULT_DEADLINE,
+        );
 }
 
 // ============ Remove Liquidity Tests ============
@@ -423,7 +430,8 @@ fn test_router_remove_liquidity() {
 
     // Remove liquidity through router
     start_cheat_caller_address(router.contract_address, user);
-    let (sy_out, pt_out) = router.remove_liquidity(market.contract_address, user, lp_minted, 0, 0);
+    let (sy_out, pt_out) = router
+        .remove_liquidity(market.contract_address, user, lp_minted, 0, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     // Verify tokens received
@@ -468,7 +476,8 @@ fn test_router_swap_exact_sy_for_pt() {
     let pt_before = pt.balance_of(user);
 
     start_cheat_caller_address(router.contract_address, user);
-    let pt_out = router.swap_exact_sy_for_pt(market.contract_address, user, swap_amount, 0);
+    let pt_out = router
+        .swap_exact_sy_for_pt(market.contract_address, user, swap_amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(pt_out > 0, 'Should receive PT');
@@ -515,7 +524,8 @@ fn test_router_swap_exact_pt_for_sy() {
     let sy_before = sy.balance_of(user);
 
     start_cheat_caller_address(router.contract_address, user);
-    let sy_out = router.swap_exact_pt_for_sy(market.contract_address, user, swap_amount, 0);
+    let sy_out = router
+        .swap_exact_pt_for_sy(market.contract_address, user, swap_amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_out > 0, 'Should receive SY');
@@ -558,7 +568,9 @@ fn test_router_swap_sy_for_exact_pt() {
 
     start_cheat_caller_address(router.contract_address, user);
     let sy_spent = router
-        .swap_sy_for_exact_pt(market.contract_address, user, exact_pt_out, max_sy_in);
+        .swap_sy_for_exact_pt(
+            market.contract_address, user, exact_pt_out, max_sy_in, DEFAULT_DEADLINE,
+        );
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_spent <= max_sy_in, 'Spent too much SY');
@@ -608,7 +620,9 @@ fn test_router_swap_pt_for_exact_sy() {
 
     start_cheat_caller_address(router.contract_address, user);
     let pt_spent = router
-        .swap_pt_for_exact_sy(market.contract_address, user, exact_sy_out, max_pt_in);
+        .swap_pt_for_exact_sy(
+            market.contract_address, user, exact_sy_out, max_pt_in, DEFAULT_DEADLINE,
+        );
     stop_cheat_caller_address(router.contract_address);
 
     assert(pt_spent <= max_pt_in, 'Spent too much PT');
@@ -650,7 +664,7 @@ fn test_router_buy_pt_from_sy() {
     let pt_before = pt.balance_of(user);
 
     start_cheat_caller_address(router.contract_address, user);
-    let pt_out = router.buy_pt_from_sy(market.contract_address, user, sy_in, 0);
+    let pt_out = router.buy_pt_from_sy(market.contract_address, user, sy_in, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(pt_out > 0, 'Should receive PT');
@@ -697,7 +711,7 @@ fn test_router_sell_pt_for_sy() {
     let sy_before = sy.balance_of(user);
 
     start_cheat_caller_address(router.contract_address, user);
-    let sy_out = router.sell_pt_for_sy(market.contract_address, user, pt_in, 0);
+    let sy_out = router.sell_pt_for_sy(market.contract_address, user, pt_in, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_out > 0, 'Should receive SY');
@@ -713,7 +727,7 @@ fn test_router_mint_py_zero_yt() {
     let user = user1();
 
     start_cheat_caller_address(router.contract_address, user);
-    router.mint_py_from_sy(zero_address(), user, WAD, 0);
+    router.mint_py_from_sy(zero_address(), user, WAD, 0, DEFAULT_DEADLINE);
 }
 
 #[test]
@@ -723,7 +737,7 @@ fn test_router_mint_py_zero_receiver() {
     let user = user1();
 
     start_cheat_caller_address(router.contract_address, user);
-    router.mint_py_from_sy(yt.contract_address, zero_address(), WAD, 0);
+    router.mint_py_from_sy(yt.contract_address, zero_address(), WAD, 0, DEFAULT_DEADLINE);
 }
 
 #[test]
@@ -733,7 +747,7 @@ fn test_router_mint_py_zero_amount() {
     let user = user1();
 
     start_cheat_caller_address(router.contract_address, user);
-    router.mint_py_from_sy(yt.contract_address, user, 0, 0);
+    router.mint_py_from_sy(yt.contract_address, user, 0, 0, DEFAULT_DEADLINE);
 }
 
 // ============ YT Swap Tests ============
@@ -773,7 +787,9 @@ fn test_router_swap_exact_sy_for_yt() {
 
     start_cheat_caller_address(router.contract_address, user);
     let yt_out = router
-        .swap_exact_sy_for_yt(yt.contract_address, market.contract_address, user, swap_amount, 0);
+        .swap_exact_sy_for_yt(
+            yt.contract_address, market.contract_address, user, swap_amount, 0, DEFAULT_DEADLINE,
+        );
     stop_cheat_caller_address(router.contract_address);
 
     // Verify YT received
@@ -823,7 +839,12 @@ fn test_router_swap_exact_sy_for_yt_to_receiver() {
     start_cheat_caller_address(router.contract_address, sender);
     let yt_out = router
         .swap_exact_sy_for_yt(
-            yt.contract_address, market.contract_address, receiver, swap_amount, 0,
+            yt.contract_address,
+            market.contract_address,
+            receiver,
+            swap_amount,
+            0,
+            DEFAULT_DEADLINE,
         );
     stop_cheat_caller_address(router.contract_address);
 
@@ -865,7 +886,12 @@ fn test_router_swap_exact_sy_for_yt_slippage() {
     start_cheat_caller_address(router.contract_address, user);
     router
         .swap_exact_sy_for_yt(
-            yt.contract_address, market.contract_address, user, swap_amount, swap_amount * 100,
+            yt.contract_address,
+            market.contract_address,
+            user,
+            swap_amount,
+            swap_amount * 100,
+            DEFAULT_DEADLINE,
         );
 }
 
@@ -919,7 +945,15 @@ fn test_router_swap_exact_yt_for_sy() {
 
     start_cheat_caller_address(router.contract_address, user);
     let sy_out = router
-        .swap_exact_yt_for_sy(yt.contract_address, market.contract_address, user, yt_to_sell, 0);
+        .swap_exact_yt_for_sy(
+            yt.contract_address,
+            market.contract_address,
+            user,
+            yt_to_sell,
+            yt_to_sell * 4,
+            0,
+            DEFAULT_DEADLINE,
+        );
     stop_cheat_caller_address(router.contract_address);
 
     // Verify YT sold
@@ -983,7 +1017,13 @@ fn test_router_swap_exact_yt_for_sy_to_receiver() {
     start_cheat_caller_address(router.contract_address, sender);
     router
         .swap_exact_yt_for_sy(
-            yt.contract_address, market.contract_address, receiver, yt_to_sell, 0,
+            yt.contract_address,
+            market.contract_address,
+            receiver,
+            yt_to_sell,
+            collateral_sy,
+            0,
+            DEFAULT_DEADLINE,
         );
     stop_cheat_caller_address(router.contract_address);
 
@@ -1038,6 +1078,12 @@ fn test_router_swap_exact_yt_for_sy_slippage() {
     start_cheat_caller_address(router.contract_address, user);
     router
         .swap_exact_yt_for_sy(
-            yt.contract_address, market.contract_address, user, yt_to_sell, yt_to_sell * 100,
+            yt.contract_address,
+            market.contract_address,
+            user,
+            yt_to_sell,
+            collateral_sy,
+            yt_to_sell * 100,
+            DEFAULT_DEADLINE,
         );
 }
