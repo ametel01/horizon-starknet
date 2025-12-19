@@ -45,8 +45,8 @@ pub mod PragmaIndexOracle {
     };
     use horizon::libraries::math::{WAD, max};
     use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 

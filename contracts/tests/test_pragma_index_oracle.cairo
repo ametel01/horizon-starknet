@@ -7,7 +7,7 @@ use horizon::mocks::mock_pragma::{
 use horizon::oracles::pragma_index_oracle::{
     IPragmaIndexOracleAdminDispatcher, IPragmaIndexOracleAdminDispatcherTrait,
 };
-use openzeppelin_access::ownable::interface::{IOwnableDispatcher, IOwnableDispatcherTrait};
+use openzeppelin_interfaces::ownable::{IOwnableDispatcher, IOwnableDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,

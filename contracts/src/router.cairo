@@ -11,8 +11,8 @@ pub mod Router {
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
