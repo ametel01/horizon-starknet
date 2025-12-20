@@ -4,6 +4,7 @@
 #[starknet::contract]
 pub mod MarketFactory {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_market_factory::IMarketFactory;
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::libraries::errors::Errors;
@@ -77,6 +78,8 @@ pub mod MarketFactory {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         access_control: AccessControlComponent::Storage,
+        // Flag to prevent RBAC re-initialization
+        rbac_initialized: bool,
     }
 
     #[event]
@@ -265,6 +268,8 @@ pub mod MarketFactory {
         }
 
         /// Get all market addresses created by this factory
+        /// WARNING: May exceed gas limits for large numbers of markets. Use get_markets_paginated
+        /// for production.
         fn get_all_markets(self: @ContractState) -> Array<ContractAddress> {
             let count = self.market_count.read();
             let mut markets: Array<ContractAddress> = array![];
@@ -274,6 +279,82 @@ pub mod MarketFactory {
                 i += 1;
             }
             markets
+        }
+
+        /// Get market addresses with pagination
+        /// @param offset Starting index (0-based)
+        /// @param limit Maximum number of markets to return
+        /// @return (markets, has_more) - Array of market addresses and whether more markets exist
+        fn get_markets_paginated(
+            self: @ContractState, offset: u32, limit: u32,
+        ) -> (Array<ContractAddress>, bool) {
+            let count = self.market_count.read();
+            let mut markets: Array<ContractAddress> = array![];
+
+            // If offset is beyond count, return empty array
+            if offset >= count {
+                return (markets, false);
+            }
+
+            // Calculate end index (exclusive)
+            let end = if offset + limit > count {
+                count
+            } else {
+                offset + limit
+            };
+
+            // Collect markets in range
+            let mut i: u32 = offset;
+            while i < end {
+                markets.append(self.market_list.read(i));
+                i += 1;
+            }
+
+            // Check if there are more markets after this page
+            let has_more = end < count;
+
+            (markets, has_more)
+        }
+
+        /// Get active (non-expired) market addresses with pagination
+        /// @param offset Number of active markets to skip
+        /// @param limit Maximum number of active markets to return
+        /// @return (active_markets, has_more) - Array of active market addresses and whether more
+        /// exist
+        fn get_active_markets_paginated(
+            self: @ContractState, offset: u32, limit: u32,
+        ) -> (Array<ContractAddress>, bool) {
+            let total_count = self.market_count.read();
+            let mut active_markets: Array<ContractAddress> = array![];
+            let mut skipped: u32 = 0;
+            let mut collected: u32 = 0;
+            let mut i: u32 = 0;
+            let mut has_more = false;
+
+            // Iterate through all markets to find active ones
+            while i < total_count {
+                let market_address = self.market_list.read(i);
+                let market = IMarketDispatcher { contract_address: market_address };
+
+                // Check if market is not expired
+                if !market.is_expired() {
+                    // Skip until we reach the offset
+                    if skipped < offset {
+                        skipped += 1;
+                    } else if collected < limit {
+                        // Collect active markets up to limit
+                        active_markets.append(market_address);
+                        collected += 1;
+                    } else {
+                        // We found more active markets after collecting limit
+                        has_more = true;
+                        break;
+                    }
+                }
+                i += 1;
+            }
+
+            (active_markets, has_more)
         }
 
         /// Get market address by index (0-based)
@@ -297,12 +378,15 @@ pub mod MarketFactory {
         /// Owner calls this to bootstrap AccessControl roles
         fn initialize_rbac(ref self: ContractState) {
             self.ownable.assert_only_owner();
+            assert(!self.rbac_initialized.read(), Errors::RBAC_ALREADY_INITIALIZED);
 
             let owner = self.ownable.owner();
 
-            // Initialize AccessControl if not already done
             // Grant admin role to current owner
             self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
+
+            // Mark as initialized to prevent re-calling
+            self.rbac_initialized.write(true);
         }
     }
 }
