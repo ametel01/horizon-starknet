@@ -12,6 +12,12 @@ import type { MarketData, MarketInfo, MarketState } from '@/types/market';
 
 import { useStarknet } from './useStarknet';
 
+/**
+ * Page size for paginated market fetching
+ * @see Security Audit L-04 - Gas Exhaustion Prevention
+ */
+const MARKETS_PAGE_SIZE = 20;
+
 // Helper to convert Uint256 or bigint to bigint
 function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
   if (typeof value === 'bigint') {
@@ -169,8 +175,63 @@ function getStaticMarketAddresses(network: NetworkId): string[] {
 }
 
 /**
- * Hook to fetch all market addresses from the MarketFactory on-chain
+ * Fetch all active market addresses using pagination
+ * @see Security Audit L-04 - Gas Exhaustion Prevention
+ */
+async function fetchActiveMarketsPaginated(
+  provider: ProviderInterface,
+  network: NetworkId
+): Promise<string[]> {
+  const marketFactory = getMarketFactoryContract(provider, network);
+  const allAddresses: string[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    // Fetch a page of active markets
+    const result = (await marketFactory.get_active_markets_paginated(
+      offset,
+      MARKETS_PAGE_SIZE
+    )) as [unknown[], boolean];
+
+    // Parse the tuple result: (addresses[], has_more)
+    const [addressesRaw, moreAvailable] = result;
+
+    if (Array.isArray(addressesRaw)) {
+      const pageAddresses = addressesRaw
+        .map((addr: unknown) => {
+          if (typeof addr === 'bigint') {
+            return '0x' + addr.toString(16).padStart(64, '0');
+          }
+          return String(addr);
+        })
+        .filter(
+          (addr) =>
+            addr !== '0x0' &&
+            addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+        );
+
+      allAddresses.push(...pageAddresses);
+    }
+
+    hasMore = moreAvailable;
+    offset += MARKETS_PAGE_SIZE;
+
+    // Safety limit to prevent infinite loops
+    if (offset > 1000) {
+      console.warn('[fetchActiveMarketsPaginated] Reached safety limit of 1000 markets');
+      break;
+    }
+  }
+
+  return allAddresses;
+}
+
+/**
+ * Hook to fetch all active market addresses from the MarketFactory on-chain
+ * Uses paginated fetching to prevent gas exhaustion with many markets
  * Falls back to static addresses from config if on-chain call fails or returns empty
+ * @see Security Audit L-04 - Gas Exhaustion Prevention
  */
 export function useMarketAddresses(): {
   addresses: string[];
@@ -184,31 +245,10 @@ export function useMarketAddresses(): {
   const staticAddresses = getStaticMarketAddresses(network);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['marketFactory', 'allMarkets', network],
+    queryKey: ['marketFactory', 'activeMarketsPaginated', network],
     queryFn: async () => {
       try {
-        const marketFactory = getMarketFactoryContract(provider, network);
-        const result = await marketFactory.get_all_markets();
-
-        // The result is an array of market addresses
-        let addresses: string[];
-        if (Array.isArray(result)) {
-          addresses = result
-            .map((addr: unknown) => {
-              // Handle both string and bigint addresses
-              if (typeof addr === 'bigint') {
-                return '0x' + addr.toString(16).padStart(64, '0');
-              }
-              return String(addr);
-            })
-            .filter(
-              (addr) =>
-                addr !== '0x0' &&
-                addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
-            );
-        } else {
-          addresses = [];
-        }
+        const addresses = await fetchActiveMarketsPaginated(provider, network);
 
         // If on-chain returns empty, use static addresses as fallback
         if (addresses.length === 0 && staticAddresses.length > 0) {
@@ -236,6 +276,104 @@ export function useMarketAddresses(): {
   });
 
   // Final fallback: if query failed and we have static addresses, use them
+  const addresses = data ?? (isError ? staticAddresses : []);
+
+  return {
+    addresses,
+    isLoading,
+    isError: isError && staticAddresses.length === 0,
+  };
+}
+
+/**
+ * Fetch all market addresses (including expired) using pagination
+ * @see Security Audit L-04 - Gas Exhaustion Prevention
+ */
+async function fetchAllMarketsPaginated(
+  provider: ProviderInterface,
+  network: NetworkId
+): Promise<string[]> {
+  const marketFactory = getMarketFactoryContract(provider, network);
+  const allAddresses: string[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = (await marketFactory.get_markets_paginated(offset, MARKETS_PAGE_SIZE)) as [
+      unknown[],
+      boolean,
+    ];
+
+    const [addressesRaw, moreAvailable] = result;
+
+    if (Array.isArray(addressesRaw)) {
+      const pageAddresses = addressesRaw
+        .map((addr: unknown) => {
+          if (typeof addr === 'bigint') {
+            return '0x' + addr.toString(16).padStart(64, '0');
+          }
+          return String(addr);
+        })
+        .filter(
+          (addr) =>
+            addr !== '0x0' &&
+            addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+        );
+
+      allAddresses.push(...pageAddresses);
+    }
+
+    hasMore = moreAvailable;
+    offset += MARKETS_PAGE_SIZE;
+
+    if (offset > 1000) {
+      console.warn('[fetchAllMarketsPaginated] Reached safety limit of 1000 markets');
+      break;
+    }
+  }
+
+  return allAddresses;
+}
+
+/**
+ * Hook to fetch all market addresses (including expired) from MarketFactory
+ * Uses paginated fetching to prevent gas exhaustion
+ * @see Security Audit L-04 - Gas Exhaustion Prevention
+ */
+export function useAllMarketAddresses(): {
+  addresses: string[];
+  isLoading: boolean;
+  isError: boolean;
+} {
+  const { provider, network } = useStarknet();
+  const isClient = typeof window !== 'undefined';
+
+  const staticAddresses = getStaticMarketAddresses(network);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['marketFactory', 'allMarketsPaginated', network],
+    queryFn: async () => {
+      try {
+        const addresses = await fetchAllMarketsPaginated(provider, network);
+
+        if (addresses.length === 0 && staticAddresses.length > 0) {
+          return staticAddresses;
+        }
+
+        return addresses;
+      } catch (error) {
+        console.error('[useAllMarketAddresses] Error fetching from chain:', error);
+        if (staticAddresses.length > 0) {
+          return staticAddresses;
+        }
+        throw error;
+      }
+    },
+    enabled: isClient,
+    staleTime: 60000,
+    retry: 2,
+  });
+
   const addresses = data ?? (isError ? staticAddresses : []);
 
   return {
