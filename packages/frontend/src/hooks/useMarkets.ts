@@ -44,17 +44,27 @@ async function fetchMarketData(
 
   try {
     // Fetch all market data in parallel using typed contract calls
-    const [syAddress, ptAddress, ytAddress, expiry, isExpiredVal, reserves, totalLpSupply, lnRate] =
-      await Promise.all([
-        market.sy(),
-        market.pt(),
-        market.yt(),
-        market.expiry(),
-        market.is_expired(),
-        market.get_reserves(),
-        market.total_lp_supply(),
-        market.get_ln_implied_rate(),
-      ]);
+    const [
+      syAddress,
+      ptAddress,
+      ytAddress,
+      expiry,
+      isExpiredVal,
+      reserves,
+      totalLpSupply,
+      lnRate,
+      feesCollected,
+    ] = await Promise.all([
+      market.sy(),
+      market.pt(),
+      market.yt(),
+      market.expiry(),
+      market.is_expired(),
+      market.get_reserves(),
+      market.total_lp_supply(),
+      market.get_ln_implied_rate(),
+      market.get_total_fees_collected(),
+    ]);
 
     const info: MarketInfo = {
       address: marketAddress,
@@ -72,6 +82,7 @@ async function fetchMarketData(
       ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
       totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
       lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
+      feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
     };
 
     const impliedApy = lnRateToApy(state.lnImpliedRate);
@@ -175,6 +186,58 @@ function getStaticMarketAddresses(network: NetworkId): string[] {
 }
 
 /**
+ * Parse paginated result from contract call
+ * Handles different return formats from starknet.js
+ */
+function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore: boolean } {
+  // Handle array tuple format: [addresses[], hasMore]
+  if (Array.isArray(result) && result.length === 2) {
+    const first: unknown = result[0];
+    const second: unknown = result[1];
+    if (Array.isArray(first) && typeof second === 'boolean') {
+      return { addresses: first, hasMore: second };
+    }
+  }
+
+  // Handle object format: { 0: addresses[], 1: hasMore } or named properties
+  if (result !== null && typeof result === 'object') {
+    const obj = result as Record<string, unknown>;
+
+    // Try numeric keys
+    if ('0' in obj && '1' in obj) {
+      const addresses = obj['0'];
+      const hasMore = obj['1'];
+      if (Array.isArray(addresses)) {
+        return { addresses, hasMore: Boolean(hasMore) };
+      }
+    }
+
+    // Try named keys (some typed contracts return named tuples)
+    if ('addresses' in obj || 'active_markets' in obj) {
+      const addresses = (obj.addresses ?? obj.active_markets ?? obj.markets) as unknown[];
+      const hasMore = Boolean(obj.has_more ?? obj.hasMore ?? false);
+      return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
+    }
+  }
+
+  console.warn('[parsePaginatedResult] Unexpected result format:', result);
+  return { addresses: [], hasMore: false };
+}
+
+/**
+ * Convert address value to hex string
+ */
+function addressToHex(addr: unknown): string {
+  if (typeof addr === 'bigint') {
+    return '0x' + addr.toString(16).padStart(64, '0');
+  }
+  if (typeof addr === 'string') {
+    return addr;
+  }
+  return String(addr);
+}
+
+/**
  * Fetch all active market addresses using pagination
  * @see Security Audit L-04 - Gas Exhaustion Prevention
  */
@@ -189,32 +252,22 @@ async function fetchActiveMarketsPaginated(
 
   while (hasMore) {
     // Fetch a page of active markets
-    const result = (await marketFactory.get_active_markets_paginated(
-      offset,
-      MARKETS_PAGE_SIZE
-    )) as [unknown[], boolean];
+    const result = await marketFactory.get_active_markets_paginated(offset, MARKETS_PAGE_SIZE);
 
-    // Parse the tuple result: (addresses[], has_more)
-    const [addressesRaw, moreAvailable] = result;
+    // Parse the result (handles different starknet.js return formats)
+    const parsed = parsePaginatedResult(result);
 
-    if (Array.isArray(addressesRaw)) {
-      const pageAddresses = addressesRaw
-        .map((addr: unknown) => {
-          if (typeof addr === 'bigint') {
-            return '0x' + addr.toString(16).padStart(64, '0');
-          }
-          return String(addr);
-        })
-        .filter(
-          (addr) =>
-            addr !== '0x0' &&
-            addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
-        );
+    const pageAddresses = parsed.addresses
+      .map(addressToHex)
+      .filter(
+        (addr) =>
+          addr !== '0x0' &&
+          addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+      );
 
-      allAddresses.push(...pageAddresses);
-    }
+    allAddresses.push(...pageAddresses);
 
-    hasMore = moreAvailable;
+    hasMore = parsed.hasMore;
     offset += MARKETS_PAGE_SIZE;
 
     // Safety limit to prevent infinite loops
@@ -299,31 +352,22 @@ async function fetchAllMarketsPaginated(
   let hasMore = true;
 
   while (hasMore) {
-    const result = (await marketFactory.get_markets_paginated(offset, MARKETS_PAGE_SIZE)) as [
-      unknown[],
-      boolean,
-    ];
+    const result = await marketFactory.get_markets_paginated(offset, MARKETS_PAGE_SIZE);
 
-    const [addressesRaw, moreAvailable] = result;
+    // Parse the result (handles different starknet.js return formats)
+    const parsed = parsePaginatedResult(result);
 
-    if (Array.isArray(addressesRaw)) {
-      const pageAddresses = addressesRaw
-        .map((addr: unknown) => {
-          if (typeof addr === 'bigint') {
-            return '0x' + addr.toString(16).padStart(64, '0');
-          }
-          return String(addr);
-        })
-        .filter(
-          (addr) =>
-            addr !== '0x0' &&
-            addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
-        );
+    const pageAddresses = parsed.addresses
+      .map(addressToHex)
+      .filter(
+        (addr) =>
+          addr !== '0x0' &&
+          addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+      );
 
-      allAddresses.push(...pageAddresses);
-    }
+    allAddresses.push(...pageAddresses);
 
-    hasMore = moreAvailable;
+    hasMore = parsed.hasMore;
     offset += MARKETS_PAGE_SIZE;
 
     if (offset > 1000) {
