@@ -263,7 +263,7 @@ fn test_router_mint_py_to_different_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'Router: slippage exceeded')]
+#[should_panic(expected: 'HZN: slippage exceeded')]
 fn test_router_mint_py_slippage() {
     let (underlying, sy, yt, _, _, router) = setup();
     let user = user1();
@@ -374,7 +374,7 @@ fn test_router_add_liquidity() {
 }
 
 #[test]
-#[should_panic(expected: 'Router: slippage exceeded')]
+#[should_panic(expected: 'HZN: slippage exceeded')]
 fn test_router_add_liquidity_slippage() {
     let (underlying, sy, yt, pt, market, router) = setup();
     let user = user1();
@@ -724,7 +724,7 @@ fn test_router_sell_pt_for_sy() {
 // ============ Edge Cases ============
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_router_mint_py_zero_yt() {
     let (_, _, _, _, _, router) = setup();
     let user = user1();
@@ -734,7 +734,7 @@ fn test_router_mint_py_zero_yt() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_router_mint_py_zero_receiver() {
     let (_, _, yt, _, _, router) = setup();
     let user = user1();
@@ -744,7 +744,7 @@ fn test_router_mint_py_zero_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_router_mint_py_zero_amount() {
     let (_, _, yt, _, _, router) = setup();
     let user = user1();
@@ -857,7 +857,7 @@ fn test_router_swap_exact_sy_for_yt_to_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'Router: slippage exceeded')]
+#[should_panic(expected: 'HZN: slippage exceeded')]
 fn test_router_swap_exact_sy_for_yt_slippage() {
     let (underlying, sy, yt, pt, market, router) = setup();
     let user = user1();
@@ -1035,7 +1035,7 @@ fn test_router_swap_exact_yt_for_sy_to_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'Router: slippage exceeded')]
+#[should_panic(expected: 'HZN: slippage exceeded')]
 fn test_router_swap_exact_yt_for_sy_slippage() {
     let (underlying, sy, yt, pt, market, router) = setup();
     let user = user1();
