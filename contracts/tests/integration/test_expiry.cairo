@@ -316,7 +316,7 @@ fn test_exactly_at_expiry_timestamp() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: expired')]
+#[should_panic(expected: 'HZN: expired')]
 fn test_cannot_mint_after_expiry() {
     // Setup
     let start_time: u64 = 1000;
@@ -349,7 +349,7 @@ fn test_cannot_mint_after_expiry() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: not expired')]
+#[should_panic(expected: 'HZN: not expired')]
 fn test_cannot_redeem_post_expiry_before_expiry() {
     // Setup
     let start_time: u64 = 1000;
@@ -432,7 +432,7 @@ fn test_market_expired_behavior() {
 }
 
 #[test]
-#[should_panic(expected: 'Market: expired')]
+#[should_panic(expected: 'HZN: market expired')]
 fn test_market_no_swaps_after_expiry() {
     // Setup
     let start_time: u64 = 1000;
