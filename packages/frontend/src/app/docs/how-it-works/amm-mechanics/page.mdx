@@ -77,14 +77,14 @@ This is automatic. The logit curve naturally pushes PT toward its redemption val
 
 ## Fee Decay
 
-Swap fees also decay linearly toward expiry:
+Swap fees decay exponentially toward expiry, matching the time-decay of the underlying assets:
 
-<Formula display>{"\\text{adjustedFeeRate} = \\text{baseFeeRate} \\times \\frac{\\text{timeToExpiry}}{\\text{SECONDS\\_PER\\_YEAR}}"}</Formula>
+<Formula display>{"\\text{adjustedFeeRate} = e^{\\text{lnFeeRateRoot} \\times \\frac{\\text{timeToExpiry}}{\\text{SECONDS\\_PER\\_YEAR}}}"}</Formula>
 
 This means:
 - **1 year out** → Full fee rate applies
-- **6 months out** → ~50% of base fee
-- **At expiry** → Zero fees
+- **6 months out** → ~70% of base fee (exponential decay)
+- **At expiry** → Minimal fees
 
 This encourages trading near maturity and reduces friction for arbitrageurs maintaining the PT = 1 peg.
 
