@@ -35,6 +35,11 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
 
   const { addLiquidity, isAdding, isSuccess, isError, error, transactionHash } = useAddLiquidity();
 
+  // Get token symbols from metadata for proper naming (I-06)
+  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${tokenSymbol}`;
+  const ptSymbol = `PT-${tokenSymbol}`;
+
   // Fetch balances
   const { data: syBalance } = useTokenBalance(market.syAddress);
   const { data: ptBalance } = useTokenBalance(market.ptAddress);
@@ -171,9 +176,9 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
 
         {/* SY Input */}
         <TokenInput
-          label="SY Amount"
+          label={`${sySymbol} Amount`}
           tokenAddress={market.syAddress}
-          tokenSymbol="SY"
+          tokenSymbol={sySymbol}
           value={syAmount}
           onChange={setSyAmount}
           error={hasInsufficientSyBalance ? 'Insufficient balance' : undefined}
@@ -181,9 +186,9 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
 
         {/* PT Input */}
         <TokenInput
-          label="PT Amount"
+          label={`${ptSymbol} Amount`}
           tokenAddress={market.ptAddress}
-          tokenSymbol="PT"
+          tokenSymbol={ptSymbol}
           value={ptAmount}
           onChange={(value): void => {
             if (!isBalanced) {

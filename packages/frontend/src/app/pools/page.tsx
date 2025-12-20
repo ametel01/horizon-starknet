@@ -310,6 +310,14 @@ function PoolsPageContent(): ReactNode {
                 <span className="text-muted-foreground">Days to Expiry</span>
                 <span className="text-foreground">{Math.ceil(selectedMarket.daysToExpiry)}</span>
               </div>
+              {selectedMarket.state.feesCollected > 0n && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Protocol Fees Collected</span>
+                  <span className="text-foreground">
+                    {formatWadCompact(selectedMarket.state.feesCollected)} SY
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

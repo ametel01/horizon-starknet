@@ -5,10 +5,11 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { PriceImpactWarning, usePriceImpactWarning } from '@/components/display/PriceImpactWarning';
 import { TxStatus } from '@/components/display/TxStatus';
+import { TransactionSettingsPanel } from '@/components/settings/TransactionSettingsPanel';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useTransactionSettings } from '@/contexts/transaction-settings-context';
 import { useStarknet } from '@/hooks/useStarknet';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@/hooks/useSwap';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -32,20 +33,14 @@ interface SwapFormProps {
   market: MarketData;
 }
 
-const SLIPPAGE_OPTIONS = [
-  { label: '0.1%', value: 10 },
-  { label: '0.5%', value: 50 },
-  { label: '1%', value: 100 },
-];
-
 type TokenType = 'PT' | 'YT';
 
 export function SwapForm({ market }: SwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
+  const { slippageBps, slippagePercent } = useTransactionSettings();
   const [tokenType, setTokenType] = useState<TokenType>('PT');
   const [isBuying, setIsBuying] = useState(true);
   const [inputAmount, setInputAmount] = useState('');
-  const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
 
   // Derive swap direction from token type and buy/sell
   const direction: SwapDirection = isBuying
@@ -413,7 +408,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Slippage Tolerance</span>
-                <span className="text-foreground">{slippageBps / 100}%</span>
+                <span className="text-foreground">{slippagePercent}</span>
               </div>
               {/* Fee info */}
               {swapResult && swapResult.fee > 0n && (
@@ -435,25 +430,8 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
           />
         )}
 
-        {/* Slippage Settings */}
-        <div>
-          <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
-          <ToggleGroup className="flex gap-1">
-            {SLIPPAGE_OPTIONS.map((option) => (
-              <ToggleGroupItem
-                key={option.value}
-                pressed={slippageBps === option.value}
-                onPressedChange={() => {
-                  setSlippageBps(option.value);
-                }}
-                variant="outline"
-                size="sm"
-              >
-                {option.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
+        {/* Transaction Settings (Slippage & Deadline) */}
+        <TransactionSettingsPanel />
 
         {/* YT Sell Collateral Warning */}
         {direction === 'sell_yt' && isValidAmount && (
