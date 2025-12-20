@@ -20,6 +20,7 @@
 | cairo-fp integration | `src/lib/math/fp.ts` | Created wrapper module for cairo-fp with WAD conversion utilities |
 | AMM math update | `src/lib/math/amm.ts` | Updated to use cairo-fp for exp/ln calculations instead of BigNumber.js Taylor series |
 | Paginated markets | `src/hooks/useMarkets.ts` | Added `fetchActiveMarketsPaginated()`, `fetchAllMarketsPaginated()`, `useAllMarketAddresses()` hooks |
+| Pause status | `src/hooks/usePauseStatus.ts` | Created `useRouterPauseStatus()`, `useMarketPauseStatus()`, `useTokenPauseStatus()`, `useProtocolPauseStatus()` hooks |
 
 ### Remaining
 - Phase 2: Math Precision (cairo-fp integration) - ✅ COMPLETED
@@ -39,7 +40,7 @@ The security audit remediations and fixed-point library integration introduced s
 | Priority | Count | Status | Description |
 |----------|-------|--------|-------------|
 | Critical | 4 | ✅ 4/4 DONE | Breaking ABI changes requiring immediate fixes |
-| High | 3 | ✅ 2/3 DONE | Math precision and functionality improvements |
+| High | 3 | ✅ 3/3 DONE | Math precision and functionality improvements |
 | Medium | 3 | ⏳ 0/3 | UX enhancements and safety features |
 | Low | 2 | ⏳ 0/2 | Optional improvements |
 
@@ -335,7 +336,7 @@ while (hasMore) {
 
 ### 7. Add Pause Status Checking
 
-**Status:** Recommended for Production
+**Status:** ✅ IMPLEMENTED
 **Audit Reference:** M-03 - Pausability Implementation
 
 All core contracts now implement `IPausable` with `is_paused()`. The frontend should check pause status.
@@ -550,7 +551,7 @@ f128.sqrt(2)    // sqrt(2)
 
 ### Phase 3: Production Readiness
 - [x] Implement paginated market fetching
-- [ ] Add pause status checking
+- [x] Add pause status checking
 - [ ] Update error message parsing
 
 ### Phase 4: UX Enhancements
