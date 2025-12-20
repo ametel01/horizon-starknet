@@ -23,6 +23,7 @@ pub mod Router {
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{
         ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
     };
@@ -72,6 +73,8 @@ pub mod Router {
         pausable: PausableComponent::Storage,
         #[substorage(v0)]
         reentrancy_guard: ReentrancyGuardComponent::Storage,
+        // Flag to prevent RBAC re-initialization
+        rbac_initialized: bool,
     }
 
     #[event]
@@ -209,12 +212,16 @@ pub mod Router {
         /// Owner calls this to bootstrap AccessControl roles
         fn initialize_rbac(ref self: ContractState) {
             self.ownable.assert_only_owner();
+            assert(!self.rbac_initialized.read(), Errors::RBAC_ALREADY_INITIALIZED);
 
             let owner = self.ownable.owner();
 
             // Grant admin and pauser roles to current owner
             self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
             self.access_control._grant_role(PAUSER_ROLE, owner);
+
+            // Mark as initialized to prevent re-calling
+            self.rbac_initialized.write(true);
         }
 
         // ============ PT/YT Minting & Redemption ============

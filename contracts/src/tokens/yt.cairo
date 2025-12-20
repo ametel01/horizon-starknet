@@ -169,17 +169,22 @@ pub mod YT {
         let initial_index = sy_dispatcher.exchange_rate();
         self.py_index_stored.write(initial_index);
 
+        // Get SY symbol for derived PT naming
+        let sy_symbol = sy_dispatcher.symbol();
+
+        // Construct PT name and symbol from SY symbol (e.g., "PT-stETH")
+        let mut pt_name: ByteArray = "PT-";
+        pt_name.append(@sy_symbol);
+        let mut pt_symbol: ByteArray = "PT-";
+        pt_symbol.append(@sy_symbol);
+
         // Deploy PT contract
         // PT constructor args: name, symbol, sy, expiry, pauser
         let mut pt_calldata: Array<felt252> = array![];
-        // Serialize ByteArray for PT name (e.g., "PT-TokenName")
-        pt_calldata.append(0); // data array length
-        pt_calldata.append('PT Token'); // pending_word (simplified)
-        pt_calldata.append(8); // pending_word_len
-        // Serialize ByteArray for PT symbol
-        pt_calldata.append(0);
-        pt_calldata.append('PT');
-        pt_calldata.append(2);
+        // Serialize PT name (ByteArray)
+        Serde::serialize(@pt_name, ref pt_calldata);
+        // Serialize PT symbol (ByteArray)
+        Serde::serialize(@pt_symbol, ref pt_calldata);
         // SY address
         pt_calldata.append(sy.into());
         // Expiry
