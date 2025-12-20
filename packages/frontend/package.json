@@ -35,6 +35,7 @@
     "@tanstack/react-query": "^5.62.8",
     "@types/katex": "^0.16.7",
     "bignumber.js": "^9.1.2",
+    "cairo-fp": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "katex": "^0.16.27",
