@@ -335,7 +335,7 @@ fn test_non_admin_cannot_emergency_set() {
 // ============ Validation Tests ============
 
 #[test]
-#[should_panic(expected: 'PIO: window too short')]
+#[should_panic(expected: 'HZN: window too short')]
 fn test_twap_window_too_short() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -347,7 +347,7 @@ fn test_twap_window_too_short() {
 }
 
 #[test]
-#[should_panic(expected: 'PIO: staleness < window')]
+#[should_panic(expected: 'HZN: staleness < window')]
 fn test_staleness_less_than_window() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -359,7 +359,7 @@ fn test_staleness_less_than_window() {
 }
 
 #[test]
-#[should_panic(expected: 'PIO: index below WAD')]
+#[should_panic(expected: 'HZN: index below WAD')]
 fn test_emergency_index_below_wad() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
@@ -371,7 +371,7 @@ fn test_emergency_index_below_wad() {
 }
 
 #[test]
-#[should_panic(expected: 'PIO: cannot decrease index')]
+#[should_panic(expected: 'HZN: cannot decrease index')]
 fn test_emergency_index_cannot_decrease() {
     let pragma = deploy_mock_pragma();
     let (_oracle, admin) = deploy_pragma_index_oracle_dual(
