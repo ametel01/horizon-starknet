@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { type Call, uint256 } from 'starknet';
 
 import { getAddresses } from '@/lib/constants/addresses';
+import { getDeadline } from '@/lib/deadline';
 import { toWad } from '@/lib/math/wad';
 
 import { useAccount } from './useAccount';
@@ -87,6 +88,7 @@ export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn 
       // Add mint call
       const u256AmountSy = uint256.bnToUint256(amountSyWad);
       const u256MinPy = uint256.bnToUint256(minPyOut);
+      const deadline = getDeadline();
       calls.push({
         contractAddress: routerAddress,
         entrypoint: 'mint_py_from_sy',
@@ -97,6 +99,7 @@ export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn 
           u256AmountSy.high, // amount_sy_in
           u256MinPy.low,
           u256MinPy.high, // min_py_out
+          deadline.toString(), // deadline
         ],
       });
 

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call, uint256 } from 'starknet';
 
 import { getAddresses } from '@/lib/constants/addresses';
+import { getDeadline } from '@/lib/deadline';
 import { getERC20Contract, getRouterContract } from '@/lib/starknet/contracts';
 
 import { useAccount } from './useAccount';
@@ -71,6 +72,7 @@ export function useSwap(): UseSwapReturn {
           address,
           uint256.bnToUint256(params.amountIn),
           uint256.bnToUint256(params.minAmountOut),
+          getDeadline(),
         ]);
         calls.push(swapCall);
       } else if (params.direction === 'sell_pt') {
@@ -90,6 +92,7 @@ export function useSwap(): UseSwapReturn {
           address,
           uint256.bnToUint256(params.amountIn),
           uint256.bnToUint256(params.minAmountOut),
+          getDeadline(),
         ]);
         calls.push(swapCall);
       } else if (params.direction === 'buy_yt') {
@@ -103,13 +106,14 @@ export function useSwap(): UseSwapReturn {
         ]);
         calls.push(approveCall);
 
-        // Add swap call - swap_exact_sy_for_yt(yt, market, receiver, exact_sy_in, min_yt_out)
+        // Add swap call - swap_exact_sy_for_yt(yt, market, receiver, exact_sy_in, min_yt_out, deadline)
         const swapCall = router.populate('swap_exact_sy_for_yt', [
           params.ytAddress,
           params.marketAddress,
           address,
           uint256.bnToUint256(params.amountIn),
           uint256.bnToUint256(params.minAmountOut),
+          getDeadline(),
         ]);
         calls.push(swapCall);
       } else {
@@ -134,13 +138,15 @@ export function useSwap(): UseSwapReturn {
         ]);
         calls.push(approveSyCall);
 
-        // Add swap call - swap_exact_yt_for_sy(yt, market, receiver, exact_yt_in, min_sy_out)
+        // Add swap call - swap_exact_yt_for_sy(yt, market, receiver, exact_yt_in, max_sy_collateral, min_sy_out, deadline)
         const swapCall = router.populate('swap_exact_yt_for_sy', [
           params.ytAddress,
           params.marketAddress,
           address,
           uint256.bnToUint256(params.amountIn),
+          uint256.bnToUint256(collateralAmount), // max_sy_collateral
           uint256.bnToUint256(params.minAmountOut),
+          getDeadline(),
         ]);
         calls.push(swapCall);
       }
