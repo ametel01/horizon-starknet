@@ -41,9 +41,12 @@ pub trait IMarket<TContractState> {
 
     // Market state
     fn get_ln_implied_rate(self: @TContractState) -> u256;
+
+    // Fee info
+    fn get_total_fees_collected(self: @TContractState) -> u256;
 }
 
-/// Admin interface for Market pausability
+/// Admin interface for Market pausability and fee collection
 #[starknet::interface]
 pub trait IMarketAdmin<TContractState> {
     /// Pause all market operations (PAUSER_ROLE only)
@@ -51,4 +54,9 @@ pub trait IMarketAdmin<TContractState> {
 
     /// Unpause all market operations (PAUSER_ROLE only)
     fn unpause(ref self: TContractState);
+
+    /// Collect accumulated trading fees (owner only)
+    /// @param receiver Address to receive the collected SY fees
+    /// @return Amount of SY fees collected
+    fn collect_fees(ref self: TContractState, receiver: ContractAddress) -> u256;
 }

@@ -29,10 +29,28 @@ pub trait IMarketFactory<TContractState> {
     fn get_market_count(self: @TContractState) -> u32;
 
     /// Get all market addresses created by this factory
+    /// WARNING: May exceed gas limits for large numbers of markets. Use get_markets_paginated for
+    /// production.
     fn get_all_markets(self: @TContractState) -> Array<ContractAddress>;
+
+    /// Get market addresses with pagination
+    /// @param offset Starting index (0-based)
+    /// @param limit Maximum number of markets to return
+    /// @return Array of market addresses and whether there are more markets after this page
+    fn get_markets_paginated(
+        self: @TContractState, offset: u32, limit: u32,
+    ) -> (Array<ContractAddress>, bool);
 
     /// Get market address by index (0-based)
     fn get_market_at(self: @TContractState, index: u32) -> ContractAddress;
+
+    /// Get active (non-expired) market addresses with pagination
+    /// @param offset Number of active markets to skip
+    /// @param limit Maximum number of active markets to return
+    /// @return Array of active market addresses and whether there are more active markets
+    fn get_active_markets_paginated(
+        self: @TContractState, offset: u32, limit: u32,
+    ) -> (Array<ContractAddress>, bool);
 
     /// Set new market class hash (owner only)
     fn set_market_class_hash(ref self: TContractState, new_class_hash: ClassHash);
