@@ -39,8 +39,17 @@ interface F128Utils {
   percentageChange(oldVal: number, newVal: number): Fixed | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-const f128: F128Utils = require('cairo-fp/src/f128/utils.js').default;
+interface CairoFP {
+  f128: F128Utils;
+  f64: F128Utils;
+  default?: CairoFP;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+const cairoFpModule: CairoFP = require('cairo-fp');
+// Handle both ESM (default export) and CJS (direct export)
+const cairoFp: CairoFP = cairoFpModule.default ?? cairoFpModule;
+const f128: F128Utils = cairoFp.f128;
 
 // ============================================================================
 // Constants

@@ -14,6 +14,8 @@ export interface MarketState {
   ptReserve: bigint;
   totalLpSupply: bigint;
   lnImpliedRate: bigint;
+  /** Total protocol fees collected (in SY) @see Security Audit I-07 */
+  feesCollected: bigint;
 }
 
 // Token metadata for display
