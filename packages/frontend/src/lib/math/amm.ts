@@ -8,18 +8,13 @@
  * - PT price naturally converges to 1 SY as expiry approaches
  * - Uses a modified curve that accounts for time decay
  * - Implied rate derived from market state using logit function
+ *
+ * Uses cairo-fp library for exp/ln calculations to match on-chain precision.
+ * @see Security Audit I-08 - Fixed-Point Library Integration
  */
 
-import BigNumber from 'bignumber.js';
-
-import { WAD_BIGINT, fromWad, toWad, wadDiv, wadMul } from './wad';
-
-// Configure BigNumber for high precision calculations
-BigNumber.config({
-  DECIMAL_PLACES: 36,
-  ROUNDING_MODE: BigNumber.ROUND_DOWN,
-  EXPONENTIAL_AT: [-50, 50],
-});
+import { expWad as fpExpWad, expNegWad as fpExpNegWad, lnWad as fpLnWad } from './fp';
+import { WAD_BIGINT, wadDiv, wadMul } from './wad';
 
 // ============================================================================
 // Constants (matching market_math.cairo)
@@ -27,7 +22,6 @@ BigNumber.config({
 
 /** Seconds per year for APY calculations */
 export const SECONDS_PER_YEAR = 31_536_000n;
-export const SECONDS_PER_YEAR_BN = new BigNumber(31_536_000);
 
 /** Minimum time to expiry to prevent division issues (1 second) */
 export const MIN_TIME_TO_EXPIRY = 1n;
@@ -76,119 +70,34 @@ export interface LiquidityResult {
 }
 
 // ============================================================================
-// Math Helpers (exp/ln using BigNumber.js)
+// Math Helpers (exp/ln using cairo-fp for on-chain precision matching)
 // ============================================================================
-
-/**
- * Natural logarithm using Taylor series
- * ln(x) = 2 * sum((((x-1)/(x+1))^(2n+1)) / (2n+1)) for x > 0
- */
-export function lnBigNumber(x: BigNumber): BigNumber {
-  if (x.lte(0)) {
-    throw new Error('ln undefined for x <= 0');
-  }
-
-  // For x close to 1, use direct Taylor series
-  // For x far from 1, use ln(x) = ln(x/e^k) + k where e^k is chosen to bring x close to 1
-
-  // Normalize x to be close to 1 by dividing by powers of e
-  const E = new BigNumber('2.718281828459045235360287471352662497757');
-  let normalized = x;
-  let adjustment = new BigNumber(0);
-
-  // Bring x into range [0.5, 2] for better convergence
-  while (normalized.gt(2)) {
-    normalized = normalized.div(E);
-    adjustment = adjustment.plus(1);
-  }
-  while (normalized.lt(0.5)) {
-    normalized = normalized.times(E);
-    adjustment = adjustment.minus(1);
-  }
-
-  // Taylor series: ln(x) = 2 * sum((z^(2n+1))/(2n+1)) where z = (x-1)/(x+1)
-  const z = normalized.minus(1).div(normalized.plus(1));
-  let result = new BigNumber(0);
-  let zPower = z;
-  const zSquared = z.times(z);
-
-  for (let n = 0; n < 100; n++) {
-    const term = zPower.div(2 * n + 1);
-    result = result.plus(term);
-
-    if (term.abs().lt(1e-36)) break;
-
-    zPower = zPower.times(zSquared);
-  }
-
-  return result.times(2).plus(adjustment);
-}
-
-/**
- * Exponential function using Taylor series
- * e^x = sum(x^n / n!)
- */
-export function expBigNumber(x: BigNumber): BigNumber {
-  // Handle large negative exponents
-  if (x.lt(-40)) {
-    return new BigNumber(0);
-  }
-
-  // Handle large positive exponents (cap at reasonable value)
-  if (x.gt(40)) {
-    return new BigNumber('2.35385266837019985e17'); // e^40
-  }
-
-  let result = new BigNumber(1);
-  let term = new BigNumber(1);
-
-  for (let n = 1; n < 200; n++) {
-    term = term.times(x).div(n);
-    result = result.plus(term);
-
-    if (term.abs().lt(1e-36)) break;
-  }
-
-  return result;
-}
 
 /**
  * Natural log for WAD bigint values
  * Returns (|ln(x)|, isNegative) to match Cairo implementation
+ * Uses cairo-fp for precision matching with on-chain calculations
  */
 export function lnWad(x: bigint): { value: bigint; isNegative: boolean } {
-  if (x <= 0n) {
-    throw new Error('ln undefined for x <= 0');
-  }
-
-  const xBn = fromWad(x);
-  const lnValue = lnBigNumber(xBn);
-  const isNegative = lnValue.lt(0);
-
-  return {
-    value: toWad(lnValue.abs()),
-    isNegative,
-  };
+  return fpLnWad(x);
 }
 
 /**
  * Exponential for WAD bigint values
  * e^x where x is in WAD
+ * Uses cairo-fp for precision matching with on-chain calculations
  */
 export function expWad(x: bigint): bigint {
-  const xBn = fromWad(x);
-  const result = expBigNumber(xBn);
-  return toWad(result);
+  return fpExpWad(x);
 }
 
 /**
  * Exponential of negative value for WAD bigint
  * e^(-x) where x is in WAD
+ * Uses cairo-fp for precision matching with on-chain calculations
  */
 export function expNegWad(x: bigint): bigint {
-  const xBn = fromWad(x).negated();
-  const result = expBigNumber(xBn);
-  return toWad(result);
+  return fpExpNegWad(x);
 }
 
 // ============================================================================
