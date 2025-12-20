@@ -1,14 +1,12 @@
 /// Tests for the high-precision market math library (market_math_fp.cairo)
 /// Verifies Pendle-accurate AMM curve calculations using cubit fixed-point
 
-use horizon::libraries::math_fp::{WAD, HALF_WAD, abs_diff};
+use horizon::libraries::math_fp::{HALF_WAD, WAD, abs_diff};
 use horizon::market::market_math_fp::{
-    MarketState, MarketPreCompute, SECONDS_PER_YEAR, MIN_PROPORTION, MAX_PROPORTION,
-    MINIMUM_LIQUIDITY, MAX_LN_IMPLIED_RATE, get_time_to_expiry, get_proportion, get_rate_scalar,
-    get_time_adjusted_fee_rate, get_rate_anchor, get_market_pre_compute, get_exchange_rate,
-    get_ln_implied_rate, get_pt_price, get_implied_apy, calc_swap_exact_pt_for_sy,
-    calc_swap_exact_sy_for_pt, calc_swap_sy_for_exact_pt, calc_swap_pt_for_exact_sy, calc_mint_lp,
-    calc_burn_lp, calc_price_impact, get_market_exchange_rate
+    MAX_PROPORTION, MIN_PROPORTION, MarketState, calc_burn_lp, calc_mint_lp, calc_price_impact,
+    calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, get_exchange_rate, get_implied_apy,
+    get_market_exchange_rate, get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
+    get_time_adjusted_fee_rate, get_time_to_expiry,
 };
 
 /// Helper to create a standard market state for testing
@@ -21,7 +19,7 @@ fn create_test_market() -> MarketState {
         initial_anchor: WAD, // 1.0 anchor
         fee_rate: WAD / 100, // 1% fee
         expiry: 31_536_000 + 1000, // 1 year from now
-        last_ln_implied_rate: WAD / 20, // 5% implied rate
+        last_ln_implied_rate: WAD / 20 // 5% implied rate
     }
 }
 

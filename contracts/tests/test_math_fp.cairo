@@ -2,9 +2,9 @@
 /// Verifies that cubit-based calculations match expected DeFi precision requirements
 
 use horizon::libraries::math_fp::{
-    WAD, HALF_WAD, WAD_E, WAD_LN2, wad_mul, wad_div, exp_wad, exp_neg_wad, exp2_wad, ln_wad,
-    log2_wad, pow_wad, sqrt_wad, max, min, abs_diff, lerp, decay, growth, continuous_compound,
-    wad_to_fp, fp_to_wad,
+    HALF_WAD, WAD, WAD_E, WAD_LN2, abs_diff, continuous_compound, decay, exp2_wad, exp_neg_wad,
+    exp_wad, fp_to_wad, growth, lerp, ln_wad, log2_wad, max, min, pow_wad, sqrt_wad, wad_div,
+    wad_mul, wad_to_fp,
 };
 
 /// Helper to check if two values are within tolerance
