@@ -6,7 +6,7 @@
 # Usage: ./deploy/scripts/mainnet.deploy.sh
 #
 # This script:
-# 1. Declares all contract classes
+# 1. Declares all contract classes (via declare.sh)
 # 2. Deploys:
 #    - Mock yield token (hrzSTRK) with STRK as underlying
 #    - Faucet for hrzSTRK (100 tokens/day limit)
@@ -29,7 +29,6 @@ CONTRACTS_DIR="$ROOT_DIR/contracts"
 
 NETWORK="mainnet"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
-ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Horizon Protocol - Mainnet Deployment${NC}"
@@ -69,6 +68,9 @@ fi
 
 source "$ENV_FILE"
 
+# Override ACCOUNTS_FILE with absolute path (env file may have relative path)
+ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
+
 if [[ -z "$DEPLOYER_ADDRESS" || -z "$DEPLOYER_PRIVATE_KEY" ]]; then
     log_error "DEPLOYER_ADDRESS and DEPLOYER_PRIVATE_KEY must be set in $ENV_FILE"
     exit 1
@@ -79,137 +81,40 @@ log_info "Deployer: $DEPLOYER_ADDRESS"
 log_info "Test Recipient: $TEST_RECIPIENT"
 
 # =============================================================================
-# Setup Account for sncast
+# Step 1: Declare Classes (using declare.sh)
 # =============================================================================
 
-mkdir -p "$(dirname "$ACCOUNTS_FILE")"
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Step 1: Declaring Contract Classes${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
 
-DEPLOYER_PUBLIC_KEY="0x0"
-ACCOUNT_CLASS_HASH="0x03957f9f5a1cbfe918cedc2015c85200ca51a5f7506ecb6de98a5207b759bf8a"
+"$SCRIPT_DIR/declare.sh" mainnet
 
-cat > "$ACCOUNTS_FILE" << EOF
-{
-  "alpha-mainnet": {
-    "deployer": {
-      "address": "$DEPLOYER_ADDRESS",
-      "class_hash": "$ACCOUNT_CLASS_HASH",
-      "deployed": true,
-      "legacy": false,
-      "private_key": "$DEPLOYER_PRIVATE_KEY",
-      "public_key": "$DEPLOYER_PUBLIC_KEY",
-      "salt": "0x0",
-      "type": "braavos"
-    }
-  },
-  "alpha-sepolia": {}
-}
-EOF
+# Re-source env to get class hashes
+source "$ENV_FILE"
 
-log_success "Account file created: $ACCOUNTS_FILE"
+echo ""
+log_success "All classes declared"
+echo ""
+
+# Wait for declarations to be confirmed
+log_info "Waiting 15 seconds for declarations to be confirmed..."
+sleep 15
 
 # =============================================================================
-# Build Contracts
+# Step 2: Deploy Contracts
 # =============================================================================
 
-log_info "Building contracts..."
-cd "$CONTRACTS_DIR"
-scarb build
-log_success "Contracts built"
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Step 2: Deploying Contracts${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
 
-# =============================================================================
-# Declare Classes
-# =============================================================================
-
-# Delay between transactions to avoid nonce errors
-TX_DELAY="${TX_DELAY:-15}"
-
-declare_class() {
-    local name=$1
-    local env_var=$2
-    local max_retries=3
-    local retry_delay=15
-
-    log_info "Declaring $name..." >&2
-
-    local output hash
-    set +e
-    output=$(sncast -a deployer -f "$ACCOUNTS_FILE" declare -u "$STARKNET_RPC_URL" --package horizon -c "$name" 2>&1)
-    local status=$?
-    set -e
-
-    # Extract class hash from output
-    hash=$(echo "$output" | grep -oE 'class_hash: 0x[a-fA-F0-9]+' | grep -oE '0x[a-fA-F0-9]+' | head -1)
-
-    if [[ -z "$hash" ]]; then
-        hash=$(echo "$output" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
-    fi
-
-    if [[ -n "$hash" ]]; then
-        update_env "$env_var" "$hash"
-        if echo "$output" | grep -qi "already declared\|already exists"; then
-            log_warning "$name (exists): $hash" >&2
-        else
-            log_success "$name: $hash" >&2
-        fi
-        echo "$hash"
-        return 0
-    fi
-
-    log_error "Failed to declare $name" >&2
-    echo "$output" >&2
-    exit 1
-}
-
-# =============================================================================
-# Declare Classes (skip if already declared)
-# =============================================================================
-
-# Check if all required class hashes are already set
-if [[ -n "$MOCK_YIELD_TOKEN_CLASS_HASH" && -n "$FAUCET_CLASS_HASH" && \
-      -n "$SY_CLASS_HASH" && -n "$PT_CLASS_HASH" && -n "$YT_CLASS_HASH" && \
-      -n "$MARKET_CLASS_HASH" && -n "$FACTORY_CLASS_HASH" && \
-      -n "$MARKET_FACTORY_CLASS_HASH" && -n "$ROUTER_CLASS_HASH" ]]; then
-    log_info "All class hashes found in env, skipping declarations"
-    log_info "  MockYieldToken: $MOCK_YIELD_TOKEN_CLASS_HASH"
-    log_info "  Faucet: $FAUCET_CLASS_HASH"
-    log_info "  SY: $SY_CLASS_HASH"
-    log_info "  PT: $PT_CLASS_HASH"
-    log_info "  YT: $YT_CLASS_HASH"
-    log_info "  Market: $MARKET_CLASS_HASH"
-    log_info "  Factory: $FACTORY_CLASS_HASH"
-    log_info "  MarketFactory: $MARKET_FACTORY_CLASS_HASH"
-    log_info "  Router: $ROUTER_CLASS_HASH"
-else
-    log_info "Declaring contract classes..."
-
-    MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
-    sleep "$TX_DELAY"
-    FAUCET_CLASS_HASH=$(declare_class "Faucet" "FAUCET_CLASS_HASH")
-    sleep "$TX_DELAY"
-    SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
-    sleep "$TX_DELAY"
-    PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
-    sleep "$TX_DELAY"
-    YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
-    sleep "$TX_DELAY"
-    MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
-    sleep "$TX_DELAY"
-    FACTORY_CLASS_HASH=$(declare_class "Factory" "FACTORY_CLASS_HASH")
-    sleep "$TX_DELAY"
-    MARKET_FACTORY_CLASS_HASH=$(declare_class "MarketFactory" "MARKET_FACTORY_CLASS_HASH")
-    sleep "$TX_DELAY"
-    ROUTER_CLASS_HASH=$(declare_class "Router" "ROUTER_CLASS_HASH")
-
-    log_success "All classes declared"
-
-    # Wait for declarations to be confirmed
-    log_info "Waiting 20 seconds for declarations to be confirmed..."
-    sleep 20
-fi
-
-# =============================================================================
-# Deploy Contracts
-# =============================================================================
+# Delay between transactions
+TX_DELAY="${TX_DELAY:-8}"
 
 deploy_contract() {
     local class_hash=$1
@@ -217,6 +122,8 @@ deploy_contract() {
     local env_var=$3
     shift 3
     local calldata=("$@")
+    local max_retries=3
+    local retry_delay=10
 
     # Check if already deployed
     local existing_address
@@ -229,38 +136,53 @@ deploy_contract() {
 
     log_info "Deploying $name..." >&2
 
-    local output
-    set +e
-    if [[ ${#calldata[@]} -eq 0 ]]; then
-        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" deploy -u "$STARKNET_RPC_URL" -g "$class_hash" 2>&1)
-    else
-        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" deploy -u "$STARKNET_RPC_URL" -g "$class_hash" -c "${calldata[@]}" 2>&1)
-    fi
-    local status=$?
-    set -e
+    for attempt in $(seq 1 $max_retries); do
+        local output
+        set +e
+        if [[ ${#calldata[@]} -eq 0 ]]; then
+            output=$(sncast -a deployer -f "$ACCOUNTS_FILE" deploy -u "$STARKNET_RPC_URL" -g "$class_hash" 2>&1)
+        else
+            output=$(sncast -a deployer -f "$ACCOUNTS_FILE" deploy -u "$STARKNET_RPC_URL" -g "$class_hash" -c "${calldata[@]}" 2>&1)
+        fi
+        local status=$?
+        set -e
 
-    if [[ $status -ne 0 ]]; then
-        log_error "Failed to deploy $name" >&2
-        echo "$output" >&2
-        exit 1
-    fi
+        # Check for nonce error - retry after delay
+        if echo "$output" | grep -qi "invalid transaction nonce\|nonce"; then
+            if [[ $attempt -lt $max_retries ]]; then
+                log_warning "$name nonce error, retrying in ${retry_delay}s... (attempt $attempt/$max_retries)" >&2
+                sleep "$retry_delay"
+                continue
+            fi
+        fi
 
-    local address
-    address=$(echo "$output" | grep -oE 'contract_address: 0x[a-fA-F0-9]+' | grep -oE '0x[a-fA-F0-9]+' | head -1)
+        local address
+        address=$(echo "$output" | grep -oE 'contract_address: 0x[a-fA-F0-9]+' | grep -oE '0x[a-fA-F0-9]+' | head -1)
 
-    if [[ -z "$address" ]]; then
-        address=$(echo "$output" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
-    fi
+        if [[ -z "$address" ]]; then
+            address=$(echo "$output" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+        fi
 
-    if [[ -z "$address" ]]; then
-        log_error "Could not extract address for $name" >&2
-        echo "$output" >&2
-        exit 1
-    fi
+        if [[ -n "$address" ]]; then
+            update_env "$env_var" "$address"
+            log_success "$name: $address" >&2
+            # Wait for transaction to be confirmed
+            sleep "$TX_DELAY"
+            echo "$address"
+            return 0
+        fi
 
-    update_env "$env_var" "$address"
-    log_success "$name: $address" >&2
-    echo "$address"
+        # If we get here on last attempt, it's a real error
+        if [[ $attempt -eq $max_retries ]]; then
+            log_error "Failed to deploy $name after $max_retries attempts" >&2
+            echo "$output" >&2
+            exit 1
+        fi
+
+        # Unknown error, retry
+        log_warning "$name failed, retrying in ${retry_delay}s... (attempt $attempt/$max_retries)" >&2
+        sleep "$retry_delay"
+    done
 }
 
 call_contract() {
@@ -286,22 +208,46 @@ invoke_contract() {
     local function=$2
     shift 2
     local calldata=("$@")
+    local max_retries=3
+    local retry_delay=10
 
-    local output
-    set +e
-    if [[ ${#calldata[@]} -eq 0 ]]; then
-        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" 2>&1)
-    else
-        output=$(sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" -c "${calldata[@]}" 2>&1)
-    fi
-    local status=$?
-    set -e
-    if [[ $status -ne 0 ]]; then
-        log_error "Failed to invoke $function on $contract_address"
-        echo "$output" >&2
-        return 1
-    fi
-    return 0
+    for attempt in $(seq 1 $max_retries); do
+        local output
+        set +e
+        if [[ ${#calldata[@]} -eq 0 ]]; then
+            output=$(sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" 2>&1)
+        else
+            output=$(sncast -a deployer -f "$ACCOUNTS_FILE" invoke -u "$STARKNET_RPC_URL" -d "$contract_address" -f "$function" -c "${calldata[@]}" 2>&1)
+        fi
+        local status=$?
+        set -e
+
+        # Check for nonce error - retry after delay
+        if echo "$output" | grep -qi "invalid transaction nonce\|nonce"; then
+            if [[ $attempt -lt $max_retries ]]; then
+                log_warning "$function nonce error, retrying in ${retry_delay}s... (attempt $attempt/$max_retries)"
+                sleep "$retry_delay"
+                continue
+            fi
+        fi
+
+        if [[ $status -eq 0 ]]; then
+            # Wait for transaction to be confirmed
+            sleep "$TX_DELAY"
+            return 0
+        fi
+
+        # If we get here on last attempt, it's a real error
+        if [[ $attempt -eq $max_retries ]]; then
+            log_error "Failed to invoke $function after $max_retries attempts"
+            echo "$output" >&2
+            return 1
+        fi
+
+        # Unknown error, retry
+        log_warning "$function failed, retrying in ${retry_delay}s... (attempt $attempt/$max_retries)"
+        sleep "$retry_delay"
+    done
 }
 
 # -----------------------------------------------------------------------------
@@ -313,17 +259,14 @@ log_info "Deploying core infrastructure..."
 # Factory: constructor(owner, yt_class_hash, pt_class_hash)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
     "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
-sleep "$TX_DELAY"
 
 # MarketFactory: constructor(owner, market_class_hash)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
     "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
-sleep "$TX_DELAY"
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
     "$DEPLOYER_ADDRESS")
-sleep "$TX_DELAY"
 
 log_success "Core infrastructure deployed"
 
@@ -346,7 +289,6 @@ HRZ_STRK_ADDRESS=$(deploy_contract "$MOCK_YIELD_TOKEN_CLASS_HASH" "hrzSTRK" "HRZ
     0x0 0x68727a5354524b 0x7 \
     "$STRK_ADDRESS" \
     "$DEPLOYER_ADDRESS")
-sleep "$TX_DELAY"
 
 log_success "hrzSTRK deployed: $HRZ_STRK_ADDRESS"
 
@@ -360,15 +302,12 @@ log_info "Deploying Faucet for hrzSTRK..."
 FAUCET_ADDRESS=$(deploy_contract "$FAUCET_CLASS_HASH" "Faucet" "FAUCET_ADDRESS" \
     "$HRZ_STRK_ADDRESS" \
     "$DEPLOYER_ADDRESS")
-sleep "$TX_DELAY"
 
 log_success "Faucet deployed: $FAUCET_ADDRESS"
 
 # Add Faucet as authorized minter for hrzSTRK
-# Owner (deployer) keeps full control, Faucet can only mint
 log_info "Adding Faucet as authorized minter for hrzSTRK..."
 invoke_contract "$HRZ_STRK_ADDRESS" add_minter "$FAUCET_ADDRESS"
-sleep "$TX_DELAY"
 log_success "Faucet added as authorized minter"
 
 # -----------------------------------------------------------------------------
@@ -380,7 +319,6 @@ if [[ -n "$TEST_RECIPIENT" && "$TEST_RECIPIENT" != "" ]]; then
     # 1M tokens = 1000000 * 10^18 = 0xd3c21bcecceda1000000
     MINT_AMOUNT_1M="0xd3c21bcecceda1000000"
     invoke_contract "$HRZ_STRK_ADDRESS" mint_shares "$TEST_RECIPIENT" "$MINT_AMOUNT_1M" 0x0
-    sleep "$TX_DELAY"
     log_success "Minted 1M hrzSTRK to $TEST_RECIPIENT"
 fi
 
@@ -390,7 +328,7 @@ fi
 
 log_info "Deploying SY-hrzSTRK..."
 
-# SY: constructor(name, symbol, underlying, index_oracle, is_erc4626)
+# SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, pauser)
 # "SY Horizon Mock Staked STRK" = 27 chars = 0x1b
 # "SY-hrzSTRK" = 10 chars = 0xa
 SY_HRZ_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-hrzSTRK" "SY_HRZ_STRK_ADDRESS" \
@@ -398,8 +336,8 @@ SY_HRZ_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-hrzSTRK" "SY_HRZ_STRK
     0x0 0x53592d68727a5354524b 0xa \
     "$HRZ_STRK_ADDRESS" \
     "$HRZ_STRK_ADDRESS" \
-    0x1)
-sleep "$TX_DELAY"
+    0x1 \
+    "$DEPLOYER_ADDRESS")
 
 log_success "SY-hrzSTRK deployed: $SY_HRZ_STRK_ADDRESS"
 
@@ -424,8 +362,6 @@ if [[ -n "$PT_HRZ_STRK_ADDRESS" && "$PT_HRZ_STRK_ADDRESS" != "" && "$PT_HRZ_STRK
 else
     invoke_contract "$FACTORY_ADDRESS" create_yield_contracts \
         "$SY_HRZ_STRK_ADDRESS" "$EXPIRY_TIMESTAMP"
-
-    sleep "$TX_DELAY"
 
     PT_HRZ_STRK_ADDRESS=$(call_contract "$FACTORY_ADDRESS" get_pt \
         "$SY_HRZ_STRK_ADDRESS" "$EXPIRY_TIMESTAMP")
@@ -464,8 +400,6 @@ else
         "$SCALAR_ROOT_HEX" 0x0 \
         "$ANCHOR_HEX" 0x0 \
         "$FEE_RATE_HEX" 0x0
-
-    sleep "$TX_DELAY"
 
     MARKET_HRZ_STRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
         "$PT_HRZ_STRK_ADDRESS")
@@ -509,43 +443,35 @@ log_info "Half amount: $HALF_AMOUNT ($HALF_HEX)"
 # Step 1: Mint 50M hrzSTRK to deployer
 log_info "Step 1: Minting 50M hrzSTRK to deployer..."
 invoke_contract "$HRZ_STRK_ADDRESS" mint_shares "$DEPLOYER_ADDRESS" "$LIQUIDITY_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 2: Approve SY to spend hrzSTRK
 log_info "Step 2: Approving SY to spend hrzSTRK..."
 invoke_contract "$HRZ_STRK_ADDRESS" approve "$SY_HRZ_STRK_ADDRESS" "$LIQUIDITY_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 3: Deposit hrzSTRK to get SY
 log_info "Step 3: Depositing hrzSTRK to get SY..."
 invoke_contract "$SY_HRZ_STRK_ADDRESS" deposit "$DEPLOYER_ADDRESS" "$LIQUIDITY_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 4: Approve YT to spend SY (for minting PT+YT)
 log_info "Step 4: Approving YT to spend SY..."
 invoke_contract "$SY_HRZ_STRK_ADDRESS" approve "$YT_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 5: Mint PT+YT from SY (use half for PT+YT)
 log_info "Step 5: Minting PT+YT from SY..."
 invoke_contract "$YT_HRZ_STRK_ADDRESS" mint_py "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 6: Approve Market to spend SY
 log_info "Step 6: Approving Market to spend SY..."
 invoke_contract "$SY_HRZ_STRK_ADDRESS" approve "$MARKET_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 7: Approve Market to spend PT
 log_info "Step 7: Approving Market to spend PT..."
 invoke_contract "$PT_HRZ_STRK_ADDRESS" approve "$MARKET_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
-sleep "$TX_DELAY"
 
 # Step 8: Add liquidity to market (SY + PT -> LP)
 log_info "Step 8: Adding liquidity to market..."
 invoke_contract "$MARKET_HRZ_STRK_ADDRESS" mint \
     "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0 "$HALF_HEX" 0x0
-sleep "$TX_DELAY"
 
 log_success "50M liquidity seeded to market"
 

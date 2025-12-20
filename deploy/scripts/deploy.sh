@@ -311,6 +311,10 @@ deploy_contract() {
 
     update_env "$env_var" "$address"
     log_success "$name: $address" >&2
+
+    # Wait for transaction to be confirmed to avoid nonce conflicts
+    sleep 3
+
     echo "$address"
 }
 
@@ -355,6 +359,10 @@ invoke_contract() {
         echo "$output" >&2
         return 1
     fi
+
+    # Wait for transaction to be confirmed to avoid nonce conflicts
+    sleep 2
+
     return 0
 }
 
@@ -427,7 +435,7 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Deploy SY 1: SY-nstSTRK (wraps nstSTRK, ERC-4626 mode)
     # -------------------------------------------------------------------------
 
-    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626)
+    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, pauser)
     # "SY Nostra Staked STRK" = 21 chars
     # "SY-nstSTRK" = 10 chars
     # ERC-4626 mode: uses yield token's convertToAssets() for exchange rate
@@ -437,7 +445,8 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         0x0 0x53592d6e73745354524b 0xa \
         "$NST_STRK_ADDRESS" \
         "$NST_STRK_ADDRESS" \
-        0x1)
+        0x1 \
+        "$DEPLOYER_ADDRESS")
 
     # -------------------------------------------------------------------------
     # Deploy SY 2: SY-sSTRK (wraps sSTRK, ERC-4626 mode)
@@ -452,7 +461,8 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         0x0 0x53592d735354524b 0x8 \
         "$SSTRK_ADDRESS" \
         "$SSTRK_ADDRESS" \
-        0x1)
+        0x1 \
+        "$DEPLOYER_ADDRESS")
 
     # -------------------------------------------------------------------------
     # Deploy Yield Token 3: wstETH (Starknet Wrapped Staked Ether)
@@ -492,7 +502,8 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         0x0 0x53592d777374455448 0x9 \
         "$WSTETH_ADDRESS" \
         "$WSTETH_ADDRESS" \
-        0x1)
+        0x1 \
+        "$DEPLOYER_ADDRESS")
 
     log_success "Yield tokens and SY tokens deployed"
 
