@@ -251,7 +251,7 @@ fn test_market_factory_create_multiple_markets() {
 }
 
 #[test]
-#[should_panic(expected: 'MktFactory: already exists')]
+#[should_panic(expected: 'HZN: market already exists')]
 fn test_market_factory_create_duplicate() {
     let (_, _, _, pt, factory) = setup();
 
@@ -275,7 +275,7 @@ fn test_market_factory_create_duplicate() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_market_factory_create_zero_pt() {
     let factory = deploy_market_factory();
 
@@ -286,7 +286,7 @@ fn test_market_factory_create_zero_pt() {
 }
 
 #[test]
-#[should_panic(expected: 'Market: expired')]
+#[should_panic(expected: 'HZN: market expired')]
 fn test_market_factory_create_expired_pt() {
     let (_, _, _, pt, factory) = setup();
 
@@ -467,7 +467,7 @@ fn test_market_factory_zero_fee() {
 // ============ Parameter Validation Tests ============
 
 #[test]
-#[should_panic(expected: 'MktFactory: invalid scalar')]
+#[should_panic(expected: 'HZN: invalid scalar')]
 fn test_market_factory_scalar_too_small() {
     let (_, _, _, pt, factory) = setup();
 
@@ -477,7 +477,7 @@ fn test_market_factory_scalar_too_small() {
 }
 
 #[test]
-#[should_panic(expected: 'MktFactory: invalid scalar')]
+#[should_panic(expected: 'HZN: invalid scalar')]
 fn test_market_factory_scalar_too_large() {
     let (_, _, _, pt, factory) = setup();
 
@@ -487,7 +487,7 @@ fn test_market_factory_scalar_too_large() {
 }
 
 #[test]
-#[should_panic(expected: 'MktFactory: invalid anchor')]
+#[should_panic(expected: 'HZN: invalid anchor')]
 fn test_market_factory_anchor_too_large() {
     let (_, _, _, pt, factory) = setup();
 
@@ -497,7 +497,7 @@ fn test_market_factory_anchor_too_large() {
 }
 
 #[test]
-#[should_panic(expected: 'MktFactory: invalid fee')]
+#[should_panic(expected: 'HZN: invalid fee')]
 fn test_market_factory_fee_too_large() {
     let (_, _, _, pt, factory) = setup();
 

@@ -309,7 +309,7 @@ fn test_market_mint_subsequent() {
 }
 
 #[test]
-#[should_panic(expected: 'Market: expired')]
+#[should_panic(expected: 'HZN: market expired')]
 fn test_market_mint_expired() {
     let (underlying, sy, yt, pt, market) = setup();
     let user = user1();
@@ -332,7 +332,7 @@ fn test_market_mint_expired() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_market_mint_zero_amount() {
     let (_, _, _, _, market) = setup();
     let user = user1();
@@ -631,7 +631,7 @@ fn test_swap_pt_for_exact_sy() {
 // ============ Slippage Protection Tests ============
 
 #[test]
-#[should_panic(expected: 'Market: slippage exceeded')]
+#[should_panic(expected: 'HZN: slippage exceeded')]
 fn test_swap_slippage_exceeded() {
     let (underlying, sy, yt, pt, market) = setup();
     let user = user1();
@@ -664,7 +664,7 @@ fn test_swap_slippage_exceeded() {
 // ============ Expiry Tests ============
 
 #[test]
-#[should_panic(expected: 'Market: expired')]
+#[should_panic(expected: 'HZN: market expired')]
 fn test_swap_after_expiry() {
     let (underlying, sy, yt, pt, market) = setup();
     let user = user1();
@@ -765,7 +765,7 @@ fn test_implied_rate_changes_with_swap() {
 // ============ Edge Cases ============
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_mint_zero_receiver() {
     let (underlying, sy, yt, pt, market) = setup();
     let user = user1();
