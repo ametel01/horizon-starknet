@@ -31,7 +31,7 @@ pub struct MarketState {
     pub initial_anchor: u256, // Initial anchor for exchange rate (in WAD)
     pub fee_rate: u256, // Fee rate in WAD (e.g., 0.01 WAD = 1%)
     pub expiry: u64,
-    pub last_ln_implied_rate: u256, // Cached ln(implied rate) for anchor calculation
+    pub last_ln_implied_rate: u256 // Cached ln(implied rate) for anchor calculation
 }
 
 /// Pre-computed values for trade calculation

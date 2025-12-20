@@ -45,7 +45,7 @@ pub mod PragmaIndexOracle {
         AggregationMode, DataType, IPragmaSummaryStatsDispatcher,
         IPragmaSummaryStatsDispatcherTrait,
     };
-    use horizon::libraries::math::{WAD, max};
+    use horizon::libraries::math_fp::{WAD, max};
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, OPERATOR_ROLE, PAUSER_ROLE};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;

@@ -9,7 +9,7 @@ pub mod YT {
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYT, IYTAdmin};
     use horizon::libraries::errors::Errors;
-    use horizon::libraries::math::{wad_div, wad_mul};
+    use horizon::libraries::math_fp::{wad_div, wad_mul};
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use horizon::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
     use openzeppelin_access::accesscontrol::AccessControlComponent;

@@ -18,7 +18,7 @@ pub mod SY {
     use horizon::interfaces::i_index_oracle::{IIndexOracleDispatcher, IIndexOracleDispatcherTrait};
     use horizon::interfaces::i_sy::{ISY, ISYAdmin};
     use horizon::libraries::errors::Errors;
-    use horizon::libraries::math::WAD;
+    use horizon::libraries::math_fp::WAD;
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;

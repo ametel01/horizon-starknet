@@ -1,4 +1,4 @@
-use horizon::libraries::math::WAD;
+use horizon::libraries::math_fp::WAD;
 use starknet::ContractAddress;
 
 /// Time constants
