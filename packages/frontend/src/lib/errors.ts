@@ -3,7 +3,230 @@
  *
  * Provides mode-aware error messages that are user-friendly in simple mode
  * and technical in advanced mode.
+ *
+ * @see Security Audit I-01 - Standardized Error Prefixes
+ * All contract errors now use "HZN:" prefix for consistent parsing.
  */
+
+// ============================================================================
+// Contract Error Codes (HZN: prefix)
+// Matches errors.cairo definitions
+// ============================================================================
+
+/**
+ * Mapping of HZN: prefixed contract error codes to user-friendly messages
+ */
+const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
+  // General errors
+  'HZN: zero address': 'Invalid address provided.',
+  'HZN: zero amount': 'Amount cannot be zero.',
+  'HZN: unauthorized': 'You are not authorized to perform this action.',
+
+  // SY errors
+  'HZN: zero deposit': 'Deposit amount cannot be zero.',
+  'HZN: zero redeem': 'Redeem amount cannot be zero.',
+  'HZN: insufficient balance': 'Insufficient token balance.',
+
+  // PT errors
+  'HZN: only YT': 'Only the YT contract can perform this action.',
+  'HZN: only deployer': 'Only the deployer can perform this action.',
+  'HZN: YT not set': 'YT contract not configured.',
+  'HZN: YT already set': 'YT contract already configured.',
+  'HZN: invalid expiry': 'Invalid expiry date.',
+
+  // YT errors
+  'HZN: expired': 'This position has expired.',
+  'HZN: not expired': 'This position has not yet expired.',
+  'HZN: insufficient PT': 'Insufficient PT balance.',
+  'HZN: insufficient YT': 'Insufficient YT balance.',
+  'HZN: insufficient SY': 'Insufficient SY balance.',
+
+  // Market errors
+  'HZN: market expired': 'This market has expired.',
+  'HZN: insufficient liquidity': 'Not enough liquidity in the market.',
+  'HZN: slippage exceeded': 'Price moved beyond slippage tolerance. Try again.',
+  'HZN: zero liquidity': 'Market has no liquidity.',
+  'HZN: invalid reserves': 'Invalid market reserves.',
+  'HZN: transfer failed': 'Token transfer failed.',
+
+  // Market Factory errors
+  'HZN: market already exists': 'A market for this pair already exists.',
+  'HZN: market deploy failed': 'Failed to deploy market.',
+  'HZN: index out of bounds': 'Invalid market index.',
+  'HZN: invalid scalar': 'Invalid market scalar parameter.',
+  'HZN: invalid anchor': 'Invalid market anchor parameter.',
+  'HZN: invalid fee': 'Invalid fee rate.',
+
+  // Router errors
+  'HZN: deadline exceeded': 'Transaction deadline exceeded. Please try again.',
+
+  // Math errors
+  'HZN: overflow': 'Calculation overflow. Try a smaller amount.',
+  'HZN: underflow': 'Calculation underflow. Try a larger amount.',
+  'HZN: division by zero': 'Invalid calculation. Please try different values.',
+
+  // Factory errors
+  'HZN: pair already exists': 'This token pair already exists.',
+  'HZN: deploy failed': 'Failed to deploy contract.',
+
+  // RBAC errors
+  'HZN: RBAC already init': 'Access control already initialized.',
+
+  // Oracle errors
+  'HZN: zero admin': 'Invalid admin address.',
+  'HZN: zero oracle': 'Invalid oracle address.',
+  'HZN: zero numerator pair': 'Invalid price pair.',
+  'HZN: invalid initial index': 'Invalid initial index value.',
+  'HZN: not admin': 'Admin privileges required.',
+  'HZN: paused': 'This operation is currently paused.',
+  'HZN: window too short': 'TWAP window is too short.',
+  'HZN: staleness < window': 'Invalid staleness configuration.',
+  'HZN: zero denom price': 'Invalid denominator price.',
+  'HZN: index below WAD': 'Index value is too low.',
+};
+
+/**
+ * Simple (user-friendly) versions of contract errors
+ * Used in simple mode for non-technical users
+ */
+const CONTRACT_ERROR_SIMPLE: Record<string, string> = {
+  'HZN: zero address': 'Something went wrong. Please try again.',
+  'HZN: zero amount': 'Please enter an amount.',
+  'HZN: unauthorized': 'You cannot perform this action.',
+  'HZN: insufficient balance': 'Not enough tokens.',
+  'HZN: zero deposit': 'Please enter an amount to deposit.',
+  'HZN: zero redeem': 'Please enter an amount to withdraw.',
+  'HZN: insufficient PT': 'Not enough Fixed-Rate Position.',
+  'HZN: insufficient YT': 'Not enough Variable-Rate Position.',
+  'HZN: insufficient SY': 'Not enough deposited tokens.',
+  'HZN: expired': 'This position has matured.',
+  'HZN: not expired': 'Position is still active.',
+  'HZN: market expired': 'This market has matured.',
+  'HZN: insufficient liquidity': 'Not enough funds in the pool.',
+  'HZN: slippage exceeded': 'Price changed too much. Please try again.',
+  'HZN: zero liquidity': 'Pool is empty.',
+  'HZN: transfer failed': 'Token transfer failed. Please try again.',
+  'HZN: deadline exceeded': 'Transaction took too long. Please try again.',
+  'HZN: overflow': 'Amount is too large.',
+  'HZN: underflow': 'Amount is too small.',
+  'HZN: division by zero': 'Invalid calculation. Please try again.',
+  'HZN: paused': 'Temporarily unavailable for maintenance.',
+};
+
+/**
+ * Extract HZN: error code from an error message or object
+ * Handles various error formats from Starknet transactions
+ */
+export function extractContractError(error: unknown): string | null {
+  if (error === null || error === undefined) {
+    return null;
+  }
+
+  // Convert to string for searching
+  let errorString: string;
+  if (error instanceof Error) {
+    errorString = error.message;
+  } else if (typeof error === 'string') {
+    errorString = error;
+  } else if (typeof error === 'object') {
+    // Handle Starknet error objects which may have nested structure
+    try {
+      errorString = JSON.stringify(error);
+    } catch {
+      errorString = '[object Object]';
+    }
+  } else if (typeof error === 'number' || typeof error === 'boolean' || typeof error === 'bigint') {
+    errorString = String(error);
+  } else {
+    // For symbols, functions, etc.
+    errorString = '[unknown error type]';
+  }
+
+  // Match HZN: prefixed errors
+  // Pattern matches "HZN: " followed by any text until end of string or quote/bracket
+  const hznPattern = /HZN:\s*[^"'\]}\n]+/;
+  const hznMatch = hznPattern.exec(errorString);
+  if (hznMatch) {
+    // Clean up the matched error code
+    return hznMatch[0].trim();
+  }
+
+  return null;
+}
+
+/**
+ * Parse a contract error and return a user-friendly message
+ * @param error - The error to parse (can be Error, string, or unknown object)
+ * @param isSimple - Whether to use simple (non-technical) messages
+ * @returns User-friendly error message
+ */
+export function parseContractError(error: unknown, isSimple = false): string {
+  const hznError = extractContractError(error);
+
+  if (hznError) {
+    // Use simple or technical message based on mode
+    const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
+    const message = messageMap[hznError];
+
+    if (message) {
+      return message;
+    }
+
+    // If we found an HZN error but don't have a mapping, format it nicely
+    return isSimple ? 'Something went wrong. Please try again.' : `Contract error: ${hznError}`;
+  }
+
+  // Fallback to generic message
+  return isSimple ? 'Something went wrong. Please try again.' : 'An unexpected error occurred.';
+}
+
+/**
+ * Check if an error is a specific HZN error type
+ */
+export function isContractError(error: unknown, errorCode: string): boolean {
+  const hznError = extractContractError(error);
+  return hznError === errorCode;
+}
+
+/**
+ * Check if error is a deadline exceeded error
+ */
+export function isDeadlineError(error: unknown): boolean {
+  return isContractError(error, 'HZN: deadline exceeded');
+}
+
+/**
+ * Check if error is a slippage exceeded error
+ */
+export function isSlippageError(error: unknown): boolean {
+  const hznError = extractContractError(error);
+  return hznError === 'HZN: slippage exceeded';
+}
+
+/**
+ * Check if error is a pause-related error
+ */
+export function isPauseError(error: unknown): boolean {
+  return isContractError(error, 'HZN: paused');
+}
+
+/**
+ * Check if error is an insufficient balance error
+ */
+export function isInsufficientBalanceError(error: unknown): boolean {
+  const hznError = extractContractError(error);
+  if (!hznError) return false;
+  return (
+    hznError === 'HZN: insufficient balance' ||
+    hznError === 'HZN: insufficient PT' ||
+    hznError === 'HZN: insufficient YT' ||
+    hznError === 'HZN: insufficient SY'
+  );
+}
+
+// ============================================================================
+// Legacy Error Handling (for non-contract errors)
+// ============================================================================
 
 /**
  * Error message mapping from technical (advanced) to user-friendly (simple)
@@ -56,6 +279,15 @@ const errorMessageMap: Record<string, string> = {
 export function getSimpleErrorMessage(error: string | Error | null | undefined): string {
   if (error === null || error === undefined) return 'An error occurred';
 
+  // First, check for HZN: contract errors
+  const hznError = extractContractError(error);
+  if (hznError) {
+    const contractMessage = CONTRACT_ERROR_SIMPLE[hznError];
+    if (contractMessage) {
+      return contractMessage;
+    }
+  }
+
   const errorString = error instanceof Error ? error.message : error;
 
   // Check for exact matches first
@@ -85,6 +317,20 @@ export function getModeAwareErrorMessage(
 ): string {
   if (error === null || error === undefined)
     return isSimple ? 'An error occurred' : 'Unknown error';
+
+  // First, check for HZN: contract errors
+  const hznError = extractContractError(error);
+  if (hznError) {
+    const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
+    const contractMessage = messageMap[hznError];
+    if (contractMessage) {
+      return contractMessage;
+    }
+    // If no mapping, show the raw error in advanced mode
+    if (!isSimple) {
+      return `Contract error: ${hznError}`;
+    }
+  }
 
   const errorString = error instanceof Error ? error.message : error;
 
@@ -126,6 +372,52 @@ export function formatValidationError(error: string | null, isSimple: boolean): 
 }
 
 /**
+ * Help text for specific HZN: errors
+ */
+const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> = {
+  'HZN: slippage exceeded': {
+    simple: 'Market conditions changed. Please try again.',
+    advanced: 'Increase slippage tolerance or reduce trade size.',
+  },
+  'HZN: deadline exceeded': {
+    simple: 'The transaction took too long to process.',
+    advanced: 'Increase deadline duration in settings or try during lower network congestion.',
+  },
+  'HZN: insufficient liquidity': {
+    simple: 'Not enough funds available in the pool.',
+    advanced: 'Reduce trade size or wait for more liquidity to be added.',
+  },
+  'HZN: insufficient balance': {
+    simple: 'You need more tokens to complete this action.',
+    advanced: 'Ensure you have sufficient token balance for this operation.',
+  },
+  'HZN: insufficient SY': {
+    simple: 'You need to deposit more tokens first.',
+    advanced: 'Deposit more underlying tokens to increase your SY balance.',
+  },
+  'HZN: insufficient PT': {
+    simple: 'Not enough Fixed-Rate Position available.',
+    advanced: 'Your PT balance is insufficient. Mint more PT+YT or acquire PT from the market.',
+  },
+  'HZN: insufficient YT': {
+    simple: 'Not enough Variable-Rate Position available.',
+    advanced: 'Your YT balance is insufficient. Mint more PT+YT or acquire YT from the market.',
+  },
+  'HZN: paused': {
+    simple: 'The protocol is temporarily paused for maintenance.',
+    advanced: 'The contract is paused. Check announcements for maintenance updates.',
+  },
+  'HZN: market expired': {
+    simple: 'This market has matured. You can redeem your position.',
+    advanced: 'Market is expired. Use post-expiry redemption to withdraw.',
+  },
+  'HZN: overflow': {
+    simple: 'The amount is too large to process.',
+    advanced: 'Reduce the amount to prevent arithmetic overflow.',
+  },
+};
+
+/**
  * Get help text based on error type and mode
  */
 export function getErrorHelpText(
@@ -133,6 +425,15 @@ export function getErrorHelpText(
   isSimple: boolean
 ): string | null {
   if (error === null || error === undefined) return null;
+
+  // First, check for HZN: contract errors
+  const hznError = extractContractError(error);
+  if (hznError) {
+    const helpText = CONTRACT_ERROR_HELP[hznError];
+    if (helpText) {
+      return isSimple ? helpText.simple : helpText.advanced;
+    }
+  }
 
   const errorString = error instanceof Error ? error.message : error;
   const lowerError = errorString.toLowerCase();
