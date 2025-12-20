@@ -51,6 +51,24 @@ pub const MAX_PROPORTION: u256 = 999_000_000_000_000_000; // 0.999 WAD (99.9%)
 /// This amount is minted to the zero address and can never be redeemed
 pub const MINIMUM_LIQUIDITY: u256 = 1000;
 
+/// Maximum safe exponent for exp_wad (e^135 is roughly max for u256 before overflow)
+pub const MAX_EXPONENT_WAD: u256 = 135_000_000_000_000_000_000; // 135 WAD
+
+/// Large scalar multiplier at expiry (flattens the curve when time_to_expiry = 0)
+pub const EXPIRY_SCALAR_MULTIPLIER: u256 = 1000;
+
+/// Binary search tolerance in wei (acceptable precision for swap calculations)
+pub const BINARY_SEARCH_TOLERANCE: u256 = 1000;
+
+/// Maximum iterations for binary search (2^64 provides sufficient precision)
+pub const BINARY_SEARCH_MAX_ITERATIONS: u32 = 64;
+
+/// Maximum PT input multiplier relative to reserve (prevents unreasonable inputs)
+pub const MAX_PT_IN_RESERVE_MULTIPLIER: u256 = 10;
+
+/// Upper bound multiplier for initial guess in binary search
+pub const BINARY_SEARCH_UPPER_BOUND_MULTIPLIER: u256 = 5;
+
 /// Calculate time to expiry in seconds
 /// @param expiry The expiry timestamp
 /// @param current_time Current block timestamp
@@ -82,7 +100,8 @@ pub fn get_proportion(state: @MarketState) -> u256 {
 /// @return Adjusted rate scalar in WAD
 pub fn get_rate_scalar(scalar_root: u256, time_to_expiry: u64) -> u256 {
     if time_to_expiry == 0 {
-        return scalar_root * 1000; // Very large scalar at expiry (flattens curve)
+        // Very large scalar at expiry (flattens curve)
+        return scalar_root * EXPIRY_SCALAR_MULTIPLIER;
     }
     // rateScalar = scalarRoot * SECONDS_PER_YEAR / timeToExpiry
     wad_div(wad_mul(scalar_root, SECONDS_PER_YEAR), time_to_expiry.into())
@@ -132,8 +151,8 @@ pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> u256 {
     let capped_ln_implied_rate = min(*state.last_ln_implied_rate, MAX_LN_IMPLIED_RATE);
     let exponent = wad_mul(capped_ln_implied_rate, time_in_years);
 
-    // Cap exponent to prevent exp_wad overflow (e^135 is roughly max for u256)
-    let safe_exponent = min(exponent, 135 * WAD);
+    // Cap exponent to prevent exp_wad overflow
+    let safe_exponent = min(exponent, MAX_EXPONENT_WAD);
     let target_exchange_rate = exp_wad(safe_exponent);
 
     // Ensure exchange rate is at least 1 (PT never worth more than SY)
@@ -423,13 +442,9 @@ fn binary_search_pt_out(
     let mut high: u256 = max_pt_out;
     let mut result: u256 = 0;
 
-    // Binary search with tolerance
-    let tolerance: u256 = 1000; // Tolerance in wei
-
     let mut iterations: u32 = 0;
-    let max_iterations: u32 = 64; // Enough for 2^64 precision
 
-    while iterations < max_iterations && low < high {
+    while iterations < BINARY_SEARCH_MAX_ITERATIONS && low < high {
         let mid = (low + high) / 2;
 
         if mid == 0 {
@@ -466,7 +481,7 @@ fn binary_search_pt_out(
             sy_in - implied_sy_in
         };
 
-        if diff <= tolerance {
+        if diff <= BINARY_SEARCH_TOLERANCE {
             return result;
         }
 
@@ -568,22 +583,20 @@ fn binary_search_pt_in(
 
     // Upper bound: use a safe multiple of the initial guess
     // Avoid overflow by checking before multiplication
-    let max_reasonable = *state.pt_reserve * 10; // Don't allow more than 10x the reserve
-    let max_pt_in = if initial_guess > max_reasonable / 5 {
+    let max_reasonable = *state.pt_reserve * MAX_PT_IN_RESERVE_MULTIPLIER;
+    let max_pt_in = if initial_guess > max_reasonable / BINARY_SEARCH_UPPER_BOUND_MULTIPLIER {
         max_reasonable
     } else {
-        min(initial_guess * 5 + WAD, max_reasonable)
+        min(initial_guess * BINARY_SEARCH_UPPER_BOUND_MULTIPLIER + WAD, max_reasonable)
     };
 
     let mut low: u256 = 1;
     let mut high: u256 = max_pt_in;
     let mut result: u256 = min(initial_guess, max_pt_in);
 
-    let tolerance: u256 = 1000;
     let mut iterations: u32 = 0;
-    let max_iterations: u32 = 64;
 
-    while iterations < max_iterations && low < high {
+    while iterations < BINARY_SEARCH_MAX_ITERATIONS && low < high {
         let mid = (low + high) / 2;
 
         if mid == 0 {
@@ -620,7 +633,7 @@ fn binary_search_pt_in(
             sy_out - implied_sy_out
         };
 
-        if diff <= tolerance {
+        if diff <= BINARY_SEARCH_TOLERANCE {
             return result;
         }
 

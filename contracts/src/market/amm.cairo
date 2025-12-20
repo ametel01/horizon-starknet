@@ -114,6 +114,7 @@ pub mod Market {
         Burn: Burn,
         Swap: Swap,
         ImpliedRateUpdated: ImpliedRateUpdated,
+        FeesCollected: FeesCollected,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -156,6 +157,15 @@ pub mod Market {
         pub old_rate: u256,
         pub new_rate: u256,
         pub timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct FeesCollected {
+        #[key]
+        pub collector: ContractAddress,
+        #[key]
+        pub receiver: ContractAddress,
+        pub amount: u256,
     }
 
     #[constructor]
@@ -278,8 +288,14 @@ pub mod Market {
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
 
-            sy_contract.transfer_from(caller, get_contract_address(), sy_used);
-            pt_contract.transfer_from(caller, get_contract_address(), pt_used);
+            assert(
+                sy_contract.transfer_from(caller, get_contract_address(), sy_used),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
+            assert(
+                pt_contract.transfer_from(caller, get_contract_address(), pt_used),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() + sy_used);
@@ -342,11 +358,11 @@ pub mod Market {
             // Transfer tokens to receiver
             if sy_out > 0 {
                 let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-                sy_contract.transfer(receiver, sy_out);
+                assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
             }
             if pt_out > 0 {
                 let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-                pt_contract.transfer(receiver, pt_out);
+                assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
             }
 
             // Update implied rate cache (if not expired)
@@ -392,7 +408,10 @@ pub mod Market {
 
             // Transfer PT from caller
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer_from(caller, get_contract_address(), exact_pt_in);
+            assert(
+                pt_contract.transfer_from(caller, get_contract_address(), exact_pt_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() - sy_out);
@@ -401,7 +420,7 @@ pub mod Market {
 
             // Transfer SY to receiver
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer(receiver, sy_out);
+            assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -446,7 +465,10 @@ pub mod Market {
 
             // Transfer SY from caller
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer_from(caller, get_contract_address(), sy_in);
+            assert(
+                sy_contract.transfer_from(caller, get_contract_address(), sy_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() + sy_in);
@@ -455,7 +477,7 @@ pub mod Market {
 
             // Transfer PT to receiver
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer(receiver, exact_pt_out);
+            assert(pt_contract.transfer(receiver, exact_pt_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -500,7 +522,10 @@ pub mod Market {
 
             // Transfer SY from caller
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in);
+            assert(
+                sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() + exact_sy_in);
@@ -509,7 +534,7 @@ pub mod Market {
 
             // Transfer PT to receiver
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer(receiver, pt_out);
+            assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -554,7 +579,10 @@ pub mod Market {
 
             // Transfer PT from caller
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer_from(caller, get_contract_address(), pt_in);
+            assert(
+                pt_contract.transfer_from(caller, get_contract_address(), pt_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() - exact_sy_out);
@@ -563,7 +591,7 @@ pub mod Market {
 
             // Transfer SY to receiver
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer(receiver, exact_sy_out);
+            assert(sy_contract.transfer(receiver, exact_sy_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -591,9 +619,13 @@ pub mod Market {
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             get_ln_implied_rate(@state, time_to_expiry)
         }
+
+        fn get_total_fees_collected(self: @ContractState) -> u256 {
+            self.total_fees_collected.read()
+        }
     }
 
-    // Admin functions for pausability
+    // Admin functions for pausability and fee collection
     #[abi(embed_v0)]
     impl MarketAdminImpl of IMarketAdmin<ContractState> {
         /// Pause all market operations (PAUSER_ROLE only)
@@ -606,6 +638,36 @@ pub mod Market {
         fn unpause(ref self: ContractState) {
             self.access_control.assert_only_role(PAUSER_ROLE);
             self.pausable.unpause();
+        }
+
+        /// Collect accumulated trading fees (owner only)
+        /// Fees are collected in SY tokens and transferred to the specified receiver
+        /// @param receiver Address to receive the collected SY fees
+        /// @return Amount of SY fees collected
+        fn collect_fees(ref self: ContractState, receiver: ContractAddress) -> u256 {
+            // Only owner can collect fees
+            self.ownable.assert_only_owner();
+
+            // Validate receiver
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+
+            // Get collected fees
+            let fees = self.total_fees_collected.read();
+            if fees == 0 {
+                return 0;
+            }
+
+            // Reset collected fees
+            self.total_fees_collected.write(0);
+
+            // Transfer SY fees to receiver
+            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            assert(sy_contract.transfer(receiver, fees), Errors::MARKET_TRANSFER_FAILED);
+
+            // Emit event
+            self.emit(FeesCollected { collector: get_caller_address(), receiver, amount: fees });
+
+            fees
         }
     }
 
