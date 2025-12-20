@@ -14,6 +14,7 @@ openzeppelin_upgrades = { git = "https://github.com/OpenZeppelin/cairo-contracts
 openzeppelin_interfaces = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
 openzeppelin_security = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
 openzeppelin_introspection = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+cairo_fp = { git = "https://github.com/ametel01/cairo-fp.git" }
 
 [dev-dependencies]
 snforge_std = "0.53.0"

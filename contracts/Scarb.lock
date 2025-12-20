@@ -2,9 +2,15 @@
 version = 1
 
 [[package]]
+name = "cairo_fp"
+version = "1.0.0"
+source = "git+https://github.com/ametel01/cairo-fp.git#010a5ed9004dda329e332344b5ac4e0533a52a63"
+
+[[package]]
 name = "horizon"
 version = "1.0.0"
 dependencies = [
+ "cairo_fp",
  "openzeppelin_access",
  "openzeppelin_interfaces",
  "openzeppelin_introspection",
