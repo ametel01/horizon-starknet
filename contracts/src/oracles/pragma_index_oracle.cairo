@@ -106,6 +106,8 @@ pub mod PragmaIndexOracle {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         access_control: AccessControlComponent::Storage,
+        // Flag to prevent RBAC re-initialization
+        rbac_initialized: bool,
     }
 
     #[event]
@@ -162,9 +164,9 @@ pub mod PragmaIndexOracle {
         initial_index: u256,
     ) {
         // Validate inputs
-        assert(!pragma_oracle.is_zero(), 'PIO: zero oracle');
-        assert(numerator_pair_id != 0, 'PIO: zero numerator pair');
-        assert(initial_index >= WAD, 'PIO: invalid initial index');
+        assert(!pragma_oracle.is_zero(), 'HZN: zero oracle');
+        assert(numerator_pair_id != 0, 'HZN: zero numerator pair');
+        assert(initial_index >= WAD, 'HZN: invalid initial index');
 
         self.ownable.initializer(owner);
         self.pragma_oracle.write(pragma_oracle);
@@ -214,7 +216,7 @@ pub mod PragmaIndexOracle {
     impl PragmaIndexOracleAdminImpl of super::IPragmaIndexOracleAdmin<ContractState> {
         /// Update the stored index from oracle
         fn update_index(ref self: ContractState) -> u256 {
-            assert(!self.paused.read(), 'PIO: paused');
+            assert(!self.paused.read(), 'HZN: paused');
 
             let oracle_index = self._fetch_oracle_index();
             let old_index = self.stored_index.read();
@@ -240,8 +242,8 @@ pub mod PragmaIndexOracle {
         /// Update TWAP window and staleness parameters (OPERATOR_ROLE)
         fn set_config(ref self: ContractState, twap_window: u64, max_staleness: u64) {
             self.access_control.assert_only_role(OPERATOR_ROLE);
-            assert(twap_window >= MIN_TWAP_WINDOW, 'PIO: window too short');
-            assert(max_staleness >= twap_window, 'PIO: staleness < window');
+            assert(twap_window >= MIN_TWAP_WINDOW, 'HZN: window too short');
+            assert(max_staleness >= twap_window, 'HZN: staleness < window');
 
             self.twap_window.write(twap_window);
             self.max_staleness.write(max_staleness);
@@ -269,11 +271,11 @@ pub mod PragmaIndexOracle {
         /// If oracle data was corrupted with too-high values, use contract upgrade for recovery.
         fn emergency_set_index(ref self: ContractState, new_index: u256) {
             self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
-            assert(new_index >= WAD, 'PIO: index below WAD');
+            assert(new_index >= WAD, 'HZN: index below WAD');
 
             let old_index = self.stored_index.read();
             // Enforce monotonic watermark - index can only increase
-            assert(new_index >= old_index, 'PIO: cannot decrease index');
+            assert(new_index >= old_index, 'HZN: cannot decrease index');
 
             self.stored_index.write(new_index);
             self.last_update_timestamp.write(get_block_timestamp());
@@ -293,6 +295,7 @@ pub mod PragmaIndexOracle {
         /// Owner calls this to bootstrap AccessControl roles
         fn initialize_rbac(ref self: ContractState) {
             self.ownable.assert_only_owner();
+            assert(!self.rbac_initialized.read(), 'HZN: RBAC already init');
 
             let owner = self.ownable.owner();
 
@@ -300,6 +303,9 @@ pub mod PragmaIndexOracle {
             self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
             self.access_control._grant_role(OPERATOR_ROLE, owner);
             self.access_control._grant_role(PAUSER_ROLE, owner);
+
+            // Mark as initialized to prevent re-calling
+            self.rbac_initialized.write(true);
         }
 
         // View functions
@@ -378,7 +384,7 @@ pub mod PragmaIndexOracle {
                         start_time,
                     );
 
-                assert(denom_price > 0, 'PIO: zero denominator price');
+                assert(denom_price > 0, 'HZN: zero denom price');
 
                 self._calculate_ratio_wad(num_price, num_decimals, denom_price, denom_decimals)
             }
