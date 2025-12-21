@@ -21,7 +21,7 @@ jobs:
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.14.0"
+          scarb-version: "2.15.0"
 
       - name: Setup snfoundry
         uses: foundry-rs/setup-snfoundry@v3
