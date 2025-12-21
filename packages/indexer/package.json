@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "codegen": "bun run scripts/generate-events-abi.ts",
     "dev": "bunx apibara dev",
     "dev:mainnet": "bunx apibara dev --preset mainnet",
     "dev:sepolia": "bunx apibara dev --preset sepolia",

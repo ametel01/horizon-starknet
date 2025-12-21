@@ -1,0 +1,248 @@
+[
+  {
+    "type": "struct",
+    "name": "core::integer::u256",
+    "members": [
+      {
+        "name": "low",
+        "type": "core::integer::u128"
+      },
+      {
+        "name": "high",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::MintPY",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "sy_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "yt_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::RedeemPY",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "py_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::AddLiquidity",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "sy_used",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_used",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "lp_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::RemoveLiquidity",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "lp_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::Swap",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "sy_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::SwapYT",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "sy_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "yt_in",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "yt_out",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  }
+]
