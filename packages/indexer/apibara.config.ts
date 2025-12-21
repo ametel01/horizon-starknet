@@ -1,6 +1,7 @@
 import { defineConfig } from "apibara/config";
 
 export default defineConfig({
+  indexersDir: "src/indexers",
   runtimeConfig: {
     starknet: {
       startingBlock: 0,
