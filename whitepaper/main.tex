@@ -1,0 +1,386 @@
+% ============================================================================
+% HORIZON PROTOCOL WHITEPAPER
+% Professional LaTeX Technical Specification
+% ============================================================================
+% v1.0 - December 2025
+% Author: Alex Metelli
+% License: BSL-1.1 (converts to GPL-3.0 on 2028-12-19)
+
+\documentclass[12pt,a4paper]{report}
+
+% ============================================================================
+% ENCODING AND FONTS
+% ============================================================================
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}                            % High-quality Latin Modern fonts
+
+% ============================================================================
+% CORE PACKAGES: Mathematics, Graphics, Tables
+% ============================================================================
+
+\usepackage{amsmath,amssymb,mathtools}          % Advanced mathematics
+\usepackage{graphicx}                           % Graphics support
+\usepackage{xcolor}                             % Color support
+
+% ============================================================================
+% TABLE PACKAGES: Professional multi-page support
+% ============================================================================
+
+\usepackage{booktabs}                           % Professional table formatting
+\usepackage{longtable}                          % Tables spanning multiple pages
+\usepackage{tabularx}                           % Responsive column widths
+\usepackage{array}                              % Enhanced column formatting
+
+% ============================================================================
+% FLOAT CONTROL: Prevent tables drifting from context
+% ============================================================================
+
+\usepackage[section]{placeins}                  % Force floats before next section
+
+% ============================================================================
+% CODE LISTINGS: Clear spec/function blocks
+% ============================================================================
+
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,            % Reduced font size for dense blocks
+  frame=single,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+% ============================================================================
+% ALGORITHM PSEUDOCODE: Professional function specifications
+% ============================================================================
+
+\usepackage[ruled,linesnumbered]{algorithm2e}
+
+% Custom keywords for protocol specs
+\SetKwInOut{Input}{Input}
+\SetKwInOut{Output}{Output}
+\SetKwInOut{Preconditions}{Preconditions}
+\SetKwInOut{Postconditions}{Postconditions}
+\SetKwInOut{StateChanges}{State Changes}
+\SetKwInOut{Events}{Events}
+\SetKwInOut{Reverts}{Reverts}
+\SetKwFunction{FDeposit}{deposit}
+\SetKwFunction{FRedeem}{redeem}
+\SetKwFunction{FMintPY}{mint\_py}
+\SetKwFunction{FRedeemPY}{redeem\_py}
+\SetKwFunction{FClaimInterest}{claim\_interest}
+\SetKwFunction{FSwap}{swap}
+\SetKwFunction{FMint}{mint}
+\SetKwFunction{FBurn}{burn}
+\SetKw{Return}{return}
+\SetKw{Revert}{revert}
+
+% ============================================================================
+% TYPOGRAPHY AND PAGINATION
+% ============================================================================
+
+\usepackage{microtype}                          % Advanced microtypography
+\usepackage{needspace}                          % Prevent orphan headings
+\usepackage{etoolbox}                           % Hook system
+\usepackage{setspace}                           % Line spacing control
+\usepackage{geometry}                           % Page layout
+
+% Page geometry
+\geometry{
+  a4paper,
+  left=1.1in,
+  right=1.1in,
+  top=1.1in,
+  bottom=1.1in
+}
+
+% Line spacing (1.2 reduces eye fatigue on long documents)
+\setstretch{1.2}
+
+% Paragraph ergonomics: block paragraphs for specs (reduces fatigue)
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+
+% Prevent orphan headings (force minimum space before)
+\pretocmd{\chapter}{\Needspace{8\baselineskip}}{}{}
+\pretocmd{\section}{\Needspace{6\baselineskip}}{}{}
+\pretocmd{\subsection}{\Needspace{5\baselineskip}}{}{}
+\pretocmd{\subsubsection}{\Needspace{4\baselineskip}}{}{}
+
+% ============================================================================
+% SECTIONING TYPOGRAPHY: Explicit heading hierarchy
+% ============================================================================
+
+\usepackage{titlesec}
+
+% Chapter format with subtle rule separator
+\titleformat{\chapter}
+  {\normalfont\LARGE\bfseries}
+  {\thechapter}{1em}{}
+  [\vspace{6pt}\titlerule]
+
+\titlespacing*{\chapter}
+  {0pt}{20pt}{30pt}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\thesection}{1em}{}
+
+\titlespacing*{\section}
+  {0pt}{16pt}{14pt}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\thesubsection}{1em}{}
+
+\titlespacing*{\subsection}
+  {0pt}{12pt}{10pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\itshape}
+  {\thesubsubsection}{1em}{}
+
+% ============================================================================
+% TABLE OF CONTENTS IMPROVEMENTS
+% ============================================================================
+
+\usepackage{tocloft}
+\setlength{\cftchapnumwidth}{2.5em}             % Prevent number collisions
+
+% ============================================================================
+% TABLE STYLING AND SPACING
+% ============================================================================
+
+\renewcommand{\arraystretch}{1.15}              % Table row spacing
+\setlength{\tabcolsep}{6pt}                     % Column separation
+
+% Equation spacing
+\setlength{\abovedisplayskip}{10pt}
+\setlength{\belowdisplayskip}{10pt}
+\setlength{\abovedisplayshortskip}{8pt}
+\setlength{\belowdisplayshortskip}{8pt}
+
+% ============================================================================
+% BUILD STABILITY: Prevent warnings and allow equation breaks
+% ============================================================================
+
+\sloppy                                         % Prevent overfull hbox warnings
+\allowdisplaybreaks                             % Allow multi-line equations to break
+
+% ============================================================================
+% UNICODE CHARACTER SUPPORT
+% ============================================================================
+
+\usepackage{newunicodechar}
+
+% Mathematical symbols
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{≠}{\ensuremath{\neq}}
+\newunicodechar{→}{\ensuremath{\to}}
+\newunicodechar{∞}{\ensuremath{\infty}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{⋅}{\ensuremath{\cdot}}
+\newunicodechar{∎}{\ensuremath{\blacksquare}}
+
+% Greek letters
+\newunicodechar{τ}{\ensuremath{\tau}}
+\newunicodechar{φ}{\ensuremath{\varphi}}
+\newunicodechar{π}{\ensuremath{\pi}}
+
+% ============================================================================
+% HYPERLINKS AND PDF METADATA
+% ============================================================================
+
+\usepackage[bookmarksnumbered=true]{hyperref}
+
+\hypersetup{
+  pdftitle={Horizon Protocol: A Yield Tokenization Protocol for Starknet},
+  pdfauthor={Alex Metelli},
+  pdfsubject={Technical Specification},
+  pdfkeywords={yield tokenization, DeFi, Starknet, AMM, principal tokens, smart contracts, protocol specification},
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue,
+  pdfborder={0 0 0}                             % Remove invisible link boxes
+}
+
+% PDF navigation: ensure subsections appear in outline
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+% ============================================================================
+% HEADERS AND FOOTERS
+% ============================================================================
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\nouppercase{\leftmark}}           % Chapter context (no forced uppercase)
+\rhead{\small \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Increase headheight to prevent fancyhdr warnings
+\setlength{\headheight}{14pt}
+\addtolength{\topmargin}{-2pt}
+
+% Plain style for chapter pages
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \cfoot{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% ============================================================================
+% THEOREM ENVIRONMENTS (numbered by chapter for easier cross-referencing)
+% ============================================================================
+
+\usepackage{amsthm}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+\newtheorem*{notation}{Notation}
+
+% ============================================================================
+% DOCUMENT BEGIN
+% ============================================================================
+
+\begin{document}
+
+% ============================================================================
+% TITLE PAGE
+% ============================================================================
+
+\thispagestyle{empty}
+
+\vspace*{50pt}
+
+\begin{center}
+  {\LARGE\bfseries Horizon Protocol}
+
+  \vspace{20pt}
+
+  {\Large A Yield Tokenization Protocol for Starknet}
+
+  \vspace{40pt}
+
+  {\large Technical Specification | Version 1.0}
+
+  \vspace{60pt}
+
+  {\normalsize December 2025}
+
+  \vspace{30pt}
+
+  {\normalsize Alex Metelli}
+
+  \vspace{10pt}
+
+  {\small \url{https://github.com/ametel01/horizon-starknet}}
+
+  \vspace{40pt}
+
+  {\footnotesize License: BSL-1.1 (converts to GPL-3.0 on 2028-12-19)}
+\end{center}
+
+\vfill
+
+\clearpage
+
+% ============================================================================
+% ABSTRACT AND KEYWORDS
+% ============================================================================
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+\itshape
+Horizon Protocol is a yield tokenization system deployed on Starknet that decomposes yield-bearing assets into separate Principal Tokens (PT) and Yield Tokens (YT). This separation enables three distinct financial strategies: fixed-yield positions through discounted PT acquisition, leveraged yield exposure via YT trading, and liquidity provision in the protocol's native PT/SY automated market maker.
+
+The protocol operates on a fundamental conservation invariant: one unit of Standardized Yield token (SY) can be split into one PT and one YT before maturity, and this process is reversible. At maturity, each PT is redeemable for exactly one unit of the underlying SY, providing a guaranteed redemption value. YT holders receive all yield generated by the underlying asset until expiry, after which the token expires worthless.
+
+Horizon employs a logit-based AMM curve specifically designed for time-decaying assets, ensuring PT price converges to 1 as maturity approaches. This specification provides formal definitions, mathematical proofs, economic analysis, and comprehensive risk assessment suitable for auditors, researchers, developers, and investors.
+\normalfont
+
+\vspace{12pt}
+
+\noindent \textbf{Keywords:} yield tokenization, principal tokens, yield tokens, Starknet, DeFi, automated market makers, fixed-point arithmetic, smart contracts, protocol specification, mathematical proofs
+
+\clearpage
+
+% ============================================================================
+% TABLE OF CONTENTS
+% ============================================================================
+
+\tableofcontents
+
+\clearpage
+
+% ============================================================================
+% MAIN CONTENT
+% ============================================================================
+
+\chapter{Motivation \& Problem Statement}
+\input{sections/01_motivation}
+
+\chapter{System Overview}
+\input{sections/02_system_overview}
+
+\chapter{Formal Model \& Notation}
+\input{sections/03_formal_model}
+
+\chapter{Core Mechanism Design}
+\input{sections/04_mechanism_design}
+
+\chapter{Economic Analysis \& Incentives}
+\input{sections/05_economic_analysis}
+
+\chapter{Risk Analysis \& Threat Model}
+\input{sections/06_risk_analysis}
+
+\chapter{Governance \& Upgrade Model}
+\input{sections/07_governance}
+
+\chapter{Related Work}
+\input{sections/08_related_work}
+
+\chapter{Conclusion}
+\input{sections/09_conclusion}
+
+% ============================================================================
+% APPENDICES
+% ============================================================================
+
+\appendix
+
+\chapter{Mathematical Proofs}
+\input{sections/A_proofs}
+
+\chapter{Numerical Examples}
+\input{sections/B_examples}
+
+\chapter{Contract Interface Specifications}
+\input{sections/C_interfaces}
+
+\chapter{Glossary}
+\addcontentsline{toc}{chapter}{Glossary}
+\input{sections/D_glossary}
+
+% ============================================================================
+% DOCUMENT END
+% ============================================================================
+
+\end{document}

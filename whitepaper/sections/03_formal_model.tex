@@ -1,0 +1,319 @@
+
+This section formalizes the protocol's state, parameters, and mathematical invariants. All subsequent mechanism definitions rely on the notation and constants introduced here. We adopt a fixed-point arithmetic model (WAD scaling, $10^{18}$) to ensure precision across all computations.
+
+\section{State Variables}
+
+The protocol state is partitioned into market state, time state, and index state. Each variable has a well-defined domain that is enforced by construction.
+
+\subsection{Market State}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\textbf{Symbol} & \textbf{Type} & \textbf{Domain} & \textbf{Description} \\
+\midrule
+$S_{SY}$ & u256 & $[0, 2^{256})$ & SY reserve in market \\
+$S_{PT}$ & u256 & $[0, 2^{256})$ & PT reserve in market \\
+$L$ & u256 & $[0, 2^{256})$ & Total LP token supply \\
+$r$ & u256 & $[0, 4.6 \cdot 10^{18}]$ & ln(implied rate) in WAD \\
+$r_{root}$ & u256 & $[0, 10^{20}]$ & Scalar root parameter \\
+$r_{anchor}$ & u256 & $[0, 10^{19}]$ & Rate anchor parameter \\
+$\phi$ & u256 & $[0, 0.05 \cdot 10^{18}]$ & Fee rate in WAD \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Assumption}: $S_{PT} + S_{SY} > 0$ at all times due to enforced minimum liquidity lock.
+
+\subsection{Time State}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\textbf{Symbol} & \textbf{Type} & \textbf{Domain} & \textbf{Description} \\
+\midrule
+$T$ & u64 & Unix timestamp & Expiry timestamp \\
+$t$ & u64 & Unix timestamp & Current block timestamp \\
+$\tau$ & u64 & $[0, T]$ & Time to expiry (seconds) \\
+$\tau_y$ & u256 & $[0, \infty)$ & Time to expiry (years, WAD-scaled) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Index State}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\textbf{Symbol} & \textbf{Type} & \textbf{Domain} & \textbf{Description} \\
+\midrule
+$I_{global}$ & u256 & $[10^{18}, \infty)$ & Global PY index (watermark) \\
+$I_{user}$ & u256 & $[10^{18}, \infty)$ & User's last recorded index \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Constants}
+
+The protocol relies on the following global constants, which are fixed for the lifetime of a given market instance.
+
+\textbf{Scaling Constants:}
+\begin{itemize}
+\item \textbf{WAD} ($W = 10^{18}$): Fixed-point scaling factor for all amounts and rates
+\item \textbf{Seconds per year} ($Y = 31{,}536{,}000$): Time normalization constant for annualized rates
+\end{itemize}
+
+\textbf{Safety Bounds:}
+\begin{itemize}
+\item \textbf{Minimum liquidity} ($L_{min} = 1000$): Locked LP to prevent division by zero
+\item \textbf{Max ln implied rate} ($r_{max} = 4.6 \cdot 10^{18}$): Caps implied rate at approximately 10,000\% APY
+\item \textbf{Max proportion} ($p_{max} = 0.999 \cdot 10^{18}$): Prevents extreme pool imbalance
+\item \textbf{Min proportion} ($p_{min} = 0.001 \cdot 10^{18}$): Prevents extreme pool imbalance
+\end{itemize}
+
+\section{Fixed-Point Arithmetic}
+
+The protocol uses a dual-layer precision model to balance gas efficiency with computational accuracy.
+
+\subsection{WAD Arithmetic (Interface Layer)}
+
+All token amounts and external-facing values use WAD scaling:
+
+\[
+\operatorname{wad\_mul}(a, b) = \left\lfloor \frac{a \times b + W/2}{W} \right\rfloor
+\]
+
+\[
+\operatorname{wad\_div}(a, b) = \left\lfloor \frac{a \times W + b/2}{b} \right\rfloor
+\]
+
+where $W = 10^{18}$ and rounding is to nearest integer.
+
+All intermediate multiplications are performed using widened precision to prevent overflow. Rounding is symmetric and biased toward the nearest integer to minimize cumulative drift.
+
+\subsection{cubit 64.64 (Internal Layer)}
+
+Transcendental functions use 64.64 binary fixed-point representation with 64 integer bits and 64 fractional bits, providing approximately 19 decimal digits of precision.
+
+The 64.64 format represents a number $x$ as:
+\[
+x_{\text{fixed}} = x \times 2^{64}
+\]
+
+\paragraph{Conversion Functions.}
+
+\[
+\operatorname{wad\_to\_fp}(x) = \left\lfloor \frac{x \times 2^{64}}{10^{18}} \right\rfloor
+\]
+
+\[
+\operatorname{fp\_to\_wad}(x) = \left\lfloor \frac{x \times 10^{18}}{2^{64}} \right\rfloor
+\]
+
+\paragraph{High-Precision Functions.}
+
+The library provides the following transcendental functions:
+
+\begin{itemize}
+\item $\operatorname{exp\_wad}(x)$: Exponential function, takes WAD input and returns WAD output
+\item $\operatorname{exp\_neg\_wad}(x)$: Negative exponential for decay functions
+\item $\operatorname{ln\_wad}(x)$: Natural logarithm, returns (value, is\_negative) tuple
+\item $\operatorname{pow\_wad}(x, y)$: Power function computing $x^y$
+\item $\operatorname{sqrt\_wad}(x)$: Square root function, WAD-normalized output
+\end{itemize}
+
+All transcendental functions clamp outputs on domain violation and return bounded values to preserve protocol safety.
+
+\section{Time Model}
+
+Time is measured in Unix timestamps (seconds since epoch):
+
+\[
+\tau = T - t
+\]
+
+where $T$ is expiry timestamp and $t$ is current block timestamp.
+
+Time expressed in years (WAD-scaled):
+
+\[
+\tau_y = \frac{\tau \times W}{Y}
+\]
+
+For $t \geq T$, the protocol treats $\tau = 0$ and transitions to post-expiry redemption semantics.
+
+\section{Core Equations}
+
+This section defines the mathematical relationships governing AMM pricing, yield computation, and fee adjustment.
+
+\subsection{Pool Proportion and Logit Transformation}
+
+The proportion of PT in the pool determines market pricing:
+
+\[
+p = \frac{S_{PT}}{S_{PT} + S_{SY}}
+\]
+
+\textbf{Domain constraint}: $p_{min} \leq p \leq p_{max}$. Trades that would violate this constraint are rejected.
+
+To map bounded pool proportions to an unbounded rate domain, the protocol uses a logit transformation:
+
+\[
+\operatorname{logit}(p) = \ln\left(\frac{p}{1-p}\right)
+\]
+
+Properties:
+\begin{itemize}
+    \item $\operatorname{logit}(0.5) = 0$
+    \item $\operatorname{logit}(p) \to -\infty$ as $p \to 0$
+    \item $\operatorname{logit}(p) \to +\infty$ as $p \to 1$
+\end{itemize}
+
+\subsection{Pricing Model}
+
+Time-to-expiry is incorporated through a scalar that dampens price sensitivity as maturity approaches.
+
+\paragraph{Rate Scalar.}
+
+\[
+r_{scalar} = \frac{r_{root} \times Y}{\tau}
+\]
+
+As $\tau \to 0$: $r_{scalar} \to \infty$, making prices insensitive to pool balance changes.
+
+\paragraph{Exchange Rate.}
+
+The PT/SY exchange rate derived from market state:
+
+\[
+\operatorname{exchangeRate} = \frac{\operatorname{logit}(p)}{r_{scalar}} + r_{anchor}
+\]
+
+\paragraph{Implied Rate.}
+
+The annualized implied yield from the exchange rate:
+
+\[
+r = \ln(\operatorname{exchangeRate}) \times \frac{Y}{\tau}
+\]
+
+\textbf{Constraint}: $0 \leq r \leq r_{max}$. Values outside this range are clamped.
+
+\paragraph{PT Price.}
+
+PT price in terms of SY, derived from implied rate:
+
+\[
+P_{PT} = e^{-r \times \tau_y / W}
+\]
+
+where $\tau_y$ is time to expiry in WAD-scaled years.
+
+Properties:
+\begin{itemize}
+    \item $P_{PT} < 1$ before expiry (trades at discount)
+    \item $P_{PT} \to 1$ as $\tau \to 0$ (converges at maturity)
+\end{itemize}
+
+\paragraph{YT Price.}
+
+YT price is derived directly from the conservation invariant:
+
+\[
+P_{YT} = 1 - P_{PT}
+\]
+
+Properties:
+\begin{itemize}
+    \item $P_{YT} > 0$ before expiry
+    \item $P_{YT} \to 0$ as $\tau \to 0$ (expires worthless)
+\end{itemize}
+
+\subsection{Rate Anchor Dynamics}
+
+The rate anchor maintains implied rate continuity across trades, preventing discontinuous price jumps.
+
+\paragraph{Anchor Calculation.}
+
+Given the last stored implied rate $r_{last}$ and current market state:
+
+\[
+\operatorname{exchangeRate}_{target} = e^{r_{last} \times \tau / Y}
+\]
+
+\[
+r_{anchor} = \operatorname{exchangeRate}_{target} - \frac{\operatorname{logit}(p)}{r_{scalar}}
+\]
+
+\paragraph{Anchor Update.}
+
+After each trade, the anchor is recalculated from the new implied rate to ensure smooth price transitions.
+
+\subsection{Fee Model}
+
+Swap fees decay exponentially toward expiry, reducing friction as price convergence becomes more certain.
+
+\[
+\phi_{adjusted} = e^{\ln(\phi_{root}) \times \tau / Y}
+\]
+
+where $\phi_{root}$ is the base fee rate (e.g., 0.001 WAD = 0.1\%).
+
+\textbf{Requirement}: $0 < \phi_{root} < 1$ to ensure monotonic decay of swap fees.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Time to Expiry} & \textbf{Adjusted Fee (if base = 0.1\%)} \\
+\midrule
+1 year & 0.100\% \\
+6 months & $\approx 0.070\%$ \\
+1 month & $\approx 0.022\%$ \\
+1 week & $\approx 0.006\%$ \\
+At expiry & $\approx 0\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Yield Index Model}
+
+The PY index accounts for cumulative yield attributable to YT holders using a monotonic watermark mechanism.
+
+\paragraph{Index Update.}
+
+\[
+I_{global} = \max(I_{global}, I_{current})
+\]
+
+where $I_{current}$ is the current exchange rate from the oracle.
+
+The watermark ensures $I_{global}$ is monotonically non-decreasing. This prevents yield accounting errors during temporary rate decreases.
+
+\paragraph{Interest Calculation.}
+
+For a user with YT balance $B_{YT}$ and last recorded index $I_{user}$:
+
+\[
+\text{Interest} = B_{YT} \times \frac{I_{global} - I_{user}}{I_{user}}
+\]
+
+After claiming, the user's index is updated: $I_{user} \leftarrow I_{global}$
+
+\section{Invariants}
+
+The following invariants are safety-critical. Any violation constitutes a protocol failure and must be prevented by construction or rejected at runtime.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l}
+\toprule
+\textbf{Invariant} & \textbf{Expression} & \textbf{Enforcement} \\
+\midrule
+Supply equality & $\text{PT.supply} = \text{YT.supply}$ & Contract logic \\
+Conservation & PT + YT = SY (value) & Arbitrage \\
+Index watermark & $I_{global}^{t+1} \geq I_{global}^{t}$ & Contract logic \\
+Proportion bounds & $p_{min} \leq p \leq p_{max}$ & Trade rejection \\
+Rate bounds & $0 \leq r \leq r_{max}$ & Clamping \\
+Reserve positivity & $S_{SY} > 0 \land S_{PT} > 0$ & LP minimum lock \\
+\bottomrule
+\end{tabularx}
+\end{center}

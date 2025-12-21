@@ -1,0 +1,372 @@
+
+This section specifies the governance structure, upgrade capabilities, and admin powers. All protocol contracts are upgradeable; users must evaluate admin trust before depositing.
+
+\paragraph{Authority model.}
+All upgradeable contracts use OpenZeppelin's \texttt{OwnableComponent} and \texttt{UpgradeableComponent}. A single authority (the \emph{owner}) holds \texttt{DEFAULT\_ADMIN\_ROLE} and can:
+\begin{itemize}
+\item Replace any contract's class hash via \texttt{upgrade(new\_class\_hash)}.
+\item Grant and revoke roles to other addresses.
+\item Execute contract-specific admin functions.
+\end{itemize}
+
+\noindent\textbf{Target configuration:} 3-of-5 multisig with 48-hour timelock (not yet deployed).
+
+\paragraph{Upgrade semantics.}
+Starknet contracts are upgraded by replacing the \emph{class hash}---the on-chain identifier of the contract's bytecode. When \texttt{upgrade(new\_class\_hash)} executes:
+\begin{enumerate}
+\item The contract's class hash is atomically replaced.
+\item Storage is preserved; the new implementation must be storage-compatible.
+\item An \texttt{Upgraded(new\_class\_hash)} event is emitted.
+\item All subsequent calls execute the new implementation immediately.
+\end{enumerate}
+There is no proxy indirection; the contract address remains constant while its code changes.
+
+
+\section{Contract Classification}
+
+Horizon distinguishes between \emph{internal} contracts (protocol-controlled) and \emph{external dependencies} (third-party infrastructure).
+
+\subsection{Internal Contracts (Protocol-Controlled)}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Contract} & \textbf{Upgradeable} & \textbf{Scope of Upgrade Impact} & \textbf{Risk} \\
+\midrule
+SY & Yes & Share accounting, deposit/redeem logic & Critical \\
+PT & Yes & Redemption logic, mint authority validation & Critical \\
+YT & Yes & Yield distribution, interest index accounting & Critical \\
+Market & Yes & AMM curve, swap execution, fee calculation & Critical \\
+Factory & Yes & Templates for new SY/PT/YT deployments & High \\
+MarketFactory & Yes & Templates for new Market deployments & High \\
+Router & Yes & Routing logic, could insert hidden fees & High \\
+PragmaIndexOracle & Yes & Index source configuration, staleness thresholds & High \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Risk interpretation.}
+\begin{description}
+\item[Critical:] Upgrade can directly drain or freeze user funds.
+\item[High:] Upgrade can extract value or disrupt operations but cannot drain existing positions.
+\end{description}
+
+\subsection{External Dependencies (Third-Party)}
+
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Dependency} & \textbf{Trust Requirement} & \textbf{Failure Mode} \\
+\midrule
+Starknet sequencer & Liveness, censorship resistance & Transactions not processed \\
+Pragma oracle & Data integrity, freshness & Incorrect yield accounting \\
+Underlying protocols (e.g., Nostra) & Solvency, correct yield accrual & SY value impairment \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Dependency scope.}
+The protocol cannot upgrade or control external dependencies. Users accept these as infrastructure-level trust assumptions. Failures in external dependencies can cause losses even if protocol code is correct.
+
+
+\section{Admin Powers}
+
+All admin functions require \texttt{DEFAULT\_ADMIN\_ROLE}. This section enumerates the exact on-chain powers.
+
+\subsection{Powers Available on All Upgradeable Contracts}
+
+Every contract with \texttt{OwnableComponent} and \texttt{UpgradeableComponent} exposes:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
+\midrule
+\texttt{upgrade(class\_hash)} & Replace contract implementation atomically & Critical \\
+\texttt{transfer\_ownership(new\_owner)} & Transfer admin control to new address & Critical \\
+\texttt{renounce\_ownership()} & Permanently remove admin control (irreversible) & N/A \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Contract-Specific Admin Functions}
+
+\paragraph{Factory.}
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
+\midrule
+\texttt{set\_sy\_class\_hash} & Change template for future SY deployments & High \\
+\texttt{set\_pt\_class\_hash} & Change template for future PT deployments & Critical \\
+\texttt{set\_yt\_class\_hash} & Change template for future YT deployments & Critical \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Note.} Class hash changes affect only \emph{new} deployments. Existing SY/PT/YT instances retain their original implementation until individually upgraded.
+
+\paragraph{MarketFactory.}
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
+\midrule
+\texttt{set\_market\_class\_hash} & Change template for future Market deployments & Critical \\
+\texttt{set\_default\_fee\_rate} & Configure default swap fee for new markets & Medium \\
+\texttt{set\_default\_scalar\_root} & Configure default price sensitivity & Medium \\
+\texttt{set\_default\_initial\_anchor} & Configure default implied rate anchor & Medium \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Router.}
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
+\midrule
+\texttt{pause()} & Block all router operations & Medium \\
+\texttt{unpause()} & Resume router operations & Low \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{PragmaIndexOracle.}
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
+\midrule
+\texttt{set\_staleness\_threshold} & Configure maximum age for oracle data & Medium \\
+\texttt{set\_twap\_duration} & Configure TWAP averaging window & Medium \\
+\texttt{set\_feed\_id} & Change Pragma feed identifier & High \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Token Contracts (SY, PT, YT).}
+Token contracts expose only \texttt{upgrade}. Minting/burning authority is enforced by code (YT contract controls PT/YT minting), not by admin-configurable roles.
+
+\paragraph{Market.}
+Market contracts expose only \texttt{upgrade}. AMM parameters (fee rate, scalar root, anchor) are set at deployment and cannot be modified post-deployment.
+
+
+\section{Role-Based Access Control}
+
+The protocol uses OpenZeppelin's \texttt{AccessControlComponent} with three roles:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X l}
+\toprule
+\textbf{Role} & \textbf{Permissions} & \textbf{Holder} \\
+\midrule
+\texttt{DEFAULT\_ADMIN\_ROLE} & All admin functions; grant/revoke other roles & Owner (multisig target) \\
+\texttt{PAUSER\_ROLE} & \texttt{pause()}, \texttt{unpause()} on Router & Owner (initially) \\
+\texttt{OPERATOR\_ROLE} & Reserved for future operational functions & Not assigned \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Role hierarchy.}
+\texttt{DEFAULT\_ADMIN\_ROLE} is the admin of all roles, including itself. Only addresses with \texttt{DEFAULT\_ADMIN\_ROLE} can grant or revoke any role.
+
+
+\section{Emergency Procedures}
+
+\subsection{Emergency Powers}
+
+The following actions are available during emergencies:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{raggedright\arraybackslash}X}
+\toprule
+\textbf{Action} & \textbf{Effect} \\
+\midrule
+Pause Router & Blocks new swaps, mints, and complex operations via Router \\
+Emergency upgrade & Replace contract implementation without timelock (if active exploit) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Pause Scope}
+
+The pause mechanism affects only the Router contract. Its purpose is to stop new protocol interactions while preserving user exit paths.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{raggedright\arraybackslash}X}
+\toprule
+\textbf{Operation} & \textbf{During Pause} & \textbf{Rationale} \\
+\midrule
+Router swaps & Blocked & Prevent exploitation via complex operations \\
+Router minting (PT/YT) & Blocked & Prevent new positions during incident \\
+Router liquidity add/remove & Blocked & Prevent position changes \\
+\midrule
+Direct SY deposit/redeem & Available & Users can exit to underlying \\
+Direct PT transfer & Available & Users can move positions \\
+Direct YT transfer & Available & Users can move positions \\
+Post-expiry PT redemption & Available & Users can redeem matured positions \\
+YT interest claim & Available & Users can claim accrued yield \\
+Market direct swap & Available & Direct contract calls bypass Router \\
+LP burn (withdraw liquidity) & Available & Users can exit LP positions \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{User Safety Invariant During Emergencies}
+
+Even when the Router is paused, users can always:
+\begin{enumerate}
+\item Redeem SY for underlying assets (direct call to SY contract).
+\item Redeem PT for SY after expiry (direct call to YT contract).
+\item Claim accrued YT interest (direct call to YT contract).
+\item Withdraw LP positions by burning LP tokens (direct call to Market).
+\item Transfer all token types to other addresses.
+\end{enumerate}
+No emergency action can prevent users from exiting existing positions.
+}}
+\end{center}
+
+\subsection{Emergency Response Process}
+
+\begin{enumerate}
+\item \textbf{Detection.} Exploit identified via monitoring, user report, or external disclosure.
+\item \textbf{Triage.} Assess severity and funds at risk. Classify as Critical/High/Medium/Low.
+\item \textbf{Containment.} If Critical or High: immediately pause Router.
+\item \textbf{Remediation.} Develop and test fix. For Critical exploits, emergency upgrade without timelock.
+\item \textbf{Disclosure.} Publish incident report within 24 hours of resolution.
+\item \textbf{Post-mortem.} Conduct root cause analysis; implement preventive measures.
+\end{enumerate}
+
+\paragraph{Timelock bypass justification.}
+Emergency upgrades (bypassing any future timelock) are permitted only when:
+\begin{itemize}
+\item Active exploitation is occurring or imminent.
+\item Funds at risk exceed a material threshold.
+\item Waiting for timelock would result in greater user losses.
+\end{itemize}
+
+
+\section{Upgrade Process}
+
+\subsection{Standard Upgrade Steps}
+
+\begin{enumerate}
+\item \textbf{Development.} Implement changes; ensure storage compatibility.
+\item \textbf{Testing.} Full test suite passes; invariant fuzzing on modified paths.
+\item \textbf{Audit.} External audit for significant changes (new features, security-relevant modifications).
+\item \textbf{Proposal.} Publish upgrade proposal with:
+\begin{itemize}
+\item New class hash
+\item Code diff or audit report link
+\item Rationale and risk assessment
+\end{itemize}
+\item \textbf{Timelock.} (When implemented) Submit upgrade transaction; wait for timelock period.
+\item \textbf{Execution.} Multisig signers approve and execute upgrade.
+\item \textbf{Verification.} Confirm new class hash matches proposal; verify contract behavior.
+\end{enumerate}
+
+\subsection{Storage Compatibility Requirements}
+
+Upgrades must preserve storage layout:
+\begin{itemize}
+\item Existing storage variables retain their slots.
+\item New variables are appended (not inserted).
+\item Variable types are not changed.
+\item Mappings and structs maintain compatible layouts.
+\end{itemize}
+
+\paragraph{Incompatible upgrades.}
+If storage layout must change, a migration pattern is required: deploy new contract, migrate state, update references. This is a breaking change requiring extended user notice.
+
+
+\section{Governance Attack Surface}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l l >{raggedright\arraybackslash}X}
+\toprule
+\textbf{Attack Vector} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigations} \\
+\midrule
+Admin key compromise & Low & Critical (total loss) & Hardware wallet; multisig (planned); timelock (planned) \\
+Malicious insider upgrade & Low & Critical (total loss) & Multisig threshold; code review; audit requirement \\
+Social engineering of signers & Medium & Critical & Dedicated signing devices; verification procedures \\
+Compromised upgrade proposal & Low & Critical & Class hash verification; multiple reviewer sign-off \\
+Role escalation & Very Low & High & RBAC structure; role change events; monitoring \\
+Pause abuse (griefing) & Low & Medium (temporary) & PAUSER\_ROLE separation; unpause requires same authority \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Attack surface reduction.}
+The governance attack surface is proportional to:
+\begin{itemize}
+\item Number of addresses with admin roles (currently 1; target 5 multisig signers).
+\item Frequency of upgrades (minimize by shipping stable code).
+\item Complexity of upgrade process (reduce via automation and verification tooling).
+\end{itemize}
+
+
+\section{Trust Assumptions}
+
+Users must evaluate what they trust before using the protocol.
+
+\subsection{Trusted (Cannot Be Verified)}
+
+\begin{itemize}
+\item Admin keys are not compromised.
+\item Multisig signers do not collude maliciously.
+\item Upgrades are deployed with benevolent intent.
+\item Emergency actions are taken in good faith.
+\item Operational security of key holders is maintained.
+\end{itemize}
+
+\subsection{Verifiable On-Chain}
+
+\begin{itemize}
+\item All contract code (class hashes can be verified against source).
+\item All role grants and revocations (events emitted).
+\item All upgrades (events emitted with new class hash).
+\item Current pause state.
+\item All token balances and positions.
+\item AMM state and pool reserves.
+\end{itemize}
+
+\subsection{Trustless (Given Current Code)}
+
+\begin{itemize}
+\item Mathematical correctness of AMM pricing and yield accounting.
+\item Token conservation (no inflation without corresponding deposits).
+\item Access control enforcement (only authorized addresses can call admin functions).
+\item Expiry mechanics (PT redeems 1:1 after expiry, YT stops accruing).
+\end{itemize}
+
+\paragraph{Key insight.}
+Upgradeability means ``trustless'' properties hold only for the \emph{current} implementation. A malicious upgrade can violate any property. Users must trust admin or verify each upgrade.
+
+
+\section{Governance Roadmap}
+
+The following governance features are planned but not yet implemented:
+
+\begin{description}
+\item[Multisig (3-of-5).] Require multiple independent signers for all admin actions. Prevents single-key compromise from causing total loss.
+
+\item[Timelock (48 hours).] Delay between upgrade proposal and execution. Provides users time to review changes and exit if concerned.
+
+\item[Upgrade monitoring.] Automated alerts when upgrade transactions are submitted. Enables community review during timelock window.
+
+\item[Verified class hash registry.] On-chain registry of audited, approved class hashes. Upgrades restricted to pre-verified implementations.
+\end{description}
+
+\paragraph{Decentralization considerations.}
+Full decentralization (governance token, on-chain voting) is not planned for initial deployment. Rationale:
+\begin{itemize}
+\item Governance tokens introduce new attack vectors (vote buying, governance attacks).
+\item Early-stage protocols benefit from rapid iteration capability.
+\item Decentralization is meaningful only with sufficient distribution and participation.
+\end{itemize}
+
+\noindent The protocol may consider decentralized governance once the codebase is stable and user base is established.
+

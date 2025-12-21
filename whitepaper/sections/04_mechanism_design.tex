@@ -1,0 +1,668 @@
+
+This section specifies the protocol's core operations with precise state transitions, revert conditions, and invariant preservation. Each mechanism is defined by its inputs, preconditions, state changes, events, returns, and revert conditions.
+
+\section{SY Token Mechanism}
+
+The Standardized Yield (SY) token wraps yield-bearing assets with a uniform interface. SY is a fixed 1:1 wrapper: one unit of underlying always mints one unit of SY, and one unit of SY always redeems one unit of underlying. The exchange rate tracked by the protocol is not the SY appreciation rate, but the underlying asset's index used for YT yield accounting.
+
+\paragraph{Key distinction.} SY itself does not appreciate. The \texttt{exchange\_rate} (or \texttt{index}) tracks the underlying yield-bearing token's value growth and is used exclusively for calculating YT interest. This separation ensures SY remains a simple wrapper while yield accrual is handled by the YT mechanism.
+
+\subsection{Deposit}
+
+\begin{algorithm}[H]
+\caption{SY Deposit}
+\underline{function \textsc{Deposit}}$(receiver, amount) \rightarrow shares$\;
+\Input{$receiver$: address, $amount$: u256}
+\Output{$shares$: u256 (amount of SY minted)}
+\Preconditions{
+  $receiver \neq 0$\;
+  $amount > 0$\;
+  $\texttt{underlying.allowance}(caller, SY) \geq amount$\;
+}
+\BlankLine
+$\texttt{underlying.balanceOf}(caller) \gets \texttt{underlying.balanceOf}(caller) - amount$\;
+$\texttt{underlying.balanceOf}(SY) \gets \texttt{underlying.balanceOf}(SY) + amount$\;
+$\texttt{SY.balanceOf}(receiver) \gets \texttt{SY.balanceOf}(receiver) + amount$\;
+$\texttt{SY.totalSupply} \gets \texttt{SY.totalSupply} + amount$\;
+\BlankLine
+\textbf{emit} $\textsc{Deposit}(caller, receiver, amount, shares)$\;
+\Return $shares \gets amount$\;
+\BlankLine
+\Reverts{
+  $amount = 0$: ``zero amount''\;
+  $receiver = 0$: ``zero address''\;
+  allowance insufficient: ``ERC20: insufficient allowance''\;
+  balance insufficient: ``ERC20: transfer exceeds balance''\;
+}
+\end{algorithm}
+
+\subsection{Redeem}
+
+\begin{algorithm}[H]
+\caption{SY Redeem}
+\underline{function \textsc{Redeem}}$(receiver, amount) \rightarrow assets$\;
+\Input{$receiver$: address, $amount$: u256}
+\Output{$assets$: u256 (amount of underlying returned)}
+\Preconditions{
+  $receiver \neq 0$\;
+  $amount > 0$\;
+  $\texttt{SY.balanceOf}(caller) \geq amount$\;
+}
+\BlankLine
+$\texttt{SY.balanceOf}(caller) \gets \texttt{SY.balanceOf}(caller) - amount$\;
+$\texttt{SY.totalSupply} \gets \texttt{SY.totalSupply} - amount$\;
+$\texttt{underlying.balanceOf}(SY) \gets \texttt{underlying.balanceOf}(SY) - amount$\;
+$\texttt{underlying.balanceOf}(receiver) \gets \texttt{underlying.balanceOf}(receiver) + amount$\;
+\BlankLine
+\textbf{emit} $\textsc{Redeem}(caller, receiver, amount, assets)$\;
+\Return $assets \gets amount$\;
+\BlankLine
+\Reverts{
+  $amount = 0$: ``zero amount''\;
+  $receiver = 0$: ``zero address''\;
+  balance insufficient: ``ERC20: burn exceeds balance''\;
+}
+\end{algorithm}
+
+\subsection{Exchange Rate (Index)}
+
+The exchange rate tracks the underlying asset's value appreciation and is used for YT yield accounting.
+
+\paragraph{For ERC-4626 Vaults.}
+\[
+\texttt{exchange\_rate} = \texttt{vault.convertToAssets}(W)
+\]
+
+\paragraph{For Oracle-Based Tokens.}
+\[
+\texttt{exchange\_rate} = \texttt{oracle.get\_index}()
+\]
+
+\paragraph{Invariant.} The exchange rate is monotonically non-decreasing due to watermark protection. This is enforced by the global index update logic, not by the SY contract itself.
+
+\section{PT/YT Minting Mechanism}
+
+\subsection{Minting Authority Invariant}
+
+Only the YT contract may mint or burn PT and YT tokens. This invariant is enforced by access control on the \texttt{mint} and \texttt{burn} functions of both token contracts.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Token} & \textbf{Authorized Caller} & \textbf{Enforcement} \\
+\midrule
+PT & YT contract only & $\texttt{require}(caller = \texttt{yt\_address})$ \\
+YT & YT contract only & Internal function (self-mint) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Index Update Triggers}
+
+The global index and user interest are updated at specific points to ensure correct yield accounting.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Function} & \textbf{Updates Global Index} & \textbf{Updates User Interest} \\
+\midrule
+\texttt{mint\_py} & Yes & Yes (receiver) \\
+\texttt{redeem\_py} & Yes & Yes (caller) \\
+\texttt{redeem\_pt\_after\_expiry} & No & No \\
+\texttt{claim\_interest} & Yes & Yes (caller) \\
+\texttt{YT.transfer} & Yes & Yes (sender and recipient) \\
+\texttt{YT.transferFrom} & Yes & Yes (from and to) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{YT Transfer Hook.} YT transfers must update both sender and recipient interest before modifying balances. Failure to do so would cause interest accounting errors. This is implemented via an internal \texttt{\_before\_token\_transfer} hook.
+
+\subsection{Mint PY (Split SY to PT + YT)}
+
+\begin{algorithm}[H]
+\caption{Mint Principal and Yield Tokens}
+\underline{function \textsc{MintPY}}$(receiver, amount_{sy}) \rightarrow (pt, yt)$\;
+\Input{$receiver$: address, $amount_{sy}$: u256}
+\Output{$(pt, yt)$: amounts of PT and YT minted}
+\Preconditions{
+  $\texttt{block.timestamp} < expiry$\;
+  $receiver \neq 0$\;
+  $amount_{sy} > 0$\;
+  $\texttt{SY.allowance}(caller, YT) \geq amount_{sy}$\;
+}
+\BlankLine
+\tcp{Update indices before balance changes}
+$I_{global} \gets \max(I_{global}, \texttt{current\_exchange\_rate})$\;
+$\textsc{UpdateUserInterest}(receiver)$\;
+\BlankLine
+\tcp{Transfer SY from caller to YT contract}
+$\texttt{SY.balanceOf}(caller) \gets \texttt{SY.balanceOf}(caller) - amount_{sy}$\;
+$\texttt{SY.balanceOf}(YT) \gets \texttt{SY.balanceOf}(YT) + amount_{sy}$\;
+\BlankLine
+\tcp{Mint equal PT and YT to receiver}
+$\texttt{PT.balanceOf}(receiver) \gets \texttt{PT.balanceOf}(receiver) + amount_{sy}$\;
+$\texttt{PT.totalSupply} \gets \texttt{PT.totalSupply} + amount_{sy}$\;
+$\texttt{YT.balanceOf}(receiver) \gets \texttt{YT.balanceOf}(receiver) + amount_{sy}$\;
+$\texttt{YT.totalSupply} \gets \texttt{YT.totalSupply} + amount_{sy}$\;
+\BlankLine
+\textbf{emit} $\textsc{MintPY}(caller, receiver, amount_{sy}, amount_{sy})$\;
+\Return $(amount_{sy}, amount_{sy})$\;
+\BlankLine
+\textbf{Post-invariant:} $\texttt{PT.totalSupply} = \texttt{YT.totalSupply}$\;
+\BlankLine
+\Reverts{
+  $\texttt{block.timestamp} \geq expiry$: ``expired''\;
+  $amount_{sy} = 0$: ``zero amount''\;
+  $receiver = 0$: ``zero address''\;
+  allowance insufficient: ``ERC20: insufficient allowance''\;
+}
+\end{algorithm}
+
+\subsection{Interest Accrual}
+
+\begin{algorithm}[H]
+\caption{Update User Interest}
+\underline{function \textsc{UpdateUserInterest}}$(user)$\;
+\Input{$user$: address}
+\Preconditions{$I_{global}$ has been updated to current value}
+\BlankLine
+\eIf{$I_{user}[user] = 0$}{
+  $I_{user}[user] \gets I_{global}$\tcp*{First interaction}
+  \Return\;
+}{
+  $pending \gets \texttt{YT.balanceOf}(user) \times \dfrac{I_{global} - I_{user}[user]}{I_{user}[user]}$\;
+  $\texttt{interest\_owed}[user] \gets \texttt{interest\_owed}[user] + pending$\;
+  $I_{user}[user] \gets I_{global}$\;
+}
+\end{algorithm}
+
+\section{Redemption Mechanisms}
+
+\subsection{Pre-Expiry Redemption (PT + YT to SY)}
+
+\begin{algorithm}[H]
+\caption{Redeem PT and YT for SY (Pre-Expiry)}
+\underline{function \textsc{RedeemPY}}$(receiver, amount) \rightarrow sy$\;
+\Input{$receiver$: address, $amount$: u256}
+\Output{$sy$: amount of SY returned}
+\Preconditions{
+  $\texttt{block.timestamp} < expiry$\;
+  $receiver \neq 0$\;
+  $amount > 0$\;
+  $\texttt{PT.balanceOf}(caller) \geq amount$\;
+  $\texttt{YT.balanceOf}(caller) \geq amount$\;
+}
+\BlankLine
+\tcp{Update indices before balance changes}
+$I_{global} \gets \max(I_{global}, \texttt{current\_exchange\_rate})$\;
+$\textsc{UpdateUserInterest}(caller)$\;
+\BlankLine
+\tcp{Burn equal PT and YT from caller}
+$\texttt{PT.balanceOf}(caller) \gets \texttt{PT.balanceOf}(caller) - amount$\;
+$\texttt{PT.totalSupply} \gets \texttt{PT.totalSupply} - amount$\;
+$\texttt{YT.balanceOf}(caller) \gets \texttt{YT.balanceOf}(caller) - amount$\;
+$\texttt{YT.totalSupply} \gets \texttt{YT.totalSupply} - amount$\;
+\BlankLine
+\tcp{Transfer SY from YT contract to receiver}
+$\texttt{SY.balanceOf}(YT) \gets \texttt{SY.balanceOf}(YT) - amount$\;
+$\texttt{SY.balanceOf}(receiver) \gets \texttt{SY.balanceOf}(receiver) + amount$\;
+\BlankLine
+\textbf{emit} $\textsc{RedeemPY}(caller, receiver, amount)$\;
+\Return $amount$\;
+\BlankLine
+\textbf{Post-invariant:} $\texttt{PT.totalSupply} = \texttt{YT.totalSupply}$\;
+\BlankLine
+\Reverts{
+  $\texttt{block.timestamp} \geq expiry$: ``use redeem\_pt\_after\_expiry''\;
+  $amount = 0$: ``zero amount''\;
+  $receiver = 0$: ``zero address''\;
+  PT balance insufficient: ``insufficient PT''\;
+  YT balance insufficient: ``insufficient YT''\;
+}
+\end{algorithm}
+
+\subsection{Post-Expiry Redemption (PT to SY)}
+
+\begin{algorithm}[H]
+\caption{Redeem PT for SY (Post-Expiry)}
+\underline{function \textsc{RedeemPTAfterExpiry}}$(receiver, amount) \rightarrow sy$\;
+\Input{$receiver$: address, $amount$: u256}
+\Output{$sy$: amount of SY returned (guaranteed 1:1)}
+\Preconditions{
+  $\texttt{block.timestamp} \geq expiry$\;
+  $receiver \neq 0$\;
+  $amount > 0$\;
+  $\texttt{PT.balanceOf}(caller) \geq amount$\;
+}
+\BlankLine
+\tcp{No index update needed post-expiry}
+$\texttt{PT.balanceOf}(caller) \gets \texttt{PT.balanceOf}(caller) - amount$\;
+$\texttt{PT.totalSupply} \gets \texttt{PT.totalSupply} - amount$\;
+$\texttt{SY.balanceOf}(YT) \gets \texttt{SY.balanceOf}(YT) - amount$\;
+$\texttt{SY.balanceOf}(receiver) \gets \texttt{SY.balanceOf}(receiver) + amount$\;
+\BlankLine
+\textbf{emit} $\textsc{RedeemPTAfterExpiry}(caller, receiver, amount)$\;
+\Return $amount$\;
+\BlankLine
+\Reverts{
+  $\texttt{block.timestamp} < expiry$: ``not expired''\;
+  $amount = 0$: ``zero amount''\;
+  $receiver = 0$: ``zero address''\;
+  PT balance insufficient: ``insufficient PT''\;
+}
+\end{algorithm}
+
+\subsection{YT Interest Claim}
+
+\begin{algorithm}[H]
+\caption{Claim YT Interest}
+\underline{function \textsc{ClaimInterest}}$(receiver) \rightarrow interest$\;
+\Input{$receiver$: address}
+\Output{$interest$: amount of SY claimed}
+\Preconditions{$receiver \neq 0$}
+\BlankLine
+$I_{global} \gets \max(I_{global}, \texttt{current\_exchange\_rate})$\;
+$\textsc{UpdateUserInterest}(caller)$\;
+\BlankLine
+$interest \gets \texttt{interest\_owed}[caller]$\;
+$\texttt{interest\_owed}[caller] \gets 0$\;
+\BlankLine
+$\texttt{SY.balanceOf}(YT) \gets \texttt{SY.balanceOf}(YT) - interest$\;
+$\texttt{SY.balanceOf}(receiver) \gets \texttt{SY.balanceOf}(receiver) + interest$\;
+\BlankLine
+\textbf{emit} $\textsc{ClaimInterest}(caller, receiver, interest)$\;
+\Return $interest$\;
+\BlankLine
+\Reverts{
+  $receiver = 0$: ``zero address''\;
+  $\texttt{SY.balanceOf}(YT) < interest$: ``insufficient SY reserves''\;
+}
+\end{algorithm}
+
+\section{AMM Mechanism}
+
+The Market contract implements a logit-based AMM for PT/SY trading with time-decay characteristics that ensure PT price converges to 1 at maturity.
+
+\subsection{Implied Rate Storage}
+
+The market stores the last implied rate to maintain price continuity across trades.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\textbf{Variable} & \textbf{Type} & \textbf{Units} & \textbf{Description} \\
+\midrule
+$r_{last}$ & u256 & WAD-scaled & Natural log of implied annualized rate \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Update formula.} After each trade, the implied rate is recalculated from the new pool state:
+\[
+r_{new} = \ln(\text{exchangeRate}) \times \frac{Y}{\tau}
+\]
+where $Y = 31{,}536{,}000$ (seconds per year) and $\tau$ is time to expiry in seconds. The value is clamped to $[0, r_{max}]$ where $r_{max} = 4.6 \times 10^{18}$.
+
+\subsection{Precompute Values}
+
+\begin{algorithm}[H]
+\caption{Precompute Market Values}
+\underline{function \textsc{Precompute}}$(state, t_{now}) \rightarrow pre$\;
+\Input{$state$: MarketState, $t_{now}$: u64 (current timestamp)}
+\Output{$pre$: MarketPrecompute struct}
+\Preconditions{$t_{now} < state.expiry$}
+\BlankLine
+$\tau \gets state.expiry - t_{now}$\;
+$r_{scalar} \gets \dfrac{state.scalar\_root \times Y}{\tau}$\;
+$p \gets \dfrac{state.S_{PT}}{state.S_{PT} + state.S_{SY}}$\;
+\BlankLine
+$\text{exchangeRate}_{target} \gets \exp\left(\dfrac{r_{last} \times \tau}{Y}\right)$\;
+$r_{anchor} \gets \text{exchangeRate}_{target} - \dfrac{\operatorname{logit}(p)}{r_{scalar}}$\;
+\BlankLine
+$\phi_{adjusted} \gets \exp\left(\dfrac{\ln(\phi_{root}) \times \tau}{Y}\right)$\;
+\BlankLine
+\Return $\{r_{scalar}, r_{anchor}, \phi_{adjusted}, \tau\}$\;
+\BlankLine
+\Reverts{
+  $\tau = 0$: ``expired''\;
+  $p \notin [p_{min}, p_{max}]$: ``invalid state''\;
+}
+\end{algorithm}
+
+\subsection{Price Calculation}
+
+The exchange rate depends on the current pool proportion:
+\[
+\text{exchangeRate} = \frac{\operatorname{logit}(p)}{r_{scalar}} + r_{anchor}
+\]
+where $p = \frac{S_{PT}}{S_{PT} + S_{SY}}$ is the proportion of PT in the pool.
+
+As expiry approaches, $r_{scalar} \to \infty$, which flattens the curve and forces the exchange rate toward 1.
+
+\section{Swap Mechanics}
+
+All swap functions reject trades that would violate proportion bounds or occur after expiry.
+
+\subsection{Swap Exact PT for SY}
+
+\begin{algorithm}[H]
+\caption{Swap Exact PT for SY}
+\underline{function \textsc{SwapExactPTForSY}}$(receiver, pt_{in}, sy_{min}) \rightarrow sy_{out}$\;
+\Input{$receiver$: address, $pt_{in}$: u256, $sy_{min}$: u256 (slippage bound)}
+\Output{$sy_{out}$: amount of SY received}
+\Preconditions{
+  $\texttt{block.timestamp} < expiry$\;
+  $receiver \neq 0$\;
+  $pt_{in} > 0$\;
+  $\texttt{PT.allowance}(caller, Market) \geq pt_{in}$\;
+}
+\BlankLine
+$pre \gets \textsc{Precompute}(state, \texttt{block.timestamp})$\;
+\BlankLine
+\tcp{Calculate new proportion after adding PT}
+$S'_{PT} \gets state.S_{PT} + pt_{in}$\;
+$p' \gets \dfrac{S'_{PT}}{S'_{PT} + state.S_{SY}}$\;
+\lIf{$p' > p_{max}$}{\Revert ``proportion bounds exceeded''}
+\BlankLine
+\tcp{Calculate exchange rate and output}
+$\text{exchangeRate} \gets \dfrac{\operatorname{logit}(p')}{pre.r_{scalar}} + pre.r_{anchor}$\;
+\lIf{$\text{exchangeRate} \leq 0$}{\Revert ``invalid exchange rate''}
+\BlankLine
+$sy_{gross} \gets \dfrac{pt_{in} \times \text{exchangeRate}}{W}$\;
+$fee \gets \dfrac{sy_{gross} \times (W - pre.\phi_{adjusted})}{W}$\;
+$sy_{out} \gets sy_{gross} - fee$\;
+\BlankLine
+\lIf{$sy_{out} < sy_{min}$}{\Revert ``slippage exceeded''}
+\lIf{$state.S_{SY} < sy_{out}$}{\Revert ``insufficient reserves''}
+\BlankLine
+\tcp{State changes}
+$state.S_{PT} \gets state.S_{PT} + pt_{in}$\;
+$state.S_{SY} \gets state.S_{SY} - sy_{out}$\;
+$r_{last} \gets \text{clamp}\left(\ln(\text{exchangeRate}) \times \dfrac{Y}{\tau}, 0, r_{max}\right)$\;
+\BlankLine
+\tcp{Token transfers}
+$\texttt{PT.transferFrom}(caller, Market, pt_{in})$\;
+$\texttt{SY.transfer}(receiver, sy_{out})$\;
+\BlankLine
+\textbf{emit} $\textsc{Swap}(caller, receiver, pt_{in}, sy_{out})$\;
+\Return $sy_{out}$\;
+\end{algorithm}
+
+\subsection{Swap Exact SY for PT}
+
+\begin{algorithm}[H]
+\caption{Swap Exact SY for PT}
+\underline{function \textsc{SwapExactSYForPT}}$(receiver, sy_{in}, pt_{min}) \rightarrow pt_{out}$\;
+\Input{$receiver$: address, $sy_{in}$: u256, $pt_{min}$: u256 (slippage bound)}
+\Output{$pt_{out}$: amount of PT received}
+\Preconditions{
+  $\texttt{block.timestamp} < expiry$\;
+  $receiver \neq 0$\;
+  $sy_{in} > 0$\;
+  $\texttt{SY.allowance}(caller, Market) \geq sy_{in}$\;
+}
+\BlankLine
+$pre \gets \textsc{Precompute}(state, \texttt{block.timestamp})$\;
+\BlankLine
+\tcp{Apply fee to input}
+$fee \gets \dfrac{sy_{in} \times (W - pre.\phi_{adjusted})}{W}$\;
+$sy_{net} \gets sy_{in} - fee$\;
+$S'_{SY} \gets state.S_{SY} + sy_{net}$\;
+\BlankLine
+\tcp{Solve for $pt_{out}$ via bisection}
+$lo \gets 0$\;
+$hi \gets state.S_{PT} - L_{min}$\;
+\For{$i \gets 1$ \KwTo $64$}{
+  $mid \gets (lo + hi) / 2$\;
+  $p' \gets \dfrac{state.S_{PT} - mid}{state.S_{PT} - mid + S'_{SY}}$\;
+  $\text{rate} \gets \dfrac{\operatorname{logit}(p')}{pre.r_{scalar}} + pre.r_{anchor}$\;
+  $\text{implied} \gets \dfrac{sy_{net} \times W}{\text{rate}}$\;
+  \eIf{$\text{implied} > mid$}{$lo \gets mid$}{$hi \gets mid$}
+  \lIf{$|hi - lo| \leq 1$}{\textbf{break}}
+}
+$pt_{out} \gets lo$\;
+\BlankLine
+$p' \gets \dfrac{state.S_{PT} - pt_{out}}{state.S_{PT} - pt_{out} + S'_{SY}}$\;
+\lIf{$p' < p_{min}$}{\Revert ``proportion bounds exceeded''}
+\lIf{$pt_{out} < pt_{min}$}{\Revert ``slippage exceeded''}
+\BlankLine
+\tcp{State changes and transfers}
+$state.S_{SY} \gets state.S_{SY} + sy_{net}$\;
+$state.S_{PT} \gets state.S_{PT} - pt_{out}$\;
+Update $r_{last}$ as in \textsc{SwapExactPTForSY}\;
+\BlankLine
+$\texttt{SY.transferFrom}(caller, Market, sy_{in})$\;
+$\texttt{PT.transfer}(receiver, pt_{out})$\;
+\BlankLine
+\textbf{emit} $\textsc{Swap}(caller, receiver, sy_{in}, pt_{out})$\;
+\Return $pt_{out}$\;
+\end{algorithm}
+
+\paragraph{Bisection rationale.} The SY-to-PT direction requires solving for $pt_{out}$ implicitly because the exchange rate depends on the post-trade proportion. Bisection is monotonic, bounded, and guaranteed to converge within 64 iterations for WAD-scaled values.
+
+\subsection{Inverse Swaps}
+
+\begin{algorithm}[H]
+\caption{Swap SY for Exact PT}
+\underline{function \textsc{SwapSYForExactPT}}$(receiver, pt_{out}, sy_{max}) \rightarrow sy_{spent}$\;
+Inverse of \textsc{SwapExactSYForPT}: given $pt_{out}$, solve for $sy_{in}$.\;
+\Reverts{$sy_{spent} > sy_{max}$: ``slippage exceeded''}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Swap PT for Exact SY}
+\underline{function \textsc{SwapPTForExactSY}}$(receiver, sy_{out}, pt_{max}) \rightarrow pt_{spent}$\;
+Inverse of \textsc{SwapExactPTForSY}: given $sy_{out}$, solve for $pt_{in}$.\;
+\Reverts{$pt_{spent} > pt_{max}$: ``slippage exceeded''}
+\end{algorithm}
+
+\section{Liquidity Provision}
+
+\subsection{Add Liquidity (Mint LP)}
+
+\begin{algorithm}[H]
+\caption{Add Liquidity}
+\underline{function \textsc{Mint}}$(receiver, sy_{desired}, pt_{desired}) \rightarrow (sy, pt, lp)$\;
+\Input{$receiver$: address, $sy_{desired}$: u256, $pt_{desired}$: u256}
+\Output{$(sy, pt, lp)$: amounts used and LP tokens minted}
+\Preconditions{
+  $\texttt{block.timestamp} < expiry$\;
+  $receiver \neq 0$\;
+  $sy_{desired} > 0 \land pt_{desired} > 0$\;
+}
+\BlankLine
+\eIf{$L_{total} = 0$}{
+  \tcp{Initial liquidity}
+  $lp \gets \sqrt{sy_{desired} \times pt_{desired}} - L_{min}$\;
+  $sy \gets sy_{desired}$\;
+  $pt \gets pt_{desired}$\;
+  \tcp{Lock minimum to dead address}
+  $\textsc{MintLP}(\texttt{DEAD\_ADDRESS}, L_{min})$\;
+}{
+  \tcp{Proportional liquidity}
+  $r_{sy} \gets \dfrac{sy_{desired} \times W}{S_{SY}}$\;
+  $r_{pt} \gets \dfrac{pt_{desired} \times W}{S_{PT}}$\;
+  $r \gets \min(r_{sy}, r_{pt})$\;
+  \BlankLine
+  $sy \gets \dfrac{r \times S_{SY}}{W}$\;
+  $pt \gets \dfrac{r \times S_{PT}}{W}$\;
+  $lp \gets \dfrac{r \times L_{total}}{W}$\;
+}
+\BlankLine
+\tcp{Verify proportion bounds after adding}
+$p' \gets \dfrac{S_{PT} + pt}{S_{PT} + pt + S_{SY} + sy}$\;
+\lIf{$p' \notin [p_{min}, p_{max}]$}{\Revert ``proportion bounds''}
+\BlankLine
+$S_{SY} \gets S_{SY} + sy$\;
+$S_{PT} \gets S_{PT} + pt$\;
+$L_{total} \gets L_{total} + lp$\;
+\BlankLine
+\textbf{emit} $\textsc{Mint}(caller, receiver, sy, pt, lp)$\;
+\Return $(sy, pt, lp)$\;
+\BlankLine
+\Reverts{
+  expired, zero address, zero amounts, $lp = 0$, proportion bounds\;
+}
+\end{algorithm}
+
+\paragraph{Constants.}
+$L_{min} = 1000$ (locked to dead address on first mint). $\texttt{DEAD\_ADDRESS} = \texttt{0x...001}$.
+
+\subsection{Remove Liquidity (Burn LP)}
+
+\begin{algorithm}[H]
+\caption{Remove Liquidity}
+\underline{function \textsc{Burn}}$(receiver, lp) \rightarrow (sy_{out}, pt_{out})$\;
+\Input{$receiver$: address, $lp$: u256}
+\Output{$(sy_{out}, pt_{out})$: amounts received}
+\Preconditions{
+  $receiver \neq 0$\;
+  $lp > 0$\;
+  $\texttt{LP.balanceOf}(caller) \geq lp$\;
+  $L_{total} - lp \geq L_{min}$\;
+}
+\BlankLine
+$r \gets \dfrac{lp \times W}{L_{total}}$\;
+$sy_{out} \gets \dfrac{r \times S_{SY}}{W}$\;
+$pt_{out} \gets \dfrac{r \times S_{PT}}{W}$\;
+\BlankLine
+$L_{total} \gets L_{total} - lp$\;
+$S_{SY} \gets S_{SY} - sy_{out}$\;
+$S_{PT} \gets S_{PT} - pt_{out}$\;
+\BlankLine
+$\texttt{LP.burn}(caller, lp)$\;
+$\texttt{SY.transfer}(receiver, sy_{out})$\;
+$\texttt{PT.transfer}(receiver, pt_{out})$\;
+\BlankLine
+\textbf{emit} $\textsc{Burn}(caller, receiver, sy_{out}, pt_{out}, lp)$\;
+\Return $(sy_{out}, pt_{out})$\;
+\BlankLine
+\textbf{Note:} Burning is allowed after expiry. LPs can always exit.\;
+\end{algorithm}
+
+\section{Key Invariants}
+
+The protocol maintains two categories of invariants: safety invariants enforced by code, and economic invariants maintained by market incentives.
+
+\subsection{Safety Invariants (Enforced by Code)}
+
+These invariants are checked programmatically and violations cause transaction reversion.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l}
+\toprule
+\textbf{Invariant} & \textbf{Expression} & \textbf{Enforcement} \\
+\midrule
+Supply equality & $\text{PT.totalSupply} = \text{YT.totalSupply}$ & Atomic mint/burn in YT contract \\
+Index watermark & $I_{global}^{t+1} \geq I_{global}^{t}$ & $\max()$ in update function \\
+Reserve positivity & $S_{SY} > 0 \land S_{PT} > 0$ & $L_{min}$ lock \\
+Proportion bounds & $p_{min} \leq p \leq p_{max}$ & Trade rejection \\
+Rate bounds & $0 \leq r \leq r_{max}$ & Clamping before storage \\
+PT/YT mint authority & Only YT contract mints/burns & Access control check \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Economic Invariants (Maintained by Arbitrage)}
+
+These invariants are expected to hold due to economic incentives but are not enforced on-chain.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l}
+\toprule
+\textbf{Invariant} & \textbf{Expression} & \textbf{Mechanism} \\
+\midrule
+Conservation & $P_{PT} + P_{YT} \approx 1$ (in SY terms) & Arbitrage between mint/redeem and market \\
+PT price convergence & $P_{PT} \to 1$ as $\tau \to 0$ & AMM curve design + arbitrage \\
+Implied rate consistency & Market rate $\approx$ fair rate & Arbitrage against external markets \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Violation consequences.}
+\begin{itemize}
+\item Supply equality violation: Accounting mismatch; claims exceed or fall short of reserves.
+\item Conservation deviation: Temporary mispricing; corrected by arbitrage.
+\item Index watermark violation: Loss of accrued yield for YT holders.
+\end{itemize}
+
+\section{Failure Modes and Recovery}
+
+Each failure mode is documented with detection mechanism, on-chain mitigation, and residual risk.
+
+\subsection{Oracle Failure}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Aspect} & \textbf{Description} \\
+\midrule
+Detection & Oracle returns stale data (age $>$ MAX\_ORACLE\_AGE, default 1 hour) \\
+On-chain response & Watermark index used; new yield not distributed until recovery \\
+Trigger & Permissionless (watermark logic is automatic) \\
+Residual risk & Yield generated during outage may not accrue to YT holders \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Underlying Depeg}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Scenario} & \textbf{Behavior} \\
+\midrule
+Temporary depeg & Index stays at watermark; no new yield distributed. Auto-recovery when rate exceeds watermark. \\
+Permanent depeg & YT stops accruing yield indefinitely. PT redemption unaffected if SY remains solvent. \\
+Complete failure & SY loses value. Users should exit via redemption. No protocol-level recovery. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Pool Imbalance}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Aspect} & \textbf{Description} \\
+\midrule
+Detection & Proportion approaches $p_{min}$ or $p_{max}$ \\
+On-chain response & Trades that exceed bounds are rejected \\
+Self-correction & Extreme proportions create large arbitrage opportunities \\
+Residual risk & Temporarily reduced liquidity in one direction \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Flash Loan Attacks}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Attack Vector} & \textbf{Mitigation} \\
+\midrule
+Price manipulation & Logit curve provides increasing resistance at proportion extremes \\
+Sandwich attacks & User-specified slippage protection ($sy_{min}$ / $pt_{max}$) \\
+Oracle manipulation & Pragma TWAP with configurable window (default: 5 minutes) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Expired Market Operations}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Operation} & \textbf{Before Expiry} & \textbf{After Expiry} \\
+\midrule
+Swap & Allowed & Rejected \\
+Mint LP & Allowed & Rejected \\
+Burn LP & Allowed & Allowed \\
+Redeem PT + YT & Allowed & Use \textsc{RedeemPTAfterExpiry} \\
+Redeem PT only & Rejected & Allowed (1:1) \\
+Claim Interest & Allowed & Allowed \\
+\bottomrule
+\end{tabular}
+\end{center}
+

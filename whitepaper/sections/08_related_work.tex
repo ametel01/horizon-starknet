@@ -1,0 +1,186 @@
+
+This section positions Horizon relative to existing yield and fixed-rate protocols. The comparison focuses on mechanism design, capital efficiency, precision guarantees, and execution environment rather than superficial feature parity.
+
+
+\section{Pendle Finance (Design Lineage)}
+
+Horizon intentionally adopts Pendle's logit-based AMM and PT/YT conservation model. This is a deliberate design choice: Pendle's mechanics have been battle-tested across multiple market cycles, exhibit well-understood convergence behavior, and create predictable incentives for LPs and arbitrageurs. By preserving design parity, Horizon minimizes economic novelty risk while innovating at the execution and infrastructure layer.
+
+\subsection{Design Parity}
+
+The following elements are intentionally equivalent:
+
+\begin{itemize}
+\item \textbf{Logit-based exchange rate:} $\text{rate} = \frac{\ln(p/(1-p))}{r_{scalar}} + r_{anchor}$
+\item \textbf{Time-decaying rate scalar:} Sensitivity increases as expiry approaches.
+\item \textbf{Conservation invariant:} $\text{PT} + \text{YT} = \text{SY}$ at all times.
+\item \textbf{Exponential fee decay:} Fees decrease toward expiry to encourage late-market trading.
+\item \textbf{Yield accounting:} Global index tracks cumulative yield; user snapshots determine claimable interest.
+\end{itemize}
+
+\paragraph{Rationale.}
+Economic equivalence means Horizon inherits Pendle's proven market dynamics: arbitrage bounds implied rates, LPs face predictable IL profiles, and users can reason about positions using existing Pendle mental models. This reduces adoption friction and audit scope.
+
+\subsection{Execution Divergence}
+
+The following elements differ due to execution environment:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Aspect} & \textbf{Pendle (EVM)} & \textbf{Horizon (Starknet)} \\
+\midrule
+Math library & LogExpMath (Solidity) & cairo-fp 64.64 fixed-point \\
+Precision & $\sim$18 decimal digits & $\sim$19 decimal digits (wider intermediates) \\
+Overflow model & Manual checks; revert on overflow & Cairo bounds checking; felt252 range \\
+Oracle integration & Chainlink + internal rate tracking & Pragma TWAP with configurable staleness \\
+Upgrade model & Transparent proxy (EIP-1967) & Class hash replacement (native Starknet) \\
+Gas cost per swap & High (L1) / Medium (L2) & Low (validity rollup) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Precision advantage.}
+The logit function $\ln(p/(1-p))$ requires high-precision transcendental math. Solidity implementations use lookup tables and approximations; Cairo's 64.64 fixed-point library computes $\ln$ and $\exp$ with lower approximation error, reducing pricing drift at extreme proportions.
+
+
+\section{Element Finance (Historical Precedent)}
+
+Element Finance pioneered on-chain yield tokenization, demonstrating market demand for PT/YT separation. The protocol operated from 2021--2023 before discontinuing active development.
+
+\subsection{Element's Contribution}
+
+Element validated the core thesis: users want to trade yield separately from principal. The protocol successfully tokenized positions from Yearn vaults, Compound, and Aave, proving that yield tokenization is economically viable.
+
+\subsection{YieldSpace Limitations}
+
+Element used the YieldSpace AMM, a constant-power curve designed for yield trading:
+
+\[
+x^{1-t} + y^{1-t} = k
+\]
+
+where $t$ represents time to maturity. This curve has known limitations:
+
+\begin{itemize}
+\item \textbf{Liquidity fragmentation:} Each expiry requires a separate pool; liquidity cannot be shared.
+\item \textbf{Capital inefficiency near maturity:} As $t \to 0$, the curve flattens but does not guarantee $P_{PT} \to 1$.
+\item \textbf{Unpredictable convergence:} Final PT price depends on pool composition, not mathematical constraint.
+\end{itemize}
+
+\paragraph{Lesson applied.}
+Horizon's logit-based curve directly addresses these limitations. The rate scalar $r_{scalar} \to \infty$ as $t \to 0$ mathematically forces $P_{PT} \to 1$, eliminating convergence uncertainty. LPs near expiry face minimal IL because PT price becomes insensitive to trading.
+
+
+\section{Fixed-Rate Lending Protocols}
+
+Several protocols offer fixed-rate exposure through lending markets rather than yield tokenization. The mechanisms differ fundamentally.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Protocol} & \textbf{Mechanism} & \textbf{Risk Type} \\
+\midrule
+Notional Finance & Fixed-rate lending via borrow/lend matching & Counterparty risk (borrower default) \\
+Yield Protocol & Zero-coupon tokens (fyTokens) via secondary trading & Counterparty risk (undercollateralization) \\
+Aave (stable rate) & Variable-to-stable conversion via protocol reserve & Protocol solvency risk \\
+\midrule
+Horizon & Yield tokenization of existing yield-bearing assets & Underlying asset risk only \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{Key Economic Distinction}
+
+Horizon does not create yield through leverage or rehypothecation. All returns derive from existing yield-bearing assets (e.g., staked ETH, lending deposits). This eliminates:
+\begin{itemize}
+\item Borrower default risk (no borrowers exist)
+\item Liquidation cascade risk (no collateral to liquidate)
+\item Utilization-dependent rate volatility (yield comes from underlying, not borrow demand)
+\end{itemize}
+PT holders receive exactly 1 SY at expiry regardless of market conditions---the only risk is impairment of the underlying asset itself.
+}}
+\end{center}
+
+\paragraph{Liquidity risk comparison.}
+In lending protocols, liquidity depends on borrow demand and utilization ratios. In yield tokenization, liquidity depends on AMM depth. Both create execution risk, but the risk sources are independent: lending liquidity crises (high utilization) do not affect Horizon markets, and vice versa.
+
+
+\section{Starknet Execution Environment}
+
+Horizon's design requires specific execution environment properties. This section distinguishes between properties critical to the protocol's mechanics and incidental benefits.
+
+\subsection{Protocol-Critical Properties}
+
+The following Starknet characteristics are necessary for Horizon's design:
+
+\begin{description}
+\item[High-precision transcendental math.] The logit function requires $\ln$ and $\exp$ with low approximation error. Cairo's 64.64 fixed-point library provides sufficient precision; EVM alternatives require lookup tables or iterative approximations that accumulate error.
+
+\item[Low-cost arbitrage.] Implied rate accuracy depends on arbitrageurs correcting mispricing. If arbitrage is unprofitable due to gas costs, rates diverge from fair value. Starknet's low transaction costs keep arbitrage profitable even for small deviations.
+
+\item[Affordable oracle updates.] Yield accounting requires frequent index updates. On Ethereum L1, updating yield indices on every relevant transaction would be prohibitively expensive. Starknet's cost structure makes per-transaction oracle reads economically viable.
+
+\item[Native STARK verification.] Starknet's validity proofs ensure transaction correctness without trust assumptions beyond cryptographic soundness. This complements the protocol's trust model.
+\end{description}
+
+\subsection{Incidental Benefits}
+
+The following properties improve user experience but are not strictly necessary:
+
+\begin{itemize}
+\item \textbf{Fast perceived finality:} L2 confirmation in seconds improves UX for active traders.
+\item \textbf{Lower barrier to entry:} Reduced gas costs make small positions economically viable.
+\item \textbf{Growing DeFi ecosystem:} Availability of yield-bearing assets (nstSTRK, sSTRK, wstETH) provides initial markets.
+\end{itemize}
+
+\paragraph{Alternative environments.}
+Other validity rollups (e.g., zkSync, Polygon zkEVM) could theoretically support similar designs. Starknet was chosen for its mature Cairo tooling, native fixed-point libraries, and Pragma oracle integration. The protocol's design is not fundamentally Starknet-exclusive, but porting would require reimplementing the math libraries.
+
+
+\section{Design References and Prior Work}
+
+The following works inform Horizon's design:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Reference} & \textbf{Year} & \textbf{Design Contribution} \\
+\midrule
+Pendle Litepaper & 2022 & Logit-based AMM curve; PT/YT conservation model \\
+YieldSpace (Yield Protocol) & 2021 & Constant-power curves for yield trading; time-decay mechanics \\
+Uniswap v2 Whitepaper & 2020 & Constant product AMM; LP share accounting \\
+Curve StableSwap & 2019 & Low-slippage trading for pegged assets; concentrated liquidity \\
+Balancer Whitepaper & 2020 & Weighted pools; generalized invariant surfaces \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Design lineage.}
+Horizon's AMM inherits from Curve's insight that asset-specific invariants outperform general-purpose curves, combined with Pendle's application of this principle to yield markets. The time-decay mechanism originates from YieldSpace but is implemented via the logit transformation rather than constant-power exponents.
+
+
+\section{Positioning Summary}
+
+Horizon occupies a specific position in the yield protocol landscape:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Comparison} & \textbf{Horizon's Position} \\
+\midrule
+vs Pendle & Equivalent economics; different execution environment (Starknet vs EVM) \\
+vs Element & Same tokenization model; superior AMM (logit vs constant-power) \\
+vs Fixed-rate lending & Fully asset-backed; no counterparty risk; no leverage \\
+vs Generic AMMs & Purpose-built for yield; deterministic expiry convergence \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Value proposition.}
+Horizon combines Pendle's proven yield tokenization mechanics with Starknet's execution environment to achieve higher arithmetic precision, lower trading friction, and native oracle integration. Compared to fixed-rate lending, Horizon is fully asset-backed and non-leveraged. Compared to earlier yield AMMs, it provides deterministic price convergence and improved capital efficiency near expiry.
+
+The protocol does not claim novel economic mechanisms. Its contribution is bringing battle-tested yield tokenization to a new execution environment with properties---low-cost arbitrage, high-precision math, affordable oracle updates---that enhance the existing design rather than replace it.
+
