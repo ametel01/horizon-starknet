@@ -7,11 +7,18 @@ pub mod YT {
     use core::num::traits::Zero;
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-    use horizon::interfaces::i_yt::IYT;
+    use horizon::interfaces::i_yt::{IYT, IYTAdmin};
     use horizon::libraries::errors::Errors;
-    use horizon::libraries::math::{wad_div, wad_mul};
+    use horizon::libraries::math_fp::{wad_div, wad_mul};
+    use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use horizon::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
@@ -23,13 +30,40 @@ pub mod YT {
     };
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
+    component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+    impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
 
     #[storage]
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        pausable: PausableComponent::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // The SY token this YT is derived from
         sy: ContractAddress,
         // The corresponding PT contract
@@ -49,6 +83,16 @@ pub mod YT {
     pub enum Event {
         #[flat]
         ERC20Event: ERC20Component::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        PausableEvent: PausableComponent::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         MintPY: MintPY,
         RedeemPY: RedeemPY,
         RedeemPYPostExpiry: RedeemPYPostExpiry,
@@ -100,9 +144,18 @@ pub mod YT {
         sy: ContractAddress,
         pt_class_hash: ClassHash,
         expiry: u64,
+        pauser: ContractAddress,
     ) {
         // Initialize ERC20 for YT
         self.erc20.initializer(name.clone(), symbol.clone());
+
+        // Initialize AccessControl and grant roles to pauser
+        self.access_control.initializer();
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, pauser);
+        self.access_control._grant_role(PAUSER_ROLE, pauser);
+
+        // Initialize ownable for upgrade control
+        self.ownable.initializer(pauser);
 
         // Validate inputs
         assert(!sy.is_zero(), Errors::ZERO_ADDRESS);
@@ -116,21 +169,28 @@ pub mod YT {
         let initial_index = sy_dispatcher.exchange_rate();
         self.py_index_stored.write(initial_index);
 
+        // Get SY symbol for derived PT naming
+        let sy_symbol = sy_dispatcher.symbol();
+
+        // Construct PT name and symbol from SY symbol (e.g., "PT-stETH")
+        let mut pt_name: ByteArray = "PT-";
+        pt_name.append(@sy_symbol);
+        let mut pt_symbol: ByteArray = "PT-";
+        pt_symbol.append(@sy_symbol);
+
         // Deploy PT contract
-        // PT constructor args: name, symbol, sy, expiry
+        // PT constructor args: name, symbol, sy, expiry, pauser
         let mut pt_calldata: Array<felt252> = array![];
-        // Serialize ByteArray for PT name (e.g., "PT-TokenName")
-        pt_calldata.append(0); // data array length
-        pt_calldata.append('PT Token'); // pending_word (simplified)
-        pt_calldata.append(8); // pending_word_len
-        // Serialize ByteArray for PT symbol
-        pt_calldata.append(0);
-        pt_calldata.append('PT');
-        pt_calldata.append(2);
+        // Serialize PT name (ByteArray)
+        Serde::serialize(@pt_name, ref pt_calldata);
+        // Serialize PT symbol (ByteArray)
+        Serde::serialize(@pt_symbol, ref pt_calldata);
         // SY address
         pt_calldata.append(sy.into());
         // Expiry
         pt_calldata.append(expiry.into());
+        // Pauser address
+        pt_calldata.append(pauser.into());
 
         let (pt_address, _) = deploy_syscall(pt_class_hash, 0, pt_calldata.span(), false)
             .unwrap_syscall();
@@ -224,6 +284,8 @@ pub mod YT {
         fn mint_py(
             ref self: ContractState, receiver: ContractAddress, amount_sy_to_mint: u256,
         ) -> (u256, u256) {
+            // Check not paused - mint operations can be paused in emergency
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::YT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_mint > 0, Errors::ZERO_AMOUNT);
@@ -404,13 +466,37 @@ pub mod YT {
 
             // Calculate new interest since last update
             // interest = yt_balance * (current_index - user_index) / user_index
+            // Reordered to maximize precision: (yt_balance * index_diff) / user_index
             if current_index > user_index {
                 let index_diff = current_index - user_index;
-                let new_interest = wad_mul(yt_balance, wad_div(index_diff, user_index));
+                let new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index);
                 accrued + new_interest
             } else {
                 accrued
             }
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl YTAdminImpl of IYTAdmin<ContractState> {
+        fn pause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.pause();
+        }
+
+        fn unpause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.unpause();
+        }
+    }
+
+    // Upgradeable implementation
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        /// Upgrade the contract to a new implementation (owner only)
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 
@@ -441,8 +527,9 @@ pub mod YT {
             // If user has a previous index and YT balance, calculate interest
             if user_index > 0 && yt_balance > 0 && current_index > user_index {
                 // interest = yt_balance * (current_index - user_index) / user_index
+                // Reordered to maximize precision: (yt_balance * index_diff) / user_index
                 let index_diff = current_index - user_index;
-                let new_interest = wad_mul(yt_balance, wad_div(index_diff, user_index));
+                let new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index);
 
                 let accrued = self.user_interest.read(user);
                 self.user_interest.write(user, accrued + new_interest);

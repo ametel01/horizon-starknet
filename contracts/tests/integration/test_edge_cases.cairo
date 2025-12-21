@@ -98,6 +98,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -112,6 +113,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(sy.into());
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -132,6 +134,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -189,7 +192,7 @@ fn setup_user_with_tokens(
 // ============ Zero Amount Tests ============
 
 #[test]
-#[should_panic(expected: 'SY: zero deposit')]
+#[should_panic(expected: 'HZN: zero deposit')]
 fn test_zero_sy_deposit() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -202,7 +205,7 @@ fn test_zero_sy_deposit() {
 }
 
 #[test]
-#[should_panic(expected: 'SY: zero redeem')]
+#[should_panic(expected: 'HZN: zero redeem')]
 fn test_zero_sy_redeem() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -225,7 +228,7 @@ fn test_zero_sy_redeem() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_zero_py_mint() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -240,7 +243,7 @@ fn test_zero_py_mint() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_zero_py_redeem() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -255,7 +258,7 @@ fn test_zero_py_redeem() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_zero_market_mint() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);

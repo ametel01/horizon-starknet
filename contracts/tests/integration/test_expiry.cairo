@@ -6,6 +6,8 @@ use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
+/// Default deadline for router operations (far future - effectively no deadline)
+const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
 /// Integration Tests: Expiry Behavior
 /// Tests behavior around and after expiry timestamp.
 ///
@@ -90,6 +92,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -104,6 +107,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(sy.into());
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -124,6 +128,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -311,7 +316,7 @@ fn test_exactly_at_expiry_timestamp() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: expired')]
+#[should_panic(expected: 'HZN: expired')]
 fn test_cannot_mint_after_expiry() {
     // Setup
     let start_time: u64 = 1000;
@@ -344,7 +349,7 @@ fn test_cannot_mint_after_expiry() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: not expired')]
+#[should_panic(expected: 'HZN: not expired')]
 fn test_cannot_redeem_post_expiry_before_expiry() {
     // Setup
     let start_time: u64 = 1000;
@@ -427,7 +432,7 @@ fn test_market_expired_behavior() {
 }
 
 #[test]
-#[should_panic(expected: 'Market: expired')]
+#[should_panic(expected: 'HZN: market expired')]
 fn test_market_no_swaps_after_expiry() {
     // Setup
     let start_time: u64 = 1000;
@@ -498,7 +503,8 @@ fn test_router_post_expiry_redemption() {
     let sy_before = sy.balance_of(alice());
 
     start_cheat_caller_address(router.contract_address, alice());
-    let sy_out = router.redeem_pt_post_expiry(yt.contract_address, alice(), pt_balance, 0);
+    let sy_out = router
+        .redeem_pt_post_expiry(yt.contract_address, alice(), pt_balance, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_out > 0, 'Router redeemed PT');

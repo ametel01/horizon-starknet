@@ -9,6 +9,8 @@ use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
+/// Default deadline for router operations (far future - effectively no deadline)
+const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
 /// Integration Tests: Market Trading Flow
 /// Tests complete market operations including liquidity and trading.
 ///
@@ -93,6 +95,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -107,6 +110,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(sy.into());
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -128,6 +132,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -468,7 +473,8 @@ fn test_router_market_operations() {
     let bob_pt_before = pt.balance_of(bob());
 
     start_cheat_caller_address(router.contract_address, bob());
-    let pt_bought = router.buy_pt_from_sy(market.contract_address, bob(), trade_amount, 0);
+    let pt_bought = router
+        .buy_pt_from_sy(market.contract_address, bob(), trade_amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(pt_bought > 0, 'Router bought PT');
@@ -482,7 +488,8 @@ fn test_router_market_operations() {
     let bob_sy_before = sy.balance_of(bob());
 
     start_cheat_caller_address(router.contract_address, bob());
-    let sy_received = router.sell_pt_for_sy(market.contract_address, bob(), pt_bought, 0);
+    let sy_received = router
+        .sell_pt_for_sy(market.contract_address, bob(), pt_bought, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_received > 0, 'Router sold PT');

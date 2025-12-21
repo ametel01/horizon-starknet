@@ -25,3 +25,13 @@ pub trait ISY<TContractState> {
     fn exchange_rate(self: @TContractState) -> u256;
     fn underlying_asset(self: @TContractState) -> ContractAddress;
 }
+
+/// Admin interface for SY pausability
+#[starknet::interface]
+pub trait ISYAdmin<TContractState> {
+    /// Pause all SY operations (PAUSER_ROLE only)
+    fn pause(ref self: TContractState);
+
+    /// Unpause all SY operations (PAUSER_ROLE only)
+    fn unpause(ref self: TContractState);
+}

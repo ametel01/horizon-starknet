@@ -1,0 +1,152 @@
+import { DocsNavigation } from '@/components/docs/DocsNavigation';
+import { Callout } from '@/components/docs/Callout';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
+
+# Technical Whitepaper
+
+The complete technical specification for Horizon Protocol.
+
+---
+
+## Download
+
+<div className="not-prose flex flex-wrap gap-3 my-6">
+  <a
+    href="/docs/horizon-whitepaper.pdf"
+    download="Horizon-Protocol-Whitepaper-v1.0.pdf"
+    className="inline-flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+  >
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+    Download PDF (v1.0)
+  </a>
+  <a
+    href="/docs/horizon-whitepaper.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+  >
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+    Open in New Tab
+  </a>
+</div>
+
+---
+
+## Contents
+
+The whitepaper (102 pages) covers:
+
+### Main Chapters
+
+1. **Motivation & Problem Statement** — Why yield tokenization matters
+2. **System Overview** — Token architecture and contract structure
+3. **Formal Model & Notation** — Mathematical definitions and conventions
+4. **Core Mechanism Design** — Detailed protocol specifications with pseudocode
+5. **Economic Analysis & Incentives** — Market dynamics and participant incentives
+6. **Risk Analysis & Threat Model** — Comprehensive security assessment
+7. **Governance & Upgrade Model** — Admin powers and upgrade procedures
+8. **Related Work** — Comparison with Pendle, Element, and fixed-rate protocols
+9. **Conclusion** — Summary and specification status
+
+### Appendices
+
+- **A: Mathematical Proofs** — PT convergence, conservation invariant, no-arbitrage
+- **B: Numerical Examples** — Worked examples for PT, LP, and YT flows
+- **C: Contract Interfaces** — Complete API specifications
+- **D: Glossary** — Term definitions and symbol reference
+
+---
+
+## Key Specifications
+
+<Callout type="info">
+The whitepaper is the authoritative technical reference for auditors, developers, and researchers.
+</Callout>
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Aspect</TableHead>
+      <TableHead>Specification</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**Math Precision**</TableCell>
+      <TableCell>WAD-scaled (10^18) fixed-point arithmetic</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**AMM Curve**</TableCell>
+      <TableCell>Logit-based with time-decay rate scalar</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Oracle**</TableCell>
+      <TableCell>Pragma TWAP with configurable staleness</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Upgradeability**</TableCell>
+      <TableCell>OpenZeppelin class hash replacement</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Conservation**</TableCell>
+      <TableCell>PT + YT = SY always holds</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Embedded Viewer
+
+<div className="not-prose my-6 rounded-lg border border-border overflow-hidden">
+  <iframe
+    src="/docs/horizon-whitepaper.pdf"
+    className="w-full h-[800px]"
+    title="Horizon Protocol Whitepaper"
+  />
+</div>
+
+<Callout type="warning">
+If the PDF does not load above, use the download button or open in a new tab.
+</Callout>
+
+---
+
+## Version History
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Version</TableHead>
+      <TableHead>Date</TableHead>
+      <TableHead>Changes</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>v1.0</TableCell>
+      <TableCell>December 2025</TableCell>
+      <TableCell>Initial publication</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Citation
+
+If referencing this whitepaper in academic or technical work:
+
+<div className="not-prose my-4 rounded-lg border border-border bg-muted/50 p-4">
+  <pre className="text-sm text-foreground font-mono whitespace-pre-wrap">
+{`Metelli, A. (2025). Horizon Protocol: A Yield Tokenization Protocol for Starknet.
+Technical Specification v1.0.
+https://github.com/ametel01/horizon-starknet`}
+  </pre>
+</div>
+
+<DocsNavigation />

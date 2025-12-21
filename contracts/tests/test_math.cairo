@@ -88,7 +88,7 @@ fn test_wad_div_inverse() {
 }
 
 #[test]
-#[should_panic(expected: 'Math: division by zero')]
+#[should_panic(expected: 'HZN: division by zero')]
 fn test_wad_div_by_zero() {
     wad_div(WAD, 0);
 }

@@ -40,6 +40,10 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
   const { removeLiquidity, isRemoving, isSuccess, isError, error, transactionHash } =
     useRemoveLiquidity();
 
+  // Get token symbols from metadata for proper naming (I-06)
+  const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const lpSymbol = `LP-${tokenSymbol}`;
+
   // Fetch LP balance (market is the LP token)
   const { data: lpBalance } = useTokenBalance(market.address);
 
@@ -138,9 +142,9 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
       <CardContent className="space-y-4">
         {/* LP Token Input */}
         <TokenInput
-          label="LP Tokens to Remove"
+          label={`${lpSymbol} Tokens to Remove`}
           tokenAddress={market.address}
-          tokenSymbol="LP"
+          tokenSymbol={lpSymbol}
           value={lpAmount}
           onChange={setLpAmount}
           error={hasInsufficientBalance ? 'Insufficient balance' : undefined}

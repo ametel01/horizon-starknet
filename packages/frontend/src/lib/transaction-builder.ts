@@ -8,6 +8,8 @@
 
 import { type Call, uint256 } from 'starknet';
 
+import { getDeadline } from './deadline';
+
 /**
  * Parameters for building deposit and earn calls
  */
@@ -92,17 +94,19 @@ export function buildDepositToSyCall(syAddress: string, receiver: string, amount
 
 /**
  * Build a mint PT+YT call via router
- * Router.mint_py_from_sy(yt, receiver, amount_sy_in, min_py_out)
+ * Router.mint_py_from_sy(yt, receiver, amount_sy_in, min_py_out, deadline)
  */
 export function buildMintPyCall(
   routerAddress: string,
   ytAddress: string,
   receiver: string,
   amountSy: bigint,
-  minPyOut: bigint
+  minPyOut: bigint,
+  deadline?: bigint
 ): Call {
   const u256AmountSy = uint256.bnToUint256(amountSy);
   const u256MinPy = uint256.bnToUint256(minPyOut);
+  const txDeadline = deadline ?? getDeadline();
   return {
     contractAddress: routerAddress,
     entrypoint: 'mint_py_from_sy',
@@ -113,47 +117,68 @@ export function buildMintPyCall(
       u256AmountSy.high,
       u256MinPy.low,
       u256MinPy.high,
+      txDeadline.toString(),
     ],
   };
 }
 
 /**
  * Build a redeem PT+YT to SY call (pre-expiry)
- * Router.redeem_py_to_sy(yt, receiver, amount_py_in, min_sy_out)
+ * Router.redeem_py_to_sy(yt, receiver, amount_py_in, min_sy_out, deadline)
  */
 export function buildRedeemPyToSyCall(
   routerAddress: string,
   ytAddress: string,
   receiver: string,
   amount: bigint,
-  minSyOut: bigint
+  minSyOut: bigint,
+  deadline?: bigint
 ): Call {
   const u256Amount = uint256.bnToUint256(amount);
   const u256MinSy = uint256.bnToUint256(minSyOut);
+  const txDeadline = deadline ?? getDeadline();
   return {
     contractAddress: routerAddress,
     entrypoint: 'redeem_py_to_sy',
-    calldata: [ytAddress, receiver, u256Amount.low, u256Amount.high, u256MinSy.low, u256MinSy.high],
+    calldata: [
+      ytAddress,
+      receiver,
+      u256Amount.low,
+      u256Amount.high,
+      u256MinSy.low,
+      u256MinSy.high,
+      txDeadline.toString(),
+    ],
   };
 }
 
 /**
  * Build a redeem PT post-expiry call
- * Router.redeem_pt_post_expiry(yt, receiver, amount_pt_in, min_sy_out)
+ * Router.redeem_pt_post_expiry(yt, receiver, amount_pt_in, min_sy_out, deadline)
  */
 export function buildRedeemPtPostExpiryCall(
   routerAddress: string,
   ytAddress: string,
   receiver: string,
   amount: bigint,
-  minSyOut: bigint
+  minSyOut: bigint,
+  deadline?: bigint
 ): Call {
   const u256Amount = uint256.bnToUint256(amount);
   const u256MinSy = uint256.bnToUint256(minSyOut);
+  const txDeadline = deadline ?? getDeadline();
   return {
     contractAddress: routerAddress,
     entrypoint: 'redeem_pt_post_expiry',
-    calldata: [ytAddress, receiver, u256Amount.low, u256Amount.high, u256MinSy.low, u256MinSy.high],
+    calldata: [
+      ytAddress,
+      receiver,
+      u256Amount.low,
+      u256Amount.high,
+      u256MinSy.low,
+      u256MinSy.high,
+      txDeadline.toString(),
+    ],
   };
 }
 

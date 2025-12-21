@@ -71,9 +71,9 @@ Using the example above:
 
 ---
 
-## AMM Curve
+## AMM Curve: Logit-Based Exchange Rate
 
-The Horizon AMM uses a specialized curve optimized for yield trading:
+The Horizon AMM uses a **logit-based curve** optimized for yield trading:
 
 <div className="my-6 rounded-lg border border-border bg-card p-4">
   <Image
@@ -85,11 +85,24 @@ The Horizon AMM uses a specialized curve optimized for yield trading:
   />
 </div>
 
+### The Exchange Rate Formula
+
+<Formula display>{"\\text{exchangeRate} = \\frac{\\text{logit}(p)}{\\text{rateScalar}} + \\text{rateAnchor}"}</Formula>
+
+Where the **logit function** is:
+
+<Formula display>{"\\text{logit}(p) = \\ln\\left(\\frac{p}{1-p}\\right)"}</Formula>
+
+And <Formula>{"p"}</Formula> is the proportion of PT in the pool:
+
+<Formula display>{"p = \\frac{\\text{PT reserve}}{\\text{PT reserve} + \\text{SY reserve}}"}</Formula>
+
 ### Key Properties
 
 1. **Rate-based pricing** — Trades move implied yield, not token ratios
-2. **Time decay** — Curve flattens as maturity approaches
-3. **Anchor mechanism** — Rates tend toward an expected "fair" value
+2. **Time decay** — Rate scalar increases as maturity approaches, flattening the curve
+3. **Dynamic anchor** — Recalculated after each trade to maintain rate continuity
+4. **Fee decay** — Swap fees decrease exponentially toward expiry
 
 ---
 

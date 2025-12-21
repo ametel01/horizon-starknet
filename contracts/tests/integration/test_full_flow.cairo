@@ -40,6 +40,9 @@ fn charlie() -> ContractAddress {
     'charlie'.try_into().unwrap()
 }
 
+/// Default deadline for router operations (far future - effectively no deadline)
+const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
+
 // ============ Deploy Helpers ============
 
 fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
@@ -91,6 +94,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -105,6 +109,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(sy.into());
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -383,7 +388,8 @@ fn test_router_full_flow() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(router.contract_address, alice());
-    let (pt_out, yt_out) = router.mint_py_from_sy(yt.contract_address, alice(), mint_amount, 0);
+    let (pt_out, yt_out) = router
+        .mint_py_from_sy(yt.contract_address, alice(), mint_amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(pt_out == mint_amount, 'Router PT out wrong');
@@ -403,7 +409,8 @@ fn test_router_full_flow() {
     let sy_before = sy.balance_of(alice());
 
     start_cheat_caller_address(router.contract_address, alice());
-    let sy_redeemed = router.redeem_py_to_sy(yt.contract_address, alice(), mint_amount, 0);
+    let sy_redeemed = router
+        .redeem_py_to_sy(yt.contract_address, alice(), mint_amount, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
     assert(sy_redeemed > 0, 'Should redeem SY via router');

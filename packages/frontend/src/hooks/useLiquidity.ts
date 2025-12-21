@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call, uint256 } from 'starknet';
 
 import { getAddresses } from '@/lib/constants/addresses';
+import { getDeadline } from '@/lib/deadline';
 import { getERC20Contract, getMarketContract, getRouterContract } from '@/lib/starknet/contracts';
 
 import { useAccount } from './useAccount';
@@ -91,6 +92,7 @@ export function useAddLiquidity(): UseAddLiquidityReturn {
         uint256.bnToUint256(params.syAmount),
         uint256.bnToUint256(params.ptAmount),
         uint256.bnToUint256(params.minLpOut),
+        getDeadline(),
       ]);
       calls.push(addLiquidityCall);
 
@@ -154,6 +156,7 @@ export function useRemoveLiquidity(): UseRemoveLiquidityReturn {
         uint256.bnToUint256(params.lpAmount),
         uint256.bnToUint256(params.minSyOut),
         uint256.bnToUint256(params.minPtOut),
+        getDeadline(),
       ]);
       calls.push(removeLiquidityCall);
 

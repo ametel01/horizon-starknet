@@ -138,11 +138,11 @@ export const FAUCET_ABI = [
   {
     type: 'impl',
     name: 'OwnableImpl',
-    interface_name: 'openzeppelin_access::ownable::interface::IOwnable',
+    interface_name: 'openzeppelin_interfaces::access::ownable::IOwnable',
   },
   {
     type: 'interface',
-    name: 'openzeppelin_access::ownable::interface::IOwnable',
+    name: 'openzeppelin_interfaces::access::ownable::IOwnable',
     items: [
       {
         type: 'function',

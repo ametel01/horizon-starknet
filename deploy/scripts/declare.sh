@@ -23,7 +23,6 @@ CONTRACTS_DIR="$ROOT_DIR/contracts"
 
 NETWORK="${1:-devnet}"
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
-ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Declaring Contract Classes${NC}"
@@ -56,6 +55,9 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 source "$ENV_FILE"
+
+# Override ACCOUNTS_FILE with absolute path (env file may have relative path)
+ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
 log_info "RPC: $STARKNET_RPC_URL"
 
@@ -99,6 +101,18 @@ elif [[ "$NETWORK" == "sepolia" ]]; then
 
     DEPLOYER_PUBLIC_KEY="0x0"
     ACCOUNT_CLASS_HASH="0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f"
+elif [[ "$NETWORK" == "mainnet" ]]; then
+    # Use deployer credentials from environment file
+    log_info "Using deployer credentials from $ENV_FILE..."
+
+    if [[ -z "$DEPLOYER_ADDRESS" || -z "$DEPLOYER_PRIVATE_KEY" ]]; then
+        log_error "DEPLOYER_ADDRESS and DEPLOYER_PRIVATE_KEY must be set in $ENV_FILE for Mainnet"
+        exit 1
+    fi
+
+    DEPLOYER_PUBLIC_KEY="0x0"
+    # Braavos account class hash for mainnet
+    ACCOUNT_CLASS_HASH="0x03957f9f5a1cbfe918cedc2015c85200ca51a5f7506ecb6de98a5207b759bf8a"
 else
     log_error "Network '$NETWORK' not yet configured"
     exit 1
@@ -109,8 +123,27 @@ log_info "Deployer address: $DEPLOYER_ADDRESS"
 # Create accounts directory if not exists
 mkdir -p "$(dirname "$ACCOUNTS_FILE")"
 
-# Create sncast accounts file
-cat > "$ACCOUNTS_FILE" << EOF
+# Create sncast accounts file based on network
+if [[ "$NETWORK" == "mainnet" ]]; then
+    cat > "$ACCOUNTS_FILE" << EOF
+{
+  "alpha-mainnet": {
+    "deployer": {
+      "address": "$DEPLOYER_ADDRESS",
+      "class_hash": "$ACCOUNT_CLASS_HASH",
+      "deployed": true,
+      "legacy": false,
+      "private_key": "$DEPLOYER_PRIVATE_KEY",
+      "public_key": "$DEPLOYER_PUBLIC_KEY",
+      "salt": "0x0",
+      "type": "braavos"
+    }
+  },
+  "alpha-sepolia": {}
+}
+EOF
+else
+    cat > "$ACCOUNTS_FILE" << EOF
 {
   "alpha-mainnet": {},
   "alpha-sepolia": {
@@ -127,6 +160,7 @@ cat > "$ACCOUNTS_FILE" << EOF
   }
 }
 EOF
+fi
 
 # Build contracts
 log_info "Building contracts..."
@@ -219,6 +253,8 @@ TX_DELAY="${TX_DELAY:-10}"
 declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH"
 sleep "$TX_DELAY"
 declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH"
+sleep "$TX_DELAY"
+declare_class "Faucet" "FAUCET_CLASS_HASH"
 sleep "$TX_DELAY"
 declare_class "SY" "SY_CLASS_HASH"
 sleep "$TX_DELAY"

@@ -1,0 +1,167 @@
+
+The following examples illustrate concrete protocol behavior under simplified assumptions. They are intended for intuition-building and do not model fees, slippage, or adversarial market conditions unless explicitly stated. All calculations use continuous compounding consistent with the protocol's pricing model.
+
+
+\section{PT Purchase Flow}
+
+\textbf{Scenario.}
+A user purchases PT to lock in an implied yield of 10\% APY on 1000 SY, with 180 days to expiry.
+
+\textbf{Assumptions.}
+\begin{itemize}
+\item No swap fees or slippage
+\item Sufficient AMM liquidity (price impact negligible)
+\item Continuous compounding, consistent with protocol pricing
+\end{itemize}
+
+\textbf{Given:}
+\begin{itemize}
+\item SY amount: $1000$
+\item Implied yield: $r = 0.10$
+\item Time to expiry: $\tau_y = \frac{180}{365} \approx 0.493$ years
+\end{itemize}
+
+\textbf{PT Price:}
+\[
+P_{PT} = e^{-r \cdot \tau_y} = e^{-0.10 \times 0.493} \approx 0.9520
+\]
+
+\textbf{PT Amount Received:}
+\[
+\text{PT} = \frac{1000}{0.9520} \approx 1050.4
+\]
+
+\textbf{At Maturity:}
+\[
+\text{SY received} = 1050.4 \times 1 = 1050.4
+\]
+
+\textbf{Profit:}
+\[
+\text{Profit} = 1050.4 - 1000 = 50.4 \text{ SY}
+\]
+
+\textbf{Implied APY Check:}
+\[
+\left(\frac{1050.4}{1000}\right)^{1 / 0.493} - 1 \approx 10.5\%
+\]
+
+Note: The discrete APY calculation yields approximately 10.5\% due to the difference between discrete and continuous compounding. Under continuous compounding, the return is exactly 10\% annualized.
+
+\textbf{Interpretation.}
+The PT holder sacrifices liquidity and yield upside in exchange for a fixed implied return that is independent of future yield fluctuations. The return is locked at purchase and realized at maturity.
+
+
+\section{LP Deposit and Withdrawal}
+
+\textbf{Scenario.}
+An LP deposits liquidity into a PT/SY market and later withdraws after fees accrue.
+
+\textbf{Assumptions.}
+\begin{itemize}
+\item PT price remains constant during the period
+\item No external trades besides fee-generating swaps
+\item PT valued at 1 SY for accounting simplicity (appropriate near expiry)
+\end{itemize}
+
+\textbf{Initial Pool State:}
+\begin{itemize}
+\item Reserves: 1000 SY + 1000 PT
+\item Total LP supply: 1000
+\end{itemize}
+
+\textbf{Deposit:}
+\begin{itemize}
+\item LP deposits: 500 SY + 500 PT
+\item Deposit ratio: $\frac{500}{1000} = 0.5$
+\item LP minted: $0.5 \times 1000 = 500$
+\end{itemize}
+
+\textbf{Post-Deposit Pool:}
+\begin{itemize}
+\item Reserves: 1500 SY + 1500 PT
+\item Total LP supply: 1500
+\end{itemize}
+
+\textbf{After Fee Accumulation:}
+\begin{itemize}
+\item Fees earned by pool: 10 SY
+\item Pool reserves: 1510 SY + 1500 PT
+\end{itemize}
+
+\textbf{Withdrawal (500 LP):}
+\[
+\text{Ownership share} = \frac{500}{1500} = 0.333
+\]
+
+\[
+\text{SY out} = 0.333 \times 1510 \approx 503.3
+\]
+\[
+\text{PT out} = 0.333 \times 1500 = 500
+\]
+
+\textbf{LP Profit (Fee Income):}
+\[
+\text{Fee share} = 503.3 - 500 = 3.3 \text{ SY}
+\]
+
+The LP receives their pro-rata share of the 10 SY in fees ($\frac{500}{1500} \times 10 = 3.3$ SY).
+
+\textbf{Remark.}
+This example isolates fee income by assuming constant PT price. In practice, PT price movements introduce impermanent loss. However, IL risk diminishes as expiry approaches because $P_{PT} \to 1$ regardless of rate movements.
+
+
+\section{YT Interest Claim}
+
+\textbf{Scenario.}
+A user holds YT while the underlying yield index increases.
+
+\textbf{Index Semantics.}
+The global index $I_{global}$ represents the cumulative exchange rate of the underlying yield-bearing asset. When the underlying earns yield, $I_{global}$ increases. The user's snapshot $I_{user}$ records the index value at the time of their last claim (or initial acquisition).
+
+\textbf{Given:}
+\begin{itemize}
+\item YT balance: $B_{YT} = 100$
+\item User index (snapshot): $I_{user} = 1.00$
+\item Global index (current): $I_{global} = 1.05$
+\end{itemize}
+
+\textbf{Interest Calculation:}
+\[
+\text{Interest} = B_{YT} \times \frac{I_{global} - I_{user}}{I_{user}} = 100 \times \frac{1.05 - 1.00}{1.00} = 5 \text{ SY}
+\]
+
+\textbf{Post-Claim State:}
+After claiming, the user's index is updated:
+\[
+I_{user} \leftarrow I_{global} = 1.05
+\]
+
+Future claims will only capture yield accrued after this point.
+
+\textbf{Interpretation.}
+The YT holder captures the full 5\% increase in the underlying yield index (5 SY on 100 YT). PT holders receive no interim yield---their return is locked at the PT price discount. This separation allows users to speculate on yield rates or hedge yield exposure independently of principal.
+
+
+\section{Assumptions Summary}
+
+The examples above make the following simplifying assumptions:
+
+\begin{center}
+\begin{tabular}{l l}
+\toprule
+\textbf{Assumption} & \textbf{Real-World Consideration} \\
+\midrule
+Zero swap fees & Protocol charges fees; reduces effective return \\
+Zero slippage & Large trades move price; reduces execution quality \\
+Infinite liquidity & AMM has finite depth; large trades have price impact \\
+PT price constant & PT price fluctuates with implied rate; creates IL for LPs \\
+Instant execution & Block time and sequencer latency introduce timing risk \\
+WAD rounding omitted & All amounts are scaled by $10^{18}$; rounding affects dust \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These assumptions are appropriate for understanding protocol mechanics but should not be used for precise financial projections.
+

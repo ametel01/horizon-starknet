@@ -1,24 +1,40 @@
 /// AMM Market Contract
 /// Implements the PT/SY trading pool with time-aware pricing.
 /// The market acts as an LP token itself (ERC20) for liquidity providers.
+/// - Pausable: Can be paused in emergencies by PAUSER_ROLE
+/// - Upgradeable: Can be upgraded by owner
 
 #[starknet::contract]
 pub mod Market {
     use core::num::traits::Zero;
-    use horizon::interfaces::i_market::IMarket;
+    use horizon::interfaces::i_market::{IMarket, IMarketAdmin};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::libraries::errors::Errors;
-    use horizon::market::market_math::{
-        MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
+    use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
+    use horizon::market::market_math_fp::{
+        MINIMUM_LIQUIDITY, MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
         calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt,
         check_slippage, get_ln_implied_rate, get_time_to_expiry,
     };
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
+    component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // ERC20 component for LP token functionality
     #[abi(embed_v0)]
@@ -27,10 +43,39 @@ pub mod Market {
     impl ERC20MetadataImpl = ERC20Component::ERC20MetadataImpl<ContractState>;
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
 
+    // AccessControl - embed the public interface
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
+    // Pausable - embed the public interface
+    #[abi(embed_v0)]
+    impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
+    impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
+
+    // Ownable - embed the public interface
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    // Upgradeable - internal only
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        pausable: PausableComponent::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // Token addresses
         sy: ContractAddress,
         pt: ContractAddress,
@@ -55,9 +100,21 @@ pub mod Market {
     pub enum Event {
         #[flat]
         ERC20Event: ERC20Component::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        PausableEvent: PausableComponent::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         Mint: Mint,
         Burn: Burn,
         Swap: Swap,
+        ImpliedRateUpdated: ImpliedRateUpdated,
+        FeesCollected: FeesCollected,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -95,6 +152,22 @@ pub mod Market {
         pub fee: u256,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct ImpliedRateUpdated {
+        pub old_rate: u256,
+        pub new_rate: u256,
+        pub timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct FeesCollected {
+        #[key]
+        pub collector: ContractAddress,
+        #[key]
+        pub receiver: ContractAddress,
+        pub amount: u256,
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -104,12 +177,14 @@ pub mod Market {
         scalar_root: u256,
         initial_anchor: u256,
         fee_rate: u256,
+        pauser: ContractAddress,
     ) {
         // Initialize LP token (ERC20)
         self.erc20.initializer(name, symbol);
 
         // Validate inputs
         assert(!pt.is_zero(), Errors::ZERO_ADDRESS);
+        assert(!pauser.is_zero(), Errors::ZERO_ADDRESS);
 
         // Get SY and YT from PT contract
         let pt_contract = IPTDispatcher { contract_address: pt };
@@ -120,6 +195,13 @@ pub mod Market {
         assert(!sy.is_zero(), Errors::ZERO_ADDRESS);
         assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
         assert(expiry > get_block_timestamp(), Errors::MARKET_EXPIRED);
+
+        // Initialize access control - grant admin and pauser roles
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, pauser);
+        self.access_control._grant_role(PAUSER_ROLE, pauser);
+
+        // Initialize ownable for upgrade control
+        self.ownable.initializer(pauser);
 
         // Store addresses
         self.sy.write(sy);
@@ -184,6 +266,9 @@ pub mod Market {
         fn mint(
             ref self: ContractState, receiver: ContractAddress, sy_desired: u256, pt_desired: u256,
         ) -> (u256, u256, u256) {
+            // Check if paused
+            self.pausable.assert_not_paused();
+
             // Validate
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -193,21 +278,38 @@ pub mod Market {
             let state = self._get_market_state();
 
             // Calculate LP tokens to mint
-            let (lp_to_mint, sy_used, pt_used) = calc_mint_lp(@state, sy_desired, pt_desired);
+            // For first mint, is_first_mint=true and MINIMUM_LIQUIDITY must be locked
+            let (lp_to_mint, sy_used, pt_used, is_first_mint) = calc_mint_lp(
+                @state, sy_desired, pt_desired,
+            );
             assert(lp_to_mint > 0, Errors::MARKET_ZERO_LIQUIDITY);
 
             // Transfer tokens from caller
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
 
-            sy_contract.transfer_from(caller, get_contract_address(), sy_used);
-            pt_contract.transfer_from(caller, get_contract_address(), pt_used);
+            assert(
+                sy_contract.transfer_from(caller, get_contract_address(), sy_used),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
+            assert(
+                pt_contract.transfer_from(caller, get_contract_address(), pt_used),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() + sy_used);
             self.pt_reserve.write(self.pt_reserve.read() + pt_used);
 
-            // Mint LP tokens
+            // For first mint, permanently lock MINIMUM_LIQUIDITY by minting to dead address
+            // Using address 1 since OpenZeppelin ERC20 doesn't allow minting to zero address
+            // This prevents first depositor attacks and ensures pool can never be fully drained
+            if is_first_mint {
+                let dead_address: ContractAddress = 1.try_into().unwrap();
+                self.erc20.mint(dead_address, MINIMUM_LIQUIDITY);
+            }
+
+            // Mint LP tokens to receiver
             self.erc20.mint(receiver, lp_to_mint);
 
             // Update implied rate cache
@@ -256,11 +358,11 @@ pub mod Market {
             // Transfer tokens to receiver
             if sy_out > 0 {
                 let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-                sy_contract.transfer(receiver, sy_out);
+                assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
             }
             if pt_out > 0 {
                 let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-                pt_contract.transfer(receiver, pt_out);
+                assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
             }
 
             // Update implied rate cache (if not expired)
@@ -291,6 +393,7 @@ pub mod Market {
         fn swap_exact_pt_for_sy(
             ref self: ContractState, receiver: ContractAddress, exact_pt_in: u256, min_sy_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_in > 0, Errors::ZERO_AMOUNT);
@@ -305,7 +408,10 @@ pub mod Market {
 
             // Transfer PT from caller
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer_from(caller, get_contract_address(), exact_pt_in);
+            assert(
+                pt_contract.transfer_from(caller, get_contract_address(), exact_pt_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() - sy_out);
@@ -314,7 +420,7 @@ pub mod Market {
 
             // Transfer SY to receiver
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer(receiver, sy_out);
+            assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -344,6 +450,7 @@ pub mod Market {
         fn swap_sy_for_exact_pt(
             ref self: ContractState, receiver: ContractAddress, exact_pt_out: u256, max_sy_in: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_pt_out > 0, Errors::ZERO_AMOUNT);
@@ -358,7 +465,10 @@ pub mod Market {
 
             // Transfer SY from caller
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer_from(caller, get_contract_address(), sy_in);
+            assert(
+                sy_contract.transfer_from(caller, get_contract_address(), sy_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() + sy_in);
@@ -367,7 +477,7 @@ pub mod Market {
 
             // Transfer PT to receiver
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer(receiver, exact_pt_out);
+            assert(pt_contract.transfer(receiver, exact_pt_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -397,6 +507,7 @@ pub mod Market {
         fn swap_exact_sy_for_pt(
             ref self: ContractState, receiver: ContractAddress, exact_sy_in: u256, min_pt_out: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_in > 0, Errors::ZERO_AMOUNT);
@@ -411,7 +522,10 @@ pub mod Market {
 
             // Transfer SY from caller
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in);
+            assert(
+                sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() + exact_sy_in);
@@ -420,7 +534,7 @@ pub mod Market {
 
             // Transfer PT to receiver
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer(receiver, pt_out);
+            assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -450,6 +564,7 @@ pub mod Market {
         fn swap_pt_for_exact_sy(
             ref self: ContractState, receiver: ContractAddress, exact_sy_out: u256, max_pt_in: u256,
         ) -> u256 {
+            self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(exact_sy_out > 0, Errors::ZERO_AMOUNT);
@@ -464,7 +579,10 @@ pub mod Market {
 
             // Transfer PT from caller
             let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
-            pt_contract.transfer_from(caller, get_contract_address(), pt_in);
+            assert(
+                pt_contract.transfer_from(caller, get_contract_address(), pt_in),
+                Errors::MARKET_TRANSFER_FAILED,
+            );
 
             // Update reserves
             self.sy_reserve.write(self.sy_reserve.read() - exact_sy_out);
@@ -473,7 +591,7 @@ pub mod Market {
 
             // Transfer SY to receiver
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
-            sy_contract.transfer(receiver, exact_sy_out);
+            assert(sy_contract.transfer(receiver, exact_sy_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
             self._update_implied_rate();
@@ -501,6 +619,66 @@ pub mod Market {
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             get_ln_implied_rate(@state, time_to_expiry)
         }
+
+        fn get_total_fees_collected(self: @ContractState) -> u256 {
+            self.total_fees_collected.read()
+        }
+    }
+
+    // Admin functions for pausability and fee collection
+    #[abi(embed_v0)]
+    impl MarketAdminImpl of IMarketAdmin<ContractState> {
+        /// Pause all market operations (PAUSER_ROLE only)
+        fn pause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.pause();
+        }
+
+        /// Unpause all market operations (PAUSER_ROLE only)
+        fn unpause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.unpause();
+        }
+
+        /// Collect accumulated trading fees (owner only)
+        /// Fees are collected in SY tokens and transferred to the specified receiver
+        /// @param receiver Address to receive the collected SY fees
+        /// @return Amount of SY fees collected
+        fn collect_fees(ref self: ContractState, receiver: ContractAddress) -> u256 {
+            // Only owner can collect fees
+            self.ownable.assert_only_owner();
+
+            // Validate receiver
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+
+            // Get collected fees
+            let fees = self.total_fees_collected.read();
+            if fees == 0 {
+                return 0;
+            }
+
+            // Reset collected fees
+            self.total_fees_collected.write(0);
+
+            // Transfer SY fees to receiver
+            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            assert(sy_contract.transfer(receiver, fees), Errors::MARKET_TRANSFER_FAILED);
+
+            // Emit event
+            self.emit(FeesCollected { collector: get_caller_address(), receiver, amount: fees });
+
+            fees
+        }
+    }
+
+    // Upgradeable implementation
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        /// Upgrade the contract to a new implementation (owner only)
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
     // Internal functions
@@ -522,10 +700,19 @@ pub mod Market {
 
         /// Update the cached implied rate
         fn _update_implied_rate(ref self: ContractState) {
+            let old_rate = self.last_ln_implied_rate.read();
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             let new_rate = get_ln_implied_rate(@state, time_to_expiry);
-            self.last_ln_implied_rate.write(new_rate);
+
+            // Only update and emit if rate has changed
+            if new_rate != old_rate {
+                self.last_ln_implied_rate.write(new_rate);
+                self
+                    .emit(
+                        ImpliedRateUpdated { old_rate, new_rate, timestamp: get_block_timestamp() },
+                    );
+            }
         }
     }
 }

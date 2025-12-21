@@ -17,6 +17,7 @@
         "@tanstack/react-query": "^5.62.8",
         "@types/katex": "^0.16.7",
         "bignumber.js": "^9.1.2",
+        "cairo-fp": "^1.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "katex": "^0.16.27",
@@ -582,6 +583,8 @@
     "bundle-name": ["bundle-name@4.1.0", "", { "dependencies": { "run-applescript": "^7.0.0" } }, "sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q=="],
 
     "bytes": ["bytes@3.1.2", "", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
+
+    "cairo-fp": ["cairo-fp@1.0.0", "", { "dependencies": { "bignumber.js": "^9.1.2" } }, "sha512-8tQueZaEg6H5BsAE/ubIUG2bMHfQZdUpqO0/GlR7f5U4oPLrdYdHKTG9LXODKdprJ/qlilFUa+Alt+mK26XrdA=="],
 
     "call-bind": ["call-bind@1.0.8", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.0", "es-define-property": "^1.0.0", "get-intrinsic": "^1.2.4", "set-function-length": "^1.2.2" } }, "sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww=="],
 

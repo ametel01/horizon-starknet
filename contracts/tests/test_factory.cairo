@@ -88,6 +88,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -256,7 +257,7 @@ fn test_factory_create_multiple_sy_tokens() {
 }
 
 #[test]
-#[should_panic(expected: 'Factory: already exists')]
+#[should_panic(expected: 'HZN: pair already exists')]
 fn test_factory_create_duplicate() {
     let (_, sy, factory) = setup();
     let expiry = CURRENT_TIME + ONE_YEAR;
@@ -269,7 +270,7 @@ fn test_factory_create_duplicate() {
 }
 
 #[test]
-#[should_panic(expected: 'Factory: invalid expiry')]
+#[should_panic(expected: 'HZN: invalid expiry')]
 fn test_factory_create_past_expiry() {
     let (_, sy, factory) = setup();
     let expiry = CURRENT_TIME - 1; // Past expiry
@@ -278,7 +279,7 @@ fn test_factory_create_past_expiry() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_factory_create_zero_sy() {
     let (_, _, factory) = setup();
     let expiry = CURRENT_TIME + ONE_YEAR;

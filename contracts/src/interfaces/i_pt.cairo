@@ -25,3 +25,13 @@ pub trait IPT<TContractState> {
     fn mint(ref self: TContractState, to: ContractAddress, amount: u256);
     fn burn(ref self: TContractState, from: ContractAddress, amount: u256);
 }
+
+/// Admin interface for PT pausability
+#[starknet::interface]
+pub trait IPTAdmin<TContractState> {
+    /// Pause all PT operations (PAUSER_ROLE only)
+    fn pause(ref self: TContractState);
+
+    /// Unpause all PT operations (PAUSER_ROLE only)
+    fn unpause(ref self: TContractState);
+}

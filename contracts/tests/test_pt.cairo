@@ -7,6 +7,10 @@ use snforge_std::{
 use starknet::{ContractAddress, SyscallResultTrait};
 
 // Test addresses
+fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
+}
+
 fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
 }
@@ -53,6 +57,8 @@ fn deploy_pt(sy: ContractAddress, expiry: u64) -> ContractAddress {
     calldata.append(sy.into());
     // expiry (u64)
     calldata.append(expiry.into());
+    // pauser address
+    calldata.append(admin().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     contract_address
@@ -129,7 +135,7 @@ fn test_pt_is_expired_at_exact_expiry() {
 // The validation IS working - deployment fails with correct error messages.
 
 #[test]
-#[ignore] // snforge panics on deploy failures; expected error: 'YT: zero address'
+#[ignore] // snforge panics on deploy failures; expected error: 'HZN: zero address'
 fn test_pt_constructor_zero_sy_fails() {
     start_cheat_block_timestamp_global(CURRENT_TIME);
     let expiry = CURRENT_TIME + ONE_YEAR;
@@ -145,7 +151,7 @@ fn test_pt_constructor_zero_sy_fails() {
 }
 
 #[test]
-#[ignore] // snforge panics on deploy failures; expected error: 'PT: invalid expiry'
+#[ignore] // snforge panics on deploy failures; expected error: 'HZN: invalid expiry'
 fn test_pt_constructor_past_expiry_fails() {
     start_cheat_block_timestamp_global(CURRENT_TIME);
     let expiry = CURRENT_TIME - 1; // Past expiry
@@ -174,14 +180,14 @@ fn test_pt_initialize_yt() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_pt_initialize_yt_zero_address() {
     let (_, pt_init) = setup();
     pt_init.initialize_yt(zero_address());
 }
 
 #[test]
-#[should_panic(expected: 'PT: YT already set')]
+#[should_panic(expected: 'HZN: YT already set')]
 fn test_pt_initialize_yt_twice() {
     let (_, pt_init) = setup();
     pt_init.initialize_yt(yt_address());
@@ -230,7 +236,7 @@ fn test_pt_mint_multiple() {
 }
 
 #[test]
-#[should_panic(expected: 'PT: YT not set')]
+#[should_panic(expected: 'HZN: YT not set')]
 fn test_pt_mint_without_yt_set() {
     let (pt, _) = setup();
 
@@ -239,7 +245,7 @@ fn test_pt_mint_without_yt_set() {
 }
 
 #[test]
-#[should_panic(expected: 'PT: only YT')]
+#[should_panic(expected: 'HZN: only YT')]
 fn test_pt_mint_not_by_yt() {
     let (pt, pt_init) = setup();
 
@@ -251,7 +257,7 @@ fn test_pt_mint_not_by_yt() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_pt_mint_to_zero_address() {
     let (pt, pt_init) = setup();
     let yt = yt_address();
@@ -305,7 +311,7 @@ fn test_pt_burn_all() {
 }
 
 #[test]
-#[should_panic(expected: 'PT: YT not set')]
+#[should_panic(expected: 'HZN: YT not set')]
 fn test_pt_burn_without_yt_set() {
     let (pt, _) = setup();
 
@@ -314,7 +320,7 @@ fn test_pt_burn_without_yt_set() {
 }
 
 #[test]
-#[should_panic(expected: 'PT: only YT')]
+#[should_panic(expected: 'HZN: only YT')]
 fn test_pt_burn_not_by_yt() {
     let (pt, pt_init) = setup();
 

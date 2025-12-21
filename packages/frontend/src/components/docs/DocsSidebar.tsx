@@ -61,6 +61,10 @@ const navigation: NavItem[] = [
     title: 'Glossary',
     href: '/docs/glossary',
   },
+  {
+    title: 'Whitepaper',
+    href: '/docs/whitepaper',
+  },
 ];
 
 interface NavItemProps {

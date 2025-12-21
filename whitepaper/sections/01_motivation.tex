@@ -1,0 +1,123 @@
+
+% Lead paragraph establishing argument structure
+This chapter establishes why yield tokenization is necessary, why existing solutions are inadequate, how tokenization addresses these gaps, and what Starknet-specific considerations shape the protocol's design.
+
+\section{Yield Variability and Rate Uncertainty}
+
+Yield-bearing tokens have become fundamental primitives in decentralized finance. Liquid staking derivatives (nstSTRK, sSTRK), wrapped staking tokens (wstETH), and lending protocol receipt tokens generate yield through staking rewards, lending interest, or protocol revenue distribution. However, these yields share a common characteristic: \textbf{variability}.
+
+In practice, the same position can swing from low single-digit APY to double-digit APY over short horizons, driven by staking participation, protocol incentives, and utilization. For treasury management, this converts yield into an uncertain cash-flow stream rather than an allocatable budget line.
+
+Consider a user holding nstSTRK (Nostra's staked STRK derivative). The yield depends on:
+\begin{itemize}
+    \item Starknet's staking reward rate, which fluctuates with network participation
+    \item Nostra's protocol fee structure, subject to governance changes
+    \item Market conditions affecting utilization and demand
+\end{itemize}
+
+This variability creates three requirements that existing primitives do not satisfy:
+
+\begin{enumerate}
+    \item \textbf{Forecastability}: Treasuries, DAOs, and institutional holders require predictable cash flows for budgeting and liability matching.
+
+    \item \textbf{Rate-locking without collateral inefficiency}: Capital providers need fixed-rate exposure without overcollateralized debt positions or idle margin.
+
+    \item \textbf{A market for yield views and hedging}: Users with convictions about future yield direction require an efficient mechanism to express these views or hedge existing exposure.
+\end{enumerate}
+
+\section{Why Existing Markets Do Not Solve Rate Certainty}
+
+\subsection{Traditional Lending Protocols}
+
+Protocols like Aave and Compound offer variable-rate lending and borrowing. While these markets provide yield, the rates fluctuate continuously based on utilization. A depositor earning 5\% today may earn 2\% tomorrow. These protocols solve capital efficiency but not rate certainty.
+
+\subsection{Fixed-Rate Lending Protocols}
+
+Protocols such as Notional Finance and Yield Protocol introduced fixed-rate borrowing and lending. However, these approaches face structural limitations:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4cm} >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Limitation} & \textbf{Description} \\
+\midrule
+Governance-driven term listing & Fixed maturities require protocol governance to launch new terms \\
+Liquidity fragmentation & Capital splits across multiple maturity pools \\
+Overcollateralization & Borrowers lock collateral; capital sits idle \\
+Limited secondary market & Users lock rates but cannot trade rate exposure \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Yield Tokenization as a Decomposition Primitive}
+
+Yield tokenization decomposes a yield-bearing position into two separable claims: a principal claim (PT) on redemption value at expiry, and a yield claim (YT) on all pre-expiry appreciation. This decomposition addresses the requirements introduced above without introducing borrower-side collateral constraints.
+
+\begin{enumerate}
+    \item \textbf{Separation of Rights}: PT and YT can be held, traded, or used as collateral independently, enabling hedging and targeted exposure.
+
+    \item \textbf{Continuous Price Discovery}: Market prices for PT and YT encode collective expectations about future yield over the remaining time to expiry.
+
+    \item \textbf{Capital Efficiency}: Exposure is represented directly by transferable tokens rather than overcollateralized debt positions.
+
+    \item \textbf{Composability}: PT and YT implement the ERC-20 interface pattern on Starknet and integrate with existing DeFi tooling.
+
+    \item \textbf{Deterministic Maturity Handling}: PT mechanically converges to redemption value at expiry; settlement does not require term re-listing.
+\end{enumerate}
+
+\section{Starknet Constraints and Design Opportunities}
+
+Implementing yield tokenization on Starknet requires careful numeric design (felt-based arithmetic, u256 emulation) but also benefits from predictable execution and native integration with Starknet yield assets.
+
+\subsection{Constraints}
+
+Cairo, Starknet's native smart contract language, operates on a field element (felt252) primitive with different arithmetic properties than EVM's uint256. The protocol requires:
+
+\begin{itemize}
+    \item Custom u256 handling for token amounts
+    \item High-precision fixed-point math for rate calculations
+    \item Explicit signed value handling for price differentials
+\end{itemize}
+
+The cubit 64.64 fixed-point library addresses these requirements, providing approximately 19 decimal digits of precision. All rate and price computations are defined in terms of deterministic fixed-point routines to avoid platform-dependent rounding.
+
+\subsection{Integration with Starknet Yield Sources}
+
+The protocol targets integration with Starknet's native yield-bearing tokens:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Token} & \textbf{Type} & \textbf{Yield Mechanism} \\
+\midrule
+nstSTRK & Liquid staking & Staked STRK + lending yield \\
+sSTRK & Liquid staking & Staking rewards (derivative) \\
+wstETH & Bridged staking & Ethereum staking rewards \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each integration requires an exchange rate oracle to track the underlying token's value appreciation.
+
+\subsection{Oracle Integration}
+
+Pragma is a major oracle provider on Starknet. For bridged assets, oracle feeds avoid per-operation cross-chain dependencies. The protocol uses Pragma's TWAP (time-weighted average price) feeds to mitigate single-block manipulation.
+
+\section{Assumptions and Threats to Guarantees}
+
+The protocol's guarantees depend on the following external assumptions. These are dependencies the protocol cannot enforce on-chain.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Assumption} & \textbf{Failure Mode} \\
+\midrule
+Underlying asset valuation is monotonic & Non-monotonic exchange rate breaks YT accounting \\
+Oracle liveness and bounded error & Stale feeds cause mispricing or incorrect settlement \\
+Sufficient arbitrage participation & Invariants not economically enforced during stress \\
+Consistent timestamp semantics & Edge cases around expiry boundary \\
+Underlying protocol solvency & SY value impairment \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+These are external dependencies; the protocol cannot enforce them on-chain. Users must evaluate these dependencies when interacting with the protocol.

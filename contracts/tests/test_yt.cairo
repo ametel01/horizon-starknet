@@ -173,7 +173,7 @@ fn test_yt_mint_py_multiple_times() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: expired')]
+#[should_panic(expected: 'HZN: expired')]
 fn test_yt_mint_py_after_expiry() {
     let user = user1();
     let amount = 100 * WAD;
@@ -191,7 +191,7 @@ fn test_yt_mint_py_after_expiry() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_yt_mint_py_zero_amount() {
     let user = user1();
     let (_, _, yt) = setup();
@@ -201,7 +201,7 @@ fn test_yt_mint_py_zero_amount() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_yt_mint_py_zero_receiver() {
     let user = user1();
     let amount = 100 * WAD;
@@ -288,7 +288,7 @@ fn test_yt_redeem_py_to_different_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: expired')]
+#[should_panic(expected: 'HZN: expired')]
 fn test_yt_redeem_py_after_expiry() {
     let user = user1();
     let amount = 100 * WAD;
@@ -310,7 +310,7 @@ fn test_yt_redeem_py_after_expiry() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_yt_redeem_py_zero_amount() {
     let user = user1();
     let amount = 100 * WAD;
@@ -385,7 +385,7 @@ fn test_yt_redeem_py_post_expiry_partial() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: not expired')]
+#[should_panic(expected: 'HZN: not expired')]
 fn test_yt_redeem_py_post_expiry_before_expiry() {
     let user = user1();
     let amount = 100 * WAD;
@@ -403,7 +403,7 @@ fn test_yt_redeem_py_post_expiry_before_expiry() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero amount')]
+#[should_panic(expected: 'HZN: zero amount')]
 fn test_yt_redeem_py_post_expiry_zero_amount() {
     let user = user1();
     let amount = 100 * WAD;

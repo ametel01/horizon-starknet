@@ -1,0 +1,317 @@
+
+This section analyzes the economic properties of the protocol, including actor incentives, equilibrium conditions, and behavior under stress.
+
+\paragraph{Scope and assumptions.} All results in this section are conditional on the external assumptions stated in Chapter 3: oracle liveness, underlying asset solvency, and bounded transaction costs. Claims about equilibrium behavior assume competitive arbitrage and sufficient market liquidity.
+
+\section{Actors and Incentives}
+
+\subsection{PT Holders (Fixed-Rate Exposure)}
+
+\paragraph{Decision rule.}
+A rational actor buys PT when the market-implied fixed rate exceeds their required return:
+\[
+r_{\mathrm{implied}} \geq r_{\mathrm{alt}} + \pi
+\]
+where $r_{\mathrm{alt}}$ is the opportunity cost of capital and $\pi$ is a risk premium covering contract risk, oracle risk, and underlying impairment risk.
+
+\paragraph{Implied rate.}
+Let $\Delta$ be time-to-expiry in years and $P_{PT}$ the PT price in SY units. The implied annualized return is:
+\[
+r_{\mathrm{implied}} = P_{PT}^{-1/\Delta} - 1
+\]
+For example, if $P_{PT} = 0.95$ and $\Delta = 0.5$ years, the implied APY is $(0.95)^{-2} - 1 \approx 10.8\%$.
+
+\paragraph{Risks.}
+\begin{itemize}
+\item \textbf{Smart contract risk}: Low probability, high severity. Mitigated by audits and formal verification.
+\item \textbf{Underlying impairment}: PT redemption is deterministic in SY units, but SY value depends on underlying solvency.
+\item \textbf{Opportunity cost}: Capital is locked; holder cannot chase higher yields elsewhere.
+\item \textbf{Early exit}: Must sell on AMM at prevailing price, subject to slippage and mark-to-market loss.
+\end{itemize}
+
+\paragraph{Implications.}
+PT provides deterministic redemption in SY units at expiry, conditional on SY solvency. Prior to expiry, PT is mark-to-market and may trade at a discount or premium depending on rate expectations and liquidity.
+
+\subsection{YT Holders (Yield Speculation)}
+
+\paragraph{Decision rule.}
+A rational actor buys YT when expected yield exceeds the YT price:
+\[
+\mathbb{E}[g(\Delta)] \geq P_{YT}
+\]
+where $g(\Delta)$ is the expected fractional yield growth of the underlying over time-to-expiry $\Delta$. Equivalently, if $y$ is the expected APY:
+\[
+1 - e^{-y\Delta} \geq P_{YT}
+\]
+This directly ties to the conservation identity $P_{PT} + P_{YT} = 1$.
+
+\paragraph{Leverage effect.}
+YT provides leveraged exposure to yield. If $P_{YT} = 0.05$ (5\% of SY value) and the underlying yields 10\% APY over a 6-month period:
+\begin{itemize}
+\item SY holder earns: $\approx 5\%$ on 100\% capital
+\item YT holder earns: $\approx 5\%$ yield on 5\% capital = $\approx 100\%$ effective return on YT investment
+\end{itemize}
+
+\paragraph{Risks.}
+\begin{itemize}
+\item \textbf{Time decay}: YT value converges to zero as expiry approaches, regardless of yield.
+\item \textbf{Yield drops}: Reduced interest collection; YT loses value rapidly.
+\item \textbf{Complete depeg}: If underlying stops generating yield, YT becomes worthless.
+\end{itemize}
+
+\paragraph{Implications.}
+YT is a high-risk, high-reward instrument suitable for actors with strong convictions about future yield. Longer maturities provide more leverage but greater time decay exposure.
+
+\subsection{Liquidity Providers}
+
+\paragraph{Decision rule.}
+LP provision is attractive when expected return exceeds opportunity cost:
+\[
+\mathbb{E}[\text{Fee APY}] + r_{SY} \cdot w_{SY} - \mathbb{E}[\text{IL}] \geq r_{\mathrm{alt}}
+\]
+where $r_{SY}$ is the SY yield rate, $w_{SY}$ is the SY weight in the pool, and IL is impermanent loss.
+
+\paragraph{Impermanent loss dynamics.}
+Unlike traditional AMMs where IL is symmetric, PT/SY pools exhibit asymmetric and time-dependent IL:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Rate Movement} & \textbf{PT Price} & \textbf{LP Impact} \\
+\midrule
+Rates increase & PT decreases & IL: LP holds excess PT \\
+Rates decrease & PT increases & IL: LP holds excess SY \\
+Near expiry & PT $\to$ 1 & IL minimizes as prices converge \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Time-to-expiry effect.}
+As expiry approaches, the PT price becomes less sensitive to rate changes (via the rate scalar $r_{scalar} \to \infty$), reducing volatility-driven IL. However, this also typically reduces trading volume and fee opportunities. LPs face a tradeoff between IL protection and fee income as maturity nears.
+
+\paragraph{Risks.}
+\begin{itemize}
+\item \textbf{Directional IL}: Unlike xy=k pools, rate movements cause directional exposure shifts.
+\item \textbf{Rate volatility}: High volatility increases IL without proportional fee compensation.
+\item \textbf{Low volume periods}: Fee income may not offset capital opportunity cost.
+\end{itemize}
+
+\paragraph{Implications.}
+LP returns are path-dependent and sensitive to rate volatility. Optimal entry is during stable rate environments; exit timing around volatility events is critical.
+
+\subsection{Arbitrageurs}
+
+\paragraph{Conservation bounds.}
+The conservation identity creates soft bounds on prices:
+\[
+P_{PT} + P_{YT} = 1 \pm \epsilon
+\]
+where $\epsilon$ is bounded by transaction costs, slippage, and execution latency. In liquid markets with low gas costs, $\epsilon < 0.5\%$ is typical.
+
+\paragraph{Arbitrage mechanisms.}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Condition} & \textbf{Action} & \textbf{Effect} \\
+\midrule
+$P_{PT} + P_{YT} > 1 + \epsilon$ & Mint PT+YT, sell both & Prices decrease \\
+$P_{PT} + P_{YT} < 1 - \epsilon$ & Buy PT+YT, redeem for SY & Prices increase \\
+Horizon yield $>$ external & Sell PT (or buy YT) & Implied yield decreases \\
+Horizon yield $<$ external & Buy PT (or sell YT) & Implied yield increases \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Implications.}
+Arbitrage activity maintains price consistency with external rate expectations and enforces the conservation identity within transaction cost bounds. Arbitrage profitability decreases as markets become more efficient.
+
+\section{Equilibrium Conditions}
+
+\subsection{Price Equilibrium}
+
+At equilibrium, the implied yield reflects market consensus on future rates:
+\[
+r_{\mathrm{implied}} = \mathbb{E}[r_{\mathrm{actual}}] + \pi
+\]
+where $\pi$ is a risk premium for contract and oracle risk. Deviations from this condition create arbitrage opportunities that are corrected by rational traders.
+
+\subsection{Liquidity Equilibrium}
+
+LP provision reaches equilibrium when marginal return equals opportunity cost:
+\[
+\text{Fee APY} + r_{SY} \cdot w_{SY} - \mathbb{E}[\text{IL}] = r_{\mathrm{alt}}
+\]
+
+Factors affecting LP equilibrium depth:
+\begin{itemize}
+\item Higher trading volume $\Rightarrow$ more fees $\Rightarrow$ increased LP supply
+\item Higher rate volatility $\Rightarrow$ more IL $\Rightarrow$ decreased LP supply
+\item Higher underlying yield $\Rightarrow$ more attractive SY exposure $\Rightarrow$ increased LP supply
+\end{itemize}
+
+\section{Stress Scenarios}
+
+\subsection{Yield Collapse}
+
+\paragraph{Scenario.} Underlying yield drops from 10\% to 2\% APY.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Actor} & \textbf{Immediate Impact} & \textbf{Final Outcome} \\
+\midrule
+PT Holder & Mark-to-market decline & Converges to 1 SY at maturity \\
+YT Holder & YT price drops 80\%+ & Collects only 2\% yield \\
+LP & IL + reduced fee volume & Depends on exit timing \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Key observation.} PT holders who hold to maturity are unaffected in SY terms; the ``loss'' is opportunity cost relative to new higher-yielding alternatives.
+
+\subsection{Yield Spike}
+
+\paragraph{Scenario.} Underlying yield spikes from 10\% to 25\% APY.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Actor} & \textbf{Immediate Impact} & \textbf{Final Outcome} \\
+\midrule
+PT Holder & Opportunity cost (missed yield) & Still receives 1 SY at maturity \\
+YT Holder & Large windfall & Collects 25\% yield; YT appreciates \\
+LP & Directional IL & Higher volume partially offsets \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Mass Redemption}
+
+\paragraph{Scenario.} 80\% of PT+YT holders redeem simultaneously.
+
+\paragraph{Key property.} Unlike lending protocols, the protocol has no maturity mismatch or run-induced insolvency risk, assuming SY is fully collateralized by the underlying. Each PT+YT pair is backed by exactly 1 SY held in the YT contract; redemption is always possible.
+
+\paragraph{Constraints.}
+\begin{itemize}
+\item Redemption throughput is limited by on-chain block capacity.
+\item AMM exits are subject to price impact and slippage.
+\item Solvency does not depend on borrower repayment (unlike lending protocols).
+\end{itemize}
+
+\subsection{Underlying Depeg}
+
+\paragraph{Scenario.} Underlying token loses 30\% of external value.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Asset} & \textbf{Impact} \\
+\midrule
+SY & Worth 0.7$\times$ previous external value \\
+PT & Redeems for 1 SY (now worth 0.7$\times$) \\
+YT & Yield continues at depressed rate \\
+LP & Proportional loss on both reserve assets \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Key distinction.} Depeg affects the value of SY in external terms (e.g., USD), not the internal accounting identity PT $\to$ 1 SY. The protocol's internal guarantees remain intact; external value loss is passed through to all token holders.
+
+\paragraph{Protocol response.}
+\begin{itemize}
+\item Watermark index prevents distributing negative yield.
+\item All operations continue functioning normally.
+\item Users can exit at prevailing market prices.
+\end{itemize}
+
+\section{Mechanism Properties}
+
+\subsection{Equilibrium Characterization}
+
+The system admits a candidate equilibrium where no actor can improve their expected payoff by unilaterally deviating:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Actor} & \textbf{Equilibrium Condition} \\
+\midrule
+PT Buyer & Implied yield = required return for risk \\
+YT Buyer & Expected yield $\geq$ YT price + speculation premium \\
+LP & Fee income = IL + opportunity cost \\
+Arbitrageur & Spread $\leq$ execution costs \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Under competitive arbitrage and sufficient liquidity, deviations from equilibrium prices are mean-reverting.
+
+\subsection{Incentive Properties}
+
+\paragraph{Incentive compatibility.}
+Honest behavior (accurate price discovery through trading) is locally incentive-compatible under competitive arbitrage and bounded manipulation costs. Price manipulation is costly (requires capital) and temporary (arbitrage corrects).
+
+\paragraph{Individual rationality.}
+Participation is voluntary. Expected utility is non-negative for informed participants who correctly assess risks and opportunities.
+
+\paragraph{Budget balance.}
+The protocol is self-sustaining: fees cover operational costs (gas for oracle updates, etc.). No external subsidies are required for equilibrium operation.
+
+\section{Fee Economics}
+
+\subsection{Fee Retention Model}
+
+Fees are retained in pool reserves rather than extracted:
+\begin{itemize}
+\item Swap fees increase reserve balances (SY or PT depending on trade direction).
+\item LP token value appreciates proportionally to accumulated fees.
+\item Fee value is realized when LPs withdraw liquidity.
+\end{itemize}
+
+\paragraph{Terminology note.} The swap mechanism uses a \texttt{fee\_multiplier} $\in [0,1]$ where:
+\[
+\text{fee} = \text{gross\_amount} \times (1 - \text{fee\_multiplier})
+\]
+A fee multiplier of 0.999 corresponds to a 0.1\% fee rate.
+
+\subsection{Optimal Fee Rate}
+
+The optimal fee rate balances trader demand and LP incentives:
+\begin{itemize}
+\item \textbf{Too low}: Insufficient LP incentive $\Rightarrow$ thin liquidity $\Rightarrow$ high slippage.
+\item \textbf{Too high}: Traders use alternatives $\Rightarrow$ low volume $\Rightarrow$ reduced LP returns.
+\end{itemize}
+
+Market forces determine the effective optimum:
+\begin{itemize}
+\item Competition between markets for the same underlying sets fee ceiling.
+\item Arbitrage activity requires fees below arbitrage profit margins.
+\item LP entry/exit adjusts liquidity depth to equilibrium levels.
+\end{itemize}
+
+\section{Value Accrual}
+
+\subsection{Value Flow}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Value Source} & \textbf{Recipient} \\
+\midrule
+Underlying yield & YT holders (until expiry) \\
+PT discount capture & PT holders (at maturity) \\
+Swap fees & LP holders \\
+Arbitrage spreads & Arbitrageurs \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Zero-sum framing.}
+Discount capture (PT) and yield capture (YT) are two sides of the same decomposition: PT holders forgo yield in exchange for certainty; YT holders accept uncertainty for leveraged yield exposure. Fees and arbitrage spreads are paid by traders through execution price.
+
+\subsection{Protocol Value Capture}
+
+\paragraph{Current design.} Zero protocol fee. All value flows to users (PT/YT/LP holders and arbitrageurs).
+
+\paragraph{Future consideration.} A governance-controlled protocol fee on swaps could direct value to a treasury or token holders. This would be implemented as a fraction of swap fees retained by the protocol rather than accruing to LPs.
+

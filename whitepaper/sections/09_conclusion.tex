@@ -1,0 +1,104 @@
+
+\section{Conclusion}
+
+Horizon Protocol introduces a yield tokenization framework on Starknet, enabling users to separate principal and yield exposure for yield-bearing assets.
+
+\paragraph{Key contributions.}
+\begin{itemize}
+\item \textbf{Starknet-native yield tokenization.} A PT/YT model adapted to Starknet's execution and arithmetic model, providing the first yield tokenization infrastructure on the network.
+
+\item \textbf{Cairo-native numerical design.} High-precision fixed-point arithmetic via the cairo-fp 64.64 library, enabling accurate transcendental function computation for logit-based pricing.
+
+\item \textbf{Native oracle integration.} Pragma TWAP-based exchange rate tracking for yield-bearing assets, with configurable staleness thresholds and watermark protection.
+
+\item \textbf{Logit-based AMM implementation.} A complete implementation of the Pendle-style curve with deterministic price convergence at expiry.
+\end{itemize}
+
+
+\section{Core Guarantees}
+
+The following guarantees define the protocol's economic correctness and distinguish it from lending-based fixed-rate systems.
+
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Guarantee} & \textbf{Mechanism} & \textbf{Enforcement} \\
+\midrule
+PT redemption at par & PT $\to$ 1 SY after expiry & Contract logic \\
+Token conservation & PT + YT = SY always holds & Arbitrage + contract \\
+Deterministic convergence & $r_{scalar} \to \infty$ as $\tau \to 0$ & AMM mathematics \\
+Supply equality & PT.supply = YT.supply & Contract assertion \\
+Index monotonicity & $I_{global}$ only increases & Watermark logic \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Together, these guarantees ensure that PT holders receive exactly 1 SY at expiry regardless of market conditions, YT holders receive all accrued yield, and LPs face predictable convergence dynamics.
+
+
+\section{Design Trade-offs}
+
+The following trade-offs were intentionally chosen to balance correctness, complexity, and deployability for a v1 protocol.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Trade-off} & \textbf{Choice} & \textbf{Rationale} \\
+\midrule
+Upgradeability vs immutability & Upgradeable & Enables bug fixes; requires admin trust \\
+Curve complexity vs simplicity & Full logit curve & Capital efficiency justifies complexity \\
+Gas cost vs precision & cairo-fp 64.64 & Financial math requires high precision \\
+Single-block vs multi-block execution & Single-transaction & Reduces state complexity; oracle TWAP mitigates manipulation \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Note on execution model.}
+All protocol operations complete within a single transaction. Multi-block execution patterns (e.g., commit-reveal) were not implemented. Oracle manipulation resistance relies on Pragma's TWAP mechanism rather than protocol-level multi-block designs.
+
+
+\section{Out-of-Scope Enhancements}
+
+The following enhancements are out of scope for this specification and are not commitments. They are listed to clarify possible future directions.
+
+\begin{center}
+\begin{tabular}{l l}
+\toprule
+\textbf{Enhancement} & \textbf{Purpose} \\
+\midrule
+Timelock for upgrades & Allow users to exit before upgrade execution \\
+Multisig requirement & Reduce single-key compromise risk \\
+Additional SY adapters & Support more yield-bearing assets \\
+Cross-market routing & Optimize multi-hop trade execution \\
+Governance token & Enable decentralized protocol control \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These items may be addressed in future protocol versions but are explicitly excluded from this specification.
+
+
+\section{Specification Status}
+
+This document specifies Horizon Protocol v1.0.
+
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Component} & \textbf{Status} & \textbf{Coverage} \\
+\midrule
+Token model (SY, PT, YT) & Complete & Mint, redeem, transfer, yield accounting \\
+AMM mechanism & Complete & Logit curve, fee decay, liquidity operations \\
+Redemption flows & Complete & Pre-expiry and post-expiry paths \\
+Oracle integration & Complete & Pragma TWAP, staleness, watermark \\
+Governance model & Complete & Upgradeability, RBAC, emergency procedures \\
+Risk analysis & Complete & Threat model, attack surfaces, mitigations \\
+Parameter specification & Complete & Bounds, defaults, configuration \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1em}
+
+\noindent\textbf{This document constitutes the complete technical specification for Horizon Protocol v1.0. Any behavior not described herein is considered undefined.}
+

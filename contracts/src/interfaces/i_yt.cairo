@@ -40,3 +40,13 @@ pub trait IYT<TContractState> {
     fn redeem_due_interest(ref self: TContractState, user: ContractAddress) -> u256;
     fn get_user_interest(self: @TContractState, user: ContractAddress) -> u256;
 }
+
+/// Admin interface for YT pausability
+#[starknet::interface]
+pub trait IYTAdmin<TContractState> {
+    /// Pause all YT operations (PAUSER_ROLE only)
+    fn pause(ref self: TContractState);
+
+    /// Unpause all YT operations (PAUSER_ROLE only)
+    fn unpause(ref self: TContractState);
+}

@@ -1,0 +1,369 @@
+
+This section enumerates the risks associated with the protocol, the controls in place, and residual risks that users must accept. Each risk category follows a consistent schema: threat, impact, preconditions, controls, and residual risk.
+
+\paragraph{Threat model assumptions.}
+\begin{itemize}
+\item The Starknet network operates correctly (liveness, validity proofs, L1 finality).
+\item The Pragma oracle infrastructure is not fundamentally compromised.
+\item Cryptographic primitives (hashing, signatures) remain secure.
+\item Users can monitor on-chain events and act within timelock windows.
+\end{itemize}
+
+\section{Smart Contract Risk}
+
+\subsection{Code Vulnerabilities}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l l}
+\toprule
+\textbf{Threat} & \textbf{Controls} & \textbf{Status} & \textbf{Residual} \\
+\midrule
+Reentrancy & Checks-effects-interactions; explicit reentrancy guards; minimize external calls in state-mutating paths & Implemented & Low \\
+Arithmetic overflow & Widened-precision math; explicit overflow checks; fuzz testing over boundary values & Implemented & Low \\
+Access control bypass & Role-based access control (RBAC); explicit permission checks; separation of duties & Implemented & Low \\
+Logic errors & Unit tests; integration tests; invariant fuzzing; external audit & Partial & Medium \\
+Front-running / MEV & User-defined slippage bounds; min\_out / max\_in parameters & Implemented & Medium \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Note on Cairo.} Starknet's execution model differs from EVM but does not eliminate reentrancy-like patterns through external calls and callbacks. Explicit guards and patterns are required.
+
+\subsection{Dependency Risk}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Dependency} & \textbf{Controls} & \textbf{Residual Risk} \\
+\midrule
+OpenZeppelin Cairo & Pinned versions; monitor security advisories & Upstream vulnerability \\
+cairo-fp (fixed-point math) & Extensive precision testing; boundary validation & Math library bugs \\
+Starknet protocol & Accept as infrastructure dependency & Protocol-level bugs \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Upgrade Risk}
+
+All core contracts are upgradeable using OpenZeppelin's Upgradeable component (class hash replacement). This section specifies the upgrade authority, controls, and user protections.
+
+\subsection{Upgrade Impact by Contract}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Contract} & \textbf{Upgrade Can Modify} & \textbf{Impact} \\
+\midrule
+SY & Deposit/redeem logic; share accounting & Critical \\
+PT & Redemption logic; mint authority & Critical \\
+YT & Yield distribution; interest accounting & Critical \\
+Market & AMM curve; swap logic; fee calculation & Critical \\
+Router & Routing logic; could add hidden fees & High \\
+Factory / MarketFactory & Implementation templates for new deployments & High \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Upgrade Policy}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X l}
+\toprule
+\textbf{Control} & \textbf{Status} & \textbf{Parameter} & \textbf{Residual} \\
+\midrule
+Multisig ownership & Planned & Target: 3-of-5 signers & Collusion risk \\
+Timelock delay & Planned & Target: 48 hours minimum & Emergency bypass \\
+Upgrade events & Implemented & \texttt{Upgraded(class\_hash)} emitted & Requires monitoring \\
+Code verification & Required & All class hashes verified on-chain & None \\
+Pre-deployment audit & Policy & Audited before mainnet deployment & Audit scope limits \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Emergency upgrade policy.}
+\begin{itemize}
+\item Emergency upgrades (bypassing timelock) are permitted only for active exploits.
+\item Emergency actions require documented justification published within 24 hours.
+\item Post-emergency review and standard re-deployment within 7 days.
+\end{itemize}
+
+\subsection{User Protections During Upgrades}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Guarantee} & \textbf{Description} \\
+\midrule
+Exit window & Timelock provides users N hours to exit before upgrade execution. \\
+Always-available operations & Even during pause: \texttt{redeem\_pt\_after\_expiry}, \texttt{burn} (LP withdrawal), \texttt{claim\_interest}. \\
+Pausable operations & Swaps and new mints may be paused; existing positions remain accessible. \\
+Upgrade transparency & Upgrade proposals include class hash diff and audit link (policy). \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Oracle Risk}
+
+The protocol depends on Pragma oracle for yield index data used in YT interest accounting.
+
+\subsection{Oracle Parameters}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+TWAP window & 5 minutes (configurable per SY) \\
+Staleness threshold & 3600 seconds (1 hour) \\
+Data source & Pragma aggregated feed \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Oracle Failure Behavior}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Condition} & \textbf{Protocol Response} & \textbf{Rationale} \\
+\midrule
+Stale data (age $>$ threshold) & Use watermark index; no new yield distributed & Protects against stale/manipulated data \\
+Oracle unavailable & Operations using index continue with last value & Prevents liveness failure \\
+Rate below watermark & Watermark unchanged; yield accounting frozen & Prevents negative yield distribution \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Operations affected by oracle state.}
+\begin{itemize}
+\item \texttt{mint\_py}, \texttt{redeem\_py}, \texttt{claim\_interest}: Use current or watermark index.
+\item \texttt{redeem\_pt\_after\_expiry}: Does not depend on oracle (1:1 redemption).
+\item AMM swaps: Do not use oracle; pricing is internal to pool state.
+\end{itemize}
+
+\subsection{Exchange Rate Manipulation}
+
+\paragraph{Threat.} Attacker manipulates oracle to extract value from the protocol.
+
+\paragraph{Attack surfaces.} The oracle index affects only the YT interest accounting system:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l}
+\toprule
+\textbf{Subsystem} & \textbf{Oracle Dependency} & \textbf{Extraction Vector} \\
+\midrule
+Interest accounting & $I_{global}$ updated from oracle & Inflated index $\Rightarrow$ excess \texttt{claim\_interest} payout \\
+SY deposit/redeem & 1:1 ratio (no oracle) & None \\
+AMM pricing & Internal pool state only & None (oracle not used) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Attack scenario (index inflation).}
+\begin{enumerate}
+\item Attacker manipulates oracle to report inflated exchange rate.
+\item Attacker calls \texttt{claim\_interest}; inflated $I_{global}$ causes excess SY payout.
+\item Oracle returns to normal; attacker has extracted SY from YT contract reserves.
+\end{enumerate}
+
+\paragraph{Controls.}
+\begin{itemize}
+\item TWAP (5-minute window) increases manipulation cost and duration required.
+\item Watermark prevents exploitation of rate \emph{drops} (only increases can inflate index).
+\item Staleness check rejects data older than 1 hour.
+\end{itemize}
+
+\paragraph{Residual risk.} Sustained oracle manipulation over the TWAP window can still inflate the index. Mitigation requires oracle-level security (Pragma's aggregation and data source diversity).
+
+\section{Market Risk}
+
+Market risks affect execution and returns but do not compromise protocol solvency. These are inherent to participation in yield markets.
+
+\subsection{Liquidity Risk}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l}
+\toprule
+\textbf{Scenario} & \textbf{Impact} & \textbf{User Mitigation} \\
+\midrule
+Thin liquidity & High slippage; inability to exit at fair price & Smaller orders; check price impact \\
+LP concentration & Single LP can move market significantly & Monitor LP distribution \\
+Extreme proportion & Trades rejected at bounds & Wait for arbitrage; use redemption path \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Worst case.} Inability to exit position at fair price before expiry. Protocol solvency is unaffected; this is execution risk only.
+
+\subsection{Impermanent Loss Risk}
+
+IL risk for LPs depends on rate volatility and time to expiry:
+
+\begin{itemize}
+\item \textbf{High volatility + long maturity}: Severe IL exposure; rate movements cause significant rebalancing.
+\item \textbf{Low volatility or short maturity}: Minimal IL; PT price convergence dominates.
+\item \textbf{Near expiry}: IL minimizes as $P_{PT} \to 1$ regardless of rate movements.
+\end{itemize}
+
+\paragraph{Key insight.} IL risk decreases as expiry approaches because PT price becomes insensitive to rate changes ($r_{scalar} \to \infty$).
+
+\section{Underlying Asset Risk}
+
+Risks from the yield-bearing assets wrapped by SY tokens.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Risk} & \textbf{Protocol Behavior} & \textbf{User Impact} \\
+\midrule
+Depeg (value loss) & Watermark prevents negative yield accounting; redemption continues at 1:1 in SY & Principal impairment; users redeem into devalued asset \\
+Yield cessation & YT stops accruing; PT converges toward 1 SY & YT holders receive no further yield; PT may reprice \\
+Underlying protocol failure & SY may become worthless & Total loss possible \\
+Regulatory freeze & Protocol cannot intervene & User bears external legal risk \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Key distinction.} The watermark protects yield accounting integrity (no negative yield distribution). It does \emph{not} protect against principal impairment of the underlying asset. If the underlying loses value, all token holders (SY, PT, YT, LP) bear proportional losses.
+
+\section{Governance and Admin Risk}
+
+\subsection{Admin Key Compromise}
+
+\paragraph{Threat.} Attacker gains control of admin keys and executes malicious upgrades.
+
+\paragraph{Impact.} Complete protocol control; ability to drain funds via malicious upgrade.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Control} & \textbf{Status} & \textbf{Protection} \\
+\midrule
+Hardware wallet storage & Required & Reduces remote key theft \\
+Multisig (3-of-5) & Planned & Requires multiple compromises or collusion \\
+Timelock (48h) & Planned & Users can exit before malicious upgrade executes \\
+Upgrade monitoring & Implemented & On-chain events enable automated alerts \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Malicious Upgrade Detection}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Attack} & \textbf{Detection Method} & \textbf{User Defense} \\
+\midrule
+Backdoor insertion & Code diff analysis; class hash verification & Exit during timelock window \\
+Hidden fee extraction & Event monitoring; balance tracking & Review upgrade proposals \\
+Logic manipulation & Automated contract comparison tools & Subscribe to upgrade alerts \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Role Escalation}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Risk} & \textbf{Control} \\
+\midrule
+Admin grants attacker roles & Multisig requirement; role changes emit events \\
+Role accumulation & Separation of duties; distinct admin/pauser/operator roles \\
+Pauser griefing & Pause is temporary; unpause requires same authority \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Starknet Infrastructure Risk}
+
+External infrastructure risks outside protocol control.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Risk} & \textbf{Impact} & \textbf{User Response} \\
+\midrule
+Sequencer downtime & Transactions not processed & Wait for recovery; funds remain in L2 state \\
+Sequencer censorship & Specific transactions blocked & Use alternative RPC; await escape mechanisms \\
+Proof generation delay & Finality delayed on L1 & Internal accounting unaffected; settlement certainty reduced \\
+L1 congestion & High finalization costs & Accept as infrastructure cost \\
+Protocol upgrade (Starknet) & Breaking changes possible & Monitor Starknet roadmap; protocol will adapt \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Note on censorship.} L1 force-inclusion mechanisms for Starknet are evolving. Until mature escape hatches exist, sequencer censorship remains an infrastructure-level risk that users accept.
+
+\section{User Operational Risk}
+
+User errors and operational security failures.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Risk} & \textbf{Description} & \textbf{Mitigation} \\
+\midrule
+Wrong address & Funds sent to incorrect recipient & Address validation; UI confirmations; verify full address \\
+Address poisoning & Attacker creates similar-looking address & Use address book; verify complete address, not prefix \\
+Wrong network/contract & Interaction with fake or test contract & Verify class hash; use official registry \\
+Missed expiry & PT held past maturity & Redemption still works; no penalty \\
+Slippage misconfiguration & Worse execution than expected & UI defaults; warnings on extreme values \\
+Unlimited approvals & Excessive token permissions & Default to exact approvals; revoke after use \\
+Approval phishing & Malicious approval requests & Wallet warnings; review approval targets \\
+MEV sandwich & Execution between attacker trades & Tight slippage bounds; private mempools if available \\
+Private key loss & Permanent fund loss & Hardware wallets; secure backup procedures \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Threat Model Summary}
+
+\subsection{Risk Priority Matrix}
+
+Risks are prioritized separately for systemic (protocol-wide) and individual (user-level) impact.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{l l l l l}
+\toprule
+\textbf{Risk} & \textbf{Likelihood} & \textbf{Systemic Impact} & \textbf{User Impact} & \textbf{Priority} \\
+\midrule
+Admin key compromise & Low & Critical & Critical & Critical \\
+Smart contract bug & Low & Critical & Critical & Critical \\
+Oracle manipulation & Medium & High & High & High \\
+Underlying depeg & Low & High & High & High \\
+Liquidity crisis & Medium & Low & Medium & Medium \\
+Sequencer downtime & Low & Low & Low & Low \\
+User operational error & High & None & High & Medium (user) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Interpretation.}
+\begin{itemize}
+\item \textbf{Critical priority}: Requires maximum preventive investment and monitoring.
+\item \textbf{High priority}: Active controls required; residual risk accepted.
+\item \textbf{Medium priority}: Controls in place; ongoing monitoring.
+\item \textbf{Low priority}: Accepted as infrastructure or user-level risk.
+\end{itemize}
+
+\section{Exclusions: What the Protocol Does NOT Protect Against}
+
+The following risks are explicitly outside the protocol's protection scope:
+
+\begin{enumerate}
+\item \textbf{Underlying asset impairment.} Principal loss from underlying asset failure is borne by users.
+
+\item \textbf{Malicious or compromised governance.} Upgrade authority can modify contract logic; mitigated only by timelock and monitoring where implemented.
+
+\item \textbf{Starknet network failures.} Protocol correctness depends on Starknet liveness and validity proofs.
+
+\item \textbf{Oracle compromise.} Fundamental Pragma compromise could cause incorrect yield accounting; mitigated by TWAP and watermark but not eliminated.
+
+\item \textbf{Regulatory actions.} Legal restrictions on assets or users cannot be prevented by the protocol.
+
+\item \textbf{User operational errors.} Incorrect addresses, lost keys, and configuration mistakes are user responsibility.
+
+\item \textbf{MEV and front-running.} Users can mitigate with slippage settings but cannot eliminate; this is inherent to public blockchains.
+\end{enumerate}
+

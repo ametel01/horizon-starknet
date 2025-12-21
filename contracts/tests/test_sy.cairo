@@ -73,6 +73,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -235,7 +236,7 @@ fn test_sy_deposit_to_different_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'SY: zero deposit')]
+#[should_panic(expected: 'HZN: zero deposit')]
 fn test_sy_deposit_zero() {
     let (_, _, sy) = setup();
     let user = user1();
@@ -245,7 +246,7 @@ fn test_sy_deposit_zero() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_sy_deposit_zero_receiver() {
     let (_, yield_token, sy) = setup();
     let user = user1();
@@ -315,7 +316,7 @@ fn test_sy_redeem_to_different_receiver() {
 }
 
 #[test]
-#[should_panic(expected: 'SY: zero redeem')]
+#[should_panic(expected: 'HZN: zero redeem')]
 fn test_sy_redeem_zero() {
     let (_, yield_token, sy) = setup();
     let user = user1();
@@ -333,7 +334,7 @@ fn test_sy_redeem_zero() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_sy_redeem_zero_receiver() {
     let (_, yield_token, sy) = setup();
     let user = user1();

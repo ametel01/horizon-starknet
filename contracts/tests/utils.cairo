@@ -41,6 +41,9 @@ pub const ONE_YEAR: u64 = 365 * 86400;
 pub const ONE_MONTH: u64 = 30 * 86400;
 pub const ONE_DAY: u64 = 86400;
 
+/// Default deadline for router operations in tests (far future - effectively no deadline)
+pub const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF; // u64::MAX
+
 // ============ ByteArray Helper ============
 
 pub fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
@@ -102,6 +105,7 @@ pub fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -124,6 +128,7 @@ pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> 
     calldata.append(sy.into());
     calldata.append(pt_class_hash.into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }

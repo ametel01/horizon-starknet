@@ -50,6 +50,7 @@ export function useMarket(
         reserves,
         totalLpSupply,
         lnRate,
+        feesCollected,
       ] = await Promise.all([
         market.sy(),
         market.pt(),
@@ -59,6 +60,7 @@ export function useMarket(
         market.get_reserves(),
         market.total_lp_supply(),
         market.get_ln_implied_rate(),
+        market.get_total_fees_collected(),
       ]);
 
       const info: MarketInfo = {
@@ -78,6 +80,7 @@ export function useMarket(
         ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
         totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
         lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
+        feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
       };
 
       // Compute derived values
@@ -151,10 +154,11 @@ export function useMarketState(
 
       const market = getMarketContract(marketAddress, provider);
 
-      const [reserves, totalLpSupply, lnRate] = await Promise.all([
+      const [reserves, totalLpSupply, lnRate, feesCollected] = await Promise.all([
         market.get_reserves(),
         market.total_lp_supply(),
         market.get_ln_implied_rate(),
+        market.get_total_fees_collected(),
       ]);
 
       const reservesArr = reserves as unknown[];
@@ -165,6 +169,7 @@ export function useMarketState(
         ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
         totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
         lnImpliedRate,
+        feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
         impliedApy: lnRateToApy(lnImpliedRate),
       };
     },

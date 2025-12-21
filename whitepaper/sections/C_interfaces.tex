@@ -1,0 +1,307 @@
+
+This appendix specifies the external interfaces for all core protocol contracts. Each interface includes semantic invariants, parameter specifications, and authority constraints.
+
+\paragraph{Terminology.}
+Throughout this appendix, \textbf{PY} denotes a matched pair of PT and YT tokens (1 PY = 1 PT + 1 YT). All amounts are WAD-scaled ($10^{18}$) unless otherwise noted. Timestamps are Unix seconds.
+
+
+\section{Interface Summary}
+
+\begin{center}
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Interface} & \textbf{Responsibility} & \textbf{Trust Level} & \textbf{Key Invariant} \\
+\midrule
+SY & Yield abstraction layer & Medium & Fully backed by underlying \\
+PT & Principal token claim & High & Supply equals YT supply \\
+YT & Yield accounting and distribution & High & Index monotonically increases \\
+Market & PT/SY price discovery & Medium & Proportion bounds enforced \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+
+\section{SY Interface}
+
+\paragraph{Semantic invariants.}
+\begin{itemize}
+\item SY is always fully backed by underlying assets held by the contract.
+\item \texttt{exchange\_rate()} is monotonically non-decreasing (yield only accrues, never decreases).
+\item Total SY supply equals the underlying value divided by exchange rate.
+\end{itemize}
+
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\small,frame=single,breaklines=true,columns=fullflexible]
+#[starknet::interface]
+pub trait ISY<TContractState> {
+    // ERC20 standard functions (name, symbol, decimals,
+    // total_supply, balance_of, transfer, approve, transfer_from)
+
+    fn deposit(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        token_in: ContractAddress,
+        amount_token_to_deposit: u256,
+        min_shares_out: u256
+    ) -> u256;
+
+    fn redeem(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_shares_to_redeem: u256,
+        token_out: ContractAddress,
+        min_token_out: u256,
+        burn_from_internal_balance: bool
+    ) -> u256;
+
+    fn exchange_rate(self: @TContractState) -> u256;
+    fn underlying(self: @TContractState) -> ContractAddress;
+    fn yt(self: @TContractState) -> ContractAddress;
+}
+\end{lstlisting}
+
+\paragraph{Parameter specification.}
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{amount\_token\_to\_deposit} & u256 & Underlying amount (WAD-scaled) \\
+\texttt{min\_shares\_out} & u256 & Minimum SY to receive; reverts if not met \\
+\texttt{amount\_shares\_to\_redeem} & u256 & SY amount to burn (WAD-scaled) \\
+\texttt{token\_in / token\_out} & address & Underlying token address (multi-asset support) \\
+\texttt{exchange\_rate} return & u256 & Current rate (WAD-scaled); $\geq 1 \times 10^{18}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Notes.}
+\begin{itemize}
+\item \texttt{token\_in} / \texttt{token\_out} enable SY implementations that support multiple underlying assets (e.g., wrapped vs unwrapped).
+\item \texttt{burn\_from\_internal\_balance} allows gas-efficient redemptions when SY is already held by the contract.
+\item \texttt{deposit} reverts if \texttt{min\_shares\_out} is not met (slippage protection).
+\end{itemize}
+
+
+\section{PT Interface}
+
+\paragraph{Semantic invariants.}
+\begin{itemize}
+\item PT is non-inflationary: the only mint/burn authority is the YT contract.
+\item PT supply always equals YT supply.
+\item After expiry, each PT is redeemable for exactly 1 SY.
+\end{itemize}
+
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\small,frame=single,breaklines=true,columns=fullflexible]
+#[starknet::interface]
+pub trait IPT<TContractState> {
+    // ERC20 standard functions (inherited)
+
+    fn expiry(self: @TContractState) -> u64;
+    fn is_expired(self: @TContractState) -> bool;
+    fn sy(self: @TContractState) -> ContractAddress;
+    fn yt(self: @TContractState) -> ContractAddress;
+
+    // Only callable by YT contract
+    fn mint(ref self: TContractState, to: ContractAddress, amount: u256);
+    fn burn(ref self: TContractState, from: ContractAddress, amount: u256);
+}
+\end{lstlisting}
+
+\paragraph{Parameter specification.}
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{expiry} return & u64 & Unix timestamp (seconds) of maturity \\
+\texttt{is\_expired} return & bool & True if current time $\geq$ expiry \\
+\texttt{amount} (mint/burn) & u256 & PT amount (WAD-scaled) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Access control.}
+\texttt{mint} and \texttt{burn} are restricted to the YT contract address. Calls from any other address revert with ``unauthorized''.
+
+
+\section{YT Interface}
+
+\paragraph{Semantic invariants.}
+\begin{itemize}
+\item YT supply always equals PT supply.
+\item The global index $I_{global}$ only increases (watermark protection).
+\item Interest is distributed proportionally based on YT balance and index delta.
+\item After expiry, YT stops accruing yield and becomes non-transferable.
+\end{itemize}
+
+\paragraph{Interest accounting model.}
+\begin{itemize}
+\item Interest accrues via a global monotonic index updated from the oracle.
+\item Each user has a snapshot index $I_{user}$ recording their last claim.
+\item Claimable interest: $B_{YT} \times (I_{global} - I_{user}) / I_{user}$.
+\item Index updates occur on all state-changing operations.
+\end{itemize}
+
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\small,frame=single,breaklines=true,columns=fullflexible]
+#[starknet::interface]
+pub trait IYT<TContractState> {
+    // ERC20 standard functions (inherited)
+
+    // Minting (splits SY into PT + YT)
+    fn mint_py(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_sy_to_mint: u256
+    ) -> (u256, u256);  // returns (pt_amount, yt_amount)
+
+    // Redemption (recombines PT + YT into SY)
+    fn redeem_py(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_py_to_redeem: u256
+    ) -> u256;  // returns sy_amount
+
+    fn redeem_py_and_underlying(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_py_to_redeem: u256,
+        token_out: ContractAddress
+    ) -> (u256, u256);  // returns (sy_redeemed, underlying_out)
+
+    // Interest
+    fn claim_interest(ref self: TContractState, user: ContractAddress) -> u256;
+    fn get_user_interest(self: @TContractState, user: ContractAddress) -> u256;
+
+    // State
+    fn expiry(self: @TContractState) -> u64;
+    fn is_expired(self: @TContractState) -> bool;
+    fn py_index_stored(self: @TContractState) -> u256;
+    fn sy(self: @TContractState) -> ContractAddress;
+    fn pt(self: @TContractState) -> ContractAddress;
+}
+\end{lstlisting}
+
+\paragraph{Parameter specification.}
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{amount\_sy\_to\_mint} & u256 & SY to split into PT+YT (WAD-scaled) \\
+\texttt{amount\_py\_to\_redeem} & u256 & PT+YT pairs to recombine (WAD-scaled) \\
+\texttt{py\_index\_stored} return & u256 & Current global index (WAD-scaled) \\
+\texttt{claim\_interest} return & u256 & SY amount transferred to user \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Notes.}
+\begin{itemize}
+\item \texttt{mint\_py} requires prior SY approval; transfers SY from caller and mints equal PT and YT to receiver.
+\item \texttt{redeem\_py} requires caller to hold equal amounts of PT and YT; burns both and returns SY.
+\item \texttt{claim\_interest} updates $I_{user}$ to $I_{global}$ after transfer; subsequent calls return 0 until new yield accrues.
+\item After expiry, \texttt{redeem\_pt\_after\_expiry} (not shown) allows PT-only redemption at 1:1.
+\end{itemize}
+
+
+\section{Market Interface}
+
+\paragraph{Semantic invariants.}
+\begin{itemize}
+\item Pool proportions remain within configured bounds; trades violating bounds revert.
+\item LP tokens represent pro-rata ownership of pool reserves.
+\item Swap prices follow the logit-based AMM curve (see Section 4).
+\item Fees accrue to the pool and are distributed to LPs on withdrawal.
+\end{itemize}
+
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\small,frame=single,breaklines=true,columns=fullflexible]
+#[starknet::interface]
+pub trait IMarket<TContractState> {
+    // ERC20 for LP tokens (inherited)
+
+    // Swaps
+    fn swap_exact_pt_for_sy(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        exact_pt_in: u256,
+        min_sy_out: u256
+    ) -> u256;  // returns sy_out
+
+    fn swap_exact_sy_for_pt(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        exact_sy_in: u256,
+        min_pt_out: u256
+    ) -> u256;  // returns pt_out
+
+    // Liquidity
+    fn add_liquidity(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        sy_desired: u256,
+        pt_desired: u256,
+        min_lp_out: u256
+    ) -> (u256, u256, u256);  // returns (sy_used, pt_used, lp_minted)
+
+    fn remove_liquidity(
+        ref self: TContractState,
+        receiver: ContractAddress,
+        lp_to_burn: u256,
+        min_sy_out: u256,
+        min_pt_out: u256
+    ) -> (u256, u256);  // returns (sy_out, pt_out)
+
+    // State
+    fn get_reserves(self: @TContractState) -> (u256, u256);
+    fn get_ln_implied_rate(self: @TContractState) -> u256;
+    fn expiry(self: @TContractState) -> u64;
+    fn pt(self: @TContractState) -> ContractAddress;
+    fn sy(self: @TContractState) -> ContractAddress;
+}
+\end{lstlisting}
+
+\paragraph{Parameter specification.}
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{exact\_pt\_in / exact\_sy\_in} & u256 & Exact input amount (WAD-scaled) \\
+\texttt{min\_sy\_out / min\_pt\_out} & u256 & Minimum output; reverts if not met \\
+\texttt{sy\_desired / pt\_desired} & u256 & Maximum amounts to deposit \\
+\texttt{min\_lp\_out} & u256 & Minimum LP tokens; reverts if not met \\
+\texttt{get\_reserves} return & (u256, u256) & Current (SY, PT) reserves \\
+\texttt{get\_ln\_implied\_rate} return & u256 & $\ln(1+r)$ scaled by WAD \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Pricing reference.}
+All swap prices follow the logit-based AMM defined in Section 4. The exchange rate is computed as:
+\[
+\text{rate} = \frac{\ln(p/(1-p))}{r_{scalar}} + r_{anchor}
+\]
+where $p$ is the PT proportion and $r_{scalar}$ decays toward expiry.
+
+\paragraph{Slippage protection.}
+All swap and liquidity functions include \texttt{min\_*\_out} parameters. If the computed output is less than the minimum, the transaction reverts. This protects users against price movement between transaction submission and execution.
+
+
+\section{Revert Conditions Summary}
+
+\begin{center}
+\begin{tabular}{l l}
+\toprule
+\textbf{Condition} & \textbf{Affected Functions} \\
+\midrule
+Output below minimum & All swaps, deposits, withdrawals \\
+Insufficient balance & All transfers, burns, redemptions \\
+Unauthorized caller & PT mint/burn (non-YT caller) \\
+Proportion bounds violated & Market swaps \\
+Zero amount & All state-changing functions \\
+Expired (where applicable) & \texttt{mint\_py}, \texttt{redeem\_py} \\
+Not expired (where applicable) & \texttt{redeem\_pt\_after\_expiry} \\
+\bottomrule
+\end{tabular}
+\end{center}
+

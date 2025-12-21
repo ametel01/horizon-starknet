@@ -5,6 +5,7 @@
 pub mod Factory {
     use core::num::traits::Zero;
     use horizon::interfaces::i_factory::IFactory;
+    use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::roles::DEFAULT_ADMIN_ROLE;
@@ -63,6 +64,8 @@ pub mod Factory {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         access_control: AccessControlComponent::Storage,
+        // Flag to prevent RBAC re-initialization
+        rbac_initialized: bool,
     }
 
     #[event]
@@ -150,19 +153,25 @@ pub mod Factory {
             let count = self.deploy_count.read();
             self.deploy_count.write(count + 1);
 
+            // Get SY symbol for derived naming
+            let sy_dispatcher = ISYDispatcher { contract_address: sy };
+            let sy_symbol = sy_dispatcher.symbol();
+
+            // Construct YT name and symbol from SY symbol (e.g., "YT-stETH")
+            let mut yt_name: ByteArray = "YT-";
+            yt_name.append(@sy_symbol);
+            let mut yt_symbol: ByteArray = "YT-";
+            yt_symbol.append(@sy_symbol);
+
             // Build YT constructor calldata
             // YT constructor: name, symbol, sy, pt_class_hash, expiry
             let mut yt_calldata: Array<felt252> = array![];
 
-            // Name: "YT Token" (simplified - in production would include SY name)
-            yt_calldata.append(0); // data array length
-            yt_calldata.append('YT Token'); // pending_word
-            yt_calldata.append(8); // pending_word_len
+            // Serialize YT name (ByteArray)
+            Serde::serialize(@yt_name, ref yt_calldata);
 
-            // Symbol: "YT"
-            yt_calldata.append(0);
-            yt_calldata.append('YT');
-            yt_calldata.append(2);
+            // Serialize YT symbol (ByteArray)
+            Serde::serialize(@yt_symbol, ref yt_calldata);
 
             // SY address
             yt_calldata.append(sy.into());
@@ -172,6 +181,9 @@ pub mod Factory {
 
             // Expiry
             yt_calldata.append(expiry.into());
+
+            // Pauser address (factory owner gets PAUSER_ROLE on created YT)
+            yt_calldata.append(self.ownable.owner().into());
 
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();
@@ -250,12 +262,15 @@ pub mod Factory {
         /// Owner calls this to bootstrap AccessControl roles
         fn initialize_rbac(ref self: ContractState) {
             self.ownable.assert_only_owner();
+            assert(!self.rbac_initialized.read(), Errors::RBAC_ALREADY_INITIALIZED);
 
             let owner = self.ownable.owner();
 
-            // Initialize AccessControl if not already done
             // Grant admin role to current owner
             self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
+
+            // Mark as initialized to prevent re-calling
+            self.rbac_initialized.write(true);
         }
     }
 }

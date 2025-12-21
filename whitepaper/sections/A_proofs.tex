@@ -1,0 +1,131 @@
+
+This appendix formalizes the key mathematical properties that underpin Horizon's economic guarantees.
+
+
+\section{PT Price Convergence}
+
+\textbf{Theorem A.1.}
+Assuming a bounded implied rate $r < \infty$, the PT price converges to its redemption value as expiry approaches:
+\[
+\lim_{\tau \to 0} P_{PT} = 1.
+\]
+
+\textbf{Proof.}
+
+The PT price is defined as:
+\[
+P_{PT} = e^{-r \cdot \tau_y},
+\quad
+\text{where}
+\quad
+\tau_y = \frac{\tau}{Y}
+\]
+and $Y$ is the number of seconds per year (31,536,000).
+
+As $\tau \to 0$, we have $\tau_y \to 0$. Since $r$ is bounded by construction ($0 \le r \le r_{max}$), the exponent satisfies:
+\[
+\lim_{\tau \to 0} (-r \cdot \tau_y) = 0.
+\]
+
+By continuity of the exponential function:
+\[
+\lim_{\tau \to 0} e^{-r \cdot \tau_y} = e^{0} = 1.
+\]
+
+Therefore, $P_{PT} \to 1$ as $\tau \to 0$. \qed
+
+
+\section{Conservation Invariant}
+
+\textbf{Theorem A.2.}
+For all times $t < T$ (before expiry), the following invariant holds:
+\[
+1 \, \text{PT} + 1 \, \text{YT} \;\longleftrightarrow\; 1 \, \text{SY}.
+\]
+
+\textbf{Proof.}
+
+Before expiry, the protocol exposes two mutually inverse state transitions:
+
+\begin{itemize}
+\item \textbf{Split:} Depositing $x$ SY mints exactly $x$ PT and $x$ YT.
+\item \textbf{Recombine:} Burning $x$ PT and $x$ YT releases exactly $x$ SY.
+\end{itemize}
+
+By construction:
+\[
+\text{PT.supply} = \text{YT.supply}
+\]
+and all outstanding PT and YT are fully backed by SY held in the YT contract:
+\[
+\text{SY}_{\text{YT}} = \text{PT.supply} = \text{YT.supply}.
+\]
+
+No operation allows PT or YT to be minted or burned independently. Therefore, for all valid states before expiry:
+\[
+1 \, \text{PT} + 1 \, \text{YT} = 1 \, \text{SY}.
+\]
+
+\qed
+
+
+\section{No-Arbitrage Pricing Condition}
+
+\textbf{Theorem A.3.}
+In the absence of fees, slippage, and execution costs, any deviation from
+\[
+P_{PT} + P_{YT} = 1
+\]
+admits a risk-free arbitrage opportunity.
+
+\textbf{Assumptions.}
+\begin{itemize}
+\item Zero swap fees
+\item Zero slippage (infinite liquidity)
+\item Zero gas/execution costs
+\item Instantaneous execution
+\end{itemize}
+
+\textbf{Proof.}
+
+\textbf{Case 1:} $P_{PT} + P_{YT} > 1$
+
+\begin{enumerate}
+\item Purchase 1 SY at unit price.
+\item Split into 1 PT and 1 YT.
+\item Sell PT for $P_{PT}$ and YT for $P_{YT}$.
+\end{enumerate}
+
+Net profit:
+\[
+P_{PT} + P_{YT} - 1 > 0.
+\]
+
+\textbf{Case 2:} $P_{PT} + P_{YT} < 1$
+
+\begin{enumerate}
+\item Purchase 1 PT for $P_{PT}$ and 1 YT for $P_{YT}$.
+\item Recombine into 1 SY.
+\item Sell SY at unit price.
+\end{enumerate}
+
+Net profit:
+\[
+1 - P_{PT} - P_{YT} > 0.
+\]
+
+In both cases, arbitrageurs are incentivized to trade until the equality
+\[
+P_{PT} + P_{YT} = 1
+\]
+is restored, up to execution costs.
+
+\qed
+
+\paragraph{Remark.}
+In practice, fees and slippage introduce a bounded arbitrage band around the equality. If total round-trip costs are $\epsilon$, then the no-arbitrage condition relaxes to:
+\[
+|P_{PT} + P_{YT} - 1| \le \epsilon.
+\]
+Within this band, arbitrage is unprofitable and deviations may persist.
+

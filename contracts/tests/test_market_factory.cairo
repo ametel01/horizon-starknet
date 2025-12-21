@@ -94,6 +94,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(admin().into()); // pauser
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -109,6 +110,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(sy.into());
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
+    calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -249,7 +251,7 @@ fn test_market_factory_create_multiple_markets() {
 }
 
 #[test]
-#[should_panic(expected: 'MktFactory: already exists')]
+#[should_panic(expected: 'HZN: market already exists')]
 fn test_market_factory_create_duplicate() {
     let (_, _, _, pt, factory) = setup();
 
@@ -273,7 +275,7 @@ fn test_market_factory_create_duplicate() {
 }
 
 #[test]
-#[should_panic(expected: 'YT: zero address')]
+#[should_panic(expected: 'HZN: zero address')]
 fn test_market_factory_create_zero_pt() {
     let factory = deploy_market_factory();
 
@@ -284,7 +286,7 @@ fn test_market_factory_create_zero_pt() {
 }
 
 #[test]
-#[should_panic(expected: 'Market: expired')]
+#[should_panic(expected: 'HZN: market expired')]
 fn test_market_factory_create_expired_pt() {
     let (_, _, _, pt, factory) = setup();
 
@@ -420,10 +422,11 @@ fn test_market_factory_different_parameters() {
 fn test_market_factory_large_parameters() {
     let (_, _, _, pt, factory) = setup();
 
-    // Use very large scalar and anchor values
-    let large_scalar = 1000 * WAD;
-    let large_anchor = 5 * WAD; // 500% APY (extreme but valid)
-    let large_fee = WAD / 10; // 10% fee
+    // Use large (but valid) scalar and anchor values
+    // scalar_root max: 1000 WAD, anchor max: ~4.6 WAD, fee max: 0.1 WAD (10%)
+    let large_scalar = 1000 * WAD; // Maximum allowed scalar
+    let large_anchor = 4 * WAD + (WAD / 2); // 4.5 WAD (within ~4.6 max)
+    let large_fee = WAD / 10; // 10% fee (maximum allowed)
 
     let market_addr = factory
         .create_market(pt.contract_address, large_scalar, large_anchor, large_fee);
@@ -436,10 +439,11 @@ fn test_market_factory_large_parameters() {
 fn test_market_factory_small_parameters() {
     let (_, _, _, pt, factory) = setup();
 
-    // Use very small scalar and anchor values
-    let small_scalar = WAD / 100; // 0.01 scalar
-    let small_anchor = WAD / 1000; // 0.1% APY
-    let small_fee = WAD / 10000; // 0.01% fee
+    // Use small (but valid) scalar and anchor values
+    // scalar_root min: 1 WAD, anchor min: 0, fee min: 0
+    let small_scalar = WAD; // 1 WAD (minimum allowed)
+    let small_anchor = WAD / 1000; // 0.001 WAD (small but valid anchor)
+    let small_fee = WAD / 10000; // 0.01% fee (small but valid)
 
     let market_addr = factory
         .create_market(pt.contract_address, small_scalar, small_anchor, small_fee);
@@ -458,4 +462,49 @@ fn test_market_factory_zero_fee() {
 
     assert(!market_addr.is_zero(), 'Should create market');
     assert(factory.is_valid_market(market_addr), 'Should be valid');
+}
+
+// ============ Parameter Validation Tests ============
+
+#[test]
+#[should_panic(expected: 'HZN: invalid scalar')]
+fn test_market_factory_scalar_too_small() {
+    let (_, _, _, pt, factory) = setup();
+
+    // scalar_root below minimum (1 WAD)
+    let invalid_scalar = WAD / 2; // 0.5 WAD - below minimum
+    factory.create_market(pt.contract_address, invalid_scalar, default_initial_anchor(), WAD / 100);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid scalar')]
+fn test_market_factory_scalar_too_large() {
+    let (_, _, _, pt, factory) = setup();
+
+    // scalar_root above maximum (1000 WAD)
+    let invalid_scalar = 1001 * WAD; // Above maximum
+    factory.create_market(pt.contract_address, invalid_scalar, default_initial_anchor(), WAD / 100);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid anchor')]
+fn test_market_factory_anchor_too_large() {
+    let (_, _, _, pt, factory) = setup();
+
+    // initial_anchor above maximum (~4.6 WAD)
+    let invalid_anchor = 5 * WAD; // 5 WAD - above ~4.6 max
+    factory.create_market(pt.contract_address, default_scalar_root(), invalid_anchor, WAD / 100);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee')]
+fn test_market_factory_fee_too_large() {
+    let (_, _, _, pt, factory) = setup();
+
+    // fee_rate above maximum (10% = 0.1 WAD)
+    let invalid_fee = WAD / 5; // 20% fee - above 10% max
+    factory
+        .create_market(
+            pt.contract_address, default_scalar_root(), default_initial_anchor(), invalid_fee,
+        );
 }

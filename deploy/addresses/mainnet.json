@@ -1,47 +1,47 @@
 {
   "network": "mainnet",
   "rpcUrl": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/usuQSZ2cdSmSR8rNpstjp",
-  "deployedAt": "2025-12-17T11:25:33Z",
+  "deployedAt": "2025-12-20T23:19:02Z",
   "classHashes": {
-    "MockYieldToken": "0x03dd9791e5c044f99df38a85d98c7a50c8ae2a310a400dff5d8bb8ee55c2f2d4",
-    "Faucet": "0x059cd6d2c00f19c181ea3ecb8270430417bf03b2f6a12c3be116e8a0329ac49c",
-    "SY": "0x04d0b1a8c6dce08b23de9c6597ce028fb2072bc346726808f81a6f6c48b1e02b",
-    "PT": "0x0452a52cf4d365656e5efa14bcad9ce3a31cedbbd5226918f4c45b7c317008c8",
-    "YT": "0x067c54ddc99d65e75134de8620ae70e6ddf65852de544eb21bc39a5f29b6f3ab",
-    "Market": "0x07dc4fe6b7fbc6d3722d3e55aa1c1be3daff4a61d38a163d844839e0231a2b47",
-    "Factory": "0x058e85e13f070049e7e6e8d57885dcf5a904b8f541803f7507de4df01a6ca4af",
-    "MarketFactory": "0x06ccf69e7d517d23d84e5bf6384118ded1a1b3e20c03757c921ad3c9762b3b52",
-    "Router": "0x000ff2d55a0557ca6c171088da5d6e23478a3f1f1d3d028be9a2e44d8180d434"
+    "MockYieldToken": "0x01d30ffe734e15ab821b189bbb434f1dca3d32dd1b55aecb5555f465c4e6004f",
+    "Faucet": "0x002a23d74960946e57c81f2fb53bf017cf7cfb099c68b2241a1e6f57e677cd88",
+    "SY": "0x06b58bbfcd12ca90788e811f0c702638b8c381626bec9f1af83c4a3bdfa4ee17",
+    "PT": "0x00dab8a31509b26ab286fc32547209c4d6d5ca06687288702c39d9c92d447fc7",
+    "YT": "0x01ba4cd7fd4e7ae07663fb86f8a8e064b4bb72b00667ec0a0c750e5715014c3b",
+    "Market": "0x05ef598878cdb4f9763a17ffe02dc664e571c54b9836518cf5f521964e595890",
+    "Factory": "0x054191648af93940d55db267fea6af1da51fa640385ef09f547917487ce33d93",
+    "MarketFactory": "0x010cf6a7055f3062956bb647ec5377ff5b279b0c3f13b73dcec9571a26adf188",
+    "Router": "0x021464597c63d680b420af2731de902d9e4e19c7fd7410eaa93e5d09d6d01ac7"
   },
   "contracts": {
-    "Factory": "0x04624ed3f5facf138a2a2313a2f00fdff04bf7d77288645e5c4a7187c579efc5",
-    "MarketFactory": "0x00fd35857bbdab29549f1144380f9e06cf5a9eceec0def80ff572995a75df76d",
-    "Router": "0x0745e8e62d68da1f76211d390c985da2f732df0b4a9b47619617d0b7f037e648",
-    "Faucet": "0x02bd402c209833f61f33bf371e27bab5032eb415cbaa0d732bf146181e2d3f6e"
+    "Factory": "0x02e7ce691e51fe60b92f25bb845100b4797cd7961647408294a8074fe966f5fd",
+    "MarketFactory": "0x014aa95f5c995f57f29f9c6de9d4c245ea231bd695741876c02a887fda8ad9b2",
+    "Router": "0x04d76ca0b5ce4cb9ed2f4a32de04682637f805512ba2afd2d5ab463d61667870",
+    "Faucet": "0x05afa0f74e4e59699fc8cd2ee727b2de2f53567a4439274c714b5f368b79bbca"
   },
   "tokens": {
     "STRK": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
     "hrzSTRK": {
       "name": "Horizon Mock Staked STRK",
       "symbol": "hrzSTRK",
-      "address": "0x01fc0a1862d0cb1419fdb474d9103004cf10e4f42c7aa85f92d105a69efd4f54",
+      "address": "0x076d321f884d740005f318ae552b3fa76698c8937f8144b0e3d4e7be4dccb7d4",
       "isERC4626": true,
-      "faucet": "0x02bd402c209833f61f33bf371e27bab5032eb415cbaa0d732bf146181e2d3f6e",
+      "faucet": "0x05afa0f74e4e59699fc8cd2ee727b2de2f53567a4439274c714b5f368b79bbca",
       "faucetDailyLimit": "100000000000000000000"
     }
   },
   "syTokens": {
     "SY-hrzSTRK": {
-      "address": "0x042ff17c3d3b7a3f6dc7531dc595c80aee91183f2e9e236f081b837d77d6b956",
-      "underlying": "0x01fc0a1862d0cb1419fdb474d9103004cf10e4f42c7aa85f92d105a69efd4f54",
+      "address": "0x06c6c003bae41be14074ec93659cc8a3af3bbec99c54fd921e1ff68c54a38867",
+      "underlying": "0x076d321f884d740005f318ae552b3fa76698c8937f8144b0e3d4e7be4dccb7d4",
       "isERC4626": true
     }
   },
   "markets": {
     "hrzSTRK": {
-      "PT": "0x073b405955f98248bb84018a4f6ecb00ae5434716aa6726eabac82c12c4b5aca",
-      "YT": "0x066d135b5aed0826f4880dd70bf48fa5648c12f619572ef4db37c6496c70ea0",
-      "Market": "0x075384d578bddb9790c2bfb8d11f22f8f767b77d6e617b9059e6c0c1aa29289f",
+      "PT": "0x324e54014538fe2bf67a6c71d169c62bb7bc92ec383b7a728da31a81ae2e8d",
+      "YT": "0x125e4070194897078c46cb37731a38e3fff03ac3c2db91758671fc70ca804da",
+      "Market": "0x64f967a496330bae100b9931f520054c6d3298f6386d9130cc388a6e9079720",
       "initialAnchor": "76961041136128000"
     }
   },
@@ -54,5 +54,5 @@
     "seedAmount": "50000000000000000000000000"
   },
   "testRecipient": "0x0715140EF3b872C34c0E82CB2650c4bEB0E9F60d5a157414af6913E9326cd691",
-  "expiry": 1768374157
+  "expiry": 1774018125
 }

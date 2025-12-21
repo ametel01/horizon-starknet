@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call, uint256 } from 'starknet';
 
 import { getAddresses } from '@/lib/constants/addresses';
+import { getDeadline } from '@/lib/deadline';
 import { getERC20Contract, getRouterContract } from '@/lib/starknet/contracts';
 
 import { useAccount } from './useAccount';
@@ -75,12 +76,13 @@ export function useRedeemPy(): UseRedeemPyReturn {
       calls.push(approveYtCall);
 
       // Redeem PT + YT to SY
-      // Router.redeem_py_to_sy(yt, receiver, amount_py_in, min_sy_out)
+      // Router.redeem_py_to_sy(yt, receiver, amount_py_in, min_sy_out, deadline)
       const redeemCall = router.populate('redeem_py_to_sy', [
         params.ytAddress,
         address,
         uint256.bnToUint256(params.amount),
         uint256.bnToUint256(params.minSyOut),
+        getDeadline(),
       ]);
       calls.push(redeemCall);
 
@@ -151,12 +153,13 @@ export function useRedeemPtPostExpiry(): UseRedeemPtPostExpiryReturn {
       calls.push(approvePtCall);
 
       // Redeem PT post expiry
-      // Router.redeem_pt_post_expiry(yt, receiver, amount_pt_in, min_sy_out)
+      // Router.redeem_pt_post_expiry(yt, receiver, amount_pt_in, min_sy_out, deadline)
       const redeemCall = router.populate('redeem_pt_post_expiry', [
         params.ytAddress,
         address,
         uint256.bnToUint256(params.amount),
         uint256.bnToUint256(params.minSyOut),
+        getDeadline(),
       ]);
       calls.push(redeemCall);
 

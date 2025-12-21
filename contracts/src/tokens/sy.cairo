@@ -16,25 +16,59 @@ pub mod SY {
     use core::num::traits::Zero;
     use horizon::interfaces::i_erc4626::{IERC4626MinimalDispatcher, IERC4626MinimalDispatcherTrait};
     use horizon::interfaces::i_index_oracle::{IIndexOracleDispatcher, IIndexOracleDispatcherTrait};
-    use horizon::interfaces::i_sy::ISY;
+    use horizon::interfaces::i_sy::{ISY, ISYAdmin};
     use horizon::libraries::errors::Errors;
-    use horizon::libraries::math::WAD;
+    use horizon::libraries::math_fp::WAD;
+    use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
+    use openzeppelin_access::ownable::OwnableComponent;
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_introspection::src5::SRC5Component;
+    use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
     use super::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
+    component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // Only use internal impl - do NOT embed ERC20MixinImpl to avoid duplicate entry points
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+    impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
 
     #[storage]
     struct Storage {
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        access_control: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        pausable: PausableComponent::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // The underlying yield-bearing token address (ERC20)
         underlying: ContractAddress,
         // The index oracle address (implements IIndexOracle or IERC4626)
@@ -51,6 +85,16 @@ pub mod SY {
     pub enum Event {
         #[flat]
         ERC20Event: ERC20Component::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        PausableEvent: PausableComponent::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         Deposit: Deposit,
         Redeem: Redeem,
     }
@@ -81,6 +125,7 @@ pub mod SY {
     /// @param index_oracle The index source (same as underlying for ERC-4626, or oracle for
     /// bridged)
     /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+    /// @param pauser Address with PAUSER_ROLE for emergency pause
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -89,9 +134,18 @@ pub mod SY {
         underlying: ContractAddress,
         index_oracle: ContractAddress,
         is_erc4626: bool,
+        pauser: ContractAddress,
     ) {
         // Initialize ERC20
         self.erc20.initializer(name, symbol);
+
+        // Initialize AccessControl and grant roles to pauser
+        self.access_control.initializer();
+        self.access_control._grant_role(DEFAULT_ADMIN_ROLE, pauser);
+        self.access_control._grant_role(PAUSER_ROLE, pauser);
+
+        // Initialize ownable for upgrade control
+        self.ownable.initializer(pauser);
 
         // Initialize SY state
         assert(!underlying.is_zero(), Errors::ZERO_ADDRESS);
@@ -163,6 +217,8 @@ pub mod SY {
         fn deposit(
             ref self: ContractState, receiver: ContractAddress, amount_shares_to_deposit: u256,
         ) -> u256 {
+            // Check not paused - deposit operations can be paused in emergency
+            self.pausable.assert_not_paused();
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_shares_to_deposit > 0, Errors::SY_ZERO_DEPOSIT);
 
@@ -251,6 +307,29 @@ pub mod SY {
         /// Get the underlying token address
         fn underlying_asset(self: @ContractState) -> ContractAddress {
             self.underlying.read()
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl SYAdminImpl of ISYAdmin<ContractState> {
+        fn pause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.pause();
+        }
+
+        fn unpause(ref self: ContractState) {
+            self.access_control.assert_only_role(PAUSER_ROLE);
+            self.pausable.unpause();
+        }
+    }
+
+    // Upgradeable implementation
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        /// Upgrade the contract to a new implementation (owner only)
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 
