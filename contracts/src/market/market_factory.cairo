@@ -104,6 +104,8 @@ pub mod MarketFactory {
         #[key]
         pub expiry: u64,
         pub market: ContractAddress,
+        pub sy: ContractAddress,
+        pub yt: ContractAddress,
         pub creator: ContractAddress,
         pub scalar_root: u256,
         pub initial_anchor: u256,
@@ -172,6 +174,8 @@ pub mod MarketFactory {
             // Check PT is valid and not expired
             let pt_contract = IPTDispatcher { contract_address: pt };
             let expiry = pt_contract.expiry();
+            let sy = pt_contract.sy();
+            let yt = pt_contract.yt();
             assert(expiry > get_block_timestamp(), Errors::MARKET_EXPIRED);
 
             // Check if market already exists for this PT
@@ -241,6 +245,8 @@ pub mod MarketFactory {
                         pt,
                         expiry,
                         market: market_address,
+                        sy,
+                        yt,
                         creator: get_caller_address(),
                         scalar_root,
                         initial_anchor,

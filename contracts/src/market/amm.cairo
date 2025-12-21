@@ -125,9 +125,15 @@ pub mod Market {
         pub receiver: ContractAddress,
         #[key]
         pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub sy_amount: u256,
         pub pt_amount: u256,
         pub lp_amount: u256,
+        pub exchange_rate: u256,
+        pub sy_reserve_after: u256,
+        pub pt_reserve_after: u256,
+        pub total_lp_after: u256,
         pub timestamp: u64,
     }
 
@@ -139,9 +145,15 @@ pub mod Market {
         pub receiver: ContractAddress,
         #[key]
         pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub lp_amount: u256,
         pub sy_amount: u256,
         pub pt_amount: u256,
+        pub exchange_rate: u256,
+        pub sy_reserve_after: u256,
+        pub pt_reserve_after: u256,
+        pub total_lp_after: u256,
         pub timestamp: u64,
     }
 
@@ -153,18 +165,27 @@ pub mod Market {
         pub receiver: ContractAddress,
         #[key]
         pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub pt_in: u256,
         pub sy_in: u256,
         pub pt_out: u256,
         pub sy_out: u256,
         pub fee: u256,
+        pub exchange_rate: u256,
+        pub sy_reserve_after: u256,
+        pub pt_reserve_after: u256,
         pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct ImpliedRateUpdated {
+        #[key]
+        pub expiry: u64,
         pub old_rate: u256,
         pub new_rate: u256,
+        pub sy_reserve: u256,
+        pub pt_reserve: u256,
         pub timestamp: u64,
     }
 
@@ -174,6 +195,9 @@ pub mod Market {
         pub collector: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
         pub amount: u256,
         pub timestamp: u64,
     }
@@ -325,6 +349,11 @@ pub mod Market {
             // Update implied rate cache
             self._update_implied_rate();
 
+            // Get current state for event
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
+
             // Emit event
             self
                 .emit(
@@ -332,9 +361,15 @@ pub mod Market {
                         sender: caller,
                         receiver,
                         expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         sy_amount: sy_used,
                         pt_amount: pt_used,
                         lp_amount: lp_to_mint,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
+                        total_lp_after: self.erc20.ERC20_total_supply.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -382,6 +417,11 @@ pub mod Market {
                 self._update_implied_rate();
             }
 
+            // Get current state for event
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
+
             // Emit event
             self
                 .emit(
@@ -389,9 +429,15 @@ pub mod Market {
                         sender: caller,
                         receiver,
                         expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         lp_amount: lp_to_burn,
                         sy_amount: sy_out,
                         pt_amount: pt_out,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
+                        total_lp_after: self.erc20.ERC20_total_supply.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -433,7 +479,9 @@ pub mod Market {
             self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
             // Transfer SY to receiver
-            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
             assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
@@ -446,11 +494,16 @@ pub mod Market {
                         sender: caller,
                         receiver,
                         expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         pt_in: exact_pt_in,
                         sy_in: 0,
                         pt_out: 0,
                         sy_out,
                         fee,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -480,7 +533,9 @@ pub mod Market {
             assert(sy_in <= max_sy_in, Errors::MARKET_SLIPPAGE_EXCEEDED);
 
             // Transfer SY from caller
-            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
             assert(
                 sy_contract.transfer_from(caller, get_contract_address(), sy_in),
                 Errors::MARKET_TRANSFER_FAILED,
@@ -492,7 +547,7 @@ pub mod Market {
             self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
             // Transfer PT to receiver
-            let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
+            let pt_contract = IPTDispatcher { contract_address: pt_addr };
             assert(pt_contract.transfer(receiver, exact_pt_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
@@ -505,11 +560,16 @@ pub mod Market {
                         sender: caller,
                         receiver,
                         expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         pt_in: 0,
                         sy_in,
                         pt_out: exact_pt_out,
                         sy_out: 0,
                         fee,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -539,7 +599,9 @@ pub mod Market {
             assert(check_slippage(pt_out, min_pt_out), Errors::MARKET_SLIPPAGE_EXCEEDED);
 
             // Transfer SY from caller
-            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
             assert(
                 sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in),
                 Errors::MARKET_TRANSFER_FAILED,
@@ -551,7 +613,7 @@ pub mod Market {
             self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
             // Transfer PT to receiver
-            let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
+            let pt_contract = IPTDispatcher { contract_address: pt_addr };
             assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
@@ -564,11 +626,16 @@ pub mod Market {
                         sender: caller,
                         receiver,
                         expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         pt_in: 0,
                         sy_in: exact_sy_in,
                         pt_out,
                         sy_out: 0,
                         fee,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -598,7 +665,9 @@ pub mod Market {
             assert(pt_in <= max_pt_in, Errors::MARKET_SLIPPAGE_EXCEEDED);
 
             // Transfer PT from caller
-            let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let pt_contract = IPTDispatcher { contract_address: pt_addr };
             assert(
                 pt_contract.transfer_from(caller, get_contract_address(), pt_in),
                 Errors::MARKET_TRANSFER_FAILED,
@@ -610,7 +679,7 @@ pub mod Market {
             self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
             // Transfer SY to receiver
-            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
             assert(sy_contract.transfer(receiver, exact_sy_out), Errors::MARKET_TRANSFER_FAILED);
 
             // Update implied rate cache
@@ -623,11 +692,16 @@ pub mod Market {
                         sender: caller,
                         receiver,
                         expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         pt_in,
                         sy_in: 0,
                         pt_out: 0,
                         sy_out: exact_sy_out,
                         fee,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -683,7 +757,8 @@ pub mod Market {
             self.total_fees_collected.write(0);
 
             // Transfer SY fees to receiver
-            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
             assert(sy_contract.transfer(receiver, fees), Errors::MARKET_TRANSFER_FAILED);
 
             // Emit event
@@ -692,6 +767,8 @@ pub mod Market {
                     FeesCollected {
                         collector: get_caller_address(),
                         receiver,
+                        expiry: self.expiry.read(),
+                        sy: sy_addr,
                         amount: fees,
                         timestamp: get_block_timestamp(),
                     },
@@ -740,7 +817,14 @@ pub mod Market {
                 self.last_ln_implied_rate.write(new_rate);
                 self
                     .emit(
-                        ImpliedRateUpdated { old_rate, new_rate, timestamp: get_block_timestamp() },
+                        ImpliedRateUpdated {
+                            expiry: self.expiry.read(),
+                            old_rate,
+                            new_rate,
+                            sy_reserve: self.sy_reserve.read(),
+                            pt_reserve: self.pt_reserve.read(),
+                            timestamp: get_block_timestamp(),
+                        },
                     );
             }
         }
