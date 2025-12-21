@@ -31,8 +31,8 @@
 
 | Property | Status |
 |----------|--------|
-| **Upgradeable** | Mixed: Factory, MarketFactory, Router, PragmaIndexOracle are upgradeable; SY, PT, YT, Market are immutable |
-| **Admin Keys** | Owner-controlled upgrades on 4 contracts; no pause functions; no parameter controls |
+| **Upgradeable** | Yes: All core contracts (SY, PT, YT, Market, Factory, MarketFactory, Router) are owner-upgradeable; only Mocks and Faucet are immutable |
+| **Admin Keys** | Owner-controlled upgrades on all core contracts; no pause functions; no parameter controls |
 | **Audits** | Not yet audited (Alpha stage) |
 | **Bug Bounty** | Not yet active (TBD) |
 | **Key Dependencies** | Starknet RPC, Pragma oracle (TWAP price feeds), hrzSTRK (mock staked token for testing) |
@@ -120,27 +120,28 @@ A specialized AMM for trading PT against SY. Uses a time-decay pricing curve whe
 
 | Contract | Address | Upgradeable | Notes |
 |----------|---------|-------------|-------|
-| **Factory** | `0x04624ed3f5facf138a2a2313a2f00fdff04bf7d77288645e5c4a7187c579efc5` | Yes | Deploys SY/PT/YT pairs; owner-upgradeable |
-| **MarketFactory** | `0x00fd35857bbdab29549f1144380f9e06cf5a9eceec0def80ff572995a75df76d` | Yes | Deploys PT/SY AMM markets; owner-upgradeable |
-| **Router** | `0x0745e8e62d68da1f76211d390c985da2f732df0b4a9b47619617d0b7f037e648` | Yes | User entry point; owner-upgradeable |
+| **Factory** | `0x02e7ce691e51fe60b92f25bb845100b4797cd7961647408294a8074fe966f5fd` | Yes | Deploys SY/PT/YT pairs; owner-upgradeable |
+| **MarketFactory** | `0x014aa95f5c995f57f29f9c6de9d4c245ea231bd695741876c02a887fda8ad9b2` | Yes | Deploys PT/SY AMM markets; owner-upgradeable |
+| **Router** | `0x04d76ca0b5ce4cb9ed2f4a32de04682637f805512ba2afd2d5ab463d61667870` | Yes | User entry point; owner-upgradeable |
 
 #### hrzSTRK Market (Mock Staked STRK)
 
-| Contract | Address | Immutable | Purpose |
-|----------|---------|-----------|---------|
-| **hrzSTRK** | `0x01fc0a1862d0cb1419fdb474d9103004cf10e4f42c7aa85f92d105a69efd4f54` | ✓ | ERC-4626 mock yield token (staking vault) |
-| **Faucet** | `0x02bd402c209833f61f33bf371e27bab5032eb415cbaa0d732bf146181e2d3f6e` | No | Test token distributor |
-| **SY (hrzSTRK)** | `0x042ff17c3d3b7a3f6dc7531dc595c80aee91183f2e9e236f081b837d77d6b956` | ✓ | Standardized yield wrapper |
-| **PT (hrzSTRK)** | `0x073b405955f98248bb84018a4f6ecb00ae5434716aa6726eabac82c12c4b5aca` | ✓ | Principal token, redeemable 1:1 at expiry |
-| **YT (hrzSTRK)** | `0x066d135b5aed0826f4880dd70bf48fa5648c12f619572ef4db37c6496c70ea0` | ✓ | Yield token, accrues interest until expiry |
-| **Market (hrzSTRK/SY)** | `0x075384d578bddb9790c2bfb8d11f22f8f767b77d6e617b9059e6c0c1aa29289f` | ✓ | PT/SY AMM trading pool |
+| Contract | Address | Upgradeable | Purpose |
+|----------|---------|-------------|---------|
+| **hrzSTRK** | `0x076d321f884d740005f318ae552b3fa76698c8937f8144b0e3d4e7be4dccb7d4` | No (mock) | ERC-4626 mock yield token (staking vault) |
+| **Faucet** | `0x05afa0f74e4e59699fc8cd2ee727b2de2f53567a4439274c714b5f368b79bbca` | No | Test token distributor |
+| **SY (hrzSTRK)** | `0x06c6c003bae41be14074ec93659cc8a3af3bbec99c54fd921e1ff68c54a38867` | Yes | Standardized yield wrapper |
+| **PT (hrzSTRK)** | `0x0324e54014538fe2bf67a6c71d169c62bb7bc92ec383b7a728da31a81ae2e8d` | Yes | Principal token, redeemable 1:1 at expiry |
+| **YT (hrzSTRK)** | `0x0125e4070194897078c46cb37731a38e3fff03ac3c2db91758671fc70ca804da` | Yes | Yield token, accrues interest until expiry |
+| **Market (hrzSTRK/SY)** | `0x064f967a496330bae100b9931f520054c6d3298f6386d9130cc388a6e9079720` | Yes | PT/SY AMM trading pool |
 
 **Deployment Info:**
 - Network: Starknet Mainnet
-- Expiry: ~6 months from deployment (~2024-06-12)
+- Deployed: 2025-12-20
+- Expiry: January 17, 2026 (Unix timestamp: 1774018125)
 - Deployment: `./deploy/scripts/deploy.sh mainnet`
 - Explorer: Use [Starkscan](https://starkscan.co/) to verify addresses
-- Verification: Run `scarb build` with Scarb 2.14.0 and compare bytecode (see [Reproducible Build](#reproducible-build))
+- Verification: Run `scarb build` with Scarb 2.15.0 and compare bytecode (see [Reproducible Build](#reproducible-build))
 
 ## Key Functions
 
@@ -186,16 +187,16 @@ As expiry approaches:
 
 ### Prerequisites (pinned versions)
 
-- **[Scarb](https://docs.swmansion.com/scarb/)** 2.14.0 (check `.tool-versions`)
-- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.53.0 (snforge + sncast)
+- **[Scarb](https://docs.swmansion.com/scarb/)** 2.15.0 (check `.tool-versions`)
+- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.54.0 (snforge + sncast)
 - **[starkli](https://book.cairo-lang.org/appendix-07-starkli.html)** 0.4.2 (deployment tool)
 
 Use `asdf` or your OS package manager to install exact versions:
 
 ```bash
 # Verify installations
-scarb --version     # Should show 2.14.0
-snforge --version   # Should show 0.53.0
+scarb --version     # Should show 2.15.0
+snforge --version   # Should show 0.54.0
 starkli --version   # Should show 0.4.2
 ```
 
@@ -266,26 +267,22 @@ make dev-fork-down
 ```
 ├── contracts/
 │   ├── src/
-│   │   ├── contracts/       # Core protocol contracts
-│   │   │   ├── sy.cairo     # Standardized Yield token
-│   │   │   ├── pt.cairo     # Principal Token
-│   │   │   ├── yt.cairo     # Yield Token
-│   │   │   ├── market.cairo # AMM for PT/SY trading
-│   │   │   ├── factory.cairo
-│   │   │   ├── market_factory.cairo
-│   │   │   └── router.cairo
-│   │   ├── interfaces/      # Contract interfaces
-│   │   ├── libraries/       # Shared utilities
-│   │   │   ├── math.cairo   # WAD math, exp, ln functions
-│   │   │   └── market_math.cairo
-│   │   └── mocks/           # Test mocks
-│   └── tests/
-│       ├── integration/     # End-to-end flow tests
-│       └── *.cairo          # Unit tests
+│   │   ├── factory.cairo        # Deploys SY/PT/YT pairs
+│   │   ├── router.cairo         # User entry point with slippage protection
+│   │   ├── tokens/              # SY, PT, YT implementations
+│   │   ├── market/              # AMM and MarketFactory
+│   │   ├── libraries/           # math.cairo (WAD), market_math.cairo, errors, roles
+│   │   ├── interfaces/          # Contract interfaces (ISY, IPT, IYT, IMarket, etc.)
+│   │   ├── oracles/             # Pragma oracle integration
+│   │   └── mocks/               # Test mocks (MockYieldToken, MockPragma, Faucet)
+│   └── tests/                   # Unit & integration tests
 ├── packages/
-│   └── frontend/            # Next.js frontend application
-├── deploy/                  # Deployment scripts
-└── .github/workflows/       # CI pipelines
+│   └── frontend/                # Next.js dApp (Bun, React 19, TailwindCSS 4)
+├── deploy/
+│   ├── scripts/                 # deploy.sh, declare.sh, export-addresses.sh
+│   ├── addresses/               # Deployed addresses (devnet.json, mainnet.json)
+│   └── accounts/                # sncast account files
+└── .github/workflows/           # CI pipelines (build, test, fmt)
 ```
 
 ## Security
@@ -310,7 +307,7 @@ make dev-fork-down
 - **Oracle Risk**: PT/YT pricing depends on accurate yield rate discovery via market AMM; illiquid markets may have poor price discovery
 - **Expiry Handling**: At maturity, YT becomes worthless and PT redeems to underlying; ensure frontend clearly communicates expiry dates
 - **Flash Loan Risk**: Not currently guarded against flash loan exploits in initial release; monitor governance decisions
-- **Upgrade Risk**: Factory, MarketFactory, Router, and PragmaIndexOracle are upgradeable; future upgrades could alter behavior or introduce bugs
+- **Upgrade Risk**: All core contracts are upgradeable; future upgrades could alter behavior or introduce bugs
 
 #### Protocol-Specific Risks
 
@@ -336,8 +333,8 @@ make dev-fork-down
 - Slippage protection enabled on all router operations
 - Expiry checks prevent minting PT/YT after maturity
 - Access control on PT/YT minting (only YT contract can mint/burn)
-- No pause/emergency functions (immutable design choice)
-- Core token contracts (SY, PT, YT, Market) are immutable; only operational contracts are upgradeable
+- No pause/emergency functions
+- All core contracts are owner-upgradeable for bug fixes and improvements
 
 ### Security Disclosure
 
@@ -413,29 +410,21 @@ let sy_out = router.redeem_pt_post_expiry(yt, receiver, pt_amount, 0);
 
 ## Governance, Upgrades & Permissions
 
-### Upgradeability (Mixed Model)
+### Upgradeability
 
-Horizon uses **selective upgradeability** to balance security and adaptability:
-
-#### Immutable Contracts (Core Tokens & AMM)
-
-These are **permanently immutable** and cannot be upgraded:
-
-- **SY** (Standardized Yield) — Users trust the yield wrapper logic forever
-- **PT** (Principal Token) — Redemption and expiry logic must be unchangeable
-- **YT** (Yield Token) — Complex yield accrual must be immutable
-- **Market (AMM)** — Pricing curves and pool reserves must be permanent
-
-#### Upgradeable Contracts (4)
-
-These use OpenZeppelin's **UUPS proxy pattern** and are owner-upgradeable:
+All core protocol contracts are **owner-upgradeable** using OpenZeppelin's components:
 
 | Contract | Authority | Purpose |
 |----------|-----------|---------|
+| **SY** | Owner | Standardized yield wrapper logic |
+| **PT** | Owner | Principal token redemption and expiry logic |
+| **YT** | Owner | Yield token accrual logic |
+| **Market** | Owner | AMM pricing curves and pool logic |
 | **Factory** | Owner | May adjust deployment validation or add new features |
 | **MarketFactory** | Owner | May optimize market creation or parameters |
 | **Router** | Owner | May add new operations or improve integration |
-| **PragmaIndexOracle** | Owner | May adapt oracle feed logic for new token types |
+
+**Non-upgradeable contracts:** Mocks and Faucet (test infrastructure only)
 
 **Upgrade Process:**
 - Only owner can invoke `upgrade(new_class_hash)`
@@ -444,18 +433,15 @@ These use OpenZeppelin's **UUPS proxy pattern** and are owner-upgradeable:
 
 ### Admin Controls
 
-**Limited privileges:**
-- Owner can upgrade 4 operational contracts only
+**Owner privileges:**
+- Owner can upgrade all core protocol contracts
 - No pause function; no fund freezing capability
-- No authority to change PT/YT/SY/Market logic
-- No parameter changes affecting user funds
+- No parameter changes affecting user funds outside of upgrades
 
 ### Future Governance (Roadmap)
 
 - Governance forum: TBD (community discussion on upgrade policies)
 - Potential transition to multi-sig or timelock for future upgrades
-- Core tokens (SY/PT/YT/Market) will **never** be upgradeable
-- Any future V2 protocol would be a new smart contract deployment
 
 ## License
 
