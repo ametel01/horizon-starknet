@@ -76,6 +76,8 @@ pub mod YT {
         user_py_index: Map<ContractAddress, u256>,
         // User's accrued but unclaimed interest (in SY)
         user_interest: Map<ContractAddress, u256>,
+        // Flag to emit ExpiryReached event only once
+        expiry_event_emitted: bool,
     }
 
     #[event]
@@ -97,6 +99,7 @@ pub mod YT {
         RedeemPY: RedeemPY,
         RedeemPYPostExpiry: RedeemPYPostExpiry,
         InterestClaimed: InterestClaimed,
+        ExpiryReached: ExpiryReached,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -161,6 +164,24 @@ pub mod YT {
         pub yt_balance: u256,
         pub py_index: u256,
         pub exchange_rate: u256,
+        pub timestamp: u64,
+    }
+
+    /// Emitted once when the first post-expiry redemption occurs
+    /// Captures the final state of the YT/PT system at expiry
+    #[derive(Drop, starknet::Event)]
+    pub struct ExpiryReached {
+        #[key]
+        pub yt: ContractAddress,
+        #[key]
+        pub pt: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
+        pub final_exchange_rate: u256,
+        pub final_py_index: u256,
+        pub total_pt_supply: u256,
+        pub total_yt_supply: u256,
         pub timestamp: u64,
     }
 
@@ -437,6 +458,29 @@ pub mod YT {
 
             // Update global PY index one last time
             self._update_py_index();
+
+            // Emit ExpiryReached event on first post-expiry redemption
+            if !self.expiry_event_emitted.read() {
+                self.expiry_event_emitted.write(true);
+                let sy_addr = self.sy.read();
+                let pt_addr = self.pt.read();
+                let sy = ISYDispatcher { contract_address: sy_addr };
+                let pt = IPTDispatcher { contract_address: pt_addr };
+                self
+                    .emit(
+                        ExpiryReached {
+                            yt: get_contract_address(),
+                            pt: pt_addr,
+                            expiry: self.expiry.read(),
+                            sy: sy_addr,
+                            final_exchange_rate: sy.exchange_rate(),
+                            final_py_index: self.py_index_stored.read(),
+                            total_pt_supply: pt.total_supply(),
+                            total_yt_supply: self.erc20.ERC20_total_supply.read(),
+                            timestamp: get_block_timestamp(),
+                        },
+                    );
+            }
 
             // Burn PT from caller (no YT needed post-expiry)
             let pt_addr = self.pt.read();
