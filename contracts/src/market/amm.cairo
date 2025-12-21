@@ -123,9 +123,12 @@ pub mod Market {
         pub sender: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
         pub sy_amount: u256,
         pub pt_amount: u256,
         pub lp_amount: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -134,9 +137,12 @@ pub mod Market {
         pub sender: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
         pub lp_amount: u256,
         pub sy_amount: u256,
         pub pt_amount: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -145,11 +151,14 @@ pub mod Market {
         pub sender: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
         pub pt_in: u256,
         pub sy_in: u256,
         pub pt_out: u256,
         pub sy_out: u256,
         pub fee: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -166,6 +175,7 @@ pub mod Market {
         #[key]
         pub receiver: ContractAddress,
         pub amount: u256,
+        pub timestamp: u64,
     }
 
     #[constructor]
@@ -321,9 +331,11 @@ pub mod Market {
                     Mint {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
                         sy_amount: sy_used,
                         pt_amount: pt_used,
                         lp_amount: lp_to_mint,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -376,9 +388,11 @@ pub mod Market {
                     Burn {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
                         lp_amount: lp_to_burn,
                         sy_amount: sy_out,
                         pt_amount: pt_out,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -431,11 +445,13 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
                         pt_in: exact_pt_in,
                         sy_in: 0,
                         pt_out: 0,
                         sy_out,
                         fee,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -488,11 +504,13 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
                         pt_in: 0,
                         sy_in,
                         pt_out: exact_pt_out,
                         sy_out: 0,
                         fee,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -545,11 +563,13 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
                         pt_in: 0,
                         sy_in: exact_sy_in,
                         pt_out,
                         sy_out: 0,
                         fee,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -602,11 +622,13 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
                         pt_in,
                         sy_in: 0,
                         pt_out: 0,
                         sy_out: exact_sy_out,
                         fee,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -665,7 +687,15 @@ pub mod Market {
             assert(sy_contract.transfer(receiver, fees), Errors::MARKET_TRANSFER_FAILED);
 
             // Emit event
-            self.emit(FeesCollected { collector: get_caller_address(), receiver, amount: fees });
+            self
+                .emit(
+                    FeesCollected {
+                        collector: get_caller_address(),
+                        receiver,
+                        amount: fees,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
 
             fees
         }

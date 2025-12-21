@@ -101,11 +101,14 @@ pub mod MarketFactory {
     pub struct MarketCreated {
         #[key]
         pub pt: ContractAddress,
+        #[key]
+        pub expiry: u64,
         pub market: ContractAddress,
         pub creator: ContractAddress,
         pub scalar_root: u256,
         pub initial_anchor: u256,
         pub fee_rate: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -236,11 +239,13 @@ pub mod MarketFactory {
                 .emit(
                     MarketCreated {
                         pt,
+                        expiry,
                         market: market_address,
                         creator: get_caller_address(),
                         scalar_root,
                         initial_anchor,
                         fee_rate,
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
