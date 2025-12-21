@@ -38,6 +38,6 @@
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "*.config.ts"],
+  "include": ["src/**/*", "*.config.ts", ".apibara/types"],
   "exclude": ["node_modules", "dist", "drizzle"]
 }
