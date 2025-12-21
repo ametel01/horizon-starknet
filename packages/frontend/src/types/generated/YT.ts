@@ -913,6 +913,11 @@ export const YT_ABI = [
         kind: 'key',
       },
       {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
         name: 'amount_sy_deposited',
         type: 'core::integer::u256',
         kind: 'data',
@@ -920,6 +925,41 @@ export const YT_ABI = [
       {
         name: 'amount_py_minted',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'py_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_pt_supply_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_yt_supply_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -940,6 +980,21 @@ export const YT_ABI = [
         kind: 'key',
       },
       {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
         name: 'amount_py_redeemed',
         type: 'core::integer::u256',
         kind: 'data',
@@ -947,6 +1002,21 @@ export const YT_ABI = [
       {
         name: 'amount_sy_returned',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'py_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -967,6 +1037,11 @@ export const YT_ABI = [
         kind: 'key',
       },
       {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
         name: 'amount_pt_redeemed',
         type: 'core::integer::u256',
         kind: 'data',
@@ -974,6 +1049,31 @@ export const YT_ABI = [
       {
         name: 'amount_sy_returned',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'final_py_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'final_exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -989,8 +1089,110 @@ export const YT_ABI = [
         kind: 'key',
       },
       {
+        name: 'yt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
         name: 'amount_sy',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'yt_balance',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'py_index_at_claim',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::tokens::yt::YT::ExpiryReached',
+    kind: 'struct',
+    members: [
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'yt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'final_exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'final_py_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_pt_supply',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_yt_supply',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -1048,6 +1250,11 @@ export const YT_ABI = [
       {
         name: 'InterestClaimed',
         type: 'horizon::tokens::yt::YT::InterestClaimed',
+        kind: 'nested',
+      },
+      {
+        name: 'ExpiryReached',
+        type: 'horizon::tokens::yt::YT::ExpiryReached',
         kind: 'nested',
       },
     ],

@@ -817,6 +817,11 @@ export const SY_ABI = [
         kind: 'key',
       },
       {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
         name: 'amount_deposited',
         type: 'core::integer::u256',
         kind: 'data',
@@ -824,6 +829,21 @@ export const SY_ABI = [
       {
         name: 'amount_sy_minted',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_supply_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -844,6 +864,11 @@ export const SY_ABI = [
         kind: 'key',
       },
       {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
         name: 'amount_sy_burned',
         type: 'core::integer::u256',
         kind: 'data',
@@ -851,6 +876,58 @@ export const SY_ABI = [
       {
         name: 'amount_redeemed',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_supply_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::tokens::sy::SY::OracleRateUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'old_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'rate_change_bps',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -898,6 +975,11 @@ export const SY_ABI = [
       {
         name: 'Redeem',
         type: 'horizon::tokens::sy::SY::Redeem',
+        kind: 'nested',
+      },
+      {
+        name: 'OracleRateUpdated',
+        type: 'horizon::tokens::sy::SY::OracleRateUpdated',
         kind: 'nested',
       },
     ],
