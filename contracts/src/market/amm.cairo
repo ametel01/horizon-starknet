@@ -172,6 +172,8 @@ pub mod Market {
         pub pt_out: u256,
         pub sy_out: u256,
         pub fee: u256,
+        pub implied_rate_before: u256,
+        pub implied_rate_after: u256,
         pub exchange_rate: u256,
         pub sy_reserve_after: u256,
         pub pt_reserve_after: u256,
@@ -462,6 +464,9 @@ pub mod Market {
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
 
+            // Capture implied rate before swap
+            let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
+
             // Calculate output
             let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, exact_pt_in, time_to_expiry);
             assert(check_slippage(sy_out, min_sy_out), Errors::MARKET_SLIPPAGE_EXCEEDED);
@@ -487,6 +492,9 @@ pub mod Market {
             // Update implied rate cache
             self._update_implied_rate();
 
+            // Get implied rate after swap
+            let implied_rate_after = self.last_ln_implied_rate.read();
+
             // Emit event
             self
                 .emit(
@@ -501,6 +509,8 @@ pub mod Market {
                         pt_out: 0,
                         sy_out,
                         fee,
+                        implied_rate_before,
+                        implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
@@ -528,6 +538,9 @@ pub mod Market {
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
 
+            // Capture implied rate before swap
+            let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
+
             // Calculate input required
             let (sy_in, fee) = calc_swap_sy_for_exact_pt(@state, exact_pt_out, time_to_expiry);
             assert(sy_in <= max_sy_in, Errors::MARKET_SLIPPAGE_EXCEEDED);
@@ -553,6 +566,9 @@ pub mod Market {
             // Update implied rate cache
             self._update_implied_rate();
 
+            // Get implied rate after swap
+            let implied_rate_after = self.last_ln_implied_rate.read();
+
             // Emit event
             self
                 .emit(
@@ -567,6 +583,8 @@ pub mod Market {
                         pt_out: exact_pt_out,
                         sy_out: 0,
                         fee,
+                        implied_rate_before,
+                        implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
@@ -594,6 +612,9 @@ pub mod Market {
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
 
+            // Capture implied rate before swap
+            let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
+
             // Calculate output
             let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, exact_sy_in, time_to_expiry);
             assert(check_slippage(pt_out, min_pt_out), Errors::MARKET_SLIPPAGE_EXCEEDED);
@@ -619,6 +640,9 @@ pub mod Market {
             // Update implied rate cache
             self._update_implied_rate();
 
+            // Get implied rate after swap
+            let implied_rate_after = self.last_ln_implied_rate.read();
+
             // Emit event
             self
                 .emit(
@@ -633,6 +657,8 @@ pub mod Market {
                         pt_out,
                         sy_out: 0,
                         fee,
+                        implied_rate_before,
+                        implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
@@ -660,6 +686,9 @@ pub mod Market {
             let state = self._get_market_state();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
 
+            // Capture implied rate before swap
+            let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
+
             // Calculate input required
             let (pt_in, fee) = calc_swap_pt_for_exact_sy(@state, exact_sy_out, time_to_expiry);
             assert(pt_in <= max_pt_in, Errors::MARKET_SLIPPAGE_EXCEEDED);
@@ -685,6 +714,9 @@ pub mod Market {
             // Update implied rate cache
             self._update_implied_rate();
 
+            // Get implied rate after swap
+            let implied_rate_after = self.last_ln_implied_rate.read();
+
             // Emit event
             self
                 .emit(
@@ -699,6 +731,8 @@ pub mod Market {
                         pt_out: 0,
                         sy_out: exact_sy_out,
                         fee,
+                        implied_rate_before,
+                        implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
