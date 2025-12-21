@@ -141,5 +141,10 @@ See `deploy/README.md` for detailed deployment instructions.
 ## Git Commits
 
 - Never mention CLaude code in commit messages.
+
+DO NOT ADD THIS TO COMMIT MESSAGES!
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - Always break down commit messages into small, focused changes.
 - Use imperative mood for commit messages.
