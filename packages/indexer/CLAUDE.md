@@ -1,106 +1,104 @@
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+## Project Overview
 
-## APIs
+Event indexer for Horizon Protocol on Starknet using Apibara DNA with TypeScript. Captures all protocol events and stores them in PostgreSQL using a "one table per event type" architecture with 23 event tables across 6 contracts.
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Build Commands
 
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+```bash
+bun install                  # Install dependencies
+bun run dev                  # Run indexer with devnet preset
+bun run dev:mainnet          # Run with mainnet preset (block 800,000+)
+bun run dev:sepolia          # Run with sepolia preset (block 100,000+)
+bun run check                # Run typecheck + lint + format:check
+bun run typecheck            # TypeScript type checking only
+bun run codegen              # Regenerate event ABIs from contracts
 ```
 
-## Frontend
+### Database Commands
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+```bash
+bun run docker:up            # Start PostgreSQL + pgAdmin
+bun run docker:down          # Stop containers
+bun run db:generate          # Generate Drizzle migrations after schema changes
+bun run db:push              # Push schema directly (dev only, skips migrations)
+bun run db:studio            # Open Drizzle Studio (database GUI)
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+Migrations auto-apply on indexer startup via the Apibara drizzle plugin.
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
+## Architecture
+
+### Indexer Types
+
+**Static Contract Indexers** (fixed addresses known at startup):
+- `factory.indexer.ts` - YieldContractsCreated, ClassHashesUpdated
+- `market-factory.indexer.ts` - MarketCreated, MarketClassHashUpdated
+- `router.indexer.ts` - MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT
+
+**Factory Pattern Indexers** (discover contracts dynamically):
+- `sy.indexer.ts` - Deposit, Redeem, OracleRateUpdated (discovers SY contracts from Factory)
+- `yt.indexer.ts` - MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached (discovers YT from Factory)
+- `market.indexer.ts` - Mint, Burn, Swap, ImpliedRateUpdated, FeesCollected (discovers Markets from MarketFactory)
+
+### Key Files
+
+| Path | Purpose |
+|------|---------|
+| `src/schema/index.ts` | All 23 Drizzle ORM table definitions |
+| `src/lib/constants.ts` | Network-specific contract addresses |
+| `src/lib/abi/` | Contract ABIs for event decoding |
+| `apibara.config.ts` | Apibara configuration with network presets |
+| `drizzle.config.ts` | Drizzle ORM migration configuration |
+
+### Schema Conventions
+
+- All tables have `_id` (UUID primary key) - required by Apibara drizzle plugin
+- All tables include `_cursor` for reorg tracking (automatic)
+- Numeric precision 78 for WAD (10^18) fixed-point numbers
+- Table naming: `{contract}_{event_name}` in snake_case
+
+## Code Patterns
+
+### Event Selector Computation
+```typescript
+import { hash } from "starknet";
+const MINT_PY = hash.getSelectorFromName("MintPY") as `0x${string}`;
 ```
 
-With the following `frontend.tsx`:
+### U256 Parsing (two felts: low + high)
+```typescript
+const parseU256 = (low: string, high: string): bigint =>
+  BigInt(low) + (BigInt(high) << 128n);
+```
 
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
+### Factory Pattern Hook
+```typescript
+async factory({ block: { events } }) {
+  const newFilters = events
+    .filter((e) => e.keys?.[0] === MARKET_CREATED)
+    .map((event) => {
+      const marketAddress = event.data?.[0];
+      return { address: marketAddress, keys: [SWAP] };
+    });
+  return newFilters.length ? { filter: { events: newFilters } } : {};
 }
-
-root.render(<Frontend />);
 ```
 
-Then, run index.ts
+## Bun-Specific Guidelines
 
-```sh
-bun --hot ./index.ts
-```
+- Use `bun run <script>` instead of npm/yarn
+- Use `bunx <package>` instead of npx
+- Bun auto-loads `.env` - don't use dotenv
+- Use `Bun.file()` over `node:fs` readFile/writeFile
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+## Infrastructure
+
+- **Runtime**: Bun (not Node.js)
+- **Framework**: Apibara 2.1.0-beta.47
+- **ORM**: Drizzle 0.40.1
+- **Database**: PostgreSQL 16
+- **DNA Server**: Self-hosted Apibara DNA at localhost:7171 (requires Starknet RPC)
