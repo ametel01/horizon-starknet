@@ -46,10 +46,10 @@ pub struct YieldContractsCreated {
     pub creator: ContractAddress,
     // NEW FIELDS
     pub underlying: ContractAddress,
-    pub underlying_symbol: felt252,  // Short symbol as felt for gas efficiency
-    pub sy_symbol: felt252,
+    pub underlying_symbol: ByteArray,  // Full symbol for display
     pub initial_exchange_rate: u256,
     pub timestamp: u64,
+    pub market_index: u32,
 }
 ```
 
@@ -88,7 +88,7 @@ fee_rate: u256
 | `sy` | `ContractAddress` | `pt.sy()` | Direct SY reference |
 | `yt` | `ContractAddress` | `pt.yt()` | Direct YT reference |
 | `underlying` | `ContractAddress` | `sy.underlying_asset()` | Underlying token |
-| `underlying_symbol` | `felt252` | `underlying.symbol()` | Display without RPC |
+| `underlying_symbol` | `ByteArray` | `underlying.symbol()` | Display without RPC |
 | `initial_exchange_rate` | `u256` | `sy.exchange_rate()` | Rate at market creation |
 | `timestamp` | `u64` | Block timestamp | Creation time |
 | `market_index` | `u32` | Factory counter | Sequential market ID |
@@ -110,7 +110,7 @@ pub struct MarketCreated {
     pub sy: ContractAddress,
     pub yt: ContractAddress,
     pub underlying: ContractAddress,
-    pub underlying_symbol: felt252,
+    pub underlying_symbol: ByteArray,
     pub initial_exchange_rate: u256,
     pub timestamp: u64,
     pub market_index: u32,

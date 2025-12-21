@@ -85,7 +85,7 @@ This document lists all events emitted by Horizon Protocol smart contracts.
 
 | Event | Fields | Trigger Action | Description |
 |-------|--------|----------------|-------------|
-| `MarketCreated` | `pt` (indexed), `expiry` (indexed), `market`, `sy`, `yt`, `creator`, `scalar_root`, `initial_anchor`, `fee_rate`, `timestamp` | `create_market()` | Emitted when a new PT/SY AMM market is deployed |
+| `MarketCreated` | `pt` (indexed), `expiry` (indexed), `market`, `creator`, `scalar_root`, `initial_anchor`, `fee_rate`, `sy`, `yt`, `underlying`, `underlying_symbol` (ByteArray), `initial_exchange_rate`, `timestamp`, `market_index` | `create_market()` | Emitted when a new PT/SY AMM market is deployed |
 | `MarketClassHashUpdated` | `old_class_hash`, `new_class_hash` | `set_market_class_hash()` | Emitted when the market contract class hash is updated (admin) |
 
 ---
