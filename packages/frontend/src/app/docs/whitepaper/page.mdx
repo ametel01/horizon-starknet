@@ -1,5 +1,6 @@
 import { DocsNavigation } from '@/components/docs/DocsNavigation';
 import { Callout } from '@/components/docs/Callout';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/docs/Table';
 
 # Technical Whitepaper
 
@@ -13,7 +14,7 @@ The complete technical specification for Horizon Protocol.
   <a
     href="/docs/horizon-whitepaper.pdf"
     download="Horizon-Protocol-Whitepaper-v1.0.pdf"
-    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+    className="inline-flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
   >
     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -24,7 +25,7 @@ The complete technical specification for Horizon Protocol.
     href="/docs/horizon-whitepaper.pdf"
     target="_blank"
     rel="noopener noreferrer"
-    className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent/50 transition-colors"
+    className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
   >
     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -66,13 +67,36 @@ The whitepaper (102 pages) covers:
 The whitepaper is the authoritative technical reference for auditors, developers, and researchers.
 </Callout>
 
-| Aspect | Specification |
-|--------|--------------|
-| **Math Precision** | WAD-scaled (10¹⁸) fixed-point arithmetic |
-| **AMM Curve** | Logit-based with time-decay rate scalar |
-| **Oracle** | Pragma TWAP with configurable staleness |
-| **Upgradeability** | OpenZeppelin class hash replacement |
-| **Conservation** | PT + YT = SY always holds |
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Aspect</TableHead>
+      <TableHead>Specification</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**Math Precision**</TableCell>
+      <TableCell>WAD-scaled (10^18) fixed-point arithmetic</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**AMM Curve**</TableCell>
+      <TableCell>Logit-based with time-decay rate scalar</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Oracle**</TableCell>
+      <TableCell>Pragma TWAP with configurable staleness</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Upgradeability**</TableCell>
+      <TableCell>OpenZeppelin class hash replacement</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Conservation**</TableCell>
+      <TableCell>PT + YT = SY always holds</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
 
 ---
 
@@ -87,16 +111,29 @@ The whitepaper is the authoritative technical reference for auditors, developers
 </div>
 
 <Callout type="warning">
-If the PDF doesn't load above, use the download button or open in a new tab.
+If the PDF does not load above, use the download button or open in a new tab.
 </Callout>
 
 ---
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| v1.0 | December 2025 | Initial publication |
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Version</TableHead>
+      <TableHead>Date</TableHead>
+      <TableHead>Changes</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>v1.0</TableCell>
+      <TableCell>December 2025</TableCell>
+      <TableCell>Initial publication</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
 
 ---
 
@@ -104,10 +141,12 @@ If the PDF doesn't load above, use the download button or open in a new tab.
 
 If referencing this whitepaper in academic or technical work:
 
-```
-Metelli, A. (2025). Horizon Protocol: A Yield Tokenization Protocol for Starknet.
+<div className="not-prose my-4 rounded-lg border border-border bg-muted/50 p-4">
+  <pre className="text-sm text-foreground font-mono whitespace-pre-wrap">
+{`Metelli, A. (2025). Horizon Protocol: A Yield Tokenization Protocol for Starknet.
 Technical Specification v1.0.
-https://github.com/ametel01/horizon-starknet
-```
+https://github.com/ametel01/horizon-starknet`}
+  </pre>
+</div>
 
 <DocsNavigation />
