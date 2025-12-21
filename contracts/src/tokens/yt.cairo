@@ -110,12 +110,14 @@ pub mod YT {
         pub receiver: ContractAddress,
         #[key]
         pub expiry: u64,
-        pub sy: ContractAddress,
-        pub pt: ContractAddress,
         pub amount_sy_deposited: u256,
         pub amount_py_minted: u256,
+        pub pt: ContractAddress,
+        pub sy: ContractAddress,
         pub py_index: u256,
         pub exchange_rate: u256,
+        pub total_pt_supply_after: u256,
+        pub total_yt_supply_after: u256,
         pub timestamp: u64,
     }
 
@@ -144,12 +146,12 @@ pub mod YT {
         pub receiver: ContractAddress,
         #[key]
         pub expiry: u64,
-        pub sy: ContractAddress,
-        pub pt: ContractAddress,
         pub amount_pt_redeemed: u256,
         pub amount_sy_returned: u256,
+        pub pt: ContractAddress,
+        pub sy: ContractAddress,
         pub final_py_index: u256,
-        pub exchange_rate: u256,
+        pub final_exchange_rate: u256,
         pub timestamp: u64,
     }
 
@@ -158,11 +160,13 @@ pub mod YT {
         #[key]
         pub user: ContractAddress,
         #[key]
+        pub yt: ContractAddress,
+        #[key]
         pub expiry: u64,
-        pub sy: ContractAddress,
         pub amount_sy: u256,
+        pub sy: ContractAddress,
         pub yt_balance: u256,
-        pub py_index: u256,
+        pub py_index_at_claim: u256,
         pub exchange_rate: u256,
         pub timestamp: u64,
     }
@@ -172,16 +176,19 @@ pub mod YT {
     #[derive(Drop, starknet::Event)]
     pub struct ExpiryReached {
         #[key]
+        pub market: ContractAddress,
+        #[key]
         pub yt: ContractAddress,
         #[key]
         pub pt: ContractAddress,
-        #[key]
-        pub expiry: u64,
         pub sy: ContractAddress,
+        pub expiry: u64,
         pub final_exchange_rate: u256,
         pub final_py_index: u256,
         pub total_pt_supply: u256,
         pub total_yt_supply: u256,
+        pub sy_reserve: u256,
+        pub pt_reserve: u256,
         pub timestamp: u64,
     }
 
@@ -375,12 +382,14 @@ pub mod YT {
                         caller,
                         receiver,
                         expiry: self.expiry.read(),
-                        sy: sy_addr,
-                        pt: pt_addr,
                         amount_sy_deposited: amount_sy_to_mint,
                         amount_py_minted: amount_py,
+                        pt: pt_addr,
+                        sy: sy_addr,
                         py_index: self.py_index_stored.read(),
                         exchange_rate: sy_contract.exchange_rate(),
+                        total_pt_supply_after: pt.total_supply(),
+                        total_yt_supply_after: self.erc20.ERC20_total_supply.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -466,17 +475,23 @@ pub mod YT {
                 let pt_addr = self.pt.read();
                 let sy = ISYDispatcher { contract_address: sy_addr };
                 let pt = IPTDispatcher { contract_address: pt_addr };
+                // Note: market, sy_reserve, pt_reserve are set to 0 as YT doesn't have market
+                // reference
+                let zero_address: ContractAddress = 0.try_into().unwrap();
                 self
                     .emit(
                         ExpiryReached {
+                            market: zero_address,
                             yt: get_contract_address(),
                             pt: pt_addr,
-                            expiry: self.expiry.read(),
                             sy: sy_addr,
+                            expiry: self.expiry.read(),
                             final_exchange_rate: sy.exchange_rate(),
                             final_py_index: self.py_index_stored.read(),
                             total_pt_supply: pt.total_supply(),
                             total_yt_supply: self.erc20.ERC20_total_supply.read(),
+                            sy_reserve: 0, // YT doesn't have market reserve info
+                            pt_reserve: 0, // YT doesn't have market reserve info
                             timestamp: get_block_timestamp(),
                         },
                     );
@@ -502,12 +517,12 @@ pub mod YT {
                         caller,
                         receiver,
                         expiry: self.expiry.read(),
-                        sy: sy_addr,
-                        pt: pt_addr,
                         amount_pt_redeemed: amount_pt,
                         amount_sy_returned: amount_sy,
+                        pt: pt_addr,
+                        sy: sy_addr,
                         final_py_index: self.py_index_stored.read(),
-                        exchange_rate: sy.exchange_rate(),
+                        final_exchange_rate: sy.exchange_rate(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -555,11 +570,12 @@ pub mod YT {
                 .emit(
                     InterestClaimed {
                         user,
+                        yt: get_contract_address(),
                         expiry: self.expiry.read(),
-                        sy: sy_addr,
                         amount_sy: interest,
+                        sy: sy_addr,
                         yt_balance,
-                        py_index: self.py_index_stored.read(),
+                        py_index_at_claim: self.py_index_stored.read(),
                         exchange_rate: sy.exchange_rate(),
                         timestamp: get_block_timestamp(),
                     },
