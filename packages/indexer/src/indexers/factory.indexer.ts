@@ -30,7 +30,7 @@ const CLASS_HASHES_UPDATED = hash.getSelectorFromName(
 ) as `0x${string}`;
 
 export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
-  const config = getNetworkConfig(runtimeConfig.preset);
+  const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 

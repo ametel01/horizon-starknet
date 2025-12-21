@@ -19,7 +19,8 @@ This indexer captures all protocol events and stores them in PostgreSQL:
 
 - [Bun](https://bun.sh/) >= 1.0
 - [Docker](https://www.docker.com/) and Docker Compose
-- A self-hosted [Apibara DNA](https://github.com/apibara/dna) server
+- [Apibara DNA](https://github.com/apibara/dna) Docker image (built from source, see [Setting Up the DNA Server](#setting-up-the-dna-server))
+- A Starknet RPC endpoint (local devnet or remote provider)
 
 ## Quick Start
 
@@ -30,10 +31,10 @@ bun install
 # Copy environment file
 cp .env.example .env
 
-# Start PostgreSQL
+# Start PostgreSQL + DNA server (first build may take 5-10 minutes)
 bun run docker:up
 
-# Run indexer (devnet)
+# Wait for DNA to be ready, then run indexer (devnet)
 bun run dev
 ```
 
@@ -47,8 +48,11 @@ Edit `.env` to configure:
 # PostgreSQL connection
 POSTGRES_CONNECTION_STRING="postgres://horizon:horizon@localhost:5432/horizon_indexer"
 
-# DNA Server URL (your self-hosted DNA server)
+# DNA Server URL (connects to dna-starknet container)
 DNA_STREAM_URL="http://localhost:7171"
+
+# Starknet RPC URL for DNA server (used by docker-compose)
+STARKNET_RPC_URL="http://host.docker.internal:5050"
 ```
 
 ### Network Presets
@@ -93,17 +97,61 @@ DNA_STREAM_URL="http://your-mainnet-dna-server:7171"
 bun run dev:mainnet
 ```
 
-## Setting Up a DNA Server
+## Setting Up the DNA Server
 
-The indexer requires a self-hosted Apibara DNA server. See the [Apibara documentation](https://www.apibara.com/docs) for setup instructions.
+The DNA (Direct Node Access) server streams blockchain data to the indexer. The docker-compose includes:
 
-Example DNA server with Docker:
+- **dna-starknet**: The DNA server (pre-built image)
+- **etcd**: Coordination service for DNA
+- **minio**: S3-compatible storage for DNA data
+- **minio-setup**: Initializes the S3 bucket
+
+### Prerequisites
+
+Build the DNA Docker image from source:
 
 ```bash
-docker run -p 7171:7171 quay.io/apibara/starknet:2.0.0 \
-  start \
-  --rpc https://your-starknet-rpc-url
+# Clone the DNA repository (sibling to horizon-starknet)
+cd /path/to/parent
+git clone https://github.com/apibara/dna.git
+
+# Build the Docker image
+cd dna
+docker build -t apibara-dna-starknet .
 ```
+
+### Configuration
+
+Set your Starknet RPC URL in `.env`:
+
+```bash
+# For local devnet (default)
+STARKNET_RPC_URL=http://host.docker.internal:5050
+
+# For Alchemy mainnet
+STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_API_KEY
+
+# For Infura
+STARKNET_RPC_URL=https://starknet-mainnet.infura.io/v3/YOUR_PROJECT_ID
+```
+
+### Running
+
+```bash
+# Start all services (PostgreSQL, MinIO, DNA)
+bun run docker:up
+
+# Check DNA server logs
+docker compose logs -f dna-starknet
+
+# DNA exposes gRPC on port 7171 (mapped from internal 7007)
+```
+
+### MinIO Console
+
+Access the MinIO console at http://localhost:9001 to inspect stored DNA data:
+- **Username**: minioadmin
+- **Password**: minioadmin
 
 ## Database Management
 
@@ -143,7 +191,7 @@ bun run db:studio
 
 pgAdmin is included for database inspection and management.
 
-1. Open http://localhost:5050 in your browser
+1. Open http://localhost:5051 in your browser
 2. Login with:
    - **Email**: `admin@horizon.io`
    - **Password**: `admin`
@@ -205,6 +253,8 @@ packages/indexer/
 │   │   └── yt.indexer.ts
 │   ├── schema/             # Drizzle schema (23 tables)
 │   │   └── index.ts
+│   ├── types/              # TypeScript type extensions
+│   │   └── apibara.d.ts
 │   └── lib/
 │       ├── abi/            # Generated event ABIs
 │       └── constants.ts    # Network configurations
@@ -212,7 +262,7 @@ packages/indexer/
 ├── scripts/                # Utility scripts
 ├── apibara.config.ts       # Apibara configuration
 ├── drizzle.config.ts       # Drizzle configuration
-└── docker-compose.yml      # PostgreSQL + pgAdmin
+└── docker-compose.yml      # PostgreSQL + MinIO + DNA server + pgAdmin
 ```
 
 ## Troubleshooting
@@ -223,7 +273,46 @@ packages/indexer/
 ERROR: connect ECONNREFUSED 127.0.0.1:7171
 ```
 
-Ensure your DNA server is running and `DNA_STREAM_URL` is correctly set in `.env`.
+Ensure the DNA server is running:
+
+```bash
+# Check if DNA container is running
+docker compose ps
+
+# Check DNA logs for errors
+docker compose logs dna-starknet
+
+# Restart DNA if needed
+docker compose restart dna-starknet
+```
+
+### DNA Build Fails
+
+If the Rust build fails, ensure you have enough memory (4GB+ recommended) and try:
+
+```bash
+# Clean and rebuild (run from dna directory)
+cd /path/to/dna
+docker build --no-cache -t apibara-dna-starknet .
+```
+
+### MinIO Not Ready
+
+If DNA fails to start because MinIO isn't ready:
+
+```bash
+# Restart the minio-setup and dna-starknet services
+docker compose restart minio-setup
+docker compose restart dna-starknet
+```
+
+### DNA Can't Connect to RPC
+
+```
+ERROR: Failed to connect to RPC
+```
+
+Check your `STARKNET_RPC_URL` in `.env`. For local devnet, ensure the devnet is running on port 5050.
 
 ### Migration Errors
 

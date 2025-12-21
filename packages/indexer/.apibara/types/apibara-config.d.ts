@@ -2,6 +2,8 @@
 
 declare module "apibara/types" {
   interface ApibaraRuntimeConfig {
+   network: string,
+
    starknet: {
       startingBlock: number,
 

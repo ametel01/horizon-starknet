@@ -54,7 +54,7 @@ function decodeByteArray(data: string[], startIndex: number): string {
 export default function marketFactoryIndexer(
   runtimeConfig: ApibaraRuntimeConfig,
 ) {
-  const config = getNetworkConfig(runtimeConfig.preset);
+  const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 

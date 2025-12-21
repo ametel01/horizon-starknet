@@ -3,6 +3,7 @@ import { defineConfig } from "apibara/config";
 export default defineConfig({
   indexersDir: "src/indexers",
   runtimeConfig: {
+    network: "devnet",
     starknet: {
       startingBlock: 0,
       // DNA stream server URL (gRPC endpoint)
@@ -13,6 +14,7 @@ export default defineConfig({
   presets: {
     mainnet: {
       runtimeConfig: {
+        network: "mainnet",
         starknet: {
           startingBlock: 800_000, // Horizon mainnet deployment block
           streamUrl: process.env.DNA_STREAM_URL ?? "http://dna-starknet:7171",
@@ -21,6 +23,7 @@ export default defineConfig({
     },
     sepolia: {
       runtimeConfig: {
+        network: "sepolia",
         starknet: {
           startingBlock: 100_000,
           streamUrl: process.env.DNA_STREAM_URL ?? "http://dna-starknet:7171",
@@ -29,6 +32,7 @@ export default defineConfig({
     },
     devnet: {
       runtimeConfig: {
+        network: "devnet",
         starknet: {
           startingBlock: 0,
           streamUrl: "http://localhost:7171",

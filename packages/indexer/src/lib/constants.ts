@@ -26,9 +26,10 @@ export const SEPOLIA: NetworkConfig = {
 };
 
 export const DEVNET: NetworkConfig = {
-  factory: "0x0", // Will be set after deployment
-  marketFactory: "0x0",
-  router: "0x0",
+  factory: "0x06a17d4caceef24805c4827c8f3fdedd365dfcfc5a2d0ebb0c665d60e338f0f7", // Will be set after deployment
+  marketFactory:
+    "0x05a312e97a580ae4e20356cf8c195b87a4c5745ce1c001e714c6b6324c518e2a",
+  router: "0x030808007aeac8be44a3c0d0bd3f3f6af02205f4ef38fc07b4107bc674e58bc7",
   startingBlock: 0,
 };
 

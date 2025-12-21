@@ -41,7 +41,7 @@ function readU256(data: string[], index: number): string {
 }
 
 export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
-  const config = getNetworkConfig(runtimeConfig.preset);
+  const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
