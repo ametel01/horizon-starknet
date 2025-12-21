@@ -110,8 +110,13 @@ pub mod SY {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub underlying: ContractAddress,
         pub amount_deposited: u256,
         pub amount_sy_minted: u256,
+        pub exchange_rate: u256,
+        pub total_supply_after: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -120,8 +125,13 @@ pub mod SY {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub underlying: ContractAddress,
         pub amount_sy_burned: u256,
         pub amount_redeemed: u256,
+        pub exchange_rate: u256,
+        pub total_supply_after: u256,
+        pub timestamp: u64,
     }
 
     /// Emitted when the oracle exchange rate changes during a state-changing operation
@@ -273,8 +283,12 @@ pub mod SY {
                     Deposit {
                         caller,
                         receiver,
+                        underlying: underlying_addr,
                         amount_deposited: amount_shares_to_deposit,
                         amount_sy_minted: sy_to_mint,
+                        exchange_rate: self.exchange_rate(),
+                        total_supply_after: self.erc20.ERC20_total_supply.read(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -313,8 +327,12 @@ pub mod SY {
                     Redeem {
                         caller,
                         receiver,
+                        underlying: underlying_addr,
                         amount_sy_burned: amount_sy_to_redeem,
                         amount_redeemed: shares_to_return,
+                        exchange_rate: self.exchange_rate(),
+                        total_supply_after: self.erc20.ERC20_total_supply.read(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
