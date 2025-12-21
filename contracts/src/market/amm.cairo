@@ -131,6 +131,7 @@ pub mod Market {
         pub pt_amount: u256,
         pub lp_amount: u256,
         pub exchange_rate: u256,
+        pub implied_rate: u256,
         pub sy_reserve_after: u256,
         pub pt_reserve_after: u256,
         pub total_lp_after: u256,
@@ -151,6 +152,7 @@ pub mod Market {
         pub sy_amount: u256,
         pub pt_amount: u256,
         pub exchange_rate: u256,
+        pub implied_rate: u256,
         pub sy_reserve_after: u256,
         pub pt_reserve_after: u256,
         pub total_lp_after: u256,
@@ -183,12 +185,17 @@ pub mod Market {
     #[derive(Drop, starknet::Event)]
     pub struct ImpliedRateUpdated {
         #[key]
+        pub market: ContractAddress,
+        #[key]
         pub expiry: u64,
         pub old_rate: u256,
         pub new_rate: u256,
+        pub timestamp: u64,
+        pub time_to_expiry: u64,
+        pub exchange_rate: u256,
         pub sy_reserve: u256,
         pub pt_reserve: u256,
-        pub timestamp: u64,
+        pub total_lp: u256,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -198,9 +205,10 @@ pub mod Market {
         #[key]
         pub receiver: ContractAddress,
         #[key]
-        pub expiry: u64,
-        pub sy: ContractAddress,
+        pub market: ContractAddress,
         pub amount: u256,
+        pub expiry: u64,
+        pub fee_rate: u256,
         pub timestamp: u64,
     }
 
@@ -369,6 +377,7 @@ pub mod Market {
                         pt_amount: pt_used,
                         lp_amount: lp_to_mint,
                         exchange_rate: sy_contract.exchange_rate(),
+                        implied_rate: self.last_ln_implied_rate.read(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
                         total_lp_after: self.erc20.ERC20_total_supply.read(),
@@ -437,6 +446,7 @@ pub mod Market {
                         sy_amount: sy_out,
                         pt_amount: pt_out,
                         exchange_rate: sy_contract.exchange_rate(),
+                        implied_rate: self.last_ln_implied_rate.read(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
                         total_lp_after: self.erc20.ERC20_total_supply.read(),
@@ -801,9 +811,10 @@ pub mod Market {
                     FeesCollected {
                         collector: get_caller_address(),
                         receiver,
-                        expiry: self.expiry.read(),
-                        sy: sy_addr,
+                        market: get_contract_address(),
                         amount: fees,
+                        expiry: self.expiry.read(),
+                        fee_rate: self.fee_rate.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -849,15 +860,23 @@ pub mod Market {
             // Only update and emit if rate has changed
             if new_rate != old_rate {
                 self.last_ln_implied_rate.write(new_rate);
+
+                // Get exchange rate for event
+                let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+
                 self
                     .emit(
                         ImpliedRateUpdated {
+                            market: get_contract_address(),
                             expiry: self.expiry.read(),
                             old_rate,
                             new_rate,
+                            timestamp: get_block_timestamp(),
+                            time_to_expiry,
+                            exchange_rate: sy_contract.exchange_rate(),
                             sy_reserve: self.sy_reserve.read(),
                             pt_reserve: self.pt_reserve.read(),
-                            timestamp: get_block_timestamp(),
+                            total_lp: self.erc20.ERC20_total_supply.read(),
                         },
                     );
             }
