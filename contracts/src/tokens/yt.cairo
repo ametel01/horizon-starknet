@@ -105,8 +105,15 @@ pub mod YT {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub amount_sy_deposited: u256,
         pub amount_py_minted: u256,
+        pub py_index: u256,
+        pub exchange_rate: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -115,8 +122,15 @@ pub mod YT {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub amount_py_redeemed: u256,
         pub amount_sy_returned: u256,
+        pub py_index: u256,
+        pub exchange_rate: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -125,15 +139,29 @@ pub mod YT {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub amount_pt_redeemed: u256,
         pub amount_sy_returned: u256,
+        pub final_py_index: u256,
+        pub exchange_rate: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct InterestClaimed {
         #[key]
         pub user: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
         pub amount_sy: u256,
+        pub yt_balance: u256,
+        pub py_index: u256,
+        pub exchange_rate: u256,
+        pub timestamp: u64,
     }
 
     #[constructor]
@@ -309,19 +337,30 @@ pub mod YT {
             let amount_py = amount_sy_to_mint;
 
             // Mint PT to receiver
-            let pt = IPTDispatcher { contract_address: self.pt.read() };
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
             pt.mint(receiver, amount_py);
 
             // Mint YT to receiver
             self.erc20.mint(receiver, amount_py);
+
+            // Get current state for event
+            let sy_addr = self.sy.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
 
             self
                 .emit(
                     MintPY {
                         caller,
                         receiver,
+                        expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         amount_sy_deposited: amount_sy_to_mint,
                         amount_py_minted: amount_py,
+                        py_index: self.py_index_stored.read(),
+                        exchange_rate: sy_contract.exchange_rate(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -348,7 +387,8 @@ pub mod YT {
             self._update_user_interest(caller);
 
             // Burn PT from caller
-            let pt = IPTDispatcher { contract_address: self.pt.read() };
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
             pt.burn(caller, amount_py_to_redeem);
 
             // Burn YT from caller
@@ -358,7 +398,8 @@ pub mod YT {
             let amount_sy = amount_py_to_redeem;
 
             // Transfer SY to receiver
-            let sy = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
             let success = sy.transfer(receiver, amount_sy);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
@@ -367,8 +408,14 @@ pub mod YT {
                     RedeemPY {
                         caller,
                         receiver,
+                        expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         amount_py_redeemed: amount_py_to_redeem,
                         amount_sy_returned: amount_sy,
+                        py_index: self.py_index_stored.read(),
+                        exchange_rate: sy.exchange_rate(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -392,14 +439,16 @@ pub mod YT {
             self._update_py_index();
 
             // Burn PT from caller (no YT needed post-expiry)
-            let pt = IPTDispatcher { contract_address: self.pt.read() };
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
             pt.burn(caller, amount_pt);
 
             // Calculate SY to return: 1 PT = 1 SY post-expiry
             let amount_sy = amount_pt;
 
             // Transfer SY to receiver
-            let sy = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
             let success = sy.transfer(receiver, amount_sy);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
@@ -408,8 +457,14 @@ pub mod YT {
                     RedeemPYPostExpiry {
                         caller,
                         receiver,
+                        expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
                         amount_pt_redeemed: amount_pt,
                         amount_sy_returned: amount_sy,
+                        final_py_index: self.py_index_stored.read(),
+                        exchange_rate: sy.exchange_rate(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -435,6 +490,9 @@ pub mod YT {
             self._update_py_index();
             self._update_user_interest(user);
 
+            // Get user's YT balance before clearing interest
+            let yt_balance = self.erc20.ERC20_balances.read(user);
+
             // Get and clear user's accrued interest
             let interest = self.user_interest.read(user);
             if interest == 0 {
@@ -444,11 +502,24 @@ pub mod YT {
             self.user_interest.write(user, 0);
 
             // Transfer interest as SY to user
-            let sy = ISYDispatcher { contract_address: self.sy.read() };
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
             let success = sy.transfer(user, interest);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
-            self.emit(InterestClaimed { user, amount_sy: interest });
+            self
+                .emit(
+                    InterestClaimed {
+                        user,
+                        expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        amount_sy: interest,
+                        yt_balance,
+                        py_index: self.py_index_stored.read(),
+                        exchange_rate: sy.exchange_rate(),
+                        timestamp: get_block_timestamp(),
+                    },
+                );
 
             interest
         }
