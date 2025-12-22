@@ -113,6 +113,7 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
 
   // Get token symbols from metadata
   const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${underlyingSymbol}`;
   const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
@@ -162,7 +163,7 @@ export function WrapToSyForm({ market }: WrapToSyFormProps): ReactNode {
         <TokenOutput
           label="Available to mint"
           amount={outputAmount}
-          tokenSymbol={underlyingSymbol}
+          tokenSymbol={sySymbol}
           isLoading={underlyingBalanceLoading}
         />
 

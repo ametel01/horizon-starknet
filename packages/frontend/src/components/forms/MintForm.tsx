@@ -90,6 +90,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
 
   // Get token symbols from metadata
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${tokenSymbol}`;
   const ptSymbol = `PT-${tokenSymbol}`;
   const ytSymbol = `YT-${tokenSymbol}`;
 
@@ -110,7 +111,7 @@ export function MintForm({ market }: MintFormProps): ReactNode {
         <TokenInput
           label="You use"
           tokenAddress={market.syAddress}
-          tokenSymbol={tokenSymbol}
+          tokenSymbol={sySymbol}
           value={amountSy}
           onChange={setAmountSy}
           disabled={isLoading}

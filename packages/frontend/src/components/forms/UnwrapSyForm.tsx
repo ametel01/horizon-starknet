@@ -105,6 +105,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
 
   // Get token symbols from metadata
   const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${underlyingSymbol}`;
   const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
@@ -124,7 +125,7 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
         <TokenInput
           label="You withdraw"
           tokenAddress={market.syAddress}
-          tokenSymbol={underlyingSymbol}
+          tokenSymbol={sySymbol}
           value={amount}
           onChange={setAmount}
           disabled={isLoading}

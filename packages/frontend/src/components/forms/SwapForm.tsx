@@ -64,6 +64,7 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
   // Get token symbol from metadata - hide SY, just show underlying
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
   const underlyingLabel = tokenSymbol; // Use underlying symbol instead of SY
+  const syLabel = `SY-${tokenSymbol}`;
   const ptLabel = `PT-${tokenSymbol}`;
   const ytLabel = `YT-${tokenSymbol}`;
 
@@ -453,12 +454,12 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
               <div>
                 <p className="text-chart-1 font-medium">Collateral Required</p>
                 <p className="text-chart-1/80 mt-1">
-                  Selling YT requires {formatWad(collateralRequired, 4)} {underlyingLabel} as
-                  temporary collateral. This will be refunded after the swap.
+                  Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
+                  collateral. This will be refunded after the swap.
                 </p>
                 {hasInsufficientCollateral && (
                   <p className="text-destructive mt-1">
-                    Insufficient {underlyingLabel} balance. You have {formatWad(syBalance, 4)}.
+                    Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
                   </p>
                 )}
               </div>
