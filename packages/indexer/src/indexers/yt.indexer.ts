@@ -234,18 +234,20 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             final_exchange_rate: finalExchangeRate,
           });
         } else if (eventKey === INTEREST_CLAIMED) {
+          console.log(`[yt] InterestClaimed at block ${blockNumber}`);
           // InterestClaimed event
           // Keys: [selector, user, yt, expiry]
-          // Data: [sy, amount_sy (u256), yt_balance (u256), py_index_at_claim (u256), exchange_rate (u256)]
+          // Data: [amount_sy (u256), sy, yt_balance (u256), py_index_at_claim (u256), exchange_rate (u256), timestamp]
           const user = event.keys[1] ?? "";
           const yt = event.keys[2] ?? ytAddress;
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
 
-          const sy = data[0] ?? "";
-          const amountSy = readU256(data, 1);
+          const amountSy = readU256(data, 0);
+          const sy = data[2] ?? "";
           const ytBalance = readU256(data, 3);
           const pyIndexAtClaim = readU256(data, 5);
           const exchangeRate = readU256(data, 7);
+          // data[9] = timestamp (skipped)
 
           await db.insert(ytInterestClaimed).values({
             block_number: blockNumber,
