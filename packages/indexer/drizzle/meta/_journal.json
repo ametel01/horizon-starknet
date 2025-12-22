@@ -15,6 +15,13 @@
       "when": 1734951600000,
       "tag": "0001_enriched_router_views",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1734955200000,
+      "tag": "0002_aggregated_materialized_views",
+      "breakpoints": true
     }
   ]
 }

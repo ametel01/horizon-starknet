@@ -960,3 +960,253 @@ export const enrichedRouterRedeemPY = pgView("enriched_router_redeem_py", {
   exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
   is_post_expiry: boolean("is_post_expiry"),
 }).existing();
+
+// ============================================================
+// AGGREGATED MATERIALIZED VIEWS (9 views)
+// Pre-computed aggregations for frontend analytics.
+// Must be refreshed periodically via: SELECT refresh_all_materialized_views();
+// ============================================================
+
+/**
+ * Market daily stats - aggregated daily metrics per market
+ * Use for: TVL charts, volume analytics, fee tracking
+ */
+export const marketDailyStats = pgView("market_daily_stats", {
+  market: text("market"),
+  day: timestamp("day"),
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  yt: text("yt"),
+  underlying: text("underlying"),
+  underlying_symbol: text("underlying_symbol"),
+  sy_reserve: numeric("sy_reserve", { precision: 78, scale: 0 }),
+  pt_reserve: numeric("pt_reserve", { precision: 78, scale: 0 }),
+  implied_rate_close: numeric("implied_rate_close", {
+    precision: 78,
+    scale: 0,
+  }),
+  exchange_rate_close: numeric("exchange_rate_close", {
+    precision: 78,
+    scale: 0,
+  }),
+  implied_rate_open: numeric("implied_rate_open", { precision: 78, scale: 0 }),
+  implied_rate_high: numeric("implied_rate_high", { precision: 78, scale: 0 }),
+  implied_rate_low: numeric("implied_rate_low", { precision: 78, scale: 0 }),
+  sy_volume: numeric("sy_volume", { precision: 78, scale: 0 }),
+  pt_volume: numeric("pt_volume", { precision: 78, scale: 0 }),
+  total_fees: numeric("total_fees", { precision: 78, scale: 0 }),
+  swap_count: bigint("swap_count", { mode: "number" }),
+  unique_traders: bigint("unique_traders", { mode: "number" }),
+}).existing();
+
+/**
+ * Market hourly stats - granular hourly metrics for real-time charts
+ */
+export const marketHourlyStats = pgView("market_hourly_stats", {
+  market: text("market"),
+  hour: timestamp("hour"),
+  sy_reserve: numeric("sy_reserve", { precision: 78, scale: 0 }),
+  pt_reserve: numeric("pt_reserve", { precision: 78, scale: 0 }),
+  implied_rate: numeric("implied_rate", { precision: 78, scale: 0 }),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  sy_volume: numeric("sy_volume", { precision: 78, scale: 0 }),
+  pt_volume: numeric("pt_volume", { precision: 78, scale: 0 }),
+  total_fees: numeric("total_fees", { precision: 78, scale: 0 }),
+  swap_count: bigint("swap_count", { mode: "number" }),
+}).existing();
+
+/**
+ * User positions summary - aggregated PT/YT positions with P&L metrics
+ * Use for: Portfolio page, position tracking, yield calculations
+ */
+export const userPositionsSummary = pgView("user_positions_summary", {
+  user_address: text("user_address"),
+  yt: text("yt"),
+  pt: text("pt"),
+  sy: text("sy"),
+  expiry: bigint("expiry", { mode: "number" }),
+  net_pt_balance: numeric("net_pt_balance", { precision: 78, scale: 0 }),
+  net_yt_balance: numeric("net_yt_balance", { precision: 78, scale: 0 }),
+  avg_entry_py_index: numeric("avg_entry_py_index", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_entry_exchange_rate: numeric("avg_entry_exchange_rate", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_minted: numeric("total_minted", { precision: 78, scale: 0 }),
+  total_redeemed: numeric("total_redeemed", { precision: 78, scale: 0 }),
+  total_pt_redeemed_post_expiry: numeric("total_pt_redeemed_post_expiry", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_interest_claimed: numeric("total_interest_claimed", {
+    precision: 78,
+    scale: 0,
+  }),
+  first_mint: timestamp("first_mint"),
+  last_activity: timestamp("last_activity"),
+  mint_count: bigint("mint_count", { mode: "number" }),
+  redeem_count: bigint("redeem_count", { mode: "number" }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+}).existing();
+
+/**
+ * User LP positions - aggregated LP positions per market
+ * Use for: LP portfolio, P&L tracking
+ */
+export const userLpPositions = pgView("user_lp_positions", {
+  user_address: text("user_address"),
+  market: text("market"),
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  yt: text("yt"),
+  underlying: text("underlying"),
+  underlying_symbol: text("underlying_symbol"),
+  net_lp_balance: numeric("net_lp_balance", { precision: 78, scale: 0 }),
+  total_sy_deposited: numeric("total_sy_deposited", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_pt_deposited: numeric("total_pt_deposited", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_sy_withdrawn: numeric("total_sy_withdrawn", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_pt_withdrawn: numeric("total_pt_withdrawn", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_entry_implied_rate: numeric("avg_entry_implied_rate", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_entry_exchange_rate: numeric("avg_entry_exchange_rate", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_exit_implied_rate: numeric("avg_exit_implied_rate", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_exit_exchange_rate: numeric("avg_exit_exchange_rate", {
+    precision: 78,
+    scale: 0,
+  }),
+  first_mint: timestamp("first_mint"),
+  last_activity: timestamp("last_activity"),
+  mint_count: bigint("mint_count", { mode: "number" }),
+  burn_count: bigint("burn_count", { mode: "number" }),
+}).existing();
+
+/**
+ * Protocol daily stats - protocol-wide daily metrics
+ * Use for: Dashboard, analytics page
+ */
+export const protocolDailyStats = pgView("protocol_daily_stats", {
+  day: timestamp("day"),
+  total_sy_volume: numeric("total_sy_volume", { precision: 78, scale: 0 }),
+  total_pt_volume: numeric("total_pt_volume", { precision: 78, scale: 0 }),
+  total_fees: numeric("total_fees", { precision: 78, scale: 0 }),
+  swap_count: bigint("swap_count", { mode: "number" }),
+  unique_swappers: bigint("unique_swappers", { mode: "number" }),
+  total_py_minted: numeric("total_py_minted", { precision: 78, scale: 0 }),
+  mint_count: bigint("mint_count", { mode: "number" }),
+  unique_minters: bigint("unique_minters", { mode: "number" }),
+  total_lp_minted: numeric("total_lp_minted", { precision: 78, scale: 0 }),
+  lp_mint_count: bigint("lp_mint_count", { mode: "number" }),
+  total_lp_burned: numeric("total_lp_burned", { precision: 78, scale: 0 }),
+  lp_burn_count: bigint("lp_burn_count", { mode: "number" }),
+  total_interest_claimed: numeric("total_interest_claimed", {
+    precision: 78,
+    scale: 0,
+  }),
+  interest_claim_count: bigint("interest_claim_count", { mode: "number" }),
+  unique_claimers: bigint("unique_claimers", { mode: "number" }),
+  unique_users: bigint("unique_users", { mode: "number" }),
+}).existing();
+
+/**
+ * Market current state - latest state for each market
+ * Use for: Market listings, dashboard
+ */
+export const marketCurrentState = pgView("market_current_state", {
+  market: text("market"),
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  yt: text("yt"),
+  underlying: text("underlying"),
+  underlying_symbol: text("underlying_symbol"),
+  fee_rate: numeric("fee_rate", { precision: 78, scale: 0 }),
+  initial_exchange_rate: numeric("initial_exchange_rate", {
+    precision: 78,
+    scale: 0,
+  }),
+  created_at: timestamp("created_at"),
+  sy_reserve: numeric("sy_reserve", { precision: 78, scale: 0 }),
+  pt_reserve: numeric("pt_reserve", { precision: 78, scale: 0 }),
+  implied_rate: numeric("implied_rate", { precision: 78, scale: 0 }),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  last_activity: timestamp("last_activity"),
+  is_expired: boolean("is_expired"),
+  volume_24h: numeric("volume_24h", { precision: 78, scale: 0 }),
+  fees_24h: numeric("fees_24h", { precision: 78, scale: 0 }),
+  swaps_24h: bigint("swaps_24h", { mode: "number" }),
+}).existing();
+
+/**
+ * User trading stats - for leaderboards
+ */
+export const userTradingStats = pgView("user_trading_stats", {
+  user_address: text("user_address"),
+  total_swaps: bigint("total_swaps", { mode: "number" }),
+  markets_traded: bigint("markets_traded", { mode: "number" }),
+  total_sy_volume: numeric("total_sy_volume", { precision: 78, scale: 0 }),
+  total_pt_volume: numeric("total_pt_volume", { precision: 78, scale: 0 }),
+  total_fees_paid: numeric("total_fees_paid", { precision: 78, scale: 0 }),
+  first_swap: timestamp("first_swap"),
+  last_swap: timestamp("last_swap"),
+  active_days: bigint("active_days", { mode: "number" }),
+}).existing();
+
+/**
+ * Rate history - implied rate history for charts
+ */
+export const rateHistory = pgView("rate_history", {
+  market: text("market"),
+  block_timestamp: timestamp("block_timestamp"),
+  block_number: bigint("block_number", { mode: "number" }),
+  implied_rate_before: numeric("implied_rate_before", {
+    precision: 78,
+    scale: 0,
+  }),
+  implied_rate_after: numeric("implied_rate_after", {
+    precision: 78,
+    scale: 0,
+  }),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  time_to_expiry: bigint("time_to_expiry", { mode: "number" }),
+  sy_reserve: numeric("sy_reserve", { precision: 78, scale: 0 }),
+  pt_reserve: numeric("pt_reserve", { precision: 78, scale: 0 }),
+  total_lp: numeric("total_lp", { precision: 78, scale: 0 }),
+}).existing();
+
+/**
+ * Exchange rate history - from SY oracle updates
+ */
+export const exchangeRateHistory = pgView("exchange_rate_history", {
+  sy: text("sy"),
+  underlying: text("underlying"),
+  block_timestamp: timestamp("block_timestamp"),
+  block_number: bigint("block_number", { mode: "number" }),
+  old_rate: numeric("old_rate", { precision: 78, scale: 0 }),
+  new_rate: numeric("new_rate", { precision: 78, scale: 0 }),
+  rate_change_bps: numeric("rate_change_bps", { precision: 78, scale: 0 }),
+}).existing();

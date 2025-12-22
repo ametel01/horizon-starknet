@@ -92,42 +92,81 @@ The `factory_yield_contracts_created` table lacks:
 
 **Workaround:** These can be obtained by joining with `market_factory_market_created` which has full enrichment.
 
-### Gap 3: No Computed/Aggregated Tables
+### Gap 3: No Computed/Aggregated Tables ✅ FIXED
 
 The schema stores raw events but lacks:
 - Aggregated daily/hourly snapshots
 - User position summaries
 - Market summary stats
 
-**Proposed Addition - Materialized Views:**
+**Solution Implemented: 9 Materialized Views**
 
+Created in `drizzle/0002_aggregated_materialized_views.sql`:
+
+| View | Purpose | Key Fields |
+|------|---------|------------|
+| `market_daily_stats` | Daily market metrics | OHLC rates, volume, fees, TVL, unique traders |
+| `market_hourly_stats` | Hourly granular data | Reserves, rates, volume for real-time charts |
+| `user_positions_summary` | PT/YT positions | Net balances, entry metrics, interest claimed |
+| `user_lp_positions` | LP positions | Net LP, entry/exit rates for P&L |
+| `protocol_daily_stats` | Protocol-wide metrics | Total volume, fees, users, mints |
+| `market_current_state` | Latest market state | Current reserves, rates, 24h stats, is_expired |
+| `user_trading_stats` | Leaderboard data | Total swaps, volume, fees paid |
+| `rate_history` | Rate time series | Implied rate before/after for charts |
+| `exchange_rate_history` | Oracle rate history | SY exchange rate changes |
+
+**Apply Migration:**
+```bash
+cd packages/indexer
+bun run db:migrate
+```
+
+**Refresh Views (run periodically via cron):**
 ```sql
--- Daily market snapshots
-CREATE MATERIALIZED VIEW market_daily_snapshot AS
-SELECT
-  market,
-  date_trunc('day', block_timestamp) as day,
-  MAX(sy_reserve_after) as sy_reserve,
-  MAX(pt_reserve_after) as pt_reserve,
-  MAX(total_lp_after) as total_lp,
-  AVG(CAST(implied_rate_after as numeric)) as avg_implied_rate,
-  SUM(CAST(fee as numeric)) as total_fees,
-  COUNT(*) as swap_count
-FROM market_swap
-GROUP BY market, date_trunc('day', block_timestamp);
+-- Refresh all views at once
+SELECT refresh_all_materialized_views();
 
--- User position summary
-CREATE MATERIALIZED VIEW user_positions AS
-SELECT
-  receiver as user_address,
-  yt,
-  pt,
-  sy,
-  expiry,
-  SUM(amount_py_minted) as total_minted,
-  MAX(block_timestamp) as last_activity
-FROM yt_mint_py
-GROUP BY receiver, yt, pt, sy, expiry;
+-- Or refresh individually
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_daily_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_positions_summary;
+```
+
+**Recommended Refresh Schedule:**
+- `market_hourly_stats`: Every 5 minutes
+- `market_current_state`: Every 5 minutes
+- `market_daily_stats`: Every 15 minutes
+- `user_positions_summary`: Every 15 minutes
+- `protocol_daily_stats`: Every hour
+- `user_trading_stats`: Every hour
+
+**TypeScript Usage:**
+```typescript
+import {
+  marketDailyStats,
+  userPositionsSummary,
+  marketCurrentState,
+  protocolDailyStats,
+} from '@horizon/indexer/schema';
+
+// Get market TVL history
+const tvlHistory = await db.select().from(marketDailyStats)
+  .where(eq(marketDailyStats.market, marketAddress))
+  .orderBy(desc(marketDailyStats.day))
+  .limit(30);
+
+// Get user portfolio
+const positions = await db.select().from(userPositionsSummary)
+  .where(eq(userPositionsSummary.user_address, userAddress));
+
+// Get all active markets with current state
+const markets = await db.select().from(marketCurrentState)
+  .where(eq(marketCurrentState.is_expired, false))
+  .orderBy(desc(marketCurrentState.volume_24h));
+
+// Get protocol stats for dashboard
+const stats = await db.select().from(protocolDailyStats)
+  .orderBy(desc(protocolDailyStats.day))
+  .limit(30);
 ```
 
 ---
@@ -339,6 +378,88 @@ export const db = drizzle(sql);
 3. **Validation** - Validate address parameters before queries
 4. **Pagination** - All list endpoints should be paginated
 5. **CORS** - Configure appropriately for production domain
+
+---
+
+## Post-Deploy TODOs
+
+### 1. Run Database Migrations
+
+```bash
+cd packages/indexer
+bun run db:migrate
+```
+
+### 2. Set Up Materialized View Refresh Schedule
+
+Set up via pg_cron or external scheduler (e.g., Railway cron, AWS EventBridge, GitHub Actions):
+
+```sql
+-- Every 5 minutes
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_hourly_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_current_state;
+
+-- Every 15 minutes
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_daily_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_positions_summary;
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_lp_positions;
+
+-- Hourly
+REFRESH MATERIALIZED VIEW CONCURRENTLY protocol_daily_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_trading_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY rate_history;
+REFRESH MATERIALIZED VIEW CONCURRENTLY exchange_rate_history;
+```
+
+**Option A: pg_cron (if available)**
+```sql
+-- Install pg_cron extension
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- Schedule 5-minute refreshes
+SELECT cron.schedule('refresh-5min', '*/5 * * * *', $$
+  REFRESH MATERIALIZED VIEW CONCURRENTLY market_hourly_stats;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY market_current_state;
+$$);
+
+-- Schedule 15-minute refreshes
+SELECT cron.schedule('refresh-15min', '*/15 * * * *', $$
+  REFRESH MATERIALIZED VIEW CONCURRENTLY market_daily_stats;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY user_positions_summary;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY user_lp_positions;
+$$);
+
+-- Schedule hourly refreshes
+SELECT cron.schedule('refresh-hourly', '0 * * * *', $$
+  REFRESH MATERIALIZED VIEW CONCURRENTLY protocol_daily_stats;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY user_trading_stats;
+$$);
+```
+
+**Option B: External cron job**
+```bash
+# crontab entry calling psql
+*/5 * * * * psql $DATABASE_URL -c "SELECT refresh_all_materialized_views();"
+```
+
+### 3. Create Read-Only Database User
+
+```sql
+-- Create read-only user for frontend API
+CREATE USER frontend_readonly WITH PASSWORD 'secure_password';
+GRANT CONNECT ON DATABASE horizon_indexer TO frontend_readonly;
+GRANT USAGE ON SCHEMA public TO frontend_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO frontend_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO frontend_readonly;
+```
+
+### 4. Configure Environment Variables
+
+Add to frontend `.env`:
+```bash
+# Read-only connection for frontend API routes
+DATABASE_URL=postgres://frontend_readonly:password@host:5432/horizon_indexer
+```
 
 ---
 
