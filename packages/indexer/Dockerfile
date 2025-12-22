@@ -26,11 +26,14 @@ COPY --from=builder /app/drizzle ./drizzle
 COPY package.json apibara.config.ts drizzle.config.ts ./
 COPY src/schema ./src/schema
 COPY src/lib ./src/lib
+COPY src/indexers ./src/indexers
+COPY start.sh ./
+RUN chmod +x start.sh
 
 # Create non-root user
 RUN addgroup --system --gid 1001 indexer && \
     adduser --system --uid 1001 indexer
 USER indexer
 
-# Default command (can be overridden)
-CMD ["bun", "run", "apibara", "start", "--preset", "mainnet"]
+# Default command - runs all indexers
+CMD ["./start.sh"]
