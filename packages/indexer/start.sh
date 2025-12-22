@@ -1,17 +1,23 @@
 #!/bin/sh
-set -e
 
 PRESET=${PRESET:-mainnet}
 
 echo "Starting all indexers with preset: $PRESET"
 
-# Start all indexers in background
-bun run apibara start --indexer factory --preset $PRESET &
-bun run apibara start --indexer market-factory --preset $PRESET &
-bun run apibara start --indexer router --preset $PRESET &
-bun run apibara start --indexer sy --preset $PRESET &
-bun run apibara start --indexer yt --preset $PRESET &
-bun run apibara start --indexer market --preset $PRESET &
+# Run indexer with auto-restart on failure
+run_indexer() {
+  while true; do
+    bun run apibara start --indexer $1 --preset $PRESET || true
+    echo "[$1] Restarting in 5s..."
+    sleep 5
+  done
+}
 
-# Wait for all background processes
+run_indexer factory &
+run_indexer market-factory &
+run_indexer router &
+run_indexer sy &
+run_indexer yt &
+run_indexer market &
+
 wait
