@@ -64,6 +64,21 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     `[market] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
   );
 
+  // Build initial filter with factory event + known Market contracts
+  // This ensures the indexer works correctly after restarts when the checkpoint
+  // is past the block where MarketCreated was emitted
+  const knownMarketFilters = config.knownMarkets.flatMap((marketAddress) => [
+    { address: marketAddress, keys: [MINT] },
+    { address: marketAddress, keys: [BURN] },
+    { address: marketAddress, keys: [SWAP] },
+    { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
+    { address: marketAddress, keys: [FEES_COLLECTED] },
+  ]);
+
+  console.log(
+    `[market] Including ${config.knownMarkets.length} known Market contracts in initial filter`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
@@ -78,10 +93,13 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         migrate: { migrationsFolder: "./drizzle" },
       }),
     ],
-    // Initial filter: listen to MarketFactory for new Market contracts
+    // Initial filter: listen to MarketFactory for new Market contracts + known Market contracts
     filter: {
       header: "always",
-      events: [{ address: config.marketFactory, keys: [MARKET_CREATED] }],
+      events: [
+        { address: config.marketFactory, keys: [MARKET_CREATED] },
+        ...knownMarketFilters,
+      ],
     },
     // Factory function: dynamically add filters for discovered Market contracts
     async factory({ block: { events } }) {

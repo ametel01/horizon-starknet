@@ -64,6 +64,21 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     `[yt] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
   );
 
+  // Build initial filter with factory event + known YT contracts
+  // This ensures the indexer works correctly after restarts when the checkpoint
+  // is past the block where YieldContractsCreated was emitted
+  const knownYTFilters = config.knownYTContracts.flatMap((ytAddress) => [
+    { address: ytAddress, keys: [MINT_PY] },
+    { address: ytAddress, keys: [REDEEM_PY] },
+    { address: ytAddress, keys: [REDEEM_PY_POST_EXPIRY] },
+    { address: ytAddress, keys: [INTEREST_CLAIMED] },
+    { address: ytAddress, keys: [EXPIRY_REACHED] },
+  ]);
+
+  console.log(
+    `[yt] Including ${config.knownYTContracts.length} known YT contracts in initial filter`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
@@ -78,10 +93,13 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         migrate: { migrationsFolder: "./drizzle" },
       }),
     ],
-    // Initial filter: listen to Factory for new YT contracts
+    // Initial filter: listen to Factory for new YT contracts + known YT contracts
     filter: {
       header: "always",
-      events: [{ address: config.factory, keys: [YIELD_CONTRACTS_CREATED] }],
+      events: [
+        { address: config.factory, keys: [YIELD_CONTRACTS_CREATED] },
+        ...knownYTFilters,
+      ],
     },
     // Factory function: dynamically add filters for discovered YT contracts
     async factory({ block: { events } }) {

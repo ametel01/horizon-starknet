@@ -52,6 +52,19 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     `[sy] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
   );
 
+  // Build initial filter with factory event + known SY contracts
+  // This ensures the indexer works correctly after restarts when the checkpoint
+  // is past the block where YieldContractsCreated was emitted
+  const knownSYFilters = config.knownSYContracts.flatMap((syAddress) => [
+    { address: syAddress, keys: [DEPOSIT] },
+    { address: syAddress, keys: [REDEEM] },
+    { address: syAddress, keys: [ORACLE_RATE_UPDATED] },
+  ]);
+
+  console.log(
+    `[sy] Including ${config.knownSYContracts.length} known SY contracts in initial filter`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
@@ -66,10 +79,13 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         migrate: { migrationsFolder: "./drizzle" },
       }),
     ],
-    // Initial filter: listen to Factory for new SY contracts
+    // Initial filter: listen to Factory for new SY contracts + known SY contracts
     filter: {
       header: "always",
-      events: [{ address: config.factory, keys: [YIELD_CONTRACTS_CREATED] }],
+      events: [
+        { address: config.factory, keys: [YIELD_CONTRACTS_CREATED] },
+        ...knownSYFilters,
+      ],
     },
     // Factory function: dynamically add filters for discovered SY contracts
     async factory({ block: { events } }) {
