@@ -14,7 +14,7 @@ export const MAINNET: NetworkConfig = {
   marketFactory:
     "0x014aa95f5c995f57f29f9c6de9d4c245ea231bd695741876c02a887fda8ad9b2",
   router: "0x04d76ca0b5ce4cb9ed2f4a32de04682637f805512ba2afd2d5ab463d61667870",
-  startingBlock: 4_556_460, // Horizon mainnet deployment block
+  startingBlock: 4_556_000, // Horizon mainnet deployment block
 };
 
 export const SEPOLIA: NetworkConfig = {
