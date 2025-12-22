@@ -11,10 +11,12 @@
 
 import {
   bigint,
+  boolean,
   index,
   integer,
   numeric,
   pgTable,
+  pgView,
   text,
   timestamp,
   uuid,
@@ -753,3 +755,199 @@ export const routerSwapYT = pgTable(
     index("router_swap_yt_yt_idx").on(table.yt),
   ],
 );
+
+// ============================================================
+// ENRICHED ROUTER VIEWS (6 views)
+// These views join router events with underlying contract events
+// to provide full context for frontend analytics.
+// ============================================================
+
+/**
+ * Enriched router swap view
+ * Joins router_swap with market_swap and market_factory_market_created
+ */
+export const enrichedRouterSwap = pgView("enriched_router_swap", {
+  _id: uuid("_id"),
+  block_number: bigint("block_number", { mode: "number" }),
+  block_timestamp: timestamp("block_timestamp"),
+  transaction_hash: text("transaction_hash"),
+  sender: text("sender"),
+  receiver: text("receiver"),
+  market: text("market"),
+  sy_in: numeric("sy_in", { precision: 78, scale: 0 }),
+  pt_in: numeric("pt_in", { precision: 78, scale: 0 }),
+  sy_out: numeric("sy_out", { precision: 78, scale: 0 }),
+  pt_out: numeric("pt_out", { precision: 78, scale: 0 }),
+  // Enrichment fields
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  yt: text("yt"),
+  underlying: text("underlying"),
+  underlying_symbol: text("underlying_symbol"),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  implied_rate_before: numeric("implied_rate_before", {
+    precision: 78,
+    scale: 0,
+  }),
+  implied_rate_after: numeric("implied_rate_after", {
+    precision: 78,
+    scale: 0,
+  }),
+  fee: numeric("fee", { precision: 78, scale: 0 }),
+  sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
+  pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
+}).existing();
+
+/**
+ * Enriched router swap YT view
+ * Joins router_swap_yt with market data
+ */
+export const enrichedRouterSwapYT = pgView("enriched_router_swap_yt", {
+  _id: uuid("_id"),
+  block_number: bigint("block_number", { mode: "number" }),
+  block_timestamp: timestamp("block_timestamp"),
+  transaction_hash: text("transaction_hash"),
+  sender: text("sender"),
+  receiver: text("receiver"),
+  yt: text("yt"),
+  market: text("market"),
+  sy_in: numeric("sy_in", { precision: 78, scale: 0 }),
+  yt_in: numeric("yt_in", { precision: 78, scale: 0 }),
+  sy_out: numeric("sy_out", { precision: 78, scale: 0 }),
+  yt_out: numeric("yt_out", { precision: 78, scale: 0 }),
+  // Enrichment fields
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  underlying: text("underlying"),
+  underlying_symbol: text("underlying_symbol"),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  implied_rate_before: numeric("implied_rate_before", {
+    precision: 78,
+    scale: 0,
+  }),
+  implied_rate_after: numeric("implied_rate_after", {
+    precision: 78,
+    scale: 0,
+  }),
+  fee: numeric("fee", { precision: 78, scale: 0 }),
+}).existing();
+
+/**
+ * Enriched router add liquidity view
+ * Joins router_add_liquidity with market_mint and market creation data
+ */
+export const enrichedRouterAddLiquidity = pgView(
+  "enriched_router_add_liquidity",
+  {
+    _id: uuid("_id"),
+    block_number: bigint("block_number", { mode: "number" }),
+    block_timestamp: timestamp("block_timestamp"),
+    transaction_hash: text("transaction_hash"),
+    sender: text("sender"),
+    receiver: text("receiver"),
+    market: text("market"),
+    sy_used: numeric("sy_used", { precision: 78, scale: 0 }),
+    pt_used: numeric("pt_used", { precision: 78, scale: 0 }),
+    lp_out: numeric("lp_out", { precision: 78, scale: 0 }),
+    // Enrichment fields
+    expiry: bigint("expiry", { mode: "number" }),
+    sy: text("sy"),
+    pt: text("pt"),
+    yt: text("yt"),
+    underlying: text("underlying"),
+    underlying_symbol: text("underlying_symbol"),
+    exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+    implied_rate: numeric("implied_rate", { precision: 78, scale: 0 }),
+    sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
+    pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
+    total_lp_after: numeric("total_lp_after", { precision: 78, scale: 0 }),
+  },
+).existing();
+
+/**
+ * Enriched router remove liquidity view
+ * Joins router_remove_liquidity with market_burn and market creation data
+ */
+export const enrichedRouterRemoveLiquidity = pgView(
+  "enriched_router_remove_liquidity",
+  {
+    _id: uuid("_id"),
+    block_number: bigint("block_number", { mode: "number" }),
+    block_timestamp: timestamp("block_timestamp"),
+    transaction_hash: text("transaction_hash"),
+    sender: text("sender"),
+    receiver: text("receiver"),
+    market: text("market"),
+    lp_in: numeric("lp_in", { precision: 78, scale: 0 }),
+    sy_out: numeric("sy_out", { precision: 78, scale: 0 }),
+    pt_out: numeric("pt_out", { precision: 78, scale: 0 }),
+    // Enrichment fields
+    expiry: bigint("expiry", { mode: "number" }),
+    sy: text("sy"),
+    pt: text("pt"),
+    yt: text("yt"),
+    underlying: text("underlying"),
+    underlying_symbol: text("underlying_symbol"),
+    exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+    implied_rate: numeric("implied_rate", { precision: 78, scale: 0 }),
+    sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
+    pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
+    total_lp_after: numeric("total_lp_after", { precision: 78, scale: 0 }),
+  },
+).existing();
+
+/**
+ * Enriched router mint PY view
+ * Joins router_mint_py with yt_mint_py for full context
+ */
+export const enrichedRouterMintPY = pgView("enriched_router_mint_py", {
+  _id: uuid("_id"),
+  block_number: bigint("block_number", { mode: "number" }),
+  block_timestamp: timestamp("block_timestamp"),
+  transaction_hash: text("transaction_hash"),
+  sender: text("sender"),
+  receiver: text("receiver"),
+  yt: text("yt"),
+  sy_in: numeric("sy_in", { precision: 78, scale: 0 }),
+  pt_out: numeric("pt_out", { precision: 78, scale: 0 }),
+  yt_out: numeric("yt_out", { precision: 78, scale: 0 }),
+  // Enrichment fields
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  py_index: numeric("py_index", { precision: 78, scale: 0 }),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  total_pt_supply_after: numeric("total_pt_supply_after", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_yt_supply_after: numeric("total_yt_supply_after", {
+    precision: 78,
+    scale: 0,
+  }),
+}).existing();
+
+/**
+ * Enriched router redeem PY view
+ * Joins router_redeem_py with yt_redeem_py or yt_redeem_py_post_expiry
+ */
+export const enrichedRouterRedeemPY = pgView("enriched_router_redeem_py", {
+  _id: uuid("_id"),
+  block_number: bigint("block_number", { mode: "number" }),
+  block_timestamp: timestamp("block_timestamp"),
+  transaction_hash: text("transaction_hash"),
+  sender: text("sender"),
+  receiver: text("receiver"),
+  yt: text("yt"),
+  py_in: numeric("py_in", { precision: 78, scale: 0 }),
+  sy_out: numeric("sy_out", { precision: 78, scale: 0 }),
+  // Enrichment fields
+  expiry: bigint("expiry", { mode: "number" }),
+  sy: text("sy"),
+  pt: text("pt"),
+  py_index: numeric("py_index", { precision: 78, scale: 0 }),
+  exchange_rate: numeric("exchange_rate", { precision: 78, scale: 0 }),
+  is_post_expiry: boolean("is_post_expiry"),
+}).existing();
