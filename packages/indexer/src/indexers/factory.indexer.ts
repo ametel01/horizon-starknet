@@ -24,6 +24,28 @@ import { getNetworkConfig } from "../lib/constants";
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 const CLASS_HASHES_UPDATED = getSelector("ClassHashesUpdated");
 
+// Helper to decode ByteArray from felt252 array
+function decodeByteArray(data: string[], startIndex: number): string {
+  // ByteArray structure: [pending_word, pending_word_len, data_len, ...data]
+  // For short strings, we just decode the pending_word
+  const pendingWord = data[startIndex];
+  if (!pendingWord || pendingWord === "0x0") return "";
+
+  // Convert felt252 to string (short string encoding)
+  try {
+    const hex = pendingWord.replace("0x", "");
+    let str = "";
+    for (let i = 0; i < hex.length; i += 2) {
+      const charCode = parseInt(hex.substr(i, 2), 16);
+      if (charCode === 0) break;
+      str += String.fromCharCode(charCode);
+    }
+    return str;
+  } catch {
+    return pendingWord;
+  }
+}
+
 export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -80,17 +102,29 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const eventKey = event.keys[0];
 
         if (eventKey === YIELD_CONTRACTS_CREATED) {
-          // Event: YieldContractsCreated
+          // Event: YieldContractsCreated (Enriched)
           // Keys: [selector, sy, expiry]
-          // Data: [pt, yt, creator]
+          // Data: [pt, yt, creator, underlying, underlying_symbol (ByteArray 3 felts),
+          //        initial_exchange_rate (u256 2 felts), timestamp, market_index]
           const sy = event.keys[1];
           const expiry = BigInt(event.keys[2] ?? "0");
-          const pt = event.data[0];
-          const yt = event.data[1];
-          const creator = event.data[2];
+
+          const data = event.data;
+          const pt = data[0];
+          const yt = data[1];
+          const creator = data[2];
+          const underlying = data[3];
+          // ByteArray for underlying_symbol starts at index 4 (3 felts)
+          const underlyingSymbol = decodeByteArray(data as string[], 4);
+          // After ByteArray (3 felts at indices 4,5,6), initial_exchange_rate is u256 at indices 7,8
+          const initialExchangeRate = BigInt(data[7] ?? "0");
+          // timestamp at index 9
+          const timestamp = BigInt(data[9] ?? "0");
+          // market_index at index 10
+          const marketIndex = Number(data[10] ?? "0");
 
           console.log(
-            `[factory] YieldContractsCreated: SY=${sy}, PT=${pt}, YT=${yt}`,
+            `[factory] YieldContractsCreated: SY=${sy}, PT=${pt}, YT=${yt}, underlying=${underlying}, symbol=${underlyingSymbol}`,
           );
 
           await db.insert(factoryYieldContractsCreated).values({
@@ -102,6 +136,10 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt: pt ?? "",
             yt: yt ?? "",
             creator: creator ?? "",
+            underlying: underlying ?? "",
+            underlying_symbol: underlyingSymbol,
+            initial_exchange_rate: initialExchangeRate.toString(),
+            market_index: marketIndex,
           });
         } else if (eventKey === CLASS_HASHES_UPDATED) {
           // Event: ClassHashesUpdated

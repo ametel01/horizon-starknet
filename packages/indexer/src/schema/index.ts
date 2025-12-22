@@ -41,11 +41,20 @@ export const factoryYieldContractsCreated = pgTable(
     pt: text("pt").notNull(),
     yt: text("yt").notNull(),
     creator: text("creator").notNull(),
+    // Enrichment fields
+    underlying: text("underlying").notNull(),
+    underlying_symbol: text("underlying_symbol").notNull(),
+    initial_exchange_rate: numeric("initial_exchange_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    market_index: integer("market_index").notNull(),
   },
   (table) => [
     index("factory_ycc_sy_idx").on(table.sy),
     index("factory_ycc_expiry_idx").on(table.expiry),
     index("factory_ycc_creator_idx").on(table.creator),
+    index("factory_ycc_underlying_idx").on(table.underlying),
   ],
 );
 
