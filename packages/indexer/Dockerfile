@@ -12,6 +12,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
+RUN bunx apibara build
 
 # Production image
 FROM base AS runner
@@ -23,6 +24,7 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/.apibara ./.apibara
 COPY package.json apibara.config.ts drizzle.config.ts ./
 COPY src/schema ./src/schema
 COPY src/lib ./src/lib
