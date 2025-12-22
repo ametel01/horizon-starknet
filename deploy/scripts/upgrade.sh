@@ -166,7 +166,6 @@ normalize_hash() {
 # =============================================================================
 
 ENV_FILE="$ROOT_DIR/.env.$NETWORK"
-ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
 if [[ ! -f "$ENV_FILE" ]]; then
     log_error "Environment file not found: $ENV_FILE"
@@ -174,6 +173,9 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 source "$ENV_FILE"
+
+# Set ACCOUNTS_FILE after sourcing env (env might have relative path that would override)
+ACCOUNTS_FILE="$ROOT_DIR/deploy/accounts/$NETWORK.json"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Horizon Protocol Contract Upgrade${NC}"
@@ -240,6 +242,7 @@ elif [[ "$NETWORK" == "sepolia" || "$NETWORK" == "mainnet" ]]; then
 
     log_info "Deployer address: $DEPLOYER_ADDRESS"
     # Account args go before subcommand, URL goes after subcommand
+    # Use absolute path for accounts file
     SNCAST_ACCOUNT_ARGS="-a deployer -f $ACCOUNTS_FILE"
     SNCAST_URL_ARGS="--url $STARKNET_RPC_URL"
 else
@@ -328,7 +331,7 @@ upgrade_contract() {
 
     if [[ -z "$contract_address" || "$contract_address" == "" || "$contract_address" == "0x0" ]]; then
         log_warning "Skipping $contract_name - no address found"
-        return 0
+        return 1  # Return failure so env isn't updated
     fi
 
     if [[ "$DRY_RUN" == true ]]; then
@@ -389,7 +392,22 @@ upgrade_contract() {
         return 1
     fi
 
-    log_success "Upgraded $contract_name at $contract_address"
+    # Show full invoke response for verification
+    echo ""
+    echo -e "${CYAN}Invoke response:${NC}"
+    echo "$output"
+    echo ""
+
+    # Extract and display transaction hash if present
+    local tx_hash
+    tx_hash=$(echo "$output" | grep -oE 'transaction_hash: 0x[a-fA-F0-9]+' | grep -oE '0x[a-fA-F0-9]+' || true)
+    if [[ -n "$tx_hash" ]]; then
+        log_success "Upgraded $contract_name at $contract_address"
+        log_info "Transaction hash: $tx_hash"
+    else
+        log_success "Upgraded $contract_name at $contract_address"
+    fi
+
     sleep "$TX_DELAY"
 }
 
@@ -399,14 +417,15 @@ upgrade_contract() {
 
 # Define upgradeable contracts with their env var patterns
 # Format: "ContractName:ENV_CLASS_HASH_VAR:INSTANCE_ADDRESSES..."
+# Note: Include all possible addresses across networks (missing ones will be skipped)
 declare -a UPGRADEABLE_CONTRACTS=(
     "Factory:FACTORY_CLASS_HASH:FACTORY_ADDRESS"
     "MarketFactory:MARKET_FACTORY_CLASS_HASH:MARKET_FACTORY_ADDRESS"
     "Router:ROUTER_CLASS_HASH:ROUTER_ADDRESS"
-    "SY:SY_CLASS_HASH:SY_NST_STRK_ADDRESS,SY_SSTRK_ADDRESS,SY_WSTETH_ADDRESS"
-    "PT:PT_CLASS_HASH:PT_NST_STRK_ADDRESS,PT_SSTRK_ADDRESS,PT_WSTETH_ADDRESS"
-    "YT:YT_CLASS_HASH:YT_NST_STRK_ADDRESS,YT_SSTRK_ADDRESS,YT_WSTETH_ADDRESS"
-    "Market:MARKET_CLASS_HASH:MARKET_NST_STRK_ADDRESS,MARKET_SSTRK_ADDRESS,MARKET_WSTETH_ADDRESS"
+    "SY:SY_CLASS_HASH:SY_NST_STRK_ADDRESS,SY_SSTRK_ADDRESS,SY_WSTETH_ADDRESS,SY_HRZ_STRK_ADDRESS"
+    "PT:PT_CLASS_HASH:PT_NST_STRK_ADDRESS,PT_SSTRK_ADDRESS,PT_WSTETH_ADDRESS,PT_HRZ_STRK_ADDRESS"
+    "YT:YT_CLASS_HASH:YT_NST_STRK_ADDRESS,YT_SSTRK_ADDRESS,YT_WSTETH_ADDRESS,YT_HRZ_STRK_ADDRESS"
+    "Market:MARKET_CLASS_HASH:MARKET_NST_STRK_ADDRESS,MARKET_SSTRK_ADDRESS,MARKET_WSTETH_ADDRESS,MARKET_HRZ_STRK_ADDRESS"
 )
 
 UPGRADES_NEEDED=0
