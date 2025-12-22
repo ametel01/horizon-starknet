@@ -118,8 +118,8 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const underlyingSymbol = decodeByteArray(data as string[], 4);
           // After ByteArray (3 felts at indices 4,5,6), initial_exchange_rate is u256 at indices 7,8
           const initialExchangeRate = BigInt(data[7] ?? "0");
-          // timestamp at index 9
-          const timestamp = BigInt(data[9] ?? "0");
+          // timestamp at index 9 (unused - we use block_timestamp from header)
+          const _timestamp = BigInt(data[9] ?? "0");
           // market_index at index 10
           const marketIndex = Number(data[10] ?? "0");
 
