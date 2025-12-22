@@ -46,6 +46,9 @@
       ],
       "@deploy/*": [
         "../../deploy/*"
+      ],
+      "@indexer/*": [
+        "../indexer/src/*"
       ]
     },
     "noEmit": true

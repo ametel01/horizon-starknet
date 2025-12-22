@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       '@contracts': path.resolve(__dirname, '../../contracts/target/dev'),
       '@deploy': path.resolve(__dirname, '../../deploy'),
+      '@indexer': path.resolve(__dirname, '../indexer/src'),
     },
   },
   // Webpack fallback for production builds
@@ -22,6 +23,7 @@ const nextConfig: NextConfig = {
       ...config.resolve.alias,
       '@contracts': path.resolve(__dirname, '../../contracts/target/dev'),
       '@deploy': path.resolve(__dirname, '../../deploy'),
+      '@indexer': path.resolve(__dirname, '../indexer/src'),
     };
     return config;
   },
