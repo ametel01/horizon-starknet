@@ -23,29 +23,20 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { StarknetStream } from "@apibara/starknet";
+import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { hash } from "starknet";
 import { getNetworkConfig } from "../lib/constants";
 
 // Factory event to discover YT contracts
-const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName(
-  "YieldContractsCreated",
-) as `0x${string}`;
+const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 
 // YT events
-const MINT_PY = hash.getSelectorFromName("MintPY") as `0x${string}`;
-const REDEEM_PY = hash.getSelectorFromName("RedeemPY") as `0x${string}`;
-const REDEEM_PY_POST_EXPIRY = hash.getSelectorFromName(
-  "RedeemPYPostExpiry",
-) as `0x${string}`;
-const INTEREST_CLAIMED = hash.getSelectorFromName(
-  "InterestClaimed",
-) as `0x${string}`;
-const EXPIRY_REACHED = hash.getSelectorFromName(
-  "ExpiryReached",
-) as `0x${string}`;
+const MINT_PY = getSelector("MintPY");
+const REDEEM_PY = getSelector("RedeemPY");
+const REDEEM_PY_POST_EXPIRY = getSelector("RedeemPYPostExpiry");
+const INTEREST_CLAIMED = getSelector("InterestClaimed");
+const EXPIRY_REACHED = getSelector("ExpiryReached");
 
 // Helper to read u256 (2 felts: low, high)
 function readU256(data: string[], index: number): string {
@@ -69,10 +60,15 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     },
   });
 
+  console.log(
+    `[yt] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
-    startingBlock: BigInt(config.startingBlock),
+    startingCursor: { orderKey: BigInt(config.startingBlock) },
+    debug: false,
     plugins: [
       drizzleStorage({
         db: database,
@@ -84,6 +80,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     ],
     // Initial filter: listen to Factory for new YT contracts
     filter: {
+      header: "always",
       events: [{ address: config.factory, keys: [YIELD_CONTRACTS_CREATED] }],
     },
     // Factory function: dynamically add filters for discovered YT contracts
@@ -93,6 +90,8 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
 
         // YieldContractsCreated: keys = [selector, sy, expiry], data = [pt, yt, creator]
         const ytAddress = event.data[1] as `0x${string}`;
+
+        console.log(`[yt] Discovered new YT contract: ${ytAddress}`);
 
         return [
           { address: ytAddress, keys: [MINT_PY] },
@@ -111,12 +110,23 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         },
       };
     },
-    async transform({ block }) {
+    async transform({ block, endCursor }) {
+      // Log progress every 100 blocks
+      const blockNum = Number(block.header.blockNumber);
+      if (blockNum % 100 === 0 || block.events.length > 0) {
+        console.log(
+          `[yt] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
+        );
+      }
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
+
+      if (events.length > 0) {
+        console.log(`[yt] Block ${blockNumber}: ${events.length} event(s)`);
+      }
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -125,6 +135,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const data = event.data as string[];
 
         if (eventKey === MINT_PY) {
+          console.log(`[yt] MintPY at block ${blockNumber}`);
           // MintPY event
           // Keys: [selector, caller, receiver, expiry]
           // Data: [sy, pt, amount_sy_deposited (u256), amount_py_minted (u256),
@@ -160,6 +171,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_yt_supply_after: totalYtSupply,
           });
         } else if (eventKey === REDEEM_PY) {
+          console.log(`[yt] RedeemPY at block ${blockNumber}`);
           // RedeemPY event
           // Keys: [selector, caller, receiver, expiry]
           // Data: [sy, pt, amount_py_redeemed (u256), amount_sy_returned (u256),

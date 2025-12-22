@@ -93,6 +93,8 @@ services:
       DNA_INGESTION_ENABLED: "true"
       DNA_COMPACTION_ENABLED: "true"
       DNA_SERVER_ENABLED: "true"
+      # Reduce concurrent tasks to avoid RPC rate limits (default: 100)
+      DNA_INGESTION_MAX_CONCURRENT_TASKS: "1"
       # Server address
       DNA_SERVER_ADDRESS: "0.0.0.0:7007"
       # Cache configuration
@@ -101,6 +103,8 @@ services:
       DNA_CACHE_INDEX_DISK_SIZE: 5Gi
       # Disable pending transactions ingestion
       STARKNET_NO_INGEST_PENDING: "true"
+      # Starting block (set to skip historical blocks)
+      DNA_INGESTION_DANGEROUSLY_OVERRIDE_STARTING_BLOCK: "4556475"
     command: ["start"]
     extra_hosts:
       - "host.docker.internal:host-gateway"

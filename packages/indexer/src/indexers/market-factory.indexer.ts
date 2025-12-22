@@ -15,19 +15,14 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { StarknetStream } from "@apibara/starknet";
+import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { hash } from "starknet";
 import { getNetworkConfig } from "../lib/constants";
 
-// Event selectors
-const MARKET_CREATED = hash.getSelectorFromName(
-  "MarketCreated",
-) as `0x${string}`;
-const MARKET_CLASS_HASH_UPDATED = hash.getSelectorFromName(
-  "MarketClassHashUpdated",
-) as `0x${string}`;
+// Event selectors using Apibara's getSelector helper
+const MARKET_CREATED = getSelector("MarketCreated");
+const MARKET_CLASS_HASH_UPDATED = getSelector("MarketClassHashUpdated");
 
 // Helper to decode ByteArray from felt252 array
 function decodeByteArray(data: string[], startIndex: number): string {
@@ -65,10 +60,15 @@ export default function marketFactoryIndexer(
     },
   });
 
+  console.log(
+    `[market-factory] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
-    startingBlock: BigInt(config.startingBlock),
+    startingCursor: { orderKey: BigInt(config.startingBlock) },
+    debug: false,
     plugins: [
       drizzleStorage({
         db: database,
@@ -79,17 +79,25 @@ export default function marketFactoryIndexer(
       }),
     ],
     filter: {
+      header: "always",
       events: [
         { address: config.marketFactory, keys: [MARKET_CREATED] },
         { address: config.marketFactory, keys: [MARKET_CLASS_HASH_UPDATED] },
       ],
     },
-    async transform({ block }) {
+    async transform({ block, endCursor }) {
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
+
+      // Log progress every 100 blocks or when there are events
+      if (blockNumber % 100 === 0 || events.length > 0) {
+        console.log(
+          `[market-factory] Block ${blockNumber} | Events: ${events.length} | Cursor: ${endCursor?.orderKey}`,
+        );
+      }
 
       for (const event of events) {
         const transactionHash = event.transactionHash;

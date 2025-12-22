@@ -15,19 +15,14 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { StarknetStream } from "@apibara/starknet";
+import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { hash } from "starknet";
 import { getNetworkConfig } from "../lib/constants";
 
-// Event selectors
-const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName(
-  "YieldContractsCreated",
-) as `0x${string}`;
-const CLASS_HASHES_UPDATED = hash.getSelectorFromName(
-  "ClassHashesUpdated",
-) as `0x${string}`;
+// Event selectors using Apibara's getSelector helper
+const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
+const CLASS_HASHES_UPDATED = getSelector("ClassHashesUpdated");
 
 export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
@@ -41,10 +36,15 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     },
   });
 
+  console.log(
+    `[factory] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
-    startingBlock: BigInt(config.startingBlock),
+    startingCursor: { orderKey: BigInt(config.startingBlock) },
+    debug: false,
     plugins: [
       drizzleStorage({
         db: database,
@@ -55,17 +55,25 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }),
     ],
     filter: {
+      header: "always",
       events: [
         { address: config.factory, keys: [YIELD_CONTRACTS_CREATED] },
         { address: config.factory, keys: [CLASS_HASHES_UPDATED] },
       ],
     },
-    async transform({ block }) {
+    async transform({ block, endCursor }) {
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
+
+      // Log progress every 100 blocks or when there are events
+      if (blockNumber % 100 === 0 || events.length > 0) {
+        console.log(
+          `[factory] Block ${blockNumber} | Events: ${events.length} | Cursor: ${endCursor?.orderKey}`,
+        );
+      }
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -80,6 +88,10 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const pt = event.data[0];
           const yt = event.data[1];
           const creator = event.data[2];
+
+          console.log(
+            `[factory] YieldContractsCreated: SY=${sy}, PT=${pt}, YT=${yt}`,
+          );
 
           await db.insert(factoryYieldContractsCreated).values({
             block_number: blockNumber,
@@ -96,6 +108,8 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           // Data: [yt_class_hash, pt_class_hash]
           const ytClassHash = event.data[0];
           const ptClassHash = event.data[1];
+
+          console.log(`[factory] ClassHashesUpdated at block ${blockNumber}`);
 
           await db.insert(factoryClassHashesUpdated).values({
             block_number: blockNumber,

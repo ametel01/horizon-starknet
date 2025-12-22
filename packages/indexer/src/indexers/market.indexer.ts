@@ -23,27 +23,20 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { StarknetStream } from "@apibara/starknet";
+import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { hash } from "starknet";
 import { getNetworkConfig } from "../lib/constants";
 
 // MarketFactory event to discover Market contracts
-const MARKET_CREATED = hash.getSelectorFromName(
-  "MarketCreated",
-) as `0x${string}`;
+const MARKET_CREATED = getSelector("MarketCreated");
 
 // Market events
-const MINT = hash.getSelectorFromName("Mint") as `0x${string}`;
-const BURN = hash.getSelectorFromName("Burn") as `0x${string}`;
-const SWAP = hash.getSelectorFromName("Swap") as `0x${string}`;
-const IMPLIED_RATE_UPDATED = hash.getSelectorFromName(
-  "ImpliedRateUpdated",
-) as `0x${string}`;
-const FEES_COLLECTED = hash.getSelectorFromName(
-  "FeesCollected",
-) as `0x${string}`;
+const MINT = getSelector("Mint");
+const BURN = getSelector("Burn");
+const SWAP = getSelector("Swap");
+const IMPLIED_RATE_UPDATED = getSelector("ImpliedRateUpdated");
+const FEES_COLLECTED = getSelector("FeesCollected");
 
 // Helper to read u256 (2 felts: low, high)
 function readU256(data: string[], index: number): string {
@@ -67,10 +60,15 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     },
   });
 
+  console.log(
+    `[market] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
-    startingBlock: BigInt(config.startingBlock),
+    startingCursor: { orderKey: BigInt(config.startingBlock) },
+    debug: false,
     plugins: [
       drizzleStorage({
         db: database,
@@ -82,6 +80,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     ],
     // Initial filter: listen to MarketFactory for new Market contracts
     filter: {
+      header: "always",
       events: [{ address: config.marketFactory, keys: [MARKET_CREATED] }],
     },
     // Factory function: dynamically add filters for discovered Market contracts
@@ -109,7 +108,14 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         },
       };
     },
-    async transform({ block }) {
+    async transform({ block, endCursor }) {
+      // Log progress every 100 blocks
+      const blockNum = Number(block.header.blockNumber);
+      if (blockNum % 100 === 0 || block.events.length > 0) {
+        console.log(
+          `[market] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
+        );
+      }
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 

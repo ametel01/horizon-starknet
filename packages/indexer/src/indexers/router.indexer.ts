@@ -23,21 +23,18 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { StarknetStream } from "@apibara/starknet";
+import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { hash } from "starknet";
 import { getNetworkConfig } from "../lib/constants";
 
-// Event selectors
-const MINT_PY = hash.getSelectorFromName("MintPY") as `0x${string}`;
-const REDEEM_PY = hash.getSelectorFromName("RedeemPY") as `0x${string}`;
-const ADD_LIQUIDITY = hash.getSelectorFromName("AddLiquidity") as `0x${string}`;
-const REMOVE_LIQUIDITY = hash.getSelectorFromName(
-  "RemoveLiquidity",
-) as `0x${string}`;
-const SWAP = hash.getSelectorFromName("Swap") as `0x${string}`;
-const SWAP_YT = hash.getSelectorFromName("SwapYT") as `0x${string}`;
+// Event selectors using Apibara's getSelector helper
+const MINT_PY = getSelector("MintPY");
+const REDEEM_PY = getSelector("RedeemPY");
+const ADD_LIQUIDITY = getSelector("AddLiquidity");
+const REMOVE_LIQUIDITY = getSelector("RemoveLiquidity");
+const SWAP = getSelector("Swap");
+const SWAP_YT = getSelector("SwapYT");
 
 // Helper to read u256 (2 felts: low, high)
 function readU256(data: string[], index: number): string {
@@ -62,10 +59,15 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     },
   });
 
+  console.log(
+    `[router] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
-    startingBlock: BigInt(config.startingBlock),
+    startingCursor: { orderKey: BigInt(config.startingBlock) },
+    debug: false,
     plugins: [
       drizzleStorage({
         db: database,
@@ -76,6 +78,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }),
     ],
     filter: {
+      header: "always",
       events: [
         { address: config.router, keys: [MINT_PY] },
         { address: config.router, keys: [REDEEM_PY] },
@@ -85,7 +88,14 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         { address: config.router, keys: [SWAP_YT] },
       ],
     },
-    async transform({ block }) {
+    async transform({ block, endCursor }) {
+      // Log progress every 100 blocks
+      const blockNum = Number(block.header.blockNumber);
+      if (blockNum % 100 === 0 || block.events.length > 0) {
+        console.log(
+          `[router] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
+        );
+      }
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 

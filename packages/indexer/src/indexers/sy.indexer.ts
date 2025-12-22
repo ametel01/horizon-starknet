@@ -15,23 +15,18 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { StarknetStream } from "@apibara/starknet";
+import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { hash } from "starknet";
 import { getNetworkConfig } from "../lib/constants";
 
 // Factory event to discover SY contracts
-const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName(
-  "YieldContractsCreated",
-) as `0x${string}`;
+const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 
 // SY events
-const DEPOSIT = hash.getSelectorFromName("Deposit") as `0x${string}`;
-const REDEEM = hash.getSelectorFromName("Redeem") as `0x${string}`;
-const ORACLE_RATE_UPDATED = hash.getSelectorFromName(
-  "OracleRateUpdated",
-) as `0x${string}`;
+const DEPOSIT = getSelector("Deposit");
+const REDEEM = getSelector("Redeem");
+const ORACLE_RATE_UPDATED = getSelector("OracleRateUpdated");
 
 // Helper to read u256 (2 felts: low, high)
 function readU256(data: string[], index: number): string {
@@ -53,10 +48,15 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     },
   });
 
+  console.log(
+    `[sy] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
+  );
+
   return defineIndexer(StarknetStream)({
     streamUrl,
     finality: "accepted",
-    startingBlock: BigInt(config.startingBlock),
+    startingCursor: { orderKey: BigInt(config.startingBlock) },
+    debug: false,
     plugins: [
       drizzleStorage({
         db: database,
@@ -68,6 +68,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     ],
     // Initial filter: listen to Factory for new SY contracts
     filter: {
+      header: "always",
       events: [{ address: config.factory, keys: [YIELD_CONTRACTS_CREATED] }],
     },
     // Factory function: dynamically add filters for discovered SY contracts
@@ -93,7 +94,14 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         },
       };
     },
-    async transform({ block }) {
+    async transform({ block, endCursor }) {
+      // Log progress every 100 blocks
+      const blockNum = Number(block.header.blockNumber);
+      if (blockNum % 100 === 0 || block.events.length > 0) {
+        console.log(
+          `[sy] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
+        );
+      }
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 

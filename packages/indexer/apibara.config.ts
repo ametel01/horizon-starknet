@@ -6,8 +6,7 @@ export default defineConfig({
     network: "devnet",
     starknet: {
       startingBlock: 0,
-      // DNA stream server URL (gRPC endpoint)
-      // Self-hosted: point to your DNA server
+      // For devnet: use self-hosted DNA server
       streamUrl: process.env.DNA_STREAM_URL ?? "http://localhost:7171",
     },
   },
@@ -16,8 +15,9 @@ export default defineConfig({
       runtimeConfig: {
         network: "mainnet",
         starknet: {
-          startingBlock: 800_000, // Horizon mainnet deployment block
-          streamUrl: process.env.DNA_STREAM_URL ?? "http://dna-starknet:7171",
+          startingBlock: 4_556_460, // Horizon mainnet deployment block
+          // Apibara hosted DNA stream (requires DNA_TOKEN)
+          streamUrl: "https://mainnet.starknet.a5a.ch",
         },
       },
     },
@@ -25,8 +25,9 @@ export default defineConfig({
       runtimeConfig: {
         network: "sepolia",
         starknet: {
-          startingBlock: 100_000,
-          streamUrl: process.env.DNA_STREAM_URL ?? "http://dna-starknet:7171",
+          startingBlock: 4_194_445,
+          // Apibara hosted DNA stream (requires DNA_TOKEN)
+          streamUrl: "https://sepolia.starknet.a5a.ch",
         },
       },
     },
@@ -35,7 +36,8 @@ export default defineConfig({
         network: "devnet",
         starknet: {
           startingBlock: 0,
-          streamUrl: "http://localhost:7171",
+          // Self-hosted DNA for local devnet
+          streamUrl: process.env.DNA_STREAM_URL ?? "http://localhost:7171",
         },
       },
     },
