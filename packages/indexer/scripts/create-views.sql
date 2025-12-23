@@ -138,9 +138,9 @@ lp_burn_stats AS (
 interest_stats AS (
   SELECT
     DATE_TRUNC('day', block_timestamp) as day,
-    COALESCE(SUM(interest_out), 0) as total_interest_claimed,
+    COALESCE(SUM(amount_sy), 0) as total_interest_claimed,
     COUNT(*) as interest_claim_count,
-    COUNT(DISTINCT user_address) as unique_claimers
+    COUNT(DISTINCT "user") as unique_claimers
   FROM yt_interest_claimed
   GROUP BY DATE_TRUNC('day', block_timestamp)
 ),
@@ -152,14 +152,14 @@ all_days AS (
   UNION SELECT day FROM interest_stats
 ),
 unique_users_per_day AS (
-  SELECT day, COUNT(DISTINCT user_address) as unique_users FROM (
-    SELECT DATE_TRUNC('day', block_timestamp) as day, sender as user_address FROM market_swap
+  SELECT day, COUNT(DISTINCT user_addr) as unique_users FROM (
+    SELECT DATE_TRUNC('day', block_timestamp) as day, sender as user_addr FROM market_swap
     UNION ALL
     SELECT DATE_TRUNC('day', block_timestamp), receiver FROM router_mint_py
     UNION ALL
     SELECT DATE_TRUNC('day', block_timestamp), receiver FROM router_add_liquidity
     UNION ALL
-    SELECT DATE_TRUNC('day', block_timestamp), user_address FROM yt_interest_claimed
+    SELECT DATE_TRUNC('day', block_timestamp), "user" FROM yt_interest_claimed
   ) all_users
   GROUP BY day
 )
@@ -336,12 +336,12 @@ redeems AS (
 ),
 claims AS (
   SELECT
-    user_address,
+    "user" as user_address,
     yt,
-    SUM(interest_out) as total_interest_claimed,
+    SUM(amount_sy) as total_interest_claimed,
     COUNT(*) as claim_count
   FROM yt_interest_claimed
-  GROUP BY user_address, yt
+  GROUP BY "user", yt
 )
 SELECT
   m.user_address,

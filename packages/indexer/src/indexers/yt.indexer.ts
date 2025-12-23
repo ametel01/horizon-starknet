@@ -156,16 +156,16 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           console.log(`[yt] MintPY at block ${blockNumber}`);
           // MintPY event
           // Keys: [selector, caller, receiver, expiry]
-          // Data: [sy, pt, amount_sy_deposited (u256), amount_py_minted (u256),
-          //        py_index (u256), exchange_rate (u256), total_pt_supply (u256), total_yt_supply (u256)]
+          // Data: [amount_sy_deposited (u256), amount_py_minted (u256), pt, sy,
+          //        py_index (u256), exchange_rate (u256), total_pt_supply (u256), total_yt_supply (u256), timestamp]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
 
-          const sy = data[0] ?? "";
-          const pt = data[1] ?? "";
-          const amountSyDeposited = readU256(data, 2);
-          const amountPyMinted = readU256(data, 4);
+          const amountSyDeposited = readU256(data, 0);
+          const amountPyMinted = readU256(data, 2);
+          const pt = data[4] ?? "";
+          const sy = data[5] ?? "";
           const pyIndex = readU256(data, 6);
           const exchangeRate = readU256(data, 8);
           const totalPtSupply = readU256(data, 10);
@@ -223,16 +223,16 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         } else if (eventKey === REDEEM_PY_POST_EXPIRY) {
           // RedeemPYPostExpiry event
           // Keys: [selector, caller, receiver, expiry]
-          // Data: [sy, pt, amount_pt_redeemed (u256), amount_sy_returned (u256),
-          //        final_py_index (u256), final_exchange_rate (u256)]
+          // Data: [amount_pt_redeemed (u256), amount_sy_returned (u256), pt, sy,
+          //        final_py_index (u256), final_exchange_rate (u256), timestamp]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
 
-          const sy = data[0] ?? "";
-          const pt = data[1] ?? "";
-          const amountPtRedeemed = readU256(data, 2);
-          const amountSyReturned = readU256(data, 4);
+          const amountPtRedeemed = readU256(data, 0);
+          const amountSyReturned = readU256(data, 2);
+          const pt = data[4] ?? "";
+          const sy = data[5] ?? "";
           const finalPyIndex = readU256(data, 6);
           const finalExchangeRate = readU256(data, 8);
 
