@@ -110,6 +110,36 @@ export const ytInterestClaimed = pgTable('yt_interest_claimed', {
   exchange_rate: numeric('exchange_rate', { precision: 78, scale: 0 }).notNull(),
 });
 
+// Router Events
+export const routerSwap = pgTable('router_swap', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  sender: text('sender').notNull(),
+  receiver: text('receiver').notNull(),
+  market: text('market').notNull(),
+  sy_in: numeric('sy_in', { precision: 78, scale: 0 }).notNull(),
+  pt_in: numeric('pt_in', { precision: 78, scale: 0 }).notNull(),
+  sy_out: numeric('sy_out', { precision: 78, scale: 0 }).notNull(),
+  pt_out: numeric('pt_out', { precision: 78, scale: 0 }).notNull(),
+});
+
+export const routerSwapYT = pgTable('router_swap_yt', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  sender: text('sender').notNull(),
+  receiver: text('receiver').notNull(),
+  yt: text('yt').notNull(),
+  market: text('market').notNull(),
+  sy_in: numeric('sy_in', { precision: 78, scale: 0 }).notNull(),
+  yt_in: numeric('yt_in', { precision: 78, scale: 0 }).notNull(),
+  sy_out: numeric('sy_out', { precision: 78, scale: 0 }).notNull(),
+  yt_out: numeric('yt_out', { precision: 78, scale: 0 }).notNull(),
+});
+
 // ============================================================
 // ENRICHED ROUTER VIEWS
 // ============================================================

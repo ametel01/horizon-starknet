@@ -86,19 +86,25 @@ export interface MarketDetailResponse {
 
 export interface SwapEvent {
   id: string;
+  type: 'pt' | 'yt';
   blockNumber: number;
   blockTimestamp: string;
   transactionHash: string;
   sender: string;
   receiver: string;
+  // PT swap fields (always present)
   ptIn: string;
   syIn: string;
   ptOut: string;
   syOut: string;
-  fee: string;
-  impliedRateBefore: string;
-  impliedRateAfter: string;
-  exchangeRate: string;
+  // YT swap fields (only for type: 'yt')
+  ytIn?: string;
+  ytOut?: string;
+  // Optional fields (may not be available for router swaps)
+  fee?: string;
+  impliedRateBefore?: string;
+  impliedRateAfter?: string;
+  exchangeRate?: string;
 }
 
 export interface SwapsResponse {
