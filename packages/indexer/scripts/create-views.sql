@@ -23,6 +23,7 @@ DROP VIEW IF EXISTS enriched_router_redeem_py CASCADE;
 -- ============================================================================
 -- MARKET CURRENT STATE
 -- Latest state for each market (for listings, dashboard)
+-- Uses router events as fallback when market events aren't available
 -- ============================================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS market_current_state AS
 WITH market_info AS (
@@ -40,11 +41,14 @@ WITH market_info AS (
   FROM market_factory_market_created m
   LEFT JOIN factory_yield_contracts_created y ON m.sy = y.sy AND m.pt = y.pt
 ),
+-- Primary source: market_swap events (if market indexer is running)
 latest_swap AS (
   SELECT DISTINCT ON (market)
     market,
     implied_rate_after as implied_rate,
     exchange_rate,
+    sy_reserve_after as sy_reserve,
+    pt_reserve_after as pt_reserve,
     block_timestamp as last_activity
   FROM market_swap
   ORDER BY market, block_number DESC
@@ -71,7 +75,39 @@ latest_implied_rate AS (
   FROM market_implied_rate_updated
   ORDER BY market, block_number DESC
 ),
-volume_24h AS (
+-- Fallback: Calculate reserves from router liquidity events
+router_liquidity_totals AS (
+  SELECT
+    market,
+    COALESCE(SUM(sy_used), 0) as total_sy_added,
+    COALESCE(SUM(pt_used), 0) as total_pt_added,
+    COALESCE(SUM(lp_out), 0) as total_lp_minted,
+    MAX(block_timestamp) as last_add
+  FROM router_add_liquidity
+  GROUP BY market
+),
+router_liquidity_removed AS (
+  SELECT
+    market,
+    COALESCE(SUM(sy_out), 0) as total_sy_removed,
+    COALESCE(SUM(pt_out), 0) as total_pt_removed,
+    COALESCE(SUM(lp_in), 0) as total_lp_burned,
+    MAX(block_timestamp) as last_remove
+  FROM router_remove_liquidity
+  GROUP BY market
+),
+router_reserves AS (
+  SELECT
+    COALESCE(a.market, r.market) as market,
+    COALESCE(a.total_sy_added, 0) - COALESCE(r.total_sy_removed, 0) as sy_reserve,
+    COALESCE(a.total_pt_added, 0) - COALESCE(r.total_pt_removed, 0) as pt_reserve,
+    COALESCE(a.total_lp_minted, 0) - COALESCE(r.total_lp_burned, 0) as total_lp,
+    GREATEST(a.last_add, r.last_remove) as last_activity
+  FROM router_liquidity_totals a
+  FULL OUTER JOIN router_liquidity_removed r ON a.market = r.market
+),
+-- Volume from market_swap (if available)
+volume_24h_market AS (
   SELECT
     market,
     COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume_24h,
@@ -79,6 +115,27 @@ volume_24h AS (
     COALESCE(SUM(fee), 0) as fees_24h,
     COUNT(*) as swaps_24h
   FROM market_swap
+  WHERE block_timestamp >= NOW() - INTERVAL '24 hours'
+  GROUP BY market
+),
+-- Fallback: Volume from router_swap (always available)
+volume_24h_router AS (
+  SELECT
+    market,
+    COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume_24h,
+    COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume_24h,
+    COUNT(*) as swaps_24h
+  FROM router_swap
+  WHERE block_timestamp >= NOW() - INTERVAL '24 hours'
+  GROUP BY market
+),
+-- YT swap volume (router only)
+volume_24h_router_yt AS (
+  SELECT
+    market,
+    COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume_24h,
+    COUNT(*) as swaps_24h
+  FROM router_swap_yt
   WHERE block_timestamp >= NOW() - INTERVAL '24 hours'
   GROUP BY market
 )
@@ -93,23 +150,32 @@ SELECT
   mi.fee_rate,
   mi.initial_exchange_rate,
   mi.created_at,
-  COALESCE(lir.sy_reserve, lm.sy_reserve, 0) as sy_reserve,
-  COALESCE(lir.pt_reserve, lm.pt_reserve, 0) as pt_reserve,
-  COALESCE(lir.total_lp, 0) as total_lp,
+  -- Reserves: try market events first, then router liquidity calculation
+  COALESCE(lir.sy_reserve, lm.sy_reserve, ls.sy_reserve, rr.sy_reserve, 0) as sy_reserve,
+  COALESCE(lir.pt_reserve, lm.pt_reserve, ls.pt_reserve, rr.pt_reserve, 0) as pt_reserve,
+  COALESCE(lir.total_lp, rr.total_lp, 0) as total_lp,
   COALESCE(ls.implied_rate, lir.implied_rate, lm.implied_rate, 0) as implied_rate,
   COALESCE(ls.exchange_rate, lir.exchange_rate, mi.initial_exchange_rate) as exchange_rate,
-  GREATEST(ls.last_activity, lm.last_activity, lir.last_activity, mi.created_at) as last_activity,
+  GREATEST(ls.last_activity, lm.last_activity, lir.last_activity, rr.last_activity, mi.created_at) as last_activity,
   (mi.expiry <= EXTRACT(EPOCH FROM NOW())) as is_expired,
-  COALESCE(v.sy_volume_24h, 0) as sy_volume_24h,
-  COALESCE(v.pt_volume_24h, 0) as pt_volume_24h,
-  COALESCE(v.sy_volume_24h, 0) + COALESCE(v.pt_volume_24h, 0) as volume_24h,
-  COALESCE(v.fees_24h, 0) as fees_24h,
-  COALESCE(v.swaps_24h, 0) as swaps_24h
+  -- Volume: prefer market events, fallback to router
+  COALESCE(vm.sy_volume_24h, vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0) as sy_volume_24h,
+  COALESCE(vm.pt_volume_24h, vr.pt_volume_24h, 0) as pt_volume_24h,
+  COALESCE(vm.sy_volume_24h, vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0) + COALESCE(vm.pt_volume_24h, vr.pt_volume_24h, 0) as volume_24h,
+  -- Fees: use market fees if available, else estimate from volume * fee_rate
+  COALESCE(
+    vm.fees_24h,
+    ((COALESCE(vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0)) * mi.fee_rate / 1000000000000000000)
+  ) as fees_24h,
+  COALESCE(vm.swaps_24h, vr.swaps_24h, 0) + COALESCE(vry.swaps_24h, 0) as swaps_24h
 FROM market_info mi
 LEFT JOIN latest_swap ls ON mi.market = ls.market
 LEFT JOIN latest_mint lm ON mi.market = lm.market
 LEFT JOIN latest_implied_rate lir ON mi.market = lir.market
-LEFT JOIN volume_24h v ON mi.market = v.market;
+LEFT JOIN router_reserves rr ON mi.market = rr.market
+LEFT JOIN volume_24h_market vm ON mi.market = vm.market
+LEFT JOIN volume_24h_router vr ON mi.market = vr.market
+LEFT JOIN volume_24h_router_yt vry ON mi.market = vry.market;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_current_state_market
   ON market_current_state(market);
@@ -117,9 +183,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_market_current_state_market
 -- ============================================================================
 -- PROTOCOL DAILY STATS
 -- Protocol-wide daily metrics (for dashboard, analytics)
+-- Uses router events as primary source for volume/swaps
 -- ============================================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS protocol_daily_stats AS
-WITH swap_stats AS (
+WITH -- Market swap stats (if market indexer is running)
+market_swap_stats AS (
   SELECT
     DATE_TRUNC('day', block_timestamp) as day,
     COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
@@ -129,6 +197,40 @@ WITH swap_stats AS (
     COUNT(DISTINCT sender) as unique_swappers
   FROM market_swap
   GROUP BY DATE_TRUNC('day', block_timestamp)
+),
+-- Router PT swap stats (always available)
+router_swap_stats AS (
+  SELECT
+    DATE_TRUNC('day', block_timestamp) as day,
+    COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
+    COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as total_pt_volume,
+    COUNT(*) as swap_count,
+    COUNT(DISTINCT sender) as unique_swappers
+  FROM router_swap
+  GROUP BY DATE_TRUNC('day', block_timestamp)
+),
+-- Router YT swap stats
+router_swap_yt_stats AS (
+  SELECT
+    DATE_TRUNC('day', block_timestamp) as day,
+    COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
+    COUNT(*) as swap_count,
+    COUNT(DISTINCT sender) as unique_swappers
+  FROM router_swap_yt
+  GROUP BY DATE_TRUNC('day', block_timestamp)
+),
+-- Combined swap stats: prefer market_swap, fallback to router
+swap_stats AS (
+  SELECT
+    COALESCE(ms.day, rs.day, rsy.day) as day,
+    COALESCE(ms.total_sy_volume, rs.total_sy_volume, 0) + COALESCE(rsy.total_sy_volume, 0) as total_sy_volume,
+    COALESCE(ms.total_pt_volume, rs.total_pt_volume, 0) as total_pt_volume,
+    COALESCE(ms.total_fees, 0) as total_fees,
+    COALESCE(ms.swap_count, rs.swap_count, 0) + COALESCE(rsy.swap_count, 0) as swap_count,
+    GREATEST(COALESCE(ms.unique_swappers, rs.unique_swappers, 0), COALESCE(rsy.unique_swappers, 0)) as unique_swappers
+  FROM market_swap_stats ms
+  FULL OUTER JOIN router_swap_stats rs ON ms.day = rs.day
+  FULL OUTER JOIN router_swap_yt_stats rsy ON COALESCE(ms.day, rs.day) = rsy.day
 ),
 mint_stats AS (
   SELECT
@@ -165,7 +267,7 @@ interest_stats AS (
   GROUP BY DATE_TRUNC('day', block_timestamp)
 ),
 all_days AS (
-  SELECT day FROM swap_stats
+  SELECT day FROM swap_stats WHERE day IS NOT NULL
   UNION SELECT day FROM mint_stats
   UNION SELECT day FROM lp_mint_stats
   UNION SELECT day FROM lp_burn_stats
@@ -173,7 +275,9 @@ all_days AS (
 ),
 unique_users_per_day AS (
   SELECT day, COUNT(DISTINCT user_addr) as unique_users FROM (
-    SELECT DATE_TRUNC('day', block_timestamp) as day, sender as user_addr FROM market_swap
+    SELECT DATE_TRUNC('day', block_timestamp) as day, sender as user_addr FROM router_swap
+    UNION ALL
+    SELECT DATE_TRUNC('day', block_timestamp), sender FROM router_swap_yt
     UNION ALL
     SELECT DATE_TRUNC('day', block_timestamp), receiver FROM router_mint_py
     UNION ALL
