@@ -1,12 +1,26 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useProtocolStats } from '@/hooks/api';
-import { formatWadCompact } from '@/lib/math/wad';
+import { useDashboardMarkets } from '@/hooks/useMarkets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
+import { fromWad } from '@/lib/math/wad';
 import { cn } from '@/lib/utils';
+
+/**
+ * Format USD value with compact notation for large numbers
+ */
+function formatUsdCompact(value: number): string {
+  if (value === 0) return '$0';
+  if (value < 0.01) return '<$0.01';
+  if (value < 1000) return `$${value.toFixed(2)}`;
+  if (value < 1_000_000) return `$${(value / 1000).toFixed(2)}K`;
+  if (value < 1_000_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+  return `$${(value / 1_000_000_000).toFixed(2)}B`;
+}
 
 interface StatCardProps {
   label: string;
@@ -46,6 +60,46 @@ interface ProtocolStatsProps {
  */
 export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
   const { stats, isLoading, isError } = useProtocolStats();
+  const { markets } = useDashboardMarkets();
+
+  // Get token addresses for pricing (use first market's token as representative)
+  const tokenAddresses = useMemo(() => {
+    const addresses = new Set<string>();
+    for (const market of markets) {
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      if (priceAddr) addresses.add(priceAddr);
+    }
+    return Array.from(addresses);
+  }, [markets]);
+
+  const { data: prices } = usePrices(tokenAddresses);
+
+  // Get average price across all markets (for multi-asset protocols)
+  // For now, use the first market's price since most volume is in one asset
+  const avgPrice = useMemo(() => {
+    if (!prices || markets.length === 0) return 0;
+    const symbol = markets[0]?.metadata?.yieldTokenSymbol;
+    const priceAddr = getTokenAddressForPricing(symbol) ?? markets[0]?.metadata?.underlyingAddress;
+    return getTokenPrice(priceAddr, prices);
+  }, [markets, prices]);
+
+  // Convert values to USD
+  const tvlUsd = useMemo(() => {
+    let total = 0;
+    for (const market of markets) {
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      const price = getTokenPrice(priceAddr, prices);
+      const syReserveNum = Number(fromWad(market.state.syReserve));
+      const ptReserveNum = Number(fromWad(market.state.ptReserve));
+      total += (syReserveNum + ptReserveNum) * price;
+    }
+    return total;
+  }, [markets, prices]);
+
+  const volumeUsd = Number(fromWad(stats.volume24h)) * avgPrice;
+  const feesUsd = Number(fromWad(stats.fees24h)) * avgPrice;
 
   if (isError) {
     return (
@@ -61,17 +115,13 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
     <div className={cn('grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6', className)}>
       <StatCard
         label="Total TVL"
-        value={formatWadCompact(stats.tvl)}
+        value={formatUsdCompact(tvlUsd)}
         subValue={String(stats.marketCount) + ' markets'}
         isLoading={isLoading}
       />
-      <StatCard
-        label="24h Volume"
-        value={formatWadCompact(stats.volume24h)}
-        isLoading={isLoading}
-      />
+      <StatCard label="24h Volume" value={formatUsdCompact(volumeUsd)} isLoading={isLoading} />
       <StatCard label="24h Swaps" value={stats.swaps24h.toLocaleString()} isLoading={isLoading} />
-      <StatCard label="24h Fees" value={formatWadCompact(stats.fees24h)} isLoading={isLoading} />
+      <StatCard label="24h Fees" value={formatUsdCompact(feesUsd)} isLoading={isLoading} />
       <StatCard
         label="Unique Traders"
         value={stats.uniqueTraders24h.toLocaleString()}
@@ -88,6 +138,45 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
  */
 export function ProtocolStatsCompact({ className }: ProtocolStatsProps): ReactNode {
   const { stats, isLoading, isError } = useProtocolStats();
+  const { markets } = useDashboardMarkets();
+
+  // Get token addresses for pricing
+  const tokenAddresses = useMemo(() => {
+    const addresses = new Set<string>();
+    for (const market of markets) {
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      if (priceAddr) addresses.add(priceAddr);
+    }
+    return Array.from(addresses);
+  }, [markets]);
+
+  const { data: prices } = usePrices(tokenAddresses);
+
+  // Get price for USD conversion
+  const avgPrice = useMemo(() => {
+    if (!prices || markets.length === 0) return 0;
+    const symbol = markets[0]?.metadata?.yieldTokenSymbol;
+    const priceAddr = getTokenAddressForPricing(symbol) ?? markets[0]?.metadata?.underlyingAddress;
+    return getTokenPrice(priceAddr, prices);
+  }, [markets, prices]);
+
+  // Calculate USD values
+  const tvlUsd = useMemo(() => {
+    let total = 0;
+    for (const market of markets) {
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      const price = getTokenPrice(priceAddr, prices);
+      const syReserveNum = Number(fromWad(market.state.syReserve));
+      const ptReserveNum = Number(fromWad(market.state.ptReserve));
+      total += (syReserveNum + ptReserveNum) * price;
+    }
+    return total;
+  }, [markets, prices]);
+
+  const volumeUsd = Number(fromWad(stats.volume24h)) * avgPrice;
+  const feesUsd = Number(fromWad(stats.fees24h)) * avgPrice;
 
   if (isError) {
     return null;
@@ -100,7 +189,7 @@ export function ProtocolStatsCompact({ className }: ProtocolStatsProps): ReactNo
         {isLoading ? (
           <Skeleton className="h-4 w-16" />
         ) : (
-          <span className="font-medium">{formatWadCompact(stats.tvl)}</span>
+          <span className="font-medium">{formatUsdCompact(tvlUsd)}</span>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -108,7 +197,7 @@ export function ProtocolStatsCompact({ className }: ProtocolStatsProps): ReactNo
         {isLoading ? (
           <Skeleton className="h-4 w-16" />
         ) : (
-          <span className="font-medium">{formatWadCompact(stats.volume24h)}</span>
+          <span className="font-medium">{formatUsdCompact(volumeUsd)}</span>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -116,7 +205,7 @@ export function ProtocolStatsCompact({ className }: ProtocolStatsProps): ReactNo
         {isLoading ? (
           <Skeleton className="h-4 w-16" />
         ) : (
-          <span className="font-medium">{formatWadCompact(stats.fees24h)}</span>
+          <span className="font-medium">{formatUsdCompact(feesUsd)}</span>
         )}
       </div>
     </div>
