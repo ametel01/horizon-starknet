@@ -1,25 +1,31 @@
 import { eq, desc, and, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { db, marketSwap } from '@/lib/db';
+import { db, marketSwap, routerSwap, routerSwapYT } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 interface SwapEvent {
   id: string;
+  type: 'pt' | 'yt';
   blockNumber: number;
   blockTimestamp: string;
   transactionHash: string;
   sender: string;
   receiver: string;
+  // PT swap fields
   ptIn: string;
   syIn: string;
   ptOut: string;
   syOut: string;
-  fee: string;
-  impliedRateBefore: string;
-  impliedRateAfter: string;
-  exchangeRate: string;
+  // YT swap fields (only for type: 'yt')
+  ytIn?: string;
+  ytOut?: string;
+  // Optional fields (may not be available for router swaps)
+  fee?: string;
+  impliedRateBefore?: string;
+  impliedRateAfter?: string;
+  exchangeRate?: string;
 }
 
 interface SwapsResponse {
@@ -30,7 +36,7 @@ interface SwapsResponse {
 
 /**
  * GET /api/markets/[address]/swaps
- * Get swap history for a market
+ * Get swap history for a market (includes PT and YT swaps)
  *
  * Query params:
  * - limit: number - max results (default 50, max 100)
@@ -48,41 +54,111 @@ export async function GET(
   const since = searchParams.get('since');
 
   try {
-    // Build conditions
-    const conditions = [eq(marketSwap.market, address)];
+    const allSwaps: SwapEvent[] = [];
 
-    if (since) {
-      const sinceDate = new Date(since);
-      if (!isNaN(sinceDate.getTime())) {
-        conditions.push(gte(marketSwap.block_timestamp, sinceDate));
-      }
+    // Build date condition
+    const sinceDate = since ? new Date(since) : null;
+    const isValidSinceDate = sinceDate && !isNaN(sinceDate.getTime());
+
+    // 1. Query market_swap (direct AMM swaps with full data)
+    const marketConditions = [eq(marketSwap.market, address)];
+    if (isValidSinceDate) {
+      marketConditions.push(gte(marketSwap.block_timestamp, sinceDate));
     }
 
-    const results = await db
+    const marketSwaps = await db
       .select()
       .from(marketSwap)
-      .where(and(...conditions))
-      .orderBy(desc(marketSwap.block_timestamp))
-      .limit(limit + 1) // Fetch one extra to check hasMore
-      .offset(offset);
+      .where(and(...marketConditions))
+      .orderBy(desc(marketSwap.block_timestamp));
 
-    const hasMore = results.length > limit;
-    const swaps: SwapEvent[] = results.slice(0, limit).map((row) => ({
-      id: row._id,
-      blockNumber: row.block_number,
-      blockTimestamp: row.block_timestamp.toISOString(),
-      transactionHash: row.transaction_hash,
-      sender: row.sender,
-      receiver: row.receiver,
-      ptIn: row.pt_in,
-      syIn: row.sy_in,
-      ptOut: row.pt_out,
-      syOut: row.sy_out,
-      fee: row.fee,
-      impliedRateBefore: row.implied_rate_before,
-      impliedRateAfter: row.implied_rate_after,
-      exchangeRate: row.exchange_rate,
-    }));
+    allSwaps.push(
+      ...marketSwaps.map((row) => ({
+        id: row._id,
+        type: 'pt' as const,
+        blockNumber: row.block_number,
+        blockTimestamp: row.block_timestamp.toISOString(),
+        transactionHash: row.transaction_hash,
+        sender: row.sender,
+        receiver: row.receiver,
+        ptIn: row.pt_in,
+        syIn: row.sy_in,
+        ptOut: row.pt_out,
+        syOut: row.sy_out,
+        fee: row.fee,
+        impliedRateBefore: row.implied_rate_before,
+        impliedRateAfter: row.implied_rate_after,
+        exchangeRate: row.exchange_rate,
+      }))
+    );
+
+    // 2. Query router_swap (PT swaps through router)
+    const routerConditions = [eq(routerSwap.market, address)];
+    if (isValidSinceDate) {
+      routerConditions.push(gte(routerSwap.block_timestamp, sinceDate));
+    }
+
+    const routerSwaps = await db
+      .select()
+      .from(routerSwap)
+      .where(and(...routerConditions))
+      .orderBy(desc(routerSwap.block_timestamp));
+
+    allSwaps.push(
+      ...routerSwaps.map((row) => ({
+        id: row._id,
+        type: 'pt' as const,
+        blockNumber: row.block_number,
+        blockTimestamp: row.block_timestamp.toISOString(),
+        transactionHash: row.transaction_hash,
+        sender: row.sender,
+        receiver: row.receiver,
+        ptIn: row.pt_in,
+        syIn: row.sy_in,
+        ptOut: row.pt_out,
+        syOut: row.sy_out,
+      }))
+    );
+
+    // 3. Query router_swap_yt (YT swaps through router)
+    const ytConditions = [eq(routerSwapYT.market, address)];
+    if (isValidSinceDate) {
+      ytConditions.push(gte(routerSwapYT.block_timestamp, sinceDate));
+    }
+
+    const ytSwaps = await db
+      .select()
+      .from(routerSwapYT)
+      .where(and(...ytConditions))
+      .orderBy(desc(routerSwapYT.block_timestamp));
+
+    allSwaps.push(
+      ...ytSwaps.map((row) => ({
+        id: row._id,
+        type: 'yt' as const,
+        blockNumber: row.block_number,
+        blockTimestamp: row.block_timestamp.toISOString(),
+        transactionHash: row.transaction_hash,
+        sender: row.sender,
+        receiver: row.receiver,
+        ptIn: '0',
+        syIn: row.sy_in,
+        ptOut: '0',
+        syOut: row.sy_out,
+        ytIn: row.yt_in,
+        ytOut: row.yt_out,
+      }))
+    );
+
+    // Sort all swaps by timestamp (descending)
+    allSwaps.sort(
+      (a, b) => new Date(b.blockTimestamp).getTime() - new Date(a.blockTimestamp).getTime()
+    );
+
+    // Apply pagination
+    const paginatedSwaps = allSwaps.slice(offset, offset + limit + 1);
+    const hasMore = paginatedSwaps.length > limit;
+    const swaps = paginatedSwaps.slice(0, limit);
 
     return NextResponse.json({
       swaps,
