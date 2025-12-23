@@ -5,3 +5,6 @@ export { SwapHistoryTable } from './SwapHistoryTable';
 export { TransactionHistory } from './TransactionHistory';
 export { TvlBreakdown, TvlBreakdownCompact } from './TvlBreakdown';
 export { TvlChart, TvlSparkline } from './TvlChart';
+export { VolumeByMarket, VolumeBreakdownCompact } from './VolumeByMarket';
+export { VolumeChart, VolumeStackedChart } from './VolumeChart';
+export { VolumeStatsCard, VolumeInline } from './VolumeStatsCard';

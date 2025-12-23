@@ -3,7 +3,15 @@
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 
-import { ProtocolStats, ProtocolTvlCard, TvlBreakdown, TvlChart } from '@/components/analytics';
+import {
+  ProtocolStats,
+  ProtocolTvlCard,
+  TvlBreakdown,
+  TvlChart,
+  VolumeByMarket,
+  VolumeChart,
+  VolumeStatsCard,
+} from '@/components/analytics';
 
 export default function AnalyticsPage(): ReactNode {
   return (
@@ -53,26 +61,19 @@ export default function AnalyticsPage(): ReactNode {
         <h2 className="text-foreground mb-4 text-lg font-semibold">TVL by Market</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           <TvlBreakdown />
+          <VolumeByMarket />
+        </div>
+      </section>
 
-          {/* Placeholder for future volume chart */}
-          <div className="border-border bg-card flex items-center justify-center rounded-lg border p-8">
-            <div className="text-center">
-              <svg
-                className="text-muted-foreground mx-auto h-12 w-12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-              <p className="text-muted-foreground mt-4 text-sm">Volume analytics coming soon</p>
-            </div>
-          </div>
+      {/* Volume Section */}
+      <section className="mb-8">
+        <h2 className="text-foreground mb-4 text-lg font-semibold">Trading Volume</h2>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Volume Stats Card */}
+          <VolumeStatsCard className="lg:col-span-1" />
+
+          {/* Volume Chart */}
+          <VolumeChart className="lg:col-span-2" />
         </div>
       </section>
 
@@ -87,9 +88,14 @@ export default function AnalyticsPage(): ReactNode {
               as the sum of SY and PT reserves across all markets.
             </p>
             <p>
-              <span className="text-foreground font-medium">Market Breakdown</span> shows how TVL is
-              distributed across different yield-bearing assets. Each market represents a different
-              underlying token with its own maturity date.
+              <span className="text-foreground font-medium">Trading Volume</span> tracks all swap
+              activity including PT/SY trades in the AMM. Volume is broken down by token type to
+              show the distribution of trading activity.
+            </p>
+            <p>
+              <span className="text-foreground font-medium">Market Breakdown</span> shows how TVL
+              and volume are distributed across different yield-bearing assets. Each market
+              represents a different underlying token with its own maturity date.
             </p>
             <p>
               <span className="text-foreground font-medium">Note:</span> Historical data is being
