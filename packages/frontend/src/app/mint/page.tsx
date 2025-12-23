@@ -165,7 +165,7 @@ function SimpleModeContent(): ReactNode {
                     <div>
                       <p className="text-foreground font-medium">Deposit Tokens</p>
                       <p className="mt-1">
-                        Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
+                        Deposit your yield-bearing tokens (like sSTRK) into the protocol.
                       </p>
                     </div>
                   </div>
@@ -342,7 +342,7 @@ function AdvancedModeContent(): ReactNode {
                       <p className="text-foreground font-medium">Withdraw Your Tokens</p>
                       <p className="mt-1">
                         Convert your deposited tokens back to the underlying yield-bearing token
-                        (like nstSTRK).
+                        (like sSTRK).
                       </p>
                     </div>
                   </div>
@@ -382,7 +382,7 @@ function AdvancedModeContent(): ReactNode {
                     <div>
                       <p className="text-foreground font-medium">Deposit Tokens</p>
                       <p className="mt-1">
-                        Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
+                        Deposit your yield-bearing tokens (like sSTRK) into the protocol.
                       </p>
                     </div>
                   </div>
