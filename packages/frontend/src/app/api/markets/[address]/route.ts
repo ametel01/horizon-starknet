@@ -110,7 +110,9 @@ export async function GET(
         lastActivity: current.last_activity?.toISOString() ?? null,
       },
       stats24h: {
-        volume: current.volume_24h ?? '0',
+        volume: (
+          BigInt(current.sy_volume_24h ?? '0') + BigInt(current.pt_volume_24h ?? '0')
+        ).toString(),
         fees: current.fees_24h ?? '0',
         swapCount: current.swaps_24h ?? 0,
       },

@@ -1,7 +1,7 @@
 import { eq, desc, and, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { db, ytInterestClaimed, userPositionsSummary } from '@/lib/db';
+import { db, ytInterestClaimed, userPyPositions } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,6 @@ interface YieldClaimEvent {
 interface YieldSummary {
   yt: string;
   sy: string;
-  expiry: number;
   totalClaimed: string;
   claimCount: number;
   lastClaim: string | null;
@@ -92,21 +91,20 @@ export async function GET(
     // Get summary by position from materialized view
     const positions = await db
       .select()
-      .from(userPositionsSummary)
-      .where(eq(userPositionsSummary.user_address, address));
+      .from(userPyPositions)
+      .where(eq(userPyPositions.user_address, address));
 
     const summaryByPosition: YieldSummary[] = positions
       .filter(
-        (p) => BigInt(p.total_interest_claimed ?? '0') > 0n || BigInt(p.net_yt_balance ?? '0') > 0n
+        (p) => BigInt(p.total_interest_claimed ?? '0') > 0n || BigInt(p.yt_balance ?? '0') > 0n
       )
       .map((row) => ({
         yt: row.yt ?? '',
         sy: row.sy ?? '',
-        expiry: row.expiry ?? 0,
         totalClaimed: row.total_interest_claimed ?? '0',
         claimCount: row.claim_count ?? 0,
         lastClaim: row.last_activity?.toISOString() ?? null,
-        currentYtBalance: row.net_yt_balance ?? '0',
+        currentYtBalance: row.yt_balance ?? '0',
       }));
 
     return NextResponse.json({

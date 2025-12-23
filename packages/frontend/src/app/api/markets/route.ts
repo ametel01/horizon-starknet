@@ -72,7 +72,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<MarketsRes
     const orderFn = order === 'asc' ? asc : desc;
     switch (sort) {
       case 'volume':
-        query = query.orderBy(orderFn(marketCurrentState.volume_24h));
+        query = query.orderBy(orderFn(marketCurrentState.sy_volume_24h));
         break;
       case 'tvl':
         query = query.orderBy(orderFn(marketCurrentState.sy_reserve));
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<MarketsRes
         query = query.orderBy(orderFn(marketCurrentState.created_at));
         break;
       default:
-        query = query.orderBy(desc(marketCurrentState.volume_24h));
+        query = query.orderBy(desc(marketCurrentState.sy_volume_24h));
     }
 
     // Apply pagination
@@ -92,26 +92,33 @@ export async function GET(request: NextRequest): Promise<NextResponse<MarketsRes
 
     const results = await query;
 
-    const markets: MarketListItem[] = results.map((row) => ({
-      market: row.market ?? '',
-      expiry: row.expiry ?? 0,
-      sy: row.sy ?? '',
-      pt: row.pt ?? '',
-      yt: row.yt ?? '',
-      underlying: row.underlying ?? '',
-      underlyingSymbol: row.underlying_symbol ?? '',
-      feeRate: row.fee_rate ?? '0',
-      syReserve: row.sy_reserve ?? '0',
-      ptReserve: row.pt_reserve ?? '0',
-      impliedRate: row.implied_rate ?? '0',
-      exchangeRate: row.exchange_rate ?? '0',
-      isExpired: row.is_expired ?? false,
-      volume24h: row.volume_24h ?? '0',
-      fees24h: row.fees_24h ?? '0',
-      swaps24h: row.swaps_24h ?? 0,
-      createdAt: row.created_at?.toISOString() ?? '',
-      lastActivity: row.last_activity?.toISOString() ?? null,
-    }));
+    const markets: MarketListItem[] = results.map((row) => {
+      // Combine SY and PT volume for total volume
+      const syVol = BigInt(row.sy_volume_24h ?? '0');
+      const ptVol = BigInt(row.pt_volume_24h ?? '0');
+      const totalVolume = (syVol + ptVol).toString();
+
+      return {
+        market: row.market ?? '',
+        expiry: row.expiry ?? 0,
+        sy: row.sy ?? '',
+        pt: row.pt ?? '',
+        yt: row.yt ?? '',
+        underlying: row.underlying ?? '',
+        underlyingSymbol: row.underlying_symbol ?? '',
+        feeRate: row.fee_rate ?? '0',
+        syReserve: row.sy_reserve ?? '0',
+        ptReserve: row.pt_reserve ?? '0',
+        impliedRate: row.implied_rate ?? '0',
+        exchangeRate: row.exchange_rate ?? '0',
+        isExpired: row.is_expired ?? false,
+        volume24h: totalVolume,
+        fees24h: row.fees_24h ?? '0',
+        swaps24h: row.swaps_24h ?? 0,
+        createdAt: row.created_at?.toISOString() ?? '',
+        lastActivity: row.last_activity?.toISOString() ?? null,
+      };
+    });
 
     return NextResponse.json({
       markets,

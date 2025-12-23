@@ -74,12 +74,12 @@ export async function GET(
 
       const dataPoints: RateDataPoint[] = results.map((row) => ({
         timestamp: row.day?.toISOString() ?? '',
-        impliedRate: row.implied_rate_close ?? '0',
-        exchangeRate: row.exchange_rate_close ?? '0',
-        open: row.implied_rate_open ?? '0',
-        high: row.implied_rate_high ?? '0',
-        low: row.implied_rate_low ?? '0',
-        close: row.implied_rate_close ?? '0',
+        impliedRate: row.close_implied_rate ?? '0',
+        exchangeRate: row.exchange_rate ?? '0',
+        open: row.min_implied_rate ?? '0', // Using min as open approximation
+        high: row.max_implied_rate ?? '0',
+        low: row.min_implied_rate ?? '0',
+        close: row.close_implied_rate ?? '0',
       }));
 
       return NextResponse.json({

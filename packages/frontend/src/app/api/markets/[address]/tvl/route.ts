@@ -1,7 +1,7 @@
 import { eq, desc, gte, and } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { db, marketDailyStats, marketHourlyStats } from '@/lib/db';
+import { db, marketCurrentState, marketDailyStats, marketHourlyStats } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +24,9 @@ interface TvlResponse {
  * GET /api/markets/[address]/tvl
  * Get TVL time series for a market
  *
+ * Note: Historical TVL snapshots are not available in the current views.
+ * Returns current TVL as a single data point + volume history.
+ *
  * Query params:
  * - resolution: 'hourly' | 'daily' (default: 'daily')
  * - days: number - how many days of data (default: 30, max: 365)
@@ -41,6 +44,17 @@ export async function GET(
   since.setDate(since.getDate() - days);
 
   try {
+    // Get current state for reserve values
+    const [current] = await db
+      .select()
+      .from(marketCurrentState)
+      .where(eq(marketCurrentState.market, address))
+      .limit(1);
+
+    const currentSyReserve = current?.sy_reserve ?? '0';
+    const currentPtReserve = current?.pt_reserve ?? '0';
+    const currentTotalLp = current?.total_lp ?? '0';
+
     if (resolution === 'hourly') {
       const results = await db
         .select()
@@ -49,10 +63,12 @@ export async function GET(
         .orderBy(desc(marketHourlyStats.hour))
         .limit(days * 24);
 
+      // Use current reserves for all points (no historical snapshots available)
       const dataPoints: TvlDataPoint[] = results.map((row) => ({
         timestamp: row.hour?.toISOString() ?? '',
-        syReserve: row.sy_reserve ?? '0',
-        ptReserve: row.pt_reserve ?? '0',
+        syReserve: currentSyReserve,
+        ptReserve: currentPtReserve,
+        totalLp: currentTotalLp,
         volume: row.sy_volume ?? '0',
         fees: row.total_fees ?? '0',
       }));
@@ -70,10 +86,12 @@ export async function GET(
         .orderBy(desc(marketDailyStats.day))
         .limit(days);
 
+      // Use current reserves for all points (no historical snapshots available)
       const dataPoints: TvlDataPoint[] = results.map((row) => ({
         timestamp: row.day?.toISOString() ?? '',
-        syReserve: row.sy_reserve ?? '0',
-        ptReserve: row.pt_reserve ?? '0',
+        syReserve: currentSyReserve,
+        ptReserve: currentPtReserve,
+        totalLp: currentTotalLp,
         volume: row.sy_volume ?? '0',
         fees: row.total_fees ?? '0',
       }));

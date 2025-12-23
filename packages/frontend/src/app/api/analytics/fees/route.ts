@@ -98,7 +98,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
       .where(gte(marketDailyStats.day, thirtyDaysAgo));
 
     // Aggregate by market
-    const marketFees = new Map<string, { fees: bigint; swaps: number; symbol: string }>();
+    const marketFees = new Map<string, { fees: bigint; swaps: number }>();
 
     for (const stat of marketStats) {
       const market = stat.market ?? '';
@@ -108,7 +108,6 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
         marketFees.set(market, {
           fees: BigInt(0),
           swaps: 0,
-          symbol: stat.underlying_symbol ?? '',
         });
       }
 
@@ -122,7 +121,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
     const byMarket: MarketFeeBreakdown[] = Array.from(marketFees.entries())
       .map(([market, data]) => ({
         market,
-        underlyingSymbol: data.symbol,
+        underlyingSymbol: '', // Would need join with marketCurrentState
         totalFees: data.fees.toString(),
         swapCount: data.swaps,
         avgFeePerSwap: data.swaps > 0 ? (data.fees / BigInt(data.swaps)).toString() : '0',
