@@ -1,4 +1,4 @@
-name: Test
+name: Cairo Build
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,10 +23,5 @@ jobs:
         with:
           scarb-version: "2.15.0"
 
-      - name: Setup snfoundry
-        uses: foundry-rs/setup-snfoundry@v3
-        with:
-          starknet-foundry-version: "0.54.0"
-
-      - name: Run tests
-        run: snforge test
+      - name: Build
+        run: scarb build

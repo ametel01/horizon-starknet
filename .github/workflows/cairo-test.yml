@@ -1,4 +1,4 @@
-name: Format
+name: Cairo Tests
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  fmt:
+  test:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,5 +23,10 @@ jobs:
         with:
           scarb-version: "2.15.0"
 
-      - name: Check formatting
-        run: scarb fmt --check
+      - name: Setup snfoundry
+        uses: foundry-rs/setup-snfoundry@v3
+        with:
+          starknet-foundry-version: "0.54.0"
+
+      - name: Run tests
+        run: snforge test

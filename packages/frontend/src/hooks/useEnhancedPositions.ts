@@ -15,15 +15,10 @@ import {
 } from '@/lib/position/value';
 import { getERC20Contract, getMarketContract, getYTContract } from '@/lib/starknet/contracts';
 import type { MarketData } from '@/types/market';
-import type {
-  EnhancedPosition,
-  PortfolioSummary,
-  PositionValue,
-  TokenPrices,
-} from '@/types/position';
+import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@/types/position';
 
 import { useAccount } from './useAccount';
-import { usePrices, getSyPriceUsd } from './usePrices';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from './usePrices';
 import { useStarknet } from './useStarknet';
 
 // Helper to convert Uint256 or bigint to bigint
@@ -41,7 +36,7 @@ async function fetchMarketPositionData(
   market: MarketData,
   userAddress: string,
   provider: ProviderInterface,
-  prices: TokenPrices
+  prices: Map<string, number>
 ): Promise<EnhancedPosition> {
   const syContract = getERC20Contract(market.syAddress, provider);
   const ptContract = getERC20Contract(market.ptAddress, provider);
@@ -64,8 +59,11 @@ async function fetchMarketPositionData(
   const lpBalance = toBigInt(lpBalanceResult as bigint | { low: bigint; high: bigint });
   const claimableYield = toBigInt(claimableYieldResult as bigint | { low: bigint; high: bigint });
 
-  // Get SY price in USD
-  const syPriceUsd = getSyPriceUsd(market.metadata?.yieldTokenSymbol, prices);
+  // Get SY price in USD - use symbol mapping for mock tokens
+  const priceAddr =
+    getTokenAddressForPricing(market.metadata?.yieldTokenSymbol) ??
+    market.metadata?.underlyingAddress;
+  const syPriceUsd = getTokenPrice(priceAddr, prices);
 
   // Calculate token prices
   const timeToExpiry = getTimeToExpiry(market.expiry);
@@ -154,8 +152,20 @@ export function useEnhancedPositions(
 ): UseQueryResult<PortfolioSummary> {
   const { provider } = useStarknet();
   const { address } = useAccount();
-  const { data: prices } = usePrices();
   const { refetchInterval = 30000 } = options;
+
+  // Extract unique token addresses for price fetching
+  const tokenAddresses = useMemo(() => {
+    const addresses = new Set<string>();
+    for (const market of markets) {
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      if (priceAddr) addresses.add(priceAddr);
+    }
+    return Array.from(addresses);
+  }, [markets]);
+
+  const { data: prices } = usePrices(tokenAddresses);
 
   return useQuery({
     queryKey: ['enhanced-positions', address, [...markets.map((m) => m.address)].sort().join(',')],

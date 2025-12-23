@@ -380,6 +380,24 @@ export const MARKETFACTORY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::byte_array::ByteArray',
+    members: [
+      {
+        name: 'data',
+        type: 'core::array::Array::<core::bytes_31::bytes31>',
+      },
+      {
+        name: 'pending_word',
+        type: 'core::felt252',
+      },
+      {
+        name: 'pending_word_len',
+        type: 'core::internal::bounded_int::BoundedInt::<0, 30>',
+      },
+    ],
+  },
+  {
     type: 'event',
     name: 'horizon::market::market_factory::MarketFactory::MarketCreated',
     kind: 'struct',
@@ -387,6 +405,11 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'pt',
         type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
         kind: 'key',
       },
       {
@@ -412,6 +435,41 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'fee_rate',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'yt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'underlying_symbol',
+        type: 'core::byte_array::ByteArray',
+        kind: 'data',
+      },
+      {
+        name: 'initial_exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'market_index',
+        type: 'core::integer::u32',
         kind: 'data',
       },
     ],

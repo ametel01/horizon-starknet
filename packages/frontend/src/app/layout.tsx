@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Public_Sans } from 'next/font/google';
 
+import { IndexerStatusBanner } from '@/components/analytics';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/sonner';
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
       <body className={`${inter.variable} ${mono.variable} font-sans`}>
         <Providers>
           <Header />
+          <IndexerStatusBanner showOnlyIssues={true} className="mx-4 mt-2" />
           <main className="min-h-[calc(100vh-4rem)]">{children}</main>
           <Footer />
           <Toaster />

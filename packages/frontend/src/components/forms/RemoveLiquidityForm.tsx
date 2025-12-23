@@ -11,12 +11,14 @@ import { calculateMinOutputs, useRemoveLiquidity } from '@/hooks/useLiquidity';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { formatWad, formatWadCompact, parseWad } from '@/lib/math/wad';
+import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput } from './TokenInput';
 
 interface RemoveLiquidityFormProps {
   market: MarketData;
+  className?: string;
 }
 
 const SLIPPAGE_OPTIONS = [
@@ -32,7 +34,7 @@ const PERCENTAGE_OPTIONS = [
   { label: 'Max', value: 100 },
 ];
 
-export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): ReactNode {
+export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormProps): ReactNode {
   const { isConnected } = useStarknet();
   const [lpAmount, setLpAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
@@ -135,66 +137,88 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
   }, [isSuccess]);
 
   return (
-    <Card>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader>
         <CardTitle>Remove Liquidity</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* LP Token Input */}
-        <TokenInput
-          label={`${lpSymbol} Tokens to Remove`}
-          tokenAddress={market.address}
-          tokenSymbol={lpSymbol}
-          value={lpAmount}
-          onChange={setLpAmount}
-          error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
-        />
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        {/* Top Section - Inputs */}
+        <div className="space-y-4">
+          {/* LP Token Input */}
+          <TokenInput
+            label={`${lpSymbol} Tokens to Remove`}
+            tokenAddress={market.address}
+            tokenSymbol={lpSymbol}
+            value={lpAmount}
+            onChange={setLpAmount}
+            error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
+          />
 
-        {/* Percentage Buttons */}
-        <div className="flex gap-2">
-          {PERCENTAGE_OPTIONS.map((option) => (
-            <Button
-              key={option.value}
-              variant="outline"
-              size="sm"
-              onClick={(): void => {
-                handlePercentage(option.value);
-              }}
-              className="flex-1"
-            >
-              {option.label}
-            </Button>
-          ))}
+          {/* Percentage Buttons */}
+          <div className="flex gap-2">
+            {PERCENTAGE_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                onClick={(): void => {
+                  handlePercentage(option.value);
+                }}
+                className="flex-1"
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+
+          {/* Output Preview */}
+          <Card size="sm" className="bg-muted">
+            <CardContent className="p-4">
+              <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span
+                    className={
+                      isValidAmount
+                        ? 'text-foreground text-lg font-semibold'
+                        : 'text-muted-foreground text-lg font-semibold'
+                    }
+                  >
+                    {isValidAmount ? formatWad(expectedSyOut, 6) : '0.000000'} SY
+                  </span>
+                  <span className="text-muted-foreground text-sm">
+                    min: {isValidAmount ? formatWad(minSyOut, 6) : '-'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span
+                    className={
+                      isValidAmount
+                        ? 'text-foreground text-lg font-semibold'
+                        : 'text-muted-foreground text-lg font-semibold'
+                    }
+                  >
+                    {isValidAmount ? formatWad(expectedPtOut, 6) : '0.000000'} PT
+                  </span>
+                  <span className="text-muted-foreground text-sm">
+                    min: {isValidAmount ? formatWad(minPtOut, 6) : '-'}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Output Preview */}
-        <Card size="sm" className="bg-muted">
-          <CardContent className="p-4">
-            <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-foreground text-lg font-semibold">
-                  {formatWad(expectedSyOut, 6)} SY
-                </span>
-                <span className="text-muted-foreground text-sm">min: {formatWad(minSyOut, 6)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-foreground text-lg font-semibold">
-                  {formatWad(expectedPtOut, 6)} PT
-                </span>
-                <span className="text-muted-foreground text-sm">min: {formatWad(minPtOut, 6)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pool Info */}
-        {isValidAmount && (
+        {/* Bottom Section - Info & Submit */}
+        <div className="space-y-4">
+          {/* Pool Info - Always visible */}
           <Card size="sm" className="bg-muted/30">
             <CardContent className="space-y-2 p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pool Share Removed</span>
-                <span className="text-foreground">{poolShareRemoved.toFixed(4)}%</span>
+                <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
+                  {isValidAmount ? poolShareRemoved.toFixed(4) : '-'}%
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Current Pool Reserves</span>
@@ -209,51 +233,51 @@ export function RemoveLiquidityForm({ market }: RemoveLiquidityFormProps): React
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Slippage Settings */}
-        <div>
-          <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
-          <ToggleGroup className="flex gap-1">
-            {SLIPPAGE_OPTIONS.map((option) => (
-              <ToggleGroupItem
-                key={option.value}
-                pressed={slippageBps === option.value}
-                onPressedChange={() => {
-                  setSlippageBps(option.value);
-                }}
-                variant="outline"
-                size="sm"
-              >
-                {option.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          {/* Slippage Settings */}
+          <div>
+            <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+            <ToggleGroup className="flex gap-1">
+              {SLIPPAGE_OPTIONS.map((option) => (
+                <ToggleGroupItem
+                  key={option.value}
+                  pressed={slippageBps === option.value}
+                  onPressedChange={() => {
+                    setSlippageBps(option.value);
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  {option.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+
+          {/* Transaction Status */}
+          {txStatus !== 'idle' && (
+            <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+          )}
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleRemoveLiquidity}
+            disabled={!canRemoveLiquidity || isRemoving}
+            className="w-full"
+          >
+            {isRemoving
+              ? 'Removing Liquidity...'
+              : !isConnected
+                ? 'Connect Wallet'
+                : !isValidAmount
+                  ? 'Enter Amount'
+                  : hasInsufficientBalance
+                    ? 'Insufficient LP Balance'
+                    : isSuccess
+                      ? 'Liquidity Removed!'
+                      : 'Remove Liquidity'}
+          </Button>
         </div>
-
-        {/* Transaction Status */}
-        {txStatus !== 'idle' && (
-          <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
-        )}
-
-        {/* Submit Button */}
-        <Button
-          onClick={handleRemoveLiquidity}
-          disabled={!canRemoveLiquidity || isRemoving}
-          className="w-full"
-        >
-          {isRemoving
-            ? 'Removing Liquidity...'
-            : !isConnected
-              ? 'Connect Wallet'
-              : !isValidAmount
-                ? 'Enter Amount'
-                : hasInsufficientBalance
-                  ? 'Insufficient LP Balance'
-                  : isSuccess
-                    ? 'Liquidity Removed!'
-                    : 'Remove Liquidity'}
-        </Button>
       </CardContent>
     </Card>
   );

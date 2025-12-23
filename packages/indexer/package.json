@@ -1,0 +1,53 @@
+{
+  "name": "@horizon/indexer",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "codegen": "bun run scripts/generate-events-abi.ts",
+    "dev": "bunx apibara dev",
+    "dev:mainnet": "bunx apibara dev --preset mainnet",
+    "dev:sepolia": "bunx apibara dev --preset sepolia",
+    "dev:devnet": "bunx apibara dev --preset devnet",
+    "build": "bun build ./src/indexers/*.ts --outdir ./dist --target bun --external @electric-sql/pglite",
+    "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\"",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "check": "bun run typecheck && bun run lint && bun run format:check",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bunx drizzle-kit migrate",
+    "db:push": "bunx drizzle-kit push",
+    "db:studio": "bunx drizzle-kit studio",
+    "db:reset-checkpoints": "bun run scripts/reset-checkpoints.ts",
+    "db:create-views": "bun run scripts/create-views.ts",
+    "db:refresh-views": "bun run scripts/refresh-views.ts",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "dependencies": {
+    "@apibara/indexer": "^2.1.0-beta.47",
+    "@apibara/plugin-drizzle": "^2.1.0-beta.47",
+    "@apibara/protocol": "^2.1.0-beta.47",
+    "@apibara/starknet": "^2.1.0-beta.47",
+    "apibara": "^2.1.0-beta.47",
+    "drizzle-orm": "0.45.1",
+    "pg": "^8.16.3",
+    "postgres": "latest",
+    "prettier": "latest",
+    "starknet": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
+    "@typescript-eslint/parser": "^8.50.0",
+    "drizzle-kit": "^0.30.6",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "typescript": "latest",
+    "typescript-eslint": "^8.50.0"
+  }
+}

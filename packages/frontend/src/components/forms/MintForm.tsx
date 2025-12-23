@@ -9,15 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAccount } from '@/hooks/useAccount';
 import { useMint } from '@/hooks/useMint';
 import { toWad } from '@/lib/math/wad';
+import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput, TokenOutput } from './TokenInput';
 
 interface MintFormProps {
   market: MarketData;
+  className?: string;
 }
 
-export function MintForm({ market }: MintFormProps): ReactNode {
+export function MintForm({ market, className }: MintFormProps): ReactNode {
   const { isConnected } = useAccount();
   const [amountSy, setAmountSy] = useState('');
 
@@ -90,11 +92,12 @@ export function MintForm({ market }: MintFormProps): ReactNode {
 
   // Get token symbols from metadata
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${tokenSymbol}`;
   const ptSymbol = `PT-${tokenSymbol}`;
   const ytSymbol = `YT-${tokenSymbol}`;
 
   return (
-    <Card className="w-full max-w-lg">
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Mint PT + YT</CardTitle>
@@ -105,71 +108,77 @@ export function MintForm({ market }: MintFormProps): ReactNode {
         </p>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Input */}
-        <TokenInput
-          label="You use"
-          tokenAddress={market.syAddress}
-          tokenSymbol={tokenSymbol}
-          value={amountSy}
-          onChange={setAmountSy}
-          disabled={isLoading}
-          error={validationError ?? undefined}
-        />
-
-        {/* Arrow */}
-        <div className="flex justify-center">
-          <Button variant="ghost" size="icon" className="rounded-full" disabled>
-            <svg
-              className="text-muted-foreground h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 14l-7 7m0 0l-7-7m7 7V3"
-              />
-            </svg>
-          </Button>
-        </div>
-
-        {/* Outputs */}
-        <div className="space-y-2">
-          <TokenOutput
-            label="You receive"
-            amount={outputAmount}
-            tokenSymbol={ptSymbol}
-            isLoading={syBalanceLoading}
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        {/* Top Section - Inputs */}
+        <div className="space-y-4">
+          {/* Input */}
+          <TokenInput
+            label="You use"
+            tokenAddress={market.syAddress}
+            tokenSymbol={sySymbol}
+            value={amountSy}
+            onChange={setAmountSy}
+            disabled={isLoading}
+            error={validationError ?? undefined}
           />
-          <TokenOutput label="You receive" amount={outputAmount} tokenSymbol={ytSymbol} />
+
+          {/* Arrow */}
+          <div className="flex justify-center">
+            <Button variant="ghost" size="icon" className="rounded-full" disabled>
+              <svg
+                className="text-muted-foreground h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                />
+              </svg>
+            </Button>
+          </div>
+
+          {/* Outputs */}
+          <div className="space-y-2">
+            <TokenOutput
+              label="You receive"
+              amount={outputAmount}
+              tokenSymbol={ptSymbol}
+              isLoading={syBalanceLoading}
+            />
+            <TokenOutput label="You receive" amount={outputAmount} tokenSymbol={ytSymbol} />
+          </div>
         </div>
 
-        {/* Info */}
-        <Card size="sm" className="bg-muted">
-          <CardContent className="p-3 text-sm">
-            <div className="text-muted-foreground flex justify-between">
-              <span>Exchange Rate</span>
-              <span className="text-foreground">1 : 1 PT + 1 YT</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Bottom Section - Info & Actions */}
+        <div className="space-y-4">
+          {/* Info */}
+          <Card size="sm" className="bg-muted">
+            <CardContent className="p-3 text-sm">
+              <div className="text-muted-foreground flex justify-between">
+                <span>Exchange Rate</span>
+                <span className="text-foreground">1 : 1 PT + 1 YT</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Transaction Status */}
-        {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+          {/* Transaction Status */}
+          {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
 
-        {/* Actions */}
-        {status === 'success' ? (
-          <Button onClick={handleReset} className="w-full">
-            Mint More
-          </Button>
-        ) : (
-          <Button onClick={handleMint} disabled={buttonDisabled} className="w-full">
-            {buttonText}
-          </Button>
-        )}
+          {/* Actions */}
+          {status === 'success' ? (
+            <Button onClick={handleReset} className="w-full">
+              Mint More
+            </Button>
+          ) : (
+            <Button onClick={handleMint} disabled={buttonDisabled} className="w-full">
+              {buttonText}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

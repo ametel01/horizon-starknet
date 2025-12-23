@@ -1,0 +1,39 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-horizon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-horizon_indexer}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-horizon} -d ${POSTGRES_DB:-horizon_indexer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Only expose if needed for external access
+    # ports:
+    #   - "5432:5432"
+
+  # Horizon Indexer
+  indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_CONNECTION_STRING: postgres://${POSTGRES_USER:-horizon}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-horizon_indexer}
+      DNA_TOKEN: ${DNA_TOKEN:?DNA_TOKEN is required}
+      # Use Apibara hosted DNA
+      DNA_STREAM_URL: https://mainnet.starknet.a5a.ch
+    command: ["bun", "run", "apibara", "start", "--preset", "mainnet"]
+
+volumes:
+  postgres_data:
+    driver: local

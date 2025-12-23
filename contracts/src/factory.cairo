@@ -20,6 +20,7 @@ pub mod Factory {
     };
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use super::{IERC20MetadataDispatcher, IERC20MetadataDispatcherTrait};
 
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -92,6 +93,12 @@ pub mod Factory {
         pub pt: ContractAddress,
         pub yt: ContractAddress,
         pub creator: ContractAddress,
+        // Enrichment fields for indexer
+        pub underlying: ContractAddress,
+        pub underlying_symbol: ByteArray,
+        pub initial_exchange_rate: u256,
+        pub timestamp: u64,
+        pub market_index: u32,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -203,11 +210,29 @@ pub mod Factory {
             self.valid_pts.write(pt_address, true);
             self.valid_yts.write(yt_address, true);
 
-            // Emit event
+            // Gather enrichment data for indexer
+            let underlying = sy_dispatcher.underlying_asset();
+            let underlying_token = IERC20MetadataDispatcher { contract_address: underlying };
+            let underlying_symbol = underlying_token.symbol();
+            let initial_exchange_rate = sy_dispatcher.exchange_rate();
+            let timestamp = get_block_timestamp();
+            // market_index is the deploy count before increment (0-indexed)
+            let market_index: u32 = count.low.try_into().unwrap();
+
+            // Emit enriched event
             self
                 .emit(
                     YieldContractsCreated {
-                        sy, expiry, pt: pt_address, yt: yt_address, creator: get_caller_address(),
+                        sy,
+                        expiry,
+                        pt: pt_address,
+                        yt: yt_address,
+                        creator: get_caller_address(),
+                        underlying,
+                        underlying_symbol,
+                        initial_exchange_rate,
+                        timestamp,
+                        market_index,
                     },
                 );
 
@@ -273,4 +298,10 @@ pub mod Factory {
             self.rbac_initialized.write(true);
         }
     }
+}
+
+/// Interface for ERC20 metadata (symbol) - used for underlying token enrichment
+#[starknet::interface]
+pub trait IERC20Metadata<TContractState> {
+    fn symbol(self: @TContractState) -> ByteArray;
 }

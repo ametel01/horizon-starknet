@@ -30,7 +30,9 @@ pub mod SY {
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
     use super::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
@@ -78,6 +80,8 @@ pub mod SY {
         // Whether the index_oracle is an ERC-4626 vault
         // If true, call convert_to_assets(WAD) instead of index()
         is_erc4626: bool,
+        // Last recorded exchange rate (for OracleRateUpdated event)
+        last_exchange_rate: u256,
     }
 
     #[event]
@@ -97,6 +101,7 @@ pub mod SY {
         UpgradeableEvent: UpgradeableComponent::Event,
         Deposit: Deposit,
         Redeem: Redeem,
+        OracleRateUpdated: OracleRateUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -105,8 +110,13 @@ pub mod SY {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub underlying: ContractAddress,
         pub amount_deposited: u256,
         pub amount_sy_minted: u256,
+        pub exchange_rate: u256,
+        pub total_supply_after: u256,
+        pub timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -115,8 +125,26 @@ pub mod SY {
         pub caller: ContractAddress,
         #[key]
         pub receiver: ContractAddress,
+        #[key]
+        pub underlying: ContractAddress,
         pub amount_sy_burned: u256,
         pub amount_redeemed: u256,
+        pub exchange_rate: u256,
+        pub total_supply_after: u256,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when the oracle exchange rate changes during a state-changing operation
+    #[derive(Drop, starknet::Event)]
+    pub struct OracleRateUpdated {
+        #[key]
+        pub sy: ContractAddress,
+        #[key]
+        pub underlying: ContractAddress,
+        pub old_rate: u256,
+        pub new_rate: u256,
+        pub rate_change_bps: u256,
+        pub timestamp: u64,
     }
 
     /// @param name SY token name
@@ -153,6 +181,16 @@ pub mod SY {
         self.underlying.write(underlying);
         self.index_oracle.write(index_oracle);
         self.is_erc4626.write(is_erc4626);
+
+        // Initialize last exchange rate from oracle
+        let initial_rate = if is_erc4626 {
+            let vault = IERC4626MinimalDispatcher { contract_address: index_oracle };
+            vault.convert_to_assets(WAD)
+        } else {
+            let oracle = IIndexOracleDispatcher { contract_address: index_oracle };
+            oracle.index()
+        };
+        self.last_exchange_rate.write(initial_rate);
     }
 
     #[abi(embed_v0)]
@@ -222,6 +260,9 @@ pub mod SY {
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_shares_to_deposit > 0, Errors::SY_ZERO_DEPOSIT);
 
+            // Check and emit oracle rate update if rate changed
+            self._check_and_emit_rate_update();
+
             let caller = get_caller_address();
 
             // Transfer underlying shares from caller to this contract
@@ -242,8 +283,12 @@ pub mod SY {
                     Deposit {
                         caller,
                         receiver,
+                        underlying: underlying_addr,
                         amount_deposited: amount_shares_to_deposit,
                         amount_sy_minted: sy_to_mint,
+                        exchange_rate: self.exchange_rate(),
+                        total_supply_after: self.erc20.ERC20_total_supply.read(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -259,6 +304,9 @@ pub mod SY {
         ) -> u256 {
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_redeem > 0, Errors::SY_ZERO_REDEEM);
+
+            // Check and emit oracle rate update if rate changed
+            self._check_and_emit_rate_update();
 
             let caller = get_caller_address();
 
@@ -279,8 +327,12 @@ pub mod SY {
                     Redeem {
                         caller,
                         receiver,
+                        underlying: underlying_addr,
                         amount_sy_burned: amount_sy_to_redeem,
                         amount_redeemed: shares_to_return,
+                        exchange_rate: self.exchange_rate(),
+                        total_supply_after: self.erc20.ERC20_total_supply.read(),
+                        timestamp: get_block_timestamp(),
                     },
                 );
 
@@ -354,6 +406,51 @@ pub mod SY {
         /// Check if this SY uses an ERC-4626 vault for exchange rate
         fn get_is_erc4626(self: @ContractState) -> bool {
             self.is_erc4626.read()
+        }
+
+        /// Check if exchange rate changed and emit OracleRateUpdated event if so
+        /// Called during state-changing operations (deposit, redeem)
+        fn _check_and_emit_rate_update(ref self: ContractState) {
+            let oracle_addr = self.index_oracle.read();
+
+            let new_rate = if self.is_erc4626.read() {
+                let vault = IERC4626MinimalDispatcher { contract_address: oracle_addr };
+                vault.convert_to_assets(WAD)
+            } else {
+                let oracle = IIndexOracleDispatcher { contract_address: oracle_addr };
+                oracle.index()
+            };
+
+            let old_rate = self.last_exchange_rate.read();
+
+            // Only emit if rates differ and we have a previous rate (skip on first call)
+            if old_rate > 0 && new_rate != old_rate {
+                // Calculate rate change in basis points (10000 = 100%)
+                // rate_change_bps = |new_rate - old_rate| * 10000 / old_rate
+                let rate_diff = if new_rate > old_rate {
+                    new_rate - old_rate
+                } else {
+                    old_rate - new_rate
+                };
+                let rate_change_bps = (rate_diff * 10000) / old_rate;
+
+                self
+                    .emit(
+                        OracleRateUpdated {
+                            sy: get_contract_address(),
+                            underlying: self.underlying.read(),
+                            old_rate,
+                            new_rate,
+                            rate_change_bps,
+                            timestamp: get_block_timestamp(),
+                        },
+                    );
+            }
+
+            // Update stored rate
+            if new_rate != old_rate {
+                self.last_exchange_rate.write(new_rate);
+            }
         }
     }
 }

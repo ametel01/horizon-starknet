@@ -1,4 +1,4 @@
-name: Build
+name: Cairo Lint
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,5 +23,5 @@ jobs:
         with:
           scarb-version: "2.15.0"
 
-      - name: Build
-        run: scarb build
+      - name: Lint check
+        run: scarb check

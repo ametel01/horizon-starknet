@@ -9,12 +9,14 @@ import { useAccount } from '@/hooks/useAccount';
 import { useSimpleDeposit } from '@/hooks/useSimpleDeposit';
 import { formatWad, toWad } from '@/lib/math/wad';
 import { formatExpiry } from '@/lib/math/yield';
+import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput } from './TokenInput';
 
 interface SimpleEarnFormProps {
   market: MarketData;
+  className?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ interface SimpleEarnFormProps {
  * Combines deposit + split into a single "Deposit & Earn" action.
  * Hides SY/PT/YT terminology and focuses on the user's deposit amount and expected returns.
  */
-export function SimpleEarnForm({ market }: SimpleEarnFormProps): ReactNode {
+export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): ReactNode {
   const { isConnected } = useAccount();
   const [amount, setAmount] = useState('');
 
@@ -109,7 +111,7 @@ export function SimpleEarnForm({ market }: SimpleEarnFormProps): ReactNode {
   const maturityDate = formatExpiry(market.expiry);
 
   return (
-    <Card className="w-full max-w-lg">
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader>
         <CardTitle>Earn Fixed Yield</CardTitle>
         <p className="text-muted-foreground text-sm">
@@ -117,94 +119,100 @@ export function SimpleEarnForm({ market }: SimpleEarnFormProps): ReactNode {
         </p>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Input */}
-        <TokenInput
-          label="You deposit"
-          tokenAddress={underlyingAddress}
-          tokenSymbol={tokenSymbol}
-          value={amount}
-          onChange={setAmount}
-          disabled={isLoading || !underlyingAddress}
-          error={validationError ?? undefined}
-        />
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        {/* Top Section - Inputs */}
+        <div className="space-y-4">
+          {/* Input */}
+          <TokenInput
+            label="You deposit"
+            tokenAddress={underlyingAddress}
+            tokenSymbol={tokenSymbol}
+            value={amount}
+            onChange={setAmount}
+            disabled={isLoading || !underlyingAddress}
+            error={validationError ?? undefined}
+          />
 
-        {/* Arrow */}
-        <div className="flex justify-center">
-          <div className="bg-muted rounded-full p-2">
-            <svg
-              className="text-muted-foreground h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 14l-7 7m0 0l-7-7m7 7V3"
-              />
-            </svg>
+          {/* Arrow */}
+          <div className="flex justify-center">
+            <div className="bg-muted rounded-full p-2">
+              <svg
+                className="text-muted-foreground h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                />
+              </svg>
+            </div>
           </div>
+
+          {/* Output Preview */}
+          <Card size="sm" className="bg-muted">
+            <CardContent className="p-4">
+              <div className="mb-2">
+                <span className="text-muted-foreground text-sm">You&apos;ll receive</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">Fixed-Rate Position</span>
+                  <span className="text-foreground font-mono">{formatWad(outputAmount, 4)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">Variable-Rate Position</span>
+                  <span className="text-foreground font-mono">{formatWad(outputAmount, 4)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Output Preview */}
-        <Card size="sm" className="bg-muted">
-          <CardContent className="p-4">
-            <div className="mb-2">
-              <span className="text-muted-foreground text-sm">You&apos;ll receive</span>
-            </div>
-            <div className="space-y-2">
+        {/* Bottom Section - Info & Actions */}
+        <div className="space-y-4">
+          {/* Yield Info */}
+          <Card size="sm" className="border-primary/30 bg-primary/5 border">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Fixed-Rate Position</span>
-                <span className="text-foreground font-mono">{formatWad(outputAmount, 4)}</span>
+                <div>
+                  <div className="text-primary text-sm font-medium">Fixed Rate</div>
+                  <div className="text-primary text-2xl font-bold">{fixedApy.toFixed(2)}%</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-muted-foreground text-sm">Matures on</div>
+                  <div className="text-foreground font-medium">{maturityDate}</div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Variable-Rate Position</span>
-                <span className="text-foreground font-mono">{formatWad(outputAmount, 4)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Yield Info */}
-        <Card size="sm" className="border-primary/30 bg-primary/5 border">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-primary text-sm font-medium">Fixed Rate</div>
-                <div className="text-primary text-2xl font-bold">{fixedApy.toFixed(2)}%</div>
-              </div>
-              <div className="text-right">
-                <div className="text-muted-foreground text-sm">Matures on</div>
-                <div className="text-foreground font-medium">{maturityDate}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Simple Info */}
+          <div className="text-muted-foreground space-y-1 text-xs">
+            <p>
+              Your deposit will be split into two positions. The Fixed-Rate Position earns the
+              guaranteed rate shown above. The Variable-Rate Position earns floating yield until
+              maturity.
+            </p>
+          </div>
 
-        {/* Simple Info */}
-        <div className="text-muted-foreground space-y-1 text-xs">
-          <p>
-            Your deposit will be split into two positions. The Fixed-Rate Position earns the
-            guaranteed rate shown above. The Variable-Rate Position earns floating yield until
-            maturity.
-          </p>
+          {/* Transaction Status */}
+          {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+
+          {/* Actions */}
+          {status === 'success' ? (
+            <Button onClick={handleReset} className="w-full">
+              Deposit More
+            </Button>
+          ) : (
+            <Button onClick={handleDeposit} disabled={buttonDisabled} className="w-full">
+              {buttonText}
+            </Button>
+          )}
         </div>
-
-        {/* Transaction Status */}
-        {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
-
-        {/* Actions */}
-        {status === 'success' ? (
-          <Button onClick={handleReset} className="w-full">
-            Deposit More
-          </Button>
-        ) : (
-          <Button onClick={handleDeposit} disabled={buttonDisabled} className="w-full">
-            {buttonText}
-          </Button>
-        )}
       </CardContent>
     </Card>
   );

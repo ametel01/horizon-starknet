@@ -1,47 +1,47 @@
 {
   "network": "mainnet",
   "rpcUrl": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/usuQSZ2cdSmSR8rNpstjp",
-  "deployedAt": "2025-12-20T23:19:02Z",
+  "deployedAt": "2025-12-23T02:39:30Z",
   "classHashes": {
     "MockYieldToken": "0x01d30ffe734e15ab821b189bbb434f1dca3d32dd1b55aecb5555f465c4e6004f",
     "Faucet": "0x002a23d74960946e57c81f2fb53bf017cf7cfb099c68b2241a1e6f57e677cd88",
-    "SY": "0x06b58bbfcd12ca90788e811f0c702638b8c381626bec9f1af83c4a3bdfa4ee17",
+    "SY": "0x0373f66caa1e7d1f0a67870e075e2dae315b7264c09dd42a561bb1cc391d9af6",
     "PT": "0x00dab8a31509b26ab286fc32547209c4d6d5ca06687288702c39d9c92d447fc7",
-    "YT": "0x01ba4cd7fd4e7ae07663fb86f8a8e064b4bb72b00667ec0a0c750e5715014c3b",
-    "Market": "0x05ef598878cdb4f9763a17ffe02dc664e571c54b9836518cf5f521964e595890",
-    "Factory": "0x054191648af93940d55db267fea6af1da51fa640385ef09f547917487ce33d93",
-    "MarketFactory": "0x010cf6a7055f3062956bb647ec5377ff5b279b0c3f13b73dcec9571a26adf188",
+    "YT": "0x01f0ce19cd58585decf85166a07a714b58b0bceb90cab2ba8eed9e58118266cd",
+    "Market": "0x01a732cb0cdc2466f191a42e798fb5fb26bbcef2d298e2951d28e54df1f7aa7a",
+    "Factory": "0x005921264692808caa488f923c150adf41cdf2fe1c3e31e9d8e7ada78375235e",
+    "MarketFactory": "0x05145ba825bbe074dc6555991031b8662bbf802acbdb3bfbe3991e5191dbe15d",
     "Router": "0x021464597c63d680b420af2731de902d9e4e19c7fd7410eaa93e5d09d6d01ac7"
   },
   "contracts": {
-    "Factory": "0x02e7ce691e51fe60b92f25bb845100b4797cd7961647408294a8074fe966f5fd",
-    "MarketFactory": "0x014aa95f5c995f57f29f9c6de9d4c245ea231bd695741876c02a887fda8ad9b2",
-    "Router": "0x04d76ca0b5ce4cb9ed2f4a32de04682637f805512ba2afd2d5ab463d61667870",
-    "Faucet": "0x05afa0f74e4e59699fc8cd2ee727b2de2f53567a4439274c714b5f368b79bbca"
+    "Factory": "0x04fd6d42072f76612ae0a5f97d191ab4c5ede3688d2df0185352e01b7f2fc444",
+    "MarketFactory": "0x0465bc423ddde2495e9d4c31563e0b333d9c8b818a86d3d76064fd652ee4be6f",
+    "Router": "0x07ccd371e51703e562cf7c7789d4252b7a63845dc87f25a07cf8b5c28e80563b",
+    "Faucet": "0x01b472105605d569778515bcf7ea03759f77af0b2cc945dc999a19edc6572d71"
   },
   "tokens": {
     "STRK": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
     "hrzSTRK": {
       "name": "Horizon Mock Staked STRK",
       "symbol": "hrzSTRK",
-      "address": "0x076d321f884d740005f318ae552b3fa76698c8937f8144b0e3d4e7be4dccb7d4",
+      "address": "0x02f87c98336c7457aa5aa9237d41e2b903346aeae64be60f63423486d0c16f02",
       "isERC4626": true,
-      "faucet": "0x05afa0f74e4e59699fc8cd2ee727b2de2f53567a4439274c714b5f368b79bbca",
+      "faucet": "0x01b472105605d569778515bcf7ea03759f77af0b2cc945dc999a19edc6572d71",
       "faucetDailyLimit": "100000000000000000000"
     }
   },
   "syTokens": {
     "SY-hrzSTRK": {
-      "address": "0x06c6c003bae41be14074ec93659cc8a3af3bbec99c54fd921e1ff68c54a38867",
-      "underlying": "0x076d321f884d740005f318ae552b3fa76698c8937f8144b0e3d4e7be4dccb7d4",
+      "address": "0x0601a6717bedf8010f68ec2e4993ea12c208ed949ed76b33b616add725dbc15c",
+      "underlying": "0x02f87c98336c7457aa5aa9237d41e2b903346aeae64be60f63423486d0c16f02",
       "isERC4626": true
     }
   },
   "markets": {
     "hrzSTRK": {
-      "PT": "0x324e54014538fe2bf67a6c71d169c62bb7bc92ec383b7a728da31a81ae2e8d",
-      "YT": "0x125e4070194897078c46cb37731a38e3fff03ac3c2db91758671fc70ca804da",
-      "Market": "0x64f967a496330bae100b9931f520054c6d3298f6386d9130cc388a6e9079720",
+      "PT": "0x5f94e491f3deb3137eecc94a4641f11112219e7923613d2e2f0f3ef5496b9ca",
+      "YT": "0x70c396667613d74cb473ad937d717355222c76a41d3a1d2b34299eefda6405d",
+      "Market": "0x4d2f052b91f5c744e67816e72e426cab538661deda0d38143a9cefad973c18",
       "initialAnchor": "76961041136128000"
     }
   },

@@ -124,3 +124,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Recharts dark mode support */
+.recharts-cartesian-axis-tick-value {
+  fill: var(--muted-foreground);
+}
+
+.recharts-cartesian-grid line {
+  stroke: var(--border);
+}
+
+.recharts-pie-label-text {
+  fill: var(--foreground);
+}
+
+.recharts-legend-item-text {
+  color: var(--foreground) !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+}
+
+.recharts-tooltip-wrapper .recharts-tooltip-label,
+.recharts-tooltip-wrapper .recharts-tooltip-item {
+  color: var(--popover-foreground) !important;
+}

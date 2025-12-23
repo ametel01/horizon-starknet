@@ -20,10 +20,10 @@ export interface MarketState {
 
 // Token metadata for display
 export interface MarketTokenMetadata {
-  key: string; // e.g. "nstSTRK", "sSTRK"
+  key: string; // e.g. "sSTRK", "sSTRK"
   underlyingAddress: string;
-  yieldTokenName: string; // e.g. "Nostra Staked STRK"
-  yieldTokenSymbol: string; // e.g. "nstSTRK"
+  yieldTokenName: string; // e.g. "Staked Starknet Token"
+  yieldTokenSymbol: string; // e.g. "sSTRK"
   isERC4626: boolean;
   initialAnchor?: bigint; // AMM initial ln(implied rate) parameter
 }

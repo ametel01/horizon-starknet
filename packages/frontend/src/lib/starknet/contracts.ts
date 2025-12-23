@@ -47,7 +47,11 @@ export function getFactoryContract(
   network: NetworkId
 ): TypedFactory {
   const addresses = getAddresses(network);
-  return new Contract(FACTORY_ABI, addresses.factory, providerOrAccount).typedv2(FACTORY_ABI);
+  return new Contract({
+    abi: FACTORY_ABI,
+    address: addresses.factory,
+    providerOrAccount,
+  }).typedv2(FACTORY_ABI);
 }
 
 export function getMarketFactoryContract(
@@ -55,9 +59,11 @@ export function getMarketFactoryContract(
   network: NetworkId
 ): TypedMarketFactory {
   const addresses = getAddresses(network);
-  return new Contract(MARKETFACTORY_ABI, addresses.marketFactory, providerOrAccount).typedv2(
-    MARKETFACTORY_ABI
-  );
+  return new Contract({
+    abi: MARKETFACTORY_ABI,
+    address: addresses.marketFactory,
+    providerOrAccount,
+  }).typedv2(MARKETFACTORY_ABI);
 }
 
 export function getRouterContract(
@@ -65,7 +71,11 @@ export function getRouterContract(
   network: NetworkId
 ): TypedRouter {
   const addresses = getAddresses(network);
-  return new Contract(ROUTER_ABI, addresses.router, providerOrAccount).typedv2(ROUTER_ABI);
+  return new Contract({
+    abi: ROUTER_ABI,
+    address: addresses.router,
+    providerOrAccount,
+  }).typedv2(ROUTER_ABI);
 }
 
 // Dynamic contracts (address provided at runtime)
@@ -73,31 +83,33 @@ export function getMarketContract(
   address: string,
   providerOrAccount: ProviderOrAccount
 ): TypedMarket {
-  return new Contract(MARKET_ABI, address, providerOrAccount).typedv2(MARKET_ABI);
+  return new Contract({ abi: MARKET_ABI, address, providerOrAccount }).typedv2(MARKET_ABI);
 }
 
 export function getSYContract(address: string, providerOrAccount: ProviderOrAccount): TypedSY {
-  return new Contract(SY_ABI, address, providerOrAccount).typedv2(SY_ABI);
+  return new Contract({ abi: SY_ABI, address, providerOrAccount }).typedv2(SY_ABI);
 }
 
 export function getPTContract(address: string, providerOrAccount: ProviderOrAccount): TypedPT {
-  return new Contract(PT_ABI, address, providerOrAccount).typedv2(PT_ABI);
+  return new Contract({ abi: PT_ABI, address, providerOrAccount }).typedv2(PT_ABI);
 }
 
 export function getYTContract(address: string, providerOrAccount: ProviderOrAccount): TypedYT {
-  return new Contract(YT_ABI, address, providerOrAccount).typedv2(YT_ABI);
+  return new Contract({ abi: YT_ABI, address, providerOrAccount }).typedv2(YT_ABI);
 }
 
 export function getMockYieldTokenContract(
   address: string,
   providerOrAccount: ProviderOrAccount
 ): TypedMockYieldToken {
-  return new Contract(MOCKYIELDTOKEN_ABI, address, providerOrAccount).typedv2(MOCKYIELDTOKEN_ABI);
+  return new Contract({ abi: MOCKYIELDTOKEN_ABI, address, providerOrAccount }).typedv2(
+    MOCKYIELDTOKEN_ABI
+  );
 }
 
 // ERC20 contract - uses SY_ABI as it includes ERC20 functions
 export function getERC20Contract(address: string, providerOrAccount: ProviderOrAccount): TypedSY {
-  return new Contract(SY_ABI, address, providerOrAccount).typedv2(SY_ABI);
+  return new Contract({ abi: SY_ABI, address, providerOrAccount }).typedv2(SY_ABI);
 }
 
 // Faucet contract for test tokens
@@ -105,5 +117,5 @@ export function getFaucetContract(
   address: string,
   providerOrAccount: ProviderOrAccount
 ): TypedFaucet {
-  return new Contract(FAUCET_ABI, address, providerOrAccount).typedv2(FAUCET_ABI);
+  return new Contract({ abi: FAUCET_ABI, address, providerOrAccount }).typedv2(FAUCET_ABI);
 }

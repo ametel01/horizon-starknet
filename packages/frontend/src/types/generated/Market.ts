@@ -1036,6 +1036,21 @@ export const MARKET_ABI = [
         kind: 'key',
       },
       {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
         name: 'sy_amount',
         type: 'core::integer::u256',
         kind: 'data',
@@ -1048,6 +1063,36 @@ export const MARKET_ABI = [
       {
         name: 'lp_amount',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'implied_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_lp_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -1068,6 +1113,21 @@ export const MARKET_ABI = [
         kind: 'key',
       },
       {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
         name: 'lp_amount',
         type: 'core::integer::u256',
         kind: 'data',
@@ -1080,6 +1140,36 @@ export const MARKET_ABI = [
       {
         name: 'pt_amount',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'implied_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_lp_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -1098,6 +1188,21 @@ export const MARKET_ABI = [
         name: 'receiver',
         type: 'core::starknet::contract_address::ContractAddress',
         kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
       },
       {
         name: 'pt_in',
@@ -1124,6 +1229,36 @@ export const MARKET_ABI = [
         type: 'core::integer::u256',
         kind: 'data',
       },
+      {
+        name: 'implied_rate_before',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'implied_rate_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
     ],
   },
   {
@@ -1131,6 +1266,16 @@ export const MARKET_ABI = [
     name: 'horizon::market::amm::Market::ImpliedRateUpdated',
     kind: 'struct',
     members: [
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
       {
         name: 'old_rate',
         type: 'core::integer::u256',
@@ -1144,6 +1289,31 @@ export const MARKET_ABI = [
       {
         name: 'timestamp',
         type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'time_to_expiry',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_lp',
+        type: 'core::integer::u256',
         kind: 'data',
       },
     ],
@@ -1164,8 +1334,28 @@ export const MARKET_ABI = [
         kind: 'key',
       },
       {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
         name: 'amount',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'fee_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],

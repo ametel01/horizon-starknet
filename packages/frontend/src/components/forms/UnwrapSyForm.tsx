@@ -10,15 +10,17 @@ import { useAccount } from '@/hooks/useAccount';
 import { useUnderlyingAddress } from '@/hooks/useUnderlying';
 import { useUnwrapSy } from '@/hooks/useUnwrapSy';
 import { toWad } from '@/lib/math/wad';
+import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput, TokenOutput } from './TokenInput';
 
 interface UnwrapSyFormProps {
   market: MarketData;
+  className?: string;
 }
 
-export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
+export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNode {
   const { isConnected } = useAccount();
   const [amount, setAmount] = useState('');
 
@@ -105,10 +107,11 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
 
   // Get token symbols from metadata
   const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${underlyingSymbol}`;
   const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
-    <Card className="w-full max-w-lg">
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Withdraw {underlyingSymbol}</CardTitle>
@@ -119,68 +122,74 @@ export function UnwrapSyForm({ market }: UnwrapSyFormProps): ReactNode {
         </p>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Input */}
-        <TokenInput
-          label="You withdraw"
-          tokenAddress={market.syAddress}
-          tokenSymbol={underlyingSymbol}
-          value={amount}
-          onChange={setAmount}
-          disabled={isLoading}
-          error={validationError ?? undefined}
-        />
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        {/* Top Section - Inputs */}
+        <div className="space-y-4">
+          {/* Input */}
+          <TokenInput
+            label="You withdraw"
+            tokenAddress={market.syAddress}
+            tokenSymbol={sySymbol}
+            value={amount}
+            onChange={setAmount}
+            disabled={isLoading}
+            error={validationError ?? undefined}
+          />
 
-        {/* Arrow */}
-        <div className="flex justify-center">
-          <Button variant="ghost" size="icon" className="rounded-full" disabled>
-            <svg
-              className="text-muted-foreground h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 14l-7 7m0 0l-7-7m7 7V3"
-              />
-            </svg>
-          </Button>
+          {/* Arrow */}
+          <div className="flex justify-center">
+            <Button variant="ghost" size="icon" className="rounded-full" disabled>
+              <svg
+                className="text-muted-foreground h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                />
+              </svg>
+            </Button>
+          </div>
+
+          {/* Output */}
+          <TokenOutput
+            label="You receive"
+            amount={outputAmount}
+            tokenSymbol={underlyingSymbol}
+            isLoading={syBalanceLoading}
+          />
         </div>
 
-        {/* Output */}
-        <TokenOutput
-          label="You receive"
-          amount={outputAmount}
-          tokenSymbol={underlyingSymbol}
-          isLoading={syBalanceLoading}
-        />
+        {/* Bottom Section - Info & Actions */}
+        <div className="space-y-4">
+          {/* Info */}
+          <Card size="sm" className="bg-muted">
+            <CardContent className="p-3 text-sm">
+              <div className="text-muted-foreground flex justify-between">
+                <span>Exchange Rate</span>
+                <span className="text-foreground">1:1</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Info */}
-        <Card size="sm" className="bg-muted">
-          <CardContent className="p-3 text-sm">
-            <div className="text-muted-foreground flex justify-between">
-              <span>Exchange Rate</span>
-              <span className="text-foreground">1:1</span>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Transaction Status */}
+          {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
 
-        {/* Transaction Status */}
-        {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
-
-        {/* Actions */}
-        {status === 'success' ? (
-          <Button onClick={handleReset} className="w-full">
-            Withdraw More
-          </Button>
-        ) : (
-          <Button onClick={handleUnwrap} disabled={buttonDisabled} className="w-full">
-            {buttonText}
-          </Button>
-        )}
+          {/* Actions */}
+          {status === 'success' ? (
+            <Button onClick={handleReset} className="w-full">
+              Withdraw More
+            </Button>
+          ) : (
+            <Button onClick={handleUnwrap} disabled={buttonDisabled} className="w-full">
+              {buttonText}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

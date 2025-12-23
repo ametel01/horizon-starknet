@@ -1,0 +1,134 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: horizon
+      POSTGRES_PASSWORD: horizon
+      POSTGRES_DB: horizon_indexer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U horizon -d horizon_indexer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # etcd for DNA coordination
+  etcd:
+    image: quay.io/coreos/etcd:v3.6.7
+    restart: unless-stopped
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/etcd-data
+    command:
+      - etcd
+      - --data-dir=/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO for DNA S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Create the DNA bucket in MinIO
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/dna-data --ignore-existing;
+      exit 0;
+      "
+
+  # Apibara DNA Starknet server
+  dna-starknet:
+    image: apibara-dna-starknet:latest
+    restart: unless-stopped
+    ports:
+      - "7171:7007"
+    volumes:
+      - dna_cache:/cache
+    environment:
+      RUST_LOG: info
+      # RPC Configuration
+      STARKNET_RPC_URL: ${STARKNET_RPC_URL:-http://host.docker.internal:5050}
+      # S3 Configuration (MinIO)
+      DNA_S3_BUCKET: dna-data
+      DNA_S3_ENDPOINT: http://minio:9000
+      DNA_S3_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      # etcd Configuration
+      DNA_ETCD_ENDPOINTS: http://etcd:2379
+      DNA_ETCD_PREFIX: /dna/starknet
+      # Enable all services
+      DNA_INGESTION_ENABLED: "true"
+      DNA_COMPACTION_ENABLED: "true"
+      DNA_SERVER_ENABLED: "true"
+      # Reduce concurrent tasks to avoid RPC rate limits (default: 100)
+      DNA_INGESTION_MAX_CONCURRENT_TASKS: "1"
+      # Server address
+      DNA_SERVER_ADDRESS: "0.0.0.0:7007"
+      # Cache configuration
+      DNA_CACHE_DIR: /cache
+      DNA_CACHE_DATA_DISK_SIZE: 5Gi
+      DNA_CACHE_INDEX_DISK_SIZE: 5Gi
+      # Disable pending transactions ingestion
+      STARKNET_NO_INGEST_PENDING: "true"
+      # Starting block (set to skip historical blocks)
+      DNA_INGESTION_DANGEROUSLY_OVERRIDE_STARTING_BLOCK: "4556475"
+    command: ["start"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      minio-setup:
+        condition: service_completed_successfully
+      etcd:
+        condition: service_healthy
+
+  # Optional: pgAdmin for database inspection
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@horizon.io
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5051:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:
+  dna_cache:
+  etcd_data:

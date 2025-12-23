@@ -63,7 +63,7 @@ export function ApyBreakdown({ breakdown, view, className }: ApyBreakdownProps):
       {view === 'yt' && (
         <div className="space-y-3">
           <div className="border-accent/30 bg-accent/10 rounded-lg border p-4">
-            <div className="text-accent-foreground/80 text-sm">Long Yield APY</div>
+            <div className="text-foreground text-sm">Long Yield APY</div>
             <div
               className={cn(
                 'text-2xl font-bold',
@@ -72,7 +72,7 @@ export function ApyBreakdown({ breakdown, view, className }: ApyBreakdownProps):
             >
               {formatApyPercent(breakdown.ytApy.longYieldApy)}
             </div>
-            <div className="text-accent-foreground/60 mt-1 text-xs">
+            <div className="text-muted-foreground mt-1 text-xs">
               {breakdown.ytApy.leverage.toFixed(1)}x leverage
             </div>
           </div>

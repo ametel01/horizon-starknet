@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { ProtocolStats } from '@/components/analytics';
 import { MarketList } from '@/components/markets/MarketList';
 import { SimpleMarketList } from '@/components/markets/SimpleMarketList';
-import { StatsOverview } from '@/components/markets/StatsOverview';
 import { Button } from '@/components/ui/Button';
 import { useUIMode } from '@/contexts/ui-mode-context';
 
@@ -28,7 +28,16 @@ export default function HomePage(): ReactNode {
 
       {/* Protocol Stats */}
       <div className="mt-12">
-        <StatsOverview />
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-foreground text-lg font-semibold">Protocol Stats</h2>
+          <Link
+            href="/analytics"
+            className="text-primary hover:text-primary/80 text-sm font-medium"
+          >
+            View Analytics →
+          </Link>
+        </div>
+        <ProtocolStats />
       </div>
 
       {/* Markets Section */}
@@ -82,6 +91,11 @@ export default function HomePage(): ReactNode {
                 title="Manage Portfolio"
                 description="View your positions, claim accrued yield, and redeem tokens"
                 href="/portfolio"
+              />
+              <FeatureCard
+                title="Analytics"
+                description="View protocol metrics, TVL charts, and market statistics"
+                href="/analytics"
               />
             </>
           )}

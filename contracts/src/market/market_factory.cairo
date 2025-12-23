@@ -7,6 +7,7 @@ pub mod MarketFactory {
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_market_factory::IMarketFactory;
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+    use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::roles::DEFAULT_ADMIN_ROLE;
     use openzeppelin_access::accesscontrol::AccessControlComponent;
@@ -20,6 +21,7 @@ pub mod MarketFactory {
     };
     use starknet::syscalls::deploy_syscall;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use super::{IERC20MetadataDispatcher, IERC20MetadataDispatcherTrait};
 
     // ============ Market Parameter Bounds ============
     // These constants define valid ranges for market creation parameters
@@ -101,11 +103,20 @@ pub mod MarketFactory {
     pub struct MarketCreated {
         #[key]
         pub pt: ContractAddress,
+        #[key]
+        pub expiry: u64,
         pub market: ContractAddress,
         pub creator: ContractAddress,
         pub scalar_root: u256,
         pub initial_anchor: u256,
         pub fee_rate: u256,
+        pub sy: ContractAddress,
+        pub yt: ContractAddress,
+        pub underlying: ContractAddress,
+        pub underlying_symbol: ByteArray,
+        pub initial_exchange_rate: u256,
+        pub timestamp: u64,
+        pub market_index: u32,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -169,6 +180,8 @@ pub mod MarketFactory {
             // Check PT is valid and not expired
             let pt_contract = IPTDispatcher { contract_address: pt };
             let expiry = pt_contract.expiry();
+            let sy = pt_contract.sy();
+            let yt = pt_contract.yt();
             assert(expiry > get_block_timestamp(), Errors::MARKET_EXPIRED);
 
             // Check if market already exists for this PT
@@ -231,16 +244,33 @@ pub mod MarketFactory {
             self.market_list.write(current_count, market_address);
             self.market_count.write(current_count + 1);
 
+            // Get additional event data from SY
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let underlying = sy_contract.underlying_asset();
+            let initial_exchange_rate = sy_contract.exchange_rate();
+
+            // Get underlying token symbol
+            let underlying_token = IERC20MetadataDispatcher { contract_address: underlying };
+            let underlying_symbol = underlying_token.symbol();
+
             // Emit event
             self
                 .emit(
                     MarketCreated {
                         pt,
+                        expiry,
                         market: market_address,
                         creator: get_caller_address(),
                         scalar_root,
                         initial_anchor,
                         fee_rate,
+                        sy,
+                        yt,
+                        underlying,
+                        underlying_symbol,
+                        initial_exchange_rate,
+                        timestamp: get_block_timestamp(),
+                        market_index: current_count,
                     },
                 );
 
@@ -389,4 +419,10 @@ pub mod MarketFactory {
             self.rbac_initialized.write(true);
         }
     }
+}
+
+/// Interface for ERC20 metadata (symbol)
+#[starknet::interface]
+trait IERC20Metadata<TContractState> {
+    fn symbol(self: @TContractState) -> ByteArray;
 }
