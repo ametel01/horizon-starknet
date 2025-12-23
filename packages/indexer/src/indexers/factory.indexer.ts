@@ -47,6 +47,17 @@ function decodeByteArray(data: string[], startIndex: number): string {
   }
 }
 
+// Helper to compare selectors numerically (handles padding differences)
+// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
+function matchSelector(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return false;
+  }
+}
+
 export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -103,7 +114,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
 
-        if (eventKey === YIELD_CONTRACTS_CREATED) {
+        if (matchSelector(eventKey, YIELD_CONTRACTS_CREATED)) {
           // Event: YieldContractsCreated (Enriched)
           // Keys: [selector, sy, expiry]
           // Data: [pt, yt, creator, underlying, underlying_symbol (ByteArray 3 felts),
@@ -143,7 +154,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             initial_exchange_rate: initialExchangeRate.toString(),
             market_index: marketIndex,
           });
-        } else if (eventKey === CLASS_HASHES_UPDATED) {
+        } else if (matchSelector(eventKey, CLASS_HASHES_UPDATED)) {
           // Event: ClassHashesUpdated
           // Data: [yt_class_hash, pt_class_hash]
           const ytClassHash = event.data[0];

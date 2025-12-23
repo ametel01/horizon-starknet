@@ -36,6 +36,17 @@ function readU256(data: string[], index: number): string {
   return ((high << 128n) + low).toString();
 }
 
+// Helper to compare selectors numerically (handles padding differences)
+// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
+function matchSelector(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return false;
+  }
+}
+
 export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -92,7 +103,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     // Factory function: dynamically add filters for discovered SY contracts
     async factory({ block: { events } }) {
       const newFilters = (events ?? []).flatMap((event) => {
-        if (event.keys[0] !== YIELD_CONTRACTS_CREATED) return [];
+        if (!matchSelector(event.keys[0], YIELD_CONTRACTS_CREATED)) return [];
 
         // YieldContractsCreated: keys = [selector, sy, expiry]
         const syAddress = event.keys[1] as `0x${string}`;
@@ -132,7 +143,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const syAddress = event.address;
         const data = event.data as string[];
 
-        if (eventKey === DEPOSIT) {
+        if (matchSelector(eventKey, DEPOSIT)) {
           // Deposit event
           // Keys: [selector, caller, receiver, underlying]
           // Data: [amount_deposited (u256), amount_sy_minted (u256), exchange_rate (u256), total_supply_after (u256)]
@@ -158,7 +169,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             exchange_rate: exchangeRate,
             total_supply_after: totalSupplyAfter,
           });
-        } else if (eventKey === REDEEM) {
+        } else if (matchSelector(eventKey, REDEEM)) {
           // Redeem event
           // Keys: [selector, caller, receiver, underlying]
           // Data: [amount_sy_burned (u256), amount_redeemed (u256), exchange_rate (u256), total_supply_after (u256)]
@@ -184,7 +195,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             exchange_rate: exchangeRate,
             total_supply_after: totalSupplyAfter,
           });
-        } else if (eventKey === ORACLE_RATE_UPDATED) {
+        } else if (matchSelector(eventKey, ORACLE_RATE_UPDATED)) {
           // OracleRateUpdated event
           // Keys: [selector, sy, underlying]
           // Data: [old_rate (u256), new_rate (u256), rate_change_bps (u256)]

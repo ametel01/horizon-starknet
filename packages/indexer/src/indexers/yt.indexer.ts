@@ -46,6 +46,17 @@ function readU256(data: string[], index: number): string {
   return ((high << 128n) + low).toString();
 }
 
+// Helper to compare selectors numerically (handles padding differences)
+// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
+function matchSelector(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return false;
+  }
+}
+
 export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -106,7 +117,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     // Factory function: dynamically add filters for discovered YT contracts
     async factory({ block: { events } }) {
       const newFilters = (events ?? []).flatMap((event) => {
-        if (event.keys[0] !== YIELD_CONTRACTS_CREATED) return [];
+        if (!matchSelector(event.keys[0], YIELD_CONTRACTS_CREATED)) return [];
 
         // YieldContractsCreated: keys = [selector, sy, expiry], data = [pt, yt, creator]
         const ytAddress = event.data[1] as `0x${string}`;
@@ -154,7 +165,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const ytAddress = event.address;
         const data = event.data as string[];
 
-        if (eventKey === MINT_PY) {
+        if (matchSelector(eventKey, MINT_PY)) {
           console.log(`[yt] MintPY at block ${blockNumber}`);
           // MintPY event
           // Keys: [selector, caller, receiver, expiry]
@@ -190,7 +201,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_pt_supply_after: totalPtSupply,
             total_yt_supply_after: totalYtSupply,
           });
-        } else if (eventKey === REDEEM_PY) {
+        } else if (matchSelector(eventKey, REDEEM_PY)) {
           console.log(`[yt] RedeemPY at block ${blockNumber}`);
           // RedeemPY event
           // Keys: [selector, caller, receiver, expiry]
@@ -222,7 +233,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             py_index: pyIndex,
             exchange_rate: exchangeRate,
           });
-        } else if (eventKey === REDEEM_PY_POST_EXPIRY) {
+        } else if (matchSelector(eventKey, REDEEM_PY_POST_EXPIRY)) {
           // RedeemPYPostExpiry event
           // Keys: [selector, caller, receiver, expiry]
           // Data: [amount_pt_redeemed (u256), amount_sy_returned (u256), pt, sy,
@@ -253,7 +264,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             final_py_index: finalPyIndex,
             final_exchange_rate: finalExchangeRate,
           });
-        } else if (eventKey === INTEREST_CLAIMED) {
+        } else if (matchSelector(eventKey, INTEREST_CLAIMED)) {
           console.log(`[yt] InterestClaimed at block ${blockNumber}`);
           // InterestClaimed event
           // Keys: [selector, user, yt, expiry]
@@ -282,7 +293,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             py_index_at_claim: pyIndexAtClaim,
             exchange_rate: exchangeRate,
           });
-        } else if (eventKey === EXPIRY_REACHED) {
+        } else if (matchSelector(eventKey, EXPIRY_REACHED)) {
           // ExpiryReached event
           // Keys: [selector, market, yt, pt]
           // Data: [sy, expiry, final_exchange_rate (u256), final_py_index (u256),

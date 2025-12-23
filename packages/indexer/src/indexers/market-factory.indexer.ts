@@ -47,6 +47,17 @@ function decodeByteArray(data: string[], startIndex: number): string {
   }
 }
 
+// Helper to compare selectors numerically (handles padding differences)
+// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
+function matchSelector(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return false;
+  }
+}
+
 export default function marketFactoryIndexer(
   runtimeConfig: ApibaraRuntimeConfig,
 ) {
@@ -105,7 +116,7 @@ export default function marketFactoryIndexer(
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
 
-        if (eventKey === MARKET_CREATED) {
+        if (matchSelector(eventKey, MARKET_CREATED)) {
           // Event: MarketCreated
           // Keys: [selector, pt, expiry]
           // Data: [market, creator, scalar_root (u256), initial_anchor (u256),
@@ -148,7 +159,7 @@ export default function marketFactoryIndexer(
             initial_exchange_rate: initialExchangeRate.toString(),
             market_index: marketIndex,
           });
-        } else if (eventKey === MARKET_CLASS_HASH_UPDATED) {
+        } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {
           // Event: MarketClassHashUpdated
           // Data: [old_class_hash, new_class_hash]
           const oldClassHash = event.data[0];

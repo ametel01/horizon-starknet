@@ -44,6 +44,17 @@ function readU256(data: string[], index: number): string {
   return ((high << 128n) + low).toString();
 }
 
+// Helper to compare selectors numerically (handles padding differences)
+// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
+function matchSelector(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return false;
+  }
+}
+
 export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -113,7 +124,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const sender = event.keys[1] ?? "";
         const receiver = event.keys[2] ?? "";
 
-        if (eventKey === MINT_PY) {
+        if (matchSelector(eventKey, MINT_PY)) {
           // Data: [yt, sy_in (u256), pt_out (u256), yt_out (u256)]
           const yt = data[0];
           const syIn = readU256(data, 1);
@@ -131,7 +142,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_out: ptOut,
             yt_out: ytOut,
           });
-        } else if (eventKey === REDEEM_PY) {
+        } else if (matchSelector(eventKey, REDEEM_PY)) {
           // Data: [yt, py_in (u256), sy_out (u256)]
           const yt = data[0];
           const pyIn = readU256(data, 1);
@@ -147,7 +158,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             py_in: pyIn,
             sy_out: syOut,
           });
-        } else if (eventKey === ADD_LIQUIDITY) {
+        } else if (matchSelector(eventKey, ADD_LIQUIDITY)) {
           // Data: [market, sy_used (u256), pt_used (u256), lp_out (u256)]
           const market = data[0];
           const syUsed = readU256(data, 1);
@@ -165,7 +176,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_used: ptUsed,
             lp_out: lpOut,
           });
-        } else if (eventKey === REMOVE_LIQUIDITY) {
+        } else if (matchSelector(eventKey, REMOVE_LIQUIDITY)) {
           // Data: [market, lp_in (u256), sy_out (u256), pt_out (u256)]
           const market = data[0];
           const lpIn = readU256(data, 1);
@@ -183,7 +194,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             sy_out: syOut,
             pt_out: ptOut,
           });
-        } else if (eventKey === SWAP) {
+        } else if (matchSelector(eventKey, SWAP)) {
           // Data: [market, sy_in (u256), pt_in (u256), sy_out (u256), pt_out (u256)]
           const market = data[0];
           const syIn = readU256(data, 1);
@@ -203,7 +214,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             sy_out: syOut,
             pt_out: ptOut,
           });
-        } else if (eventKey === SWAP_YT) {
+        } else if (matchSelector(eventKey, SWAP_YT)) {
           // Data: [yt, market, sy_in (u256), yt_in (u256), sy_out (u256), yt_out (u256)]
           const yt = data[0];
           const market = data[1];

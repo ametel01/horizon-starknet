@@ -46,6 +46,17 @@ function readU256(data: string[], index: number): string {
   return ((high << 128n) + low).toString();
 }
 
+// Helper to compare selectors numerically (handles padding differences)
+// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
+function matchSelector(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return false;
+  }
+}
+
 export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -106,7 +117,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     // Factory function: dynamically add filters for discovered Market contracts
     async factory({ block: { events } }) {
       const newFilters = (events ?? []).flatMap((event) => {
-        if (event.keys[0] !== MARKET_CREATED) return [];
+        if (!matchSelector(event.keys[0], MARKET_CREATED)) return [];
 
         // MarketCreated: keys = [selector, pt, expiry], data = [market, ...]
         const marketAddress = event.data[0] as `0x${string}`;
@@ -148,7 +159,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const marketAddress = event.address;
         const data = event.data as string[];
 
-        if (eventKey === MINT) {
+        if (matchSelector(eventKey, MINT)) {
           // Mint event
           // Keys: [selector, sender, receiver, expiry]
           // Data: [sy, pt, sy_amount (u256), pt_amount (u256), lp_amount (u256),
@@ -188,7 +199,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_reserve_after: ptReserve,
             total_lp_after: totalLp,
           });
-        } else if (eventKey === BURN) {
+        } else if (matchSelector(eventKey, BURN)) {
           // Burn event
           // Keys: [selector, sender, receiver, expiry]
           // Data: [sy, pt, lp_amount (u256), sy_amount (u256), pt_amount (u256),
@@ -228,7 +239,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_reserve_after: ptReserve,
             total_lp_after: totalLp,
           });
-        } else if (eventKey === SWAP) {
+        } else if (matchSelector(eventKey, SWAP)) {
           // Swap event
           // Keys: [selector, sender, receiver, expiry]
           // Data: [sy, pt, pt_in (u256), sy_in (u256), pt_out (u256), sy_out (u256),
@@ -272,7 +283,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             sy_reserve_after: syReserve,
             pt_reserve_after: ptReserve,
           });
-        } else if (eventKey === IMPLIED_RATE_UPDATED) {
+        } else if (matchSelector(eventKey, IMPLIED_RATE_UPDATED)) {
           // ImpliedRateUpdated event
           // Keys: [selector, market, expiry]
           // Data: [old_rate (u256), new_rate (u256), time_to_expiry,
@@ -302,7 +313,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_reserve: ptReserve,
             total_lp: totalLp,
           });
-        } else if (eventKey === FEES_COLLECTED) {
+        } else if (matchSelector(eventKey, FEES_COLLECTED)) {
           // FeesCollected event
           // Keys: [selector, collector, receiver, market]
           // Data: [amount (u256), expiry, fee_rate (u256)]
