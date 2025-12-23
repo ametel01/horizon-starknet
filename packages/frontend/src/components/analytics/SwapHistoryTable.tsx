@@ -38,21 +38,46 @@ function truncateAddress(address: string): string {
 }
 
 function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
-  // Determine swap direction
-  const isPtToSy = BigInt(swap.ptIn) > 0n;
-  const direction = isPtToSy ? 'PT -> SY' : 'SY -> PT';
-  const directionColor = isPtToSy
-    ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
+  // Determine swap type and direction
+  const isYtSwap = swap.type === 'yt';
 
-  const inAmount = isPtToSy ? swap.ptIn : swap.syIn;
-  const outAmount = isPtToSy ? swap.syOut : swap.ptOut;
+  let direction: string;
+  let directionColor: string;
+  let inAmount: string;
+  let outAmount: string;
 
-  // Calculate rate change
-  const rateBefore = BigInt(swap.impliedRateBefore);
-  const rateAfter = BigInt(swap.impliedRateAfter);
-  const rateChange = rateAfter - rateBefore;
-  const rateChangePositive = rateChange > 0n;
+  if (isYtSwap) {
+    // YT swap: check if YT is going in or out
+    const isYtIn = BigInt(swap.ytIn ?? '0') > 0n;
+    direction = isYtIn ? 'YT -> SY' : 'SY -> YT';
+    directionColor = 'bg-chart-3/10 text-chart-3';
+    inAmount = isYtIn ? (swap.ytIn ?? '0') : swap.syIn;
+    outAmount = isYtIn ? swap.syOut : (swap.ytOut ?? '0');
+  } else {
+    // PT swap
+    const isPtIn = BigInt(swap.ptIn) > 0n;
+    direction = isPtIn ? 'PT -> SY' : 'SY -> PT';
+    directionColor = isPtIn ? 'bg-chart-1/10 text-chart-1' : 'bg-primary/10 text-primary';
+    inAmount = isPtIn ? swap.ptIn : swap.syIn;
+    outAmount = isPtIn ? swap.syOut : swap.ptOut;
+  }
+
+  // Calculate rate change (may not be available for router swaps)
+  const hasRateData = swap.impliedRateBefore && swap.impliedRateAfter;
+  let rateChangeDisplay: ReactNode = <span className="text-muted-foreground text-xs">-</span>;
+
+  if (hasRateData && swap.impliedRateBefore && swap.impliedRateAfter) {
+    const rateBefore = BigInt(swap.impliedRateBefore);
+    const rateAfter = BigInt(swap.impliedRateAfter);
+    const rateChange = rateAfter - rateBefore;
+    const rateChangePositive = rateChange > 0n;
+    rateChangeDisplay = (
+      <span className={cn('text-xs', rateChangePositive ? 'text-chart-2' : 'text-destructive')}>
+        {rateChangePositive ? '+' : ''}
+        {formatWadPercent(rateChange.toString())}
+      </span>
+    );
+  }
 
   return (
     <div className="hover:bg-muted/50 grid grid-cols-[80px_1fr_1fr_100px_80px] items-center gap-4 border-b px-4 py-3 text-sm last:border-b-0">
@@ -68,16 +93,13 @@ function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
         <span className="text-muted-foreground text-xs">Out</span>
       </div>
       <div className="flex flex-col text-right">
-        <span className={cn('text-xs', rateChangePositive ? 'text-green-600' : 'text-red-600')}>
-          {rateChangePositive ? '+' : ''}
-          {formatWadPercent(rateChange.toString())}
-        </span>
+        {rateChangeDisplay}
         <span className="text-muted-foreground text-xs">Rate Δ</span>
       </div>
       <div className="flex flex-col text-right">
         <span className="text-muted-foreground text-xs">{formatTimeAgo(swap.blockTimestamp)}</span>
         <a
-          href={`https://starkscan.co/contract/${swap.sender}`}
+          href={`https://voyager.online/contract/${swap.sender}`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground text-xs transition-colors"

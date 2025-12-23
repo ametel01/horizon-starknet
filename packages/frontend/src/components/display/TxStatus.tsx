@@ -154,9 +154,9 @@ export function TxLink({ txHash, network = 'sepolia', className }: TxLinkProps):
 function getExplorerUrl(network: string, txHash: string): string | null {
   switch (network) {
     case 'mainnet':
-      return `https://starkscan.co/tx/${txHash}`;
+      return `https://voyager.online/tx/${txHash}`;
     case 'sepolia':
-      return `https://sepolia.starkscan.co/tx/${txHash}`;
+      return `https://sepolia.voyager.online/tx/${txHash}`;
     case 'devnet':
       return null; // No explorer for local devnet
     default:
