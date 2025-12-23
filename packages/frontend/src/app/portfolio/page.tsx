@@ -9,6 +9,9 @@ import {
   EnhancedPositionCard,
   type YieldEarnedData,
 } from '@/components/portfolio/EnhancedPositionCard';
+import { ImpermanentLossCalc } from '@/components/portfolio/ImpermanentLossCalc';
+import { LpEntryExitTable } from '@/components/portfolio/LpEntryExitTable';
+import { LpPnlCard } from '@/components/portfolio/LpPnlCard';
 import { SimplePortfolio } from '@/components/portfolio/SimplePortfolio';
 import { SummaryCard } from '@/components/portfolio/SummaryCard';
 import { YieldByPosition } from '@/components/portfolio/YieldByPosition';
@@ -18,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useUIMode } from '@/contexts/ui-mode-context';
+import { useUserIndexedPositions } from '@/hooks/api/useUserData';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { type MarketPosition, usePositions } from '@/hooks/usePositions';
@@ -566,6 +570,7 @@ function PortfolioContent(): ReactNode {
   const { data: portfolio, isLoading: positionsLoading, isError } = usePositions(markets);
   const { data: enhancedPortfolio, isLoading: enhancedLoading } = useEnhancedPositions(markets);
   const { data: yieldData } = useUserYield();
+  const { lpPositions, isLoading: lpPositionsLoading } = useUserIndexedPositions();
   const [mounted, setMounted] = useState(false);
 
   // Build a map of YT address to yield data for position cards
@@ -618,6 +623,33 @@ function PortfolioContent(): ReactNode {
     return undefined;
   }, [claimAllSuccess, resetClaimAll]);
 
+  const isLoading =
+    !mounted || marketsLoading || positionsLoading || enhancedLoading || lpPositionsLoading;
+
+  // Build pool reserves map for IL calculations
+  const poolReservesByMarket = useMemo(() => {
+    const map = new Map<string, { syReserve: bigint; ptReserve: bigint; totalLpSupply: bigint }>();
+    for (const market of markets) {
+      map.set(market.address.toLowerCase(), {
+        syReserve: market.state.syReserve,
+        ptReserve: market.state.ptReserve,
+        totalLpSupply: market.state.totalLpSupply,
+      });
+    }
+    return map;
+  }, [markets]);
+
+  // Filter LP positions with non-zero balance
+  const activeLpPositions = useMemo(() => {
+    return lpPositions.filter((p) => {
+      try {
+        return BigInt(p.netLpBalance) > 0n;
+      } catch {
+        return false;
+      }
+    });
+  }, [lpPositions]);
+
   // Simple mode renders SimplePortfolio
   if (isSimple) {
     return <SimplePortfolio markets={markets} />;
@@ -634,8 +666,6 @@ function PortfolioContent(): ReactNode {
       claimAllYield({ ytAddresses });
     }
   };
-
-  const isLoading = !mounted || marketsLoading || positionsLoading || enhancedLoading;
 
   if (!isConnected) {
     return (
@@ -770,6 +800,27 @@ function PortfolioContent(): ReactNode {
         </div>
         <YieldHistory limit={10} />
       </div>
+
+      {/* LP Analytics Section */}
+      {activeLpPositions.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-foreground text-lg font-semibold">LP Analytics</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {activeLpPositions.map((lpPosition) => {
+              const poolReserves = poolReservesByMarket.get(lpPosition.market.toLowerCase());
+              return (
+                <div key={lpPosition.market} className="space-y-4">
+                  <LpPnlCard position={lpPosition} poolReserves={poolReserves} />
+                  {poolReserves && (
+                    <ImpermanentLossCalc position={lpPosition} poolReserves={poolReserves} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <LpEntryExitTable limit={10} />
+        </div>
+      )}
 
       {/* Transaction History */}
       <TransactionHistory className="mt-8" />
