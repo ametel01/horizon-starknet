@@ -15,7 +15,7 @@ export default defineConfig({
       runtimeConfig: {
         network: "mainnet",
         starknet: {
-          startingBlock: 4_556_460, // Horizon mainnet deployment block
+          startingBlock: 4_643_300, // Horizon mainnet deployment block (2025-12-23)
           // Apibara hosted DNA stream (requires DNA_TOKEN)
           streamUrl: "https://mainnet.starknet.a5a.ch",
         },

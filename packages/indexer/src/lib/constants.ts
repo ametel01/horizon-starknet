@@ -14,20 +14,20 @@ export type NetworkConfig = {
 };
 
 export const MAINNET: NetworkConfig = {
-  factory: "0x02e7ce691e51fe60b92f25bb845100b4797cd7961647408294a8074fe966f5fd",
+  factory: "0x04fd6d42072f76612ae0a5f97d191ab4c5ede3688d2df0185352e01b7f2fc444",
   marketFactory:
-    "0x014aa95f5c995f57f29f9c6de9d4c245ea231bd695741876c02a887fda8ad9b2",
-  router: "0x04d76ca0b5ce4cb9ed2f4a32de04682637f805512ba2afd2d5ab463d61667870",
-  startingBlock: 4_556_460, // Horizon mainnet deployment block
+    "0x0465bc423ddde2495e9d4c31563e0b333d9c8b818a86d3d76064fd652ee4be6f",
+  router: "0x07ccd371e51703e562cf7c7789d4252b7a63845dc87f25a07cf8b5c28e80563b",
+  startingBlock: 4_643_300, // Horizon mainnet deployment block (2025-12-23)
   // Known contracts from deploy/addresses/mainnet.json
   knownYTContracts: [
-    "0x0125e4070194897078c46cb37731a38e3fff03ac3c2db91758671fc70ca804da", // hrzSTRK YT
+    "0x070c396667613d74cb473ad937d717355222c76a41d3a1d2b34299eefda6405d", // hrzSTRK YT
   ],
   knownSYContracts: [
-    "0x06c6c003bae41be14074ec93659cc8a3af3bbec99c54fd921e1ff68c54a38867", // SY-hrzSTRK
+    "0x0601a6717bedf8010f68ec2e4993ea12c208ed949ed76b33b616add725dbc15c", // SY-hrzSTRK
   ],
   knownMarkets: [
-    "0x064f967a496330bae100b9931f520054c6d3298f6386d9130cc388a6e9079720", // hrzSTRK Market
+    "0x004d2f052b91f5c744e67816e72e426cab538661deda0d38143a9cefad973c18", // hrzSTRK Market
   ],
 };
 
