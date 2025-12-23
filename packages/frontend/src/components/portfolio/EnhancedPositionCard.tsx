@@ -11,8 +11,15 @@ import { formatUsd, formatPercent } from '@/lib/position/value';
 import { cn } from '@/lib/utils';
 import type { EnhancedPosition } from '@/types/position';
 
+export interface YieldEarnedData {
+  totalClaimed: bigint;
+  totalClaimedUsd: number;
+  claimCount: number;
+}
+
 interface EnhancedPositionCardProps {
   position: EnhancedPosition;
+  yieldEarned?: YieldEarnedData | undefined;
   onClaimYield?: () => void;
   onRedeemPtYt?: () => void;
   onRedeemPt?: () => void;
@@ -22,6 +29,7 @@ interface EnhancedPositionCardProps {
 
 export function EnhancedPositionCard({
   position,
+  yieldEarned,
   onClaimYield,
   onRedeemPtYt,
   onRedeemPt,
@@ -170,6 +178,28 @@ export function EnhancedPositionCard({
             >
               {isClaimingYield === true ? 'Claiming...' : 'Claim'}
             </Button>
+          </div>
+        )}
+
+        {/* Yield Earned (Historical) */}
+        {yieldEarned && yieldEarned.totalClaimed > 0n && (
+          <div className="bg-muted mb-4 rounded p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-muted-foreground text-sm">Yield Earned</div>
+                <div className="text-foreground font-medium">
+                  {formatWadCompact(yieldEarned.totalClaimed)} {sySymbol}
+                  <span className="text-muted-foreground ml-1 text-sm">
+                    ({formatUsd(yieldEarned.totalClaimedUsd)})
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-muted-foreground text-xs">
+                  {yieldEarned.claimCount} {yieldEarned.claimCount === 1 ? 'claim' : 'claims'}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

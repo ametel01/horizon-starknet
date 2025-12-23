@@ -5,9 +5,15 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TransactionHistory } from '@/components/analytics';
 import { TxStatus } from '@/components/display/TxStatus';
-import { EnhancedPositionCard } from '@/components/portfolio/EnhancedPositionCard';
+import {
+  EnhancedPositionCard,
+  type YieldEarnedData,
+} from '@/components/portfolio/EnhancedPositionCard';
 import { SimplePortfolio } from '@/components/portfolio/SimplePortfolio';
 import { SummaryCard } from '@/components/portfolio/SummaryCard';
+import { YieldByPosition } from '@/components/portfolio/YieldByPosition';
+import { YieldEarnedCard } from '@/components/portfolio/YieldEarnedCard';
+import { YieldHistory } from '@/components/portfolio/YieldHistory';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -17,6 +23,7 @@ import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { type MarketPosition, usePositions } from '@/hooks/usePositions';
 import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@/hooks/useRedeem';
 import { useStarknet } from '@/hooks/useStarknet';
+import { useUserYield } from '@/hooks/useUserYield';
 import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
 import { formatWad, formatWadCompact } from '@/lib/math/wad';
 import { formatUsd, formatPercent } from '@/lib/position/value';
@@ -441,9 +448,11 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
 function EnhancedPositionCardWrapper({
   position,
   legacyPosition,
+  yieldEarned,
 }: {
   position: EnhancedPosition;
   legacyPosition: MarketPosition | undefined;
+  yieldEarned?: YieldEarnedData | undefined;
 }): ReactNode {
   const {
     claimYield,
@@ -540,6 +549,7 @@ function EnhancedPositionCardWrapper({
   return (
     <EnhancedPositionCard
       position={position}
+      yieldEarned={yieldEarned}
       onClaimYield={handleClaimYield}
       onRedeemPtYt={handleRedeemPtYt}
       onRedeemPt={handleRedeemPt}
@@ -555,7 +565,23 @@ function PortfolioContent(): ReactNode {
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
   const { data: portfolio, isLoading: positionsLoading, isError } = usePositions(markets);
   const { data: enhancedPortfolio, isLoading: enhancedLoading } = useEnhancedPositions(markets);
+  const { data: yieldData } = useUserYield();
   const [mounted, setMounted] = useState(false);
+
+  // Build a map of YT address to yield data for position cards
+  const yieldByYtAddress = useMemo(() => {
+    const map = new Map<string, YieldEarnedData>();
+    if (!yieldData) return map;
+
+    for (const summary of yieldData.summaryByPosition) {
+      map.set(summary.yt.toLowerCase(), {
+        totalClaimed: summary.totalClaimed,
+        totalClaimedUsd: 0, // Will be calculated in the component with prices
+        claimCount: summary.claimCount,
+      });
+    }
+    return map;
+  }, [yieldData]);
 
   const {
     claimAllYield,
@@ -718,11 +744,14 @@ function PortfolioContent(): ReactNode {
               const legacyPosition = activePositions.find(
                 (p) => p.market.address === position.market.address
               );
+              // Get yield data for this position's YT address
+              const positionYield = yieldByYtAddress.get(position.market.ytAddress.toLowerCase());
               return (
                 <EnhancedPositionCardWrapper
                   key={position.market.address}
                   position={position}
                   legacyPosition={legacyPosition}
+                  yieldEarned={positionYield}
                 />
               );
             })
@@ -730,6 +759,16 @@ function PortfolioContent(): ReactNode {
             activePositions.map((position) => (
               <PositionCard key={position.market.address} position={position} />
             ))}
+      </div>
+
+      {/* Yield Analytics Section */}
+      <div className="space-y-4">
+        <h2 className="text-foreground text-lg font-semibold">Yield Analytics</h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <YieldEarnedCard />
+          <YieldByPosition />
+        </div>
+        <YieldHistory limit={10} />
       </div>
 
       {/* Transaction History */}
