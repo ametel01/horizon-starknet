@@ -26,6 +26,16 @@ fi
 echo "Ensuring materialized views exist..."
 bun run scripts/create-views.ts || echo "Warning: Could not create views, continuing anyway..."
 
+# Background job to refresh materialized views every 30 minutes
+refresh_views() {
+  while true; do
+    sleep 1800  # 30 minutes
+    echo "[views] Refreshing materialized views..."
+    bun run scripts/refresh-views.ts || echo "[views] Warning: Could not refresh views"
+  done
+}
+refresh_views &
+
 # Run indexer with auto-restart on failure
 run_indexer() {
   while true; do
