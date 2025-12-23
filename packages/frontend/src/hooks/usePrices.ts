@@ -2,58 +2,100 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import type { TokenPrices } from '@/types/position';
+const AVNU_PRICES_API = 'https://starknet.impulse.avnu.fi/v3/tokens/prices';
 
 /**
- * Fetch base token prices from CoinGecko or similar API
+ * Known token addresses for price lookups
+ * When we have mock/test tokens, we can map them to real token addresses
  */
-async function fetchTokenPrices(): Promise<TokenPrices> {
-  // In production, this would fetch from CoinGecko, Pragma, or another price oracle
-  // For now, we use mock prices that can be replaced with real API calls
+const TOKEN_ADDRESS_MAP: Record<string, string> = {
+  // sSTRK (Staked STRK by Nimbora)
+  sSTRK: '0x356f304b154d29d2a8fe22f1cb9107a9b564a733cf6b4cc47fd121ac1af90c9',
+  // STRK native token
+  STRK: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+  // wstETH
+  wstETH: '0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2',
+};
 
-  try {
-    // Attempt to fetch from CoinGecko (free tier)
-    const response = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=starknet,ethereum&vs_currencies=usd',
-      {
-        next: { revalidate: 60 }, // Cache for 60 seconds
-      }
-    );
+/**
+ * Map mock/test token symbols to real token addresses for pricing
+ */
+export function getTokenAddressForPricing(symbol: string | undefined): string | undefined {
+  if (!symbol) return undefined;
+  const s = symbol.toLowerCase();
 
-    if (response.ok) {
-      const data = (await response.json()) as {
-        starknet?: { usd?: number };
-        ethereum?: { usd?: number };
-      };
-
-      const strkPrice = data.starknet?.usd ?? 0.5;
-      const ethPrice = data.ethereum?.usd ?? 2000;
-
-      // Derive LST prices from base prices with estimated premiums
-      return {
-        strk: strkPrice,
-        eth: ethPrice,
-        // nstSTRK trades at ~5% premium (staking yield)
-        nstStrk: strkPrice * 1.05,
-        // sSTRK trades at ~3% premium
-        sStrk: strkPrice * 1.03,
-        // wstETH trades at ~12% premium (accumulated staking yield)
-        wstEth: ethPrice * 1.12,
-      };
-    }
-  } catch (error) {
-    // API call failed, use fallback prices
-    console.warn('Failed to fetch token prices, using fallback:', error);
+  // Map horizon mock tokens to real equivalents
+  if (s.includes('hrzstrk') || s.includes('sstrk') || s.includes('nststrk')) {
+    return TOKEN_ADDRESS_MAP.sSTRK;
+  }
+  if (s.includes('wsteth')) {
+    return TOKEN_ADDRESS_MAP.wstETH;
+  }
+  if (s.includes('strk')) {
+    return TOKEN_ADDRESS_MAP.STRK;
   }
 
-  // Fallback mock prices for development/testing
-  return {
-    strk: 0.5,
-    eth: 2000,
-    nstStrk: 0.525, // 5% premium
-    sStrk: 0.515, // 3% premium
-    wstEth: 2240, // 12% premium
-  };
+  return undefined;
+}
+
+/**
+ * AVNU token price response
+ */
+interface AvnuTokenPrice {
+  address: string;
+  decimals: number;
+  globalMarket: { usd: number } | null;
+  starknetMarket: { usd: number } | null;
+}
+
+/**
+ * Normalize Starknet address to lowercase with 0x prefix
+ */
+function normalizeAddress(address: string): string {
+  // Remove 0x prefix, lowercase, then re-add prefix
+  const hex = address.toLowerCase().replace(/^0x/, '');
+  return '0x' + hex;
+}
+
+/**
+ * Fetch token prices from AVNU API
+ */
+async function fetchTokenPrices(tokenAddresses: string[]): Promise<Map<string, number>> {
+  const priceMap = new Map<string, number>();
+
+  if (tokenAddresses.length === 0) {
+    return priceMap;
+  }
+
+  try {
+    const response = await fetch(AVNU_PRICES_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ tokens: tokenAddresses }),
+    });
+
+    if (!response.ok) {
+      console.warn('AVNU API error:', response.status, response.statusText);
+      return priceMap;
+    }
+
+    const prices = (await response.json()) as AvnuTokenPrice[];
+
+    for (const price of prices) {
+      // Prefer global market price (CoinGecko) as it's more accurate for token value
+      // Fall back to on-chain Starknet market price if global not available
+      const usdPrice = price.globalMarket?.usd ?? price.starknetMarket?.usd ?? 0;
+      // Normalize address to lowercase for consistent lookups
+      const normalizedAddr = normalizeAddress(price.address);
+      priceMap.set(normalizedAddr, usdPrice);
+    }
+  } catch (error) {
+    console.warn('Failed to fetch token prices from AVNU:', error);
+  }
+
+  return priceMap;
 }
 
 interface UsePricesOptions {
@@ -62,59 +104,40 @@ interface UsePricesOptions {
 }
 
 /**
- * Hook to fetch current token prices
+ * Hook to fetch token prices from AVNU
+ *
+ * @param tokenAddresses - Array of token contract addresses to fetch prices for
+ * @param options - Query options
+ * @returns Map of token address -> USD price
  */
-export function usePrices(options: UsePricesOptions = {}): UseQueryResult<TokenPrices> {
+export function usePrices(
+  tokenAddresses: string[],
+  options: UsePricesOptions = {}
+): UseQueryResult<Map<string, number>> {
   const { enabled = true, refetchInterval = 60000 } = options;
 
   return useQuery({
-    queryKey: ['token-prices'],
-    queryFn: fetchTokenPrices,
-    enabled,
+    queryKey: ['token-prices', tokenAddresses.sort().join(',')],
+    queryFn: () => fetchTokenPrices(tokenAddresses),
+    enabled: enabled && tokenAddresses.length > 0,
     staleTime: 30000, // Consider stale after 30s
     refetchInterval,
-    // Don't retry too aggressively on price API failures
     retry: 2,
     retryDelay: 5000,
   });
 }
 
 /**
- * Get SY price in USD based on underlying token
+ * Get price for a specific token address from the price map
  */
-export function getSyPriceUsd(
-  yieldTokenSymbol: string | undefined,
-  prices: TokenPrices | undefined
+export function getTokenPrice(
+  tokenAddress: string | undefined,
+  prices: Map<string, number> | undefined
 ): number {
-  if (!prices || !yieldTokenSymbol) {
+  if (!prices || !tokenAddress) {
     return 0;
   }
-
-  // Map yield token symbols to prices
-  const symbolLower = yieldTokenSymbol.toLowerCase();
-
-  if (symbolLower.includes('nststrk')) {
-    return prices.nstStrk;
-  }
-
-  if (symbolLower.includes('sstrk')) {
-    return prices.sStrk;
-  }
-
-  if (symbolLower.includes('wsteth')) {
-    return prices.wstEth;
-  }
-
-  if (symbolLower.includes('strk')) {
-    return prices.strk;
-  }
-
-  if (symbolLower.includes('eth')) {
-    return prices.eth;
-  }
-
-  // Default to STRK price for unknown tokens
-  return prices.strk;
+  return prices.get(normalizeAddress(tokenAddress)) ?? 0;
 }
 
 /**
