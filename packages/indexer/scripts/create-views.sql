@@ -1,6 +1,17 @@
 -- Create materialized views for Horizon Protocol indexer
 -- Run this after the base tables are created by Drizzle migrations
 
+-- Drop existing views first to allow schema changes
+DROP MATERIALIZED VIEW IF EXISTS market_current_state CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS protocol_daily_stats CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS user_trading_stats CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS rate_history CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS oracle_rate_history CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS market_daily_stats CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS market_hourly_stats CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS user_py_positions CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS market_lp_positions CASCADE;
+
 -- ============================================================================
 -- MARKET CURRENT STATE
 -- Latest state for each market (for listings, dashboard)
@@ -83,6 +94,7 @@ SELECT
   (mi.expiry <= EXTRACT(EPOCH FROM NOW())) as is_expired,
   COALESCE(v.sy_volume_24h, 0) as sy_volume_24h,
   COALESCE(v.pt_volume_24h, 0) as pt_volume_24h,
+  COALESCE(v.sy_volume_24h, 0) + COALESCE(v.pt_volume_24h, 0) as volume_24h,
   COALESCE(v.fees_24h, 0) as fees_24h,
   COALESCE(v.swaps_24h, 0) as swaps_24h
 FROM market_info mi
@@ -265,20 +277,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_oracle_rate_history_sy_block
 -- ============================================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS market_daily_stats AS
 SELECT
-  market,
-  DATE_TRUNC('day', block_timestamp) as day,
-  MIN(implied_rate_before) as min_implied_rate,
-  MAX(implied_rate_after) as max_implied_rate,
+  ms.market,
+  mc.expiry,
+  DATE_TRUNC('day', ms.block_timestamp) as day,
+  MIN(ms.implied_rate_before) as min_implied_rate,
+  MAX(ms.implied_rate_after) as max_implied_rate,
   -- Use last value as close
-  (ARRAY_AGG(implied_rate_after ORDER BY block_number DESC))[1] as close_implied_rate,
-  (ARRAY_AGG(exchange_rate ORDER BY block_number DESC))[1] as exchange_rate,
-  COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume,
-  COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume,
-  COALESCE(SUM(fee), 0) as total_fees,
+  (ARRAY_AGG(ms.implied_rate_after ORDER BY ms.block_number DESC))[1] as close_implied_rate,
+  (ARRAY_AGG(ms.exchange_rate ORDER BY ms.block_number DESC))[1] as exchange_rate,
+  COALESCE(SUM(ms.sy_in), 0) + COALESCE(SUM(ms.sy_out), 0) as sy_volume,
+  COALESCE(SUM(ms.pt_in), 0) + COALESCE(SUM(ms.pt_out), 0) as pt_volume,
+  COALESCE(SUM(ms.fee), 0) as total_fees,
   COUNT(*) as swap_count,
-  COUNT(DISTINCT sender) as unique_traders
-FROM market_swap
-GROUP BY market, DATE_TRUNC('day', block_timestamp);
+  COUNT(DISTINCT ms.sender) as unique_traders
+FROM market_swap ms
+LEFT JOIN market_factory_market_created mc ON ms.market = mc.market
+GROUP BY ms.market, mc.expiry, DATE_TRUNC('day', ms.block_timestamp);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_daily_stats_market_day
   ON market_daily_stats(market, day);
@@ -289,19 +303,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_market_daily_stats_market_day
 -- ============================================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS market_hourly_stats AS
 SELECT
-  market,
-  DATE_TRUNC('hour', block_timestamp) as hour,
-  MIN(implied_rate_before) as min_implied_rate,
-  MAX(implied_rate_after) as max_implied_rate,
-  (ARRAY_AGG(implied_rate_after ORDER BY block_number DESC))[1] as close_implied_rate,
-  (ARRAY_AGG(exchange_rate ORDER BY block_number DESC))[1] as exchange_rate,
-  COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume,
-  COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume,
-  COALESCE(SUM(fee), 0) as total_fees,
+  ms.market,
+  mc.expiry,
+  DATE_TRUNC('hour', ms.block_timestamp) as hour,
+  MIN(ms.implied_rate_before) as min_implied_rate,
+  MAX(ms.implied_rate_after) as max_implied_rate,
+  (ARRAY_AGG(ms.implied_rate_after ORDER BY ms.block_number DESC))[1] as close_implied_rate,
+  (ARRAY_AGG(ms.exchange_rate ORDER BY ms.block_number DESC))[1] as exchange_rate,
+  COALESCE(SUM(ms.sy_in), 0) + COALESCE(SUM(ms.sy_out), 0) as sy_volume,
+  COALESCE(SUM(ms.pt_in), 0) + COALESCE(SUM(ms.pt_out), 0) as pt_volume,
+  COALESCE(SUM(ms.fee), 0) as total_fees,
   COUNT(*) as swap_count
-FROM market_swap
-WHERE block_timestamp >= NOW() - INTERVAL '7 days'
-GROUP BY market, DATE_TRUNC('hour', block_timestamp);
+FROM market_swap ms
+LEFT JOIN market_factory_market_created mc ON ms.market = mc.market
+WHERE ms.block_timestamp >= NOW() - INTERVAL '7 days'
+GROUP BY ms.market, mc.expiry, DATE_TRUNC('hour', ms.block_timestamp);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_hourly_stats_market_hour
   ON market_hourly_stats(market, hour);
