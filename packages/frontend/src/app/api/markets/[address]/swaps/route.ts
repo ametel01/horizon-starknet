@@ -150,13 +150,31 @@ export async function GET(
       }))
     );
 
+    // Deduplicate by transaction hash, preferring entries with rate data (from market_swap)
+    // This handles cases where both Router.Swap and Market.Swap events are emitted for the same tx
+    const seenTxHashes = new Map<string, SwapEvent>();
+    for (const swap of allSwaps) {
+      const existing = seenTxHashes.get(swap.transactionHash);
+      if (!existing) {
+        seenTxHashes.set(swap.transactionHash, swap);
+      } else {
+        // Prefer the entry with rate data (market_swap has impliedRateBefore/After)
+        const existingHasRateData = existing.impliedRateBefore && existing.impliedRateAfter;
+        const currentHasRateData = swap.impliedRateBefore && swap.impliedRateAfter;
+        if (currentHasRateData && !existingHasRateData) {
+          seenTxHashes.set(swap.transactionHash, swap);
+        }
+      }
+    }
+    const dedupedSwaps = Array.from(seenTxHashes.values());
+
     // Sort all swaps by timestamp (descending)
-    allSwaps.sort(
+    dedupedSwaps.sort(
       (a, b) => new Date(b.blockTimestamp).getTime() - new Date(a.blockTimestamp).getTime()
     );
 
     // Apply pagination
-    const paginatedSwaps = allSwaps.slice(offset, offset + limit + 1);
+    const paginatedSwaps = dedupedSwaps.slice(offset, offset + limit + 1);
     const hasMore = paginatedSwaps.length > limit;
     const swaps = paginatedSwaps.slice(0, limit);
 
