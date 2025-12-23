@@ -17,7 +17,8 @@ export default defineConfig({
         starknet: {
           startingBlock: 4_643_300, // Horizon mainnet deployment block (2025-12-23)
           // Apibara hosted DNA stream (requires DNA_TOKEN)
-          streamUrl: "https://mainnet.starknet.a5a.ch",
+          // Can override with DNA_STREAM_URL env var for self-hosted DNA
+          streamUrl: process.env.DNA_STREAM_URL ?? "https://mainnet.starknet.a5a.ch",
         },
       },
     },

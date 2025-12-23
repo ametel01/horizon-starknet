@@ -226,6 +226,12 @@ railway variables set DNA_TOKEN=your_token_here
 
 # Connect to PostgreSQL locally
 railway connect postgres
+
+# Set environment variable to reset checkpoints
+railway variables set RESET_CHECKPOINTS=true
+
+# View checkpoints
+SELECT * FROM airfoil.checkpoints ORDER BY order_key DESC;
 ```
 
 ---
