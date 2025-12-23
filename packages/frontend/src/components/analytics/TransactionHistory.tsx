@@ -30,12 +30,12 @@ const EVENT_TYPE_LABELS: Record<HistoryEvent['type'], string> = {
 };
 
 const EVENT_TYPE_COLORS: Record<HistoryEvent['type'], string> = {
-  swap: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  swap_yt: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  add_liquidity: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  remove_liquidity: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  mint_py: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
-  redeem_py: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  swap: 'bg-primary/10 text-primary',
+  swap_yt: 'bg-chart-3/10 text-chart-3',
+  add_liquidity: 'bg-chart-2/10 text-chart-2',
+  remove_liquidity: 'bg-chart-1/10 text-chart-1',
+  mint_py: 'bg-chart-4/10 text-chart-4',
+  redeem_py: 'bg-destructive/10 text-destructive',
 };
 
 function formatTimeAgo(timestamp: string): string {

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
+import { TransactionHistory } from '@/components/analytics';
 import { TxStatus } from '@/components/display/TxStatus';
 import { EnhancedPositionCard } from '@/components/portfolio/EnhancedPositionCard';
 import { SimplePortfolio } from '@/components/portfolio/SimplePortfolio';
@@ -730,6 +731,9 @@ function PortfolioContent(): ReactNode {
               <PositionCard key={position.market.address} position={position} />
             ))}
       </div>
+
+      {/* Transaction History */}
+      <TransactionHistory className="mt-8" />
     </div>
   );
 }

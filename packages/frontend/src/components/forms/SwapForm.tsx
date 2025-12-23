@@ -61,21 +61,21 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
     reset: resetSwap,
   } = useSwap();
 
-  // Get token symbol from metadata - hide SY, just show underlying
+  // Get token symbol from metadata
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
-  const underlyingLabel = tokenSymbol; // Use underlying symbol instead of SY
   const syLabel = `SY-${tokenSymbol}`;
   const ptLabel = `PT-${tokenSymbol}`;
   const ytLabel = `YT-${tokenSymbol}`;
 
   // Get input/output token addresses and labels based on direction
+  // Swaps are between SY and PT/YT (not underlying)
   const inputToken = isBuying
     ? market.syAddress
     : tokenType === 'PT'
       ? market.ptAddress
       : market.ytAddress;
-  const inputLabel = isBuying ? underlyingLabel : tokenType === 'PT' ? ptLabel : ytLabel;
-  const outputLabel = isBuying ? (tokenType === 'PT' ? ptLabel : ytLabel) : underlyingLabel;
+  const inputLabel = isBuying ? syLabel : tokenType === 'PT' ? ptLabel : ytLabel;
+  const outputLabel = isBuying ? (tokenType === 'PT' ? ptLabel : ytLabel) : syLabel;
 
   // Fetch balance for input token
   const { data: inputBalance } = useTokenBalance(inputToken);

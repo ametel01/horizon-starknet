@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { ProtocolStats } from '@/components/analytics';
 import { MarketList } from '@/components/markets/MarketList';
 import { SimpleMarketList } from '@/components/markets/SimpleMarketList';
-import { StatsOverview } from '@/components/markets/StatsOverview';
 import { Button } from '@/components/ui/Button';
 import { useUIMode } from '@/contexts/ui-mode-context';
 
@@ -28,7 +28,7 @@ export default function HomePage(): ReactNode {
 
       {/* Protocol Stats */}
       <div className="mt-12">
-        <StatsOverview />
+        <ProtocolStats />
       </div>
 
       {/* Markets Section */}
