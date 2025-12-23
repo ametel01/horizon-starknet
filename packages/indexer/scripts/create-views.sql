@@ -24,8 +24,6 @@ WITH market_info AS (
 latest_swap AS (
   SELECT DISTINCT ON (market)
     market,
-    sy_reserve_after as sy_reserve,
-    pt_reserve_after as pt_reserve,
     implied_rate_after as implied_rate,
     exchange_rate,
     block_timestamp as last_activity
@@ -42,10 +40,23 @@ latest_mint AS (
   FROM market_mint
   ORDER BY market, block_number DESC
 ),
+latest_implied_rate AS (
+  SELECT DISTINCT ON (market)
+    market,
+    sy_reserve,
+    pt_reserve,
+    total_lp,
+    new_rate as implied_rate,
+    exchange_rate,
+    block_timestamp as last_activity
+  FROM market_implied_rate_updated
+  ORDER BY market, block_number DESC
+),
 volume_24h AS (
   SELECT
     market,
-    COALESCE(SUM(sy_amount), 0) + COALESCE(SUM(pt_amount), 0) as volume_24h,
+    COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume_24h,
+    COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume_24h,
     COALESCE(SUM(fee), 0) as fees_24h,
     COUNT(*) as swaps_24h
   FROM market_swap
@@ -63,18 +74,21 @@ SELECT
   mi.fee_rate,
   mi.initial_exchange_rate,
   mi.created_at,
-  COALESCE(ls.sy_reserve, lm.sy_reserve, 0) as sy_reserve,
-  COALESCE(ls.pt_reserve, lm.pt_reserve, 0) as pt_reserve,
-  COALESCE(ls.implied_rate, lm.implied_rate, 0) as implied_rate,
-  COALESCE(ls.exchange_rate, mi.initial_exchange_rate) as exchange_rate,
-  GREATEST(ls.last_activity, lm.last_activity, mi.created_at) as last_activity,
+  COALESCE(lir.sy_reserve, lm.sy_reserve, 0) as sy_reserve,
+  COALESCE(lir.pt_reserve, lm.pt_reserve, 0) as pt_reserve,
+  COALESCE(lir.total_lp, 0) as total_lp,
+  COALESCE(ls.implied_rate, lir.implied_rate, lm.implied_rate, 0) as implied_rate,
+  COALESCE(ls.exchange_rate, lir.exchange_rate, mi.initial_exchange_rate) as exchange_rate,
+  GREATEST(ls.last_activity, lm.last_activity, lir.last_activity, mi.created_at) as last_activity,
   (mi.expiry <= EXTRACT(EPOCH FROM NOW())) as is_expired,
-  COALESCE(v.volume_24h, 0) as volume_24h,
+  COALESCE(v.sy_volume_24h, 0) as sy_volume_24h,
+  COALESCE(v.pt_volume_24h, 0) as pt_volume_24h,
   COALESCE(v.fees_24h, 0) as fees_24h,
   COALESCE(v.swaps_24h, 0) as swaps_24h
 FROM market_info mi
 LEFT JOIN latest_swap ls ON mi.market = ls.market
 LEFT JOIN latest_mint lm ON mi.market = lm.market
+LEFT JOIN latest_implied_rate lir ON mi.market = lir.market
 LEFT JOIN volume_24h v ON mi.market = v.market;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_current_state_market
@@ -88,11 +102,11 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS protocol_daily_stats AS
 WITH swap_stats AS (
   SELECT
     DATE_TRUNC('day', block_timestamp) as day,
-    COALESCE(SUM(sy_amount), 0) as total_sy_volume,
-    COALESCE(SUM(pt_amount), 0) as total_pt_volume,
+    COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
+    COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as total_pt_volume,
     COALESCE(SUM(fee), 0) as total_fees,
     COUNT(*) as swap_count,
-    COUNT(DISTINCT caller) as unique_swappers
+    COUNT(DISTINCT sender) as unique_swappers
   FROM market_swap
   GROUP BY DATE_TRUNC('day', block_timestamp)
 ),
@@ -139,7 +153,7 @@ all_days AS (
 ),
 unique_users_per_day AS (
   SELECT day, COUNT(DISTINCT user_address) as unique_users FROM (
-    SELECT DATE_TRUNC('day', block_timestamp) as day, caller as user_address FROM market_swap
+    SELECT DATE_TRUNC('day', block_timestamp) as day, sender as user_address FROM market_swap
     UNION ALL
     SELECT DATE_TRUNC('day', block_timestamp), receiver FROM router_mint_py
     UNION ALL
@@ -185,39 +199,38 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_protocol_daily_stats_day
 -- ============================================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS user_trading_stats AS
 SELECT
-  caller as user_address,
+  sender as user_address,
   COUNT(*) as total_swaps,
   COUNT(DISTINCT market) as markets_traded,
-  COALESCE(SUM(sy_amount), 0) as total_sy_volume,
-  COALESCE(SUM(pt_amount), 0) as total_pt_volume,
+  COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
+  COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as total_pt_volume,
   COALESCE(SUM(fee), 0) as total_fees_paid,
   MIN(block_timestamp) as first_swap,
   MAX(block_timestamp) as last_swap,
   COUNT(DISTINCT DATE_TRUNC('day', block_timestamp)) as active_days
 FROM market_swap
-GROUP BY caller;
+GROUP BY sender;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_trading_stats_user
   ON user_trading_stats(user_address);
 
 -- ============================================================================
 -- RATE HISTORY
--- Implied rate history for charts
+-- Implied rate history for charts (from market_implied_rate_updated)
 -- ============================================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS rate_history AS
 SELECT
-  market,
-  block_timestamp,
-  block_number,
-  implied_rate_before,
-  implied_rate_after,
-  exchange_rate,
-  (expiry - EXTRACT(EPOCH FROM block_timestamp)::bigint) as time_to_expiry,
-  sy_reserve_after as sy_reserve,
-  pt_reserve_after as pt_reserve,
-  total_lp_after as total_lp
-FROM market_swap s
-JOIN market_factory_market_created m ON s.market = m.market
+  iru.market,
+  iru.block_timestamp,
+  iru.block_number,
+  iru.old_rate as implied_rate_before,
+  iru.new_rate as implied_rate_after,
+  iru.exchange_rate,
+  iru.time_to_expiry,
+  iru.sy_reserve,
+  iru.pt_reserve,
+  iru.total_lp
+FROM market_implied_rate_updated iru
 ORDER BY market, block_number;
 
 CREATE INDEX IF NOT EXISTS idx_rate_history_market_block
@@ -257,11 +270,11 @@ SELECT
   -- Use last value as close
   (ARRAY_AGG(implied_rate_after ORDER BY block_number DESC))[1] as close_implied_rate,
   (ARRAY_AGG(exchange_rate ORDER BY block_number DESC))[1] as exchange_rate,
-  COALESCE(SUM(sy_amount), 0) as sy_volume,
-  COALESCE(SUM(pt_amount), 0) as pt_volume,
+  COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume,
+  COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume,
   COALESCE(SUM(fee), 0) as total_fees,
   COUNT(*) as swap_count,
-  COUNT(DISTINCT caller) as unique_traders
+  COUNT(DISTINCT sender) as unique_traders
 FROM market_swap
 GROUP BY market, DATE_TRUNC('day', block_timestamp);
 
@@ -280,8 +293,8 @@ SELECT
   MAX(implied_rate_after) as max_implied_rate,
   (ARRAY_AGG(implied_rate_after ORDER BY block_number DESC))[1] as close_implied_rate,
   (ARRAY_AGG(exchange_rate ORDER BY block_number DESC))[1] as exchange_rate,
-  COALESCE(SUM(sy_amount), 0) as sy_volume,
-  COALESCE(SUM(pt_amount), 0) as pt_volume,
+  COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume,
+  COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume,
   COALESCE(SUM(fee), 0) as total_fees,
   COUNT(*) as swap_count
 FROM market_swap
