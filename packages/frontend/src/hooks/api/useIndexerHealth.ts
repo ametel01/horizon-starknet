@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { apiFetch } from './fetcher';
-import type { HealthResponse } from './types';
+import type { HealthResponse, PoolMode } from './types';
 
 interface UseIndexerHealthOptions {
   /** Refetch interval in milliseconds (default: 30000) */
@@ -23,6 +23,10 @@ interface UseIndexerHealthReturn {
   isDegraded: boolean;
   /** Indexer lag in seconds, or null if unknown */
   lagSeconds: number | null;
+  /** Whether using a connection pooler */
+  usePooler: boolean;
+  /** Connection pool mode (transaction, session, statement) */
+  poolMode: PoolMode | null;
 }
 
 /**
@@ -55,5 +59,7 @@ export function useIndexerHealth(options: UseIndexerHealthOptions = {}): UseInde
     isHealthy: data?.status === 'healthy',
     isDegraded: data?.status === 'degraded',
     lagSeconds: data?.indexer.lagSeconds ?? null,
+    usePooler: data?.database.usePooler ?? false,
+    poolMode: data?.database.poolMode ?? null,
   };
 }

@@ -3,11 +3,16 @@
  */
 
 // Health endpoint types
+export type PoolMode = 'transaction' | 'session' | 'statement';
+
 export interface HealthResponse {
   status: 'healthy' | 'degraded' | 'unhealthy';
   database: {
     connected: boolean;
     host: string | null;
+    usePooler: boolean;
+    poolMode: PoolMode | null;
+    source: 'DATABASE_POOLER_URL' | 'DATABASE_URL' | null;
   };
   indexer: {
     lastEventTimestamp: string | null;

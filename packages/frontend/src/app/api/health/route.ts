@@ -1,7 +1,7 @@
 import { desc } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { db, getDatabaseInfo, isDatabaseConnected } from '@/lib/db';
+import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@/lib/db';
 import { marketSwap } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +11,9 @@ interface HealthResponse {
   database: {
     connected: boolean;
     host: string | null;
+    usePooler: boolean;
+    poolMode: PoolMode | null;
+    source: 'DATABASE_POOLER_URL' | 'DATABASE_URL' | null;
   };
   indexer: {
     lastEventTimestamp: string | null;
@@ -69,6 +72,9 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
     database: {
       connected,
       host: dbInfo.host,
+      usePooler: dbInfo.usePooler,
+      poolMode: dbInfo.poolMode,
+      source: dbInfo.source,
     },
     indexer: {
       lastEventTimestamp,
