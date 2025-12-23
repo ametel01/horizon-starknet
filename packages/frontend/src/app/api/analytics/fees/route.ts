@@ -1,7 +1,13 @@
 import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { db, protocolDailyStats, marketDailyStats, marketFeesCollected } from '@/lib/db';
+import {
+  db,
+  protocolDailyStats,
+  marketDailyStats,
+  marketFeesCollected,
+  enrichedRouterSwap,
+} from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,60 +68,110 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
       .where(gte(protocolDailyStats.day, since))
       .orderBy(desc(protocolDailyStats.day));
 
+    // Check if we have data from the materialized view
+    const hasDataFromView =
+      dailyStats.length > 0 && dailyStats.some((s) => (s.swap_count ?? 0) > 0);
+
     let total24h = BigInt(0);
     let total7d = BigInt(0);
     let total30d = BigInt(0);
 
     const history: FeesDataPoint[] = [];
-
-    for (const stat of dailyStats) {
-      const statDate = stat.day ?? new Date(0);
-      const fees = BigInt(stat.total_fees ?? '0');
-
-      history.push({
-        date: statDate.toISOString().split('T')[0] ?? '',
-        totalFees: stat.total_fees ?? '0',
-        swapCount: stat.swap_count ?? 0,
-      });
-
-      if (statDate >= oneDayAgo) {
-        total24h += fees;
-      }
-      if (statDate >= sevenDaysAgo) {
-        total7d += fees;
-      }
-      if (statDate >= thirtyDaysAgo) {
-        total30d += fees;
-      }
-    }
-
-    history.reverse(); // Oldest first
-
-    // Get fees by market (last 30 days)
-    const marketStats = await db
-      .select()
-      .from(marketDailyStats)
-      .where(gte(marketDailyStats.day, thirtyDaysAgo));
-
-    // Aggregate by market
     const marketFees = new Map<string, { fees: bigint; swaps: number }>();
 
-    for (const stat of marketStats) {
-      const market = stat.market ?? '';
-      if (!market) continue;
+    if (hasDataFromView) {
+      // Use the materialized view data
+      for (const stat of dailyStats) {
+        const statDate = stat.day ?? new Date(0);
+        const fees = BigInt(stat.total_fees ?? '0');
 
-      if (!marketFees.has(market)) {
-        marketFees.set(market, {
-          fees: BigInt(0),
-          swaps: 0,
+        history.push({
+          date: statDate.toISOString().split('T')[0] ?? '',
+          totalFees: stat.total_fees ?? '0',
+          swapCount: stat.swap_count ?? 0,
         });
+
+        if (statDate >= oneDayAgo) {
+          total24h += fees;
+        }
+        if (statDate >= sevenDaysAgo) {
+          total7d += fees;
+        }
+        if (statDate >= thirtyDaysAgo) {
+          total30d += fees;
+        }
       }
 
-      const entry = marketFees.get(market);
-      if (entry) {
-        entry.fees += BigInt(stat.total_fees ?? '0');
-        entry.swaps += stat.swap_count ?? 0;
+      history.reverse(); // Oldest first
+
+      // Get fees by market (last 30 days)
+      const marketStats = await db
+        .select()
+        .from(marketDailyStats)
+        .where(gte(marketDailyStats.day, thirtyDaysAgo));
+
+      for (const stat of marketStats) {
+        const market = stat.market ?? '';
+        if (!market) continue;
+
+        if (!marketFees.has(market)) {
+          marketFees.set(market, { fees: BigInt(0), swaps: 0 });
+        }
+
+        const entry = marketFees.get(market);
+        if (entry) {
+          entry.fees += BigInt(stat.total_fees ?? '0');
+          entry.swaps += stat.swap_count ?? 0;
+        }
       }
+    } else {
+      // Fallback: Query enriched_router_swap view (has fee data from market events)
+      console.warn('[analytics/fees] Using fallback query from enriched_router_swap');
+
+      const swaps = await db
+        .select()
+        .from(enrichedRouterSwap)
+        .where(gte(enrichedRouterSwap.block_timestamp, since));
+
+      let swapCount24h = 0;
+
+      for (const swap of swaps) {
+        const fee = BigInt(swap.fee ?? '0');
+        const market = swap.market ?? '';
+        const timestamp = swap.block_timestamp ?? new Date(0);
+
+        // Aggregate totals
+        if (timestamp >= oneDayAgo) {
+          total24h += fee;
+          swapCount24h++;
+        }
+        if (timestamp >= sevenDaysAgo) {
+          total7d += fee;
+        }
+        if (timestamp >= thirtyDaysAgo) {
+          total30d += fee;
+        }
+
+        // Aggregate by market
+        if (market) {
+          if (!marketFees.has(market)) {
+            marketFees.set(market, { fees: BigInt(0), swaps: 0 });
+          }
+          const entry = marketFees.get(market);
+          if (entry) {
+            entry.fees += fee;
+            entry.swaps++;
+          }
+        }
+      }
+
+      // Create history entry for today
+      const today = new Date().toISOString().split('T')[0] ?? '';
+      history.push({
+        date: today,
+        totalFees: total24h.toString(),
+        swapCount: swapCount24h,
+      });
     }
 
     const byMarket: MarketFeeBreakdown[] = Array.from(marketFees.entries())

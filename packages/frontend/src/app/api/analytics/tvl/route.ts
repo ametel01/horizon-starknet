@@ -1,6 +1,7 @@
+import { desc, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { db, marketCurrentState } from '@/lib/db';
+import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,15 +37,83 @@ export async function GET(_request: NextRequest): Promise<NextResponse<TvlRespon
     let totalSyReserve = BigInt(0);
     let totalPtReserve = BigInt(0);
 
-    // Sum reserves from all markets (not just active)
-    for (const market of allMarkets) {
-      totalSyReserve += BigInt(market.sy_reserve ?? '0');
-      totalPtReserve += BigInt(market.pt_reserve ?? '0');
+    // Check if we have reserves from the materialized view
+    const hasReservesFromView = allMarkets.some(
+      (m) => BigInt(m.sy_reserve ?? '0') > 0n || BigInt(m.pt_reserve ?? '0') > 0n
+    );
+
+    if (hasReservesFromView) {
+      // Sum reserves from the materialized view
+      for (const market of allMarkets) {
+        totalSyReserve += BigInt(market.sy_reserve ?? '0');
+        totalPtReserve += BigInt(market.pt_reserve ?? '0');
+      }
+    } else {
+      // Fallback 1: Try enriched_router_swap view (has reserves from market events)
+      // Get latest swap per market from the enriched view
+      const latestRouterSwaps = await db
+        .select({
+          market: enrichedRouterSwap.market,
+          syReserve: enrichedRouterSwap.sy_reserve_after,
+          ptReserve: enrichedRouterSwap.pt_reserve_after,
+          blockNumber: enrichedRouterSwap.block_number,
+        })
+        .from(enrichedRouterSwap)
+        .orderBy(desc(enrichedRouterSwap.block_number));
+
+      // Get latest per market
+      const marketReserves = new Map<string, { sy: bigint; pt: bigint }>();
+      for (const swap of latestRouterSwaps) {
+        const market = swap.market ?? '';
+        if (!market || marketReserves.has(market)) continue;
+
+        const syRes = BigInt(swap.syReserve ?? '0');
+        const ptRes = BigInt(swap.ptReserve ?? '0');
+        if (syRes > 0n || ptRes > 0n) {
+          marketReserves.set(market, { sy: syRes, pt: ptRes });
+        }
+      }
+
+      // If we found reserves from router swaps, use them
+      if (marketReserves.size > 0) {
+        for (const reserves of marketReserves.values()) {
+          totalSyReserve += reserves.sy;
+          totalPtReserve += reserves.pt;
+        }
+        console.warn(
+          `[analytics/tvl] Used enriched_router_swap fallback, found ${String(marketReserves.size)} markets`
+        );
+      } else {
+        // Fallback 2: Try direct market_swap events
+        const latestSwapsPerMarket = await db
+          .select({
+            market: marketSwap.market,
+            syReserve: marketSwap.sy_reserve_after,
+            ptReserve: marketSwap.pt_reserve_after,
+          })
+          .from(marketSwap)
+          .where(
+            sql`(${marketSwap.market}, ${marketSwap.block_number}) IN (
+              SELECT market, MAX(block_number)
+              FROM market_swap
+              GROUP BY market
+            )`
+          );
+
+        for (const swap of latestSwapsPerMarket) {
+          totalSyReserve += BigInt(swap.syReserve);
+          totalPtReserve += BigInt(swap.ptReserve);
+        }
+
+        console.warn(
+          `[analytics/tvl] Used market_swap fallback, found ${String(latestSwapsPerMarket.length)} markets`
+        );
+      }
     }
 
     // Log for debugging
-    console.log(
-      `[analytics/tvl] Found ${allMarkets.length} total markets, ${currentMarkets.length} active`
+    console.warn(
+      `[analytics/tvl] Found ${String(allMarkets.length)} total markets, ${String(currentMarkets.length)} active, TVL: SY=${totalSyReserve.toString()}, PT=${totalPtReserve.toString()}`
     );
 
     // Return current TVL (historical TVL would require a snapshot table)
