@@ -105,9 +105,9 @@ function PoolsPageContent(): ReactNode {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Main Content */}
-        <div className="flex flex-col">
+        <div>
           {!mounted || isLoading ? (
             <SkeletonCard className="h-[600px]" />
           ) : isError ? (
@@ -122,7 +122,7 @@ function PoolsPageContent(): ReactNode {
               </p>
             </div>
           ) : (
-            <div className="flex flex-1 flex-col space-y-4">
+            <div className="space-y-4">
               {/* Pool Selector */}
               <Card>
                 <CardContent className="pt-4">
@@ -162,7 +162,7 @@ function PoolsPageContent(): ReactNode {
                 onValueChange={(value) => {
                   setActiveTab(value as PoolTab);
                 }}
-                className="flex flex-1 flex-col gap-4"
+                className="space-y-4"
               >
                 <TabsList className="w-full">
                   <TabsTrigger value="add" className="flex-1">
@@ -175,9 +175,9 @@ function PoolsPageContent(): ReactNode {
 
                 {/* Form */}
                 {activeTab === 'add' ? (
-                  <AddLiquidityForm market={selectedMarket} className="flex-1" />
+                  <AddLiquidityForm market={selectedMarket} />
                 ) : (
-                  <RemoveLiquidityForm market={selectedMarket} className="flex-1" />
+                  <RemoveLiquidityForm market={selectedMarket} />
                 )}
               </Tabs>
             </div>
@@ -185,7 +185,7 @@ function PoolsPageContent(): ReactNode {
         </div>
 
         {/* Side Panel */}
-        <div className="flex flex-col gap-4">
+        <div className="space-y-4">
           {/* User's LP Position */}
           {isConnected && selectedMarket && (
             <Card>
@@ -322,9 +322,9 @@ function PoolsPageContent(): ReactNode {
             </Card>
           )}
 
-          {/* How Liquidity Works - fills remaining height */}
+          {/* How Liquidity Works */}
           {selectedMarket && (
-            <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-4">
+            <div className="border-border bg-card rounded-lg border p-4">
               <h3 className="text-foreground mb-3 text-sm font-semibold">How Liquidity Works</h3>
               <div className="space-y-3">
                 <div className="flex gap-3">
@@ -374,7 +374,7 @@ function PoolsPageContent(): ReactNode {
               </div>
 
               {/* Learn More Link */}
-              <div className="mt-auto pt-4">
+              <div className="border-border mt-4 border-t pt-4">
                 <Link
                   href="/docs"
                   className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs font-medium"

@@ -69,9 +69,9 @@ function TradePageContent(): ReactNode {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Swap Form */}
-        <div className="flex flex-col">
+        <div>
           {!mounted || isLoading ? (
             <SkeletonCard className="h-[600px]" />
           ) : isError ? (
@@ -86,7 +86,7 @@ function TradePageContent(): ReactNode {
               </p>
             </div>
           ) : (
-            <div className="flex flex-1 flex-col space-y-4">
+            <div className="space-y-4">
               {/* Market Selector */}
               {markets.length > 1 && (
                 <Card>
@@ -125,7 +125,7 @@ function TradePageContent(): ReactNode {
               )}
 
               {/* Swap Form */}
-              <SwapForm market={selectedMarket} className="flex-1" />
+              <SwapForm market={selectedMarket} />
 
               {/* Implied Rate Chart */}
               <ImpliedRateChart
@@ -141,7 +141,7 @@ function TradePageContent(): ReactNode {
         </div>
 
         {/* Info Panel */}
-        <div className="flex flex-col gap-4">
+        <div className="space-y-4">
           {/* Your Position */}
           {isConnected && selectedMarket && position && (
             <Card>
@@ -229,9 +229,9 @@ function TradePageContent(): ReactNode {
             </div>
           )}
 
-          {/* How Trading Works - fills remaining height */}
+          {/* How Trading Works */}
           {selectedMarket && (
-            <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-4">
+            <div className="border-border bg-card rounded-lg border p-4">
               <h3 className="text-foreground mb-3 text-sm font-semibold">How Trading Works</h3>
               <div className="space-y-3">
                 <div className="flex gap-3">

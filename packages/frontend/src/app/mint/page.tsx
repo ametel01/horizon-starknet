@@ -51,9 +51,9 @@ function SimpleModeContent(): ReactNode {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Form Section */}
-        <div className="flex flex-col">
+        <div>
           {/* Market Selector */}
           {markets.length > 1 && (
             <div className="mb-4">
@@ -81,7 +81,7 @@ function SimpleModeContent(): ReactNode {
             onValueChange={(value) => {
               setActiveTab(value as SimpleTabType);
             }}
-            className="flex flex-1 flex-col gap-4"
+            className="space-y-4"
           >
             <TabsList className="w-full">
               <TabsTrigger value="earn" className="flex-1">
@@ -110,21 +110,21 @@ function SimpleModeContent(): ReactNode {
                 </p>
               </div>
             ) : activeTab === 'earn' ? (
-              <SimpleEarnForm market={selectedMarket} className="flex-1" />
+              <SimpleEarnForm market={selectedMarket} />
             ) : (
-              <SimpleWithdrawForm market={selectedMarket} className="flex-1" />
+              <SimpleWithdrawForm market={selectedMarket} />
             )}
           </Tabs>
         </div>
 
         {/* Info Panel - Simplified */}
-        <div className="flex flex-col gap-4">
-          <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-6">
+        <div className="space-y-4">
+          <div className="border-border bg-card rounded-lg border p-6">
             <h2 className="text-foreground text-lg font-semibold">
               {activeTab === 'withdraw' ? 'How Withdrawing Works' : 'How Earning Works'}
             </h2>
 
-            <div className="flex flex-1 flex-col justify-between">
+            <div>
               {activeTab === 'withdraw' ? (
                 <div className="text-muted-foreground mt-4 space-y-4 text-sm">
                   <div className="flex gap-3">
@@ -253,9 +253,9 @@ function AdvancedModeContent(): ReactNode {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Form Section */}
-        <div className="flex flex-col">
+        <div>
           {/* Market Selector */}
           {markets.length > 1 && (
             <div className="mb-4">
@@ -283,7 +283,7 @@ function AdvancedModeContent(): ReactNode {
             onValueChange={(value) => {
               setActiveTab(value as TabType);
             }}
-            className="flex flex-1 flex-col gap-4"
+            className="space-y-4"
           >
             <TabsList className="w-full">
               <TabsTrigger value="wrap" className="flex-1">
@@ -315,23 +315,23 @@ function AdvancedModeContent(): ReactNode {
                 </p>
               </div>
             ) : activeTab === 'wrap' ? (
-              <WrapToSyForm market={selectedMarket} className="flex-1" />
+              <WrapToSyForm market={selectedMarket} />
             ) : activeTab === 'split' ? (
-              <MintForm market={selectedMarket} className="flex-1" />
+              <MintForm market={selectedMarket} />
             ) : (
-              <UnwrapSyForm market={selectedMarket} className="flex-1" />
+              <UnwrapSyForm market={selectedMarket} />
             )}
           </Tabs>
         </div>
 
         {/* Info Panel */}
-        <div className="flex flex-col gap-4">
-          <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-6">
+        <div className="space-y-4">
+          <div className="border-border bg-card rounded-lg border p-6">
             <h2 className="text-foreground text-lg font-semibold">
               {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Splitting Works'}
             </h2>
 
-            <div className="flex flex-1 flex-col justify-between">
+            <div>
               {activeTab === 'unwrap' ? (
                 <div className="text-muted-foreground mt-4 space-y-4 text-sm">
                   <div className="flex gap-3">
