@@ -30,7 +30,7 @@
     "@apibara/protocol": "^2.1.0-beta.47",
     "@apibara/starknet": "^2.1.0-beta.47",
     "apibara": "^2.1.0-beta.47",
-    "drizzle-orm": "^0.40.1",
+    "drizzle-orm": "0.45.1",
     "pg": "^8.16.3",
     "postgres": "latest",
     "prettier": "latest",

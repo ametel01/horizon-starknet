@@ -22,6 +22,13 @@
       "when": 1734955200000,
       "tag": "0002_aggregated_materialized_views",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766447063914,
+      "tag": "0003_acoustic_praxagora",
+      "breakpoints": true
     }
   ]
 }
