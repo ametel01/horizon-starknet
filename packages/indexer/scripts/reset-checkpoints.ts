@@ -20,29 +20,59 @@ async function resetCheckpoints() {
   const sql = postgres(databaseUrl);
 
   try {
-    // Check if table exists
-    const tables = await sql`
-      SELECT table_name
+    // List ALL tables in the database
+    const allTables = await sql`
+      SELECT table_schema, table_name
       FROM information_schema.tables
-      WHERE table_name = '_apibara_checkpoints'
+      WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY table_schema, table_name
+    `;
+    console.log(`\nAll tables in database (${allTables.length}):`);
+    for (const t of allTables) {
+      console.log(`  - ${t.table_schema}.${t.table_name}`);
+    }
+
+    // Find checkpoint-related tables (Apibara v2 may use different names)
+    const tables = await sql`
+      SELECT table_schema, table_name
+      FROM information_schema.tables
+      WHERE table_name LIKE '%checkpoint%'
+         OR table_name LIKE '%apibara%'
+         OR table_name LIKE '%cursor%'
+         OR table_schema = 'airfoil'
+      ORDER BY table_schema, table_name
     `;
 
+    console.log(`Found ${tables.length} potential checkpoint table(s):`);
+    for (const t of tables) {
+      console.log(`  - ${t.table_schema}.${t.table_name}`);
+    }
+
     if (tables.length === 0) {
-      console.log("No _apibara_checkpoints table found - nothing to reset");
+      console.log("No checkpoint tables found - nothing to reset");
       await sql.end();
       return;
     }
 
-    // Show current checkpoints before reset
-    const checkpoints = await sql`SELECT * FROM _apibara_checkpoints`;
-    console.log(`Found ${checkpoints.length} checkpoint(s):`);
-    for (const cp of checkpoints) {
-      console.log(`  - ${cp.indexer_name}: block ${cp.order_key}`);
+    // Try to truncate known checkpoint tables
+    const tablesToTruncate = [
+      "_apibara_checkpoints",
+      "airfoil.reorg_rollback",
+    ];
+
+    for (const table of tablesToTruncate) {
+      try {
+        await sql.unsafe(`TRUNCATE ${table} CASCADE`);
+        console.log(`✓ Truncated ${table}`);
+      } catch (e: unknown) {
+        const error = e as Error;
+        if (!error.message?.includes("does not exist")) {
+          console.log(`  Could not truncate ${table}: ${error.message}`);
+        }
+      }
     }
 
-    // Truncate the table
-    await sql`TRUNCATE _apibara_checkpoints CASCADE`;
-    console.log("✓ Checkpoints truncated successfully");
+    console.log("✓ Checkpoint reset complete");
     console.log("Indexers will restart from their configured startingBlock");
   } catch (error) {
     console.error("Failed to reset checkpoints:", error);
