@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useMarketSwaps } from '@/hooks/api';
 import type { SwapEvent } from '@/hooks/api/types';
-import { formatWadCompact, formatWadPercent } from '@/lib/math/wad';
+import { formatWadCompact } from '@/lib/math/wad';
 import { cn } from '@/lib/utils';
 
 interface SwapHistoryTableProps {
@@ -37,6 +37,25 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+const WAD = BigInt(10) ** BigInt(18);
+
+/**
+ * Calculate price impact percentage from before/after rates
+ * Impact = (rate_after - rate_before) / rate_before * 100
+ */
+function calculatePriceImpact(rateBefore: string, rateAfter: string): number {
+  const before = BigInt(rateBefore);
+  const after = BigInt(rateAfter);
+
+  if (before === 0n) return 0;
+
+  // Calculate impact as percentage with WAD precision
+  const diff = after - before;
+  const impactWad = (diff * WAD * 100n) / before;
+
+  return Math.abs(Number(impactWad) / Number(WAD));
+}
+
 function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
   // Determine swap type and direction
   const isYtSwap = swap.type === 'yt';
@@ -62,20 +81,21 @@ function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
     outAmount = isPtIn ? swap.syOut : swap.ptOut;
   }
 
-  // Calculate rate change (may not be available for router swaps)
+  // Calculate price impact (may not be available for router swaps)
   const hasRateData = swap.impliedRateBefore && swap.impliedRateAfter;
-  let rateChangeDisplay: ReactNode = <span className="text-muted-foreground text-xs">-</span>;
+  let impactDisplay: ReactNode = <span className="text-muted-foreground text-xs">-</span>;
 
   if (hasRateData && swap.impliedRateBefore && swap.impliedRateAfter) {
-    const rateBefore = BigInt(swap.impliedRateBefore);
-    const rateAfter = BigInt(swap.impliedRateAfter);
-    const rateChange = rateAfter - rateBefore;
-    const rateChangePositive = rateChange > 0n;
-    rateChangeDisplay = (
-      <span className={cn('text-xs', rateChangePositive ? 'text-chart-2' : 'text-destructive')}>
-        {rateChangePositive ? '+' : ''}
-        {formatWadPercent(rateChange.toString())}
-      </span>
+    const priceImpact = calculatePriceImpact(swap.impliedRateBefore, swap.impliedRateAfter);
+    // Color based on impact severity
+    const impactColor =
+      priceImpact >= 1
+        ? 'text-destructive'
+        : priceImpact >= 0.5
+          ? 'text-chart-1'
+          : 'text-foreground';
+    impactDisplay = (
+      <span className={cn('text-xs font-medium', impactColor)}>{priceImpact.toFixed(2)}%</span>
     );
   }
 
@@ -93,8 +113,8 @@ function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
         <span className="text-muted-foreground text-xs">Out</span>
       </div>
       <div className="flex flex-col text-right">
-        {rateChangeDisplay}
-        <span className="text-muted-foreground text-xs">Rate Δ</span>
+        {impactDisplay}
+        <span className="text-muted-foreground text-xs">Impact</span>
       </div>
       <div className="flex flex-col text-right">
         <span className="text-muted-foreground text-xs">{formatTimeAgo(swap.blockTimestamp)}</span>
