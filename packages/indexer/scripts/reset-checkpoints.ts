@@ -1,6 +1,6 @@
 /**
- * Reset all indexer checkpoints
- * This forces indexers to restart from their configured startingBlock
+ * Reset all indexer data - checkpoints AND event tables
+ * This forces indexers to restart from their configured startingBlock with clean data
  */
 
 import postgres from "postgres";
@@ -20,48 +20,74 @@ async function resetCheckpoints() {
   const sql = postgres(databaseUrl);
 
   try {
-    // List ALL tables in the database
-    const allTables = await sql`
-      SELECT table_schema, table_name
-      FROM information_schema.tables
-      WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-      ORDER BY table_schema, table_name
-    `;
-    console.log(`\nAll tables in database (${allTables.length}):`);
-    for (const t of allTables) {
-      console.log(`  - ${t.table_schema}.${t.table_name}`);
-    }
-
-    // Find checkpoint-related tables (Apibara v2 may use different names)
-    const tables = await sql`
-      SELECT table_schema, table_name
-      FROM information_schema.tables
-      WHERE table_name LIKE '%checkpoint%'
-         OR table_name LIKE '%apibara%'
-         OR table_name LIKE '%cursor%'
-         OR table_schema = 'airfoil'
-      ORDER BY table_schema, table_name
-    `;
-
-    console.log(`Found ${tables.length} potential checkpoint table(s):`);
-    for (const t of tables) {
-      console.log(`  - ${t.table_schema}.${t.table_name}`);
-    }
-
-    if (tables.length === 0) {
-      console.log("No checkpoint tables found - nothing to reset");
-      await sql.end();
-      return;
-    }
-
-    // Try to truncate known checkpoint tables
-    const tablesToTruncate = [
-      "airfoil.checkpoints",
-      "airfoil.filters",
-      "airfoil.reorg_rollback",
+    // Drop all materialized views first (they depend on the tables)
+    console.log("\n=== Dropping materialized views ===");
+    const materializedViews = [
+      "market_current_state",
+      "protocol_daily_stats",
+      "user_trading_stats",
+      "rate_history",
+      "oracle_rate_history",
+      "market_daily_stats",
+      "market_hourly_stats",
+      "user_py_positions",
+      "market_lp_positions",
     ];
 
-    for (const table of tablesToTruncate) {
+    for (const view of materializedViews) {
+      try {
+        await sql.unsafe(`DROP MATERIALIZED VIEW IF EXISTS ${view} CASCADE`);
+        console.log(`✓ Dropped ${view}`);
+      } catch (e: unknown) {
+        const error = e as Error;
+        console.log(`  Could not drop ${view}: ${error.message}`);
+      }
+    }
+
+    // Drop the refresh function
+    try {
+      await sql.unsafe(`DROP FUNCTION IF EXISTS refresh_all_views()`);
+      console.log(`✓ Dropped refresh_all_views function`);
+    } catch (e: unknown) {
+      const error = e as Error;
+      console.log(`  Could not drop refresh_all_views: ${error.message}`);
+    }
+
+    // Truncate all event tables
+    console.log("\n=== Truncating event tables ===");
+    const eventTables = [
+      // Factory
+      "factory_yield_contracts_created",
+      "factory_class_hashes_updated",
+      // Market Factory
+      "market_factory_market_created",
+      "market_factory_class_hash_updated",
+      // SY
+      "sy_deposit",
+      "sy_redeem",
+      "sy_oracle_rate_updated",
+      // YT
+      "yt_mint_py",
+      "yt_redeem_py",
+      "yt_redeem_py_post_expiry",
+      "yt_interest_claimed",
+      "yt_expiry_reached",
+      // Market
+      "market_mint",
+      "market_burn",
+      "market_swap",
+      "market_implied_rate_updated",
+      "market_fees_collected",
+      // Router
+      "router_mint_py",
+      "router_redeem_py",
+      "router_add_liquidity",
+      "router_remove_liquidity",
+      "router_swap",
+      "router_swap_yt",
+    ];
+
+    for (const table of eventTables) {
       try {
         await sql.unsafe(`TRUNCATE ${table} CASCADE`);
         console.log(`✓ Truncated ${table}`);
@@ -73,10 +99,31 @@ async function resetCheckpoints() {
       }
     }
 
-    console.log("✓ Checkpoint reset complete");
-    console.log("Indexers will restart from their configured startingBlock");
+    // Truncate airfoil (checkpoint) tables
+    console.log("\n=== Truncating checkpoint tables ===");
+    const checkpointTables = [
+      "airfoil.checkpoints",
+      "airfoil.filters",
+      "airfoil.reorg_rollback",
+    ];
+
+    for (const table of checkpointTables) {
+      try {
+        await sql.unsafe(`TRUNCATE ${table} CASCADE`);
+        console.log(`✓ Truncated ${table}`);
+      } catch (e: unknown) {
+        const error = e as Error;
+        if (!error.message?.includes("does not exist")) {
+          console.log(`  Could not truncate ${table}: ${error.message}`);
+        }
+      }
+    }
+
+    console.log("\n=== Reset complete ===");
+    console.log("All event data and checkpoints have been cleared.");
+    console.log("Indexers will restart from their configured startingBlock.");
   } catch (error) {
-    console.error("Failed to reset checkpoints:", error);
+    console.error("Failed to reset:", error);
     process.exit(1);
   } finally {
     await sql.end();
