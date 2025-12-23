@@ -367,15 +367,32 @@ export function getPtPrice(lnImpliedRate: bigint, timeToExpiry: bigint): bigint 
 
 /**
  * Calculate the implied APY from ln(implied_rate)
- * APY = e^(ln_implied_rate) - 1
+ *
+ * When secondsToExpiry is provided, the rate is properly annualized:
+ * APY = e^(ln_implied_rate * 365days / secondsToExpiry) - 1
+ *
+ * Without secondsToExpiry, returns the raw period rate (NOT annualized):
+ * rate = e^(ln_implied_rate) - 1
+ *
  * @param lnImpliedRate The ln of implied rate in WAD
+ * @param secondsToExpiry Optional seconds until market expiry for annualization
  * @returns APY as a number (0.05 = 5%)
  */
-export function getImpliedApy(lnImpliedRate: bigint): number {
+export function getImpliedApy(lnImpliedRate: bigint, secondsToExpiry?: number): number {
   if (lnImpliedRate === 0n) {
     return 0;
   }
 
+  const rateDecimal = Number(lnImpliedRate) / Number(WAD_BIGINT);
+
+  // If secondsToExpiry is provided, annualize the rate
+  if (secondsToExpiry !== undefined && secondsToExpiry > 0) {
+    const annualizationFactor = Number(SECONDS_PER_YEAR) / secondsToExpiry;
+    const apy = Math.exp(rateDecimal * annualizationFactor) - 1;
+    return apy;
+  }
+
+  // Otherwise just return exp(rate) - 1 (period rate, not annualized)
   const expRate = expWad(lnImpliedRate);
 
   if (expRate <= WAD_BIGINT) {
