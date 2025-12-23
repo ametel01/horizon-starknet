@@ -233,8 +233,9 @@ SELECT
 FROM market_implied_rate_updated iru
 ORDER BY market, block_number;
 
-CREATE INDEX IF NOT EXISTS idx_rate_history_market_block
-  ON rate_history(market, block_number DESC);
+-- Unique index required for REFRESH CONCURRENTLY
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rate_history_market_block
+  ON rate_history(market, block_number);
 
 -- ============================================================================
 -- ORACLE RATE HISTORY
@@ -254,8 +255,9 @@ SELECT
 FROM sy_oracle_rate_updated
 ORDER BY sy, block_number;
 
-CREATE INDEX IF NOT EXISTS idx_oracle_rate_history_sy_block
-  ON oracle_rate_history(sy, block_number DESC);
+-- Unique index required for REFRESH CONCURRENTLY
+CREATE UNIQUE INDEX IF NOT EXISTS idx_oracle_rate_history_sy_block
+  ON oracle_rate_history(sy, block_number);
 
 -- ============================================================================
 -- MARKET DAILY STATS

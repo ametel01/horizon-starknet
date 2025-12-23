@@ -42,9 +42,17 @@ async function createViews() {
     console.log("  - market_lp_positions");
     console.log("  - refresh_all_views() function");
 
-    // Do an initial refresh
-    console.log("\nPerforming initial refresh of all views...");
-    await sql`SELECT refresh_all_views()`;
+    // Do an initial non-concurrent refresh (required when views are empty)
+    console.log("\nPerforming initial refresh of all views (non-concurrent)...");
+    await sql`REFRESH MATERIALIZED VIEW market_current_state`;
+    await sql`REFRESH MATERIALIZED VIEW protocol_daily_stats`;
+    await sql`REFRESH MATERIALIZED VIEW user_trading_stats`;
+    await sql`REFRESH MATERIALIZED VIEW rate_history`;
+    await sql`REFRESH MATERIALIZED VIEW oracle_rate_history`;
+    await sql`REFRESH MATERIALIZED VIEW market_daily_stats`;
+    await sql`REFRESH MATERIALIZED VIEW market_hourly_stats`;
+    await sql`REFRESH MATERIALIZED VIEW user_py_positions`;
+    await sql`REFRESH MATERIALIZED VIEW market_lp_positions`;
     console.log("Initial refresh complete.");
   } catch (error) {
     // Check if error is because views already exist
