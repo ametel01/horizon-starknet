@@ -29,6 +29,7 @@ COPY package.json apibara.config.ts drizzle.config.ts ./
 COPY src/schema ./src/schema
 COPY src/lib ./src/lib
 COPY src/indexers ./src/indexers
+COPY scripts ./scripts
 COPY start.sh ./
 RUN chmod +x start.sh
 
