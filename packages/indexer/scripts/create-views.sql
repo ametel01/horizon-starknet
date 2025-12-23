@@ -113,7 +113,7 @@ WITH swap_stats AS (
 mint_stats AS (
   SELECT
     DATE_TRUNC('day', block_timestamp) as day,
-    COALESCE(SUM(sy_used), 0) as total_py_minted,
+    COALESCE(SUM(sy_in), 0) as total_py_minted,
     COUNT(*) as mint_count,
     COUNT(DISTINCT receiver) as unique_minters
   FROM router_mint_py
@@ -311,24 +311,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_market_hourly_stats_market_hour
 CREATE MATERIALIZED VIEW IF NOT EXISTS user_py_positions AS
 WITH mints AS (
   SELECT
-    receiver as user_address,
-    yt,
-    sy,
-    pt,
-    SUM(pt_amount) as total_pt_minted,
-    SUM(yt_amount) as total_yt_minted,
-    MIN(block_timestamp) as first_mint,
-    MAX(block_timestamp) as last_activity,
+    m.receiver as user_address,
+    m.yt,
+    y.sy,
+    y.pt,
+    SUM(m.pt_out) as total_pt_minted,
+    SUM(m.yt_out) as total_yt_minted,
+    MIN(m.block_timestamp) as first_mint,
+    MAX(m.block_timestamp) as last_activity,
     COUNT(*) as mint_count
-  FROM router_mint_py
-  GROUP BY receiver, yt, sy, pt
+  FROM router_mint_py m
+  LEFT JOIN factory_yield_contracts_created y ON m.yt = y.yt
+  GROUP BY m.receiver, m.yt, y.sy, y.pt
 ),
 redeems AS (
   SELECT
     receiver as user_address,
     yt,
-    SUM(pt_amount) as total_pt_redeemed,
-    SUM(yt_amount) as total_yt_redeemed,
+    SUM(py_in) as total_pt_redeemed,
+    SUM(py_in) as total_yt_redeemed,
     COUNT(*) as redeem_count
   FROM router_redeem_py
   GROUP BY receiver, yt
