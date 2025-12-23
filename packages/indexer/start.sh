@@ -22,6 +22,10 @@ if [ "$RESET_CHECKPOINTS" = "true" ]; then
   bun run scripts/reset-checkpoints.ts || echo "Warning: Could not reset checkpoints, continuing anyway..."
 fi
 
+# Create materialized views if they don't exist
+echo "Ensuring materialized views exist..."
+bun run scripts/create-views.ts || echo "Warning: Could not create views, continuing anyway..."
+
 # Run indexer with auto-restart on failure
 run_indexer() {
   while true; do

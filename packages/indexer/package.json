@@ -21,6 +21,8 @@
     "db:push": "bunx drizzle-kit push",
     "db:studio": "bunx drizzle-kit studio",
     "db:reset-checkpoints": "bun run scripts/reset-checkpoints.ts",
+    "db:create-views": "bun run scripts/create-views.ts",
+    "db:refresh-views": "bun run scripts/refresh-views.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"
