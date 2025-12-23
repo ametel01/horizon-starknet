@@ -81,9 +81,9 @@ export function getExplorerUrl(network?: NetworkId): string {
   const networkId = network ?? getNetworkId();
   switch (networkId) {
     case 'mainnet':
-      return 'https://starkscan.co';
+      return 'https://voyager.online';
     case 'sepolia':
-      return 'https://sepolia.starkscan.co';
+      return 'https://sepolia.voyager.online';
     case 'devnet':
     case 'fork':
       return ''; // No explorer for local devnet/fork
