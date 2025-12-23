@@ -256,6 +256,17 @@ railway connect postgres
 
 # Run SQL
 railway run psql $DATABASE_URL
+
+# Refresh materialized views
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_current_state;
+REFRESH MATERIALIZED VIEW CONCURRENTLY protocol_daily_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_trading_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY rate_history;
+REFRESH MATERIALIZED VIEW CONCURRENTLY oracle_rate_history;
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_daily_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_hourly_stats;
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_py_positions;
+REFRESH MATERIALIZED VIEW CONCURRENTLY market_lp_positions;
 ```
 
 ### Resync from Scratch
