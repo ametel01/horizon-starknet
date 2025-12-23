@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1766305505322,
-      "tag": "0000_cool_the_phantom",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1734951600000,
-      "tag": "0001_enriched_router_views",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1734955200000,
-      "tag": "0002_aggregated_materialized_views",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1766447063914,
-      "tag": "0003_acoustic_praxagora",
+      "when": 1766459869351,
+      "tag": "0000_far_power_man",
       "breakpoints": true
     }
   ]

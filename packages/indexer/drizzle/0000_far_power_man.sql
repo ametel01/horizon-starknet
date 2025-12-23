@@ -16,7 +16,11 @@ CREATE TABLE "factory_yield_contracts_created" (
 	"expiry" bigint NOT NULL,
 	"pt" text NOT NULL,
 	"yt" text NOT NULL,
-	"creator" text NOT NULL
+	"creator" text NOT NULL,
+	"underlying" text NOT NULL,
+	"underlying_symbol" text NOT NULL,
+	"initial_exchange_rate" numeric(78, 0) NOT NULL,
+	"market_index" integer NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "market_burn" (
@@ -353,6 +357,7 @@ CREATE TABLE "yt_redeem_py_post_expiry" (
 CREATE INDEX "factory_ycc_sy_idx" ON "factory_yield_contracts_created" USING btree ("sy");--> statement-breakpoint
 CREATE INDEX "factory_ycc_expiry_idx" ON "factory_yield_contracts_created" USING btree ("expiry");--> statement-breakpoint
 CREATE INDEX "factory_ycc_creator_idx" ON "factory_yield_contracts_created" USING btree ("creator");--> statement-breakpoint
+CREATE INDEX "factory_ycc_underlying_idx" ON "factory_yield_contracts_created" USING btree ("underlying");--> statement-breakpoint
 CREATE INDEX "market_burn_sender_idx" ON "market_burn" USING btree ("sender");--> statement-breakpoint
 CREATE INDEX "market_burn_receiver_idx" ON "market_burn" USING btree ("receiver");--> statement-breakpoint
 CREATE INDEX "market_burn_expiry_idx" ON "market_burn" USING btree ("expiry");--> statement-breakpoint

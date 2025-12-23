@@ -138,3 +138,7 @@ make build            # Build contracts (generates ABI JSON)
 cd packages/frontend
 bun run codegen       # Generate TypeScript types from ABIs
 ```
+
+
+MANDATORY: Use shadcn/ui Components
+All new components **MUST** use the shadcn/ui library. An MCP server is available for component discovery and installation.
