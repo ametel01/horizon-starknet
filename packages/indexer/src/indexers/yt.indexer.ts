@@ -27,6 +27,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Factory event to discover YT contracts
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
@@ -85,6 +86,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     startingCursor: { orderKey: BigInt(config.startingBlock) },
     debug: false,
     plugins: [
+      streamTimeoutPlugin(),
       drizzleStorage({
         db: database,
         idColumn: { "*": "_id" },

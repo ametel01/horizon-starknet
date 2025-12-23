@@ -27,6 +27,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { streamTimeoutPlugin } from "../lib/plugins";
 
 // MarketFactory event to discover Market contracts
 const MARKET_CREATED = getSelector("MarketCreated");
@@ -85,6 +86,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     startingCursor: { orderKey: BigInt(config.startingBlock) },
     debug: false,
     plugins: [
+      streamTimeoutPlugin(),
       drizzleStorage({
         db: database,
         idColumn: { "*": "_id" },

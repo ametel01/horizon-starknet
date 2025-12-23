@@ -27,6 +27,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Event selectors using Apibara's getSelector helper
 const MINT_PY = getSelector("MintPY");
@@ -69,6 +70,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     startingCursor: { orderKey: BigInt(config.startingBlock) },
     debug: false,
     plugins: [
+      streamTimeoutPlugin(),
       drizzleStorage({
         db: database,
         idColumn: { "*": "_id" },
