@@ -1,4 +1,4 @@
-import { eq, desc, or } from 'drizzle-orm';
+import { desc, or, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db } from '@/lib/db';
@@ -10,6 +10,18 @@ import {
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
 } from '@/lib/db/schema';
+
+/**
+ * Normalize a Starknet address for database comparison.
+ * Pads the address to full 66 characters (0x + 64 hex chars) and lowercases it.
+ */
+function normalizeAddressForDb(address: string): string {
+  // Remove 0x prefix, lowercase
+  const hex = address.toLowerCase().replace(/^0x/, '');
+  // Pad to 64 characters (felt252 = 252 bits = 63 hex chars, but often stored as 64)
+  const padded = hex.padStart(64, '0');
+  return '0x' + padded;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +71,9 @@ export async function GET(
   try {
     const events: HistoryEvent[] = [];
 
+    // Normalize the address for comparison (handles different formats)
+    const normalizedAddress = normalizeAddressForDb(address);
+
     // Fetch each type of event (or all if no filter)
     const shouldFetch = (type: string): boolean =>
       typeFilter.length === 0 || typeFilter.includes(type);
@@ -68,7 +83,14 @@ export async function GET(
       const swaps = await db
         .select()
         .from(enrichedRouterSwap)
-        .where(or(eq(enrichedRouterSwap.sender, address), eq(enrichedRouterSwap.receiver, address)))
+        .where(
+          or(
+            sql`LOWER(${enrichedRouterSwap.sender}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterSwap.sender}) = ${address.toLowerCase()}`,
+            sql`LOWER(${enrichedRouterSwap.receiver}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterSwap.receiver}) = ${address.toLowerCase()}`
+          )
+        )
         .orderBy(desc(enrichedRouterSwap.block_timestamp))
         .limit(limit);
 
@@ -101,7 +123,12 @@ export async function GET(
         .select()
         .from(enrichedRouterSwapYT)
         .where(
-          or(eq(enrichedRouterSwapYT.sender, address), eq(enrichedRouterSwapYT.receiver, address))
+          or(
+            sql`LOWER(${enrichedRouterSwapYT.sender}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterSwapYT.sender}) = ${address.toLowerCase()}`,
+            sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${address.toLowerCase()}`
+          )
         )
         .orderBy(desc(enrichedRouterSwapYT.block_timestamp))
         .limit(limit);
@@ -136,8 +163,10 @@ export async function GET(
         .from(enrichedRouterAddLiquidity)
         .where(
           or(
-            eq(enrichedRouterAddLiquidity.sender, address),
-            eq(enrichedRouterAddLiquidity.receiver, address)
+            sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${address.toLowerCase()}`,
+            sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${address.toLowerCase()}`
           )
         )
         .orderBy(desc(enrichedRouterAddLiquidity.block_timestamp))
@@ -171,8 +200,10 @@ export async function GET(
         .from(enrichedRouterRemoveLiquidity)
         .where(
           or(
-            eq(enrichedRouterRemoveLiquidity.sender, address),
-            eq(enrichedRouterRemoveLiquidity.receiver, address)
+            sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${address.toLowerCase()}`,
+            sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${address.toLowerCase()}`
           )
         )
         .orderBy(desc(enrichedRouterRemoveLiquidity.block_timestamp))
@@ -205,7 +236,12 @@ export async function GET(
         .select()
         .from(enrichedRouterMintPY)
         .where(
-          or(eq(enrichedRouterMintPY.sender, address), eq(enrichedRouterMintPY.receiver, address))
+          or(
+            sql`LOWER(${enrichedRouterMintPY.sender}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterMintPY.sender}) = ${address.toLowerCase()}`,
+            sql`LOWER(${enrichedRouterMintPY.receiver}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterMintPY.receiver}) = ${address.toLowerCase()}`
+          )
         )
         .orderBy(desc(enrichedRouterMintPY.block_timestamp))
         .limit(limit);
@@ -236,8 +272,10 @@ export async function GET(
         .from(enrichedRouterRedeemPY)
         .where(
           or(
-            eq(enrichedRouterRedeemPY.sender, address),
-            eq(enrichedRouterRedeemPY.receiver, address)
+            sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${address.toLowerCase()}`,
+            sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${normalizedAddress}`,
+            sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${address.toLowerCase()}`
           )
         )
         .orderBy(desc(enrichedRouterRedeemPY.block_timestamp))

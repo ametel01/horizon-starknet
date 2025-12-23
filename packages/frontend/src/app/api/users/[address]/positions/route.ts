@@ -1,9 +1,19 @@
-import { eq } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, userPyPositions, marketLpPositions, marketCurrentState } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Normalize a Starknet address for database comparison.
+ * Pads the address to full 66 characters (0x + 64 hex chars) and lowercases it.
+ */
+function normalizeAddressForDb(address: string): string {
+  const hex = address.toLowerCase().replace(/^0x/, '');
+  const padded = hex.padStart(64, '0');
+  return '0x' + padded;
+}
 
 interface PyPosition {
   yt: string;
@@ -58,11 +68,19 @@ export async function GET(
   const { address } = await params;
 
   try {
+    // Normalize the address for comparison
+    const normalizedAddress = normalizeAddressForDb(address);
+
     // Get PY positions
     const pyResults = await db
       .select()
       .from(userPyPositions)
-      .where(eq(userPyPositions.user_address, address));
+      .where(
+        or(
+          sql`LOWER(${userPyPositions.user_address}) = ${normalizedAddress}`,
+          sql`LOWER(${userPyPositions.user_address}) = ${address.toLowerCase()}`
+        )
+      );
 
     const pyPositions: PyPosition[] = pyResults
       .filter((row) => {
@@ -89,7 +107,12 @@ export async function GET(
     const lpResults = await db
       .select()
       .from(marketLpPositions)
-      .where(eq(marketLpPositions.user_address, address));
+      .where(
+        or(
+          sql`LOWER(${marketLpPositions.user_address}) = ${normalizedAddress}`,
+          sql`LOWER(${marketLpPositions.user_address}) = ${address.toLowerCase()}`
+        )
+      );
 
     // Get current market states for LP positions
     const marketAddresses = [

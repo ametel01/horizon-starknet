@@ -1,9 +1,19 @@
-import { eq, desc, and, gte } from 'drizzle-orm';
+import { desc, and, gte, or, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, ytInterestClaimed, userPyPositions } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Normalize a Starknet address for database comparison.
+ * Pads the address to full 66 characters (0x + 64 hex chars) and lowercases it.
+ */
+function normalizeAddressForDb(address: string): string {
+  const hex = address.toLowerCase().replace(/^0x/, '');
+  const padded = hex.padStart(64, '0');
+  return '0x' + padded;
+}
 
 interface YieldClaimEvent {
   id: string;
@@ -52,20 +62,28 @@ export async function GET(
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '100'), 500);
 
   try {
-    // Build conditions
-    const conditions = [eq(ytInterestClaimed.user, address)];
+    // Normalize the address for comparison
+    const normalizedAddress = normalizeAddressForDb(address);
 
-    if (days) {
-      const since = new Date();
-      since.setDate(since.getDate() - parseInt(days));
-      conditions.push(gte(ytInterestClaimed.block_timestamp, since));
-    }
+    // Build address match condition
+    const addressMatch = or(
+      sql`LOWER(${ytInterestClaimed.user}) = ${normalizedAddress}`,
+      sql`LOWER(${ytInterestClaimed.user}) = ${address.toLowerCase()}`
+    );
+
+    // Build conditions
+    const conditions = days
+      ? and(
+          addressMatch,
+          gte(ytInterestClaimed.block_timestamp, new Date(Date.now() - parseInt(days) * 86400000))
+        )
+      : addressMatch;
 
     // Get claim history
     const claims = await db
       .select()
       .from(ytInterestClaimed)
-      .where(and(...conditions))
+      .where(conditions)
       .orderBy(desc(ytInterestClaimed.block_timestamp))
       .limit(limit);
 
@@ -92,7 +110,12 @@ export async function GET(
     const positions = await db
       .select()
       .from(userPyPositions)
-      .where(eq(userPyPositions.user_address, address));
+      .where(
+        or(
+          sql`LOWER(${userPyPositions.user_address}) = ${normalizedAddress}`,
+          sql`LOWER(${userPyPositions.user_address}) = ${address.toLowerCase()}`
+        )
+      );
 
     const summaryByPosition: YieldSummary[] = positions
       .filter(
