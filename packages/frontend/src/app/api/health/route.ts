@@ -19,6 +19,7 @@ interface HealthResponse {
     lastEventTimestamp: string | null;
     lastBlockNumber: number | null;
     lagSeconds: number | null;
+    error: string | null;
   };
   timestamp: string;
 }
@@ -34,6 +35,7 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
   let lastEventTimestamp: string | null = null;
   let lastBlockNumber: number | null = null;
   let lagSeconds: number | null = null;
+  let queryError: string | null = null;
 
   if (connected) {
     try {
@@ -55,6 +57,7 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
       }
     } catch (error) {
       console.error('[health] Error fetching indexer status:', error);
+      queryError = error instanceof Error ? error.message : 'Failed to query indexer data';
     }
   }
 
@@ -62,6 +65,9 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
   let status: HealthResponse['status'] = 'healthy';
   if (!connected) {
     status = 'unhealthy';
+  } else if (queryError) {
+    // Can connect but can't query tables (permission issues, etc.)
+    status = 'degraded';
   } else if (lagSeconds !== null && lagSeconds > 300) {
     // More than 5 minutes behind
     status = 'degraded';
@@ -80,6 +86,7 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
       lastEventTimestamp,
       lastBlockNumber,
       lagSeconds,
+      error: queryError,
     },
     timestamp: new Date().toISOString(),
   });

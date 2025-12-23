@@ -18,6 +18,7 @@ export interface HealthResponse {
     lastEventTimestamp: string | null;
     lastBlockNumber: number | null;
     lagSeconds: number | null;
+    error: string | null;
   };
   timestamp: string;
 }
