@@ -6,9 +6,13 @@
 import postgres from "postgres";
 
 async function resetCheckpoints() {
-  const databaseUrl = process.env.DATABASE_URL;
+  // Support both Railway's DATABASE_URL and our POSTGRES_CONNECTION_STRING
+  const databaseUrl =
+    process.env.DATABASE_URL ?? process.env.POSTGRES_CONNECTION_STRING;
   if (!databaseUrl) {
-    console.error("DATABASE_URL environment variable is required");
+    console.error(
+      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required",
+    );
     process.exit(1);
   }
 
