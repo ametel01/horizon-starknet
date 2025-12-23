@@ -56,7 +56,8 @@ async function resetCheckpoints() {
 
     // Try to truncate known checkpoint tables
     const tablesToTruncate = [
-      "_apibara_checkpoints",
+      "airfoil.checkpoints",
+      "airfoil.filters",
       "airfoil.reorg_rollback",
     ];
 
