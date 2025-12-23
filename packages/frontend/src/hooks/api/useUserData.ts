@@ -29,13 +29,13 @@ type EventType =
 
 interface UseUserHistoryOptions {
   /** Filter by event types */
-  types?: EventType[];
+  types?: EventType[] | undefined;
   /** Max results per page (default: 50, max: 100) */
-  limit?: number;
+  limit?: number | undefined;
   /** Refetch interval in milliseconds (default: 30000) */
-  refetchInterval?: number;
+  refetchInterval?: number | undefined;
   /** Whether to enable the query */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
 }
 
 interface UseUserHistoryReturn {
