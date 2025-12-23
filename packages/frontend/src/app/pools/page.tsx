@@ -308,7 +308,7 @@ function PoolsPageContent(): ReactNode {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Days to Expiry</span>
-                  <span className="text-foreground">{Math.ceil(selectedMarket.daysToExpiry)}</span>
+                  <span className="text-foreground">{Math.round(selectedMarket.daysToExpiry)}</span>
                 </div>
                 {selectedMarket.state.feesCollected > 0n && (
                   <div className="flex justify-between">
@@ -321,61 +321,79 @@ function PoolsPageContent(): ReactNode {
               </CardContent>
             </Card>
           )}
+
+          {/* How Liquidity Works - fills remaining height */}
+          {selectedMarket && (
+            <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-4">
+              <h3 className="text-foreground mb-3 text-sm font-semibold">How Liquidity Works</h3>
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <div className="bg-primary/20 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    1
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">Provide SY + PT</p>
+                    <p className="text-muted-foreground text-xs">
+                      Deposit both tokens in pool ratio for LP tokens.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-primary/20 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    2
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">Earn Trading Fees</p>
+                    <p className="text-muted-foreground text-xs">
+                      LP tokens earn fees from every swap.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-primary/20 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    3
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">Withdraw Anytime</p>
+                    <p className="text-muted-foreground text-xs">
+                      Remove liquidity for your share of reserves.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-chart-1/20 text-chart-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    !
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">Impermanent Loss</p>
+                    <p className="text-muted-foreground text-xs">
+                      PT price converges to 1 SY at maturity.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Learn More Link */}
+              <div className="mt-auto pt-4">
+                <Link
+                  href="/docs"
+                  className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs font-medium"
+                >
+                  Learn more about liquidity provision
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* How Liquidity Works - Compact horizontal layout */}
-      {selectedMarket && (
-        <div className="border-border bg-card rounded-lg border p-6">
-          <h2 className="text-foreground mb-4 text-lg font-semibold">How Liquidity Works</h2>
-          <div className="grid gap-6 md:grid-cols-4">
-            <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                1
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">Provide SY + PT</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Deposit both tokens in pool ratio for LP tokens.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                2
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">Earn Trading Fees</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  LP tokens earn fees from every swap.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                3
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">Withdraw Anytime</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Remove liquidity for your share of reserves.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-chart-1/20 text-chart-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                !
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">Impermanent Loss</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  PT price converges to 1 SY at maturity.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -134,6 +134,24 @@ export interface RatesResponse {
   history: RateDataPoint[];
 }
 
+// New rate data point format from /api/markets/[address]/rates
+export interface MarketRateDataPoint {
+  timestamp: string;
+  impliedRate: string;
+  exchangeRate: string;
+  // OHLC fields for daily resolution
+  open?: string;
+  high?: string;
+  low?: string;
+  close?: string;
+}
+
+export interface MarketRatesResponse {
+  market: string;
+  resolution: 'tick' | 'daily';
+  dataPoints: MarketRateDataPoint[];
+}
+
 // User endpoint types
 export interface HistoryEvent {
   id: string;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { SwapHistoryTable } from '@/components/analytics';
+import { ImpliedRateChart, SwapHistoryTable } from '@/components/analytics';
 import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
 import { SwapForm } from '@/components/forms/SwapForm';
 import { Button } from '@/components/ui/Button';
@@ -126,6 +126,16 @@ function TradePageContent(): ReactNode {
 
               {/* Swap Form */}
               <SwapForm market={selectedMarket} className="flex-1" />
+
+              {/* Implied Rate Chart */}
+              <ImpliedRateChart
+                marketAddress={selectedMarket.address}
+                expiryTimestamp={selectedMarket.expiry}
+                height={200}
+                showControls={true}
+                defaultResolution="daily"
+                defaultDays={30}
+              />
             </div>
           )}
         </div>
@@ -218,55 +228,131 @@ function TradePageContent(): ReactNode {
               <ApyBreakdownCard breakdown={apyBreakdown} view="yt" title="YT Long Yield" />
             </div>
           )}
+
+          {/* How Trading Works - fills remaining height */}
+          {selectedMarket && (
+            <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-4">
+              <h3 className="text-foreground mb-3 text-sm font-semibold">How Trading Works</h3>
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <div className="bg-secondary/20 text-muted-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    PT
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">Principal Token</p>
+                    <p className="text-muted-foreground text-xs">
+                      Buy at discount for fixed yield. Redeems 1:1 at expiry.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-primary/20 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    YT
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">Yield Token</p>
+                    <p className="text-muted-foreground text-xs">
+                      Speculate on yields. Claim all yield until expiry.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-chart-2/20 text-chart-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                    %
+                  </div>
+                  <div>
+                    <p className="text-foreground text-sm font-medium">
+                      Implied APY:{' '}
+                      <span className="text-primary">
+                        {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
+                      </span>
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Current market rate derived from PT price.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Market Info */}
+              <div className="border-border mt-4 space-y-2 border-t pt-4">
+                <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Market Info
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-muted/50 rounded p-2">
+                    <div className="text-muted-foreground text-xs">Days to Expiry</div>
+                    <div className="text-foreground text-sm">
+                      {selectedMarket.daysToExpiry > 0
+                        ? `${String(Math.round(selectedMarket.daysToExpiry))} days`
+                        : 'Expired'}
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 rounded p-2">
+                    <div className="text-muted-foreground text-xs">Expiry Date</div>
+                    <div className="text-foreground text-sm">
+                      {new Date(selectedMarket.expiry * 1000).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 col-span-2 rounded p-2">
+                    <div className="text-muted-foreground text-xs">Pool TVL</div>
+                    <div className="text-foreground font-mono text-sm">
+                      {formatWadCompact(selectedMarket.tvlSy)} {sySymbol}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="border-border mt-4 space-y-2 border-t pt-4">
+                <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Quick Tips
+                </h4>
+                <ul className="text-muted-foreground space-y-1.5 text-xs">
+                  <li className="flex gap-2">
+                    <span className="text-primary">•</span>
+                    <span>PT holders lock in fixed yield regardless of rate changes</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary">•</span>
+                    <span>YT profits if underlying yield exceeds implied APY</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Both tokens can be traded anytime before expiry</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-primary">•</span>
+                    <span>After expiry, PT redeems 1:1 and YT becomes worthless</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Learn More Link */}
+              <div className="mt-auto pt-4">
+                <Link
+                  href="/docs"
+                  className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs font-medium"
+                >
+                  Learn more about yield trading
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* How Trading Works - Compact horizontal layout */}
-      {selectedMarket && (
-        <div className="border-border bg-card rounded-lg border p-6">
-          <h2 className="text-foreground mb-4 text-lg font-semibold">How Trading Works</h2>
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="flex gap-3">
-              <div className="bg-secondary/20 text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                PT
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">Principal Token</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Buy at discount for fixed yield. Redeems 1:1 at expiry.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                YT
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">Yield Token</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Speculate on yields. Claim all yield until expiry.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-chart-2/20 text-chart-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                %
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-medium">
-                  Implied APY:{' '}
-                  <span className="text-primary">
-                    {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
-                  </span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Current market rate derived from PT price.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Swap History Table - Full width below */}
       {selectedMarket && <SwapHistoryTable marketAddress={selectedMarket.address} limit={20} />}
