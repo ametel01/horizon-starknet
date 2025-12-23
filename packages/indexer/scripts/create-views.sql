@@ -354,7 +354,7 @@ SELECT
   m.first_mint,
   GREATEST(m.last_activity,
     (SELECT MAX(block_timestamp) FROM router_redeem_py WHERE receiver = m.user_address AND yt = m.yt),
-    (SELECT MAX(block_timestamp) FROM yt_interest_claimed WHERE user_address = m.user_address AND yt = m.yt)
+    (SELECT MAX(block_timestamp) FROM yt_interest_claimed WHERE "user" = m.user_address AND yt = m.yt)
   ) as last_activity,
   m.mint_count,
   COALESCE(r.redeem_count, 0) as redeem_count,
