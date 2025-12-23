@@ -50,160 +50,165 @@ function SimpleModeContent(): ReactNode {
   }, [markets, selectedMarketAddress, marketParam]);
 
   return (
-    <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
-      {/* Form Section */}
-      <div className="w-full max-w-lg">
-        {/* Market Selector */}
-        {markets.length > 1 && (
-          <div className="mb-4">
-            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
-            <select
-              value={selectedMarket?.address ?? ''}
-              onChange={(e) => {
-                setSelectedMarketAddress(e.target.value);
-              }}
-              className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
-            >
-              {markets.map((m) => (
-                <option key={m.address} value={m.address}>
-                  {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
-                  {m.metadata?.yieldTokenName ?? 'Unknown'}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Simple Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => {
-            setActiveTab(value as SimpleTabType);
-          }}
-          className="mb-4"
-        >
-          <TabsList className="w-full">
-            <TabsTrigger value="earn" className="flex-1">
-              Deposit
-            </TabsTrigger>
-            <TabsTrigger
-              value="withdraw"
-              className="data-active:bg-chart-1 data-active:text-foreground flex-1"
-            >
-              Withdraw
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Form */}
-        {!mounted || isLoading ? (
-          <SkeletonCard className="h-[500px]" />
-        ) : isError ? (
-          <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
-            <p className="text-destructive">Failed to load markets. Please try again.</p>
-          </div>
-        ) : !selectedMarket ? (
-          <div className="border-border bg-card rounded-lg border p-8 text-center">
-            <p className="text-muted-foreground">No markets available.</p>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Markets will appear here once they are created.
-            </p>
-          </div>
-        ) : activeTab === 'earn' ? (
-          <SimpleEarnForm market={selectedMarket} />
-        ) : (
-          <SimpleWithdrawForm market={selectedMarket} />
-        )}
-      </div>
-
-      {/* Info Panel - Simplified */}
-      <div className="mt-8 w-full max-w-md lg:mt-0">
-        <div className="border-border bg-card rounded-lg border p-6">
-          <h2 className="text-foreground text-lg font-semibold">
-            {activeTab === 'withdraw' ? 'How Withdrawing Works' : 'How Earning Works'}
-          </h2>
-
-          {activeTab === 'withdraw' ? (
-            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
-              <div className="flex gap-3">
-                <div className="bg-chart-1/30 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  1
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Select Amount</p>
-                  <p className="mt-1">Choose how much of your position you want to withdraw.</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  2
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Receive Tokens</p>
-                  <p className="mt-1">
-                    Your position is converted back to the original tokens in a single transaction.
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-chart-1/30 bg-chart-1/10 mt-4 rounded-lg border p-3">
-                <p className="text-chart-1 text-sm">
-                  <span className="font-medium">Note:</span> Withdrawing before maturity requires
-                  equal Fixed-Rate and Variable-Rate positions.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
-              <div className="flex gap-3">
-                <div className="bg-primary/30 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  1
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Deposit Tokens</p>
-                  <p className="mt-1">
-                    Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  2
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Receive Positions</p>
-                  <p className="mt-1">
-                    You receive a Fixed-Rate Position (guaranteed yield) and a Variable-Rate
-                    Position (floating yield).
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  3
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Earn Yield</p>
-                  <p className="mt-1">
-                    Hold until maturity to earn the fixed rate, or withdraw anytime.
-                  </p>
-                </div>
-              </div>
+    <div className="space-y-8">
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+        {/* Form Section */}
+        <div className="flex flex-col">
+          {/* Market Selector */}
+          {markets.length > 1 && (
+            <div className="mb-4">
+              <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+              <select
+                value={selectedMarket?.address ?? ''}
+                onChange={(e) => {
+                  setSelectedMarketAddress(e.target.value);
+                }}
+                className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
+              >
+                {markets.map((m) => (
+                  <option key={m.address} value={m.address}>
+                    {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                    {m.metadata?.yieldTokenName ?? 'Unknown'}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
-          <div className="bg-muted mt-6 rounded-lg p-4">
-            <h3 className="text-foreground text-sm font-medium">Position Types</h3>
-            <dl className="mt-2 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Fixed-Rate</dt>
-                <dd className="text-foreground">Guaranteed yield at maturity</dd>
+          {/* Simple Tabs */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value as SimpleTabType);
+            }}
+            className="flex flex-1 flex-col gap-4"
+          >
+            <TabsList className="w-full">
+              <TabsTrigger value="earn" className="flex-1">
+                Deposit
+              </TabsTrigger>
+              <TabsTrigger
+                value="withdraw"
+                className="data-active:bg-chart-1 data-active:text-foreground flex-1"
+              >
+                Withdraw
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Form */}
+            {!mounted || isLoading ? (
+              <SkeletonCard className="h-[500px]" />
+            ) : isError ? (
+              <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+                <p className="text-destructive">Failed to load markets. Please try again.</p>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Variable-Rate</dt>
-                <dd className="text-foreground">Floating yield until maturity</dd>
+            ) : !selectedMarket ? (
+              <div className="border-border bg-card rounded-lg border p-8 text-center">
+                <p className="text-muted-foreground">No markets available.</p>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  Markets will appear here once they are created.
+                </p>
               </div>
-            </dl>
+            ) : activeTab === 'earn' ? (
+              <SimpleEarnForm market={selectedMarket} className="flex-1" />
+            ) : (
+              <SimpleWithdrawForm market={selectedMarket} className="flex-1" />
+            )}
+          </Tabs>
+        </div>
+
+        {/* Info Panel - Simplified */}
+        <div className="flex flex-col gap-4">
+          <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-6">
+            <h2 className="text-foreground text-lg font-semibold">
+              {activeTab === 'withdraw' ? 'How Withdrawing Works' : 'How Earning Works'}
+            </h2>
+
+            <div className="flex flex-1 flex-col justify-between">
+              {activeTab === 'withdraw' ? (
+                <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+                  <div className="flex gap-3">
+                    <div className="bg-chart-1/30 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      1
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Select Amount</p>
+                      <p className="mt-1">Choose how much of your position you want to withdraw.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      2
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Receive Tokens</p>
+                      <p className="mt-1">
+                        Your position is converted back to the original tokens in a single
+                        transaction.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-chart-1/30 bg-chart-1/10 mt-4 rounded-lg border p-3">
+                    <p className="text-chart-1 text-sm">
+                      <span className="font-medium">Note:</span> Withdrawing before maturity
+                      requires equal Fixed-Rate and Variable-Rate positions.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+                  <div className="flex gap-3">
+                    <div className="bg-primary/30 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      1
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Deposit Tokens</p>
+                      <p className="mt-1">
+                        Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      2
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Receive Positions</p>
+                      <p className="mt-1">
+                        You receive a Fixed-Rate Position (guaranteed yield) and a Variable-Rate
+                        Position (floating yield).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      3
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Earn Yield</p>
+                      <p className="mt-1">
+                        Hold until maturity to earn the fixed rate, or withdraw anytime.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-muted mt-6 rounded-lg p-4">
+                <h3 className="text-foreground text-sm font-medium">Position Types</h3>
+                <dl className="mt-2 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Fixed-Rate</dt>
+                    <dd className="text-foreground">Guaranteed yield at maturity</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Variable-Rate</dt>
+                    <dd className="text-foreground">Floating yield until maturity</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -247,181 +252,186 @@ function AdvancedModeContent(): ReactNode {
   }, [markets, selectedMarketAddress, marketParam]);
 
   return (
-    <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
-      {/* Form Section */}
-      <div className="w-full max-w-lg">
-        {/* Market Selector */}
-        {markets.length > 1 && (
-          <div className="mb-4">
-            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
-            <select
-              value={selectedMarket?.address ?? ''}
-              onChange={(e) => {
-                setSelectedMarketAddress(e.target.value);
-              }}
-              className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
-            >
-              {markets.map((m) => (
-                <option key={m.address} value={m.address}>
-                  {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
-                  {m.metadata?.yieldTokenName ?? 'Unknown'}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => {
-            setActiveTab(value as TabType);
-          }}
-          className="mb-4"
-        >
-          <TabsList className="w-full">
-            <TabsTrigger value="wrap" className="flex-1">
-              Deposit
-            </TabsTrigger>
-            <TabsTrigger value="split" className="flex-1">
-              Split
-            </TabsTrigger>
-            <TabsTrigger
-              value="unwrap"
-              className="data-active:bg-chart-1 data-active:text-foreground flex-1"
-            >
-              Withdraw
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Form */}
-        {!mounted || isLoading ? (
-          <SkeletonCard className="h-[500px]" />
-        ) : isError ? (
-          <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
-            <p className="text-destructive">Failed to load markets. Please try again.</p>
-          </div>
-        ) : !selectedMarket ? (
-          <div className="border-border bg-card rounded-lg border p-8 text-center">
-            <p className="text-muted-foreground">No markets available.</p>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Markets will appear here once they are created.
-            </p>
-          </div>
-        ) : activeTab === 'wrap' ? (
-          <WrapToSyForm market={selectedMarket} />
-        ) : activeTab === 'split' ? (
-          <MintForm market={selectedMarket} />
-        ) : (
-          <UnwrapSyForm market={selectedMarket} />
-        )}
-      </div>
-
-      {/* Info Panel */}
-      <div className="mt-8 w-full max-w-md lg:mt-0">
-        <div className="border-border bg-card rounded-lg border p-6">
-          <h2 className="text-foreground text-lg font-semibold">
-            {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Splitting Works'}
-          </h2>
-
-          {activeTab === 'unwrap' ? (
-            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
-              <div className="flex gap-3">
-                <div className="bg-chart-1/30 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  1
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Withdraw Your Tokens</p>
-                  <p className="mt-1">
-                    Convert your deposited tokens back to the underlying yield-bearing token (like
-                    nstSTRK).
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  2
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Continue Earning</p>
-                  <p className="mt-1">
-                    Your yield-bearing tokens will continue earning yield in your wallet or can be
-                    used in other DeFi protocols.
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-chart-1/30 bg-chart-1/10 mt-4 rounded-lg border p-3">
-                <p className="text-chart-1 text-sm">
-                  <span className="font-medium">Note:</span> Withdrawing only converts deposited
-                  tokens back. To convert PT+YT back, use the Redeem function in Portfolio.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
-              <div className="flex gap-3">
-                <div
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                    activeTab === 'wrap'
-                      ? 'bg-primary/30 text-primary'
-                      : 'bg-primary/20 text-primary'
-                  }`}
-                >
-                  1
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Deposit Tokens</p>
-                  <p className="mt-1">
-                    Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                    activeTab === 'split'
-                      ? 'bg-primary/30 text-primary'
-                      : 'bg-primary/20 text-primary'
-                  }`}
-                >
-                  2
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Split into PT + YT</p>
-                  <p className="mt-1">
-                    For each token deposited, you receive 1 Principal Token (PT) and 1 Yield Token
-                    (YT).
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  3
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Use Your Tokens</p>
-                  <p className="mt-1">
-                    PT can be traded or held until maturity. YT earns yield until expiry.
-                  </p>
-                </div>
-              </div>
+    <div className="space-y-8">
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+        {/* Form Section */}
+        <div className="flex flex-col">
+          {/* Market Selector */}
+          {markets.length > 1 && (
+            <div className="mb-4">
+              <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+              <select
+                value={selectedMarket?.address ?? ''}
+                onChange={(e) => {
+                  setSelectedMarketAddress(e.target.value);
+                }}
+                className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
+              >
+                {markets.map((m) => (
+                  <option key={m.address} value={m.address}>
+                    {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                    {m.metadata?.yieldTokenName ?? 'Unknown'}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
-          <div className="bg-muted mt-6 rounded-lg p-4">
-            <h3 className="text-foreground text-sm font-medium">Token Details</h3>
-            <dl className="mt-2 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">PT (Principal Token)</dt>
-                <dd className="text-foreground">Redeemable for underlying at maturity</dd>
+          {/* Tabs */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value as TabType);
+            }}
+            className="flex flex-1 flex-col gap-4"
+          >
+            <TabsList className="w-full">
+              <TabsTrigger value="wrap" className="flex-1">
+                Deposit
+              </TabsTrigger>
+              <TabsTrigger value="split" className="flex-1">
+                Split
+              </TabsTrigger>
+              <TabsTrigger
+                value="unwrap"
+                className="data-active:bg-chart-1 data-active:text-foreground flex-1"
+              >
+                Withdraw
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Form */}
+            {!mounted || isLoading ? (
+              <SkeletonCard className="h-[500px]" />
+            ) : isError ? (
+              <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+                <p className="text-destructive">Failed to load markets. Please try again.</p>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">YT (Yield Token)</dt>
-                <dd className="text-foreground">Earns yield until expiry</dd>
+            ) : !selectedMarket ? (
+              <div className="border-border bg-card rounded-lg border p-8 text-center">
+                <p className="text-muted-foreground">No markets available.</p>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  Markets will appear here once they are created.
+                </p>
               </div>
-            </dl>
+            ) : activeTab === 'wrap' ? (
+              <WrapToSyForm market={selectedMarket} className="flex-1" />
+            ) : activeTab === 'split' ? (
+              <MintForm market={selectedMarket} className="flex-1" />
+            ) : (
+              <UnwrapSyForm market={selectedMarket} className="flex-1" />
+            )}
+          </Tabs>
+        </div>
+
+        {/* Info Panel */}
+        <div className="flex flex-col gap-4">
+          <div className="border-border bg-card flex flex-1 flex-col rounded-lg border p-6">
+            <h2 className="text-foreground text-lg font-semibold">
+              {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Splitting Works'}
+            </h2>
+
+            <div className="flex flex-1 flex-col justify-between">
+              {activeTab === 'unwrap' ? (
+                <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+                  <div className="flex gap-3">
+                    <div className="bg-chart-1/30 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      1
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Withdraw Your Tokens</p>
+                      <p className="mt-1">
+                        Convert your deposited tokens back to the underlying yield-bearing token
+                        (like nstSTRK).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      2
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Continue Earning</p>
+                      <p className="mt-1">
+                        Your yield-bearing tokens will continue earning yield in your wallet or can
+                        be used in other DeFi protocols.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-chart-1/30 bg-chart-1/10 mt-4 rounded-lg border p-3">
+                    <p className="text-chart-1 text-sm">
+                      <span className="font-medium">Note:</span> This only converts SY tokens back
+                      to the underlying token. If you have PT or YT, use Redeem in Portfolio to
+                      convert them to SY first.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+                  <div className="flex gap-3">
+                    <div
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                        activeTab === 'wrap'
+                          ? 'bg-primary/30 text-primary'
+                          : 'bg-primary/20 text-primary'
+                      }`}
+                    >
+                      1
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Deposit Tokens</p>
+                      <p className="mt-1">
+                        Deposit your yield-bearing tokens (like nstSTRK) into the protocol.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                        activeTab === 'split'
+                          ? 'bg-primary/30 text-primary'
+                          : 'bg-primary/20 text-primary'
+                      }`}
+                    >
+                      2
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Split into PT + YT</p>
+                      <p className="mt-1">
+                        For each token deposited, you receive 1 Principal Token (PT) and 1 Yield
+                        Token (YT).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      3
+                    </div>
+                    <div>
+                      <p className="text-foreground font-medium">Use Your Tokens</p>
+                      <p className="mt-1">
+                        PT can be traded or held until maturity. YT earns yield until expiry.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-muted mt-6 rounded-lg p-4">
+                <h3 className="text-foreground text-sm font-medium">Token Details</h3>
+                <dl className="mt-2 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">PT (Principal Token)</dt>
+                    <dd className="text-foreground">Redeemable for underlying at maturity</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">YT (Yield Token)</dt>
+                    <dd className="text-foreground">Earns yield until expiry</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -69,9 +69,9 @@ function TradePageContent(): ReactNode {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
         {/* Swap Form */}
-        <div className="w-full max-w-lg">
+        <div className="flex flex-col">
           {!mounted || isLoading ? (
             <SkeletonCard className="h-[600px]" />
           ) : isError ? (
@@ -86,7 +86,7 @@ function TradePageContent(): ReactNode {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-1 flex-col space-y-4">
               {/* Market Selector */}
               {markets.length > 1 && (
                 <Card>
@@ -125,16 +125,16 @@ function TradePageContent(): ReactNode {
               )}
 
               {/* Swap Form */}
-              <SwapForm market={selectedMarket} />
+              <SwapForm market={selectedMarket} className="flex-1" />
             </div>
           )}
         </div>
 
         {/* Info Panel */}
-        <div className="mt-8 w-full max-w-md lg:mt-0">
+        <div className="flex flex-col gap-4">
           {/* Your Position */}
           {isConnected && selectedMarket && position && (
-            <Card className="mb-4">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Your Position</CardTitle>
               </CardHeader>
@@ -213,87 +213,62 @@ function TradePageContent(): ReactNode {
 
           {/* APY Breakdown Cards */}
           {selectedMarket !== undefined && apyBreakdown !== null && (
-            <div className="mb-4 space-y-4">
+            <div className="space-y-4">
               <ApyBreakdownCard breakdown={apyBreakdown} view="pt" title="PT Fixed Yield" />
               <ApyBreakdownCard breakdown={apyBreakdown} view="yt" title="YT Long Yield" />
             </div>
           )}
-
-          <div className="border-border bg-card rounded-lg border p-6">
-            <h2 className="text-foreground text-lg font-semibold">How Trading Works</h2>
-            <div className="text-muted-foreground mt-4 space-y-4 text-sm">
-              <div className="flex gap-3">
-                <div className="bg-secondary/20 text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  PT
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Principal Token (PT)</p>
-                  <p className="mt-1">
-                    Buy PT at a discount for fixed yield. PT redeems for the underlying token at
-                    expiry. PT price rises when rates fall and falls when rates rise.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  YT
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Yield Token (YT)</p>
-                  <p className="mt-1">
-                    Buy YT to speculate on rising yields. YT gives you the right to claim all yield
-                    until expiry. YT expires worthless but can be very profitable if yields are
-                    high.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  $
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Trading Strategies</p>
-                  <p className="mt-1">
-                    <span className="text-foreground">Fixed Yield:</span> Buy PT, hold to expiry.
-                    <br />
-                    <span className="text-foreground">Yield Bull:</span> Buy YT, profit if yields
-                    exceed implied APY.
-                    <br />
-                    <span className="text-foreground">Yield Bear:</span> Sell YT, profit if yields
-                    stay low.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-muted mt-6 rounded-lg p-4">
-              <h3 className="text-foreground text-sm font-medium">Implied Yield</h3>
-              <p className="text-muted-foreground mt-2 text-sm">
-                The implied yield is derived from the PT price. Buying PT at a lower price means a
-                higher implied yield for your investment.
-              </p>
-              {selectedMarket && (
-                <div className="mt-3 flex justify-between text-sm">
-                  <span className="text-muted-foreground">Current Implied APY:</span>
-                  <span className="text-primary font-medium">
-                    {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-muted mt-4 rounded-lg p-4">
-              <h3 className="text-foreground text-sm font-medium">Slippage Protection</h3>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Set your slippage tolerance to protect against price movements during the swap.
-                Higher slippage allows for faster execution but may result in less favorable rates.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Swap History Table - Full width below the two-column layout */}
+      {/* How Trading Works - Compact horizontal layout */}
+      {selectedMarket && (
+        <div className="border-border bg-card rounded-lg border p-6">
+          <h2 className="text-foreground mb-4 text-lg font-semibold">How Trading Works</h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="flex gap-3">
+              <div className="bg-secondary/20 text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                PT
+              </div>
+              <div>
+                <p className="text-foreground text-sm font-medium">Principal Token</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Buy at discount for fixed yield. Redeems 1:1 at expiry.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                YT
+              </div>
+              <div>
+                <p className="text-foreground text-sm font-medium">Yield Token</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Speculate on yields. Claim all yield until expiry.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="bg-chart-2/20 text-chart-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                %
+              </div>
+              <div>
+                <p className="text-foreground text-sm font-medium">
+                  Implied APY:{' '}
+                  <span className="text-primary">
+                    {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
+                  </span>
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Current market rate derived from PT price.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Swap History Table - Full width below */}
       {selectedMarket && <SwapHistoryTable marketAddress={selectedMarket.address} limit={20} />}
     </div>
   );

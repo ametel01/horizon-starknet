@@ -104,273 +104,278 @@ function PoolsPageContent(): ReactNode {
   }, [lpBalance, selectedMarket]);
 
   return (
-    <div className="flex flex-col items-center lg:flex-row lg:items-start lg:gap-8">
-      {/* Main Content */}
-      <div className="w-full max-w-lg">
-        {!mounted || isLoading ? (
-          <SkeletonCard className="h-[600px]" />
-        ) : isError ? (
-          <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
-            <p className="text-destructive">Failed to load markets. Please try again.</p>
-          </div>
-        ) : !selectedMarket ? (
-          <div className="border-border bg-card rounded-lg border p-8 text-center">
-            <p className="text-muted-foreground">No markets available.</p>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Markets will appear here once they are created.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Pool Selector */}
-            <Card>
-              <CardContent className="pt-4">
-                <label className="text-muted-foreground mb-2 block text-sm font-medium">
-                  Select Pool
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {markets.map((market) => (
-                    <Button
-                      key={market.address}
-                      variant={market.address === selectedMarket.address ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        handleMarketChange(market.address);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="font-medium">{getPoolSymbol(market)}</span>
-                      <span
-                        className={
-                          market.address === selectedMarket.address
-                            ? 'text-primary-foreground/70'
-                            : 'text-muted-foreground'
-                        }
+    <div className="space-y-8">
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
+        {/* Main Content */}
+        <div className="flex flex-col">
+          {!mounted || isLoading ? (
+            <SkeletonCard className="h-[600px]" />
+          ) : isError ? (
+            <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+              <p className="text-destructive">Failed to load markets. Please try again.</p>
+            </div>
+          ) : !selectedMarket ? (
+            <div className="border-border bg-card rounded-lg border p-8 text-center">
+              <p className="text-muted-foreground">No markets available.</p>
+              <p className="text-muted-foreground mt-2 text-sm">
+                Markets will appear here once they are created.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col space-y-4">
+              {/* Pool Selector */}
+              <Card>
+                <CardContent className="pt-4">
+                  <label className="text-muted-foreground mb-2 block text-sm font-medium">
+                    Select Pool
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {markets.map((market) => (
+                      <Button
+                        key={market.address}
+                        variant={market.address === selectedMarket.address ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          handleMarketChange(market.address);
+                        }}
+                        className="flex items-center gap-2"
                       >
-                        {market.impliedApy.multipliedBy(100).toFixed(1)}%
-                      </span>
-                    </Button>
-                  ))}
-                </div>
+                        <span className="font-medium">{getPoolSymbol(market)}</span>
+                        <span
+                          className={
+                            market.address === selectedMarket.address
+                              ? 'text-primary-foreground/70'
+                              : 'text-muted-foreground'
+                          }
+                        >
+                          {market.impliedApy.multipliedBy(100).toFixed(1)}%
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Add/Remove Tabs */}
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => {
+                  setActiveTab(value as PoolTab);
+                }}
+                className="flex flex-1 flex-col gap-4"
+              >
+                <TabsList className="w-full">
+                  <TabsTrigger value="add" className="flex-1">
+                    Add Liquidity
+                  </TabsTrigger>
+                  <TabsTrigger value="remove" className="flex-1">
+                    Remove Liquidity
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Form */}
+                {activeTab === 'add' ? (
+                  <AddLiquidityForm market={selectedMarket} className="flex-1" />
+                ) : (
+                  <RemoveLiquidityForm market={selectedMarket} className="flex-1" />
+                )}
+              </Tabs>
+            </div>
+          )}
+        </div>
+
+        {/* Side Panel */}
+        <div className="flex flex-col gap-4">
+          {/* User's LP Position */}
+          {isConnected && selectedMarket && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Your Position</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {lpBalanceLoading ? (
+                  <div className="space-y-2">
+                    <div className="bg-muted h-6 w-32 animate-pulse rounded" />
+                    <div className="bg-muted h-4 w-24 animate-pulse rounded" />
+                  </div>
+                ) : lpBalance !== undefined && lpBalance > BigInt(0) ? (
+                  (() => {
+                    const formattedLp = formatWadCompact(lpBalance);
+                    // If LP balance is effectively zero, show "no position"
+                    if (formattedLp === '0' || formattedLp === '< 0.01') {
+                      return (
+                        <div className="text-muted-foreground">No significant LP position</div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-foreground text-2xl font-semibold">
+                            {formattedLp} LP
+                          </div>
+                          <div className="text-muted-foreground text-sm">
+                            {userPoolShare.lt(0.01) ? '< 0.01' : userPoolShare.toFixed(2)}% of pool
+                          </div>
+                        </div>
+                        <div className="bg-muted rounded-lg p-3">
+                          <div className="text-muted-foreground mb-1 text-xs">
+                            Your share of reserves
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">SY:</span>
+                            <span className="text-foreground">
+                              {formatWadCompact(userReserves.sy)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">PT:</span>
+                            <span className="text-foreground">
+                              {formatWadCompact(userReserves.pt)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="border-chart-2/30 bg-chart-2/10 rounded-lg border p-3">
+                          <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
+                            <svg
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                              />
+                            </svg>
+                            LP Rewards
+                          </div>
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Swap fees auto-compound into your position, growing your share of
+                            reserves.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="text-muted-foreground">No LP position in this market</div>
+                )}
               </CardContent>
             </Card>
+          )}
 
-            {/* Add/Remove Tabs */}
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => {
-                setActiveTab(value as PoolTab);
-              }}
-              className="space-y-4"
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="add" className="flex-1">
-                  Add Liquidity
-                </TabsTrigger>
-                <TabsTrigger value="remove" className="flex-1">
-                  Remove Liquidity
-                </TabsTrigger>
-              </TabsList>
+          {/* LP APY Breakdown */}
+          {selectedMarket !== undefined && apyBreakdown !== null && (
+            <ApyBreakdownCard breakdown={apyBreakdown} view="lp" title="LP Yield Breakdown" />
+          )}
 
-              {/* Form */}
-              {activeTab === 'add' ? (
-                <AddLiquidityForm market={selectedMarket} />
-              ) : (
-                <RemoveLiquidityForm market={selectedMarket} />
-              )}
-            </Tabs>
-          </div>
-        )}
-      </div>
-
-      {/* Side Panel */}
-      <div className="mt-8 w-full max-w-md lg:mt-0">
-        {/* User's LP Position */}
-        {isConnected && selectedMarket && (
-          <Card className="mb-4">
-            <CardHeader>
-              <CardTitle className="text-base">Your Position</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {lpBalanceLoading ? (
-                <div className="space-y-2">
-                  <div className="bg-muted h-6 w-32 animate-pulse rounded" />
-                  <div className="bg-muted h-4 w-24 animate-pulse rounded" />
-                </div>
-              ) : lpBalance !== undefined && lpBalance > BigInt(0) ? (
-                (() => {
-                  const formattedLp = formatWadCompact(lpBalance);
-                  // If LP balance is effectively zero, show "no position"
-                  if (formattedLp === '0' || formattedLp === '< 0.01') {
-                    return <div className="text-muted-foreground">No significant LP position</div>;
-                  }
-                  return (
-                    <div className="space-y-3">
-                      <div>
-                        <div className="text-foreground text-2xl font-semibold">
-                          {formattedLp} LP
-                        </div>
-                        <div className="text-muted-foreground text-sm">
-                          {userPoolShare.lt(0.01) ? '< 0.01' : userPoolShare.toFixed(2)}% of pool
-                        </div>
-                      </div>
-                      <div className="bg-muted rounded-lg p-3">
-                        <div className="text-muted-foreground mb-1 text-xs">
-                          Your share of reserves
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">SY:</span>
-                          <span className="text-foreground">
-                            {formatWadCompact(userReserves.sy)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">PT:</span>
-                          <span className="text-foreground">
-                            {formatWadCompact(userReserves.pt)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="border-chart-2/30 bg-chart-2/10 rounded-lg border p-3">
-                        <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
-                          <svg
-                            className="h-3.5 w-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                            />
-                          </svg>
-                          LP Rewards
-                        </div>
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          Swap fees auto-compound into your position, growing your share of
-                          reserves.
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()
-              ) : (
-                <div className="text-muted-foreground">No LP position in this market</div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* LP APY Breakdown */}
-        {selectedMarket !== undefined && apyBreakdown !== null && (
-          <ApyBreakdownCard
-            breakdown={apyBreakdown}
-            view="lp"
-            title="LP Yield Breakdown"
-            className="mb-4"
-          />
-        )}
-
-        {/* Pool Info */}
-        {selectedMarket && (
-          <Card className="mb-4">
-            <CardHeader>
-              <CardTitle className="text-base">{getPoolName(selectedMarket)} Statistics</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Liquidity</span>
-                <span className="text-foreground">
-                  {formatWadCompact(selectedMarket.state.totalLpSupply)} LP
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">SY Reserve</span>
-                <span className="text-foreground">
-                  {formatWadCompact(selectedMarket.state.syReserve)} SY-
-                  {getPoolSymbol(selectedMarket)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">PT Reserve</span>
-                <span className="text-foreground">
-                  {formatWadCompact(selectedMarket.state.ptReserve)} PT-
-                  {getPoolSymbol(selectedMarket)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Implied APY</span>
-                <span className="text-primary font-medium">
-                  {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Days to Expiry</span>
-                <span className="text-foreground">{Math.ceil(selectedMarket.daysToExpiry)}</span>
-              </div>
-              {selectedMarket.state.feesCollected > 0n && (
+          {/* Pool Info */}
+          {selectedMarket && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {getPoolName(selectedMarket)} Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Protocol Fees Collected</span>
+                  <span className="text-muted-foreground">Total Liquidity</span>
                   <span className="text-foreground">
-                    {formatWadCompact(selectedMarket.state.feesCollected)} SY
+                    {formatWadCompact(selectedMarket.state.totalLpSupply)} LP
                   </span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">SY Reserve</span>
+                  <span className="text-foreground">
+                    {formatWadCompact(selectedMarket.state.syReserve)} SY-
+                    {getPoolSymbol(selectedMarket)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">PT Reserve</span>
+                  <span className="text-foreground">
+                    {formatWadCompact(selectedMarket.state.ptReserve)} PT-
+                    {getPoolSymbol(selectedMarket)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Implied APY</span>
+                  <span className="text-primary font-medium">
+                    {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Days to Expiry</span>
+                  <span className="text-foreground">{Math.ceil(selectedMarket.daysToExpiry)}</span>
+                </div>
+                {selectedMarket.state.feesCollected > 0n && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Protocol Fees Collected</span>
+                    <span className="text-foreground">
+                      {formatWadCompact(selectedMarket.state.feesCollected)} SY
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
-        {/* Info Panel */}
+      {/* How Liquidity Works - Compact horizontal layout */}
+      {selectedMarket && (
         <div className="border-border bg-card rounded-lg border p-6">
-          <h2 className="text-foreground text-lg font-semibold">How Liquidity Works</h2>
-          <div className="text-muted-foreground mt-4 space-y-4 text-sm">
+          <h2 className="text-foreground mb-4 text-lg font-semibold">How Liquidity Works</h2>
+          <div className="grid gap-6 md:grid-cols-4">
             <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                 1
               </div>
               <div>
-                <p className="text-foreground font-medium">Provide SY + PT</p>
-                <p className="mt-1">
-                  Deposit both SY and PT tokens in the current pool ratio to receive LP tokens.
+                <p className="text-foreground text-sm font-medium">Provide SY + PT</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Deposit both tokens in pool ratio for LP tokens.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                 2
               </div>
               <div>
-                <p className="text-foreground font-medium">Earn Trading Fees</p>
-                <p className="mt-1">
-                  LP tokens represent your share of the pool. You earn fees from every swap.
+                <p className="text-foreground text-sm font-medium">Earn Trading Fees</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  LP tokens earn fees from every swap.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+              <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                 3
               </div>
               <div>
-                <p className="text-foreground font-medium">Withdraw Anytime</p>
-                <p className="mt-1">
-                  Remove liquidity to receive your proportional share of SY and PT from the pool.
+                <p className="text-foreground text-sm font-medium">Withdraw Anytime</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Remove liquidity for your share of reserves.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="bg-chart-1/20 text-chart-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                !
+              </div>
+              <div>
+                <p className="text-foreground text-sm font-medium">Impermanent Loss</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  PT price converges to 1 SY at maturity.
                 </p>
               </div>
             </div>
           </div>
-
-          <div className="bg-muted mt-6 rounded-lg p-4">
-            <h3 className="text-foreground text-sm font-medium">Impermanent Loss</h3>
-            <p className="text-muted-foreground mt-2 text-sm">
-              As PT approaches maturity, its price converges to 1 SY. This natural price movement
-              can result in impermanent loss for LPs, especially for pools with longer time to
-              expiry.
-            </p>
-          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
