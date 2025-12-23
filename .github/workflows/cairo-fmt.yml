@@ -1,4 +1,4 @@
-name: Lint
+name: Cairo Format
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
+  fmt:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,5 +23,5 @@ jobs:
         with:
           scarb-version: "2.15.0"
 
-      - name: Lint check
-        run: scarb check
+      - name: Check formatting
+        run: scarb fmt --check
