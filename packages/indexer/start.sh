@@ -4,6 +4,14 @@ PRESET=${PRESET:-mainnet}
 
 echo "Starting all indexers with preset: $PRESET"
 
+# Reset checkpoints if RESET_CHECKPOINTS=true
+# This forces all indexers to restart from their configured startingBlock
+if [ "$RESET_CHECKPOINTS" = "true" ]; then
+  echo "RESET_CHECKPOINTS=true - Resetting all indexer checkpoints..."
+  sleep 3  # Wait for database to be ready
+  bun run scripts/reset-checkpoints.ts || echo "Warning: Could not reset checkpoints, continuing anyway..."
+fi
+
 # Run indexer with auto-restart on failure
 run_indexer() {
   while true; do

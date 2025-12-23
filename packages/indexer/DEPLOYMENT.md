@@ -254,7 +254,15 @@ railway run psql $DATABASE_URL
 
 ### Resync from Scratch
 
-1. Connect to PostgreSQL
+**Option 1: Environment Variable (Recommended)**
+
+Set `RESET_CHECKPOINTS=true` in Railway environment variables, then redeploy. This will automatically truncate the checkpoint table on startup, forcing all indexers to restart from their configured `startingBlock`.
+
+After successful restart, remove the `RESET_CHECKPOINTS` variable to prevent repeated resets.
+
+**Option 2: Manual SQL**
+
+1. Connect to PostgreSQL via Railway dashboard or CLI
 2. Truncate checkpoint table:
    ```sql
    TRUNCATE _apibara_checkpoints CASCADE;
