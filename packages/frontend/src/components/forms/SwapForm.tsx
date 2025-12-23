@@ -25,17 +25,19 @@ import {
   type SwapResult,
 } from '@/lib/math/amm';
 import { formatWad, parseWad, WAD_BIGINT } from '@/lib/math/wad';
+import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput } from './TokenInput';
 
 interface SwapFormProps {
   market: MarketData;
+  className?: string;
 }
 
 type TokenType = 'PT' | 'YT';
 
-export function SwapForm({ market }: SwapFormProps): ReactNode {
+export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
   const { slippageBps, slippagePercent } = useTransactionSettings();
   const [tokenType, setTokenType] = useState<TokenType>('PT');
@@ -259,114 +261,118 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
   };
 
   return (
-    <Card>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader>
         <CardTitle>Swap</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Token Type Selector (PT vs YT) */}
-        <Tabs
-          value={tokenType}
-          onValueChange={(value) => {
-            handleTokenTypeChange(value as TokenType);
-          }}
-          className="w-full"
-        >
-          <TabsList className="w-full">
-            <TabsTrigger value="PT" className="flex-1">
-              PT (Principal)
-            </TabsTrigger>
-            <TabsTrigger value="YT" className="flex-1">
-              YT (Yield)
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Buy/Sell Toggle */}
-        <Tabs
-          value={isBuying ? 'buy' : 'sell'}
-          onValueChange={(value) => {
-            setIsBuying(value === 'buy');
-            setInputAmount('');
-            resetSwap();
-            priceImpactWarning.reset();
-          }}
-          className="w-full"
-        >
-          <TabsList className="w-full">
-            <TabsTrigger
-              value="buy"
-              className="data-active:bg-primary data-active:text-primary-foreground flex-1"
-            >
-              Buy {tokenType}
-            </TabsTrigger>
-            <TabsTrigger
-              value="sell"
-              className="data-active:bg-destructive data-active:text-primary-foreground flex-1"
-            >
-              Sell {tokenType}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Input Token */}
-        <TokenInput
-          label={`From (${inputLabel})`}
-          tokenAddress={inputToken}
-          tokenSymbol={inputLabel}
-          value={inputAmount}
-          onChange={setInputAmount}
-          error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
-        />
-
-        {/* Swap Direction Indicator */}
-        <div className="flex justify-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleDirection}
-            className="rounded-full"
-            aria-label="Toggle swap direction"
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        {/* Top Section - Token Selection & Input */}
+        <div className="space-y-4">
+          {/* Token Type Selector (PT vs YT) */}
+          <Tabs
+            value={tokenType}
+            onValueChange={(value) => {
+              handleTokenTypeChange(value as TokenType);
+            }}
+            className="w-full"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-              />
-            </svg>
-          </Button>
+            <TabsList className="w-full">
+              <TabsTrigger value="PT" className="flex-1">
+                PT (Principal)
+              </TabsTrigger>
+              <TabsTrigger value="YT" className="flex-1">
+                YT (Yield)
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Buy/Sell Toggle */}
+          <Tabs
+            value={isBuying ? 'buy' : 'sell'}
+            onValueChange={(value) => {
+              setIsBuying(value === 'buy');
+              setInputAmount('');
+              resetSwap();
+              priceImpactWarning.reset();
+            }}
+            className="w-full"
+          >
+            <TabsList className="w-full">
+              <TabsTrigger
+                value="buy"
+                className="data-active:bg-primary data-active:text-primary-foreground flex-1"
+              >
+                Buy {tokenType}
+              </TabsTrigger>
+              <TabsTrigger
+                value="sell"
+                className="data-active:bg-destructive data-active:text-primary-foreground flex-1"
+              >
+                Sell {tokenType}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Input Token */}
+          <TokenInput
+            label={`From (${inputLabel})`}
+            tokenAddress={inputToken}
+            tokenSymbol={inputLabel}
+            value={inputAmount}
+            onChange={setInputAmount}
+            error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
+          />
+
+          {/* Swap Direction Indicator */}
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDirection}
+              className="rounded-full"
+              aria-label="Toggle swap direction"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                />
+              </svg>
+            </Button>
+          </div>
+
+          {/* Output Preview */}
+          <Card size="sm" className="bg-muted">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">To ({outputLabel})</span>
+                <span className="text-muted-foreground text-sm">
+                  Min: {formatWad(minOutput, 6)} {outputLabel}
+                </span>
+              </div>
+              <div className="text-foreground mt-2 text-2xl font-semibold">
+                {formatWad(expectedOutput, 6)} {outputLabel}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Output Preview */}
-        <Card size="sm" className="bg-muted">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-sm">To ({outputLabel})</span>
-              <span className="text-muted-foreground text-sm">
-                Min: {formatWad(minOutput, 6)} {outputLabel}
-              </span>
-            </div>
-            <div className="text-foreground mt-2 text-2xl font-semibold">
-              {formatWad(expectedOutput, 6)} {outputLabel}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Price Impact & Rate */}
-        {isValidAmount && (
+        {/* Bottom Section - Settings & Submit */}
+        <div className="space-y-4">
+          {/* Price Impact & Rate - Always visible */}
           <Card size="sm" className="bg-muted/30">
             <CardContent className="space-y-2 p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Rate</span>
-                <span className="text-foreground">
+                <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
                   1 {inputLabel} ={' '}
                   {parsedInputAmount > BigInt(0)
                     ? new BigNumber(expectedOutput.toString())
                         .dividedBy(parsedInputAmount.toString())
                         .toFixed(6)
-                    : '0'}{' '}
+                    : '-'}{' '}
                   {outputLabel}
                 </span>
               </div>
@@ -374,35 +380,42 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                 <span className="text-muted-foreground">Price Impact</span>
                 <span
                   className={
-                    priceImpactSeverity === 'very-high'
-                      ? 'text-destructive font-medium'
-                      : priceImpactSeverity === 'high'
-                        ? 'text-destructive'
-                        : priceImpactSeverity === 'medium'
-                          ? 'text-chart-1'
-                          : 'text-foreground'
+                    !isValidAmount
+                      ? 'text-muted-foreground'
+                      : priceImpactSeverity === 'very-high'
+                        ? 'text-destructive font-medium'
+                        : priceImpactSeverity === 'high'
+                          ? 'text-destructive'
+                          : priceImpactSeverity === 'medium'
+                            ? 'text-chart-1'
+                            : 'text-foreground'
                   }
                 >
-                  {formatPriceImpact(priceImpact)}
+                  {isValidAmount ? formatPriceImpact(priceImpact) : '-'}
                 </span>
               </div>
               {/* Implied APY Change */}
               {(direction === 'buy_pt' || direction === 'sell_pt') && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Implied APY</span>
-                  <span className="text-foreground">
+                  <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
                     {(impliedApyBefore * 100).toFixed(2)}%{' '}
                     <span className="text-muted-foreground">→</span>{' '}
                     <span
                       className={
-                        impliedApyAfter > impliedApyBefore
-                          ? 'text-primary'
-                          : impliedApyAfter < impliedApyBefore
-                            ? 'text-destructive'
-                            : ''
+                        !isValidAmount
+                          ? 'text-muted-foreground'
+                          : impliedApyAfter > impliedApyBefore
+                            ? 'text-primary'
+                            : impliedApyAfter < impliedApyBefore
+                              ? 'text-destructive'
+                              : ''
                       }
                     >
-                      {(impliedApyAfter * 100).toFixed(2)}%
+                      {isValidAmount
+                        ? (impliedApyAfter * 100).toFixed(2)
+                        : (impliedApyBefore * 100).toFixed(2)}
+                      %
                     </span>
                   </span>
                 </div>
@@ -412,84 +425,93 @@ export function SwapForm({ market }: SwapFormProps): ReactNode {
                 <span className="text-foreground">{slippagePercent}</span>
               </div>
               {/* Fee info */}
-              {swapResult && swapResult.fee > 0n && (
-                <div className="text-muted-foreground flex justify-between">
-                  <span>Swap Fee</span>
-                  <span>{formatWad(swapResult.fee, 6)}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Price Impact Warning */}
-        {isValidAmount && priceImpactWarning.severity !== 'low' && (
-          <PriceImpactWarning
-            priceImpact={priceImpact}
-            onAcknowledge={priceImpactWarning.acknowledge}
-            acknowledged={priceImpactWarning.acknowledged}
-          />
-        )}
-
-        {/* Transaction Settings (Slippage & Deadline) */}
-        <TransactionSettingsPanel />
-
-        {/* YT Sell Collateral Warning */}
-        {direction === 'sell_yt' && isValidAmount && (
-          <Card size="sm" className="border-chart-1/30 bg-chart-1/10">
-            <CardContent className="flex items-start gap-2 p-3 text-sm">
-              <svg
-                className="text-chart-1 mt-0.5 h-4 w-4 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <p className="text-chart-1 font-medium">Collateral Required</p>
-                <p className="text-chart-1/80 mt-1">
-                  Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
-                  collateral. This will be refunded after the swap.
-                </p>
-                {hasInsufficientCollateral && (
-                  <p className="text-destructive mt-1">
-                    Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
-                  </p>
-                )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Swap Fee ({syLabel})</span>
+                <span
+                  className={
+                    isValidAmount && swapResult !== null && swapResult.fee > 0n
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
+                  }
+                >
+                  {isValidAmount && swapResult !== null && swapResult.fee > 0n
+                    ? formatWad(swapResult.fee, 6)
+                    : '-'}
+                </span>
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Transaction Status */}
-        {txStatus !== 'idle' && (
-          <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
-        )}
+          {/* Price Impact Warning */}
+          {isValidAmount && priceImpactWarning.severity !== 'low' && (
+            <PriceImpactWarning
+              priceImpact={priceImpact}
+              onAcknowledge={priceImpactWarning.acknowledge}
+              acknowledged={priceImpactWarning.acknowledged}
+            />
+          )}
 
-        {/* Submit Button */}
-        <Button onClick={handleSwap} disabled={!canSwap || isSwapping} className="w-full">
-          {isSwapping
-            ? 'Swapping...'
-            : !isConnected
-              ? 'Connect Wallet'
-              : !isValidAmount
-                ? 'Enter Amount'
-                : hasInsufficientBalance
-                  ? 'Insufficient Balance'
-                  : hasInsufficientCollateral
-                    ? 'Insufficient Collateral'
-                    : priceImpactWarning.requiresAcknowledgment && !priceImpactWarning.acknowledged
-                      ? 'Acknowledge Price Impact'
-                      : isSuccess
-                        ? 'Swapped!'
-                        : `Swap ${inputLabel} for ${outputLabel}`}
-        </Button>
+          {/* Transaction Settings (Slippage & Deadline) */}
+          <TransactionSettingsPanel />
+
+          {/* YT Sell Collateral Warning */}
+          {direction === 'sell_yt' && isValidAmount && (
+            <Card size="sm" className="border-chart-1/30 bg-chart-1/10">
+              <CardContent className="flex items-start gap-2 p-3 text-sm">
+                <svg
+                  className="text-chart-1 mt-0.5 h-4 w-4 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <p className="text-chart-1 font-medium">Collateral Required</p>
+                  <p className="text-chart-1/80 mt-1">
+                    Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
+                    collateral. This will be refunded after the swap.
+                  </p>
+                  {hasInsufficientCollateral && (
+                    <p className="text-destructive mt-1">
+                      Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Transaction Status */}
+          {txStatus !== 'idle' && (
+            <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+          )}
+
+          {/* Submit Button */}
+          <Button onClick={handleSwap} disabled={!canSwap || isSwapping} className="w-full">
+            {isSwapping
+              ? 'Swapping...'
+              : !isConnected
+                ? 'Connect Wallet'
+                : !isValidAmount
+                  ? 'Enter Amount'
+                  : hasInsufficientBalance
+                    ? 'Insufficient Balance'
+                    : hasInsufficientCollateral
+                      ? 'Insufficient Collateral'
+                      : priceImpactWarning.requiresAcknowledgment &&
+                          !priceImpactWarning.acknowledged
+                        ? 'Acknowledge Price Impact'
+                        : isSuccess
+                          ? 'Swapped!'
+                          : `Swap ${inputLabel} for ${outputLabel}`}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

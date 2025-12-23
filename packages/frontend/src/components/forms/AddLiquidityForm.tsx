@@ -12,12 +12,14 @@ import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@/
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { formatWad, formatWadCompact, parseWad } from '@/lib/math/wad';
+import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 
 import { TokenInput } from './TokenInput';
 
 interface AddLiquidityFormProps {
   market: MarketData;
+  className?: string;
 }
 
 const SLIPPAGE_OPTIONS = [
@@ -26,7 +28,7 @@ const SLIPPAGE_OPTIONS = [
   { label: '1%', value: 100 },
 ];
 
-export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
+export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): ReactNode {
   const { isConnected } = useStarknet();
   const [syAmount, setSyAmount] = useState('');
   const [ptAmount, setPtAmount] = useState('');
@@ -163,64 +165,70 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
   }, [isSuccess]);
 
   return (
-    <Card>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader>
         <CardTitle>Add Liquidity</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Balanced Mode Toggle */}
-        <div className="flex items-center gap-2">
-          <Switch checked={isBalanced} onCheckedChange={setIsBalanced} />
-          <span className="text-muted-foreground text-sm">Balanced deposit</span>
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        {/* Top Section - Inputs */}
+        <div className="space-y-4">
+          {/* Balanced Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <Switch checked={isBalanced} onCheckedChange={setIsBalanced} />
+            <span className="text-muted-foreground text-sm">Balanced deposit</span>
+          </div>
+
+          {/* SY Input */}
+          <TokenInput
+            label={`${sySymbol} Amount`}
+            tokenAddress={market.syAddress}
+            tokenSymbol={sySymbol}
+            value={syAmount}
+            onChange={setSyAmount}
+            error={hasInsufficientSyBalance ? 'Insufficient balance' : undefined}
+          />
+
+          {/* PT Input */}
+          <TokenInput
+            label={`${ptSymbol} Amount`}
+            tokenAddress={market.ptAddress}
+            tokenSymbol={ptSymbol}
+            value={ptAmount}
+            onChange={(value): void => {
+              if (!isBalanced) {
+                setPtAmount(value);
+              }
+            }}
+            disabled={isBalanced}
+            error={hasInsufficientPtBalance ? 'Insufficient balance' : undefined}
+          />
+
+          {/* Output Preview */}
+          <Card size="sm" className="bg-muted">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
+                <span className="text-muted-foreground text-sm">
+                  Min: {isValidAmount ? formatWad(minLpOut, 6) : '-'} LP
+                </span>
+              </div>
+              <div className="text-foreground mt-2 text-2xl font-semibold">
+                {isValidAmount ? formatWad(expectedLpOut, 6) : '0.000000'} LP
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* SY Input */}
-        <TokenInput
-          label={`${sySymbol} Amount`}
-          tokenAddress={market.syAddress}
-          tokenSymbol={sySymbol}
-          value={syAmount}
-          onChange={setSyAmount}
-          error={hasInsufficientSyBalance ? 'Insufficient balance' : undefined}
-        />
-
-        {/* PT Input */}
-        <TokenInput
-          label={`${ptSymbol} Amount`}
-          tokenAddress={market.ptAddress}
-          tokenSymbol={ptSymbol}
-          value={ptAmount}
-          onChange={(value): void => {
-            if (!isBalanced) {
-              setPtAmount(value);
-            }
-          }}
-          disabled={isBalanced}
-          error={hasInsufficientPtBalance ? 'Insufficient balance' : undefined}
-        />
-
-        {/* Output Preview */}
-        <Card size="sm" className="bg-muted">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
-              <span className="text-muted-foreground text-sm">
-                Min: {formatWad(minLpOut, 6)} LP
-              </span>
-            </div>
-            <div className="text-foreground mt-2 text-2xl font-semibold">
-              {formatWad(expectedLpOut, 6)} LP
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pool Info */}
-        {isValidAmount && (
+        {/* Bottom Section - Info & Submit */}
+        <div className="space-y-4">
+          {/* Pool Info - Always visible */}
           <Card size="sm" className="bg-muted/30">
             <CardContent className="space-y-2 p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Share of Pool</span>
-                <span className="text-foreground">{poolShare.toFixed(4)}%</span>
+                <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
+                  {isValidAmount ? poolShare.toFixed(4) : '-'}%
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pool Reserves</span>
@@ -235,53 +243,53 @@ export function AddLiquidityForm({ market }: AddLiquidityFormProps): ReactNode {
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Slippage Settings */}
-        <div>
-          <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
-          <ToggleGroup className="flex gap-1">
-            {SLIPPAGE_OPTIONS.map((option) => (
-              <ToggleGroupItem
-                key={option.value}
-                pressed={slippageBps === option.value}
-                onPressedChange={() => {
-                  setSlippageBps(option.value);
-                }}
-                variant="outline"
-                size="sm"
-              >
-                {option.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          {/* Slippage Settings */}
+          <div>
+            <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+            <ToggleGroup className="flex gap-1">
+              {SLIPPAGE_OPTIONS.map((option) => (
+                <ToggleGroupItem
+                  key={option.value}
+                  pressed={slippageBps === option.value}
+                  onPressedChange={() => {
+                    setSlippageBps(option.value);
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  {option.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+
+          {/* Transaction Status */}
+          {txStatus !== 'idle' && (
+            <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+          )}
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleAddLiquidity}
+            disabled={!canAddLiquidity || isAdding}
+            className="w-full"
+          >
+            {isAdding
+              ? 'Adding Liquidity...'
+              : !isConnected
+                ? 'Connect Wallet'
+                : !isValidAmount
+                  ? 'Enter Amounts'
+                  : hasInsufficientSyBalance
+                    ? 'Insufficient SY Balance'
+                    : hasInsufficientPtBalance
+                      ? 'Insufficient PT Balance'
+                      : isSuccess
+                        ? 'Liquidity Added!'
+                        : 'Add Liquidity'}
+          </Button>
         </div>
-
-        {/* Transaction Status */}
-        {txStatus !== 'idle' && (
-          <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
-        )}
-
-        {/* Submit Button */}
-        <Button
-          onClick={handleAddLiquidity}
-          disabled={!canAddLiquidity || isAdding}
-          className="w-full"
-        >
-          {isAdding
-            ? 'Adding Liquidity...'
-            : !isConnected
-              ? 'Connect Wallet'
-              : !isValidAmount
-                ? 'Enter Amounts'
-                : hasInsufficientSyBalance
-                  ? 'Insufficient SY Balance'
-                  : hasInsufficientPtBalance
-                    ? 'Insufficient PT Balance'
-                    : isSuccess
-                      ? 'Liquidity Added!'
-                      : 'Add Liquidity'}
-        </Button>
       </CardContent>
     </Card>
   );
