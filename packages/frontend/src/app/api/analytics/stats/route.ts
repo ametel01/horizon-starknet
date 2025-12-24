@@ -6,6 +6,7 @@ import {
   marketCurrentState,
   protocolDailyStats,
   enrichedRouterSwap,
+  enrichedRouterSwapYT,
   routerSwap,
   routerSwapYT,
   enrichedRouterMintPY,
@@ -167,13 +168,22 @@ export async function GET(_request: NextRequest): Promise<NextResponse<StatsResp
         swapCount24h++;
       }
 
-      // Try to get fees from enriched view
-      const enrichedSwaps = await db
-        .select({ fee: enrichedRouterSwap.fee })
-        .from(enrichedRouterSwap)
-        .where(gte(enrichedRouterSwap.block_timestamp, oneDayAgo));
+      // Try to get fees from enriched views (both PT swaps and YT swaps)
+      const [enrichedSwaps, enrichedYtSwaps] = await Promise.all([
+        db
+          .select({ fee: enrichedRouterSwap.fee })
+          .from(enrichedRouterSwap)
+          .where(gte(enrichedRouterSwap.block_timestamp, oneDayAgo)),
+        db
+          .select({ fee: enrichedRouterSwapYT.fee })
+          .from(enrichedRouterSwapYT)
+          .where(gte(enrichedRouterSwapYT.block_timestamp, oneDayAgo)),
+      ]);
 
       for (const swap of enrichedSwaps) {
+        fees24h += BigInt(swap.fee ?? '0');
+      }
+      for (const swap of enrichedYtSwaps) {
         fees24h += BigInt(swap.fee ?? '0');
       }
     }
