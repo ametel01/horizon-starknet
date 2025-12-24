@@ -32,7 +32,7 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
   const timeToExpiry = expiry > now ? expiry - now : 1n;
   const yearsToExpiry = Number(timeToExpiry) / SECONDS_PER_YEAR;
 
-  // 1. PT Fixed APY (implied rate from market)
+  // 1. PT Fixed APY (implied rate from market - already annualized on-chain)
   const ptFixedApy = calculatePtFixedApy(lnImpliedRate);
 
   // 2. Underlying Interest APY
@@ -73,7 +73,13 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
 
 /**
  * Calculate PT fixed APY from ln(implied_rate)
- * APY = e^(ln_implied_rate) - 1
+ *
+ * The on-chain lnImpliedRate is ALREADY annualized:
+ * lnImpliedRate = ln(exchangeRate) * SECONDS_PER_YEAR / timeToExpiry
+ *
+ * Therefore: APY = e^(ln_implied_rate) - 1 (no additional annualization needed)
+ *
+ * @param lnImpliedRate The ln of implied rate in WAD (already annualized)
  */
 export function calculatePtFixedApy(lnImpliedRate: bigint): number {
   if (lnImpliedRate === 0n) {
