@@ -376,3 +376,19 @@ export interface PortfolioHistoryResponse {
     eventCount: number;
   };
 }
+
+// Combined protocol stats (single API call)
+export interface ProtocolStatsResponse {
+  tvl: {
+    totalSyReserve: string;
+    totalPtReserve: string;
+    marketCount: number;
+  };
+  volume24h: {
+    syVolume: string;
+    ptVolume: string;
+    swapCount: number;
+    uniqueSwappers: number;
+  };
+  fees24h: string;
+}
