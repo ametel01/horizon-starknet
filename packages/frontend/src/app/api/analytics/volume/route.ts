@@ -99,6 +99,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
           swapCount7d += stat.swap_count ?? 0;
         }
       }
+
+      // Reverse to get oldest first (materialized view returns in DESC order)
+      history.reverse();
     } else {
       // Fallback: Query raw router_swap and router_swap_yt events directly
       console.warn('[analytics/volume] Using fallback query from router_swap');
@@ -118,11 +121,30 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
       const uniqueSenders24h = new Set<string>();
       const uniqueSenders7d = new Set<string>();
 
+      // Aggregate by day for history
+      const dailyVolume = new Map<
+        string,
+        { syVol: bigint; ptVol: bigint; swaps: number; senders: Set<string> }
+      >();
+
       // Process PT swaps
       for (const swap of ptSwaps) {
         const timestamp = swap.block_timestamp;
+        const dateKey = timestamp.toISOString().split('T')[0] ?? '';
         const syVol = BigInt(swap.sy_in) + BigInt(swap.sy_out);
         const ptVol = BigInt(swap.pt_in) + BigInt(swap.pt_out);
+
+        // Aggregate by day
+        if (!dailyVolume.has(dateKey)) {
+          dailyVolume.set(dateKey, { syVol: 0n, ptVol: 0n, swaps: 0, senders: new Set() });
+        }
+        const dayEntry = dailyVolume.get(dateKey);
+        if (dayEntry) {
+          dayEntry.syVol += syVol;
+          dayEntry.ptVol += ptVol;
+          dayEntry.swaps++;
+          dayEntry.senders.add(swap.sender);
+        }
 
         if (timestamp >= oneDayAgo) {
           syVolume24h += syVol;
@@ -142,7 +164,19 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
       // Process YT swaps (add SY volume, YT doesn't contribute to PT volume)
       for (const swap of ytSwaps) {
         const timestamp = swap.block_timestamp;
+        const dateKey = timestamp.toISOString().split('T')[0] ?? '';
         const syVol = BigInt(swap.sy_in) + BigInt(swap.sy_out);
+
+        // Aggregate by day
+        if (!dailyVolume.has(dateKey)) {
+          dailyVolume.set(dateKey, { syVol: 0n, ptVol: 0n, swaps: 0, senders: new Set() });
+        }
+        const dayEntry = dailyVolume.get(dateKey);
+        if (dayEntry) {
+          dayEntry.syVol += syVol;
+          dayEntry.swaps++;
+          dayEntry.senders.add(swap.sender);
+        }
 
         if (timestamp >= oneDayAgo) {
           syVolume24h += syVol;
@@ -159,19 +193,18 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
 
       uniqueSwappers24h = uniqueSenders24h.size;
 
-      // Create history entry for today
-      const today = new Date().toISOString().split('T')[0] ?? '';
-      history.push({
-        date: today,
-        syVolume: syVolume24h.toString(),
-        ptVolume: ptVolume24h.toString(),
-        swapCount: swapCount24h,
-        uniqueSwappers: uniqueSwappers24h,
-      });
+      // Convert daily aggregates to history array (sorted oldest first)
+      const sortedDays = Array.from(dailyVolume.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+      for (const [date, data] of sortedDays) {
+        history.push({
+          date,
+          syVolume: data.syVol.toString(),
+          ptVolume: data.ptVol.toString(),
+          swapCount: data.swaps,
+          uniqueSwappers: data.senders.size,
+        });
+      }
     }
-
-    // Reverse to get oldest first
-    history.reverse();
 
     return NextResponse.json({
       total24h: {
