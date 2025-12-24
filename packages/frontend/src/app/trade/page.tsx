@@ -1,20 +1,31 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ImpliedRateChart, SwapHistoryTable } from '@/components/analytics';
 import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
 import { SwapForm } from '@/components/forms/SwapForm';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { useApyBreakdown } from '@/hooks/useApyBreakdown';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { usePositions } from '@/hooks/usePositions';
 import { useStarknet } from '@/hooks/useStarknet';
 import { formatWadCompact } from '@/lib/math/wad';
+
+// Lazy load chart components (recharts is heavy)
+const ImpliedRateChart = dynamic(
+  () => import('@/components/analytics/ImpliedRateChart').then((m) => m.ImpliedRateChart),
+  { loading: () => <Skeleton className="h-[200px] w-full rounded-lg" />, ssr: false }
+);
+
+const SwapHistoryTable = dynamic(
+  () => import('@/components/analytics/SwapHistoryTable').then((m) => m.SwapHistoryTable),
+  { loading: () => <Skeleton className="h-[300px] w-full rounded-lg" /> }
+);
 
 // Helper to get market symbol
 function getMarketSymbol(market: {
