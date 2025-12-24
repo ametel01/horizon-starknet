@@ -1,0 +1,66 @@
+name: Indexer CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/indexer/**'
+      - '.github/workflows/indexer-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/indexer/**'
+      - '.github/workflows/indexer-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/indexer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Format check
+        run: bun run format:check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: quality
+    defaults:
+      run:
+        working-directory: packages/indexer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
