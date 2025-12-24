@@ -2,6 +2,7 @@ import { desc, and, gte, or, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, ytInterestClaimed, userPyPositions } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,7 +138,7 @@ export async function GET(
       summaryByPosition,
     });
   } catch (error) {
-    console.error('[users/[address]/yield] Error fetching yield:', error);
+    logError(error, { module: 'users/yield', address });
     return NextResponse.json(
       {
         address,

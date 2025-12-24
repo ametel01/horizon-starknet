@@ -2,6 +2,7 @@ import { eq, desc, and, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketSwap, routerSwap, routerSwapYT } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -184,7 +185,7 @@ export async function GET(
       hasMore,
     });
   } catch (error) {
-    console.error('[markets/[address]/swaps] Error fetching swaps:', error);
+    logError(error, { module: 'markets/swaps', marketAddress: address });
     return NextResponse.json({ swaps: [], total: 0, hasMore: false }, { status: 500 });
   }
 }

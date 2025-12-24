@@ -2,6 +2,7 @@ import { eq, or, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, userPyPositions, marketLpPositions, marketCurrentState } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -160,7 +161,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[users/[address]/positions] Error fetching positions:', error);
+    logError(error, { module: 'users/positions', address });
     return NextResponse.json(
       {
         address,

@@ -87,35 +87,64 @@ Based on analysis of `NEXT_BEST_PRACTICES.md` against the current `packages/fron
 
 ---
 
-### 1.3 Implement Structured Logging
+### 1.3 Implement Structured Logging ✅ COMPLETED
 
 **Best Practice:** Error tracking with Sentry/Datadog
 
-**Current State:** Only `console.error` used
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Install Sentry: `bun add @sentry/nextjs`
-- [ ] Configure Sentry instrumentation:
-  - `sentry.client.config.ts`
-  - `sentry.server.config.ts`
-  - `sentry.edge.config.ts`
-- [ ] Add to `next.config.ts`:
-  ```ts
-  const { withSentryConfig } = require('@sentry/nextjs');
-  module.exports = withSentryConfig(nextConfig, sentryOptions);
-  ```
-- [ ] Create error utility with context:
-  ```ts
-  // src/lib/logger.ts
-  import * as Sentry from '@sentry/nextjs';
+**Files Created/Modified:**
+- [x] Installed `@sentry/nextjs`
+- [x] `instrumentation-client.ts` - Client-side Sentry initialization with:
+  - Replay integration for error context
+  - Browser tracing integration
+  - Console logging integration (auto-captures console.warn/error)
+  - `enableLogs: true` for structured logging
+- [x] `sentry.server.config.ts` - Server-side Sentry with enableLogs and console integration
+- [x] `sentry.edge.config.ts` - Edge runtime Sentry with enableLogs
+- [x] `next.config.ts` - Updated with `withSentryConfig` wrapper
+- [x] `src/lib/logger.ts` - Structured logging utility using Sentry's logger:
+  - `logError()` - Captures exception + structured log
+  - `logWarn()` - Warning logs via `logger.warn`
+  - `logInfo()` - Info logs via `logger.info`
+  - `logDebug()` - Debug logs via `logger.debug`
+  - `logTrace()` - Trace logs via `logger.trace`
+  - `logFatal()` - Fatal logs via `logger.fatal`
+  - `setUser()` - Sets user context for error tracking
+  - `addBreadcrumb()` - Adds navigation breadcrumbs
+  - `trace()` - Performance tracing with `Sentry.startSpan`
+  - `traceAsync()` - Async tracing with attributes
+  - `fmt` - Template literal helper for structured logs
+  - `logger` - Direct access to Sentry logger
+- [x] Replaced 26 `console.error` calls with `logError` across:
+  - API routes (12 files)
+  - Error boundaries (4 files)
+  - Hooks (1 file)
+  - Components (1 file)
+  - Wallet utilities (1 file)
+  - Faucet page (1 file)
+- [x] `.env.example` - Added Sentry environment variables:
+  - `NEXT_PUBLIC_SENTRY_DSN`
+  - `SENTRY_DSN`
+  - `SENTRY_ORG`
+  - `SENTRY_PROJECT`
 
-  export function logError(error: Error, context?: Record<string, unknown>) {
-    Sentry.captureException(error, { extra: context });
-    console.error(error, context);
-  }
-  ```
-- [ ] Replace all `console.error` calls with `logError`
-- [ ] Add environment variable: `SENTRY_DSN`
+**Usage Examples:**
+```ts
+import { logError, logInfo, trace, logger, fmt } from '@/lib/logger';
+
+// Error logging with context
+logError(error, { module: 'markets', marketAddress });
+
+// Template literal logging
+logger.debug(fmt`Cache miss for user: ${userId}`);
+
+// Performance tracing
+const result = await trace('ui.click', 'Swap Button', async (span) => {
+  span.setAttribute('market', marketAddress);
+  return await executeSwap();
+});
+```
 
 ---
 

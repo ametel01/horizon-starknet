@@ -2,6 +2,7 @@ import { eq, desc, gte, and } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketDailyStats, rateHistory } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +90,7 @@ export async function GET(
       });
     }
   } catch (error) {
-    console.error('[markets/[address]/rates] Error fetching rates:', error);
+    logError(error, { module: 'markets/rates', marketAddress: address });
     return NextResponse.json({ market: address, resolution, dataPoints: [] }, { status: 500 });
   }
 }

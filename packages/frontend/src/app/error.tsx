@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/Card';
+import { logError } from '@/lib/logger';
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -19,8 +20,7 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps): React.ReactNode {
   useEffect(() => {
-    // Log to error reporting service in production
-    console.error('Global error:', error);
+    logError(error, { module: 'app', page: 'global' });
   }, [error]);
 
   return (

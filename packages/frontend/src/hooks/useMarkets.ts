@@ -5,6 +5,7 @@ import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
 import { getMarketInfoByAddress, getMarketInfos } from '@/lib/constants/addresses';
+import { logError } from '@/lib/logger';
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
 import { getMarketContract, getMarketFactoryContract } from '@/lib/starknet/contracts';
 import type { NetworkId } from '@/lib/starknet/provider';
@@ -118,7 +119,7 @@ async function fetchMarketData(
 
     return baseData;
   } catch (error) {
-    console.error('[fetchMarketData] Error for market:', marketAddress, error);
+    logError(error, { module: 'useMarkets', action: 'fetchMarketData', marketAddress });
     throw error;
   }
 }
@@ -314,7 +315,7 @@ export function useMarketAddresses(): {
 
         return addresses;
       } catch (error) {
-        console.error('[useMarketAddresses] Error fetching from chain:', error);
+        logError(error, { module: 'useMarkets', action: 'useMarketAddresses' });
         // Return static addresses on error
         if (staticAddresses.length > 0) {
           console.warn('[useMarketAddresses] Using static addresses as fallback:', staticAddresses);
@@ -406,7 +407,7 @@ export function useAllMarketAddresses(): {
 
         return addresses;
       } catch (error) {
-        console.error('[useAllMarketAddresses] Error fetching from chain:', error);
+        logError(error, { module: 'useMarkets', action: 'useAllMarketAddresses' });
         if (staticAddresses.length > 0) {
           return staticAddresses;
         }

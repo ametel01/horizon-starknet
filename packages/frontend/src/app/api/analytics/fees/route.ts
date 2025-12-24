@@ -9,6 +9,7 @@ import {
   enrichedRouterSwap,
   enrichedRouterSwapYT,
 } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -272,7 +273,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
       })),
     });
   } catch (error) {
-    console.error('[analytics/fees] Error fetching fees:', error);
+    logError(error, { module: 'analytics/fees' });
     return NextResponse.json(
       {
         total24h: '0',

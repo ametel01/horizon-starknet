@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +90,7 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
         lagBlocks = currentChainBlock - lastIndexedBlock;
       }
     } catch (error) {
-      console.error('[health] Error fetching indexer status:', error);
+      logError(error, { module: 'health' });
       queryError = error instanceof Error ? error.message : 'Failed to query indexer data';
     }
   }

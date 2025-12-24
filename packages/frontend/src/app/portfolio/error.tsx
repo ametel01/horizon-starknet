@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/Card';
+import { logError } from '@/lib/logger';
 
 interface PortfolioErrorProps {
   error: Error & { digest?: string };
@@ -20,7 +21,7 @@ interface PortfolioErrorProps {
 
 export default function PortfolioError({ error, reset }: PortfolioErrorProps): React.ReactNode {
   useEffect(() => {
-    console.error('Portfolio page error:', error);
+    logError(error, { module: 'app', page: 'portfolio' });
   }, [error]);
 
   return (

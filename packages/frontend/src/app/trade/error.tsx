@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/Card';
+import { logError } from '@/lib/logger';
 
 interface TradeErrorProps {
   error: Error & { digest?: string };
@@ -20,7 +21,7 @@ interface TradeErrorProps {
 
 export default function TradeError({ error, reset }: TradeErrorProps): React.ReactNode {
   useEffect(() => {
-    console.error('Trade page error:', error);
+    logError(error, { module: 'app', page: 'trade' });
   }, [error]);
 
   return (

@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/Card';
+import { logError } from '@/lib/logger';
 
 interface PoolsErrorProps {
   error: Error & { digest?: string };
@@ -20,7 +21,7 @@ interface PoolsErrorProps {
 
 export default function PoolsError({ error, reset }: PoolsErrorProps): React.ReactNode {
   useEffect(() => {
-    console.error('Pools page error:', error);
+    logError(error, { module: 'app', page: 'pools' });
   }, [error]);
 
   return (

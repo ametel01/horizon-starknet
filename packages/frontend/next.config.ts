@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import createMDX from '@next/mdx';
 import type { NextConfig } from 'next';
 import path from 'path';
@@ -42,4 +43,37 @@ const withMDX = createMDX({
   extension: /\.mdx?$/,
 });
 
-export default withMDX(nextConfig);
+// Sentry configuration options - only include org/project if defined
+const sentryOrg = process.env.SENTRY_ORG;
+const sentryProject = process.env.SENTRY_PROJECT;
+
+const sentryWebpackPluginOptions = {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
+
+  // Only include org/project if they're defined
+  ...(sentryOrg && { org: sentryOrg }),
+  ...(sentryProject && { project: sentryProject }),
+
+  // Only upload source maps in production with a valid auth token
+  silent: !process.env.CI,
+
+  // Upload source maps for error tracking
+  widenClientFileUpload: true,
+
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+
+  // Hide source maps from browsers
+  hideSourceMaps: true,
+
+  // Automatically annotate React components for better stack traces
+  reactComponentAnnotation: {
+    enabled: true,
+  },
+
+  // Route browser requests to Sentry through a Next.js rewrite to avoid ad-blockers
+  tunnelRoute: '/monitoring',
+};
+
+export default withSentryConfig(withMDX(nextConfig), sentryWebpackPluginOptions);

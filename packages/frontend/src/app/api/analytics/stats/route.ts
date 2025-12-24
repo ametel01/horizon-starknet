@@ -16,6 +16,7 @@ import {
   syDeposit,
   syRedeem,
 } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -285,7 +286,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse<StatsResp
       fees24h: fees24h.toString(),
     });
   } catch (error) {
-    console.error('[analytics/stats] Error fetching stats:', error);
+    logError(error, { module: 'analytics/stats' });
     return NextResponse.json(
       {
         tvl: { totalSyReserve: '0', totalPtReserve: '0', marketCount: 0 },
