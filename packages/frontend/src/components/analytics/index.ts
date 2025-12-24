@@ -1,3 +1,6 @@
+export { FeeByMarket, FeeByMarketCompact } from './FeeByMarket';
+export { FeeCollectionInline, FeeCollectionLog } from './FeeCollectionLog';
+export { FeeRevenueChart, FeeStatsCard } from './FeeRevenueChart';
 export { ImpliedRateChart, ImpliedRateCompact } from './ImpliedRateChart';
 export { IndexerStatusBanner } from './IndexerStatusBanner';
 export { ProtocolStats, ProtocolStatsCompact } from './ProtocolStats';

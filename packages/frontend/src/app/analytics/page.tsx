@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 import {
+  FeeByMarket,
+  FeeCollectionLog,
+  FeeRevenueChart,
+  FeeStatsCard,
   ProtocolStats,
   ProtocolTvlCard,
   TvlBreakdown,
@@ -77,6 +81,27 @@ export default function AnalyticsPage(): ReactNode {
         </div>
       </section>
 
+      {/* Fee Revenue Section */}
+      <section className="mb-8">
+        <h2 className="text-foreground mb-4 text-lg font-semibold">Fee Revenue</h2>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Fee Stats Card */}
+          <FeeStatsCard className="lg:col-span-1" />
+
+          {/* Fee Revenue Chart */}
+          <FeeRevenueChart className="lg:col-span-2" />
+        </div>
+      </section>
+
+      {/* Fee Breakdown Section */}
+      <section className="mb-8">
+        <h2 className="text-foreground mb-4 text-lg font-semibold">Fee Breakdown</h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <FeeByMarket />
+          <FeeCollectionLog />
+        </div>
+      </section>
+
       {/* Info Section */}
       <section>
         <div className="border-border bg-card rounded-lg border p-6">
@@ -96,6 +121,12 @@ export default function AnalyticsPage(): ReactNode {
               <span className="text-foreground font-medium">Market Breakdown</span> shows how TVL
               and volume are distributed across different yield-bearing assets. Each market
               represents a different underlying token with its own maturity date.
+            </p>
+            <p>
+              <span className="text-foreground font-medium">Fee Revenue</span> tracks protocol fees
+              collected from swaps. Fees are charged on each trade and distributed between LPs and
+              the protocol. The fee collection log shows when accumulated fees are withdrawn by
+              administrators.
             </p>
             <p>
               <span className="text-foreground font-medium">Note:</span> Historical data is being
