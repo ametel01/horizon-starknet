@@ -19,6 +19,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Event selectors using Apibara's getSelector helper
@@ -63,12 +64,12 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
-  const database = drizzle({
-    schema: {
+  const database = drizzle(
+    getDrizzleOptions({
       factoryYieldContractsCreated,
       factoryClassHashesUpdated,
-    },
-  });
+    }),
+  );
 
   console.log(
     `[factory] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
@@ -97,28 +98,32 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       ],
     },
     async transform({ block, endCursor }) {
-      const { db } = useDrizzleStorage();
-      const { events, header } = block;
-
-      const blockNumber = Number(header.blockNumber);
-      const blockTimestamp = header.timestamp;
-
-      // Log progress every 100 blocks or when there are events
-      if (blockNumber % 100 === 0 || events.length > 0) {
+      // Log progress every 1000 blocks (reduced frequency for performance)
+      const blockNumber = Number(block.header.blockNumber);
+      if (blockNumber % 1000 === 0) {
         console.log(
-          `[factory] Block ${blockNumber} | Events: ${events.length} | Cursor: ${endCursor?.orderKey}`,
+          `[factory] Block ${blockNumber} | Cursor: ${endCursor?.orderKey}`,
         );
       }
+
+      if (block.events.length === 0) return;
+
+      const { db } = useDrizzleStorage();
+      const { events, header } = block;
+      const blockTimestamp = header.timestamp;
+
+      // Collect events by type for batch insert
+      type YieldContractsRow = typeof factoryYieldContractsCreated.$inferInsert;
+      type ClassHashesRow = typeof factoryClassHashesUpdated.$inferInsert;
+
+      const yieldContractsRows: YieldContractsRow[] = [];
+      const classHashesRows: ClassHashesRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
 
         if (matchSelector(eventKey, YIELD_CONTRACTS_CREATED)) {
-          // Event: YieldContractsCreated (Enriched)
-          // Keys: [selector, sy, expiry]
-          // Data: [pt, yt, creator, underlying, underlying_symbol (ByteArray 3 felts),
-          //        initial_exchange_rate (u256 2 felts), timestamp, market_index]
           const sy = event.keys[1];
           const expiry = BigInt(event.keys[2] ?? "0");
 
@@ -127,20 +132,15 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const yt = data[1];
           const creator = data[2];
           const underlying = data[3];
-          // ByteArray for underlying_symbol starts at index 4 (3 felts)
           const underlyingSymbol = decodeByteArray(data as string[], 4);
-          // After ByteArray (3 felts at indices 4,5,6), initial_exchange_rate is u256 at indices 7,8
           const initialExchangeRate = BigInt(data[7] ?? "0");
-          // timestamp at index 9 (unused - we use block_timestamp from header)
-          const _timestamp = BigInt(data[9] ?? "0");
-          // market_index at index 10
           const marketIndex = Number(data[10] ?? "0");
 
           console.log(
             `[factory] YieldContractsCreated: SY=${sy}, PT=${pt}, YT=${yt}, underlying=${underlying}, symbol=${underlyingSymbol}`,
           );
 
-          await db.insert(factoryYieldContractsCreated).values({
+          yieldContractsRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -155,14 +155,12 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             market_index: marketIndex,
           });
         } else if (matchSelector(eventKey, CLASS_HASHES_UPDATED)) {
-          // Event: ClassHashesUpdated
-          // Data: [yt_class_hash, pt_class_hash]
           const ytClassHash = event.data[0];
           const ptClassHash = event.data[1];
 
           console.log(`[factory] ClassHashesUpdated at block ${blockNumber}`);
 
-          await db.insert(factoryClassHashesUpdated).values({
+          classHashesRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -170,6 +168,21 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_class_hash: ptClassHash ?? "",
           });
         }
+      }
+
+      // Batch insert all events (parallel inserts for different tables)
+      const insertPromises: Promise<unknown>[] = [];
+      if (yieldContractsRows.length > 0)
+        insertPromises.push(
+          db.insert(factoryYieldContractsCreated).values(yieldContractsRows),
+        );
+      if (classHashesRows.length > 0)
+        insertPromises.push(
+          db.insert(factoryClassHashesUpdated).values(classHashesRows),
+        );
+
+      if (insertPromises.length > 0) {
+        await Promise.all(insertPromises);
       }
     },
   });

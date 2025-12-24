@@ -19,6 +19,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Event selectors using Apibara's getSelector helper
@@ -65,12 +66,12 @@ export default function marketFactoryIndexer(
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
-  const database = drizzle({
-    schema: {
+  const database = drizzle(
+    getDrizzleOptions({
       marketFactoryMarketCreated,
       marketFactoryClassHashUpdated,
-    },
-  });
+    }),
+  );
 
   console.log(
     `[market-factory] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
@@ -99,49 +100,49 @@ export default function marketFactoryIndexer(
       ],
     },
     async transform({ block, endCursor }) {
-      const { db } = useDrizzleStorage();
-      const { events, header } = block;
-
-      const blockNumber = Number(header.blockNumber);
-      const blockTimestamp = header.timestamp;
-
-      // Log progress every 100 blocks or when there are events
-      if (blockNumber % 100 === 0 || events.length > 0) {
+      // Log progress every 1000 blocks (reduced frequency for performance)
+      const blockNumber = Number(block.header.blockNumber);
+      if (blockNumber % 1000 === 0) {
         console.log(
-          `[market-factory] Block ${blockNumber} | Events: ${events.length} | Cursor: ${endCursor?.orderKey}`,
+          `[market-factory] Block ${blockNumber} | Cursor: ${endCursor?.orderKey}`,
         );
       }
+
+      if (block.events.length === 0) return;
+
+      const { db } = useDrizzleStorage();
+      const { events, header } = block;
+      const blockTimestamp = header.timestamp;
+
+      // Collect events by type for batch insert
+      type MarketCreatedRow = typeof marketFactoryMarketCreated.$inferInsert;
+      type ClassHashRow = typeof marketFactoryClassHashUpdated.$inferInsert;
+
+      const marketCreatedRows: MarketCreatedRow[] = [];
+      const classHashRows: ClassHashRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
 
         if (matchSelector(eventKey, MARKET_CREATED)) {
-          // Event: MarketCreated
-          // Keys: [selector, pt, expiry]
-          // Data: [market, creator, scalar_root (u256), initial_anchor (u256),
-          //        fee_rate (u256), sy, yt, underlying, underlying_symbol (ByteArray),
-          //        initial_exchange_rate (u256), market_index]
           const pt = event.keys[1];
           const expiry = BigInt(event.keys[2] ?? "0");
 
           const data = event.data;
           const market = data[0];
           const creator = data[1];
-          // u256 is 2 felts: low, high
-          const scalarRoot = BigInt(data[2] ?? "0"); // low only for simplicity
+          const scalarRoot = BigInt(data[2] ?? "0");
           const initialAnchor = BigInt(data[4] ?? "0");
           const feeRate = BigInt(data[6] ?? "0");
           const sy = data[8];
           const yt = data[9];
           const underlying = data[10];
-          // ByteArray for underlying_symbol starts at index 11
           const underlyingSymbol = decodeByteArray(data as string[], 11);
-          // After ByteArray (3 felts), we have initial_exchange_rate (u256) and market_index
           const initialExchangeRate = BigInt(data[14] ?? "0");
           const marketIndex = Number(data[16] ?? "0");
 
-          await db.insert(marketFactoryMarketCreated).values({
+          marketCreatedRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -160,12 +161,10 @@ export default function marketFactoryIndexer(
             market_index: marketIndex,
           });
         } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {
-          // Event: MarketClassHashUpdated
-          // Data: [old_class_hash, new_class_hash]
           const oldClassHash = event.data[0];
           const newClassHash = event.data[1];
 
-          await db.insert(marketFactoryClassHashUpdated).values({
+          classHashRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -173,6 +172,21 @@ export default function marketFactoryIndexer(
             new_class_hash: newClassHash ?? "",
           });
         }
+      }
+
+      // Batch insert all events (parallel inserts for different tables)
+      const insertPromises: Promise<unknown>[] = [];
+      if (marketCreatedRows.length > 0)
+        insertPromises.push(
+          db.insert(marketFactoryMarketCreated).values(marketCreatedRows),
+        );
+      if (classHashRows.length > 0)
+        insertPromises.push(
+          db.insert(marketFactoryClassHashUpdated).values(classHashRows),
+        );
+
+      if (insertPromises.length > 0) {
+        await Promise.all(insertPromises);
       }
     },
   });
