@@ -316,7 +316,7 @@ interface ProtocolStats {
   volume24h: bigint;
   swaps24h: number;
   fees24h: bigint;
-  uniqueTraders24h: number;
+  uniqueUsers24h: number;
 }
 
 interface UseProtocolStatsReturn {
@@ -352,7 +352,7 @@ export function useProtocolStats(options: UseProtocolStatsOptions = {}): UseProt
         volume24h: BigInt(data.volume24h.syVolume) + BigInt(data.volume24h.ptVolume),
         swaps24h: data.volume24h.swapCount,
         fees24h: BigInt(data.fees24h),
-        uniqueTraders24h: data.volume24h.uniqueSwappers,
+        uniqueUsers24h: data.volume24h.uniqueUsers,
       }
     : {
         tvl: 0n,
@@ -360,7 +360,7 @@ export function useProtocolStats(options: UseProtocolStatsOptions = {}): UseProt
         volume24h: 0n,
         swaps24h: 0,
         fees24h: 0n,
-        uniqueTraders24h: 0,
+        uniqueUsers24h: 0,
       };
 
   return {

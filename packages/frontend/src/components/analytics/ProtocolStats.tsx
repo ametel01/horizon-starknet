@@ -123,8 +123,8 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
       <StatCard label="24h Swaps" value={stats.swaps24h.toLocaleString()} isLoading={isLoading} />
       <StatCard label="24h Fees" value={formatUsdCompact(feesUsd)} isLoading={isLoading} />
       <StatCard
-        label="Unique Traders"
-        value={stats.uniqueTraders24h.toLocaleString()}
+        label="Unique Users"
+        value={stats.uniqueUsers24h.toLocaleString()}
         subValue="last 24h"
         isLoading={isLoading}
       />

@@ -388,7 +388,7 @@ export interface ProtocolStatsResponse {
     syVolume: string;
     ptVolume: string;
     swapCount: number;
-    uniqueSwappers: number;
+    uniqueUsers: number;
   };
   fees24h: string;
 }
