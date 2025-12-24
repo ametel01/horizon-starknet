@@ -7,6 +7,7 @@ import {
   marketDailyStats,
   marketFeesCollected,
   enrichedRouterSwap,
+  enrichedRouterSwapYT,
 } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -125,25 +126,41 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
         }
       }
     } else {
-      // Fallback: Query enriched_router_swap view (has fee data from market events)
+      // Fallback: Query enriched_router_swap and enriched_router_swap_yt views (have fee data from market events)
       console.warn('[analytics/fees] Using fallback query from enriched_router_swap');
 
-      const swaps = await db
-        .select()
-        .from(enrichedRouterSwap)
-        .where(gte(enrichedRouterSwap.block_timestamp, since));
+      // Query both PT swaps and YT swaps in parallel
+      const [ptSwaps, ytSwaps] = await Promise.all([
+        db.select().from(enrichedRouterSwap).where(gte(enrichedRouterSwap.block_timestamp, since)),
+        db
+          .select()
+          .from(enrichedRouterSwapYT)
+          .where(gte(enrichedRouterSwapYT.block_timestamp, since)),
+      ]);
 
-      let swapCount24h = 0;
+      // Aggregate by day for history
+      const dailyFees = new Map<string, { fees: bigint; swaps: number }>();
 
-      for (const swap of swaps) {
+      // Process PT swaps
+      for (const swap of ptSwaps) {
         const fee = BigInt(swap.fee ?? '0');
         const market = swap.market ?? '';
         const timestamp = swap.block_timestamp ?? new Date(0);
+        const dateKey = timestamp.toISOString().split('T')[0] ?? '';
+
+        // Aggregate by day
+        if (!dailyFees.has(dateKey)) {
+          dailyFees.set(dateKey, { fees: BigInt(0), swaps: 0 });
+        }
+        const dayEntry = dailyFees.get(dateKey);
+        if (dayEntry) {
+          dayEntry.fees += fee;
+          dayEntry.swaps++;
+        }
 
         // Aggregate totals
         if (timestamp >= oneDayAgo) {
           total24h += fee;
-          swapCount24h++;
         }
         if (timestamp >= sevenDaysAgo) {
           total7d += fee;
@@ -165,13 +182,56 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
         }
       }
 
-      // Create history entry for today
-      const today = new Date().toISOString().split('T')[0] ?? '';
-      history.push({
-        date: today,
-        totalFees: total24h.toString(),
-        swapCount: swapCount24h,
-      });
+      // Process YT swaps (also generate fees via internal PT sale)
+      for (const swap of ytSwaps) {
+        const fee = BigInt(swap.fee ?? '0');
+        const market = swap.market ?? '';
+        const timestamp = swap.block_timestamp ?? new Date(0);
+        const dateKey = timestamp.toISOString().split('T')[0] ?? '';
+
+        // Aggregate by day
+        if (!dailyFees.has(dateKey)) {
+          dailyFees.set(dateKey, { fees: BigInt(0), swaps: 0 });
+        }
+        const dayEntry = dailyFees.get(dateKey);
+        if (dayEntry) {
+          dayEntry.fees += fee;
+          dayEntry.swaps++;
+        }
+
+        // Aggregate totals
+        if (timestamp >= oneDayAgo) {
+          total24h += fee;
+        }
+        if (timestamp >= sevenDaysAgo) {
+          total7d += fee;
+        }
+        if (timestamp >= thirtyDaysAgo) {
+          total30d += fee;
+        }
+
+        // Aggregate by market
+        if (market) {
+          if (!marketFees.has(market)) {
+            marketFees.set(market, { fees: BigInt(0), swaps: 0 });
+          }
+          const entry = marketFees.get(market);
+          if (entry) {
+            entry.fees += fee;
+            entry.swaps++;
+          }
+        }
+      }
+
+      // Convert daily aggregates to history array (sorted oldest first)
+      const sortedDays = Array.from(dailyFees.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+      for (const [date, data] of sortedDays) {
+        history.push({
+          date,
+          totalFees: data.fees.toString(),
+          swapCount: data.swaps,
+        });
+      }
     }
 
     const byMarket: MarketFeeBreakdown[] = Array.from(marketFees.entries())
