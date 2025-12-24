@@ -9,17 +9,20 @@ Goal: Recruit 20+ independent users to test Horizon Protocol on mainnet for Star
 ```
 Calling Starknet DeFi testers!
 
-We're giving away $500 in STRK to early testers of Horizon Protocol - the first yield tokenization protocol on Starknet.
+We're giving away 2000 STRK tokens, to cover for tx fees, to early testers of Horizon Protocol - the first yield tokenization protocol on Starknet.
 
 What you'll do:
 - Mint test tokens (free faucet)
-- Split into PT + YT
+- Wrap hrzSTRK into SY (Standardize Yield) token.
+- Split SY into PT + YT
 - Trade on our AMM
-- ~5 mins total
+- Claim yield
+- Redeem SY for hrzSTRK
+- ~10 mins total
 
-Top 20 active wallets share the pool.
+The first 20 wallets that will perform all of the above actions will get 100 STRK each.
 
-[link]
+https://splityield.org/
 
 Who's in?
 ```
