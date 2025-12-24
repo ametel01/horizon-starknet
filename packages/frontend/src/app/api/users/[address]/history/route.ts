@@ -10,6 +10,7 @@ import {
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
 } from '@/lib/db/schema';
+import { logError } from '@/lib/logger';
 
 /**
  * Normalize a Starknet address for database comparison.
@@ -307,7 +308,7 @@ export async function GET(
       hasMore,
     });
   } catch (error) {
-    console.error('[users/[address]/history] Error fetching history:', error);
+    logError(error, { module: 'users/history', address });
     return NextResponse.json({ address, events: [], total: 0, hasMore: false }, { status: 500 });
   }
 }

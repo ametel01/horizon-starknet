@@ -2,6 +2,7 @@ import { desc, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,7 +136,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse<TvlRespon
       ],
     });
   } catch (error) {
-    console.error('[analytics/tvl] Error fetching TVL:', error);
+    logError(error, { module: 'analytics/tvl' });
     return NextResponse.json(
       {
         current: { totalSyReserve: '0', totalPtReserve: '0', marketCount: 0 },

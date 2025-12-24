@@ -2,6 +2,7 @@ import { eq, desc, and, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketSwap } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -232,7 +233,7 @@ export async function GET(
       recentImpacts,
     });
   } catch (error) {
-    console.error('[markets/[address]/price-impact] Error:', error);
+    logError(error, { module: 'markets/price-impact', marketAddress: address });
     return NextResponse.json({ error: 'Failed to fetch price impact data' }, { status: 500 });
   }
 }

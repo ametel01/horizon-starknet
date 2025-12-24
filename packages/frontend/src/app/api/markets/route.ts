@@ -2,6 +2,7 @@ import { eq, desc, asc } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketCurrentState } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<MarketsRes
       total: markets.length,
     });
   } catch (error) {
-    console.error('[markets] Error fetching markets:', error);
+    logError(error, { module: 'markets' });
     return NextResponse.json({ markets: [], total: 0 }, { status: 500 });
   }
 }

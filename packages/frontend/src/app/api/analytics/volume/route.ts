@@ -2,6 +2,7 @@ import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -221,7 +222,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
       history,
     });
   } catch (error) {
-    console.error('[analytics/volume] Error fetching volume:', error);
+    logError(error, { module: 'analytics/volume' });
     return NextResponse.json(
       {
         total24h: { syVolume: '0', ptVolume: '0', swapCount: 0, uniqueSwappers: 0 },

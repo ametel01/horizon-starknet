@@ -2,6 +2,8 @@
 
 import { Component, type ReactNode } from 'react';
 
+import { logError } from '@/lib/logger';
+
 import { Button } from './ui/Button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/Card';
 
@@ -26,8 +28,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log error to console in development
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logError(error, {
+      module: 'ErrorBoundary',
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   handleReset = (): void => {

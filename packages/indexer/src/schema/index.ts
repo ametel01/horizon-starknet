@@ -162,6 +162,7 @@ export const syDeposit = pgTable(
     index("sy_deposit_receiver_idx").on(table.receiver),
     index("sy_deposit_sy_idx").on(table.sy),
     index("sy_deposit_underlying_idx").on(table.underlying),
+    index("sy_deposit_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -199,6 +200,7 @@ export const syRedeem = pgTable(
     index("sy_redeem_caller_idx").on(table.caller),
     index("sy_redeem_receiver_idx").on(table.receiver),
     index("sy_redeem_sy_idx").on(table.sy),
+    index("sy_redeem_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -645,6 +647,7 @@ export const routerMintPY = pgTable(
     index("router_mint_sender_idx").on(table.sender),
     index("router_mint_receiver_idx").on(table.receiver),
     index("router_mint_yt_idx").on(table.yt),
+    index("router_mint_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -666,6 +669,7 @@ export const routerRedeemPY = pgTable(
   (table) => [
     index("router_redeem_sender_idx").on(table.sender),
     index("router_redeem_receiver_idx").on(table.receiver),
+    index("router_redeem_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -689,6 +693,7 @@ export const routerAddLiquidity = pgTable(
     index("router_al_sender_idx").on(table.sender),
     index("router_al_receiver_idx").on(table.receiver),
     index("router_al_market_idx").on(table.market),
+    index("router_al_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -712,6 +717,7 @@ export const routerRemoveLiquidity = pgTable(
     index("router_rl_sender_idx").on(table.sender),
     index("router_rl_receiver_idx").on(table.receiver),
     index("router_rl_market_idx").on(table.market),
+    index("router_rl_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -736,6 +742,7 @@ export const routerSwap = pgTable(
     index("router_swap_sender_idx").on(table.sender),
     index("router_swap_receiver_idx").on(table.receiver),
     index("router_swap_market_idx").on(table.market),
+    index("router_swap_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
@@ -762,6 +769,7 @@ export const routerSwapYT = pgTable(
     index("router_swap_yt_receiver_idx").on(table.receiver),
     index("router_swap_yt_market_idx").on(table.market),
     index("router_swap_yt_yt_idx").on(table.yt),
+    index("router_swap_yt_timestamp_idx").on(table.block_timestamp),
   ],
 );
 

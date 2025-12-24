@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTransaction } from '@/hooks/useTransaction';
 import { getFaucetInfo } from '@/lib/constants/addresses';
+import { logError } from '@/lib/logger';
 import { getFaucetContract } from '@/lib/starknet/contracts';
 
 export default function FaucetPage(): React.ReactNode {
@@ -42,7 +43,7 @@ export default function FaucetPage(): React.ReactNode {
       const result = await faucet.can_mint(targetAddress);
       setCanMint(result);
     } catch (err) {
-      console.error('Error checking can_mint:', err);
+      logError(err, { module: 'faucet', action: 'checkCanMint', targetAddress });
       setError('Failed to check mint status');
       setCanMint(null);
     } finally {
@@ -83,7 +84,7 @@ export default function FaucetPage(): React.ReactNode {
 
       await execute(mintCall);
     } catch (err) {
-      console.error('Mint error:', err);
+      logError(err, { module: 'faucet', action: 'mint' });
       const errorMessage = err instanceof Error ? err.message : 'Failed to mint tokens';
       if (errorMessage.includes('already minted')) {
         setError('You have already minted today. Please try again in 24 hours.');

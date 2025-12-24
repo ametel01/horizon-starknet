@@ -2,14 +2,36 @@ import { RpcProvider, type BlockTag, type Call, type CallContractResponse } from
 
 export type NetworkId = 'mainnet' | 'sepolia' | 'devnet' | 'fork';
 
-const RPC_URLS: Record<NetworkId, string> = {
-  mainnet:
-    process.env.NEXT_PUBLIC_RPC_URL ?? 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7',
-  sepolia:
-    process.env.NEXT_PUBLIC_RPC_URL ?? 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
-  devnet: process.env.NEXT_PUBLIC_RPC_URL ?? 'http://localhost:5050',
-  fork: process.env.NEXT_PUBLIC_RPC_URL ?? 'http://localhost:5050',
-};
+/**
+ * Get RPC URL based on environment.
+ *
+ * - Client-side: Uses /api/rpc proxy to keep API keys private
+ * - Server-side: Uses direct RPC_URL for better performance
+ */
+function getRpcUrl(network: NetworkId): string {
+  const isClient = typeof window !== 'undefined';
+
+  // Client-side: always use the proxy to keep API keys private
+  if (isClient) {
+    return '/api/rpc';
+  }
+
+  // Server-side: use direct RPC URL (with API key)
+  const directUrl = process.env.RPC_URL;
+  if (directUrl) {
+    return directUrl;
+  }
+
+  // Fallback to public RPCs
+  const fallbacks: Record<NetworkId, string> = {
+    mainnet: 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7',
+    sepolia: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
+    devnet: 'http://localhost:5050',
+    fork: 'http://localhost:5050',
+  };
+
+  return fallbacks[network];
+}
 
 const CHAIN_IDS: Record<NetworkId, string> = {
   mainnet: '0x534e5f4d41494e',
@@ -66,10 +88,11 @@ class DevnetRpcProvider extends RpcProvider {
 export function createProvider(network?: NetworkId): RpcProvider {
   const networkId = network ?? getNetworkId();
   const defaultBlock = DEFAULT_BLOCK[networkId];
+  const rpcUrl = getRpcUrl(networkId);
 
   // Use custom provider for all networks to ensure consistent block tag handling
   // Alchemy doesn't support 'pending' block tag for most networks
-  return new DevnetRpcProvider(RPC_URLS[networkId], defaultBlock);
+  return new DevnetRpcProvider(rpcUrl, defaultBlock);
 }
 
 export function getChainId(network?: NetworkId): string {

@@ -1,6 +1,8 @@
 import { connect, disconnect } from '@starknet-io/get-starknet';
 import type { StarknetWindowObject } from '@starknet-io/get-starknet';
 
+import { logError } from '@/lib/logger';
+
 export interface WalletConnection {
   wallet: StarknetWindowObject;
   address: string;
@@ -34,7 +36,7 @@ export async function connectWallet(): Promise<WalletConnection | null> {
       chainId,
     };
   } catch (error) {
-    console.error('Failed to connect wallet:', error);
+    logError(error, { module: 'wallet', action: 'connect' });
     return null;
   }
 }
@@ -43,7 +45,7 @@ export async function disconnectWallet(): Promise<void> {
   try {
     await disconnect();
   } catch (error) {
-    console.error('Failed to disconnect wallet:', error);
+    logError(error, { module: 'wallet', action: 'disconnect' });
   }
 }
 

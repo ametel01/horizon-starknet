@@ -12,6 +12,7 @@ import {
   syDeposit,
   syRedeem,
 } from '@/lib/db/schema';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -443,7 +444,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[users/[address]/portfolio-history] Error:', error);
+    logError(error, { module: 'users/portfolio-history', address });
     return NextResponse.json(
       {
         address,
