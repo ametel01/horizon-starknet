@@ -61,19 +61,23 @@ const sentryWebpackPluginOptions = {
   // Upload source maps for error tracking
   widenClientFileUpload: true,
 
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
-
   // Hide source maps from browsers
   hideSourceMaps: true,
 
-  // Automatically annotate React components for better stack traces
-  reactComponentAnnotation: {
-    enabled: true,
-  },
-
   // Route browser requests to Sentry through a Next.js rewrite to avoid ad-blockers
   tunnelRoute: '/monitoring',
+
+  // Webpack-specific options (new format)
+  webpack: {
+    // Tree-shake Sentry logger statements to reduce bundle size
+    treeshake: {
+      removeDebugLogging: true,
+    },
+    // Annotate React components for better stack traces
+    reactComponentAnnotation: {
+      enabled: true,
+    },
+  },
 };
 
 export default withSentryConfig(withMDX(nextConfig), sentryWebpackPluginOptions);
