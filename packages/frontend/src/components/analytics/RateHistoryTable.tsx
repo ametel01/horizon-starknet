@@ -84,7 +84,7 @@ export function RateHistoryTable({
 
       return {
         date: point.timestamp.toISOString(),
-        displayDate: point.timestamp.toLocaleDateString('en-US', {
+        displayDate: point.timestamp.toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
           year: 'numeric',

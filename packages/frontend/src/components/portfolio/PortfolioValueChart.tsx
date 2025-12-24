@@ -109,16 +109,24 @@ export function PortfolioValueChart({
       const lpBalance = Number(fromWad(BigInt(snapshot.lpBalance)));
 
       // Convert to USD
+      // SY and PT are valued at ~1:1 with underlying
+      // LP tokens represent shares of both SY and PT reserves, so ~2x value
+      // YT is a fraction of SY value (yield component only)
       const syBalanceUsd = syBalance * avgPrice;
-      const ptBalanceUsd = ptBalance * avgPrice; // PT approximates SY at expiry
-      const ytBalanceUsd = ytBalance * avgPrice * 0.1; // YT is a fraction of SY value
-      const lpBalanceUsd = lpBalance * avgPrice;
+      const ptBalanceUsd = ptBalance * avgPrice;
+      const ytBalanceUsd = ytBalance * avgPrice * 0.1;
+      const lpBalanceUsd = lpBalance * avgPrice * 2; // LP = share of SY + PT pool
 
       const totalValueUsd = syBalanceUsd + ptBalanceUsd + ytBalanceUsd + lpBalanceUsd;
 
-      // Parse date and format for display
+      // Parse date and format for display using user's locale
       const dateObj = new Date(snapshot.date);
-      const displayDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const displayDate = dateObj.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
 
       return {
         date: snapshot.date,

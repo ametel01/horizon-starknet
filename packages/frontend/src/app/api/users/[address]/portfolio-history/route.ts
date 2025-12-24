@@ -9,6 +9,8 @@ import {
   enrichedRouterRemoveLiquidity,
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
+  syDeposit,
+  syRedeem,
 } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +25,15 @@ function normalizeAddressForDb(address: string): string {
 }
 
 interface ValueEvent {
-  type: 'mint_py' | 'redeem_py' | 'swap' | 'swap_yt' | 'add_liquidity' | 'remove_liquidity';
+  type:
+    | 'deposit'
+    | 'withdraw'
+    | 'mint_py'
+    | 'redeem_py'
+    | 'swap'
+    | 'swap_yt'
+    | 'add_liquidity'
+    | 'remove_liquidity';
   timestamp: string;
   transactionHash: string;
   market?: string;
@@ -91,6 +101,66 @@ export async function GET(
     // Calculate date cutoff
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    // Fetch SY deposit events (underlying -> SY)
+    const deposits = await db
+      .select()
+      .from(syDeposit)
+      .where(
+        or(
+          sql`LOWER(${syDeposit.caller}) = ${normalizedAddress}`,
+          sql`LOWER(${syDeposit.caller}) = ${address.toLowerCase()}`,
+          sql`LOWER(${syDeposit.receiver}) = ${normalizedAddress}`,
+          sql`LOWER(${syDeposit.receiver}) = ${address.toLowerCase()}`
+        )
+      )
+      .orderBy(desc(syDeposit.block_timestamp))
+      .limit(limit);
+
+    for (const row of deposits) {
+      const event: ValueEvent = {
+        type: 'deposit',
+        timestamp: row.block_timestamp.toISOString(),
+        transactionHash: row.transaction_hash,
+        syDelta: row.amount_sy_minted, // Received SY
+        ptDelta: '0',
+        ytDelta: '0',
+        lpDelta: '0',
+        exchangeRate: row.exchange_rate,
+        valueChange: row.amount_sy_minted, // Value gained
+      };
+      events.push(event);
+    }
+
+    // Fetch SY redeem events (SY -> underlying)
+    const syRedeems = await db
+      .select()
+      .from(syRedeem)
+      .where(
+        or(
+          sql`LOWER(${syRedeem.caller}) = ${normalizedAddress}`,
+          sql`LOWER(${syRedeem.caller}) = ${address.toLowerCase()}`,
+          sql`LOWER(${syRedeem.receiver}) = ${normalizedAddress}`,
+          sql`LOWER(${syRedeem.receiver}) = ${address.toLowerCase()}`
+        )
+      )
+      .orderBy(desc(syRedeem.block_timestamp))
+      .limit(limit);
+
+    for (const row of syRedeems) {
+      const event: ValueEvent = {
+        type: 'withdraw',
+        timestamp: row.block_timestamp.toISOString(),
+        transactionHash: row.transaction_hash,
+        syDelta: `-${row.amount_sy_burned}`, // Spent SY
+        ptDelta: '0',
+        ytDelta: '0',
+        lpDelta: '0',
+        exchangeRate: row.exchange_rate,
+        valueChange: `-${row.amount_sy_burned}`, // Value withdrawn
+      };
+      events.push(event);
+    }
 
     // Fetch mint events
     const mints = await db
@@ -294,15 +364,14 @@ export async function GET(
     // Sort all events by timestamp (oldest first for cumulative calculation)
     events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    // Calculate cumulative snapshots by day
-    const snapshotsByDate = new Map<string, PortfolioSnapshot>();
+    // Calculate cumulative snapshots after EACH event (for dynamic charting)
+    const eventSnapshots: PortfolioSnapshot[] = [];
     let cumulativeSy = 0n;
     let cumulativePt = 0n;
     let cumulativeYt = 0n;
     let cumulativeLp = 0n;
     let totalDeposited = 0n;
     let totalWithdrawn = 0n;
-    const realizedPnl = 0n; // Placeholder - would need to track realized gains from redemptions
 
     for (const event of events) {
       // Update cumulative balances
@@ -313,43 +382,39 @@ export async function GET(
 
       // Track deposits/withdrawals for P&L
       const syDelta = BigInt(event.syDelta);
-      if (event.type === 'mint_py' && syDelta < 0n) {
-        totalDeposited += -syDelta;
+      if (event.type === 'deposit' && syDelta > 0n) {
+        totalDeposited += syDelta;
       }
-      if (event.type === 'redeem_py' && syDelta > 0n) {
-        totalWithdrawn += syDelta;
+      if (event.type === 'withdraw' && syDelta < 0n) {
+        totalWithdrawn += -syDelta;
       }
-
-      // Get date for snapshot
-      const date = event.timestamp.split('T')[0] ?? '';
-      if (!date) continue;
 
       // Calculate total value in SY terms
-      // Note: For a more accurate valuation, we would use implied rate for PT pricing
-      // and account for YT value based on yield and time remaining.
-      // This simplified calculation assumes PT ≈ SY (at expiry) and ignores YT value.
-      const ptValueSy = cumulativePt; // Simplified: PT ≈ SY at expiry
-      const lpValueSy = cumulativeLp; // Simplified: LP ≈ value of underlying tokens
+      // - PT ≈ SY at expiry (simplified)
+      // - YT has value based on yield, simplified as ~10% of SY
+      // - LP represents shares of both SY and PT reserves, so ~2x value
+      const ptValueSy = cumulativePt;
+      const ytValueSy = cumulativeYt / 10n;
+      const lpValueSy = cumulativeLp * 2n;
 
-      const totalValueSy = cumulativeSy + ptValueSy + lpValueSy;
+      const totalValueSy = cumulativeSy + ptValueSy + ytValueSy + lpValueSy;
 
-      // Update or create snapshot for this date
-      const existingSnapshot = snapshotsByDate.get(date);
-      snapshotsByDate.set(date, {
-        date,
+      // Create snapshot after each event
+      eventSnapshots.push({
+        date: event.timestamp, // Use full timestamp for event-level granularity
         totalValueSy: totalValueSy.toString(),
         syBalance: cumulativeSy.toString(),
         ptBalance: cumulativePt.toString(),
         ytBalance: cumulativeYt.toString(),
         lpBalance: cumulativeLp.toString(),
-        realizedPnl: realizedPnl.toString(),
-        unrealizedPnl: '0', // Will be calculated with current prices
-        eventCount: (existingSnapshot?.eventCount ?? 0) + 1,
+        realizedPnl: '0',
+        unrealizedPnl: '0',
+        eventCount: 1,
       });
     }
 
-    // Convert snapshots map to array
-    const snapshots = Array.from(snapshotsByDate.values());
+    // Use event-level snapshots for the chart
+    const snapshots = eventSnapshots;
 
     // Calculate summary
     const firstActivity = events.length > 0 ? (events[0]?.timestamp ?? null) : null;
@@ -365,7 +430,9 @@ export async function GET(
       summary: {
         totalDeposited: totalDeposited.toString(),
         totalWithdrawn: totalWithdrawn.toString(),
-        realizedPnl: (totalWithdrawn - totalDeposited).toString(),
+        // Realized P&L only exists when positions are closed (withdrawn)
+        // For now, set to 0 - proper tracking would need per-position cost basis
+        realizedPnl: '0',
         firstActivity,
         lastActivity,
         eventCount: events.length,

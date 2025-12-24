@@ -95,7 +95,7 @@ export function TvlChart({ className, height = 300 }: TvlChartProps): ReactNode 
       return [
         {
           date: today.toISOString().split('T')[0] ?? '',
-          displayDate: today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          displayDate: today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
           tvl: current.totalTvlUsd,
           syReserve: current.totalSyReserveUsd,
           ptReserve: current.totalPtReserveUsd,

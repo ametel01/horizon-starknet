@@ -98,7 +98,7 @@ function processRatesData(data: MarketRatesResponse): ProcessedRatesData {
 
     const result: ProcessedRateDataPoint = {
       timestamp,
-      displayDate: timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      displayDate: timestamp.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       impliedRate,
       impliedRatePercent,
       exchangeRate,

@@ -43,7 +43,7 @@ export function isExpired(expiryTimestamp: number): boolean {
  */
 export function formatExpiry(expiryTimestamp: number): string {
   const date = new Date(expiryTimestamp * 1000);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

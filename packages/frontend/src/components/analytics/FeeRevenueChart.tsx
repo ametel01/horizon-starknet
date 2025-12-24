@@ -108,7 +108,7 @@ export function FeeRevenueChart({
 
       // Parse date and format for display
       const dateObj = new Date(point.date);
-      const displayDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const displayDate = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
       return {
         date: point.date,

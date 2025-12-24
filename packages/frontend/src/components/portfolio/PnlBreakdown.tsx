@@ -101,13 +101,19 @@ export function PnlBreakdown({
     // Current portfolio value from enhanced positions
     const currentValue = portfolio?.totalValueUsd ?? 0;
 
-    // Realized P&L = what we got out - what we put in (for closed positions)
-    const realizedPnl = withdrawn - deposited;
+    // Cost basis = what's still invested in the protocol
+    const costBasis = deposited - withdrawn;
 
-    // Unrealized P&L = current value - cost basis (approximate)
-    // This is simplified - true unrealized would need to track per-position
-    const costBasis = deposited - withdrawn; // What's still "in" the protocol
-    const unrealizedPnl = currentValue - Math.max(0, costBasis);
+    // Unrealized P&L = current value - cost basis
+    // This represents gain/loss on open positions
+    const unrealizedPnl = currentValue - costBasis;
+
+    // Realized P&L = profit from closed positions
+    // Without per-position cost basis tracking, we approximate:
+    // If withdrawn > 0, realized = withdrawn - (portion of deposits that was withdrawn)
+    // For simplicity, if withdrawn > 0 and currentValue ≈ 0, user closed all positions
+    // Otherwise, realized is 0 (positions still open)
+    const realizedPnl = withdrawn > 0 && currentValue < 100 ? withdrawn - deposited : 0;
 
     // Total P&L
     const totalPnl = realizedPnl + unrealizedPnl;
@@ -419,9 +425,10 @@ export function PnlSummaryCompact({ className }: PnlSummaryCompactProps): ReactN
     const deposited = Number(fromWad(BigInt(summary.totalDeposited))) * avgPrice;
     const withdrawn = Number(fromWad(BigInt(summary.totalWithdrawn))) * avgPrice;
     const currentValue = portfolio?.totalValueUsd ?? 0;
-    const realizedPnl = withdrawn - deposited;
     const costBasis = deposited - withdrawn;
-    const unrealizedPnl = currentValue - Math.max(0, costBasis);
+    const unrealizedPnl = currentValue - costBasis;
+    // Realized P&L only when positions are closed (withdrawn with ~0 current value)
+    const realizedPnl = withdrawn > 0 && currentValue < 100 ? withdrawn - deposited : 0;
     const totalPnl = realizedPnl + unrealizedPnl;
 
     return { totalPnl, realizedPnl, unrealizedPnl };

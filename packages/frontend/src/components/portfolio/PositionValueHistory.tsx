@@ -67,6 +67,10 @@ function getEventTypeInfo(type: PortfolioValueEvent['type']): {
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
 } {
   switch (type) {
+    case 'deposit':
+      return { label: 'Deposit', variant: 'default' };
+    case 'withdraw':
+      return { label: 'Withdraw', variant: 'secondary' };
     case 'mint_py':
       return { label: 'Mint', variant: 'default' };
     case 'redeem_py':
@@ -110,10 +114,13 @@ function EventRow({ event, price }: EventRowProps): ReactNode {
   const lpDelta = BigInt(event.lpDelta);
 
   // Net value change (simplified)
+  // SY and PT are valued at ~1:1 with underlying
+  // LP tokens represent shares of both SY and PT reserves, so ~2x value
+  // YT is a fraction of SY value (yield component only)
   const syValue = Number(fromWad(syDelta)) * price;
   const ptValue = Number(fromWad(ptDelta)) * price;
-  const ytValue = Number(fromWad(ytDelta)) * price * 0.1; // YT is fraction of SY
-  const lpValue = Number(fromWad(lpDelta)) * price;
+  const ytValue = Number(fromWad(ytDelta)) * price * 0.1;
+  const lpValue = Number(fromWad(lpDelta)) * price * 2; // LP = share of SY + PT pool
   const netValueChange = syValue + ptValue + ytValue + lpValue;
 
   return (
@@ -366,9 +373,13 @@ export function PositionValueInline({ className, limit = 3 }: PositionValueInlin
         const typeInfo = getEventTypeInfo(event.type);
         const syDelta = BigInt(event.syDelta);
         const ptDelta = BigInt(event.ptDelta);
+        const ytDelta = BigInt(event.ytDelta);
+        const lpDelta = BigInt(event.lpDelta);
         const syValue = Number(fromWad(syDelta)) * avgPrice;
         const ptValue = Number(fromWad(ptDelta)) * avgPrice;
-        const netValue = syValue + ptValue;
+        const ytValue = Number(fromWad(ytDelta)) * avgPrice * 0.1;
+        const lpValue = Number(fromWad(lpDelta)) * avgPrice * 2;
+        const netValue = syValue + ptValue + ytValue + lpValue;
 
         return (
           <div
