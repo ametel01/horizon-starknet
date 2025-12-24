@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { ProtocolStats } from '@/components/analytics';
+import { ProtocolStats } from '@/components/analytics/ProtocolStats';
 import { MarketList } from '@/components/markets/MarketList';
 import { SimpleMarketList } from '@/components/markets/SimpleMarketList';
 import { Button } from '@/components/ui/Button';

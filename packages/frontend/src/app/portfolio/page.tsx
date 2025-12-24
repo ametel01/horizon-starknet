@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { TransactionHistory } from '@/components/analytics';
+import { TransactionHistory } from '@/components/analytics/TransactionHistory';
 import { TxStatus } from '@/components/display/TxStatus';
 import {
   EnhancedPositionCard,
