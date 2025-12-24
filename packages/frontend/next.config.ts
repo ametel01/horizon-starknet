@@ -5,6 +5,13 @@ import path from 'path';
 const nextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
   reactStrictMode: true,
+  // Enable source maps in production for debugging and Lighthouse insights
+  productionBrowserSourceMaps: true,
+  experimental: {
+    // Inline CSS to eliminate render-blocking stylesheet requests
+    // This inlines CSS into <style> tags in the <head> instead of external <link> tags
+    inlineCss: true,
+  },
   typescript: {
     // We run TypeScript separately in CI
     ignoreBuildErrors: false,
