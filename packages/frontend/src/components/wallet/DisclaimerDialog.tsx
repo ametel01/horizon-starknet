@@ -89,6 +89,9 @@ export function DisclaimerDialog({
             <Link
               href="/faucet"
               className="text-primary hover:text-primary/80 mt-3 inline-flex items-center gap-1 text-sm font-medium"
+              onClick={() => {
+                onOpenChange(false);
+              }}
             >
               Go to Faucet
               <ExternalLink className="h-3.5 w-3.5" />
@@ -107,7 +110,13 @@ export function DisclaimerDialog({
             />
             <span className="text-muted-foreground text-sm">
               I understand the risks and accept the{' '}
-              <Link href="/terms" className="text-primary hover:text-primary/80 underline">
+              <Link
+                href="/terms"
+                className="text-primary hover:text-primary/80 underline"
+                onClick={() => {
+                  onOpenChange(false);
+                }}
+              >
                 Terms of Service
               </Link>
             </span>
