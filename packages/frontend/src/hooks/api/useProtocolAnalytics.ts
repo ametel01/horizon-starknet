@@ -3,7 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { apiFetch } from './fetcher';
-import type { FeesResponse, ProtocolTvlResponse, VolumeResponse } from './types';
+import type {
+  FeesResponse,
+  ProtocolStatsResponse,
+  ProtocolTvlResponse,
+  VolumeResponse,
+} from './types';
 
 // ============================================================================
 // Protocol TVL Hook
@@ -295,7 +300,7 @@ export function useProtocolFees(options: UseProtocolFeesOptions = {}): UseProtoc
 }
 
 // ============================================================================
-// Combined Analytics Hook (convenience)
+// Combined Analytics Hook (single API call - optimized)
 // ============================================================================
 
 interface UseProtocolStatsOptions {
@@ -321,7 +326,8 @@ interface UseProtocolStatsReturn {
 }
 
 /**
- * Hook to fetch combined protocol stats for dashboards
+ * Hook to fetch combined protocol stats for dashboards.
+ * Uses a single optimized API call instead of 3 separate calls.
  *
  * @example
  * ```tsx
@@ -331,22 +337,34 @@ interface UseProtocolStatsReturn {
 export function useProtocolStats(options: UseProtocolStatsOptions = {}): UseProtocolStatsReturn {
   const { refetchInterval = 60000, enabled = true } = options;
 
-  const tvl = useProtocolTvl({ days: 1, refetchInterval, enabled });
-  const volume = useProtocolVolume({ days: 1, refetchInterval, enabled });
-  const fees = useProtocolFees({ days: 1, refetchInterval, enabled });
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['indexer', 'analytics', 'stats'],
+    queryFn: () => apiFetch<ProtocolStatsResponse>('/api/analytics/stats'),
+    refetchInterval,
+    enabled,
+    staleTime: 30000,
+  });
 
-  const isLoading = tvl.isLoading || volume.isLoading || fees.isLoading;
-  const isError = tvl.isError || volume.isError || fees.isError;
+  const stats: ProtocolStats = data
+    ? {
+        tvl: BigInt(data.tvl.totalSyReserve) + BigInt(data.tvl.totalPtReserve),
+        marketCount: data.tvl.marketCount,
+        volume24h: BigInt(data.volume24h.syVolume) + BigInt(data.volume24h.ptVolume),
+        swaps24h: data.volume24h.swapCount,
+        fees24h: BigInt(data.fees24h),
+        uniqueTraders24h: data.volume24h.uniqueSwappers,
+      }
+    : {
+        tvl: 0n,
+        marketCount: 0,
+        volume24h: 0n,
+        swaps24h: 0,
+        fees24h: 0n,
+        uniqueTraders24h: 0,
+      };
 
   return {
-    stats: {
-      tvl: tvl.current.totalTvl,
-      marketCount: tvl.current.marketCount,
-      volume24h: volume.total24h.totalVolume,
-      swaps24h: volume.total24h.swapCount,
-      fees24h: fees.total24h,
-      uniqueTraders24h: volume.total24h.uniqueSwappers,
-    },
+    stats,
     isLoading,
     isError,
   };
