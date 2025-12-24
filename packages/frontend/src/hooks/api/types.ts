@@ -15,9 +15,9 @@ export interface HealthResponse {
     source: 'DATABASE_POOLER_URL' | 'DATABASE_URL' | null;
   };
   indexer: {
-    lastEventTimestamp: string | null;
-    lastBlockNumber: number | null;
-    lagSeconds: number | null;
+    lastIndexedBlock: number | null;
+    currentChainBlock: number | null;
+    lagBlocks: number | null;
     error: string | null;
   };
   timestamp: string;
@@ -330,7 +330,15 @@ export interface FeesResponse {
 
 // Portfolio history types
 export interface PortfolioValueEvent {
-  type: 'mint_py' | 'redeem_py' | 'swap' | 'swap_yt' | 'add_liquidity' | 'remove_liquidity';
+  type:
+    | 'deposit'
+    | 'withdraw'
+    | 'mint_py'
+    | 'redeem_py'
+    | 'swap'
+    | 'swap_yt'
+    | 'add_liquidity'
+    | 'remove_liquidity';
   timestamp: string;
   transactionHash: string;
   market?: string;

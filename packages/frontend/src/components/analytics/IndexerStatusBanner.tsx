@@ -20,7 +20,7 @@ export function IndexerStatusBanner({
   showOnlyIssues = true,
   className,
 }: IndexerStatusBannerProps): ReactNode {
-  const { data, isHealthy, isDegraded, lagSeconds, isLoading } = useIndexerHealth();
+  const { data, isHealthy, isDegraded, lagBlocks, isLoading } = useIndexerHealth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -37,11 +37,9 @@ export function IndexerStatusBanner({
     return null;
   }
 
-  const formatLag = (seconds: number | null): string => {
-    if (seconds === null) return 'unknown';
-    if (seconds < 60) return String(seconds) + 's';
-    if (seconds < 3600) return String(Math.floor(seconds / 60)) + 'm';
-    return String(Math.floor(seconds / 3600)) + 'h';
+  const formatLag = (blocks: number | null): string => {
+    if (blocks === null) return 'unknown';
+    return `${String(blocks)} blocks`;
   };
 
   if (!data) {
@@ -74,7 +72,7 @@ export function IndexerStatusBanner({
             <span className="text-sm font-medium">Data may be stale</span>
           </div>
           <Badge variant="outline" className="text-yellow-600 dark:text-yellow-500">
-            {formatLag(lagSeconds)} behind
+            {formatLag(lagBlocks)} behind
           </Badge>
         </div>
       </div>
