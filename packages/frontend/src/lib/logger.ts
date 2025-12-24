@@ -1,15 +1,18 @@
 /**
  * Structured logging utility with Sentry integration.
  *
- * Uses Sentry's built-in logger for structured logs that appear in the Sentry dashboard.
- * Also provides tracing helpers for performance monitoring.
+ * On the server, uses Sentry for error tracking and structured logs.
+ * On the client, logs to console only (Sentry DSN is kept private server-side).
  *
  * @see https://docs.sentry.io/platforms/javascript/guides/nextjs/
  */
 
 import * as Sentry from '@sentry/nextjs';
 
-// Get the Sentry logger for structured logging
+// Check if we're on the server
+const isServer = typeof window === 'undefined';
+
+// Get the Sentry logger for structured logging (server-side only)
 const { logger } = Sentry;
 
 export interface LogContext {
@@ -49,21 +52,24 @@ export function logError(error: unknown, context?: LogContext): void {
     console.error(errorObj);
   }
 
-  // Build capture options - only include defined properties
-  const captureOptions: Parameters<typeof Sentry.captureException>[1] = {};
+  // Only send to Sentry on server (DSN is private)
+  if (isServer) {
+    // Build capture options - only include defined properties
+    const captureOptions: Parameters<typeof Sentry.captureException>[1] = {};
 
-  if (context) {
-    captureOptions.extra = context;
+    if (context) {
+      captureOptions.extra = context;
+    }
+    if (context?.module) {
+      captureOptions.tags = { module: context.module };
+    }
+
+    // Send to Sentry with context
+    Sentry.captureException(errorObj, captureOptions);
+
+    // Also log via Sentry logger for structured logs
+    logger.error(errorObj.message, context ?? {});
   }
-  if (context?.module) {
-    captureOptions.tags = { module: context.module };
-  }
-
-  // Send to Sentry with context
-  Sentry.captureException(errorObj, captureOptions);
-
-  // Also log via Sentry logger for structured logs
-  logger.error(errorObj.message, context ?? {});
 }
 
 /**
@@ -79,7 +85,9 @@ export function logWarn(message: string, context?: LogContext): void {
     console.warn(message);
   }
 
-  logger.warn(message, context ?? {});
+  if (isServer) {
+    logger.warn(message, context ?? {});
+  }
 }
 
 /**
@@ -89,7 +97,9 @@ export function logWarn(message: string, context?: LogContext): void {
  * @param context - Additional context
  */
 export function logInfo(message: string, context?: LogContext): void {
-  logger.info(message, context ?? {});
+  if (isServer) {
+    logger.info(message, context ?? {});
+  }
 }
 
 /**
@@ -99,7 +109,9 @@ export function logInfo(message: string, context?: LogContext): void {
  * @param context - Additional context
  */
 export function logDebug(message: string, context?: LogContext): void {
-  logger.debug(message, context ?? {});
+  if (isServer) {
+    logger.debug(message, context ?? {});
+  }
 }
 
 /**
@@ -109,7 +121,9 @@ export function logDebug(message: string, context?: LogContext): void {
  * @param context - Additional context
  */
 export function logTrace(message: string, context?: LogContext): void {
-  logger.trace(message, context ?? {});
+  if (isServer) {
+    logger.trace(message, context ?? {});
+  }
 }
 
 /**
@@ -120,7 +134,9 @@ export function logTrace(message: string, context?: LogContext): void {
  */
 export function logFatal(message: string, context?: LogContext): void {
   console.error(`[FATAL] [${context?.module ?? 'app'}]`, message, context);
-  logger.fatal(message, context ?? {});
+  if (isServer) {
+    logger.fatal(message, context ?? {});
+  }
 }
 
 // ============================================================================
@@ -130,10 +146,13 @@ export function logFatal(message: string, context?: LogContext): void {
 /**
  * Sets user context for error tracking.
  * Call this when a user connects their wallet.
+ * Only works server-side.
  *
  * @param userId - User identifier (e.g., truncated wallet address)
  */
 export function setUser(userId: string | null): void {
+  if (!isServer) return;
+
   if (userId) {
     Sentry.setUser({ id: userId });
   } else {
@@ -147,6 +166,7 @@ export function setUser(userId: string | null): void {
 
 /**
  * Adds a breadcrumb for debugging error traces.
+ * Only works server-side.
  *
  * @param message - Description of the action
  * @param category - Category for grouping (e.g., 'transaction', 'navigation')
@@ -157,6 +177,8 @@ export function addBreadcrumb(
   category: string,
   data?: Record<string, unknown>
 ): void {
+  if (!isServer) return;
+
   const breadcrumb: Sentry.Breadcrumb = {
     message,
     category,
@@ -176,21 +198,16 @@ export function addBreadcrumb(
 
 /**
  * Creates a span to measure performance of an operation.
- * Use for UI interactions, API calls, and other meaningful actions.
+ * Use for API calls and other meaningful actions.
+ * Only performs tracing on server-side.
  *
- * @param op - Operation type (e.g., 'ui.click', 'http.client', 'db.query')
+ * @param op - Operation type (e.g., 'http.client', 'db.query')
  * @param name - Human-readable name for the span
  * @param fn - Function to execute within the span
  * @returns The result of the function
  *
  * @example
  * ```ts
- * // UI interaction tracing
- * const result = await trace('ui.click', 'Swap Button Click', async (span) => {
- *   span.setAttribute('market', marketAddress);
- *   return await executeSwap();
- * });
- *
  * // API call tracing
  * const data = await trace('http.client', 'GET /api/markets', async () => {
  *   return await fetch('/api/markets').then(r => r.json());
@@ -202,11 +219,16 @@ export function trace<T>(
   name: string,
   fn: (span: Sentry.Span) => T | Promise<T>
 ): T | Promise<T> {
+  if (!isServer) {
+    // On client, just execute the function without tracing
+    return fn({} as Sentry.Span);
+  }
   return Sentry.startSpan({ op, name }, fn);
 }
 
 /**
  * Creates a span for an async operation with automatic error handling.
+ * Only performs tracing on server-side.
  *
  * @param op - Operation type
  * @param name - Human-readable name
@@ -219,6 +241,10 @@ export async function traceAsync<T>(
   fn: () => Promise<T>,
   attributes?: Record<string, string | number | boolean>
 ): Promise<T> {
+  if (!isServer) {
+    // On client, just execute the function without tracing
+    return fn();
+  }
   return Sentry.startSpan({ op, name }, async (span) => {
     if (attributes) {
       Object.entries(attributes).forEach(([key, value]) => {
