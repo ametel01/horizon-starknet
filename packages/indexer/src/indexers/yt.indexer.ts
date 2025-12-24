@@ -27,6 +27,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Factory event to discover YT contracts
@@ -62,15 +63,15 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
-  const database = drizzle({
-    schema: {
+  const database = drizzle(
+    getDrizzleOptions({
       ytMintPY,
       ytRedeemPY,
       ytRedeemPYPostExpiry,
       ytInterestClaimed,
       ytExpiryReached,
-    },
-  });
+    }),
+  );
 
   console.log(
     `[yt] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
@@ -142,22 +143,32 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       };
     },
     async transform({ block, endCursor }) {
-      // Log progress every 100 blocks
+      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNum = Number(block.header.blockNumber);
-      if (blockNum % 100 === 0 || block.events.length > 0) {
-        console.log(
-          `[yt] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
-        );
+      if (blockNum % 1000 === 0) {
+        console.log(`[yt] Block ${blockNum} | Cursor: ${endCursor?.orderKey}`);
       }
+
+      if (block.events.length === 0) return;
+
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
 
-      if (events.length > 0) {
-        console.log(`[yt] Block ${blockNumber}: ${events.length} event(s)`);
-      }
+      // Collect events by type for batch insert
+      type MintPYRow = typeof ytMintPY.$inferInsert;
+      type RedeemPYRow = typeof ytRedeemPY.$inferInsert;
+      type RedeemPostExpiryRow = typeof ytRedeemPYPostExpiry.$inferInsert;
+      type InterestClaimedRow = typeof ytInterestClaimed.$inferInsert;
+      type ExpiryReachedRow = typeof ytExpiryReached.$inferInsert;
+
+      const mintPYRows: MintPYRow[] = [];
+      const redeemPYRows: RedeemPYRow[] = [];
+      const redeemPostExpiryRows: RedeemPostExpiryRow[] = [];
+      const interestClaimedRows: InterestClaimedRow[] = [];
+      const expiryReachedRows: ExpiryReachedRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -166,11 +177,6 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const data = event.data as string[];
 
         if (matchSelector(eventKey, MINT_PY)) {
-          console.log(`[yt] MintPY at block ${blockNumber}`);
-          // MintPY event
-          // Keys: [selector, caller, receiver, expiry]
-          // Data: [amount_sy_deposited (u256), amount_py_minted (u256), pt, sy,
-          //        py_index (u256), exchange_rate (u256), total_pt_supply (u256), total_yt_supply (u256), timestamp]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -184,7 +190,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const totalPtSupply = readU256(data, 10);
           const totalYtSupply = readU256(data, 12);
 
-          await db.insert(ytMintPY).values({
+          mintPYRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -202,11 +208,6 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_yt_supply_after: totalYtSupply,
           });
         } else if (matchSelector(eventKey, REDEEM_PY)) {
-          console.log(`[yt] RedeemPY at block ${blockNumber}`);
-          // RedeemPY event
-          // Keys: [selector, caller, receiver, expiry]
-          // Data: [sy, pt, amount_py_redeemed (u256), amount_sy_returned (u256),
-          //        py_index (u256), exchange_rate (u256)]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -218,7 +219,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const pyIndex = readU256(data, 6);
           const exchangeRate = readU256(data, 8);
 
-          await db.insert(ytRedeemPY).values({
+          redeemPYRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -234,10 +235,6 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             exchange_rate: exchangeRate,
           });
         } else if (matchSelector(eventKey, REDEEM_PY_POST_EXPIRY)) {
-          // RedeemPYPostExpiry event
-          // Keys: [selector, caller, receiver, expiry]
-          // Data: [amount_pt_redeemed (u256), amount_sy_returned (u256), pt, sy,
-          //        final_py_index (u256), final_exchange_rate (u256), timestamp]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -249,7 +246,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const finalPyIndex = readU256(data, 6);
           const finalExchangeRate = readU256(data, 8);
 
-          await db.insert(ytRedeemPYPostExpiry).values({
+          redeemPostExpiryRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -265,10 +262,6 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             final_exchange_rate: finalExchangeRate,
           });
         } else if (matchSelector(eventKey, INTEREST_CLAIMED)) {
-          console.log(`[yt] InterestClaimed at block ${blockNumber}`);
-          // InterestClaimed event
-          // Keys: [selector, user, yt, expiry]
-          // Data: [amount_sy (u256), sy, yt_balance (u256), py_index_at_claim (u256), exchange_rate (u256), timestamp]
           const user = event.keys[1] ?? "";
           const yt = event.keys[2] ?? ytAddress;
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -278,9 +271,8 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const ytBalance = readU256(data, 3);
           const pyIndexAtClaim = readU256(data, 5);
           const exchangeRate = readU256(data, 7);
-          // data[9] = timestamp (skipped)
 
-          await db.insert(ytInterestClaimed).values({
+          interestClaimedRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -294,10 +286,6 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             exchange_rate: exchangeRate,
           });
         } else if (matchSelector(eventKey, EXPIRY_REACHED)) {
-          // ExpiryReached event
-          // Keys: [selector, market, yt, pt]
-          // Data: [sy, expiry, final_exchange_rate (u256), final_py_index (u256),
-          //        total_pt_supply (u256), total_yt_supply (u256), sy_reserve (u256), pt_reserve (u256)]
           const market = event.keys[1] ?? "";
           const yt = event.keys[2] ?? ytAddress;
           const pt = event.keys[3] ?? "";
@@ -311,7 +299,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const syReserve = readU256(data, 10);
           const ptReserve = readU256(data, 12);
 
-          await db.insert(ytExpiryReached).values({
+          expiryReachedRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -328,6 +316,32 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_reserve: ptReserve,
           });
         }
+      }
+
+      // Batch insert all events (parallel inserts for different tables)
+      const insertPromises: Promise<unknown>[] = [];
+      if (mintPYRows.length > 0)
+        insertPromises.push(db.insert(ytMintPY).values(mintPYRows));
+      if (redeemPYRows.length > 0)
+        insertPromises.push(db.insert(ytRedeemPY).values(redeemPYRows));
+      if (redeemPostExpiryRows.length > 0)
+        insertPromises.push(
+          db.insert(ytRedeemPYPostExpiry).values(redeemPostExpiryRows),
+        );
+      if (interestClaimedRows.length > 0)
+        insertPromises.push(
+          db.insert(ytInterestClaimed).values(interestClaimedRows),
+        );
+      if (expiryReachedRows.length > 0)
+        insertPromises.push(
+          db.insert(ytExpiryReached).values(expiryReachedRows),
+        );
+
+      if (insertPromises.length > 0) {
+        await Promise.all(insertPromises);
+        console.log(
+          `[yt] Block ${blockNum} | Inserted ${events.length} events`,
+        );
       }
     },
   });

@@ -12,6 +12,9 @@ import {
 import { ImpermanentLossCalc } from '@/components/portfolio/ImpermanentLossCalc';
 import { LpEntryExitTable } from '@/components/portfolio/LpEntryExitTable';
 import { LpPnlCard } from '@/components/portfolio/LpPnlCard';
+import { PnlBreakdown } from '@/components/portfolio/PnlBreakdown';
+import { PortfolioValueChart } from '@/components/portfolio/PortfolioValueChart';
+import { PositionValueHistory } from '@/components/portfolio/PositionValueHistory';
 import { SimplePortfolio } from '@/components/portfolio/SimplePortfolio';
 import { SummaryCard } from '@/components/portfolio/SummaryCard';
 import { YieldByPosition } from '@/components/portfolio/YieldByPosition';
@@ -821,6 +824,14 @@ function PortfolioContent(): ReactNode {
           <LpEntryExitTable limit={10} />
         </div>
       )}
+
+      {/* Portfolio Value Over Time Section */}
+      <div className="space-y-4">
+        <h2 className="text-foreground text-lg font-semibold">Portfolio Value</h2>
+        <PortfolioValueChart />
+        <PnlBreakdown />
+        <PositionValueHistory limit={10} />
+      </div>
 
       {/* Transaction History */}
       <TransactionHistory className="mt-8" />

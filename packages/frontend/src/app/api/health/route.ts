@@ -1,8 +1,7 @@
-import { desc } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@/lib/db';
-import { marketSwap } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,44 +15,78 @@ interface HealthResponse {
     source: 'DATABASE_POOLER_URL' | 'DATABASE_URL' | null;
   };
   indexer: {
-    lastEventTimestamp: string | null;
-    lastBlockNumber: number | null;
-    lagSeconds: number | null;
+    lastIndexedBlock: number | null;
+    currentChainBlock: number | null;
+    lagBlocks: number | null;
     error: string | null;
   };
   timestamp: string;
 }
 
 /**
+ * Fetch current Starknet block number from RPC
+ */
+async function getCurrentStarknetBlock(): Promise<number | null> {
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+  if (!rpcUrl) return null;
+
+  try {
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'starknet_blockNumber',
+        params: [],
+        id: 1,
+      }),
+      // Short timeout for health check
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as { result?: number };
+    return data.result ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * GET /api/health
  * Health check endpoint for monitoring indexer status
+ *
+ * Compares the latest indexed block (from airfoil.checkpoints) against
+ * the current Starknet chain head to determine indexer health.
  */
 export async function GET(): Promise<NextResponse<HealthResponse>> {
   const dbInfo = getDatabaseInfo();
   const connected = await isDatabaseConnected();
 
-  let lastEventTimestamp: string | null = null;
-  let lastBlockNumber: number | null = null;
-  let lagSeconds: number | null = null;
+  let lastIndexedBlock: number | null = null;
+  let currentChainBlock: number | null = null;
+  let lagBlocks: number | null = null;
   let queryError: string | null = null;
 
   if (connected) {
     try {
-      // Get most recent event to check indexer lag
-      const [latestEvent] = await db
-        .select({
-          block_timestamp: marketSwap.block_timestamp,
-          block_number: marketSwap.block_number,
-        })
-        .from(marketSwap)
-        .orderBy(desc(marketSwap.block_timestamp))
-        .limit(1);
+      // Get the highest indexed block from airfoil.checkpoints
+      // The order_key column contains the latest block number processed by each indexer
+      const result = await db.execute<{ max_block: string | null }>(
+        sql`SELECT MAX(order_key)::text as max_block FROM airfoil.checkpoints`
+      );
 
-      if (latestEvent) {
-        lastEventTimestamp = latestEvent.block_timestamp.toISOString();
-        lastBlockNumber = latestEvent.block_number;
+      const row = result[0] as { max_block: string | null } | undefined;
+      if (row?.max_block !== null && row?.max_block !== undefined) {
+        lastIndexedBlock = parseInt(row.max_block, 10);
+      }
 
-        lagSeconds = Math.floor((Date.now() - latestEvent.block_timestamp.getTime()) / 1000);
+      // Fetch current chain block to compare
+      currentChainBlock = await getCurrentStarknetBlock();
+
+      if (lastIndexedBlock !== null && currentChainBlock !== null) {
+        lagBlocks = currentChainBlock - lastIndexedBlock;
       }
     } catch (error) {
       console.error('[health] Error fetching indexer status:', error);
@@ -61,15 +94,15 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
     }
   }
 
-  // Determine health status
+  // Determine health status based on block lag
   let status: HealthResponse['status'] = 'healthy';
   if (!connected) {
     status = 'unhealthy';
   } else if (queryError) {
     // Can connect but can't query tables (permission issues, etc.)
     status = 'degraded';
-  } else if (lagSeconds !== null && lagSeconds > 300) {
-    // More than 5 minutes behind
+  } else if (lagBlocks !== null && lagBlocks > 100) {
+    // More than ~100 blocks behind (~8-15 minutes on Starknet)
     status = 'degraded';
   }
 
@@ -83,9 +116,9 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
       source: dbInfo.source,
     },
     indexer: {
-      lastEventTimestamp,
-      lastBlockNumber,
-      lagSeconds,
+      lastIndexedBlock,
+      currentChainBlock,
+      lagBlocks,
       error: queryError,
     },
     timestamp: new Date().toISOString(),

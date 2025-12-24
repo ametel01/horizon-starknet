@@ -10,6 +10,9 @@ import type {
   HistoryResponse,
   LpPosition,
   PositionsResponse,
+  PortfolioHistoryResponse,
+  PortfolioSnapshot,
+  PortfolioValueEvent,
   PyPosition,
   YieldResponse,
   YieldSummary,
@@ -262,6 +265,79 @@ export function useUserPositionsByAddress(
       totalLpPositions: 0,
       activePyPositions: 0,
       activeLpPositions: 0,
+    },
+    isLoading,
+    isError,
+    error,
+  };
+}
+
+// ============================================================================
+// User Portfolio History Hook
+// ============================================================================
+
+interface UsePortfolioHistoryOptions {
+  /** Number of days of history (default: 90) */
+  days?: number;
+  /** Max events to return (default: 500) */
+  limit?: number;
+  /** Refetch interval in milliseconds (default: 60000) */
+  refetchInterval?: number;
+  /** Whether to enable the query */
+  enabled?: boolean;
+}
+
+interface UsePortfolioHistoryReturn {
+  events: PortfolioValueEvent[];
+  snapshots: PortfolioSnapshot[];
+  summary: PortfolioHistoryResponse['summary'];
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+}
+
+/**
+ * Hook to fetch portfolio value history for the connected user
+ *
+ * Returns historical events and daily snapshots of portfolio value,
+ * which can be used to render value-over-time charts and P&L breakdowns.
+ *
+ * @example
+ * ```tsx
+ * const { snapshots, summary } = usePortfolioHistory({ days: 30 });
+ * // Use snapshots for charting portfolio value over time
+ * ```
+ */
+export function usePortfolioHistory(
+  options: UsePortfolioHistoryOptions = {}
+): UsePortfolioHistoryReturn {
+  const { address } = useAccount();
+  const { days = 90, limit = 500, refetchInterval = 60000, enabled = true } = options;
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['indexer', 'user', address, 'portfolio-history', { days, limit }],
+    queryFn: () => {
+      if (!address) throw new Error('Address is required');
+      return apiFetch<PortfolioHistoryResponse>(`/api/users/${address}/portfolio-history`, {
+        days,
+        limit,
+      });
+    },
+    refetchInterval,
+    enabled: enabled && !!address,
+    staleTime: 30000,
+  });
+
+  return {
+    events: data?.events ?? [],
+    snapshots: data?.snapshots ?? [],
+    summary: data?.summary ?? {
+      totalDeposited: '0',
+      totalWithdrawn: '0',
+      realizedPnl: '0',
+      firstActivity: null,
+      lastActivity: null,
+      eventCount: 0,
     },
     isLoading,
     isError,

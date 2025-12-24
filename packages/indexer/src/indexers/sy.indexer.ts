@@ -19,6 +19,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Factory event to discover SY contracts
@@ -52,13 +53,13 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
-  const database = drizzle({
-    schema: {
+  const database = drizzle(
+    getDrizzleOptions({
       syDeposit,
       syRedeem,
       syOracleRateUpdated,
-    },
-  });
+    }),
+  );
 
   console.log(
     `[sy] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
@@ -124,18 +125,28 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       };
     },
     async transform({ block, endCursor }) {
-      // Log progress every 100 blocks
+      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNum = Number(block.header.blockNumber);
-      if (blockNum % 100 === 0 || block.events.length > 0) {
-        console.log(
-          `[sy] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
-        );
+      if (blockNum % 1000 === 0) {
+        console.log(`[sy] Block ${blockNum} | Cursor: ${endCursor?.orderKey}`);
       }
+
+      if (block.events.length === 0) return;
+
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
+
+      // Collect events by type for batch insert
+      type DepositRow = typeof syDeposit.$inferInsert;
+      type RedeemRow = typeof syRedeem.$inferInsert;
+      type OracleRateRow = typeof syOracleRateUpdated.$inferInsert;
+
+      const depositRows: DepositRow[] = [];
+      const redeemRows: RedeemRow[] = [];
+      const oracleRateRows: OracleRateRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -144,9 +155,6 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const data = event.data as string[];
 
         if (matchSelector(eventKey, DEPOSIT)) {
-          // Deposit event
-          // Keys: [selector, caller, receiver, underlying]
-          // Data: [amount_deposited (u256), amount_sy_minted (u256), exchange_rate (u256), total_supply_after (u256)]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const underlying = event.keys[3] ?? "";
@@ -156,7 +164,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const exchangeRate = readU256(data, 4);
           const totalSupplyAfter = readU256(data, 6);
 
-          await db.insert(syDeposit).values({
+          depositRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -170,9 +178,6 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_supply_after: totalSupplyAfter,
           });
         } else if (matchSelector(eventKey, REDEEM)) {
-          // Redeem event
-          // Keys: [selector, caller, receiver, underlying]
-          // Data: [amount_sy_burned (u256), amount_redeemed (u256), exchange_rate (u256), total_supply_after (u256)]
           const caller = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const underlying = event.keys[3] ?? "";
@@ -182,7 +187,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const exchangeRate = readU256(data, 4);
           const totalSupplyAfter = readU256(data, 6);
 
-          await db.insert(syRedeem).values({
+          redeemRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -196,9 +201,6 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_supply_after: totalSupplyAfter,
           });
         } else if (matchSelector(eventKey, ORACLE_RATE_UPDATED)) {
-          // OracleRateUpdated event
-          // Keys: [selector, sy, underlying]
-          // Data: [old_rate (u256), new_rate (u256), rate_change_bps (u256)]
           const sy = event.keys[1] ?? syAddress;
           const underlying = event.keys[2] ?? "";
 
@@ -206,7 +208,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const newRate = readU256(data, 2);
           const rateChangeBps = readU256(data, 4);
 
-          await db.insert(syOracleRateUpdated).values({
+          oracleRateRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -217,6 +219,24 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             rate_change_bps: rateChangeBps,
           });
         }
+      }
+
+      // Batch insert all events (parallel inserts for different tables)
+      const insertPromises: Promise<unknown>[] = [];
+      if (depositRows.length > 0)
+        insertPromises.push(db.insert(syDeposit).values(depositRows));
+      if (redeemRows.length > 0)
+        insertPromises.push(db.insert(syRedeem).values(redeemRows));
+      if (oracleRateRows.length > 0)
+        insertPromises.push(
+          db.insert(syOracleRateUpdated).values(oracleRateRows),
+        );
+
+      if (insertPromises.length > 0) {
+        await Promise.all(insertPromises);
+        console.log(
+          `[sy] Block ${blockNum} | Inserted ${events.length} events`,
+        );
       }
     },
   });

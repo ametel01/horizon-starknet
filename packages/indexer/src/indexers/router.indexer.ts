@@ -27,6 +27,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
 
 // Event selectors using Apibara's getSelector helper
@@ -60,16 +61,16 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
-  const database = drizzle({
-    schema: {
+  const database = drizzle(
+    getDrizzleOptions({
       routerMintPY,
       routerRedeemPY,
       routerAddLiquidity,
       routerRemoveLiquidity,
       routerSwap,
       routerSwapYT,
-    },
-  });
+    }),
+  );
 
   console.log(
     `[router] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
@@ -102,18 +103,36 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       ],
     },
     async transform({ block, endCursor }) {
-      // Log progress every 100 blocks
+      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNum = Number(block.header.blockNumber);
-      if (blockNum % 100 === 0 || block.events.length > 0) {
+      if (blockNum % 1000 === 0) {
         console.log(
-          `[router] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
+          `[router] Block ${blockNum} | Cursor: ${endCursor?.orderKey}`,
         );
       }
+
+      if (block.events.length === 0) return;
+
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
+
+      // Collect events by type for batch insert
+      type MintPYRow = typeof routerMintPY.$inferInsert;
+      type RedeemPYRow = typeof routerRedeemPY.$inferInsert;
+      type AddLiquidityRow = typeof routerAddLiquidity.$inferInsert;
+      type RemoveLiquidityRow = typeof routerRemoveLiquidity.$inferInsert;
+      type SwapRow = typeof routerSwap.$inferInsert;
+      type SwapYTRow = typeof routerSwapYT.$inferInsert;
+
+      const mintPYRows: MintPYRow[] = [];
+      const redeemPYRows: RedeemPYRow[] = [];
+      const addLiquidityRows: AddLiquidityRow[] = [];
+      const removeLiquidityRows: RemoveLiquidityRow[] = [];
+      const swapRows: SwapRow[] = [];
+      const swapYTRows: SwapYTRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -125,13 +144,12 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const receiver = event.keys[2] ?? "";
 
         if (matchSelector(eventKey, MINT_PY)) {
-          // Data: [yt, sy_in (u256), pt_out (u256), yt_out (u256)]
           const yt = data[0];
           const syIn = readU256(data, 1);
           const ptOut = readU256(data, 3);
           const ytOut = readU256(data, 5);
 
-          await db.insert(routerMintPY).values({
+          mintPYRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -143,12 +161,11 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             yt_out: ytOut,
           });
         } else if (matchSelector(eventKey, REDEEM_PY)) {
-          // Data: [yt, py_in (u256), sy_out (u256)]
           const yt = data[0];
           const pyIn = readU256(data, 1);
           const syOut = readU256(data, 3);
 
-          await db.insert(routerRedeemPY).values({
+          redeemPYRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -159,13 +176,12 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             sy_out: syOut,
           });
         } else if (matchSelector(eventKey, ADD_LIQUIDITY)) {
-          // Data: [market, sy_used (u256), pt_used (u256), lp_out (u256)]
           const market = data[0];
           const syUsed = readU256(data, 1);
           const ptUsed = readU256(data, 3);
           const lpOut = readU256(data, 5);
 
-          await db.insert(routerAddLiquidity).values({
+          addLiquidityRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -177,13 +193,12 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             lp_out: lpOut,
           });
         } else if (matchSelector(eventKey, REMOVE_LIQUIDITY)) {
-          // Data: [market, lp_in (u256), sy_out (u256), pt_out (u256)]
           const market = data[0];
           const lpIn = readU256(data, 1);
           const syOut = readU256(data, 3);
           const ptOut = readU256(data, 5);
 
-          await db.insert(routerRemoveLiquidity).values({
+          removeLiquidityRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -195,14 +210,13 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_out: ptOut,
           });
         } else if (matchSelector(eventKey, SWAP)) {
-          // Data: [market, sy_in (u256), pt_in (u256), sy_out (u256), pt_out (u256)]
           const market = data[0];
           const syIn = readU256(data, 1);
           const ptIn = readU256(data, 3);
           const syOut = readU256(data, 5);
           const ptOut = readU256(data, 7);
 
-          await db.insert(routerSwap).values({
+          swapRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -215,7 +229,6 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_out: ptOut,
           });
         } else if (matchSelector(eventKey, SWAP_YT)) {
-          // Data: [yt, market, sy_in (u256), yt_in (u256), sy_out (u256), yt_out (u256)]
           const yt = data[0];
           const market = data[1];
           const syIn = readU256(data, 2);
@@ -223,7 +236,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const syOut = readU256(data, 6);
           const ytOut = readU256(data, 8);
 
-          await db.insert(routerSwapYT).values({
+          swapYTRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -237,6 +250,32 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             yt_out: ytOut,
           });
         }
+      }
+
+      // Batch insert all events (parallel inserts for different tables)
+      const insertPromises: Promise<unknown>[] = [];
+      if (mintPYRows.length > 0)
+        insertPromises.push(db.insert(routerMintPY).values(mintPYRows));
+      if (redeemPYRows.length > 0)
+        insertPromises.push(db.insert(routerRedeemPY).values(redeemPYRows));
+      if (addLiquidityRows.length > 0)
+        insertPromises.push(
+          db.insert(routerAddLiquidity).values(addLiquidityRows),
+        );
+      if (removeLiquidityRows.length > 0)
+        insertPromises.push(
+          db.insert(routerRemoveLiquidity).values(removeLiquidityRows),
+        );
+      if (swapRows.length > 0)
+        insertPromises.push(db.insert(routerSwap).values(swapRows));
+      if (swapYTRows.length > 0)
+        insertPromises.push(db.insert(routerSwapYT).values(swapYTRows));
+
+      if (insertPromises.length > 0) {
+        await Promise.all(insertPromises);
+        console.log(
+          `[router] Block ${blockNum} | Inserted ${events.length} events`,
+        );
       }
     },
   });

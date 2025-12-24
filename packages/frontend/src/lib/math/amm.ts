@@ -367,8 +367,13 @@ export function getPtPrice(lnImpliedRate: bigint, timeToExpiry: bigint): bigint 
 
 /**
  * Calculate the implied APY from ln(implied_rate)
- * APY = e^(ln_implied_rate) - 1
- * @param lnImpliedRate The ln of implied rate in WAD
+ *
+ * The on-chain lnImpliedRate is already annualized:
+ * lnImpliedRate = ln(exchangeRate) * SECONDS_PER_YEAR / timeToExpiry
+ *
+ * So APY = e^(ln_implied_rate) - 1 (no additional annualization needed)
+ *
+ * @param lnImpliedRate The ln of implied rate in WAD (already annualized on-chain)
  * @returns APY as a number (0.05 = 5%)
  */
 export function getImpliedApy(lnImpliedRate: bigint): number {

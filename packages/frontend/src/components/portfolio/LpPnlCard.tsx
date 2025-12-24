@@ -279,7 +279,7 @@ export function LpPnlCard({ position, className, poolReserves }: LpPnlCardProps)
           {position.firstMint && (
             <div>
               First deposit:{' '}
-              {new Date(position.firstMint).toLocaleDateString('en-US', {
+              {new Date(position.firstMint).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
@@ -289,7 +289,7 @@ export function LpPnlCard({ position, className, poolReserves }: LpPnlCardProps)
           {position.lastActivity && (
             <div>
               Last activity:{' '}
-              {new Date(position.lastActivity).toLocaleDateString('en-US', {
+              {new Date(position.lastActivity).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',

@@ -21,8 +21,8 @@ interface UseIndexerHealthReturn {
   isHealthy: boolean;
   /** Whether the indexer is degraded (connected but lagging) */
   isDegraded: boolean;
-  /** Indexer lag in seconds, or null if unknown */
-  lagSeconds: number | null;
+  /** Indexer lag in blocks, or null if unknown */
+  lagBlocks: number | null;
   /** Whether using a connection pooler */
   usePooler: boolean;
   /** Connection pool mode (transaction, session, statement) */
@@ -58,7 +58,7 @@ export function useIndexerHealth(options: UseIndexerHealthOptions = {}): UseInde
     error,
     isHealthy: data?.status === 'healthy',
     isDegraded: data?.status === 'degraded',
-    lagSeconds: data?.indexer.lagSeconds ?? null,
+    lagBlocks: data?.indexer.lagBlocks ?? null,
     usePooler: data?.database.usePooler ?? false,
     poolMode: data?.database.poolMode ?? null,
   };

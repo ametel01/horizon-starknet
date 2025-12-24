@@ -157,13 +157,13 @@ export function LpEntryExitTable({
                     </span>
                   </td>
                   <td className="text-foreground px-2 py-2">
-                    {event.timestamp.toLocaleDateString('en-US', {
+                    {event.timestamp.toLocaleDateString(undefined, {
                       month: 'short',
                       day: 'numeric',
                       year: '2-digit',
                     })}
                     <span className="text-muted-foreground ml-1 text-xs">
-                      {event.timestamp.toLocaleTimeString('en-US', {
+                      {event.timestamp.toLocaleTimeString(undefined, {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
@@ -268,7 +268,7 @@ export function LpRecentActivity({
             {formatWadCompact(event.lpAmount)} LP
           </span>
           <span className="text-muted-foreground text-xs">
-            {event.timestamp.toLocaleDateString('en-US', {
+            {event.timestamp.toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
             })}

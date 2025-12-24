@@ -27,6 +27,7 @@ import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
 
 // MarketFactory event to discover Market contracts
@@ -62,15 +63,15 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const streamUrl =
     runtimeConfig.starknet?.streamUrl ?? "http://localhost:7171";
 
-  const database = drizzle({
-    schema: {
+  const database = drizzle(
+    getDrizzleOptions({
       marketMint,
       marketBurn,
       marketSwap,
       marketImpliedRateUpdated,
       marketFeesCollected,
-    },
-  });
+    }),
+  );
 
   console.log(
     `[market] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
@@ -140,18 +141,34 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       };
     },
     async transform({ block, endCursor }) {
-      // Log progress every 100 blocks
+      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNum = Number(block.header.blockNumber);
-      if (blockNum % 100 === 0 || block.events.length > 0) {
+      if (blockNum % 1000 === 0) {
         console.log(
-          `[market] Block ${blockNum} | Events: ${block.events.length} | Cursor: ${endCursor?.orderKey}`,
+          `[market] Block ${blockNum} | Cursor: ${endCursor?.orderKey}`,
         );
       }
+
+      if (block.events.length === 0) return;
+
       const { db } = useDrizzleStorage();
       const { events, header } = block;
 
       const blockNumber = Number(header.blockNumber);
       const blockTimestamp = header.timestamp;
+
+      // Collect events by type for batch insert
+      type MintRow = typeof marketMint.$inferInsert;
+      type BurnRow = typeof marketBurn.$inferInsert;
+      type SwapRow = typeof marketSwap.$inferInsert;
+      type ImpliedRateRow = typeof marketImpliedRateUpdated.$inferInsert;
+      type FeesRow = typeof marketFeesCollected.$inferInsert;
+
+      const mintRows: MintRow[] = [];
+      const burnRows: BurnRow[] = [];
+      const swapRows: SwapRow[] = [];
+      const impliedRateRows: ImpliedRateRow[] = [];
+      const feesRows: FeesRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -160,11 +177,6 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         const data = event.data as string[];
 
         if (matchSelector(eventKey, MINT)) {
-          // Mint event
-          // Keys: [selector, sender, receiver, expiry]
-          // Data: [sy, pt, sy_amount (u256), pt_amount (u256), lp_amount (u256),
-          //        exchange_rate (u256), implied_rate (u256), sy_reserve (u256),
-          //        pt_reserve (u256), total_lp (u256)]
           const sender = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -180,7 +192,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const ptReserve = readU256(data, 14);
           const totalLp = readU256(data, 16);
 
-          await db.insert(marketMint).values({
+          mintRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -200,11 +212,6 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_lp_after: totalLp,
           });
         } else if (matchSelector(eventKey, BURN)) {
-          // Burn event
-          // Keys: [selector, sender, receiver, expiry]
-          // Data: [sy, pt, lp_amount (u256), sy_amount (u256), pt_amount (u256),
-          //        exchange_rate (u256), implied_rate (u256), sy_reserve (u256),
-          //        pt_reserve (u256), total_lp (u256)]
           const sender = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -220,7 +227,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const ptReserve = readU256(data, 14);
           const totalLp = readU256(data, 16);
 
-          await db.insert(marketBurn).values({
+          burnRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -240,11 +247,6 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_lp_after: totalLp,
           });
         } else if (matchSelector(eventKey, SWAP)) {
-          // Swap event
-          // Keys: [selector, sender, receiver, expiry]
-          // Data: [sy, pt, pt_in (u256), sy_in (u256), pt_out (u256), sy_out (u256),
-          //        fee (u256), implied_rate_before (u256), implied_rate_after (u256),
-          //        exchange_rate (u256), sy_reserve (u256), pt_reserve (u256)]
           const sender = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const expiry = Number(BigInt(event.keys[3] ?? "0"));
@@ -262,7 +264,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const syReserve = readU256(data, 18);
           const ptReserve = readU256(data, 20);
 
-          await db.insert(marketSwap).values({
+          swapRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -284,10 +286,6 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             pt_reserve_after: ptReserve,
           });
         } else if (matchSelector(eventKey, IMPLIED_RATE_UPDATED)) {
-          // ImpliedRateUpdated event
-          // Keys: [selector, market, expiry]
-          // Data: [old_rate (u256), new_rate (u256), time_to_expiry,
-          //        exchange_rate (u256), sy_reserve (u256), pt_reserve (u256), total_lp (u256)]
           const market = event.keys[1] ?? marketAddress;
           const expiry = Number(BigInt(event.keys[2] ?? "0"));
 
@@ -299,7 +297,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const ptReserve = readU256(data, 9);
           const totalLp = readU256(data, 11);
 
-          await db.insert(marketImpliedRateUpdated).values({
+          impliedRateRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -314,9 +312,6 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             total_lp: totalLp,
           });
         } else if (matchSelector(eventKey, FEES_COLLECTED)) {
-          // FeesCollected event
-          // Keys: [selector, collector, receiver, market]
-          // Data: [amount (u256), expiry, fee_rate (u256)]
           const collector = event.keys[1] ?? "";
           const receiver = event.keys[2] ?? "";
           const market = event.keys[3] ?? marketAddress;
@@ -325,7 +320,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const expiry = Number(BigInt(data[2] ?? "0"));
           const feeRate = readU256(data, 3);
 
-          await db.insert(marketFeesCollected).values({
+          feesRows.push({
             block_number: blockNumber,
             block_timestamp: blockTimestamp,
             transaction_hash: transactionHash,
@@ -337,6 +332,28 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             fee_rate: feeRate,
           });
         }
+      }
+
+      // Batch insert all events (parallel inserts for different tables)
+      const insertPromises: Promise<unknown>[] = [];
+      if (mintRows.length > 0)
+        insertPromises.push(db.insert(marketMint).values(mintRows));
+      if (burnRows.length > 0)
+        insertPromises.push(db.insert(marketBurn).values(burnRows));
+      if (swapRows.length > 0)
+        insertPromises.push(db.insert(marketSwap).values(swapRows));
+      if (impliedRateRows.length > 0)
+        insertPromises.push(
+          db.insert(marketImpliedRateUpdated).values(impliedRateRows),
+        );
+      if (feesRows.length > 0)
+        insertPromises.push(db.insert(marketFeesCollected).values(feesRows));
+
+      if (insertPromises.length > 0) {
+        await Promise.all(insertPromises);
+        console.log(
+          `[market] Block ${blockNum} | Inserted ${events.length} events`,
+        );
       }
     },
   });

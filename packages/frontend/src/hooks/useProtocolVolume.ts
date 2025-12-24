@@ -104,7 +104,7 @@ function processVolumeData(data: VolumeResponse): ProcessedVolumeData {
 
     return {
       date: point.date,
-      displayDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      displayDate: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       syVolume: syVol,
       ptVolume: ptVol,
       totalVolume: syVol + ptVol,

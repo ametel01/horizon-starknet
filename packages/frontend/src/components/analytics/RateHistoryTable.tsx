@@ -26,7 +26,6 @@ function formatExchangeRate(value: number): string {
 
 interface RateHistoryTableProps {
   marketAddress: string;
-  expiryTimestamp: number;
   className?: string;
   limit?: number;
   showExchangeRate?: boolean;
@@ -54,7 +53,6 @@ interface TableRow {
  */
 export function RateHistoryTable({
   marketAddress,
-  expiryTimestamp,
   className,
   limit = 10,
   showExchangeRate = false,
@@ -68,7 +66,6 @@ export function RateHistoryTable({
   } = useMarketRates(marketAddress, {
     resolution: 'daily',
     days: 90,
-    expiryTimestamp,
   });
 
   // Process data for the table
@@ -87,7 +84,7 @@ export function RateHistoryTable({
 
       return {
         date: point.timestamp.toISOString(),
-        displayDate: point.timestamp.toLocaleDateString('en-US', {
+        displayDate: point.timestamp.toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
@@ -261,21 +258,18 @@ export function RateHistoryTable({
  */
 interface RateHistoryInlineProps {
   marketAddress: string;
-  expiryTimestamp: number;
   limit?: number;
   className?: string;
 }
 
 export function RateHistoryInline({
   marketAddress,
-  expiryTimestamp,
   limit = 5,
   className,
 }: RateHistoryInlineProps): ReactNode {
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
     days: 30,
-    expiryTimestamp,
   });
 
   if (isLoading) {

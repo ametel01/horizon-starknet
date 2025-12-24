@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransactionSettings } from '@/contexts/transaction-settings-context';
+import { usePriceImpact, estimateImpact } from '@/hooks/usePriceImpact';
 import { useStarknet } from '@/hooks/useStarknet';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@/hooks/useSwap';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
@@ -84,6 +85,9 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
 
   // For selling YT, we also need SY balance for collateral
   const { data: syBalance } = useTokenBalance(market.syAddress);
+
+  // Fetch historical price impact data for the market
+  const { data: priceImpactData } = usePriceImpact(market.address, { days: 30 });
 
   // Get market params for AMM calculations
   const marketParams = useMemo(() => getMarketParams(network), [network]);
@@ -185,11 +189,17 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   // Price impact warning management
   const priceImpactWarning = usePriceImpactWarning(priceImpact);
 
-  // Calculate implied APY change
+  // Calculate implied APY change (lnImpliedRate is already annualized on-chain)
   const impliedApyBefore = getImpliedApy(market.state.lnImpliedRate);
   const impliedApyAfter = swapResult
     ? getImpliedApy(swapResult.newLnImpliedRate)
     : impliedApyBefore;
+
+  // Estimate historical average impact for this trade size
+  const historicalAvgImpact = useMemo(() => {
+    if (!priceImpactData?.impactBySize || parsedInputAmount === BigInt(0)) return null;
+    return estimateImpact(parsedInputAmount, priceImpactData.impactBySize);
+  }, [priceImpactData?.impactBySize, parsedInputAmount]);
 
   // Calculate minimum output with slippage
   const minOutput = useMemo(() => {
@@ -378,21 +388,28 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Price Impact</span>
-                <span
-                  className={
-                    !isValidAmount
-                      ? 'text-muted-foreground'
-                      : priceImpactSeverity === 'very-high'
-                        ? 'text-destructive font-medium'
-                        : priceImpactSeverity === 'high'
-                          ? 'text-destructive'
-                          : priceImpactSeverity === 'medium'
-                            ? 'text-chart-1'
-                            : 'text-foreground'
-                  }
-                >
-                  {isValidAmount ? formatPriceImpact(priceImpact) : '-'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      !isValidAmount
+                        ? 'text-muted-foreground'
+                        : priceImpactSeverity === 'very-high'
+                          ? 'text-destructive font-medium'
+                          : priceImpactSeverity === 'high'
+                            ? 'text-destructive'
+                            : priceImpactSeverity === 'medium'
+                              ? 'text-chart-1'
+                              : 'text-foreground'
+                    }
+                  >
+                    {isValidAmount ? formatPriceImpact(priceImpact) : '-'}
+                  </span>
+                  {isValidAmount && historicalAvgImpact !== null && (
+                    <span className="text-muted-foreground text-xs">
+                      (avg {historicalAvgImpact.toFixed(2)}%)
+                    </span>
+                  )}
+                </div>
               </div>
               {/* Implied APY Change */}
               {(direction === 'buy_pt' || direction === 'sell_pt') && (

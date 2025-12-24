@@ -130,7 +130,6 @@ function TradePageContent(): ReactNode {
               {/* Implied Rate Chart */}
               <ImpliedRateChart
                 marketAddress={selectedMarket.address}
-                expiryTimestamp={selectedMarket.expiry}
                 height={200}
                 showControls={true}
                 defaultResolution="daily"
@@ -291,7 +290,7 @@ function TradePageContent(): ReactNode {
                   <div className="bg-muted/50 rounded p-2">
                     <div className="text-muted-foreground text-xs">Expiry Date</div>
                     <div className="text-foreground text-sm">
-                      {new Date(selectedMarket.expiry * 1000).toLocaleDateString('en-US', {
+                      {new Date(selectedMarket.expiry * 1000).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',

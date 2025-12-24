@@ -19,7 +19,6 @@ function formatPercent(value: number): string {
 
 interface RateSparklineProps {
   marketAddress: string;
-  expiryTimestamp: number;
   className?: string;
   width?: number | string;
   height?: number;
@@ -35,7 +34,6 @@ interface RateSparklineProps {
  */
 export function RateSparkline({
   marketAddress,
-  expiryTimestamp,
   className,
   width = 64,
   height = 24,
@@ -47,7 +45,6 @@ export function RateSparkline({
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
     days,
-    expiryTimestamp,
   });
 
   const chartData = useMemo(() => {
@@ -127,7 +124,6 @@ export function RateSparkline({
  */
 interface RateSparklineLargeProps {
   marketAddress: string;
-  expiryTimestamp: number;
   className?: string;
   height?: number;
   days?: number;
@@ -135,7 +131,6 @@ interface RateSparklineLargeProps {
 
 export function RateSparklineLarge({
   marketAddress,
-  expiryTimestamp,
   className,
   height = 48,
   days = 30,
@@ -143,7 +138,6 @@ export function RateSparklineLarge({
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
     days,
-    expiryTimestamp,
   });
 
   const chartData = useMemo(() => {
@@ -204,19 +198,16 @@ export function RateSparklineLarge({
  */
 interface RateBadgeWithSparklineProps {
   marketAddress: string;
-  expiryTimestamp: number;
   className?: string;
 }
 
 export function RateBadgeWithSparkline({
   marketAddress,
-  expiryTimestamp,
   className,
 }: RateBadgeWithSparklineProps): ReactNode {
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
     days: 7,
-    expiryTimestamp,
   });
 
   const chartData = useMemo(() => {
