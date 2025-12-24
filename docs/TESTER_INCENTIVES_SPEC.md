@@ -23,6 +23,7 @@ What you'll do:
 The first 20 wallets that will perform all of the above actions will get 100 STRK each.
 
 Transaction patterns will be analyzed to prevent spam of multiple wallets from the same user.
+
 https://splityield.org/
 
 Who's in?
