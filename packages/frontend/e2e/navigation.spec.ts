@@ -9,6 +9,11 @@ test.describe('Navigation', () => {
 
   test('should navigate to trade page', async ({ page }) => {
     await page.goto('/');
+    // Trade is advanced-only, so switch to advanced mode first if needed
+    const advancedToggle = page.getByRole('button', { name: /Switch to advanced mode/i });
+    if (await advancedToggle.isVisible()) {
+      await advancedToggle.click();
+    }
     await page.getByRole('link', { name: /Trade/i }).first().click();
     await expect(page).toHaveURL('/trade');
     await expect(page.getByRole('heading', { name: /Trade/i })).toBeVisible();
@@ -16,6 +21,11 @@ test.describe('Navigation', () => {
 
   test('should navigate to pools page', async ({ page }) => {
     await page.goto('/');
+    // Pools is advanced-only, so switch to advanced mode first if needed
+    const advancedToggle = page.getByRole('button', { name: /Switch to advanced mode/i });
+    if (await advancedToggle.isVisible()) {
+      await advancedToggle.click();
+    }
     await page.getByRole('link', { name: /Pools/i }).first().click();
     await expect(page).toHaveURL('/pools');
     await expect(page.getByRole('heading', { name: /Liquidity Pools/i })).toBeVisible();
