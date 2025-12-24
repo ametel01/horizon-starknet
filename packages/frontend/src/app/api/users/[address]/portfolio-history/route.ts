@@ -91,152 +91,203 @@ export async function GET(
 ): Promise<NextResponse<PortfolioHistoryResponse>> {
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  const days = parseInt(searchParams.get('days') ?? '90');
+  // days parameter reserved for future date filtering
+  const _days = parseInt(searchParams.get('days') ?? '90');
+  void _days;
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '500'), 1000);
 
   try {
     const normalizedAddress = normalizeAddressForDb(address);
+    const lowerAddress = address.toLowerCase();
+
+    // Run ALL queries in parallel for ~8x speedup
+    const [deposits, syRedeems, mints, redeems, swaps, ytSwaps, addLiq, removeLiq] =
+      await Promise.all([
+        // Fetch SY deposit events
+        db
+          .select()
+          .from(syDeposit)
+          .where(
+            or(
+              sql`LOWER(${syDeposit.caller}) = ${normalizedAddress}`,
+              sql`LOWER(${syDeposit.caller}) = ${lowerAddress}`,
+              sql`LOWER(${syDeposit.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${syDeposit.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(syDeposit.block_timestamp))
+          .limit(limit),
+
+        // Fetch SY redeem events
+        db
+          .select()
+          .from(syRedeem)
+          .where(
+            or(
+              sql`LOWER(${syRedeem.caller}) = ${normalizedAddress}`,
+              sql`LOWER(${syRedeem.caller}) = ${lowerAddress}`,
+              sql`LOWER(${syRedeem.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${syRedeem.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(syRedeem.block_timestamp))
+          .limit(limit),
+
+        // Fetch mint events
+        db
+          .select()
+          .from(enrichedRouterMintPY)
+          .where(
+            or(
+              sql`LOWER(${enrichedRouterMintPY.sender}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterMintPY.sender}) = ${lowerAddress}`,
+              sql`LOWER(${enrichedRouterMintPY.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterMintPY.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(enrichedRouterMintPY.block_timestamp))
+          .limit(limit),
+
+        // Fetch redeem events
+        db
+          .select()
+          .from(enrichedRouterRedeemPY)
+          .where(
+            or(
+              sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${lowerAddress}`,
+              sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(enrichedRouterRedeemPY.block_timestamp))
+          .limit(limit),
+
+        // Fetch swap events
+        db
+          .select()
+          .from(enrichedRouterSwap)
+          .where(
+            or(
+              sql`LOWER(${enrichedRouterSwap.sender}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterSwap.sender}) = ${lowerAddress}`,
+              sql`LOWER(${enrichedRouterSwap.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterSwap.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(enrichedRouterSwap.block_timestamp))
+          .limit(limit),
+
+        // Fetch YT swap events
+        db
+          .select()
+          .from(enrichedRouterSwapYT)
+          .where(
+            or(
+              sql`LOWER(${enrichedRouterSwapYT.sender}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterSwapYT.sender}) = ${lowerAddress}`,
+              sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(enrichedRouterSwapYT.block_timestamp))
+          .limit(limit),
+
+        // Fetch add liquidity events
+        db
+          .select()
+          .from(enrichedRouterAddLiquidity)
+          .where(
+            or(
+              sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${lowerAddress}`,
+              sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(enrichedRouterAddLiquidity.block_timestamp))
+          .limit(limit),
+
+        // Fetch remove liquidity events
+        db
+          .select()
+          .from(enrichedRouterRemoveLiquidity)
+          .where(
+            or(
+              sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${lowerAddress}`,
+              sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${normalizedAddress}`,
+              sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${lowerAddress}`
+            )
+          )
+          .orderBy(desc(enrichedRouterRemoveLiquidity.block_timestamp))
+          .limit(limit),
+      ]);
+
+    // Process results into events
     const events: ValueEvent[] = [];
 
-    // Calculate date cutoff
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-
-    // Fetch SY deposit events (underlying -> SY)
-    const deposits = await db
-      .select()
-      .from(syDeposit)
-      .where(
-        or(
-          sql`LOWER(${syDeposit.caller}) = ${normalizedAddress}`,
-          sql`LOWER(${syDeposit.caller}) = ${address.toLowerCase()}`,
-          sql`LOWER(${syDeposit.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${syDeposit.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(syDeposit.block_timestamp))
-      .limit(limit);
-
+    // Process deposits
     for (const row of deposits) {
-      const event: ValueEvent = {
+      events.push({
         type: 'deposit',
         timestamp: row.block_timestamp.toISOString(),
         transactionHash: row.transaction_hash,
-        syDelta: row.amount_sy_minted, // Received SY
+        syDelta: row.amount_sy_minted,
         ptDelta: '0',
         ytDelta: '0',
         lpDelta: '0',
         exchangeRate: row.exchange_rate,
-        valueChange: row.amount_sy_minted, // Value gained
-      };
-      events.push(event);
+        valueChange: row.amount_sy_minted,
+      });
     }
 
-    // Fetch SY redeem events (SY -> underlying)
-    const syRedeems = await db
-      .select()
-      .from(syRedeem)
-      .where(
-        or(
-          sql`LOWER(${syRedeem.caller}) = ${normalizedAddress}`,
-          sql`LOWER(${syRedeem.caller}) = ${address.toLowerCase()}`,
-          sql`LOWER(${syRedeem.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${syRedeem.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(syRedeem.block_timestamp))
-      .limit(limit);
-
+    // Process redeems
     for (const row of syRedeems) {
-      const event: ValueEvent = {
+      events.push({
         type: 'withdraw',
         timestamp: row.block_timestamp.toISOString(),
         transactionHash: row.transaction_hash,
-        syDelta: `-${row.amount_sy_burned}`, // Spent SY
+        syDelta: `-${row.amount_sy_burned}`,
         ptDelta: '0',
         ytDelta: '0',
         lpDelta: '0',
         exchangeRate: row.exchange_rate,
-        valueChange: `-${row.amount_sy_burned}`, // Value withdrawn
-      };
-      events.push(event);
+        valueChange: `-${row.amount_sy_burned}`,
+      });
     }
 
-    // Fetch mint events
-    const mints = await db
-      .select()
-      .from(enrichedRouterMintPY)
-      .where(
-        or(
-          sql`LOWER(${enrichedRouterMintPY.sender}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterMintPY.sender}) = ${address.toLowerCase()}`,
-          sql`LOWER(${enrichedRouterMintPY.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterMintPY.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(enrichedRouterMintPY.block_timestamp))
-      .limit(limit);
-
+    // Process mints
     for (const row of mints) {
-      const event: ValueEvent = {
+      events.push({
         type: 'mint_py',
         timestamp: row.block_timestamp?.toISOString() ?? '',
         transactionHash: row.transaction_hash ?? '',
-        syDelta: `-${row.sy_in ?? '0'}`, // Spent SY
-        ptDelta: row.pt_out ?? '0', // Received PT
-        ytDelta: row.yt_out ?? '0', // Received YT
+        syDelta: `-${row.sy_in ?? '0'}`,
+        ptDelta: row.pt_out ?? '0',
+        ytDelta: row.yt_out ?? '0',
         lpDelta: '0',
         exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0', // Mint is value-neutral (SY in = PT+YT out)
-      };
-      events.push(event);
+        valueChange: '0',
+      });
     }
 
-    // Fetch redeem events
-    const redeems = await db
-      .select()
-      .from(enrichedRouterRedeemPY)
-      .where(
-        or(
-          sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${address.toLowerCase()}`,
-          sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(enrichedRouterRedeemPY.block_timestamp))
-      .limit(limit);
-
+    // Process redeems
     for (const row of redeems) {
-      const event: ValueEvent = {
+      events.push({
         type: 'redeem_py',
         timestamp: row.block_timestamp?.toISOString() ?? '',
         transactionHash: row.transaction_hash ?? '',
-        syDelta: row.sy_out ?? '0', // Received SY
-        ptDelta: `-${row.py_in ?? '0'}`, // Spent PT
-        ytDelta: `-${row.py_in ?? '0'}`, // Spent YT
+        syDelta: row.sy_out ?? '0',
+        ptDelta: `-${row.py_in ?? '0'}`,
+        ytDelta: `-${row.py_in ?? '0'}`,
         lpDelta: '0',
         exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0', // Calculated below based on exchange rate
-      };
-      events.push(event);
+        valueChange: '0',
+      });
     }
 
-    // Fetch swap events (PT/SY)
-    const swaps = await db
-      .select()
-      .from(enrichedRouterSwap)
-      .where(
-        or(
-          sql`LOWER(${enrichedRouterSwap.sender}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterSwap.sender}) = ${address.toLowerCase()}`,
-          sql`LOWER(${enrichedRouterSwap.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterSwap.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(enrichedRouterSwap.block_timestamp))
-      .limit(limit);
-
+    // Process swaps
     for (const row of swaps) {
       const syIn = BigInt(row.sy_in ?? '0');
       const syOut = BigInt(row.sy_out ?? '0');
@@ -253,28 +304,14 @@ export async function GET(
         ytDelta: '0',
         lpDelta: '0',
         exchangeRate: row.exchange_rate ?? '0',
-        valueChange: `-${fee.toString()}`, // Fees are the cost
+        valueChange: `-${fee.toString()}`,
       };
       if (row.market) event.market = row.market;
       if (row.underlying_symbol) event.underlyingSymbol = row.underlying_symbol;
       events.push(event);
     }
 
-    // Fetch YT swap events
-    const ytSwaps = await db
-      .select()
-      .from(enrichedRouterSwapYT)
-      .where(
-        or(
-          sql`LOWER(${enrichedRouterSwapYT.sender}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterSwapYT.sender}) = ${address.toLowerCase()}`,
-          sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(enrichedRouterSwapYT.block_timestamp))
-      .limit(limit);
-
+    // Process YT swaps
     for (const row of ytSwaps) {
       const syIn = BigInt(row.sy_in ?? '0');
       const syOut = BigInt(row.sy_out ?? '0');
@@ -297,21 +334,7 @@ export async function GET(
       events.push(event);
     }
 
-    // Fetch add liquidity events
-    const addLiq = await db
-      .select()
-      .from(enrichedRouterAddLiquidity)
-      .where(
-        or(
-          sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${address.toLowerCase()}`,
-          sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(enrichedRouterAddLiquidity.block_timestamp))
-      .limit(limit);
-
+    // Process add liquidity
     for (const row of addLiq) {
       const event: ValueEvent = {
         type: 'add_liquidity',
@@ -329,21 +352,7 @@ export async function GET(
       events.push(event);
     }
 
-    // Fetch remove liquidity events
-    const removeLiq = await db
-      .select()
-      .from(enrichedRouterRemoveLiquidity)
-      .where(
-        or(
-          sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${address.toLowerCase()}`,
-          sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${normalizedAddress}`,
-          sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${address.toLowerCase()}`
-        )
-      )
-      .orderBy(desc(enrichedRouterRemoveLiquidity.block_timestamp))
-      .limit(limit);
-
+    // Process remove liquidity
     for (const row of removeLiq) {
       const event: ValueEvent = {
         type: 'remove_liquidity',
@@ -401,7 +410,7 @@ export async function GET(
 
       // Create snapshot after each event
       eventSnapshots.push({
-        date: event.timestamp, // Use full timestamp for event-level granularity
+        date: event.timestamp,
         totalValueSy: totalValueSy.toString(),
         syBalance: cumulativeSy.toString(),
         ptBalance: cumulativePt.toString(),
@@ -413,9 +422,6 @@ export async function GET(
       });
     }
 
-    // Use event-level snapshots for the chart
-    const snapshots = eventSnapshots;
-
     // Calculate summary
     const firstActivity = events.length > 0 ? (events[0]?.timestamp ?? null) : null;
     const lastActivity = events.length > 0 ? (events[events.length - 1]?.timestamp ?? null) : null;
@@ -426,12 +432,10 @@ export async function GET(
     return NextResponse.json({
       address,
       events: events.slice(0, limit),
-      snapshots,
+      snapshots: eventSnapshots,
       summary: {
         totalDeposited: totalDeposited.toString(),
         totalWithdrawn: totalWithdrawn.toString(),
-        // Realized P&L only exists when positions are closed (withdrawn)
-        // For now, set to 0 - proper tracking would need per-position cost basis
         realizedPnl: '0',
         firstActivity,
         lastActivity,
