@@ -38,6 +38,9 @@ export type {
   YieldClaimEvent,
   YieldSummary,
   YieldResponse,
+  PortfolioValueEvent,
+  PortfolioSnapshot,
+  PortfolioHistoryResponse,
   // Analytics
   ProtocolTvlResponse,
   VolumeResponse,
@@ -59,6 +62,7 @@ export {
   useUserIndexedPositions,
   useUserYield,
   useUserPositionsByAddress,
+  usePortfolioHistory,
 } from './useUserData';
 
 // Analytics hooks

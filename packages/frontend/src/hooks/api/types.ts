@@ -327,3 +327,44 @@ export interface FeesResponse {
   byMarket: MarketFeeBreakdown[];
   recentCollections: FeeCollection[];
 }
+
+// Portfolio history types
+export interface PortfolioValueEvent {
+  type: 'mint_py' | 'redeem_py' | 'swap' | 'swap_yt' | 'add_liquidity' | 'remove_liquidity';
+  timestamp: string;
+  transactionHash: string;
+  market?: string;
+  underlyingSymbol?: string;
+  syDelta: string;
+  ptDelta: string;
+  ytDelta: string;
+  lpDelta: string;
+  exchangeRate: string;
+  valueChange: string;
+}
+
+export interface PortfolioSnapshot {
+  date: string;
+  totalValueSy: string;
+  syBalance: string;
+  ptBalance: string;
+  ytBalance: string;
+  lpBalance: string;
+  realizedPnl: string;
+  unrealizedPnl: string;
+  eventCount: number;
+}
+
+export interface PortfolioHistoryResponse {
+  address: string;
+  events: PortfolioValueEvent[];
+  snapshots: PortfolioSnapshot[];
+  summary: {
+    totalDeposited: string;
+    totalWithdrawn: string;
+    realizedPnl: string;
+    firstActivity: string | null;
+    lastActivity: string | null;
+    eventCount: number;
+  };
+}
