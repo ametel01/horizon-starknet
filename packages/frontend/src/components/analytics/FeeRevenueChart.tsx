@@ -101,7 +101,7 @@ export function FeeRevenueChart({
   const chartData = useMemo((): ChartDataPoint[] => {
     if (history.length === 0) return [];
 
-    return history.map((point) => {
+    const data = history.map((point) => {
       const feesNum = Number(fromWad(point.totalFees));
       const feesUsd = feesNum * avgPrice;
       const avgFeeUsd = point.swapCount > 0 ? feesUsd / point.swapCount : 0;
@@ -118,6 +118,40 @@ export function FeeRevenueChart({
         avgFeeUsd,
       };
     });
+
+    // If we have a single data point, add padding days around it for better visualization
+    if (data.length === 1 && data[0]) {
+      const singlePoint = data[0];
+      const dateObj = new Date(singlePoint.date);
+
+      // Add a day before with zero
+      const dayBefore = new Date(dateObj);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+
+      // Add a day after with zero
+      const dayAfter = new Date(dateObj);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+
+      return [
+        {
+          date: dayBefore.toISOString().split('T')[0] ?? '',
+          displayDate: dayBefore.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          feesUsd: 0,
+          swapCount: 0,
+          avgFeeUsd: 0,
+        },
+        singlePoint,
+        {
+          date: dayAfter.toISOString().split('T')[0] ?? '',
+          displayDate: dayAfter.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          feesUsd: 0,
+          swapCount: 0,
+          avgFeeUsd: 0,
+        },
+      ];
+    }
+
+    return data;
   }, [history, avgPrice]);
 
   // Calculate current period fees for display
@@ -240,6 +274,7 @@ export function FeeRevenueChart({
             />
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
+              cursor={false}
               formatter={(value: number | undefined, name: string | undefined) => {
                 if (name === 'feesUsd') {
                   return [
@@ -298,9 +333,44 @@ export function FeeStatsCard({ className }: FeeStatsCardProps): ReactNode {
   }, [prices, tokenAddresses]);
 
   const chartData = useMemo(() => {
-    return history.map((point) => ({
-      fees: Number(fromWad(point.totalFees)) * avgPrice,
-    }));
+    const data = history.map((point) => {
+      const dateObj = new Date(point.date);
+      return {
+        fees: Number(fromWad(point.totalFees)) * avgPrice,
+        displayDate: dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      };
+    });
+
+    // If we have less than 2 points, pad with zeros to make a visible chart
+    if (data.length === 0) {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return [
+        {
+          fees: 0,
+          displayDate: yesterday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        },
+        {
+          fees: 0,
+          displayDate: today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        },
+      ];
+    }
+    if (data.length === 1 && data[0]) {
+      // Add a day before with zero
+      const dateObj = new Date(history[0]?.date ?? '');
+      const dayBefore = new Date(dateObj);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      return [
+        {
+          fees: 0,
+          displayDate: dayBefore.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        },
+        data[0],
+      ];
+    }
+    return data;
   }, [history, avgPrice]);
 
   const fees24hUsd = Number(fromWad(total24h)) * avgPrice;
@@ -327,33 +397,38 @@ export function FeeStatsCard({ className }: FeeStatsCardProps): ReactNode {
   }
 
   return (
-    <Card className={className}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-muted-foreground text-sm">Fee Revenue</p>
-            <p className="text-2xl font-bold">{formatUsdCompact(fees24hUsd)}</p>
-            <p className="text-muted-foreground text-xs">7d: {formatUsdCompact(fees7dUsd)}</p>
-          </div>
-          <div className="h-12 w-24">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="feeSparklineGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="fees"
-                  stroke="var(--chart-2)"
-                  strokeWidth={1.5}
-                  fill="url(#feeSparklineGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+    <Card className={cn('flex h-full flex-col', className)}>
+      <CardContent className="flex flex-1 flex-col p-4">
+        <div className="mb-4">
+          <p className="text-muted-foreground text-sm">Fee Revenue</p>
+          <p className="text-2xl font-bold">{formatUsdCompact(fees24hUsd)}</p>
+          <p className="text-muted-foreground text-xs">7d: {formatUsdCompact(fees7dUsd)}</p>
+        </div>
+        <div className="min-h-[120px] flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+              <defs>
+                <linearGradient id="feeSparklineGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="displayDate"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: 'var(--muted-foreground)' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="fees"
+                stroke="var(--chart-2)"
+                strokeWidth={2}
+                fill="url(#feeSparklineGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </CardContent>
     </Card>

@@ -78,7 +78,7 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!volumeData) return [];
 
-    return volumeData.history.map((point) => {
+    const data = volumeData.history.map((point) => {
       const syVolNum = Number(fromWad(point.syVolume));
       const ptVolNum = Number(fromWad(point.ptVolume));
       const totalVolNum = Number(fromWad(point.totalVolume));
@@ -92,6 +92,40 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
         swapCount: point.swapCount,
       };
     });
+
+    // If we have a single data point, add padding days around it for better visualization
+    if (data.length === 1 && data[0]) {
+      const singlePoint = data[0];
+      const dateObj = new Date(singlePoint.date);
+
+      const dayBefore = new Date(dateObj);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+
+      const dayAfter = new Date(dateObj);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+
+      return [
+        {
+          date: dayBefore.toISOString().split('T')[0] ?? '',
+          displayDate: dayBefore.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          volumeUsd: 0,
+          syVolumeUsd: 0,
+          ptVolumeUsd: 0,
+          swapCount: 0,
+        },
+        singlePoint,
+        {
+          date: dayAfter.toISOString().split('T')[0] ?? '',
+          displayDate: dayAfter.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          volumeUsd: 0,
+          syVolumeUsd: 0,
+          ptVolumeUsd: 0,
+          swapCount: 0,
+        },
+      ];
+    }
+
+    return data;
   }, [volumeData, avgPrice]);
 
   // Calculate current volume for display
@@ -168,6 +202,7 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
             />
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
+              cursor={false}
               formatter={(value: number | undefined) => [
                 `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
                 'Volume',
@@ -302,6 +337,7 @@ export function VolumeStackedChart({
             />
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
+              cursor={false}
               formatter={(value: number | undefined, name: string | undefined) => {
                 const label = name === 'syVolumeUsd' ? 'SY Volume' : 'PT Volume';
                 return [
