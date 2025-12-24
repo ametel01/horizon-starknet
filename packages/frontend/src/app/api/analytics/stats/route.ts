@@ -227,10 +227,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse<StatsResp
           .where(gte(enrichedRouterSwapYT.block_timestamp, oneDayAgo)),
       ]);
 
-      if (enrichedSwaps) {
-        for (const swap of enrichedSwaps) {
-          fees24h += BigInt(swap.fee ?? '0');
-        }
+      for (const swap of enrichedSwaps) {
+        fees24h += BigInt(swap.fee ?? '0');
       }
       for (const swap of enrichedYtSwaps) {
         fees24h += BigInt(swap.fee ?? '0');
