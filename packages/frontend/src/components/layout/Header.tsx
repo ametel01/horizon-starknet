@@ -2,12 +2,14 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 import { ModeToggle } from '@/components/mode-toggle';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/Button';
 import { useUIMode } from '@/contexts/ui-mode-context';
+import { cn } from '@/lib/utils';
 
 import { ConnectButton } from '../wallet/ConnectButton';
 
@@ -30,6 +32,13 @@ const navLinks: NavLink[] = [
 export function Header(): React.ReactNode {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isSimple } = useUIMode();
+  const pathname = usePathname();
+
+  // Check if a link is active (exact match for home, prefix match for others)
+  const isActive = (href: string): boolean => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
 
   // Filter and transform nav links based on mode
   const visibleLinks = navLinks
@@ -56,16 +65,25 @@ export function Header(): React.ReactNode {
             </div>
             <span>Horizon</span>
           </Link>
-          <nav className="hidden items-center gap-6 md:flex">
-            {visibleLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-              >
-                {link.displayLabel}
-              </Link>
-            ))}
+          <nav className="hidden items-center gap-1 md:flex">
+            {visibleLinks.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    'relative px-3 py-2 text-sm font-medium transition-colors',
+                    active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {link.displayLabel}
+                  {active && (
+                    <span className="bg-primary absolute inset-x-1 -bottom-[1.125rem] h-0.5 rounded-full" />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -124,19 +142,27 @@ export function Header(): React.ReactNode {
       {/* Mobile navigation */}
       {mobileMenuOpen && (
         <nav className="border-border bg-background border-t px-4 py-4 md:hidden">
-          <div className="flex flex-col gap-2">
-            {visibleLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg px-4 py-3 text-sm transition-colors"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                }}
-              >
-                {link.displayLabel}
-              </Link>
-            ))}
+          <div className="flex flex-col gap-1">
+            {visibleLinks.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    'rounded-lg px-4 py-3 text-sm font-medium transition-colors',
+                    active
+                      ? 'bg-muted text-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  {link.displayLabel}
+                </Link>
+              );
+            })}
             <div className="border-border mt-2 border-t pt-4 sm:hidden">
               <div className="flex items-center justify-between px-4">
                 <span className="text-muted-foreground text-sm">Interface Mode</span>
