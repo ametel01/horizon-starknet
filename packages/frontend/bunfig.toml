@@ -1,0 +1,7 @@
+# Bun configuration for testing
+# See: https://bun.sh/docs/runtime/bunfig
+
+[test]
+# Exclude Playwright E2E tests from Bun test runner
+# These are run separately with `bun run test:e2e`
+root = "./src"
