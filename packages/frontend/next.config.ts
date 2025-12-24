@@ -8,6 +8,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Enable source maps in production for debugging and Lighthouse insights
   productionBrowserSourceMaps: true,
+  // Image optimization configuration
+  images: {
+    // Serve modern image formats for better compression
+    // AVIF offers ~50% better compression than WebP
+    formats: ['image/avif', 'image/webp'],
+    // Device sizes for responsive images (default is fine for most cases)
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    // Image sizes for the sizes prop (smaller increments for UI elements)
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Disable image optimization in development for faster builds
+    unoptimized: process.env.NODE_ENV === 'development',
+  },
   experimental: {
     // Inline CSS to eliminate render-blocking stylesheet requests
     // This inlines CSS into <style> tags in the <head> instead of external <link> tags
