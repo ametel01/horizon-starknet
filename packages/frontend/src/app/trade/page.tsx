@@ -130,7 +130,6 @@ function TradePageContent(): ReactNode {
               {/* Implied Rate Chart */}
               <ImpliedRateChart
                 marketAddress={selectedMarket.address}
-                expiryTimestamp={selectedMarket.expiry}
                 height={200}
                 showControls={true}
                 defaultResolution="daily"

@@ -189,13 +189,10 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   // Price impact warning management
   const priceImpactWarning = usePriceImpactWarning(priceImpact);
 
-  // Calculate seconds to expiry for APY annualization
-  const secondsToExpiry = Math.max(0, market.expiry - Math.floor(Date.now() / 1000));
-
-  // Calculate implied APY change (annualized)
-  const impliedApyBefore = getImpliedApy(market.state.lnImpliedRate, secondsToExpiry);
+  // Calculate implied APY change (lnImpliedRate is already annualized on-chain)
+  const impliedApyBefore = getImpliedApy(market.state.lnImpliedRate);
   const impliedApyAfter = swapResult
-    ? getImpliedApy(swapResult.newLnImpliedRate, secondsToExpiry)
+    ? getImpliedApy(swapResult.newLnImpliedRate)
     : impliedApyBefore;
 
   // Estimate historical average impact for this trade size

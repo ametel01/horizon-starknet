@@ -40,22 +40,23 @@ export interface ProcessedRatesData {
 }
 
 const WAD = BigInt(10) ** BigInt(18);
-const SECONDS_PER_YEAR = 365.25 * 24 * 60 * 60;
 
 /**
  * Convert implied rate (WAD) to APY percentage
- * The implied rate is stored as ln(1 + rate) scaled by WAD
+ *
+ * The on-chain lnImpliedRate is ALREADY annualized:
+ * lnImpliedRate = ln(exchangeRate) * SECONDS_PER_YEAR / timeToExpiry
+ *
+ * Therefore: APY = e^(ln_implied_rate) - 1 (no additional annualization needed)
  */
-function impliedRateToApy(impliedRate: bigint, secondsToExpiry: number): number {
-  if (secondsToExpiry <= 0) return 0;
+function impliedRateToApy(impliedRate: bigint): number {
+  if (impliedRate === 0n) return 0;
 
   // Convert from WAD to decimal
   const rateDecimal = Number(impliedRate) / Number(WAD);
 
-  // Annualize: APY = (1 + rate)^(seconds_per_year / seconds_to_expiry) - 1
-  // Since impliedRate is ln(1 + period_rate), we need: exp(rate * year/period) - 1
-  const annualizationFactor = SECONDS_PER_YEAR / secondsToExpiry;
-  const apy = Math.exp(rateDecimal * annualizationFactor) - 1;
+  // APY = exp(ln_implied_rate) - 1
+  const apy = Math.exp(rateDecimal) - 1;
 
   return apy * 100; // Return as percentage
 }
@@ -85,17 +86,14 @@ async function fetchRatesData(
 /**
  * Process raw rates response into usable format
  */
-function processRatesData(data: MarketRatesResponse, expiryTimestamp: number): ProcessedRatesData {
-  // Note: we use point-specific secondsToExpiry for each data point, not a global one
-
+function processRatesData(data: MarketRatesResponse): ProcessedRatesData {
   const dataPoints: ProcessedRateDataPoint[] = data.dataPoints.map((point) => {
     const timestamp = new Date(point.timestamp);
     const impliedRate = BigInt(point.impliedRate);
     const exchangeRate = BigInt(point.exchangeRate);
 
-    // Calculate seconds to expiry at the time of this data point
-    const pointSecondsToExpiry = Math.max(0, expiryTimestamp - timestamp.getTime() / 1000);
-    const impliedRatePercent = impliedRateToApy(impliedRate, pointSecondsToExpiry);
+    // lnImpliedRate is already annualized on-chain, no need for expiry-based calculation
+    const impliedRatePercent = impliedRateToApy(impliedRate);
     const exchangeRateNum = Number(exchangeRate) / Number(WAD);
 
     const result: ProcessedRateDataPoint = {
@@ -115,10 +113,10 @@ function processRatesData(data: MarketRatesResponse, expiryTimestamp: number): P
       point.close !== undefined
     ) {
       result.ohlc = {
-        open: impliedRateToApy(BigInt(point.open), pointSecondsToExpiry),
-        high: impliedRateToApy(BigInt(point.high), pointSecondsToExpiry),
-        low: impliedRateToApy(BigInt(point.low), pointSecondsToExpiry),
-        close: impliedRateToApy(BigInt(point.close), pointSecondsToExpiry),
+        open: impliedRateToApy(BigInt(point.open)),
+        high: impliedRateToApy(BigInt(point.high)),
+        low: impliedRateToApy(BigInt(point.low)),
+        close: impliedRateToApy(BigInt(point.close)),
       };
     }
 
@@ -163,7 +161,6 @@ interface UseMarketRatesOptions {
   days?: number;
   enabled?: boolean;
   refetchInterval?: number;
-  expiryTimestamp?: number;
 }
 
 /**
@@ -177,20 +174,14 @@ export function useMarketRates(
   marketAddress: string | undefined,
   options: UseMarketRatesOptions = {}
 ): UseQueryResult<ProcessedRatesData> {
-  const {
-    resolution = 'daily',
-    days = 30,
-    enabled = true,
-    refetchInterval = 60000,
-    expiryTimestamp = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60, // Default to 1 year
-  } = options;
+  const { resolution = 'daily', days = 30, enabled = true, refetchInterval = 60000 } = options;
 
   return useQuery({
     queryKey: ['market-rates', marketAddress, resolution, days],
     queryFn: async () => {
       if (!marketAddress) throw new Error('Market address required');
       const data = await fetchRatesData(marketAddress, resolution, days);
-      return processRatesData(data, expiryTimestamp);
+      return processRatesData(data);
     },
     enabled: enabled && !!marketAddress,
     staleTime: 30000,

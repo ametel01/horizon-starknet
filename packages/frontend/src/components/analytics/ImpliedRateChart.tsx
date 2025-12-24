@@ -42,7 +42,6 @@ type Resolution = 'tick' | 'daily';
 
 interface ImpliedRateChartProps {
   marketAddress: string;
-  expiryTimestamp: number;
   className?: string;
   height?: number;
   showExchangeRate?: boolean;
@@ -69,7 +68,6 @@ interface ChartDataPoint {
  */
 export function ImpliedRateChart({
   marketAddress,
-  expiryTimestamp,
   className,
   height = 300,
   showExchangeRate = false,
@@ -88,7 +86,6 @@ export function ImpliedRateChart({
   } = useMarketRates(marketAddress, {
     resolution,
     days,
-    expiryTimestamp,
   });
 
   // Format data for the chart
@@ -459,19 +456,16 @@ function OhlcChart({
  */
 interface ImpliedRateCompactProps {
   marketAddress: string;
-  expiryTimestamp: number;
   className?: string;
 }
 
 export function ImpliedRateCompact({
   marketAddress,
-  expiryTimestamp,
   className,
 }: ImpliedRateCompactProps): ReactNode {
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
     days: 7,
-    expiryTimestamp,
   });
 
   if (isLoading) {
