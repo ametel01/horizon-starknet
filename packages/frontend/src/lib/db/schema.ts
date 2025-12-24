@@ -94,6 +94,49 @@ export const marketFeesCollected = pgTable('market_fees_collected', {
   fee_rate: numeric('fee_rate', { precision: 78, scale: 0 }).notNull(),
 });
 
+// SY Events
+export const syDeposit = pgTable('sy_deposit', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  caller: text('caller').notNull(),
+  receiver: text('receiver').notNull(),
+  underlying: text('underlying').notNull(),
+  sy: text('sy').notNull(),
+  amount_deposited: numeric('amount_deposited', { precision: 78, scale: 0 }).notNull(),
+  amount_sy_minted: numeric('amount_sy_minted', { precision: 78, scale: 0 }).notNull(),
+  exchange_rate: numeric('exchange_rate', { precision: 78, scale: 0 }).notNull(),
+  total_supply_after: numeric('total_supply_after', { precision: 78, scale: 0 }).notNull(),
+});
+
+export const syRedeem = pgTable('sy_redeem', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  caller: text('caller').notNull(),
+  receiver: text('receiver').notNull(),
+  underlying: text('underlying').notNull(),
+  sy: text('sy').notNull(),
+  amount_sy_burned: numeric('amount_sy_burned', { precision: 78, scale: 0 }).notNull(),
+  amount_redeemed: numeric('amount_redeemed', { precision: 78, scale: 0 }).notNull(),
+  exchange_rate: numeric('exchange_rate', { precision: 78, scale: 0 }).notNull(),
+  total_supply_after: numeric('total_supply_after', { precision: 78, scale: 0 }).notNull(),
+});
+
+export const syOracleRateUpdated = pgTable('sy_oracle_rate_updated', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  sy: text('sy').notNull(),
+  underlying: text('underlying').notNull(),
+  old_rate: numeric('old_rate', { precision: 78, scale: 0 }).notNull(),
+  new_rate: numeric('new_rate', { precision: 78, scale: 0 }).notNull(),
+  rate_change_bps: numeric('rate_change_bps', { precision: 78, scale: 0 }).notNull(),
+});
+
 // YT Events
 export const ytInterestClaimed = pgTable('yt_interest_claimed', {
   _id: uuid('_id').primaryKey(),
