@@ -25,9 +25,14 @@ const QUERY_TIMEOUT_MS = 10_000;
 /**
  * Wrap a promise with a timeout. Returns null if the query times out.
  */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = QUERY_TIMEOUT_MS): Promise<T | null> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = QUERY_TIMEOUT_MS
+): Promise<T | null> {
   const timeoutPromise = new Promise<null>((resolve) => {
-    setTimeout(() => resolve(null), timeoutMs);
+    setTimeout(() => {
+      resolve(null);
+    }, timeoutMs);
   });
   return Promise.race([promise, timeoutPromise]);
 }
@@ -85,7 +90,9 @@ export async function GET(_request: NextRequest): Promise<NextResponse<StatsResp
 
       // Swaps for volume calculation and unique users
       withTimeout(db.select().from(routerSwap).where(gte(routerSwap.block_timestamp, oneDayAgo))),
-      withTimeout(db.select().from(routerSwapYT).where(gte(routerSwapYT.block_timestamp, oneDayAgo))),
+      withTimeout(
+        db.select().from(routerSwapYT).where(gte(routerSwapYT.block_timestamp, oneDayAgo))
+      ),
 
       // Other operations for unique users count (use enriched views)
       withTimeout(
@@ -184,7 +191,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse<StatsResp
     const ytSwapsData = ytSwaps ?? [];
 
     // Check if we have data from materialized view for volume/fees
-    const hasViewData = dailyStatsData.length > 0 && dailyStatsData.some((s) => (s.swap_count ?? 0) > 0);
+    const hasViewData =
+      dailyStatsData.length > 0 && dailyStatsData.some((s) => (s.swap_count ?? 0) > 0);
 
     if (hasViewData) {
       for (const stat of dailyStatsData) {
