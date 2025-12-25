@@ -2,6 +2,8 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { logWarn } from '@/lib/logger';
+
 const AVNU_PRICES_API = 'https://starknet.impulse.avnu.fi/v3/tokens/prices';
 
 /**
@@ -77,7 +79,7 @@ async function fetchTokenPrices(tokenAddresses: string[]): Promise<Map<string, n
     });
 
     if (!response.ok) {
-      console.warn('AVNU API error:', response.status, response.statusText);
+      logWarn('AVNU API error', { module: 'usePrices', status: response.status });
       return priceMap;
     }
 
@@ -92,7 +94,10 @@ async function fetchTokenPrices(tokenAddresses: string[]): Promise<Map<string, n
       priceMap.set(normalizedAddr, usdPrice);
     }
   } catch (error) {
-    console.warn('Failed to fetch token prices from AVNU:', error);
+    logWarn('Failed to fetch token prices from AVNU', {
+      module: 'usePrices',
+      error: String(error),
+    });
   }
 
   return priceMap;

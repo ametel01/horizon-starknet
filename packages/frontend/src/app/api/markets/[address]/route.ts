@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketCurrentState, marketDailyStats } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,9 +46,14 @@ interface MarketDetailResponse {
  * Get detailed market information
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<MarketDetailResponse | { error: string }>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult)
+    return rateLimitResult as NextResponse<MarketDetailResponse | { error: string }>;
+
   const { address } = await params;
 
   try {

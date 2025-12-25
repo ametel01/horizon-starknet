@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { db, ytInterestClaimed, userPyPositions } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<YieldResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'USER');
+  if (rateLimitResult) return rateLimitResult as NextResponse<YieldResponse>;
+
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   const days = searchParams.get('days');

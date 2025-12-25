@@ -3,6 +3,9 @@
  *
  * Provides consistent cache headers for CDN-level caching.
  * Uses stale-while-revalidate pattern for optimal performance.
+ *
+ * ASVS Control: V14.4.5 - Cache Control
+ * All responses include Vary: Accept-Encoding to prevent cache poisoning.
  */
 
 /**
@@ -43,6 +46,7 @@ export function getCacheHeaders(
 
   return {
     'Cache-Control': `public, s-maxage=${String(maxAge)}, stale-while-revalidate=${String(staleWhileRevalidate)}`,
+    Vary: 'Accept-Encoding',
   };
 }
 
@@ -52,5 +56,6 @@ export function getCacheHeaders(
 export function getNoCacheHeaders(): HeadersInit {
   return {
     'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+    Vary: 'Accept-Encoding',
   };
 }

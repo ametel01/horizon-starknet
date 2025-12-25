@@ -9,54 +9,8 @@ const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-// Content Security Policy configuration
-// Note: 'unsafe-inline' for styles is required for Tailwind CSS and dynamic styling
-// 'unsafe-eval' is NOT included to prevent XSS attacks
-const isProduction = process.env.NODE_ENV === 'production';
-
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self' 'unsafe-inline';
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob: https:;
-  font-src 'self' data:;
-  connect-src 'self'
-    https://*.starknet.io
-    https://*.infura.io
-    https://*.alchemy.com
-    https://*.blast.io
-    https://*.voyager.online
-    https://*.avnu.fi
-    https://api.pragma.build
-    https://*.sentry.io
-    wss://*.starknet.io
-    wss://*.infura.io
-    wss://*.alchemy.com;
-  frame-ancestors 'none';
-  base-uri 'self';
-  form-action 'self';
-  ${isProduction ? 'upgrade-insecure-requests;' : ''}
-`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-
-// Security headers applied to all routes
-const securityHeaders = [
-  // Enable DNS prefetching for external resources
-  { key: 'X-DNS-Prefetch-Control', value: 'on' },
-  // Force HTTPS for 2 years, include subdomains (production only)
-  ...(isProduction
-    ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
-    : []),
-  // Prevent clickjacking - page cannot be embedded in iframes
-  { key: 'X-Frame-Options', value: 'DENY' },
-  // Prevent MIME type sniffing
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  // Control referrer information sent with requests
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  // Disable unnecessary browser features
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
-  // Content Security Policy
-  { key: 'Content-Security-Policy', value: ContentSecurityPolicy },
-];
+// Security headers are now set dynamically in proxy.ts with CSP nonce support
+// See src/proxy.ts and src/lib/csp.ts for the implementation
 
 const nextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
@@ -64,16 +18,7 @@ const nextConfig: NextConfig = {
   // Enable source maps in production for debugging and Lighthouse insights
   productionBrowserSourceMaps: true,
 
-  // Security headers for all routes
-  async headers() {
-    return [
-      {
-        // Apply security headers to all routes
-        source: '/:path*',
-        headers: securityHeaders,
-      },
-    ];
-  },
+  // Note: Security headers are set in proxy.ts with dynamic CSP nonce
 
   // Image optimization configuration
   images: {

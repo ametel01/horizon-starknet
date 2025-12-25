@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { logError } from '@/lib/logger';
+
 /**
  * Global error boundary for the entire application.
  * This catches React rendering errors that occur outside of route error boundaries.
@@ -15,8 +17,7 @@ export default function GlobalError({
   reset: () => void;
 }): React.ReactNode {
   useEffect(() => {
-    // Log error to console (server-side Sentry will capture via instrumentation)
-    console.error('Global error:', error);
+    logError(error, { module: 'app', page: 'global-error', digest: error.digest });
   }, [error]);
 
   return (

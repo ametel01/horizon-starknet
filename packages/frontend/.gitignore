@@ -47,3 +47,6 @@ next-env.d.ts
 
 # Bun
 bun.lockb
+
+# Scripts output
+scripts/output/

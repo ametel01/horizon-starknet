@@ -7,6 +7,9 @@ export type NetworkId = 'mainnet' | 'sepolia' | 'devnet' | 'fork';
  *
  * - Client-side: Uses /api/rpc proxy to keep API keys private
  * - Server-side: Uses direct RPC_URL for better performance
+ *
+ * Note: RPC_URL must be configured for mainnet/sepolia.
+ * No public fallback is available - all providers require API keys.
  */
 function getRpcUrl(network: NetworkId): string {
   const isClient = typeof window !== 'undefined';
@@ -16,21 +19,21 @@ function getRpcUrl(network: NetworkId): string {
     return '/api/rpc';
   }
 
-  // Server-side: use direct RPC URL (with API key)
-  const directUrl = process.env.RPC_URL;
-  if (directUrl) {
-    return directUrl;
+  // Local development networks use localhost
+  if (network === 'devnet' || network === 'fork') {
+    return 'http://localhost:5050';
   }
 
-  // Fallback to public RPCs
-  const fallbacks: Record<NetworkId, string> = {
-    mainnet: 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7',
-    sepolia: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
-    devnet: 'http://localhost:5050',
-    fork: 'http://localhost:5050',
-  };
+  // Server-side: use direct RPC URL (with API key)
+  const directUrl = process.env.RPC_URL;
+  if (!directUrl) {
+    throw new Error(
+      `RPC_URL environment variable is required for ${network}. ` +
+        'No public Starknet RPC endpoints are available - all providers require API keys.'
+    );
+  }
 
-  return fallbacks[network];
+  return directUrl;
 }
 
 const CHAIN_IDS: Record<NetworkId, string> = {

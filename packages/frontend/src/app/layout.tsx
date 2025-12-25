@@ -102,7 +102,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
     <html lang="en" className={publicSans.variable} suppressHydrationWarning>
       <head>
         {/* Preconnect to external origins used early in page lifecycle */}
-        <link rel="preconnect" href="https://starknet-mainnet.public.blastapi.io" />
+        <link rel="preconnect" href="https://starknet-mainnet.g.alchemy.com" />
         <link rel="preconnect" href="https://starknet.impulse.avnu.fi" />
       </head>
       <body className={`${inter.variable} ${mono.variable} font-sans`}>

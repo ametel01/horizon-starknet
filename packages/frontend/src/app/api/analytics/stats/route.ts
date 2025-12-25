@@ -18,6 +18,7 @@ import {
   syRedeem,
 } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 // Query timeout in milliseconds (10 seconds)
 const QUERY_TIMEOUT_MS = 10_000;
@@ -56,7 +57,11 @@ interface StatsResponse {
  * GET /api/analytics/stats
  * Get combined protocol stats in a single optimized call
  */
-export async function GET(_request: NextRequest): Promise<NextResponse<StatsResponse>> {
+export async function GET(request: NextRequest): Promise<NextResponse<StatsResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult) return rateLimitResult as NextResponse<StatsResponse>;
+
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 

@@ -10,7 +10,8 @@ import {
   enrichedRouterSwap,
   enrichedRouterSwapYT,
 } from '@/lib/db';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { validateQuery, analyticsFeesQuerySchema } from '@/lib/validations/api';
 
 interface FeesDataPoint {
@@ -52,6 +53,10 @@ export interface FeesResponse {
  * - days: number - how many days of history (default: 30, max: 365)
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult) return rateLimitResult;
+
   // Validate query parameters
   const params = validateQuery(request.nextUrl.searchParams, analyticsFeesQuerySchema);
   if (params instanceof NextResponse) return params;
@@ -132,7 +137,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     } else {
       // Fallback: Query enriched_router_swap and enriched_router_swap_yt views (have fee data from market events)
-      console.warn('[analytics/fees] Using fallback query from enriched_router_swap');
+      logWarn('Using fallback query from enriched_router_swap', { module: 'analytics/fees' });
 
       // Query both PT swaps and YT swaps in parallel
       const [ptSwaps, ytSwaps] = await Promise.all([

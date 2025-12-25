@@ -11,6 +11,7 @@ import {
   enrichedRouterRedeemPY,
 } from '@/lib/db/schema';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 /**
  * Normalize a Starknet address for database comparison.
@@ -54,6 +55,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<HistoryResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'USER');
+  if (rateLimitResult) return rateLimitResult as NextResponse<HistoryResponse>;
+
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);

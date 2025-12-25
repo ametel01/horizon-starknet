@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getCacheHeaders } from '@/lib/cache';
 import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@/lib/db';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 interface TvlDataPoint {
   date: string;
@@ -28,7 +29,11 @@ interface TvlResponse {
  * Note: Historical TVL data requires a dedicated TVL snapshot table.
  * Currently only returns current TVL from market_current_state.
  */
-export async function GET(_request: NextRequest): Promise<NextResponse<TvlResponse>> {
+export async function GET(request: NextRequest): Promise<NextResponse<TvlResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult) return rateLimitResult as NextResponse<TvlResponse>;
+
   try {
     // Get current TVL from all markets (including expired for total count)
     const allMarkets = await db.select().from(marketCurrentState);
@@ -80,9 +85,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse<TvlRespon
           totalSyReserve += reserves.sy;
           totalPtReserve += reserves.pt;
         }
-        console.warn(
-          `[analytics/tvl] Used enriched_router_swap fallback, found ${String(marketReserves.size)} markets`
-        );
+        logWarn('Used enriched_router_swap fallback', {
+          module: 'analytics/tvl',
+          marketCount: marketReserves.size,
+        });
       } else {
         // Fallback 2: Try direct market_swap events
         const latestSwapsPerMarket = await db
@@ -105,16 +111,21 @@ export async function GET(_request: NextRequest): Promise<NextResponse<TvlRespon
           totalPtReserve += BigInt(swap.ptReserve);
         }
 
-        console.warn(
-          `[analytics/tvl] Used market_swap fallback, found ${String(latestSwapsPerMarket.length)} markets`
-        );
+        logWarn('Used market_swap fallback', {
+          module: 'analytics/tvl',
+          marketCount: latestSwapsPerMarket.length,
+        });
       }
     }
 
     // Log for debugging
-    console.warn(
-      `[analytics/tvl] Found ${String(allMarkets.length)} total markets, ${String(currentMarkets.length)} active, TVL: SY=${totalSyReserve.toString()}, PT=${totalPtReserve.toString()}`
-    );
+    logWarn('TVL calculation complete', {
+      module: 'analytics/tvl',
+      totalMarkets: allMarkets.length,
+      activeMarkets: currentMarkets.length,
+      totalSyReserve: totalSyReserve.toString(),
+      totalPtReserve: totalPtReserve.toString(),
+    });
 
     // Return current TVL (historical TVL would require a snapshot table)
     const today = new Date().toISOString().split('T')[0] ?? '';

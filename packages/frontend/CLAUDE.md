@@ -139,6 +139,13 @@ cd packages/frontend
 bun run codegen       # Generate TypeScript types from ABIs
 ```
 
+## Database Queries
+
+Database connection is configured in `.env.local` via `DATABASE_URL`.
+
+```bash
+bun run scripts/query-users.ts  # Query unique protocol users with tx hashes (JSON output)
+```
 
 MANDATORY: Use shadcn/ui Components
 All new components **MUST** use the shadcn/ui library. An MCP server is available for component discovery and installation.
