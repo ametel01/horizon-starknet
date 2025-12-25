@@ -1,0 +1,3 @@
+[test]
+# Only run unit tests in src/, exclude e2e tests (which use Playwright)
+root = "./src"
