@@ -1,6 +1,7 @@
 import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import {
   db,
   protocolDailyStats,
@@ -10,8 +11,6 @@ import {
   enrichedRouterSwapYT,
 } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
 
 interface FeesDataPoint {
   date: string;
@@ -257,21 +256,24 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
       .orderBy(desc(marketFeesCollected.block_timestamp))
       .limit(10);
 
-    return NextResponse.json({
-      total24h: total24h.toString(),
-      total7d: total7d.toString(),
-      total30d: total30d.toString(),
-      history,
-      byMarket,
-      recentCollections: recentCollections.map((row) => ({
-        market: row.market,
-        collector: row.collector,
-        receiver: row.receiver,
-        amount: row.amount,
-        timestamp: row.block_timestamp.toISOString(),
-        transactionHash: row.transaction_hash,
-      })),
-    });
+    return NextResponse.json(
+      {
+        total24h: total24h.toString(),
+        total7d: total7d.toString(),
+        total30d: total30d.toString(),
+        history,
+        byMarket,
+        recentCollections: recentCollections.map((row) => ({
+          market: row.market,
+          collector: row.collector,
+          receiver: row.receiver,
+          amount: row.amount,
+          timestamp: row.block_timestamp.toISOString(),
+          transactionHash: row.transaction_hash,
+        })),
+      },
+      { headers: getCacheHeaders('MEDIUM') }
+    );
   } catch (error) {
     logError(error, { module: 'analytics/fees' });
     return NextResponse.json(

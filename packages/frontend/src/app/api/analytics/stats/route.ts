@@ -1,6 +1,7 @@
 import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import {
   db,
   marketCurrentState,
@@ -17,8 +18,6 @@ import {
   syRedeem,
 } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
 
 // Query timeout in milliseconds (10 seconds)
 const QUERY_TIMEOUT_MS = 10_000;
@@ -269,20 +268,23 @@ export async function GET(_request: NextRequest): Promise<NextResponse<StatsResp
       uniqueUsers.add(withdrawal.caller.toLowerCase());
     }
 
-    return NextResponse.json({
-      tvl: {
-        totalSyReserve: totalSyReserve.toString(),
-        totalPtReserve: totalPtReserve.toString(),
-        marketCount: marketsData.length,
+    return NextResponse.json(
+      {
+        tvl: {
+          totalSyReserve: totalSyReserve.toString(),
+          totalPtReserve: totalPtReserve.toString(),
+          marketCount: marketsData.length,
+        },
+        volume24h: {
+          syVolume: syVolume24h.toString(),
+          ptVolume: ptVolume24h.toString(),
+          swapCount: swapCount24h,
+          uniqueUsers: uniqueUsers.size,
+        },
+        fees24h: fees24h.toString(),
       },
-      volume24h: {
-        syVolume: syVolume24h.toString(),
-        ptVolume: ptVolume24h.toString(),
-        swapCount: swapCount24h,
-        uniqueUsers: uniqueUsers.size,
-      },
-      fees24h: fees24h.toString(),
-    });
+      { headers: getCacheHeaders('MEDIUM') }
+    );
   } catch (error) {
     logError(error, { module: 'analytics/stats' });
     return NextResponse.json(

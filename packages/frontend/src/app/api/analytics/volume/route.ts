@@ -1,10 +1,9 @@
 import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
 
 interface VolumeDataPoint {
   date: string;
@@ -207,20 +206,23 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
       }
     }
 
-    return NextResponse.json({
-      total24h: {
-        syVolume: syVolume24h.toString(),
-        ptVolume: ptVolume24h.toString(),
-        swapCount: swapCount24h,
-        uniqueSwappers: uniqueSwappers24h,
+    return NextResponse.json(
+      {
+        total24h: {
+          syVolume: syVolume24h.toString(),
+          ptVolume: ptVolume24h.toString(),
+          swapCount: swapCount24h,
+          uniqueSwappers: uniqueSwappers24h,
+        },
+        total7d: {
+          syVolume: syVolume7d.toString(),
+          ptVolume: ptVolume7d.toString(),
+          swapCount: swapCount7d,
+        },
+        history,
       },
-      total7d: {
-        syVolume: syVolume7d.toString(),
-        ptVolume: ptVolume7d.toString(),
-        swapCount: swapCount7d,
-      },
-      history,
-    });
+      { headers: getCacheHeaders('MEDIUM') }
+    );
   } catch (error) {
     logError(error, { module: 'analytics/volume' });
     return NextResponse.json(

@@ -173,30 +173,34 @@ const result = await trace('ui.click', 'Swap Button', async (span) => {
 
 ---
 
-### 2.2 ISR for Analytics Pages
+### 2.2 ISR for Analytics Pages ✅ COMPLETED
 
 **Best Practice:** Leverage ISR with `revalidate`
 
-**Current State:** API routes use `force-dynamic`
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Add revalidation to analytics pages:
-  ```tsx
-  // src/app/analytics/page.tsx
-  export const revalidate = 60; // Revalidate every 60 seconds
-  ```
-- [ ] Consider ISR for:
-  - `/analytics` - Protocol stats (revalidate: 60)
-  - `/docs/*` - Documentation (revalidate: 3600)
-  - Home page stats (revalidate: 30)
-- [ ] Add cache headers to API routes:
-  ```ts
-  return NextResponse.json(data, {
-    headers: {
-      'Cache-Control': 's-maxage=60, stale-while-revalidate=300',
-    },
-  });
-  ```
+**Cache Utility Created:**
+- [x] `src/lib/cache.ts` - Centralized cache header utilities
+  - `CacheDuration.SHORT` (30s cache, 2min stale) - For real-time data
+  - `CacheDuration.MEDIUM` (60s cache, 5min stale) - For analytics
+  - `CacheDuration.LONG` (5min cache, 1hr stale) - For historical data
+  - `CacheDuration.STATIC` (1hr cache, 24hr stale) - For static content
+  - `getCacheHeaders()` - Generate Cache-Control headers
+  - `getNoCacheHeaders()` - For user-specific data
+
+**API Route Caching Applied:**
+- [x] `/api/analytics/stats` - MEDIUM cache (60s)
+- [x] `/api/analytics/tvl` - MEDIUM cache (60s)
+- [x] `/api/analytics/volume` - MEDIUM cache (60s)
+- [x] `/api/analytics/fees` - MEDIUM cache (60s)
+- [x] `/api/markets` - SHORT cache (30s)
+
+**ISR for Documentation Pages:**
+- [x] Added `revalidate = 3600` to `/docs` layout
+- [x] All 18 docs pages now use ISR with 1-hour revalidation
+
+**Note:** Analytics page is a client component that fetches from API routes.
+CDN-level caching via Cache-Control headers provides equivalent benefits.
 
 ---
 

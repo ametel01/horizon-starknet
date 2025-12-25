@@ -1,10 +1,9 @@
 import { eq, desc, asc } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import { db, marketCurrentState } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
 
 interface MarketListItem {
   market: string;
@@ -121,10 +120,13 @@ export async function GET(request: NextRequest): Promise<NextResponse<MarketsRes
       };
     });
 
-    return NextResponse.json({
-      markets,
-      total: markets.length,
-    });
+    return NextResponse.json(
+      {
+        markets,
+        total: markets.length,
+      },
+      { headers: getCacheHeaders('SHORT') }
+    );
   } catch (error) {
     logError(error, { module: 'markets' });
     return NextResponse.json({ markets: [], total: 0 }, { status: 500 });

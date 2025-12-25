@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   description: 'Learn how to use Horizon Protocol for yield tokenization on Starknet',
 };
 
+// ISR: Revalidate documentation pages every hour
+// This allows updates to propagate while keeping pages fast
+export const revalidate = 3600;
+
 export default function DocsRootLayout({
   children,
 }: {
