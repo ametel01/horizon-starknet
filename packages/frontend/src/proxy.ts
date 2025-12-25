@@ -2,18 +2,18 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Next.js Middleware
+ * Next.js Proxy (formerly Middleware)
  *
- * Runs on the Edge runtime for every matched request.
+ * Runs on Node.js runtime for every matched request.
  * Use for lightweight request processing like:
  * - Request timing headers
  * - Route redirects
  * - Geo-based routing
- * - A/B testing
  *
- * Note: Heavy operations should be done in API routes or server components.
+ * Note: Authentication should be done in Layouts or Route Handlers, not here.
+ * See: https://nextjs.org/docs/app/api-reference/file-conventions/proxy
  */
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const response = NextResponse.next();
 
   // Add request timing header for performance monitoring
@@ -26,11 +26,6 @@ export function middleware(request: NextRequest): NextResponse {
   // Legacy route redirects
   // Redirect old paths to new ones for backwards compatibility
   const { pathname } = request.nextUrl;
-
-  // Example: Redirect /app to /trade (if we ever change primary routes)
-  // if (pathname === '/app') {
-  //   return NextResponse.redirect(new URL('/trade', request.url));
-  // }
 
   // Redirect /markets to /pools (markets is now called pools)
   if (pathname === '/markets') {

@@ -371,13 +371,13 @@ Helper Functions:
 
 ## Priority 5: Developer Experience
 
-### 5.1 Middleware for Routing Logic ✅ COMPLETED
+### 5.1 Proxy for Routing Logic ✅ COMPLETED
 
-**Best Practice:** Use middleware for auth/routing
+**Best Practice:** Use proxy for routing redirects
 
 **Status:** Completed on 2025-12-25
 
-**File Created: `src/middleware.ts`**
+**File Created: `src/proxy.ts`**
 
 Features implemented:
 - [x] Request timing header (`x-request-time`) for performance monitoring
@@ -391,51 +391,40 @@ Features implemented:
 - [x] Matcher excludes API routes, static files, and monitoring endpoints
 
 **Notes:**
-- Runs on Edge runtime for low latency
-- Geo-based redirects can be added if compliance requirements arise
-- Next.js 16 shows deprecation warning for "middleware" convention (will be renamed to "proxy" in future)
+- Uses Next.js 16 `proxy.ts` convention (replaces deprecated `middleware.ts`)
+- Runs on Node.js runtime (not Edge)
+- Authentication should be done in Layouts or Route Handlers, not in proxy
+- See: https://nextjs.org/docs/app/api-reference/file-conventions/proxy
 
 ---
 
-### 5.2 Pre-push Hook ✅ COMPLETED
+### 5.2 Pre-push Hook ❌ REMOVED
 
 **Best Practice:** Run tests before push
 
-**Status:** Completed on 2025-12-25
+**Status:** Removed - Husky setup removed from repository
 
-**File Updated: `.husky/pre-push`**
-
-The pre-push hook now runs:
-1. `bun run check` - Typecheck + ESLint + Prettier format check
-2. `bun test` - All unit tests (329 tests across 11 files)
-
-Features:
-- [x] Clear status messages with emoji indicators
-- [x] Exits with error code on any failure
-- [x] Prevents pushing code that doesn't pass quality gates
+**Note:** Quality checks are enforced via CI instead of git hooks.
+Run `bun run check && bun test` manually before pushing if desired.
 
 ---
 
-### 5.3 Bundle Analysis
+### 5.3 Bundle Analysis ✅ COMPLETED
 
 **Best Practice:** Use @next/bundle-analyzer
 
-**Current State:** Not configured
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Install: `bun add -d @next/bundle-analyzer`
-- [ ] Add to `next.config.ts`:
-  ```ts
-  import withBundleAnalyzer from '@next/bundle-analyzer';
+**Configuration Added:**
+- [x] `@next/bundle-analyzer` already installed
+- [x] Added `withBundleAnalyzer` to `next.config.ts` config chain
+- [x] Added `"analyze": "ANALYZE=true next build"` script
 
-  const bundleAnalyzer = withBundleAnalyzer({
-    enabled: process.env.ANALYZE === 'true',
-  });
-
-  export default bundleAnalyzer(nextConfig);
-  ```
-- [ ] Add script: `"analyze": "ANALYZE=true bun run build"`
-- [ ] Run periodically to identify large dependencies
+**Usage:**
+```bash
+bun run analyze
+```
+This opens an interactive treemap visualization of the client and server bundles in your browser, helping identify large dependencies and optimization opportunities.
 
 ---
 
