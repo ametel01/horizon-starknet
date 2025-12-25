@@ -1,7 +1,13 @@
 import { withSentryConfig } from '@sentry/nextjs';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 import createMDX from '@next/mdx';
 import type { NextConfig } from 'next';
 import path from 'path';
+
+// Bundle analyzer - enabled with ANALYZE=true
+const bundleAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 // Content Security Policy configuration
 // Note: 'unsafe-inline' for styles is required for Tailwind CSS and dynamic styling
@@ -149,4 +155,5 @@ const sentryWebpackPluginOptions = {
   },
 };
 
-export default withSentryConfig(withMDX(nextConfig), sentryWebpackPluginOptions);
+// Chain: bundleAnalyzer -> MDX -> Sentry
+export default withSentryConfig(bundleAnalyzer(withMDX(nextConfig)), sentryWebpackPluginOptions);
