@@ -12,6 +12,8 @@ const bundleAnalyzer = withBundleAnalyzer({
 // Content Security Policy configuration
 // Note: 'unsafe-inline' for styles is required for Tailwind CSS and dynamic styling
 // 'unsafe-eval' is NOT included to prevent XSS attacks
+const isProduction = process.env.NODE_ENV === 'production';
+
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline';
@@ -33,15 +35,17 @@ const ContentSecurityPolicy = `
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
-  upgrade-insecure-requests;
+  ${isProduction ? 'upgrade-insecure-requests;' : ''}
 `.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
 // Security headers applied to all routes
 const securityHeaders = [
   // Enable DNS prefetching for external resources
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
-  // Force HTTPS for 2 years, include subdomains
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // Force HTTPS for 2 years, include subdomains (production only)
+  ...(isProduction
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
+    : []),
   // Prevent clickjacking - page cannot be embedded in iframes
   { key: 'X-Frame-Options', value: 'DENY' },
   // Prevent MIME type sniffing

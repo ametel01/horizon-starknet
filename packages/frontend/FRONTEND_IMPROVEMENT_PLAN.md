@@ -430,34 +430,42 @@ This opens an interactive treemap visualization of the client and server bundles
 
 ## Priority 6: Code Quality Enhancements
 
-### 6.1 API Client Wrapper
+### 6.1 API Client Wrapper ✅ COMPLETED
 
 **Best Practice:** Central API client wrapper
 
-**Current State:** Direct fetch calls in API hooks
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Create centralized API client:
-  ```ts
-  // src/lib/api/client.ts
-  const API_BASE = '/api';
+**Files Created:**
+- `src/lib/api/client.ts` - Full-featured API client class
+- `src/lib/api/index.ts` - Module exports
 
-  class ApiClient {
-    async get<T>(path: string, params?: Record<string, string>): Promise<T> {
-      const url = new URL(`${API_BASE}${path}`, window.location.origin);
-      if (params) {
-        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-      }
-      const res = await fetch(url);
-      if (!res.ok) throw new ApiError(res.status, await res.text());
-      return res.json();
-    }
-  }
+**Features:**
+- [x] Type-safe `get`, `post`, `put`, `delete`, `patch` methods
+- [x] Request/response interceptors with logging
+- [x] Error interceptors for centralized error handling
+- [x] Automatic query parameter serialization
+- [x] Request timeout with AbortController
+- [x] `ApiError` class with helper methods (`isClientError`, `isServerError`, `isNotFound`)
+- [x] Development-mode request timing logs
 
-  export const api = new ApiClient();
-  ```
-- [ ] Refactor API hooks to use the client
-- [ ] Add request/response interceptors for logging
+**Hooks Updated:**
+- [x] `useIndexedMarkets` - Uses `api.get()`
+- [x] `useIndexerHealth` - Uses `api.get()`
+- [x] `useMarketHistory` - Uses `api.get()`
+- [x] `useProtocolAnalytics` - Uses `api.get()`
+- [x] `useUserData` - Uses `api.get()`
+
+**Usage:**
+```ts
+import { api, ApiError } from '@/lib/api';
+
+// GET request
+const data = await api.get<MarketsResponse>('/markets', { active_only: 'true' });
+
+// POST request
+const result = await api.post<Response>('/endpoint', { body: 'data' });
+```
 
 ---
 
