@@ -260,6 +260,7 @@ export function DocsSearch(): React.ReactNode {
                 <Link
                   key={result.href}
                   href={result.href}
+                  prefetch={false} // Disable prefetch - dynamic results, user picks one
                   onClick={() => {
                     setIsOpen(false);
                     setQuery('');

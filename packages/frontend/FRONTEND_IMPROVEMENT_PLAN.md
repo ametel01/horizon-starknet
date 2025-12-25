@@ -204,23 +204,34 @@ CDN-level caching via Cache-Control headers provides equivalent benefits.
 
 ---
 
-### 2.3 Route Prefetching
+### 2.3 Route Prefetching ✅ COMPLETED
 
 **Best Practice:** Use Link prefetch for navigation
 
-**Current State:** Not explicitly configured
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Audit navigation components in `src/components/layout/`
-- [ ] Ensure `next/link` is used with default prefetch behavior
-- [ ] Add explicit prefetch for high-traffic routes:
-  ```tsx
-  <Link href="/trade" prefetch={true}>Trade</Link>
-  ```
-- [ ] Disable prefetch for rarely-used routes:
-  ```tsx
-  <Link href="/docs/glossary" prefetch={false}>Glossary</Link>
-  ```
+**Prefetch Strategy Implemented:**
+
+| Component | Route Type | Prefetch Setting |
+|-----------|------------|------------------|
+| Header | Main nav (/, /mint, /trade, /pools, /portfolio, /docs) | Default (enabled) |
+| Footer Product | High-traffic (/trade, /pools, /portfolio) | Default (enabled) |
+| Footer Learn | Docs pages | `prefetch={false}` |
+| Footer Resources | Reference pages (glossary, risks, mechanics) | `prefetch={false}` |
+| Footer Legal | /terms, /privacy | `prefetch={false}` |
+| DocsSidebar | All 18+ docs navigation links | `prefetch={false}` |
+| DocsSearch | Dynamic search results | `prefetch={false}` |
+| DocsNavigation | Prev/Next links | Default (enabled - only 2 links) |
+
+**Files Modified:**
+- [x] `src/components/layout/Footer.tsx` - Added prefetch config per link section
+- [x] `src/components/docs/DocsSidebar.tsx` - Disabled prefetch for sidebar links
+- [x] `src/components/docs/DocsSearch.tsx` - Disabled prefetch for search results
+
+**Rationale:**
+- High-traffic routes (main app pages) keep default prefetch for instant navigation
+- Docs pages disable prefetch since there are many links and pages are ISR cached
+- Legal/reference pages rarely accessed, don't need prefetch overhead
 
 ---
 
