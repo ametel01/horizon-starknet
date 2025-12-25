@@ -23,14 +23,6 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
   const tokenName = market.metadata?.yieldTokenName ?? 'Unknown Market';
 
-  // Debug: log raw implied rate values
-  console.log('[MarketCard] Raw implied rate values:', {
-    address: shortAddress,
-    'market.impliedApy': market.impliedApy.toString(),
-    'market.impliedApy.toNumber()': market.impliedApy.toNumber(),
-    'market.state.impliedRate': market.state.impliedRate?.toString(),
-  });
-
   return (
     <Card className={cn('hover:border-border/80 transition-colors', className)}>
       <CardHeader className="flex flex-row items-start justify-between">
