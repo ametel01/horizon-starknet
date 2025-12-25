@@ -26,7 +26,6 @@ jobs:
       - name: TruffleHog scan
         uses: trufflesecurity/trufflehog@main
         with:
-          path: ./packages/frontend
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
           extra_args: --only-verified
