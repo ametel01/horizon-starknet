@@ -26,9 +26,10 @@ import {
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { getNetworkConfig } from "../lib/constants";
-import { getDrizzleOptions } from "../lib/database";
-import { streamTimeoutPlugin } from "../lib/plugins";
+import { getNetworkConfig } from "../../constants";
+import { getDrizzleOptions } from "../../database";
+import { streamTimeoutPlugin } from "../../plugins";
+import { matchSelector, readU256 } from "../../utils";
 
 // Event selectors using Apibara's getSelector helper
 const MINT_PY = getSelector("MintPY");
@@ -37,24 +38,6 @@ const ADD_LIQUIDITY = getSelector("AddLiquidity");
 const REMOVE_LIQUIDITY = getSelector("RemoveLiquidity");
 const SWAP = getSelector("Swap");
 const SWAP_YT = getSelector("SwapYT");
-
-// Helper to read u256 (2 felts: low, high)
-function readU256(data: string[], index: number): string {
-  const low = BigInt(data[index] ?? "0");
-  const high = BigInt(data[index + 1] ?? "0");
-  return ((high << 128n) + low).toString();
-}
-
-// Helper to compare selectors numerically (handles padding differences)
-// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
-function matchSelector(a: string | undefined, b: string): boolean {
-  if (!a) return false;
-  try {
-    return BigInt(a) === BigInt(b);
-  } catch {
-    return false;
-  }
-}
 
 export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);

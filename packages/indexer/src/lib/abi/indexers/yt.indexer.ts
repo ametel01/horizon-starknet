@@ -26,9 +26,10 @@ import {
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { getNetworkConfig } from "../lib/constants";
-import { getDrizzleOptions } from "../lib/database";
-import { streamTimeoutPlugin } from "../lib/plugins";
+import { getNetworkConfig } from "../../constants";
+import { getDrizzleOptions } from "../../database";
+import { streamTimeoutPlugin } from "../../plugins";
+import { matchSelector, readU256 } from "../../utils";
 
 // Factory event to discover YT contracts
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
@@ -39,24 +40,6 @@ const REDEEM_PY = getSelector("RedeemPY");
 const REDEEM_PY_POST_EXPIRY = getSelector("RedeemPYPostExpiry");
 const INTEREST_CLAIMED = getSelector("InterestClaimed");
 const EXPIRY_REACHED = getSelector("ExpiryReached");
-
-// Helper to read u256 (2 felts: low, high)
-function readU256(data: string[], index: number): string {
-  const low = BigInt(data[index] ?? "0");
-  const high = BigInt(data[index + 1] ?? "0");
-  return ((high << 128n) + low).toString();
-}
-
-// Helper to compare selectors numerically (handles padding differences)
-// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
-function matchSelector(a: string | undefined, b: string): boolean {
-  if (!a) return false;
-  try {
-    return BigInt(a) === BigInt(b);
-  } catch {
-    return false;
-  }
-}
 
 export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
