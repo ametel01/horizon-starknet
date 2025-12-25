@@ -9,7 +9,7 @@ checksum = "sha256:125457a6806c314762c20e398ba06b2e39dbc4abf90b735ec616d14c24bdd
 
 [[package]]
 name = "horizon"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "cairo_fp",
  "openzeppelin_access",

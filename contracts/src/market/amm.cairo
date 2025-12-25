@@ -115,6 +115,7 @@ pub mod Market {
         Swap: Swap,
         ImpliedRateUpdated: ImpliedRateUpdated,
         FeesCollected: FeesCollected,
+        ScalarRootUpdated: ScalarRootUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -209,6 +210,15 @@ pub mod Market {
         pub amount: u256,
         pub expiry: u64,
         pub fee_rate: u256,
+        pub timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ScalarRootUpdated {
+        #[key]
+        pub market: ContractAddress,
+        pub old_value: u256,
+        pub new_value: u256,
         pub timestamp: u64,
     }
 
@@ -763,6 +773,18 @@ pub mod Market {
         fn get_total_fees_collected(self: @ContractState) -> u256 {
             self.total_fees_collected.read()
         }
+
+        fn get_scalar_root(self: @ContractState) -> u256 {
+            self.scalar_root.read()
+        }
+
+        fn get_initial_anchor(self: @ContractState) -> u256 {
+            self.initial_anchor.read()
+        }
+
+        fn get_fee_rate(self: @ContractState) -> u256 {
+            self.fee_rate.read()
+        }
     }
 
     // Admin functions for pausability and fee collection
@@ -820,6 +842,38 @@ pub mod Market {
                 );
 
             fees
+        }
+
+        /// Set the scalar root parameter (owner only)
+        /// Controls rate sensitivity - higher values mean rates change more with pool imbalance
+        /// Typical values: 0.01-0.5 WAD (10^16 to 5*10^17)
+        /// @param new_scalar_root New scalar root value in WAD
+        fn set_scalar_root(ref self: ContractState, new_scalar_root: u256) {
+            // Only owner can update scalar root
+            self.ownable.assert_only_owner();
+
+            // Validate non-zero
+            assert(new_scalar_root > 0, Errors::ZERO_AMOUNT);
+
+            // Get old value for event
+            let old_value = self.scalar_root.read();
+
+            // Update scalar root
+            self.scalar_root.write(new_scalar_root);
+
+            // Update implied rate cache with new scalar root
+            self._update_implied_rate();
+
+            // Emit event
+            self
+                .emit(
+                    ScalarRootUpdated {
+                        market: get_contract_address(),
+                        old_value,
+                        new_value: new_scalar_root,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
         }
     }
 
