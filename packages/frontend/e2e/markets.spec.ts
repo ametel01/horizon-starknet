@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test.describe('Markets Display', () => {
   test('should display market list on home page', async ({ page }) => {

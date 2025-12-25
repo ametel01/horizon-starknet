@@ -2,10 +2,23 @@ import Link from 'next/link';
 
 import { Separator } from '@/components/ui/separator';
 
+interface FooterLink {
+  label: string;
+  href: string;
+  /** Set to false to disable prefetch, null/undefined uses default behavior */
+  prefetch?: boolean | null;
+}
+
+interface FooterLinkSection {
+  title: string;
+  links: FooterLink[];
+}
+
 const footerLinks = {
   product: {
     title: 'Product',
     links: [
+      // High-traffic routes - keep prefetch enabled (default)
       { label: 'Markets', href: '/' },
       { label: 'Trade', href: '/trade' },
       { label: 'Pools', href: '/pools' },
@@ -15,36 +28,33 @@ const footerLinks = {
   learn: {
     title: 'Learn',
     links: [
-      { label: 'Documentation', href: '/docs/what-is-horizon' },
-      { label: 'Getting Started', href: '/docs/getting-started' },
-      { label: 'Guides', href: '/docs/guides' },
-      { label: 'FAQ', href: '/docs/faq' },
+      // Docs pages - disable prefetch (many pages, ISR cached)
+      { label: 'Documentation', href: '/docs/what-is-horizon', prefetch: false },
+      { label: 'Getting Started', href: '/docs/getting-started', prefetch: false },
+      { label: 'Guides', href: '/docs/guides', prefetch: false },
+      { label: 'FAQ', href: '/docs/faq', prefetch: false },
     ],
   },
   resources: {
     title: 'Resources',
     links: [
-      { label: 'Glossary', href: '/docs/glossary' },
-      { label: 'Risks', href: '/docs/risks' },
-      { label: 'Mechanics', href: '/docs/mechanics' },
+      // Reference pages - disable prefetch (rarely accessed directly)
+      { label: 'Glossary', href: '/docs/glossary', prefetch: false },
+      { label: 'Risks', href: '/docs/risks', prefetch: false },
+      { label: 'Mechanics', href: '/docs/mechanics', prefetch: false },
     ],
   },
   legal: {
     title: 'Legal',
     links: [
-      { label: 'Terms of Service', href: '/terms' },
-      { label: 'Privacy Policy', href: '/privacy' },
+      // Legal pages - disable prefetch (rarely accessed)
+      { label: 'Terms of Service', href: '/terms', prefetch: false },
+      { label: 'Privacy Policy', href: '/privacy', prefetch: false },
     ],
   },
-};
+} as const satisfies Record<string, FooterLinkSection>;
 
-function FooterLinkGroup({
-  title,
-  links,
-}: {
-  title: string;
-  links: { label: string; href: string }[];
-}): React.ReactNode {
+function FooterLinkGroup({ title, links }: FooterLinkSection): React.ReactNode {
   return (
     <div>
       <h3 className="text-foreground mb-3 text-sm font-semibold">{title}</h3>
@@ -53,6 +63,7 @@ function FooterLinkGroup({
           <li key={link.href}>
             <Link
               href={link.href}
+              prefetch={link.prefetch ?? null}
               className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             >
               {link.label}

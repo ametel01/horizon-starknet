@@ -1,10 +1,10 @@
 import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
+import { validateQuery, analyticsVolumeQuerySchema } from '@/lib/validations/api';
 
 interface VolumeDataPoint {
   date: string;
@@ -14,7 +14,8 @@ interface VolumeDataPoint {
   uniqueSwappers: number;
 }
 
-interface VolumeResponse {
+/** Response type for GET /api/analytics/volume */
+export interface VolumeResponse {
   total24h: {
     syVolume: string;
     ptVolume: string;
@@ -34,11 +35,14 @@ interface VolumeResponse {
  * Get protocol-wide volume metrics
  *
  * Query params:
- * - days: number - how many days of history (default: 30)
+ * - days: number - how many days of history (default: 30, max: 365)
  */
-export async function GET(request: NextRequest): Promise<NextResponse<VolumeResponse>> {
-  const searchParams = request.nextUrl.searchParams;
-  const days = Math.min(parseInt(searchParams.get('days') ?? '30'), 365);
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Validate query parameters
+  const params = validateQuery(request.nextUrl.searchParams, analyticsVolumeQuerySchema);
+  if (params instanceof NextResponse) return params;
+
+  const { days } = params;
 
   const since = new Date();
   since.setDate(since.getDate() - days);
@@ -207,20 +211,23 @@ export async function GET(request: NextRequest): Promise<NextResponse<VolumeResp
       }
     }
 
-    return NextResponse.json({
-      total24h: {
-        syVolume: syVolume24h.toString(),
-        ptVolume: ptVolume24h.toString(),
-        swapCount: swapCount24h,
-        uniqueSwappers: uniqueSwappers24h,
+    return NextResponse.json(
+      {
+        total24h: {
+          syVolume: syVolume24h.toString(),
+          ptVolume: ptVolume24h.toString(),
+          swapCount: swapCount24h,
+          uniqueSwappers: uniqueSwappers24h,
+        },
+        total7d: {
+          syVolume: syVolume7d.toString(),
+          ptVolume: ptVolume7d.toString(),
+          swapCount: swapCount7d,
+        },
+        history,
       },
-      total7d: {
-        syVolume: syVolume7d.toString(),
-        ptVolume: ptVolume7d.toString(),
-        swapCount: swapCount7d,
-      },
-      history,
-    });
+      { headers: getCacheHeaders('MEDIUM') }
+    );
   } catch (error) {
     logError(error, { module: 'analytics/volume' });
     return NextResponse.json(

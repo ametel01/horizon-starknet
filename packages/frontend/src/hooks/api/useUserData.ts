@@ -2,9 +2,10 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
+import { api } from '@/lib/api';
+
 import { useAccount } from '../useAccount';
 
-import { apiFetch } from './fetcher';
 import type {
   HistoryEvent,
   HistoryResponse,
@@ -72,7 +73,7 @@ export function useUserHistory(options: UseUserHistoryOptions = {}): UseUserHist
       queryKey: ['indexer', 'user', address, 'history', { types: typeParam, limit }],
       queryFn: async ({ pageParam }) => {
         if (!address) throw new Error('Address is required');
-        return apiFetch<HistoryResponse>(`/api/users/${address}/history`, {
+        return api.get<HistoryResponse>(`/users/${address}/history`, {
           type: typeParam,
           limit,
           offset: pageParam,
@@ -148,7 +149,7 @@ export function useUserIndexedPositions(
     queryKey: ['indexer', 'user', address, 'positions'],
     queryFn: () => {
       if (!address) throw new Error('Address is required');
-      return apiFetch<PositionsResponse>(`/api/users/${address}/positions`);
+      return api.get<PositionsResponse>(`/users/${address}/positions`);
     },
     refetchInterval,
     enabled: enabled && !!address,
@@ -212,7 +213,7 @@ export function useUserYield(options: UseUserYieldOptions = {}): UseUserYieldRet
     queryKey: ['indexer', 'user', address, 'yield', { days, limit }],
     queryFn: () => {
       if (!address) throw new Error('Address is required');
-      return apiFetch<YieldResponse>(`/api/users/${address}/yield`, {
+      return api.get<YieldResponse>(`/users/${address}/yield`, {
         days,
         limit,
       });
@@ -250,7 +251,7 @@ export function useUserPositionsByAddress(
     queryKey: ['indexer', 'user', address, 'positions'],
     queryFn: () => {
       if (!address) throw new Error('Address is required');
-      return apiFetch<PositionsResponse>(`/api/users/${address}/positions`);
+      return api.get<PositionsResponse>(`/users/${address}/positions`);
     },
     refetchInterval,
     enabled: enabled && !!address,
@@ -318,7 +319,7 @@ export function usePortfolioHistory(
     queryKey: ['indexer', 'user', address, 'portfolio-history', { days, limit }],
     queryFn: () => {
       if (!address) throw new Error('Address is required');
-      return apiFetch<PortfolioHistoryResponse>(`/api/users/${address}/portfolio-history`, {
+      return api.get<PortfolioHistoryResponse>(`/users/${address}/portfolio-history`, {
         days,
         limit,
       });

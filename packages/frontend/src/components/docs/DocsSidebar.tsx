@@ -102,6 +102,7 @@ function NavItemComponent({ item, level = 0 }: NavItemProps): React.ReactNode {
         {item.href ? (
           <Link
             href={item.href}
+            prefetch={false} // Disable prefetch for docs sidebar - many links, ISR cached
             className={cn(
               'block flex-1 rounded-md px-2 py-1.5 text-sm transition-colors',
               isActive

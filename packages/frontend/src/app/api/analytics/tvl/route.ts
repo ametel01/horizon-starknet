@@ -1,10 +1,9 @@
 import { desc, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
 
 interface TvlDataPoint {
   date: string;
@@ -120,21 +119,24 @@ export async function GET(_request: NextRequest): Promise<NextResponse<TvlRespon
     // Return current TVL (historical TVL would require a snapshot table)
     const today = new Date().toISOString().split('T')[0] ?? '';
 
-    return NextResponse.json({
-      current: {
-        totalSyReserve: totalSyReserve.toString(),
-        totalPtReserve: totalPtReserve.toString(),
-        marketCount: allMarkets.length, // Show total markets, not just active
-      },
-      history: [
-        {
-          date: today,
+    return NextResponse.json(
+      {
+        current: {
           totalSyReserve: totalSyReserve.toString(),
           totalPtReserve: totalPtReserve.toString(),
-          marketCount: currentMarkets.length,
+          marketCount: allMarkets.length, // Show total markets, not just active
         },
-      ],
-    });
+        history: [
+          {
+            date: today,
+            totalSyReserve: totalSyReserve.toString(),
+            totalPtReserve: totalPtReserve.toString(),
+            marketCount: currentMarkets.length,
+          },
+        ],
+      },
+      { headers: getCacheHeaders('MEDIUM') }
+    );
   } catch (error) {
     logError(error, { module: 'analytics/tvl' });
     return NextResponse.json(

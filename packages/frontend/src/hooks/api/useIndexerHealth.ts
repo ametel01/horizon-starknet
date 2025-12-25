@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { apiFetch } from './fetcher';
+import { api } from '@/lib/api';
+
 import type { HealthResponse, PoolMode } from './types';
 
 interface UseIndexerHealthOptions {
@@ -45,7 +46,7 @@ export function useIndexerHealth(options: UseIndexerHealthOptions = {}): UseInde
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['indexer', 'health'],
-    queryFn: () => apiFetch<HealthResponse>('/api/health'),
+    queryFn: () => api.get<HealthResponse>('/health'),
     refetchInterval,
     enabled,
     staleTime: 10000,

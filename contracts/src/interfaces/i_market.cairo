@@ -44,9 +44,14 @@ pub trait IMarket<TContractState> {
 
     // Fee info
     fn get_total_fees_collected(self: @TContractState) -> u256;
+
+    // Market parameters (read-only)
+    fn get_scalar_root(self: @TContractState) -> u256;
+    fn get_initial_anchor(self: @TContractState) -> u256;
+    fn get_fee_rate(self: @TContractState) -> u256;
 }
 
-/// Admin interface for Market pausability and fee collection
+/// Admin interface for Market pausability, fee collection, and parameter updates
 #[starknet::interface]
 pub trait IMarketAdmin<TContractState> {
     /// Pause all market operations (PAUSER_ROLE only)
@@ -59,4 +64,10 @@ pub trait IMarketAdmin<TContractState> {
     /// @param receiver Address to receive the collected SY fees
     /// @return Amount of SY fees collected
     fn collect_fees(ref self: TContractState, receiver: ContractAddress) -> u256;
+
+    /// Set the scalar root parameter (owner only)
+    /// Controls rate sensitivity - higher values mean rates change more with pool imbalance
+    /// Typical values: 0.01-0.5 WAD (10^16 to 5*10^17)
+    /// @param new_scalar_root New scalar root value in WAD
+    fn set_scalar_root(ref self: TContractState, new_scalar_root: u256);
 }

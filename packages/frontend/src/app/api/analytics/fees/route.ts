@@ -1,6 +1,7 @@
 import { desc, gte } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getCacheHeaders } from '@/lib/cache';
 import {
   db,
   protocolDailyStats,
@@ -10,8 +11,7 @@ import {
   enrichedRouterSwapYT,
 } from '@/lib/db';
 import { logError } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
+import { validateQuery, analyticsFeesQuerySchema } from '@/lib/validations/api';
 
 interface FeesDataPoint {
   date: string;
@@ -27,7 +27,8 @@ interface MarketFeeBreakdown {
   avgFeePerSwap: string;
 }
 
-interface FeesResponse {
+/** Response type for GET /api/analytics/fees */
+export interface FeesResponse {
   total24h: string;
   total7d: string;
   total30d: string;
@@ -48,11 +49,14 @@ interface FeesResponse {
  * Get protocol-wide fee metrics
  *
  * Query params:
- * - days: number - how many days of history (default: 30)
+ * - days: number - how many days of history (default: 30, max: 365)
  */
-export async function GET(request: NextRequest): Promise<NextResponse<FeesResponse>> {
-  const searchParams = request.nextUrl.searchParams;
-  const days = Math.min(parseInt(searchParams.get('days') ?? '30'), 365);
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Validate query parameters
+  const params = validateQuery(request.nextUrl.searchParams, analyticsFeesQuerySchema);
+  if (params instanceof NextResponse) return params;
+
+  const { days } = params;
 
   const since = new Date();
   since.setDate(since.getDate() - days);
@@ -257,21 +261,24 @@ export async function GET(request: NextRequest): Promise<NextResponse<FeesRespon
       .orderBy(desc(marketFeesCollected.block_timestamp))
       .limit(10);
 
-    return NextResponse.json({
-      total24h: total24h.toString(),
-      total7d: total7d.toString(),
-      total30d: total30d.toString(),
-      history,
-      byMarket,
-      recentCollections: recentCollections.map((row) => ({
-        market: row.market,
-        collector: row.collector,
-        receiver: row.receiver,
-        amount: row.amount,
-        timestamp: row.block_timestamp.toISOString(),
-        transactionHash: row.transaction_hash,
-      })),
-    });
+    return NextResponse.json(
+      {
+        total24h: total24h.toString(),
+        total7d: total7d.toString(),
+        total30d: total30d.toString(),
+        history,
+        byMarket,
+        recentCollections: recentCollections.map((row) => ({
+          market: row.market,
+          collector: row.collector,
+          receiver: row.receiver,
+          amount: row.amount,
+          timestamp: row.block_timestamp.toISOString(),
+          transactionHash: row.transaction_hash,
+        })),
+      },
+      { headers: getCacheHeaders('MEDIUM') }
+    );
   } catch (error) {
     logError(error, { module: 'analytics/fees' });
     return NextResponse.json(

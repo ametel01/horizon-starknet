@@ -1,15 +1,15 @@
 FROM oven/bun:1.3-alpine AS base
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies (--ignore-scripts to skip prepare which needs source files)
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production --ignore-scripts
 
 # Build stage
 FROM base AS builder
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN bun run build
 RUN bunx apibara build

@@ -27,9 +27,51 @@ const mono = JetBrains_Mono({
   display: 'swap',
 });
 
+const siteUrl = 'https://splityield.org';
+
 export const metadata: Metadata = {
-  title: 'Horizon Protocol',
-  description: 'Split yield-bearing assets into Principal and Yield Tokens on Starknet',
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: 'Horizon Protocol | Yield Tokenization on Starknet',
+    template: '%s | Horizon Protocol',
+  },
+  description:
+    'Split yield-bearing assets into Principal and Yield Tokens on Starknet. Earn fixed yields, trade yield exposure, and provide liquidity.',
+  keywords: [
+    'DeFi',
+    'Starknet',
+    'yield tokenization',
+    'principal token',
+    'yield token',
+    'fixed yield',
+    'AMM',
+    'liquidity',
+  ],
+  authors: [{ name: 'Horizon Protocol' }],
+  creator: 'Horizon Protocol',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: siteUrl,
+    siteName: 'Horizon Protocol',
+    title: 'Horizon Protocol | Yield Tokenization on Starknet',
+    description:
+      'Split yield-bearing assets into Principal and Yield Tokens. Earn fixed yields or speculate on variable rates.',
+    images: [
+      {
+        url: '/logo-128.png',
+        width: 128,
+        height: 128,
+        alt: 'Horizon Protocol',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Horizon Protocol',
+    description: 'Yield tokenization protocol on Starknet',
+    images: ['/logo-128.png'],
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -37,6 +79,17 @@ export const metadata: Metadata = {
       { url: '/logo-64.png', type: 'image/png', sizes: '64x64' },
     ],
     apple: '/logo-128.png',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 

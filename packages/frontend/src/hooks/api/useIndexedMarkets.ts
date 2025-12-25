@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { apiFetch } from './fetcher';
+import { api } from '@/lib/api';
+
 import type { IndexedMarket, MarketDetailResponse, MarketsResponse } from './types';
 
 interface UseIndexedMarketsOptions {
@@ -36,7 +37,7 @@ export function useIndexedMarkets(options: UseIndexedMarketsOptions = {}): UseIn
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['indexer', 'markets', { activeOnly }],
     queryFn: () =>
-      apiFetch<MarketsResponse>('/api/markets', {
+      api.get<MarketsResponse>('/markets', {
         active_only: activeOnly ? 'true' : 'false',
       }),
     refetchInterval,
@@ -86,7 +87,7 @@ export function useIndexedMarket(
     queryKey: ['indexer', 'market', address],
     queryFn: () => {
       if (!address) throw new Error('Address is required');
-      return apiFetch<MarketDetailResponse>(`/api/markets/${address}`);
+      return api.get<MarketDetailResponse>(`/markets/${address}`);
     },
     refetchInterval,
     enabled: enabled && !!address,

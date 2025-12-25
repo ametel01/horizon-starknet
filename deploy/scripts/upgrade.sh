@@ -375,6 +375,11 @@ upgrade_contract() {
         return 1
     fi
 
+    # Wait for declaration to be recorded on-chain before upgrading
+    # This is critical on mainnet where block times can vary
+    log_info "Waiting ${TX_DELAY}s for declaration to be recorded on-chain..."
+    sleep "$TX_DELAY"
+
     log_info "Upgrading $contract_name at $contract_address..."
 
     local output

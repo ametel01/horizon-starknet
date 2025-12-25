@@ -21,43 +21,11 @@ import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
+import { decodeByteArray, matchSelector } from "../lib/utils";
 
 // Event selectors using Apibara's getSelector helper
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 const CLASS_HASHES_UPDATED = getSelector("ClassHashesUpdated");
-
-// Helper to decode ByteArray from felt252 array
-function decodeByteArray(data: string[], startIndex: number): string {
-  // ByteArray structure: [pending_word, pending_word_len, data_len, ...data]
-  // For short strings, we just decode the pending_word
-  const pendingWord = data[startIndex];
-  if (!pendingWord || pendingWord === "0x0") return "";
-
-  // Convert felt252 to string (short string encoding)
-  try {
-    const hex = pendingWord.replace("0x", "");
-    let str = "";
-    for (let i = 0; i < hex.length; i += 2) {
-      const charCode = parseInt(hex.substr(i, 2), 16);
-      if (charCode === 0) break;
-      str += String.fromCharCode(charCode);
-    }
-    return str;
-  } catch {
-    return pendingWord;
-  }
-}
-
-// Helper to compare selectors numerically (handles padding differences)
-// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
-function matchSelector(a: string | undefined, b: string): boolean {
-  if (!a) return false;
-  try {
-    return BigInt(a) === BigInt(b);
-  } catch {
-    return false;
-  }
-}
 
 export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);

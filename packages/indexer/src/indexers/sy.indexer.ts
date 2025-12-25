@@ -21,6 +21,7 @@ import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
+import { matchSelector, readU256 } from "../lib/utils";
 
 // Factory event to discover SY contracts
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
@@ -29,24 +30,6 @@ const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 const DEPOSIT = getSelector("Deposit");
 const REDEEM = getSelector("Redeem");
 const ORACLE_RATE_UPDATED = getSelector("OracleRateUpdated");
-
-// Helper to read u256 (2 felts: low, high)
-function readU256(data: string[], index: number): string {
-  const low = BigInt(data[index] ?? "0");
-  const high = BigInt(data[index + 1] ?? "0");
-  return ((high << 128n) + low).toString();
-}
-
-// Helper to compare selectors numerically (handles padding differences)
-// DNA stream may return "0x0e316f..." while getSelector returns "0x00e316f..."
-function matchSelector(a: string | undefined, b: string): boolean {
-  if (!a) return false;
-  try {
-    return BigInt(a) === BigInt(b);
-  } catch {
-    return false;
-  }
-}
 
 export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
