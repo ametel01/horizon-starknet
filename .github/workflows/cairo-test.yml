@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: contracts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@v1
