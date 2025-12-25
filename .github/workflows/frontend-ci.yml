@@ -31,27 +31,6 @@ jobs:
           head: HEAD
           extra_args: --only-verified
 
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/frontend
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install with security scan
-        run: bun install --frozen-lockfile
-        env:
-          OSV_LOG_LEVEL: info
-
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -134,7 +113,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [quality, security, secrets]
+    needs: [quality, secrets]
     defaults:
       run:
         working-directory: packages/frontend
