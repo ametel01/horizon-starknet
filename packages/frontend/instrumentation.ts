@@ -4,7 +4,7 @@
 import * as Sentry from '@sentry/nextjs';
 
 export async function register(): Promise<void> {
-  const dsn = process.env.SENTRY_DSN;
+  const dsn = process.env['SENTRY_DSN'];
 
   // Only initialize Sentry if DSN is configured
   if (!dsn) {
@@ -12,7 +12,7 @@ export async function register(): Promise<void> {
   }
 
   // Detect runtime (Node.js server vs Edge)
-  const isEdge = process.env.NEXT_RUNTIME === 'edge';
+  const isEdge = process.env['NEXT_RUNTIME'] === 'edge';
 
   Sentry.init({
     dsn,
@@ -57,8 +57,8 @@ export async function register(): Promise<void> {
     beforeSend(event) {
       // Remove any potentially sensitive server-side data
       if (event.request?.headers) {
-        delete event.request.headers.authorization;
-        delete event.request.headers.cookie;
+        delete event.request.headers['authorization'];
+        delete event.request.headers['cookie'];
       }
       return event;
     },
