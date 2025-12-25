@@ -20,11 +20,11 @@ Based on analysis of `NEXT_BEST_PRACTICES.md` against the current `packages/fron
 **Gaps Identified:**
 - ~~Minimal test coverage (1 test file)~~ **DONE: 11 test files, 329 tests (+558%)**
 - ~~No error/loading route segments~~ **DONE**
-- No structured logging
+- ~~No structured logging~~ **DONE: Sentry integration**
 - No analytics/monitoring integration
-- Missing image optimization patterns
-- No middleware implementation
-- No sitemap/robots.txt
+- ~~Missing image optimization patterns~~ **DONE: AVIF/WebP in next.config.ts**
+- ~~No middleware implementation~~ **DONE: src/middleware.ts**
+- ~~No sitemap/robots.txt~~ **DONE: sitemap.ts, robots.ts**
 
 ---
 
@@ -371,36 +371,29 @@ Helper Functions:
 
 ## Priority 5: Developer Experience
 
-### 5.1 Middleware for Routing Logic
+### 5.1 Middleware for Routing Logic ✅ COMPLETED
 
 **Best Practice:** Use middleware for auth/routing
 
-**Current State:** No middleware
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Create `src/middleware.ts`:
-  ```ts
-  import { NextResponse } from 'next/server';
-  import type { NextRequest } from 'next/server';
+**File Created: `src/middleware.ts`**
 
-  export function middleware(request: NextRequest) {
-    // Add request timing header
-    const response = NextResponse.next();
-    response.headers.set('x-request-time', Date.now().toString());
+Features implemented:
+- [x] Request timing header (`x-request-time`) for performance monitoring
+- [x] Request ID header (`x-request-id`) for distributed tracing
+- [x] Legacy route redirects (301 permanent):
+  - `/markets` → `/pools`
+  - `/stake` → `/mint`
+  - `/dashboard` → `/portfolio`
+  - `/earn` → `/pools`
+  - `/swap` → `/trade`
+- [x] Matcher excludes API routes, static files, and monitoring endpoints
 
-    // Redirect old routes if needed
-    // if (request.nextUrl.pathname === '/old-path') {
-    //   return NextResponse.redirect(new URL('/new-path', request.url));
-    // }
-
-    return response;
-  }
-
-  export const config = {
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-  };
-  ```
-- [ ] Consider adding geo-based redirects for compliance if needed
+**Notes:**
+- Runs on Edge runtime for low latency
+- Geo-based redirects can be added if compliance requirements arise
+- Next.js 16 shows deprecation warning for "middleware" convention (will be renamed to "proxy" in future)
 
 ---
 
