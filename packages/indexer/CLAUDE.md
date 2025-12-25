@@ -18,6 +18,13 @@ bun run typecheck            # TypeScript type checking only
 bun run codegen              # Regenerate event ABIs from contracts
 ```
 
+### Testing Commands
+
+```bash
+bun run test                 # Run snapshot tests
+bun run test:update          # Update snapshots after code changes
+```
+
 ### Database Commands
 
 ```bash

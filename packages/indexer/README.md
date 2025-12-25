@@ -220,6 +220,46 @@ docker exec indexer-postgres-1 psql -U horizon -d horizon_indexer -c '\dt'
 docker exec indexer-postgres-1 psql -U horizon -d horizon_indexer -c 'SELECT * FROM market_swap LIMIT 5;'
 ```
 
+## Testing
+
+Tests use Apibara's VCR (Video Cassette Recorder) pattern with vitest. This records blockchain data from DNA streams and replays them for deterministic testing.
+
+### Prerequisites
+
+The first test run requires:
+- PostgreSQL running (`bun run docker:up`)
+- Access to DNA stream (mainnet.starknet.a5a.ch)
+
+After recording, cassettes are stored in `cassettes/` and tests replay without external connections.
+
+### Running Tests
+
+```bash
+# Start PostgreSQL (required for first run)
+bun run docker:up
+
+# Run tests (records cassettes on first run, replays on subsequent runs)
+bun run test
+
+# Watch mode for development
+bun run test:watch
+```
+
+### Test Structure
+
+```
+tests/
+├── factory.test.ts        # Factory contract events
+├── market-factory.test.ts # MarketFactory events
+├── router.test.ts         # Router events (MintPY, Swap, etc.)
+├── sy.test.ts             # SY token events
+├── yt.test.ts             # YT token events
+└── market.test.ts         # Market AMM events
+cassettes/                 # Recorded blockchain data (auto-generated)
+```
+
+Vitest snapshots are stored in `__snapshots__/` directories. Both cassettes and snapshots should be committed to git.
+
 ## Development
 
 ```bash

@@ -352,5 +352,32 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::amm::Market::ScalarRootUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "old_value",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_value",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
   }
 ]
