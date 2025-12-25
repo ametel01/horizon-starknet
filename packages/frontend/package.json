@@ -28,7 +28,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "clean": "rm -rf .next node_modules/.cache",
-    "codegen": "bun run scripts/generate-types.ts"
+    "codegen": "bun run scripts/generate-types.ts",
+    "security": "OSV_LOG_LEVEL=info bun install",
+    "security:debug": "OSV_LOG_LEVEL=debug bun install"
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.0.0",
@@ -68,6 +70,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@bun-security-scanner/osv": "^1.0.0",
     "@eslint/js": "^9.39.2",
     "@next/bundle-analyzer": "^16.1.1",
     "@playwright/test": "^1.57.0",

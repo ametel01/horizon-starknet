@@ -1,5 +1,10 @@
-# Bun configuration for testing
+# Bun configuration
 # See: https://bun.sh/docs/runtime/bunfig
+
+[install.security]
+# OSV vulnerability scanner - blocks high/critical vulnerabilities during install
+# See: https://github.com/bun-security-scanner/osv
+scanner = "@bun-security-scanner/osv"
 
 [test]
 # Exclude Playwright E2E tests from Bun test runner
