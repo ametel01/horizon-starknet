@@ -27,10 +27,8 @@ export default defineConfig({
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    // WebKit disabled due to flaky headless mode behavior
+    // https://github.com/microsoft/playwright/issues/21785
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
