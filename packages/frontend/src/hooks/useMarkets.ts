@@ -5,7 +5,7 @@ import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
 import { getMarketInfoByAddress, getMarketInfos } from '@/lib/constants/addresses';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
 import { getMarketContract, getMarketFactoryContract } from '@/lib/starknet/contracts';
 import type { NetworkId } from '@/lib/starknet/provider';
@@ -221,7 +221,7 @@ function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore:
     }
   }
 
-  console.warn('[parsePaginatedResult] Unexpected result format:', result);
+  logWarn('Unexpected result format in parsePaginatedResult', { module: 'useMarkets' });
   return { addresses: [], hasMore: false };
 }
 
@@ -273,7 +273,7 @@ async function fetchActiveMarketsPaginated(
 
     // Safety limit to prevent infinite loops
     if (offset > 1000) {
-      console.warn('[fetchActiveMarketsPaginated] Reached safety limit of 1000 markets');
+      logWarn('Reached safety limit of 1000 markets', { module: 'useMarkets', offset });
       break;
     }
   }
@@ -306,10 +306,10 @@ export function useMarketAddresses(): {
 
         // If on-chain returns empty, use static addresses as fallback
         if (addresses.length === 0 && staticAddresses.length > 0) {
-          console.warn(
-            '[useMarketAddresses] On-chain returned empty, using static addresses:',
-            staticAddresses
-          );
+          logWarn('On-chain returned empty, using static addresses', {
+            module: 'useMarkets',
+            staticCount: staticAddresses.length,
+          });
           return staticAddresses;
         }
 
@@ -318,7 +318,10 @@ export function useMarketAddresses(): {
         logError(error, { module: 'useMarkets', action: 'useMarketAddresses' });
         // Return static addresses on error
         if (staticAddresses.length > 0) {
-          console.warn('[useMarketAddresses] Using static addresses as fallback:', staticAddresses);
+          logWarn('Using static addresses as fallback', {
+            module: 'useMarkets',
+            staticCount: staticAddresses.length,
+          });
           return staticAddresses;
         }
         throw error;
@@ -372,7 +375,7 @@ async function fetchAllMarketsPaginated(
     offset += MARKETS_PAGE_SIZE;
 
     if (offset > 1000) {
-      console.warn('[fetchAllMarketsPaginated] Reached safety limit of 1000 markets');
+      logWarn('Reached safety limit of 1000 markets (all)', { module: 'useMarkets', offset });
       break;
     }
   }

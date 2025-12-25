@@ -12,17 +12,7 @@ import { logError } from '@/lib/logger';
 // Server-side only RPC URL (no NEXT_PUBLIC_ prefix)
 const RPC_URL = process.env.RPC_URL;
 
-// Default public RPC as fallback
-const DEFAULT_RPC_URL = 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7';
-
-// JSON-RPC request/response types
-interface JsonRpcRequest {
-  jsonrpc: string;
-  method: string;
-  params?: unknown[];
-  id: string | number | null;
-}
-
+// JSON-RPC response type
 interface JsonRpcResponse {
   jsonrpc: string;
   result?: unknown;
@@ -31,12 +21,18 @@ interface JsonRpcResponse {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcResponse>> {
-  const rpcUrl = RPC_URL ?? DEFAULT_RPC_URL;
+  if (!RPC_URL) {
+    logError(new Error('RPC_URL not configured'), { module: 'api/rpc' });
+    return NextResponse.json(
+      { jsonrpc: '2.0', error: { code: -32603, message: 'RPC not configured' }, id: null },
+      { status: 500 }
+    );
+  }
 
   try {
-    const body = (await request.json()) as JsonRpcRequest;
+    const body: unknown = await request.json();
 
-    const response = await fetch(rpcUrl, {
+    const response = await fetch(RPC_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

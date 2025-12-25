@@ -10,7 +10,7 @@ import {
   enrichedRouterSwap,
   enrichedRouterSwapYT,
 } from '@/lib/db';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
 import { validateQuery, analyticsFeesQuerySchema } from '@/lib/validations/api';
 
 interface FeesDataPoint {
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     } else {
       // Fallback: Query enriched_router_swap and enriched_router_swap_yt views (have fee data from market events)
-      console.warn('[analytics/fees] Using fallback query from enriched_router_swap');
+      logWarn('Using fallback query from enriched_router_swap', { module: 'analytics/fees' });
 
       // Query both PT swaps and YT swaps in parallel
       const [ptSwaps, ytSwaps] = await Promise.all([

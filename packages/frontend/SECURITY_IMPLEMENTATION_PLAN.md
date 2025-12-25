@@ -196,10 +196,8 @@ Pre-compute hashes for known inline scripts during build.
 
 // Add explicit URL validation
 const ALLOWED_RPC_HOSTS = [
-  'starknet-mainnet.public.blastapi.io',
-  'starknet-mainnet.infura.io',
-  'starknet.alchemy.com',
-  'api.pragma.build',
+  'starknet-mainnet.g.alchemy.com',
+  `starknet-sepolia.g.alchemy.com`
 ];
 
 function isAllowedRpcUrl(url: string): boolean {
@@ -512,12 +510,12 @@ Note: Sentry is already configured with `hideSourceMaps: true` which should hand
 | V10.2.1 | Static Analysis | ❌ Gap | No SAST in CI |
 | V10.3.1 | Secrets in Code | ✅ Pass | TruffleHog in CI |
 | V11.1.4 | Rate Limiting | ❌ Gap | No rate limits |
-| V13.1.1 | Input Size Limits | ❌ Gap | No body size limits |
-| V13.2.3 | Timeouts | ⚠️ Partial | Only health check has timeout |
-| V13.2.5 | SSRF Prevention | ⚠️ Partial | No URL allowlist |
+| V13.1.1 | Input Size Limits | ✅ Pass | RPC proxy has 10KB limit |
+| V13.2.3 | Timeouts | ✅ Pass | RPC proxy has 30s timeout |
+| V13.2.5 | SSRF Prevention | ✅ Pass | RPC URL allowlist enforced |
 | V14.2.1 | Dependency Scanning | ✅ Pass | OSV Scanner in CI |
-| V14.2.3 | Subresource Integrity | ✅ Pass | No external scripts |
-| V14.4.3 | CSP | ⚠️ Partial | Uses unsafe-inline for scripts |
+| V14.2.3 | Subresource Integrity | ✅ Pass | SecureScript component + ESLint enforcement |
+| V14.4.3 | CSP | ✅ Pass | Nonce-based CSP with strict-dynamic |
 | V14.4.5 | Cache Headers | ⚠️ Partial | Missing Vary headers |
 | V14.4.6 | HSTS | ✅ Pass | Configured correctly |
 | V14.4.7 | X-Frame-Options | ✅ Pass | Set to DENY |
@@ -533,17 +531,17 @@ Note: Sentry is already configured with `hideSourceMaps: true` which should hand
 ### Week 1
 - [x] Add dependency vulnerability scanning to CI
 - [x] Add secret scanning to CI
-- [ ] Add timeout to RPC proxy
+- [x] Add timeout to RPC proxy
 
 ### Week 2
-- [ ] Add RPC URL allowlist
+- [x] Add RPC URL allowlist
 - [ ] Add Vary headers to cache utilities
-- [ ] Add input size limits
+- [x] Add input size limits
 
 ### Week 3
 - [ ] Add SAST (Semgrep) to CI
 - [ ] Create security documentation
-- [ ] Evaluate CSP nonce implementation
+- [x] Implement CSP nonce (strict-dynamic)
 
 ### Week 4
 - [ ] Implement rate limiting (if needed)

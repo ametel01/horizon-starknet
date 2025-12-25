@@ -82,12 +82,34 @@ export default tseslint.config(
       'prefer-const': 'error',
       'no-var': 'error',
       eqeqeq: ['error', 'always'],
+
+      // Security rules
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'next/script',
+              message:
+                'Use SecureScript from @/components/security for external scripts (enforces SRI). ' +
+                'Only import next/script directly if you need inline scripts with nonce support.',
+            },
+          ],
+        },
+      ],
     },
   },
   {
     // Disable type-aware rules for config files
     files: ['*.config.{js,mjs,ts}', '*.config.*.{js,mjs,ts}'],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    // Allow next/script import in SecureScript wrapper
+    files: ['src/components/security/SecureScript.tsx'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
   },
   {
     ignores: ['node_modules/', '.next/', 'dist/', 'coverage/', '*.config.js'],

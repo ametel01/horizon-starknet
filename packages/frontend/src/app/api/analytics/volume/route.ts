@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getCacheHeaders } from '@/lib/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
 import { validateQuery, analyticsVolumeQuerySchema } from '@/lib/validations/api';
 
 interface VolumeDataPoint {
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       history.reverse();
     } else {
       // Fallback: Query raw router_swap and router_swap_yt events directly
-      console.warn('[analytics/volume] Using fallback query from router_swap');
+      logWarn('Using fallback query from router_swap', { module: 'analytics/volume' });
 
       // Get PT swaps from router
       const ptSwaps = await db
