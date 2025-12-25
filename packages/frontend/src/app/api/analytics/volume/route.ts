@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCacheHeaders } from '@/lib/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';
 import { logError, logWarn } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { validateQuery, analyticsVolumeQuerySchema } from '@/lib/validations/api';
 
 interface VolumeDataPoint {
@@ -38,6 +39,10 @@ export interface VolumeResponse {
  * - days: number - how many days of history (default: 30, max: 365)
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult) return rateLimitResult;
+
   // Validate query parameters
   const params = validateQuery(request.nextUrl.searchParams, analyticsVolumeQuerySchema);
   if (params instanceof NextResponse) return params;

@@ -13,6 +13,7 @@ import {
   syRedeem,
 } from '@/lib/db/schema';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<PortfolioHistoryResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'USER');
+  if (rateLimitResult) return rateLimitResult as NextResponse<PortfolioHistoryResponse>;
+
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   // days parameter reserved for future date filtering

@@ -225,95 +225,43 @@ export async function POST(request: Request): Promise<Response> {
 
 ---
 
-#### 2.3 Add Rate Limiting to API Routes
+#### 2.3 Add Rate Limiting to API Routes ✅
 
 **ASVS Control:** V11.1.4 - Rate Limiting
 **OWASP Top 10:** A04:2021 - Insecure Design
 
-**Current State:** No rate limiting on API endpoints.
+**Current State:** ✅ Implemented - Upstash Redis rate limiting on all API endpoints.
 
-**Risk:** DoS via API abuse, database overload.
+**Implementation:** `src/lib/rate-limit.ts` with `@upstash/ratelimit` package.
 
-**Implementation Options:**
+**Rate Limit Presets:**
+- `RPC`: 60 requests/minute (stricter for external API proxy)
+- `PUBLIC`: 100 requests/minute (markets, analytics)
+- `USER`: 100 requests/minute (user-specific endpoints)
+- `HEALTH`: 300 requests/minute (health check endpoint)
 
-**Option A: Vercel Rate Limiting (if deployed on Vercel)**
+**Setup:**
+1. Create a free Redis database at https://console.upstash.com
+2. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to environment
+3. In development without Redis, rate limiting is bypassed (all requests allowed)
 
-```typescript
-// vercel.json
-{
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "headers": {
-        "X-RateLimit-Limit": "100"
-      }
-    }
-  ]
-}
-```
-
-**Option B: Application-level with Upstash Redis**
-
-```typescript
-// src/lib/rate-limit.ts
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(100, '1m'),
-});
-
-export async function checkRateLimit(identifier: string) {
-  const { success, limit, remaining } = await ratelimit.limit(identifier);
-  return { success, limit, remaining };
-}
-```
-
-**Files to create/modify:**
-- `src/lib/rate-limit.ts` (new)
-- All API route handlers to integrate rate limiting
+**API Routes with Rate Limiting:**
+- `/api/rpc` - RPC config
+- `/api/health` - HEALTH config
+- `/api/markets/*` - PUBLIC config
+- `/api/analytics/*` - PUBLIC config
+- `/api/users/*` - USER config
 
 ---
 
-#### 2.4 Add `Vary` Headers to Cached Responses
+#### 2.4 Add `Vary` Headers to Cached Responses ✅
 
 **ASVS Control:** V14.4.5 - Cache Control
 **OWASP Top 10:** A01:2021 - Broken Access Control
 
-**Current State:** Cache headers set but no `Vary` header.
+**Current State:** ✅ Implemented - Vary: Accept-Encoding added to all cache header functions.
 
-**Risk:** Shared cache could serve wrong content if user context differs.
-
-**Implementation:**
-
-```typescript
-// src/lib/cache.ts
-
-export function getCacheHeaders(
-  duration: CacheDurationKey | { maxAge: number; staleWhileRevalidate: number }
-): HeadersInit {
-  const { maxAge, staleWhileRevalidate } =
-    typeof duration === 'string' ? CacheDuration[duration] : duration;
-
-  return {
-    'Cache-Control': `public, s-maxage=${String(maxAge)}, stale-while-revalidate=${String(staleWhileRevalidate)}`,
-    'Vary': 'Accept-Encoding',
-  };
-}
-
-// For user-specific data (portfolio, positions):
-export function getPrivateCacheHeaders(): HeadersInit {
-  return {
-    'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-    'Vary': 'Accept-Encoding',
-  };
-}
-```
-
-**Files to modify:**
-- `src/lib/cache.ts`
-- User-specific API routes (portfolio, positions, history)
+**Implementation:** `src/lib/cache.ts` - Both `getCacheHeaders()` and `getNoCacheHeaders()` now include `Vary: Accept-Encoding` header.
 
 ---
 
@@ -509,14 +457,14 @@ Note: Sentry is already configured with `hideSourceMaps: true` which should hand
 | V1.1.2 | Security Documentation | ❌ Gap | No security.md |
 | V10.2.1 | Static Analysis | ❌ Gap | No SAST in CI |
 | V10.3.1 | Secrets in Code | ✅ Pass | TruffleHog in CI |
-| V11.1.4 | Rate Limiting | ❌ Gap | No rate limits |
+| V11.1.4 | Rate Limiting | ✅ Pass | Upstash Redis rate limiting on all API routes |
 | V13.1.1 | Input Size Limits | ✅ Pass | RPC proxy has 10KB limit |
 | V13.2.3 | Timeouts | ✅ Pass | RPC proxy has 30s timeout |
 | V13.2.5 | SSRF Prevention | ✅ Pass | RPC URL allowlist enforced |
 | V14.2.1 | Dependency Scanning | ✅ Pass | OSV Scanner in CI |
 | V14.2.3 | Subresource Integrity | ✅ Pass | SecureScript component + ESLint enforcement |
 | V14.4.3 | CSP | ✅ Pass | Nonce-based CSP with strict-dynamic |
-| V14.4.5 | Cache Headers | ⚠️ Partial | Missing Vary headers |
+| V14.4.5 | Cache Headers | ✅ Pass | Vary: Accept-Encoding on all cached responses |
 | V14.4.6 | HSTS | ✅ Pass | Configured correctly |
 | V14.4.7 | X-Frame-Options | ✅ Pass | Set to DENY |
 | V3.1.1 | Session Security | N/A | Wallet-based auth |
@@ -535,7 +483,7 @@ Note: Sentry is already configured with `hideSourceMaps: true` which should hand
 
 ### Week 2
 - [x] Add RPC URL allowlist
-- [ ] Add Vary headers to cache utilities
+- [x] Add Vary headers to cache utilities
 - [x] Add input size limits
 
 ### Week 3
@@ -544,7 +492,7 @@ Note: Sentry is already configured with `hideSourceMaps: true` which should hand
 - [x] Implement CSP nonce (strict-dynamic)
 
 ### Week 4
-- [ ] Implement rate limiting (if needed)
+- [x] Implement rate limiting
 - [ ] Add CSP report-uri monitoring
 - [ ] Security review of all changes
 

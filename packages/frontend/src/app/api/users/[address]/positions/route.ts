@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { db, userPyPositions, marketLpPositions, marketCurrentState } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,9 +64,13 @@ interface PositionsResponse {
  * Get aggregated positions for a user
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<PositionsResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'USER');
+  if (rateLimitResult) return rateLimitResult as NextResponse<PositionsResponse>;
+
   const { address } = await params;
 
   try {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { db, marketSwap } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<PriceImpactResponse | { error: string }>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult)
+    return rateLimitResult as NextResponse<PriceImpactResponse | { error: string }>;
+
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   const days = parseInt(searchParams.get('days') ?? '30');

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 /**
  * RPC Proxy Route
@@ -62,6 +63,10 @@ interface JsonRpcResponse {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'RPC');
+  if (rateLimitResult) return rateLimitResult as NextResponse<JsonRpcResponse>;
+
   // Check input size limit
   const contentLength = request.headers.get('content-length');
   if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {

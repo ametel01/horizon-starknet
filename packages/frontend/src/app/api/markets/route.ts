@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCacheHeaders } from '@/lib/cache';
 import { db, marketCurrentState } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { validateQuery, marketsQuerySchema } from '@/lib/validations/api';
 
 interface MarketListItem {
@@ -46,6 +47,10 @@ export interface MarketsResponse {
  * - offset: number - pagination offset
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult) return rateLimitResult;
+
   // Validate query parameters
   const params = validateQuery(request.nextUrl.searchParams, marketsQuerySchema);
   if (params instanceof NextResponse) return params;

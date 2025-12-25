@@ -1,8 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +62,11 @@ async function getCurrentStarknetBlock(): Promise<number | null> {
  * Compares the latest indexed block (from airfoil.checkpoints) against
  * the current Starknet chain head to determine indexer health.
  */
-export async function GET(): Promise<NextResponse<HealthResponse>> {
+export async function GET(request: NextRequest): Promise<NextResponse<HealthResponse>> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'HEALTH');
+  if (rateLimitResult) return rateLimitResult as NextResponse<HealthResponse>;
+
   const dbInfo = getDatabaseInfo();
   const connected = await isDatabaseConnected();
 

@@ -11,6 +11,7 @@ import {
   enrichedRouterSwapYT,
 } from '@/lib/db';
 import { logError, logWarn } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { validateQuery, analyticsFeesQuerySchema } from '@/lib/validations/api';
 
 interface FeesDataPoint {
@@ -52,6 +53,10 @@ export interface FeesResponse {
  * - days: number - how many days of history (default: 30, max: 365)
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
+  if (rateLimitResult) return rateLimitResult;
+
   // Validate query parameters
   const params = validateQuery(request.nextUrl.searchParams, analyticsFeesQuerySchema);
   if (params instanceof NextResponse) return params;
