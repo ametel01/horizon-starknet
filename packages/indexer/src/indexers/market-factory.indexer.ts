@@ -18,10 +18,10 @@ import {
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
-import { getNetworkConfig } from "../../constants";
-import { getDrizzleOptions } from "../../database";
-import { streamTimeoutPlugin } from "../../plugins";
-import { decodeByteArray, matchSelector } from "../../utils";
+import { getNetworkConfig } from "../lib/constants";
+import { getDrizzleOptions } from "../lib/database";
+import { streamTimeoutPlugin } from "../lib/plugins";
+import { decodeByteArray, matchSelector } from "../lib/utils";
 
 // Event selectors using Apibara's getSelector helper
 const MARKET_CREATED = getSelector("MarketCreated");
