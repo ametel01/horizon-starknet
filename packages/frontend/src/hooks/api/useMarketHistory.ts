@@ -2,7 +2,8 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
-import { apiFetch } from './fetcher';
+import { api } from '@/lib/api';
+
 import type { RatesResponse, SwapEvent, SwapsResponse, TvlResponse } from './types';
 
 // ============================================================================
@@ -49,7 +50,7 @@ export function useMarketSwaps(
       queryKey: ['indexer', 'market', marketAddress, 'swaps', { limit, since }],
       queryFn: async ({ pageParam }) => {
         if (!marketAddress) throw new Error('Market address is required');
-        return apiFetch<SwapsResponse>(`/api/markets/${marketAddress}/swaps`, {
+        return api.get<SwapsResponse>(`/markets/${marketAddress}/swaps`, {
           limit,
           offset: pageParam,
           since,
@@ -124,7 +125,7 @@ export function useMarketTvlHistory(
     queryKey: ['indexer', 'market', marketAddress, 'tvl', { days }],
     queryFn: () => {
       if (!marketAddress) throw new Error('Market address is required');
-      return apiFetch<TvlResponse>(`/api/markets/${marketAddress}/tvl`, { days });
+      return api.get<TvlResponse>(`/markets/${marketAddress}/tvl`, { days });
     },
     refetchInterval,
     enabled: enabled && !!marketAddress,
@@ -193,7 +194,7 @@ export function useMarketRateHistory(
     queryKey: ['indexer', 'market', marketAddress, 'rates', { days }],
     queryFn: () => {
       if (!marketAddress) throw new Error('Market address is required');
-      return apiFetch<RatesResponse>(`/api/markets/${marketAddress}/rates`, { days });
+      return api.get<RatesResponse>(`/markets/${marketAddress}/rates`, { days });
     },
     refetchInterval,
     enabled: enabled && !!marketAddress,

@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { apiFetch } from './fetcher';
+import { api } from '@/lib/api';
+
 import type {
   FeesResponse,
   ProtocolStatsResponse,
@@ -58,7 +59,7 @@ export function useProtocolTvl(options: UseProtocolTvlOptions = {}): UseProtocol
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['indexer', 'analytics', 'tvl', { days }],
-    queryFn: () => apiFetch<ProtocolTvlResponse>('/api/analytics/tvl', { days }),
+    queryFn: () => api.get<ProtocolTvlResponse>('/analytics/tvl', { days }),
     refetchInterval,
     enabled,
     staleTime: 30000,
@@ -153,7 +154,7 @@ export function useProtocolVolume(options: UseProtocolVolumeOptions = {}): UsePr
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['indexer', 'analytics', 'volume', { days }],
-    queryFn: () => apiFetch<VolumeResponse>('/api/analytics/volume', { days }),
+    queryFn: () => api.get<VolumeResponse>('/analytics/volume', { days }),
     refetchInterval,
     enabled,
     staleTime: 30000,
@@ -263,7 +264,7 @@ export function useProtocolFees(options: UseProtocolFeesOptions = {}): UseProtoc
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['indexer', 'analytics', 'fees', { days }],
-    queryFn: () => apiFetch<FeesResponse>('/api/analytics/fees', { days }),
+    queryFn: () => api.get<FeesResponse>('/analytics/fees', { days }),
     refetchInterval,
     enabled,
     staleTime: 30000,
@@ -339,7 +340,7 @@ export function useProtocolStats(options: UseProtocolStatsOptions = {}): UseProt
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['indexer', 'analytics', 'stats'],
-    queryFn: () => apiFetch<ProtocolStatsResponse>('/api/analytics/stats'),
+    queryFn: () => api.get<ProtocolStatsResponse>('/analytics/stats'),
     refetchInterval,
     enabled,
     staleTime: 30000,

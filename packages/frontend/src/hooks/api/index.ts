@@ -14,8 +14,8 @@
  * ```
  */
 
-// Shared utilities
-export { ApiError, apiFetch } from './fetcher';
+// API client
+export { api, ApiError } from '@/lib/api';
 
 // Types
 export type {
