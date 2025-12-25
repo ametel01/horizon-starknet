@@ -275,6 +275,39 @@ export const MARKET_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'get_scalar_root',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_initial_anchor',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_fee_rate',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
     ],
   },
   {
@@ -314,6 +347,18 @@ export const MARKET_ABI = [
             type: 'core::integer::u256',
           },
         ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'set_scalar_root',
+        inputs: [
+          {
+            name: 'new_scalar_root',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
         state_mutability: 'external',
       },
     ],
@@ -1362,6 +1407,33 @@ export const MARKET_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::market::amm::Market::ScalarRootUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'old_value',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_value',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::market::amm::Market::Event',
     kind: 'enum',
     variants: [
@@ -1418,6 +1490,11 @@ export const MARKET_ABI = [
       {
         name: 'FeesCollected',
         type: 'horizon::market::amm::Market::FeesCollected',
+        kind: 'nested',
+      },
+      {
+        name: 'ScalarRootUpdated',
+        type: 'horizon::market::amm::Market::ScalarRootUpdated',
         kind: 'nested',
       },
     ],
