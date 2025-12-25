@@ -1,1 +1,24 @@
-bun run typecheck
+#!/bin/sh
+
+# Pre-push hook: Run quality checks before pushing
+# This ensures all code pushed to remote meets quality standards
+
+echo "🔍 Running pre-push checks..."
+
+# Run typecheck, lint, and format check
+echo "📋 Running check (typecheck + lint + format)..."
+bun run check
+if [ $? -ne 0 ]; then
+  echo "❌ Check failed. Please fix issues before pushing."
+  exit 1
+fi
+
+# Run unit tests
+echo "🧪 Running tests..."
+bun test
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Please fix failing tests before pushing."
+  exit 1
+fi
+
+echo "✅ All pre-push checks passed!"
