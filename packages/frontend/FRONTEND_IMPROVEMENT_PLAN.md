@@ -281,38 +281,41 @@ upgrade-insecure-requests;
 
 ---
 
-### 3.2 SEO: Sitemap & Robots
+### 3.2 SEO: Sitemap & Robots ✅ COMPLETED
 
 **Best Practice:** Add for SEO
 
-**Current State:** Not present
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Create `src/app/sitemap.ts`:
-  ```ts
-  import { MetadataRoute } from 'next';
+**Files Created:**
 
-  export default function sitemap(): MetadataRoute.Sitemap {
-    return [
-      { url: 'https://splityield.org/', lastModified: new Date(), priority: 1 },
-      { url: 'https://splityield.org/trade', lastModified: new Date(), priority: 0.9 },
-      { url: 'https://splityield.org/pools', lastModified: new Date(), priority: 0.8 },
-      // ... add all public routes
-    ];
-  }
-  ```
-- [ ] Create `src/app/robots.ts`:
-  ```ts
-  import { MetadataRoute } from 'next';
+**`src/app/sitemap.ts`:**
+- [x] 6 main app pages (/, /trade, /pools, /mint, /portfolio, /analytics) - priority 0.7-1.0
+- [x] 18 documentation pages - priority 0.5-0.8
+- [x] 2 legal pages (/terms, /privacy) - priority 0.3
+- [x] Change frequency configured (daily/weekly/monthly based on content type)
 
-  export default function robots(): MetadataRoute.Robots {
-    return {
-      rules: { userAgent: '*', allow: '/', disallow: '/api/' },
-      sitemap: 'https://splityield.org/sitemap.xml',
-    };
-  }
-  ```
-- [ ] Ensure `generateMetadata` is used for all pages
+**`src/app/robots.ts`:**
+- [x] Allow all crawlers to index public pages
+- [x] Disallow: /api/, /faucet, /monitoring, /_next/
+- [x] Sitemap reference included
+
+**Enhanced Root Layout Metadata (`src/app/layout.tsx`):**
+- [x] `metadataBase` - Base URL for relative paths
+- [x] `title.template` - Consistent page titles
+- [x] `description` - Comprehensive site description
+- [x] `keywords` - DeFi, Starknet, yield tokenization keywords
+- [x] `openGraph` - Social sharing metadata
+- [x] `twitter` - Twitter card configuration
+- [x] `robots` - Crawler indexing directives
+
+**Build Output:**
+```
+├ ○ /robots.txt
+├ ○ /sitemap.xml
+```
+
+Both files are statically generated at build time.
 
 ---
 
