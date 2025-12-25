@@ -25,7 +25,9 @@
     "db:refresh-views": "bun run scripts/refresh-views.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "test": "bunx vitest run",
+    "test:watch": "bunx vitest"
   },
   "dependencies": {
     "@apibara/indexer": "^2.1.0-beta.47",
@@ -40,6 +42,7 @@
     "starknet": "latest"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
     "@eslint/js": "^9.39.2",
     "@types/bun": "latest",
     "@types/pg": "^8.16.0",
@@ -49,6 +52,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "typescript": "latest",
-    "typescript-eslint": "^8.50.0"
+    "typescript-eslint": "^8.50.0",
+    "vitest": "^4.0.16"
   }
 }
