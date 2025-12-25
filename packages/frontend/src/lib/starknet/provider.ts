@@ -25,7 +25,7 @@ function getRpcUrl(network: NetworkId): string {
   }
 
   // Server-side: use direct RPC URL (with API key)
-  const directUrl = process.env.RPC_URL;
+  const directUrl = process.env['RPC_URL'];
   if (!directUrl) {
     throw new Error(
       `RPC_URL environment variable is required for ${network}. ` +
@@ -52,7 +52,7 @@ const DEFAULT_BLOCK: Record<NetworkId, BlockTag> = {
 };
 
 export function getNetworkId(): NetworkId {
-  const network = process.env.NEXT_PUBLIC_NETWORK;
+  const network = process.env['NEXT_PUBLIC_NETWORK'];
   if (
     network === 'mainnet' ||
     network === 'sepolia' ||

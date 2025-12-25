@@ -46,13 +46,13 @@ function getEstimatedUnderlyingApy(yieldTokenSymbol: string | undefined): number
 
   // Check for partial matches (includes() covers exact matches too)
   if (symbol.includes('wsteth')) {
-    return ESTIMATED_YIELD_APYS.wstETH ?? DEFAULT_APY;
+    return ESTIMATED_YIELD_APYS['wstETH'] ?? DEFAULT_APY;
   }
   if (symbol.includes('nststrk')) {
-    return ESTIMATED_YIELD_APYS.nstSTRK ?? DEFAULT_APY;
+    return ESTIMATED_YIELD_APYS['nstSTRK'] ?? DEFAULT_APY;
   }
   if (symbol.includes('sstrk')) {
-    return ESTIMATED_YIELD_APYS.sSTRK ?? DEFAULT_APY;
+    return ESTIMATED_YIELD_APYS['sSTRK'] ?? DEFAULT_APY;
   }
 
   // Default fallback

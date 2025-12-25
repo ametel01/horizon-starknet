@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { logError } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/rate-limit';
@@ -16,7 +17,7 @@ import { applyRateLimit } from '@/lib/rate-limit';
  */
 
 // Server-side only RPC URL (no NEXT_PUBLIC_ prefix)
-const RPC_URL = process.env.RPC_URL;
+const RPC_URL = process.env['RPC_URL'];
 
 // Maximum request body size (10KB)
 const MAX_BODY_SIZE = 10_000;

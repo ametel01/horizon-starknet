@@ -18,7 +18,7 @@ import postgres from 'postgres';
 const OUTPUT_DIR = join(__dirname, 'output');
 const OUTPUT_FILE = join(OUTPUT_DIR, 'users.json');
 
-const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_URL = process.env['DATABASE_URL'];
 
 if (!DATABASE_URL) {
   console.error('DATABASE_URL not configured in .env.local');

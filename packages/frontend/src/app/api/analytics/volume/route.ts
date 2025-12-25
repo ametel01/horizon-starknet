@@ -1,5 +1,6 @@
 import { desc, gte } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { getCacheHeaders } from '@/lib/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';

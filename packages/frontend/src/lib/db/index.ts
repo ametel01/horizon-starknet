@@ -62,7 +62,7 @@ export * from './schema';
  * Prefers DATABASE_POOLER_URL over DATABASE_URL for pooled connections.
  */
 function getConnectionString(): string | undefined {
-  return process.env.DATABASE_POOLER_URL ?? process.env.DATABASE_URL;
+  return process.env['DATABASE_POOLER_URL'] ?? process.env['DATABASE_URL'];
 }
 
 /**
@@ -229,7 +229,7 @@ export function getDatabaseInfo(): DatabaseInfo {
 
   try {
     const url = new URL(connectionString);
-    const source = process.env.DATABASE_POOLER_URL ? 'DATABASE_POOLER_URL' : 'DATABASE_URL';
+    const source = process.env['DATABASE_POOLER_URL'] ? 'DATABASE_POOLER_URL' : 'DATABASE_URL';
 
     return {
       configured: true,

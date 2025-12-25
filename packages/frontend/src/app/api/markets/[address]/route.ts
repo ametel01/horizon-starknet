@@ -1,5 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { db, marketCurrentState, marketDailyStats } from '@/lib/db';
 import { logError } from '@/lib/logger';

@@ -39,9 +39,9 @@ function parseHistoryEvent(event: HistoryEvent): LpEvent | null {
     timestamp: new Date(event.blockTimestamp),
     transactionHash: event.transactionHash,
     market: event.market ?? '',
-    syAmount: BigInt(isAdd ? (amounts.sy_used ?? '0') : (amounts.sy_out ?? '0')),
-    ptAmount: BigInt(isAdd ? (amounts.pt_used ?? '0') : (amounts.pt_out ?? '0')),
-    lpAmount: BigInt(isAdd ? (amounts.lp_out ?? '0') : (amounts.lp_in ?? '0')),
+    syAmount: BigInt(isAdd ? (amounts['sy_used'] ?? '0') : (amounts['sy_out'] ?? '0')),
+    ptAmount: BigInt(isAdd ? (amounts['pt_used'] ?? '0') : (amounts['pt_out'] ?? '0')),
+    lpAmount: BigInt(isAdd ? (amounts['lp_out'] ?? '0') : (amounts['lp_in'] ?? '0')),
     exchangeRate: event.exchangeRate ? BigInt(event.exchangeRate) : null,
     impliedRate: event.impliedRate ? BigInt(event.impliedRate) : null,
   };

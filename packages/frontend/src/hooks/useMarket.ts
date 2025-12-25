@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import BigNumber from 'bignumber.js';
+import type BigNumber from 'bignumber.js';
 import { uint256 } from 'starknet';
 
 import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';

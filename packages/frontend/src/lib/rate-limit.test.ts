@@ -11,8 +11,8 @@ import {
 // Mock Upstash Redis to test without actual connection
 beforeEach(() => {
   // Reset environment to ensure consistent test behavior
-  delete process.env.UPSTASH_REDIS_REST_URL;
-  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env['UPSTASH_REDIS_REST_URL'];
+  delete process.env['UPSTASH_REDIS_REST_TOKEN'];
 });
 
 describe('rate-limit', () => {

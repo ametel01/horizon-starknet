@@ -351,7 +351,7 @@ describe('Edge cases', () => {
 
   test('handles circular objects gracefully', () => {
     const obj: Record<string, unknown> = { message: 'test' };
-    obj.self = obj; // Create circular reference
+    obj['self'] = obj; // Create circular reference
     // Should not throw, just return null for non-HZN content
     expect(extractContractError(obj)).toBeNull();
   });

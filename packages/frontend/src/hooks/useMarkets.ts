@@ -215,8 +215,8 @@ function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore:
 
     // Try named keys (some typed contracts return named tuples)
     if ('addresses' in obj || 'active_markets' in obj) {
-      const addresses = (obj.addresses ?? obj.active_markets ?? obj.markets) as unknown[];
-      const hasMore = Boolean(obj.has_more ?? obj.hasMore ?? false);
+      const addresses = (obj['addresses'] ?? obj['active_markets'] ?? obj['markets']) as unknown[];
+      const hasMore = Boolean(obj['has_more'] ?? obj['hasMore'] ?? false);
       return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
     }
   }

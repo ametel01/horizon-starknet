@@ -28,13 +28,13 @@ export function getTokenAddressForPricing(symbol: string | undefined): string | 
 
   // Map horizon mock tokens to real equivalents
   if (s.includes('hrzstrk') || s.includes('sstrk') || s.includes('nststrk')) {
-    return TOKEN_ADDRESS_MAP.sSTRK;
+    return TOKEN_ADDRESS_MAP['sSTRK'];
   }
   if (s.includes('wsteth')) {
-    return TOKEN_ADDRESS_MAP.wstETH;
+    return TOKEN_ADDRESS_MAP['wstETH'];
   }
   if (s.includes('strk')) {
-    return TOKEN_ADDRESS_MAP.STRK;
+    return TOKEN_ADDRESS_MAP['STRK'];
   }
 
   return undefined;

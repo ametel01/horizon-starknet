@@ -73,35 +73,35 @@ function TransactionRow({ event }: { event: HistoryEvent }): ReactNode {
       case 'swap':
       case 'swap_yt': {
         // Find the actual non-zero input and output amounts
-        const inAmount = isNonZero(amounts.ptIn)
-          ? amounts.ptIn
-          : isNonZero(amounts.syIn)
-            ? amounts.syIn
-            : amounts.ytIn;
-        const outAmount = isNonZero(amounts.ptOut)
-          ? amounts.ptOut
-          : isNonZero(amounts.syOut)
-            ? amounts.syOut
-            : amounts.ytOut;
+        const inAmount = isNonZero(amounts['ptIn'])
+          ? amounts['ptIn']
+          : isNonZero(amounts['syIn'])
+            ? amounts['syIn']
+            : amounts['ytIn'];
+        const outAmount = isNonZero(amounts['ptOut'])
+          ? amounts['ptOut']
+          : isNonZero(amounts['syOut'])
+            ? amounts['syOut']
+            : amounts['ytOut'];
         if (inAmount && outAmount) {
           return `${formatWadCompact(inAmount)} -> ${formatWadCompact(outAmount)}`;
         }
         return '-';
       }
       case 'add_liquidity':
-        return `+${formatWadCompact(amounts.lpOut ?? amounts.lpMinted ?? '0')} LP`;
+        return `+${formatWadCompact(amounts['lpOut'] ?? amounts['lpMinted'] ?? '0')} LP`;
       case 'remove_liquidity':
-        return `-${formatWadCompact(amounts.lpIn ?? amounts.lpBurned ?? '0')} LP`;
+        return `-${formatWadCompact(amounts['lpIn'] ?? amounts['lpBurned'] ?? '0')} LP`;
       case 'mint_py': {
         // mint_py returns syIn, ptOut, ytOut - show syIn -> ptOut
-        const syIn = amounts.syIn ?? '0';
-        const ptOut = amounts.ptOut ?? amounts.amountPy ?? '0';
+        const syIn = amounts['syIn'] ?? '0';
+        const ptOut = amounts['ptOut'] ?? amounts['amountPy'] ?? '0';
         return `${formatWadCompact(syIn)} SY -> ${formatWadCompact(ptOut)} PT/YT`;
       }
       case 'redeem_py': {
         // redeem_py returns pyIn, syOut
-        const pyIn = amounts.pyIn ?? amounts.amountPy ?? '0';
-        const syOut = amounts.syOut ?? amounts.amountSy ?? '0';
+        const pyIn = amounts['pyIn'] ?? amounts['amountPy'] ?? '0';
+        const syOut = amounts['syOut'] ?? amounts['amountSy'] ?? '0';
         return `${formatWadCompact(pyIn)} PT/YT -> ${formatWadCompact(syOut)} SY`;
       }
       default:
