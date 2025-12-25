@@ -263,8 +263,9 @@ style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob: https:;
 font-src 'self' data:;
 connect-src 'self' https://*.starknet.io https://*.infura.io https://*.alchemy.com
-            https://*.blast.io https://*.voyager.online https://api.pragma.build
-            https://*.sentry.io wss://*.starknet.io wss://*.infura.io wss://*.alchemy.com;
+            https://*.blast.io https://*.voyager.online https://*.avnu.fi
+            https://api.pragma.build https://*.sentry.io
+            wss://*.starknet.io wss://*.infura.io wss://*.alchemy.com;
 frame-ancestors 'none';
 base-uri 'self';
 form-action 'self';
@@ -275,7 +276,7 @@ upgrade-insecure-requests;
 - `'unsafe-inline'` for styles is required for Tailwind CSS dynamic styling
 - `'unsafe-eval'` is NOT included to prevent XSS attacks
 - Wallet extensions work via browser extension APIs (not affected by CSP)
-- Connect sources include Starknet RPC providers and Sentry for monitoring
+- Connect sources include Starknet RPC providers, AVNU (token prices), and Sentry for monitoring
 
 **Testing:** Deploy to staging and verify at https://securityheaders.com
 
@@ -319,33 +320,52 @@ Both files are statically generated at build time.
 
 ---
 
-### 3.3 API Route Protection
+### 3.3 API Route Protection ✅ COMPLETED
 
 **Best Practice:** Validate with Zod, protect API routes
 
-**Current State:** Basic error handling, no input validation
+**Status:** Completed on 2025-12-25
 
-**Action Items:**
-- [ ] Install Zod: `bun add zod`
-- [ ] Create validation schemas:
-  ```ts
-  // src/lib/validations/api.ts
-  import { z } from 'zod';
+**Zod Installed:**
+- [x] `bun add zod` - Added zod@4.2.1
 
-  export const marketQuerySchema = z.object({
-    limit: z.coerce.number().min(1).max(100).default(20),
-    offset: z.coerce.number().min(0).default(0),
-    sortBy: z.enum(['tvl', 'volume', 'expiry']).optional(),
-  });
-  ```
-- [ ] Apply validation in API routes:
-  ```ts
-  const parsed = marketQuerySchema.safeParse(Object.fromEntries(searchParams));
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
-  }
-  ```
-- [ ] Add rate limiting for public API routes (consider Vercel Edge Config)
+**Validation Module Created (`src/lib/validations/api.ts`):**
+
+Common Schema Components:
+- `starknetAddressSchema` - Validates 0x + 1-64 hex chars
+- `paginationSchema` - limit (1-100), offset (min 0)
+- `dateRangeSchema` - days (1-365)
+- `sortOrderSchema` - 'asc' | 'desc'
+
+API-Specific Schemas:
+- `marketsQuerySchema` - active, underlying, sort, order, limit, offset
+- `analyticsVolumeQuerySchema` - days parameter
+- `analyticsFeesQuerySchema` - days parameter
+- `marketSwapsQuerySchema` - pagination
+- `marketTvlQuerySchema` - days parameter
+- `userHistoryQuerySchema` - pagination + type filter
+
+Helper Functions:
+- `validateQuery()` - Parse URLSearchParams with schema, returns typed data or 400 error
+- `validateParam()` - Validate route params (e.g., [address])
+- `normalizeStarknetAddress()` - Pad address to 66 chars for DB lookup
+
+**API Routes Updated:**
+- [x] `/api/markets` - Full validation with typed params
+- [x] `/api/analytics/volume` - Days validation
+- [x] `/api/analytics/fees` - Days validation
+
+**Error Response Format:**
+```json
+{
+  "error": "Validation Error",
+  "details": [
+    { "path": "limit", "message": "Number must be less than or equal to 100" }
+  ]
+}
+```
+
+**Rate Limiting:** Deferred to production deployment (recommend Vercel Edge Config or Upstash)
 
 ---
 

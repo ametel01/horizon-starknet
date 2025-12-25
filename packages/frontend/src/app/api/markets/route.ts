@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCacheHeaders } from '@/lib/cache';
 import { db, marketCurrentState } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { validateQuery, marketsQuerySchema } from '@/lib/validations/api';
 
 interface MarketListItem {
   market: string;
@@ -26,7 +27,8 @@ interface MarketListItem {
   lastActivity: string | null;
 }
 
-interface MarketsResponse {
+/** Response type for GET /api/markets */
+export interface MarketsResponse {
   markets: MarketListItem[];
   total: number;
 }
@@ -40,27 +42,24 @@ interface MarketsResponse {
  * - underlying: string - filter by underlying token address
  * - sort: 'volume' | 'tvl' | 'expiry' | 'created' - sort field
  * - order: 'asc' | 'desc' - sort order
- * - limit: number - max results (default 50)
+ * - limit: number - max results (default 50, max 100)
  * - offset: number - pagination offset
  */
-export async function GET(request: NextRequest): Promise<NextResponse<MarketsResponse>> {
-  const searchParams = request.nextUrl.searchParams;
-  const activeOnly = searchParams.get('active') === 'true';
-  const expiredOnly = searchParams.get('active') === 'false';
-  const underlying = searchParams.get('underlying');
-  const sort = searchParams.get('sort') ?? 'volume';
-  const order = searchParams.get('order') ?? 'desc';
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);
-  const offset = parseInt(searchParams.get('offset') ?? '0');
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Validate query parameters
+  const params = validateQuery(request.nextUrl.searchParams, marketsQuerySchema);
+  if (params instanceof NextResponse) return params;
+
+  const { active, underlying, sort, order, limit, offset } = params;
 
   try {
     // Build query
     let query = db.select().from(marketCurrentState).$dynamic();
 
     // Apply filters
-    if (activeOnly) {
+    if (active === true) {
       query = query.where(eq(marketCurrentState.is_expired, false));
-    } else if (expiredOnly) {
+    } else if (active === false) {
       query = query.where(eq(marketCurrentState.is_expired, true));
     }
 

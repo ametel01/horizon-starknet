@@ -11,6 +11,7 @@ import {
   enrichedRouterSwapYT,
 } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { validateQuery, analyticsFeesQuerySchema } from '@/lib/validations/api';
 
 interface FeesDataPoint {
   date: string;
@@ -26,7 +27,8 @@ interface MarketFeeBreakdown {
   avgFeePerSwap: string;
 }
 
-interface FeesResponse {
+/** Response type for GET /api/analytics/fees */
+export interface FeesResponse {
   total24h: string;
   total7d: string;
   total30d: string;
@@ -47,11 +49,14 @@ interface FeesResponse {
  * Get protocol-wide fee metrics
  *
  * Query params:
- * - days: number - how many days of history (default: 30)
+ * - days: number - how many days of history (default: 30, max: 365)
  */
-export async function GET(request: NextRequest): Promise<NextResponse<FeesResponse>> {
-  const searchParams = request.nextUrl.searchParams;
-  const days = Math.min(parseInt(searchParams.get('days') ?? '30'), 365);
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Validate query parameters
+  const params = validateQuery(request.nextUrl.searchParams, analyticsFeesQuerySchema);
+  if (params instanceof NextResponse) return params;
+
+  const { days } = params;
 
   const since = new Date();
   since.setDate(since.getDate() - days);

@@ -18,6 +18,7 @@ const ContentSecurityPolicy = `
     https://*.alchemy.com
     https://*.blast.io
     https://*.voyager.online
+    https://*.avnu.fi
     https://api.pragma.build
     https://*.sentry.io
     wss://*.starknet.io
