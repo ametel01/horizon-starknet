@@ -23,16 +23,16 @@ However, there are **opportunities for hardening** aligned with OWASP ASVS L2 co
 
 | Category | Current Status | Gap |
 |----------|---------------|-----|
-| XSS Protection | Good | CSP allows `unsafe-inline` for scripts |
-| Security Headers | Excellent | Missing Subresource Integrity |
+| XSS Protection | Excellent | Nonce-based CSP with strict-dynamic ✅ |
+| Security Headers | Excellent | SRI enforced via SecureScript ✅ |
 | Auth/Session | N/A (wallet-based) | - |
 | CSRF | Not applicable | No cookie-based auth |
 | Secrets Management | Good | Missing secret rotation policy |
 | Input Validation | Excellent | - |
-| SSRF | Low risk | Add explicit allowlist |
+| SSRF | Excellent | RPC URL allowlist ✅ |
 | Caching | Good | Add `Vary` headers |
-| Dependencies | Unknown | Add vulnerability scanning |
-| CI/CD | Good | Add SAST/secret scanning |
+| Dependencies | Good | OSV Scanner in CI ✅ |
+| CI/CD | Good | Secret scanning in CI ✅, SAST pending |
 
 ---
 
@@ -53,12 +53,12 @@ However, there are **opportunities for hardening** aligned with OWASP ASVS L2 co
 
 ### Priority 1: Critical (Immediate)
 
-#### 1.1 Add Dependency Vulnerability Scanning
+#### 1.1 Add Dependency Vulnerability Scanning ✅
 
 **ASVS Control:** V14.2.1 - Third Party Components
 **OWASP Top 10:** A06:2021 - Vulnerable and Outdated Components
 
-**Current State:** No automated dependency scanning in CI/CD.
+**Current State:** ✅ Implemented - OSV Scanner in CI/CD.
 
 **Implementation:**
 
@@ -94,12 +94,12 @@ However, there are **opportunities for hardening** aligned with OWASP ASVS L2 co
 
 ---
 
-#### 1.2 Add Secret Scanning to CI
+#### 1.2 Add Secret Scanning to CI ✅
 
 **ASVS Control:** V10.3.1 - Secrets in Code
 **OWASP Top 10:** A07:2021 - Identification and Authentication Failures
 
-**Current State:** No secret scanning in pipeline.
+**Current State:** ✅ Implemented - TruffleHog in CI/CD.
 
 **Implementation:**
 
@@ -124,14 +124,14 @@ However, there are **opportunities for hardening** aligned with OWASP ASVS L2 co
 
 ---
 
-#### 1.3 Improve CSP - Remove `unsafe-inline` for Scripts
+#### 1.3 Improve CSP - Remove `unsafe-inline` for Scripts ✅
 
 **ASVS Control:** V14.4.3 - Content Security Policy
 **OWASP Top 10:** A03:2021 - Injection
 
-**Current State:** CSP allows `unsafe-inline` for scripts, which reduces XSS protection.
+**Current State:** ✅ Implemented - Nonce-based CSP with `strict-dynamic` in production.
 
-**Root Cause:** Required for React hydration and inline event handlers.
+**Implementation:** See `src/lib/csp.ts`, `src/components/security/NonceProvider.tsx`.
 
 **Implementation Options:**
 
@@ -167,27 +167,27 @@ Pre-compute hashes for known inline scripts during build.
 
 ### Priority 2: High (This Sprint)
 
-#### 2.1 Add Subresource Integrity (SRI) for External Scripts
+#### 2.1 Add Subresource Integrity (SRI) for External Scripts ✅
 
 **ASVS Control:** V14.2.3 - Subresource Integrity
 **OWASP Top 10:** A08:2021 - Software and Data Integrity Failures
 
-**Current State:** No external scripts loaded (good!), but CDN assets should use SRI.
+**Current State:** ✅ Implemented - `SecureScript` component enforces SRI for external scripts.
 
-**Verification:** Review all `<script>` and `<link>` tags for external resources.
-
-**Action:** If external resources are added in the future, require SRI hashes.
+**Implementation:**
+- `src/components/security/SecureScript.tsx` - Wrapper that enforces SRI hashes
+- ESLint rule restricts direct `next/script` imports, requiring `SecureScript` usage
 
 ---
 
-#### 2.2 Harden RPC Proxy Against Abuse
+#### 2.2 Harden RPC Proxy Against Abuse ✅
 
 **ASVS Control:** V13.2.5 - Server-Side Request Forgery
 **OWASP Top 10:** A10:2021 - Server-Side Request Forgery
 
-**Current State:** `/api/rpc` proxies requests to `RPC_URL` environment variable.
+**Current State:** ✅ Implemented - RPC URL allowlist validates against known providers.
 
-**Risk:** If `RPC_URL` is misconfigured, could proxy to unintended endpoints.
+**Implementation:** `src/app/api/rpc/route.ts` - `ALLOWED_RPC_HOSTS` constant and `isAllowedRpcUrl()` validation.
 
 **Implementation:**
 
@@ -356,12 +356,12 @@ export function getPrivateCacheHeaders(): HeadersInit {
 
 ---
 
-#### 3.2 Add Request Timeout to RPC Proxy
+#### 3.2 Add Request Timeout to RPC Proxy ✅
 
 **ASVS Control:** V13.2.3 - Timeouts
 **OWASP Top 10:** A10:2021 - SSRF
 
-**Current State:** Health check has 5s timeout, RPC proxy has none.
+**Current State:** ✅ Implemented - 30 second timeout via `AbortSignal.timeout()`.
 
 **Implementation:**
 
@@ -380,12 +380,12 @@ const response = await fetch(rpcUrl, {
 
 ---
 
-#### 3.3 Add Input Size Limits to API Routes
+#### 3.3 Add Input Size Limits to API Routes ✅
 
 **ASVS Control:** V13.1.1 - Input Size Limits
 **OWASP Top 10:** A04:2021 - Insecure Design
 
-**Current State:** No explicit body size limits.
+**Current State:** ✅ Implemented - 10KB limit on RPC proxy requests.
 
 **Implementation:**
 
