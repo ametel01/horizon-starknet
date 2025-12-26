@@ -9,6 +9,7 @@
  * - Swap: Swapping PT/SY in the market
  * - ImpliedRateUpdated: Implied rate changes
  * - FeesCollected: Protocol fees collected
+ * - ScalarRootUpdated: Scalar root parameter changes (admin)
  */
 
 import {
@@ -16,6 +17,7 @@ import {
   marketFeesCollected,
   marketImpliedRateUpdated,
   marketMint,
+  marketScalarRootUpdated,
   marketSwap,
 } from "@/schema";
 import {
@@ -40,6 +42,7 @@ const BURN = getSelector("Burn");
 const SWAP = getSelector("Swap");
 const IMPLIED_RATE_UPDATED = getSelector("ImpliedRateUpdated");
 const FEES_COLLECTED = getSelector("FeesCollected");
+const SCALAR_ROOT_UPDATED = getSelector("ScalarRootUpdated");
 
 export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
@@ -53,6 +56,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       marketSwap,
       marketImpliedRateUpdated,
       marketFeesCollected,
+      marketScalarRootUpdated,
     }),
   );
 
@@ -69,6 +73,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     { address: marketAddress, keys: [SWAP] },
     { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
     { address: marketAddress, keys: [FEES_COLLECTED] },
+    { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
   ]);
 
   console.log(
@@ -112,6 +117,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           { address: marketAddress, keys: [SWAP] },
           { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
           { address: marketAddress, keys: [FEES_COLLECTED] },
+          { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
         ];
       });
 
@@ -146,12 +152,14 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       type SwapRow = typeof marketSwap.$inferInsert;
       type ImpliedRateRow = typeof marketImpliedRateUpdated.$inferInsert;
       type FeesRow = typeof marketFeesCollected.$inferInsert;
+      type ScalarRootRow = typeof marketScalarRootUpdated.$inferInsert;
 
       const mintRows: MintRow[] = [];
       const burnRows: BurnRow[] = [];
       const swapRows: SwapRow[] = [];
       const impliedRateRows: ImpliedRateRow[] = [];
       const feesRows: FeesRow[] = [];
+      const scalarRootRows: ScalarRootRow[] = [];
 
       for (const event of events) {
         const transactionHash = event.transactionHash;
@@ -324,6 +332,21 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             expiry,
             fee_rate: feeRate,
           });
+        } else if (matchSelector(eventKey, SCALAR_ROOT_UPDATED)) {
+          // ScalarRootUpdated: keys = [selector, market], data = [old_value, new_value, timestamp]
+          const market = event.keys[1] ?? marketAddress;
+
+          const oldValue = readU256(data, 0);
+          const newValue = readU256(data, 2);
+
+          scalarRootRows.push({
+            block_number: blockNumber,
+            block_timestamp: blockTimestamp,
+            transaction_hash: transactionHash,
+            market,
+            old_value: oldValue,
+            new_value: newValue,
+          });
         }
       }
 
@@ -341,6 +364,10 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         );
       if (feesRows.length > 0)
         insertPromises.push(db.insert(marketFeesCollected).values(feesRows));
+      if (scalarRootRows.length > 0)
+        insertPromises.push(
+          db.insert(marketScalarRootUpdated).values(scalarRootRows),
+        );
 
       if (insertPromises.length > 0) {
         await Promise.all(insertPromises);

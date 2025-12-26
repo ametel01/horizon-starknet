@@ -6,7 +6,7 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 23 event tables across 6 contracts
+ * Total: 24 event tables across 6 contracts
  */
 
 import {
@@ -424,7 +424,7 @@ export const ytExpiryReached = pgTable(
 );
 
 // ============================================================
-// MARKET (AMM) EVENTS (5 tables)
+// MARKET (AMM) EVENTS (6 tables)
 // ============================================================
 
 export const marketMint = pgTable(
@@ -620,6 +620,25 @@ export const marketFeesCollected = pgTable(
     index("market_fc_collector_idx").on(table.collector),
     index("market_fc_receiver_idx").on(table.receiver),
     index("market_fc_market_idx").on(table.market),
+  ],
+);
+
+export const marketScalarRootUpdated = pgTable(
+  "market_scalar_root_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    // Indexed fields (keys)
+    market: text("market").notNull(),
+    // Event data
+    old_value: numeric("old_value", { precision: 78, scale: 0 }).notNull(),
+    new_value: numeric("new_value", { precision: 78, scale: 0 }).notNull(),
+  },
+  (table) => [
+    index("market_sru_market_idx").on(table.market),
+    index("market_sru_timestamp_idx").on(table.block_timestamp),
   ],
 );
 
