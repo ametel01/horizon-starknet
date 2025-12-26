@@ -7,7 +7,7 @@ import { TxStatus } from '@/components/display/TxStatus';
 import { calculateMinOutputs, useRemoveLiquidity } from '@/hooks/useLiquidity';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact, parseWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';

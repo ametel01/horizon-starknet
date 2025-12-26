@@ -11,7 +11,7 @@ import { usePriceImpact, estimateImpact } from '@/hooks/usePriceImpact';
 import { useStarknet } from '@/hooks/useStarknet';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@/hooks/useSwap';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { getMarketParams } from '@shared/config/addresses';
 import { cn } from '@shared/lib/utils';
 import {

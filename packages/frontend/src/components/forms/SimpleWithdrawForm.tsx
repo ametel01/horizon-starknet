@@ -5,7 +5,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { TxStatus } from '@/components/display/TxStatus';
 import { useAccount } from '@/hooks/useAccount';
 import { useSimpleWithdraw } from '@/hooks/useSimpleWithdraw';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { cn } from '@shared/lib/utils';
 import { formatWad, fromWad, toWad } from '@shared/math/wad';
 import { formatExpiry } from '@shared/math/yield';

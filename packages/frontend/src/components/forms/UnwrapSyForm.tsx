@@ -7,7 +7,7 @@ import { TxStatus } from '@/components/display/TxStatus';
 import { useAccount } from '@/hooks/useAccount';
 import { useUnderlyingAddress } from '@/hooks/useUnderlying';
 import { useUnwrapSy } from '@/hooks/useUnwrapSy';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { cn } from '@shared/lib/utils';
 import { toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';

@@ -6,7 +6,7 @@ import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
 import { useAccount } from '@/hooks/useAccount';
 import { useMint } from '@/hooks/useMint';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { cn } from '@shared/lib/utils';
 import { toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
