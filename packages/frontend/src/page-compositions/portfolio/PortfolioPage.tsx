@@ -33,6 +33,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 import { TransactionHistory } from '@widgets/analytics/TransactionHistory';
 import { TxStatus } from '@widgets/display/TxStatus';
+import {
+  BeatImpliedScore,
+  LpApyBreakdown,
+  PositionPnlTimeline,
+  YtCashflowChart,
+} from '@widgets/portfolio';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
