@@ -805,6 +805,7 @@ function PortfolioContent(): ReactNode {
           <YieldEarnedCard />
           <YieldByPosition />
         </div>
+        <YtCashflowChart />
         <YieldHistory limit={10} />
       </div>
 
@@ -812,6 +813,7 @@ function PortfolioContent(): ReactNode {
       {activeLpPositions.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-foreground text-lg font-semibold">LP Analytics</h2>
+          <LpApyBreakdown />
           <div className="grid gap-4 lg:grid-cols-2">
             {activeLpPositions.map((lpPosition) => {
               const poolReserves = poolReservesByMarket.get(lpPosition.market.toLowerCase());
@@ -833,6 +835,10 @@ function PortfolioContent(): ReactNode {
       <div className="space-y-4">
         <h2 className="text-foreground text-lg font-semibold">Portfolio Value</h2>
         <PortfolioValueChart />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PositionPnlTimeline />
+          <BeatImpliedScore />
+        </div>
         <PnlBreakdown />
         <PositionValueHistory limit={10} />
       </div>
