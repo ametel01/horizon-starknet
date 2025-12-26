@@ -2,9 +2,9 @@
 
 import { type ReactNode, useMemo } from 'react';
 
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
-import { useProtocolVolume } from '@/hooks/useProtocolVolume';
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useProtocolVolume } from '@features/protocol-status';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';

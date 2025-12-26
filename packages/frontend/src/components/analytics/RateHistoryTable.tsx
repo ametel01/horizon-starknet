@@ -2,7 +2,7 @@
 
 import { type ReactNode, useMemo, useState } from 'react';
 
-import { useMarketRates } from '@/hooks/useMarketRates';
+import { useMarketRates } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';

@@ -14,7 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { useMarketRates, type ProcessedRateDataPoint } from '@/hooks/useMarketRates';
+import { useMarketRates, type ProcessedRateDataPoint } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';

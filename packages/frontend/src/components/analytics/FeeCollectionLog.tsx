@@ -3,8 +3,8 @@
 import { type ReactNode, useMemo } from 'react';
 
 import { useProtocolFees } from '@/hooks/api';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';

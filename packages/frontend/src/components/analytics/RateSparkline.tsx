@@ -3,7 +3,7 @@
 import { type ReactNode, useMemo } from 'react';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
-import { useMarketRates } from '@/hooks/useMarketRates';
+import { useMarketRates } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Skeleton } from '@shared/ui/Skeleton';
 
