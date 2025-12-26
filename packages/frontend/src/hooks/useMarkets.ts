@@ -4,7 +4,7 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
-import type { MarketData, MarketInfo, MarketState } from '@/types/market';
+import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';

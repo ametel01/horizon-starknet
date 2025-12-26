@@ -12,8 +12,8 @@ import {
   calculatePositionValue,
   getTimeToExpiry,
 } from '@/lib/position/value';
-import type { MarketData } from '@/types/market';
-import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@/types/position';
+import type { MarketData } from '@entities/market';
+import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
 import { WAD_BIGINT, fromWad } from '@shared/math/wad';
 import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
 

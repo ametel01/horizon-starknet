@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { uint256 } from 'starknet';
 
 import type { MarketApyBreakdown, SyRateData } from '@/types/apy';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { ESTIMATED_YIELD_APYS } from '@shared/config/addresses';
 import { calculateApyBreakdown } from '@shared/math/apy-breakdown';
 import { WAD_BIGINT } from '@shared/math/wad';

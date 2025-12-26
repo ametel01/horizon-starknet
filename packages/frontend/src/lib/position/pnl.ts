@@ -4,7 +4,7 @@
  * Tracks cost basis and calculates P&L using localStorage.
  */
 
-import type { CostBasis } from '@/types/position';
+import type { CostBasis } from '@entities/position';
 import { WAD_BIGINT, fromWad, wadDiv, wadMul } from '@shared/math/wad';
 
 const COST_BASIS_KEY = 'horizon_cost_basis';
