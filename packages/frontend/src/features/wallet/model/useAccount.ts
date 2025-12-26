@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { WalletAccount } from 'starknet';
 
-import { useStarknet } from './useStarknet';
+import { useStarknet } from '@features/wallet';
 
 export interface UseAccountReturn {
   address: string | null;

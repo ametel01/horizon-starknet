@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { useStarknet } from '@/hooks/useStarknet';
+import { useStarknet } from '@features/wallet';
 import { formatAddress } from '@shared/starknet/wallet';
 import { Button } from '@shared/ui/Button';
 

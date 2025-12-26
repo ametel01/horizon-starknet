@@ -1,2 +1,3 @@
-// Feature UI - forms and components
-// Will be populated in Phase 3
+// Wallet feature UI components
+export { ConnectButton } from './ConnectButton';
+export { DisclaimerDialog } from './DisclaimerDialog';
