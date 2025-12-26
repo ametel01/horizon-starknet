@@ -5,53 +5,53 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 // Direct imports for above-the-fold content
-import { ProtocolStats } from '@/components/analytics/ProtocolStats';
-import { ProtocolTvlCard } from '@/components/analytics/ProtocolTvlCard';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { ProtocolStats } from '@widgets/analytics/ProtocolStats';
+import { ProtocolTvlCard } from '@widgets/analytics/ProtocolTvlCard';
 
 // Lazy load chart components (recharts is heavy ~200KB)
-const TvlChart = dynamic(() => import('@/components/analytics/TvlChart').then((m) => m.TvlChart), {
+const TvlChart = dynamic(() => import('@widgets/analytics/TvlChart').then((m) => m.TvlChart), {
   loading: () => <ChartSkeleton />,
   ssr: false,
 });
 
 const TvlBreakdown = dynamic(
-  () => import('@/components/analytics/TvlBreakdown').then((m) => m.TvlBreakdown),
+  () => import('@widgets/analytics/TvlBreakdown').then((m) => m.TvlBreakdown),
   { loading: () => <ChartSkeleton />, ssr: false }
 );
 
 const VolumeByMarket = dynamic(
-  () => import('@/components/analytics/VolumeByMarket').then((m) => m.VolumeByMarket),
+  () => import('@widgets/analytics/VolumeByMarket').then((m) => m.VolumeByMarket),
   { loading: () => <ChartSkeleton />, ssr: false }
 );
 
 const VolumeStatsCard = dynamic(
-  () => import('@/components/analytics/VolumeStatsCard').then((m) => m.VolumeStatsCard),
+  () => import('@widgets/analytics/VolumeStatsCard').then((m) => m.VolumeStatsCard),
   { loading: () => <CardSkeleton /> }
 );
 
 const VolumeChart = dynamic(
-  () => import('@/components/analytics/VolumeChart').then((m) => m.VolumeChart),
+  () => import('@widgets/analytics/VolumeChart').then((m) => m.VolumeChart),
   { loading: () => <ChartSkeleton />, ssr: false }
 );
 
 const FeeStatsCard = dynamic(
-  () => import('@/components/analytics/FeeRevenueChart').then((m) => m.FeeStatsCard),
+  () => import('@widgets/analytics/FeeRevenueChart').then((m) => m.FeeStatsCard),
   { loading: () => <CardSkeleton /> }
 );
 
 const FeeRevenueChart = dynamic(
-  () => import('@/components/analytics/FeeRevenueChart').then((m) => m.FeeRevenueChart),
+  () => import('@widgets/analytics/FeeRevenueChart').then((m) => m.FeeRevenueChart),
   { loading: () => <ChartSkeleton />, ssr: false }
 );
 
 const FeeByMarket = dynamic(
-  () => import('@/components/analytics/FeeByMarket').then((m) => m.FeeByMarket),
+  () => import('@widgets/analytics/FeeByMarket').then((m) => m.FeeByMarket),
   { loading: () => <ChartSkeleton />, ssr: false }
 );
 
 const FeeCollectionLog = dynamic(
-  () => import('@/components/analytics/FeeCollectionLog').then((m) => m.FeeCollectionLog),
+  () => import('@widgets/analytics/FeeCollectionLog').then((m) => m.FeeCollectionLog),
   { loading: () => <ChartSkeleton /> }
 );
 

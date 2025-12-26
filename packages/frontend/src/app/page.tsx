@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { ProtocolStats } from '@/components/analytics/ProtocolStats';
 import { MarketList, SimpleMarketList } from '@entities/market';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Button } from '@shared/ui/Button';
+import { ProtocolStats } from '@widgets/analytics/ProtocolStats';
 
 export default function HomePage(): ReactNode {
   const { isSimple } = useUIMode();

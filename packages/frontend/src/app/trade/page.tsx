@@ -17,12 +17,12 @@ import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
 
 // Lazy load chart components (recharts is heavy)
 const ImpliedRateChart = dynamic(
-  () => import('@/components/analytics/ImpliedRateChart').then((m) => m.ImpliedRateChart),
+  () => import('@widgets/analytics/ImpliedRateChart').then((m) => m.ImpliedRateChart),
   { loading: () => <Skeleton className="h-[200px] w-full rounded-lg" />, ssr: false }
 );
 
 const SwapHistoryTable = dynamic(
-  () => import('@/components/analytics/SwapHistoryTable').then((m) => m.SwapHistoryTable),
+  () => import('@widgets/analytics/SwapHistoryTable').then((m) => m.SwapHistoryTable),
   { loading: () => <Skeleton className="h-[300px] w-full rounded-lg" /> }
 );
 

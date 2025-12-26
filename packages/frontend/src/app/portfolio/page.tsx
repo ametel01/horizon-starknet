@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { TransactionHistory } from '@/components/analytics/TransactionHistory';
-import { TxStatus } from '@/components/display/TxStatus';
 import { formatUsd, formatPercent } from '@/lib/position/value';
 import {
   EnhancedPositionCard,
@@ -33,6 +31,8 @@ import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
+import { TransactionHistory } from '@widgets/analytics/TransactionHistory';
+import { TxStatus } from '@widgets/display/TxStatus';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
