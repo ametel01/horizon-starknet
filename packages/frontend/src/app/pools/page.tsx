@@ -5,14 +5,12 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
-import { AddLiquidityForm } from '@/components/forms/AddLiquidityForm';
-import { RemoveLiquidityForm } from '@/components/forms/RemoveLiquidityForm';
-import { useApyBreakdown } from '@/hooks/useApyBreakdown';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { useStarknet } from '@/hooks/useStarknet';
-import { useTokenBalance } from '@/hooks/useTokenBalance';
 import type { MarketData } from '@entities/market';
+import { AddLiquidityForm, RemoveLiquidityForm } from '@features/liquidity';
+import { useDashboardMarkets } from '@features/markets';
+import { useTokenBalance } from '@features/portfolio';
+import { useStarknet } from '@features/wallet';
+import { useApyBreakdown, ApyBreakdown } from '@features/yield';
 import { formatWadCompact } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
@@ -268,7 +266,7 @@ function PoolsPageContent(): ReactNode {
 
           {/* LP APY Breakdown */}
           {selectedMarket !== undefined && apyBreakdown !== null && (
-            <ApyBreakdownCard breakdown={apyBreakdown} view="lp" title="LP Yield Breakdown" />
+            <ApyBreakdown breakdown={apyBreakdown} view="lp" title="LP Yield Breakdown" />
           )}
 
           {/* Pool Info */}

@@ -5,14 +5,6 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TransactionHistory } from '@/components/analytics/TransactionHistory';
 import { TxStatus } from '@/components/display/TxStatus';
-import { useUserIndexedPositions } from '@/hooks/api/useUserData';
-import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { type MarketPosition, usePositions } from '@/hooks/usePositions';
-import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@/hooks/useRedeem';
-import { useStarknet } from '@/hooks/useStarknet';
-import { useUserYield } from '@/hooks/useUserYield';
-import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
 import { formatUsd, formatPercent } from '@/lib/position/value';
 import {
   EnhancedPositionCard,
@@ -30,6 +22,12 @@ import {
   YieldHistory,
   type EnhancedPosition,
 } from '@entities/position';
+import { useDashboardMarkets } from '@features/markets';
+import { useUserIndexedPositions, useEnhancedPositions } from '@features/portfolio';
+import { type MarketPosition, usePositions } from '@features/portfolio';
+import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@features/redeem';
+import { useStarknet } from '@features/wallet';
+import { useUserYield, useClaimAllYield, useClaimYield } from '@features/yield';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Button } from '@shared/ui/Button';

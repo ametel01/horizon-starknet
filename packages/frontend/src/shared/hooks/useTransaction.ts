@@ -3,8 +3,7 @@
 import { useCallback, useState } from 'react';
 import type { Call, InvokeFunctionResponse } from 'starknet';
 
-import { useAccount } from '@/hooks/useAccount';
-import { useStarknet } from '@/hooks/useStarknet';
+import { useAccount, useStarknet } from '@features/wallet';
 
 export type TransactionStatus = 'idle' | 'signing' | 'pending' | 'success' | 'error';
 export type TxStatus = TransactionStatus;

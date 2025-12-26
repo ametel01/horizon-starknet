@@ -3,7 +3,7 @@
 // IMPORTANT: Import BigInt polyfill before any React Query code
 import '@shared/lib/polyfills/bigint-json';
 
-import { TransactionSettingsProvider } from '@/contexts/transaction-settings-context';
+import { TransactionSettingsProvider } from '@features/tx-settings';
 import { UIModeProvider } from '@shared/theme/ui-mode-context';
 
 import { QueryProvider } from './QueryProvider';

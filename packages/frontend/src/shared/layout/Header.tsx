@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-import { ConnectButton } from '@/components/wallet/ConnectButton';
+import { ConnectButton } from '@features/wallet';
 import { ModeToggle } from '@shared/layout/mode-toggle';
 import { ThemeToggle } from '@shared/layout/theme-toggle';
 import { cn } from '@shared/lib/utils';

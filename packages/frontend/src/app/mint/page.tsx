@@ -4,12 +4,10 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
-import { MintForm } from '@/components/forms/MintForm';
-import { SimpleEarnForm } from '@/components/forms/SimpleEarnForm';
-import { SimpleWithdrawForm } from '@/components/forms/SimpleWithdrawForm';
-import { UnwrapSyForm } from '@/components/forms/UnwrapSyForm';
-import { WrapToSyForm } from '@/components/forms/WrapToSyForm';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
+import { SimpleEarnForm, SimpleWithdrawForm, WrapToSyForm } from '@features/earn';
+import { useDashboardMarkets } from '@features/markets';
+import { MintForm } from '@features/mint';
+import { UnwrapSyForm } from '@features/redeem';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';

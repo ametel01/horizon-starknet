@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { Call } from 'starknet';
 
-import { useStarknet } from '@/hooks/useStarknet';
+import { useStarknet } from '@features/wallet';
 import { getFaucetInfo } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { logError } from '@shared/server/logger';

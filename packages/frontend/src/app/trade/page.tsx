@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
-import { SwapForm } from '@/components/forms/SwapForm';
-import { useApyBreakdown } from '@/hooks/useApyBreakdown';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { usePositions } from '@/hooks/usePositions';
-import { useStarknet } from '@/hooks/useStarknet';
+import { useDashboardMarkets } from '@features/markets';
+import { usePositions } from '@features/portfolio';
+import { SwapForm } from '@features/swap';
+import { useStarknet } from '@features/wallet';
+import { useApyBreakdown, ApyBreakdown } from '@features/yield';
 import { formatWadCompact } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
@@ -234,8 +233,8 @@ function TradePageContent(): ReactNode {
           {/* APY Breakdown Cards */}
           {selectedMarket !== undefined && apyBreakdown !== null && (
             <div className="space-y-4">
-              <ApyBreakdownCard breakdown={apyBreakdown} view="pt" title="PT Fixed Yield" />
-              <ApyBreakdownCard breakdown={apyBreakdown} view="yt" title="YT Long Yield" />
+              <ApyBreakdown breakdown={apyBreakdown} view="pt" title="PT Fixed Yield" />
+              <ApyBreakdown breakdown={apyBreakdown} view="yt" title="YT Long Yield" />
             </div>
           )}
 
