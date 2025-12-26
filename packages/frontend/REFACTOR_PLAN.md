@@ -888,7 +888,17 @@ bun run test
 
 ---
 
-## Phase 6: Cleanup
+## Phase 6: Cleanup ✅ COMPLETED
+
+> **Status:** Completed on 2025-12-26
+> - Moved `lib/position/*` to `entities/position/lib/`
+> - Moved `lib/query-keys.ts` to `shared/query/query-keys.ts`
+> - Moved `lib/transaction-builder.ts` to `shared/starknet/transaction-builder.ts`
+> - Updated all imports from legacy paths to FSD paths
+> - Removed empty legacy directories (components/, hooks/, lib/, contexts/)
+> - Updated ESLint configuration to enforce architectural restrictions
+> - All 347 tests passing
+> - Typecheck, lint, and build passing
 
 ### 6.1 Delete Empty Legacy Directories
 After all moves are complete and verified:
