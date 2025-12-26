@@ -2,7 +2,7 @@
 
 import { type ReactNode, useId } from 'react';
 
-import { useTokenBalance } from '@/hooks/useTokenBalance';
+import { useTokenBalance } from '@features/portfolio';
 import { formatWad, fromWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';

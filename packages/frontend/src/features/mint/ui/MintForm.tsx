@@ -4,15 +4,13 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
-import { useAccount } from '@/hooks/useAccount';
-import { useMint } from '@/hooks/useMint';
 import type { MarketData } from '@entities/market';
+import { useMint, TokenInput, TokenOutput } from '@features/mint';
+import { useAccount } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-
-import { TokenInput, TokenOutput } from './TokenInput';
 
 interface MintFormProps {
   market: MarketData;
