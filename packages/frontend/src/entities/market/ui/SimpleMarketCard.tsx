@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 
-import { TokenAmount } from '@/components/display/TokenAmount';
-import type { MarketData } from '@/types/market';
+import { TokenAmount } from '@entities/token';
 import { cn } from '@shared/lib/utils';
 import { formatExpiry } from '@shared/math/yield';
 import { buttonVariants } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+
+import type { MarketData } from '../model/types';
 
 interface SimpleMarketCardProps {
   market: MarketData;

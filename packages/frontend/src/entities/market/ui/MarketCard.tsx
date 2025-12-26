@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
-import { ApyDisplay, TokenAmount } from '@/components/display/TokenAmount';
-import type { MarketData } from '@/types/market';
+import { ApyDisplay, TokenAmount } from '@entities/token';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { buttonVariants } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+
+import type { MarketData } from '../model/types';
 
 interface MarketCardProps {
   market: MarketData;
