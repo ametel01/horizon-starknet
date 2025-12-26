@@ -1,6 +1,6 @@
 import { cn } from '@shared/lib/utils';
 
-import packageJson from '../../../package.json';
+import packageJson from '../../../../package.json';
 
 interface VersionBadgeProps {
   className?: string;
