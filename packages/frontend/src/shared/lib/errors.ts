@@ -114,7 +114,26 @@ const CONTRACT_ERROR_SIMPLE: Record<string, string> = {
 };
 
 /**
- * Extract HZN: error code from an error message or object
+ * OpenZeppelin ERC20 error messages
+ */
+const ERC20_ERROR_MESSAGES: Record<string, string> = {
+  'ERC20: insufficient balance': 'Insufficient token balance.',
+  'ERC20: insufficient allowance': 'Token approval required.',
+  'ERC20: transfer amount exceeds balance': 'Insufficient token balance.',
+  'ERC20: approve from zero address': 'Invalid approval address.',
+  'ERC20: transfer to zero address': 'Invalid recipient address.',
+};
+
+const ERC20_ERROR_SIMPLE: Record<string, string> = {
+  'ERC20: insufficient balance': 'Not enough tokens in your wallet.',
+  'ERC20: insufficient allowance': 'Please approve tokens first.',
+  'ERC20: transfer amount exceeds balance': 'Not enough tokens in your wallet.',
+  'ERC20: approve from zero address': 'Something went wrong. Please try again.',
+  'ERC20: transfer to zero address': 'Something went wrong. Please try again.',
+};
+
+/**
+ * Extract HZN: or ERC20: error code from an error message or object
  * Handles various error formats from Starknet transactions
  */
 export function extractContractError(error: unknown): string | null {
@@ -151,6 +170,13 @@ export function extractContractError(error: unknown): string | null {
     return hznMatch[0].trim();
   }
 
+  // Match ERC20: prefixed errors (OpenZeppelin)
+  const erc20Pattern = /ERC20:\s*[^"'\]}\n]+/;
+  const erc20Match = erc20Pattern.exec(errorString);
+  if (erc20Match) {
+    return erc20Match[0].trim();
+  }
+
   return null;
 }
 
@@ -161,19 +187,31 @@ export function extractContractError(error: unknown): string | null {
  * @returns User-friendly error message
  */
 export function parseContractError(error: unknown, isSimple = false): string {
-  const hznError = extractContractError(error);
+  const contractError = extractContractError(error);
 
-  if (hznError) {
-    // Use simple or technical message based on mode
-    const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-    const message = messageMap[hznError];
-
-    if (message) {
-      return message;
+  if (contractError) {
+    // Check HZN: errors first
+    if (contractError.startsWith('HZN:')) {
+      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
+      const message = messageMap[contractError];
+      if (message) {
+        return message;
+      }
     }
 
-    // If we found an HZN error but don't have a mapping, format it nicely
-    return isSimple ? 'Something went wrong. Please try again.' : `Contract error: ${hznError}`;
+    // Check ERC20: errors (OpenZeppelin)
+    if (contractError.startsWith('ERC20:')) {
+      const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
+      const message = messageMap[contractError];
+      if (message) {
+        return message;
+      }
+    }
+
+    // If we found an error but don't have a mapping, format it nicely
+    return isSimple
+      ? 'Something went wrong. Please try again.'
+      : `Contract error: ${contractError}`;
   }
 
   // Fallback to generic message
@@ -214,13 +252,15 @@ export function isPauseError(error: unknown): boolean {
  * Check if error is an insufficient balance error
  */
 export function isInsufficientBalanceError(error: unknown): boolean {
-  const hznError = extractContractError(error);
-  if (!hznError) return false;
+  const contractError = extractContractError(error);
+  if (!contractError) return false;
   return (
-    hznError === 'HZN: insufficient balance' ||
-    hznError === 'HZN: insufficient PT' ||
-    hznError === 'HZN: insufficient YT' ||
-    hznError === 'HZN: insufficient SY'
+    contractError === 'HZN: insufficient balance' ||
+    contractError === 'HZN: insufficient PT' ||
+    contractError === 'HZN: insufficient YT' ||
+    contractError === 'HZN: insufficient SY' ||
+    contractError === 'ERC20: insufficient balance' ||
+    contractError === 'ERC20: transfer amount exceeds balance'
   );
 }
 
@@ -279,12 +319,16 @@ const errorMessageMap: Record<string, string> = {
 export function getSimpleErrorMessage(error: string | Error | null | undefined): string {
   if (error === null || error === undefined) return 'An error occurred';
 
-  // First, check for HZN: contract errors
-  const hznError = extractContractError(error);
-  if (hznError) {
-    const contractMessage = CONTRACT_ERROR_SIMPLE[hznError];
-    if (contractMessage) {
-      return contractMessage;
+  // First, check for contract errors (HZN: and ERC20:)
+  const contractError = extractContractError(error);
+  if (contractError) {
+    if (contractError.startsWith('HZN:')) {
+      const message = CONTRACT_ERROR_SIMPLE[contractError];
+      if (message) return message;
+    }
+    if (contractError.startsWith('ERC20:')) {
+      const message = ERC20_ERROR_SIMPLE[contractError];
+      if (message) return message;
     }
   }
 
@@ -318,17 +362,22 @@ export function getModeAwareErrorMessage(
   if (error === null || error === undefined)
     return isSimple ? 'An error occurred' : 'Unknown error';
 
-  // First, check for HZN: contract errors
-  const hznError = extractContractError(error);
-  if (hznError) {
-    const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-    const contractMessage = messageMap[hznError];
-    if (contractMessage) {
-      return contractMessage;
+  // First, check for contract errors (HZN: and ERC20:)
+  const contractError = extractContractError(error);
+  if (contractError) {
+    if (contractError.startsWith('HZN:')) {
+      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
+      const message = messageMap[contractError];
+      if (message) return message;
+    }
+    if (contractError.startsWith('ERC20:')) {
+      const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
+      const message = messageMap[contractError];
+      if (message) return message;
     }
     // If no mapping, show the raw error in advanced mode
     if (!isSimple) {
-      return `Contract error: ${hznError}`;
+      return `Contract error: ${contractError}`;
     }
   }
 
@@ -372,7 +421,7 @@ export function formatValidationError(error: string | null, isSimple: boolean): 
 }
 
 /**
- * Help text for specific HZN: errors
+ * Help text for specific HZN: and ERC20: errors
  */
 const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> = {
   'HZN: slippage exceeded': {
@@ -414,6 +463,21 @@ const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> 
   'HZN: overflow': {
     simple: 'The amount is too large to process.',
     advanced: 'Reduce the amount to prevent arithmetic overflow.',
+  },
+  // ERC20 errors (OpenZeppelin)
+  'ERC20: insufficient balance': {
+    simple: 'You need more tokens in your wallet to complete this action.',
+    advanced:
+      'Your wallet token balance is insufficient. Check your balance and try a smaller amount.',
+  },
+  'ERC20: insufficient allowance': {
+    simple: 'You need to approve tokens before this action.',
+    advanced: 'Token allowance is insufficient. Approve tokens for the contract first.',
+  },
+  'ERC20: transfer amount exceeds balance': {
+    simple: 'You need more tokens in your wallet to complete this action.',
+    advanced:
+      'Transfer amount exceeds your wallet balance. Reduce the amount or acquire more tokens.',
   },
 };
 
