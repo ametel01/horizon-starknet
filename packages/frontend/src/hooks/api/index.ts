@@ -49,26 +49,25 @@ export type {
   FeeCollection,
 } from '@shared/api/types';
 
-// Health hook
-export { useIndexerHealth } from './useIndexerHealth';
-
-// Market hooks
-export { useIndexedMarkets, useIndexedMarket } from './useIndexedMarkets';
-export { useMarketSwaps, useMarketTvlHistory, useMarketRateHistory } from './useMarketHistory';
-
-// User hooks
+// Re-export from features for backwards compatibility
+export { useIndexerHealth } from '@features/analytics';
+export {
+  useIndexedMarkets,
+  useIndexedMarket,
+  useMarketSwaps,
+  useMarketTvlHistory,
+  useMarketRateHistory,
+} from '@features/markets';
 export {
   useUserHistory,
   useUserIndexedPositions,
   useUserYield,
   useUserPositionsByAddress,
   usePortfolioHistory,
-} from './useUserData';
-
-// Analytics hooks
+} from '@features/portfolio';
 export {
   useProtocolTvl,
   useProtocolVolume,
   useProtocolFees,
   useProtocolStats,
-} from './useProtocolAnalytics';
+} from '@features/analytics';

@@ -1,2 +1,3 @@
-// Feature API - data fetching hooks
-// Will be populated in Phase 3
+// Analytics feature API
+export * from './useProtocolAnalytics';
+export * from './useIndexerHealth';
