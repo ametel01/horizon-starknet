@@ -2,7 +2,6 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { TxStatus } from '@/components/display/TxStatus';
 import type { MarketData } from '@entities/market';
 import { useSimpleWithdraw } from '@features/earn';
 import { useAccount } from '@features/wallet';
@@ -13,6 +12,7 @@ import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { NumberInput } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { TxStatus } from '@widgets/display/TxStatus';
 
 interface SimpleWithdrawFormProps {
   market: MarketData;

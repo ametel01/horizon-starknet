@@ -3,7 +3,6 @@
 import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { TxStatus } from '@/components/display/TxStatus';
 import type { MarketData } from '@entities/market';
 import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@features/liquidity';
 import { TokenInput } from '@features/mint';
@@ -15,6 +14,7 @@ import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Switch } from '@shared/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
+import { TxStatus } from '@widgets/display/TxStatus';
 
 interface AddLiquidityFormProps {
   market: MarketData;
