@@ -12,7 +12,7 @@ import { useApyBreakdown } from '@/hooks/useApyBreakdown';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import type { MarketData } from '@/types/market';
+import type { MarketData } from '@entities/market';
 import { formatWadCompact } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';

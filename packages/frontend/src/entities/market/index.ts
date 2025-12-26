@@ -1,1 +1,3 @@
-// Entity public API - exports will be added as files are migrated
+// Market entity public API
+export * from './model';
+export * from './ui';

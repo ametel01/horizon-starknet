@@ -5,21 +5,6 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TransactionHistory } from '@/components/analytics/TransactionHistory';
 import { TxStatus } from '@/components/display/TxStatus';
-import {
-  EnhancedPositionCard,
-  type YieldEarnedData,
-} from '@/components/portfolio/EnhancedPositionCard';
-import { ImpermanentLossCalc } from '@/components/portfolio/ImpermanentLossCalc';
-import { LpEntryExitTable } from '@/components/portfolio/LpEntryExitTable';
-import { LpPnlCard } from '@/components/portfolio/LpPnlCard';
-import { PnlBreakdown } from '@/components/portfolio/PnlBreakdown';
-import { PortfolioValueChart } from '@/components/portfolio/PortfolioValueChart';
-import { PositionValueHistory } from '@/components/portfolio/PositionValueHistory';
-import { SimplePortfolio } from '@/components/portfolio/SimplePortfolio';
-import { SummaryCard } from '@/components/portfolio/SummaryCard';
-import { YieldByPosition } from '@/components/portfolio/YieldByPosition';
-import { YieldEarnedCard } from '@/components/portfolio/YieldEarnedCard';
-import { YieldHistory } from '@/components/portfolio/YieldHistory';
 import { useUserIndexedPositions } from '@/hooks/api/useUserData';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
@@ -29,7 +14,22 @@ import { useStarknet } from '@/hooks/useStarknet';
 import { useUserYield } from '@/hooks/useUserYield';
 import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
 import { formatUsd, formatPercent } from '@/lib/position/value';
-import type { EnhancedPosition } from '@/types/position';
+import {
+  EnhancedPositionCard,
+  type YieldEarnedData,
+  ImpermanentLossCalc,
+  LpEntryExitTable,
+  LpPnlCard,
+  PnlBreakdown,
+  PortfolioValueChart,
+  PositionValueHistory,
+  SimplePortfolio,
+  SummaryCard,
+  YieldByPosition,
+  YieldEarnedCard,
+  YieldHistory,
+  type EnhancedPosition,
+} from '@entities/position';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Button } from '@shared/ui/Button';

@@ -1,2 +1,2 @@
-// Token UI - TokenAmount display component
-// Will be populated in Phase 2.3
+// Token UI components
+export { TokenAmount, ApyDisplay } from './TokenAmount';
