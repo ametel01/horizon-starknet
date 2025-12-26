@@ -272,13 +272,23 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const market = event.keys[1] ?? marketAddress;
           const expiry = Number(BigInt(event.keys[2] ?? "0"));
 
+          // Event structure:
+          // data[0-1]: old_rate (u256)
+          // data[2-3]: new_rate (u256)
+          // data[4]: timestamp (u64)
+          // data[5]: time_to_expiry (u64)
+          // data[6-7]: exchange_rate (u256)
+          // data[8-9]: sy_reserve (u256)
+          // data[10-11]: pt_reserve (u256)
+          // data[12-13]: total_lp (u256)
           const oldRate = readU256(data, 0);
           const newRate = readU256(data, 2);
-          const timeToExpiry = Number(BigInt(data[4] ?? "0"));
-          const exchangeRate = readU256(data, 5);
-          const syReserve = readU256(data, 7);
-          const ptReserve = readU256(data, 9);
-          const totalLp = readU256(data, 11);
+          // Note: data[4] is timestamp, data[5] is time_to_expiry
+          const timeToExpiry = Number(BigInt(data[5] ?? "0"));
+          const exchangeRate = readU256(data, 6);
+          const syReserve = readU256(data, 8);
+          const ptReserve = readU256(data, 10);
+          const totalLp = readU256(data, 12);
 
           impliedRateRows.push({
             block_number: blockNumber,
