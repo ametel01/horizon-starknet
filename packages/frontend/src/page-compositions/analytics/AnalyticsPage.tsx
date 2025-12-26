@@ -31,6 +31,17 @@ const ExecutionQualityPanel = dynamic(
   { loading: () => <ChartSkeleton />, ssr: false }
 );
 
+// Phase 3: Market Microstructure
+const DepthCurve = dynamic(
+  () => import('@widgets/analytics/DepthCurve').then((m) => m.DepthCurve),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+const LiquidityHealthScore = dynamic(
+  () => import('@widgets/analytics/LiquidityHealthScore').then((m) => m.LiquidityHealthScore),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
 // Lazy load chart components (recharts is heavy ~200KB)
 const TvlChart = dynamic(() => import('@widgets/analytics/TvlChart').then((m) => m.TvlChart), {
   loading: () => <ChartSkeleton />,
@@ -212,9 +223,25 @@ export function AnalyticsPage(): ReactNode {
               Price impact and liquidity depth analysis
             </p>
           </div>
-          <ExecutionQualityPanel marketAddress={marketAddress} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ExecutionQualityPanel marketAddress={marketAddress} />
+            <DepthCurve marketAddress={marketAddress} />
+          </div>
         </section>
       )}
+
+      {/* ============================================ */}
+      {/* MARKET MICROSTRUCTURE SECTION (Phase 3)     */}
+      {/* ============================================ */}
+      <section className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-foreground text-lg font-semibold">Market Microstructure</h2>
+          <p className="text-muted-foreground text-sm">
+            Protocol-wide liquidity health and spread metrics
+          </p>
+        </div>
+        <LiquidityHealthScore />
+      </section>
 
       {/* ============================================ */}
       {/* COLLAPSIBLE SECTIONS (Existing Analytics)   */}
@@ -291,6 +318,16 @@ export function AnalyticsPage(): ReactNode {
               <span className="text-foreground font-medium">Execution Quality</span> measures price
               impact on trades. Lower impact indicates better liquidity depth. The median impact
               under 10 bps is considered excellent.
+            </p>
+            <p>
+              <span className="text-foreground font-medium">Depth Curve</span> shows how price
+              impact increases with trade size. Use this to plan trade sizing and understand
+              liquidity depth at different volume levels.
+            </p>
+            <p>
+              <span className="text-foreground font-medium">Liquidity Health</span> aggregates
+              spread proxies, depth scores, and activity metrics into a single health score (0-100)
+              for each market. Scores 80+ are excellent.
             </p>
             <p>
               <span className="text-foreground font-medium">Note:</span> Historical data builds up
