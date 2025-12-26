@@ -109,24 +109,16 @@ export default tseslint.config(
       // -------------------------
       // Security / architectural controls
       // -------------------------
-      // NOTE: Architectural import restrictions are relaxed during migration
-      // They will be re-enabled after Phase 6 (cleanup) is complete
       'no-restricted-imports': [
         'error',
         {
-          // patterns: [
-          //   // Avoid reaching into module internals; enforce public surfaces
-          //   {
-          //     group: ['@shared/**/**', '@entities/**/**', '@features/**/**', '@widgets/**/**'],
-          //     message: 'Import via module public API (index.ts) when crossing module boundaries.',
-          //   },
-          //
-          //   // Prevent legacy dumping-ground namespaces once you start migrating
-          //   {
-          //     group: ['@/components/**', '@/hooks/**', '@/contexts/**'],
-          //     message: 'Do not grow global namespaces; move into shared/entities/features/widgets.',
-          //   },
-          // ],
+          patterns: [
+            // Prevent legacy dumping-ground namespaces (migration complete)
+            {
+              group: ['@/components/**', '@/hooks/**', '@/contexts/**', '@/lib/**'],
+              message: 'Legacy namespace removed. Use @shared, @entities, @features, or @widgets.',
+            },
+          ],
           paths: [
             {
               name: 'next/script',
@@ -147,12 +139,6 @@ export default tseslint.config(
       'src/app/api/**/*.ts',
       'src/app/**/route.ts',
       'src/shared/server/**/*.ts',
-      // Legacy paths (kept during migration)
-      'src/lib/db/**/*.ts',
-      'src/lib/rate-limit*.ts',
-      'src/lib/validations/**/*.ts',
-      'src/lib/logger.ts',
-      'src/lib/cache.ts',
     ],
     rules: {
       'no-console': 'off',
@@ -174,11 +160,7 @@ export default tseslint.config(
       'src/app/**/error.tsx',
       'src/app/global-error.tsx',
       'src/app/**/page.tsx',
-      'src/components/ErrorBoundary.tsx',
-      // Legacy paths (kept during migration)
-      'src/lib/db/**/*.ts',
-      'src/lib/rate-limit*.ts',
-      'src/lib/validations/**/*.ts',
+      'src/widgets/shell/ErrorBoundary.tsx',
     ],
     rules: {
       'no-restricted-imports': [
@@ -188,7 +170,7 @@ export default tseslint.config(
             // Anything DB / server-only must never be imported into UI/client bundles
             // NOTE: @shared/server/logger is allowed (logError works client-side too)
             {
-              group: ['postgres', 'drizzle-orm', 'drizzle-orm/*', 'src/lib/db/**', '@/lib/db/**', '@shared/server/db/**', '@shared/server/rate-limit*', '@shared/server/validations/**'],
+              group: ['postgres', 'drizzle-orm', 'drizzle-orm/*', '@shared/server/db/**', '@shared/server/rate-limit*', '@shared/server/validations/**'],
               message: 'Server-only module (db) cannot be imported into client/UI code.',
             },
           ],
@@ -218,7 +200,7 @@ export default tseslint.config(
 
   // Allow next/script import in SecureScript wrapper
   {
-    files: ['src/components/security/SecureScript.tsx'],
+    files: ['src/shared/security/SecureScript.tsx'],
     rules: { 'no-restricted-imports': 'off' },
   },
 
