@@ -3,11 +3,10 @@
 import { useCallback, useMemo } from 'react';
 import { type Call, uint256 } from 'starknet';
 
+import { useTokenBalance } from '@features/portfolio';
+import { useAccount } from '@features/wallet';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { toWad } from '@shared/math/wad';
-
-import { useAccount } from './useAccount';
-import { useTokenBalance } from './useTokenBalance';
 
 interface UseUnwrapSyParams {
   underlyingAddress: string;
