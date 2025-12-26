@@ -1,1 +1,3 @@
-// Feature public API - exports will be added as files are migrated
+// Price feature public API
+export * from './model';
+export * from './ui';

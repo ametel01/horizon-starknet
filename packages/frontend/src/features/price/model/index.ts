@@ -1,2 +1,3 @@
-// Feature model - hooks and state management
-// Will be populated in Phase 3
+// Price feature model
+export * from './usePrices';
+export * from './usePriceImpact';
