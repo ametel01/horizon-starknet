@@ -5,13 +5,12 @@ import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
+import { useStarknet } from '@features/wallet';
 import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
 import { getMarketContract, getMarketFactoryContract } from '@shared/starknet/contracts';
 import type { NetworkId } from '@shared/starknet/provider';
-
-import { useStarknet } from './useStarknet';
 
 /**
  * Page size for paginated market fetching

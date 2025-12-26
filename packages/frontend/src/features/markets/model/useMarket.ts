@@ -5,10 +5,9 @@ import type BigNumber from 'bignumber.js';
 import { uint256 } from 'starknet';
 
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
+import { useStarknet } from '@features/wallet';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { getMarketContract } from '@shared/starknet/contracts';
-
-import { useStarknet } from './useStarknet';
 
 interface UseMarketOptions {
   enabled?: boolean;

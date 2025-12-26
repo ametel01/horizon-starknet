@@ -1,2 +1,3 @@
-// Feature API - data fetching hooks
-// Will be populated in Phase 3
+// Markets feature API
+export * from './useIndexedMarkets';
+export * from './useMarketHistory';
