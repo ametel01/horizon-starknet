@@ -1,2 +1,11 @@
 // Position lib - pnl, value calculations
-// Will be populated in Phase 2.2
+export {
+  calculatePositionValue,
+  calculatePtPriceInSy,
+  calculateYtPriceInSy,
+  calculateLpValue,
+  getTimeToExpiry,
+  calculateTotalPositionValue,
+  formatUsd,
+  formatPercent,
+} from '@/lib/position/value';

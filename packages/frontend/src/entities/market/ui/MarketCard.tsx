@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 
-import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { ApyDisplay, TokenAmount } from '@entities/token';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { buttonVariants } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 
 import type { MarketData } from '../model/types';
 
