@@ -9,8 +9,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { calculateMinOutput } from '@/hooks/useSwap';
 import { WAD } from '@/test/setup';
+import { calculateMinOutput } from '@features/swap';
 import { parseWad } from '@shared/math/wad';
 
 type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';

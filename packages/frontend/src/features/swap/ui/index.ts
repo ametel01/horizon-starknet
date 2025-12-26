@@ -1,2 +1,2 @@
-// Feature UI - forms and components
-// Will be populated in Phase 3
+// Swap feature UI
+export { SwapForm } from './SwapForm';

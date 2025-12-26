@@ -3,15 +3,19 @@
 import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { PriceImpactWarning, usePriceImpactWarning } from '@/components/display/PriceImpactWarning';
 import { TxStatus } from '@/components/display/TxStatus';
-import { TransactionSettingsPanel } from '@/components/settings/TransactionSettingsPanel';
-import { useTransactionSettings } from '@/contexts/transaction-settings-context';
-import { usePriceImpact, estimateImpact } from '@/hooks/usePriceImpact';
-import { useStarknet } from '@/hooks/useStarknet';
-import { calculateMinOutput, type SwapDirection, useSwap } from '@/hooks/useSwap';
-import { useTokenBalance } from '@/hooks/useTokenBalance';
 import type { MarketData } from '@entities/market';
+import { TokenInput } from '@features/mint';
+import { useTokenBalance } from '@features/portfolio';
+import {
+  PriceImpactWarning,
+  usePriceImpactWarning,
+  usePriceImpact,
+  estimateImpact,
+} from '@features/price';
+import { calculateMinOutput, type SwapDirection, useSwap } from '@features/swap';
+import { TransactionSettingsPanel, useTransactionSettings } from '@features/tx-settings';
+import { useStarknet } from '@features/wallet';
 import { getMarketParams } from '@shared/config/addresses';
 import { cn } from '@shared/lib/utils';
 import {
@@ -28,8 +32,6 @@ import { formatWad, parseWad, WAD_BIGINT } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
-
-import { TokenInput } from './TokenInput';
 
 interface SwapFormProps {
   market: MarketData;
