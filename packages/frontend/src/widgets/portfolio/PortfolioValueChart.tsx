@@ -11,8 +11,8 @@ import {
   YAxis,
 } from 'recharts';
 
-import { usePortfolioHistory } from '@/hooks/api';
 import { useDashboardMarkets } from '@features/markets';
+import { usePortfolioHistory } from '@features/portfolio';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';

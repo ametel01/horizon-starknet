@@ -2,10 +2,11 @@
 
 import { type ReactNode, useMemo } from 'react';
 
-import { usePortfolioHistory, type PortfolioValueEvent } from '@/hooks/api';
 import { useDashboardMarkets } from '@features/markets';
+import { usePortfolioHistory } from '@features/portfolio';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useStarknet } from '@features/wallet';
+import type { PortfolioValueEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';

@@ -1,13 +1,15 @@
-// Position UI components
+// Position UI components - entity-level display components
 export { EnhancedPositionCard, type YieldEarnedData } from './EnhancedPositionCard';
-export { ImpermanentLossCalc } from './ImpermanentLossCalc';
-export { LpEntryExitTable } from './LpEntryExitTable';
-export { LpPnlCard } from './LpPnlCard';
-export { PnlBreakdown } from './PnlBreakdown';
-export { PortfolioValueChart } from './PortfolioValueChart';
-export { PositionValueHistory } from './PositionValueHistory';
-export { SimplePortfolio } from './SimplePortfolio';
 export { SummaryCard } from './SummaryCard';
-export { YieldByPosition } from './YieldByPosition';
-export { YieldEarnedCard } from './YieldEarnedCard';
-export { YieldHistory } from './YieldHistory';
+
+// Re-export from widgets for backwards compatibility (deprecated - use @widgets/portfolio directly)
+export { ImpermanentLossCalc } from '@widgets/portfolio';
+export { LpEntryExitTable } from '@widgets/portfolio';
+export { LpPnlCard } from '@widgets/portfolio';
+export { PnlBreakdown } from '@widgets/portfolio';
+export { PortfolioValueChart } from '@widgets/portfolio';
+export { PositionValueHistory } from '@widgets/portfolio';
+export { SimplePortfolio } from '@widgets/portfolio';
+export { YieldByPosition } from '@widgets/portfolio';
+export { YieldEarnedCard } from '@widgets/portfolio';
+export { YieldHistory } from '@widgets/portfolio';

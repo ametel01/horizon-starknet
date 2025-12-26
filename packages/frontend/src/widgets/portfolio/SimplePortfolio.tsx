@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { type ReactNode, useCallback, useState } from 'react';
 
-import { TxStatus } from '@/components/display/TxStatus';
-import { formatUsd } from '@/lib/position/value';
 import type { MarketData } from '@entities/market';
+import type { EnhancedPosition } from '@entities/position';
+import { formatUsd } from '@entities/position/lib';
 import { useSimpleWithdraw } from '@features/earn';
 import { useEnhancedPositions } from '@features/portfolio';
 import { useAccount } from '@features/wallet';
@@ -16,8 +16,7 @@ import { formatExpiry } from '@shared/math/yield';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
-
-import type { EnhancedPosition } from '../model/types';
+import { TxStatus } from '@widgets/display/TxStatus';
 
 interface SimplePortfolioProps {
   markets: MarketData[];
