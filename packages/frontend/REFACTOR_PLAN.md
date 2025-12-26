@@ -284,6 +284,15 @@ bun run test
 
 ## Phase 2: Entities Layer
 
+> **Status: COMPLETE** ✅
+> - Moved Market entity (types, UI components) to `entities/market/`
+> - Moved Position entity (types, UI components) to `entities/position/`
+> - Moved Token entity (TokenAmount, ApyDisplay) to `entities/token/`
+> - Created entity barrel exports (index.ts files)
+> - Updated all imports across the codebase
+> - All 347 tests passing
+> - Typecheck, lint, and build passing
+
 Move domain concepts that are reused across features.
 
 ### 2.1 Market Entity
