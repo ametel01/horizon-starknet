@@ -381,6 +381,14 @@ bun run test
 
 ## Phase 3: Features Layer
 
+> **Status: COMPLETE** ✅
+> - Moved 14 features: wallet, swap, liquidity, mint, redeem, earn, tx-settings, markets, portfolio, yield, analytics, price, protocol-status, docs
+> - Updated all feature index files with proper exports
+> - Fixed all import paths across the codebase
+> - Maintained backwards compatibility via hooks/api/index.ts re-exports
+> - All 347 tests passing
+> - Typecheck, lint, and build passing
+
 Move domain-specific flows and behaviors.
 
 ### 3.1 Wallet Feature
