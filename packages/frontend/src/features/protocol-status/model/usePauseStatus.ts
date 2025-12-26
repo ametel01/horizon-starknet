@@ -2,6 +2,7 @@
 
 import { useQuery, useQueries, type UseQueryResult } from '@tanstack/react-query';
 
+import { useStarknet } from '@features/wallet';
 import {
   getMarketContract,
   getRouterContract,
@@ -9,8 +10,6 @@ import {
   getPTContract,
   getYTContract,
 } from '@shared/starknet/contracts';
-
-import { useStarknet } from './useStarknet';
 
 /**
  * Pause status checking hooks

@@ -1,1 +1,2 @@
-// Feature public API - exports will be added as files are migrated
+// Protocol Status feature public API
+export * from './model';
