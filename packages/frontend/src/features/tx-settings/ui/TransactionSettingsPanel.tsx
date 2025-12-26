@@ -12,7 +12,7 @@ import {
   MIN_SLIPPAGE_BPS,
   SLIPPAGE_OPTIONS,
   useTransactionSettings,
-} from '@/contexts/transaction-settings-context';
+} from '@features/tx-settings';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
