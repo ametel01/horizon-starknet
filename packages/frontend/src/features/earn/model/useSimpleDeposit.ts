@@ -3,13 +3,11 @@
 import { useCallback, useMemo } from 'react';
 
 import { buildDepositAndEarnCalls } from '@/lib/transaction-builder';
+import { useTokenAllowance, useTokenBalance } from '@features/portfolio';
+import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { toWad } from '@shared/math/wad';
-
-import { useAccount } from './useAccount';
-import { useStarknet } from './useStarknet';
-import { useTokenAllowance, useTokenBalance } from './useTokenBalance';
 
 interface UseSimpleDepositParams {
   underlyingAddress: string;

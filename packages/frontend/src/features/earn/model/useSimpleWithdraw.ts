@@ -3,12 +3,10 @@
 import { useCallback, useMemo } from 'react';
 
 import { buildWithdrawCalls } from '@/lib/transaction-builder';
+import { useTokenAllowance, useTokenBalance } from '@features/portfolio';
+import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
-
-import { useAccount } from './useAccount';
-import { useStarknet } from './useStarknet';
-import { useTokenAllowance, useTokenBalance } from './useTokenBalance';
 
 interface UseSimpleWithdrawParams {
   underlyingAddress: string;
