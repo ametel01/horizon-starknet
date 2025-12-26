@@ -42,3 +42,24 @@ export { Switch } from './switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 export { Toggle, toggleVariants } from './toggle';
+export { Slider } from './slider';
+export {
+  Progress,
+  ProgressTrack,
+  ProgressIndicator,
+  ProgressLabel,
+  ProgressValue,
+} from './progress';
+export { HoverCard, HoverCardTrigger, HoverCardContent } from './hover-card';
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from './select';
