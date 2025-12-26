@@ -1,1 +1,2 @@
-// Widget public API - exports will be added as files are migrated
+// Shell widgets - app-level UI components
+export { ErrorBoundary, PageErrorBoundary } from './ErrorBoundary';
