@@ -13,7 +13,9 @@ import {
 } from 'recharts';
 
 import { usePtPriceHistory } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
 
@@ -118,6 +120,18 @@ export function PtConvergenceChart({
     isError,
   } = usePtPriceHistory({ market: marketAddress, days });
 
+  // Get proper symbol from dashboard markets if API returns Unknown
+  const { markets: dashboardMarkets } = useDashboardMarkets();
+  const resolvedSymbol = useMemo(() => {
+    if (underlyingSymbol && underlyingSymbol !== 'Unknown') {
+      return underlyingSymbol;
+    }
+    const market = dashboardMarkets.find(
+      (m) => m.address.toLowerCase() === marketAddress.toLowerCase()
+    );
+    return market?.metadata?.yieldTokenSymbol ?? underlyingSymbol;
+  }, [underlyingSymbol, dashboardMarkets, marketAddress]);
+
   // Format data for the chart
   const chartData = useMemo((): ChartDataPoint[] => {
     return dataPoints.map((point) => ({
@@ -190,7 +204,7 @@ export function PtConvergenceChart({
         <div>
           <CardTitle>PT Convergence to Par</CardTitle>
           <p className="text-muted-foreground mt-1 text-sm">
-            {underlyingSymbol && `PT-${underlyingSymbol}`}
+            {resolvedSymbol && `PT-${resolvedSymbol}`}
             {isExpired ? (
               <span className="text-destructive ml-2">(Expired)</span>
             ) : (
@@ -201,18 +215,22 @@ export function PtConvergenceChart({
 
         {showControls && (
           <div className="flex items-center gap-2">
-            <select
-              value={days}
-              onChange={(e) => {
-                setDays(Number(e.target.value));
+            <Select
+              value={String(days)}
+              onValueChange={(value) => {
+                setDays(Number(value));
               }}
-              className="bg-background border-input h-8 rounded-md border px-2 text-sm"
             >
-              <option value={30}>30D</option>
-              <option value={90}>90D</option>
-              <option value={180}>180D</option>
-              <option value={365}>1Y</option>
-            </select>
+              <SelectTrigger size="sm" className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">30D</SelectItem>
+                <SelectItem value="90">90D</SelectItem>
+                <SelectItem value="180">180D</SelectItem>
+                <SelectItem value="365">1Y</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
       </CardHeader>

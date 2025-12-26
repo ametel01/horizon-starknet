@@ -69,14 +69,15 @@ function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
     // YT swap: check if YT is going in or out
     const isYtIn = BigInt(swap.ytIn ?? '0') > 0n;
     direction = isYtIn ? 'YT -> SY' : 'SY -> YT';
+    // Use chart-3 for YT swaps (consistent with multi-series chart colors)
     directionColor = 'bg-chart-3/10 text-chart-3';
     inAmount = isYtIn ? (swap.ytIn ?? '0') : swap.syIn;
     outAmount = isYtIn ? swap.syOut : (swap.ytOut ?? '0');
   } else {
-    // PT swap
+    // PT swap: use chart-1 for PT In, chart-2 for SY -> PT
     const isPtIn = BigInt(swap.ptIn) > 0n;
     direction = isPtIn ? 'PT -> SY' : 'SY -> PT';
-    directionColor = isPtIn ? 'bg-chart-1/10 text-chart-1' : 'bg-primary/10 text-primary';
+    directionColor = isPtIn ? 'bg-chart-1/10 text-chart-1' : 'bg-chart-2/10 text-chart-2';
     inAmount = isPtIn ? swap.ptIn : swap.syIn;
     outAmount = isPtIn ? swap.syOut : swap.ptOut;
   }
@@ -87,13 +88,16 @@ function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
 
   if (hasRateData && swap.impliedRateBefore && swap.impliedRateAfter) {
     const priceImpact = calculatePriceImpact(swap.impliedRateBefore, swap.impliedRateAfter);
-    // Color based on impact severity
+    // Color based on impact severity using semantic colors:
+    // - destructive: high impact (>= 1%) - bad
+    // - warning: medium impact (>= 0.5%) - caution
+    // - muted-foreground: low impact (< 0.5%) - good/neutral
     const impactColor =
       priceImpact >= 1
         ? 'text-destructive'
         : priceImpact >= 0.5
-          ? 'text-chart-1'
-          : 'text-foreground';
+          ? 'text-warning'
+          : 'text-muted-foreground';
     impactDisplay = (
       <span className={cn('text-xs font-medium', impactColor)}>{priceImpact.toFixed(2)}%</span>
     );

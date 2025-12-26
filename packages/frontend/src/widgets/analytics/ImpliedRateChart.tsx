@@ -16,6 +16,7 @@ import {
 
 import { useMarketRates, type ProcessedRateDataPoint } from '@features/markets';
 import { cn } from '@shared/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
@@ -228,18 +229,22 @@ export function ImpliedRateChart({
             )}
 
             {/* Days selector */}
-            <select
-              value={days}
-              onChange={(e) => {
-                setDays(Number(e.target.value));
+            <Select
+              value={String(days)}
+              onValueChange={(value) => {
+                setDays(Number(value));
               }}
-              className="bg-background border-input h-8 rounded-md border px-2 text-sm"
             >
-              <option value={7}>7D</option>
-              <option value={30}>30D</option>
-              <option value={90}>90D</option>
-              <option value={365}>1Y</option>
-            </select>
+              <SelectTrigger size="sm" className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7D</SelectItem>
+                <SelectItem value="30">30D</SelectItem>
+                <SelectItem value="90">90D</SelectItem>
+                <SelectItem value="365">1Y</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
       </CardHeader>

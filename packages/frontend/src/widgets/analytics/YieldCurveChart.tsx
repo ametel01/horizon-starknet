@@ -11,9 +11,12 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Legend,
+  LineChart,
+  Line,
 } from 'recharts';
 
-import { useYieldCurve, type YieldCurveMarket } from '@features/analytics';
+import { useYieldCurve, usePtPriceHistory, type YieldCurveMarket } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
@@ -118,11 +121,39 @@ function CustomTooltip({
 }
 
 /**
+ * Custom tooltip for APY history chart (single market)
+ */
+function ApyHistoryTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: { date: string; impliedApyPercent: number } }[];
+}): ReactNode {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="bg-popover text-popover-foreground rounded-lg border p-3 shadow-md">
+      <div className="text-muted-foreground mb-1 text-xs">{data.date}</div>
+      <div className="flex justify-between gap-4 text-sm">
+        <span className="text-muted-foreground">Implied APY:</span>
+        <span className="text-primary font-medium">{formatApy(data.impliedApyPercent)}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Yield Curve (Term Structure) Chart
  *
  * Visualizes the relationship between time to maturity and implied APY
  * across all active markets. This is the primary yield-derivatives-native
  * analytics view, showing term structure at a glance.
+ *
+ * When only one market exists, shows implied APY over time instead.
  */
 export function YieldCurveChart({
   className,
@@ -130,11 +161,43 @@ export function YieldCurveChart({
   underlyings,
   showExpired = false,
 }: YieldCurveChartProps): ReactNode {
-  const { markets, activeMarkets, isLoading, isError } = useYieldCurve();
+  const { markets, isLoading, isError } = useYieldCurve();
+  const { markets: dashboardMarkets } = useDashboardMarkets();
+
+  // Build a map of market address to symbol from dashboard markets (static config)
+  const addressToSymbol = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of dashboardMarkets) {
+      if (m.metadata?.yieldTokenSymbol) {
+        // Use normalized address for matching
+        const normalizedAddr = m.address.toLowerCase();
+        map.set(normalizedAddr, m.metadata.yieldTokenSymbol);
+      }
+    }
+    return map;
+  }, [dashboardMarkets]);
+
+  // Enhance markets with proper symbols from static config
+  const enhancedMarkets = useMemo((): YieldCurveMarket[] => {
+    return markets.map((m) => {
+      const normalizedAddr = m.address.toLowerCase();
+      const symbolFromConfig = addressToSymbol.get(normalizedAddr);
+      // Use symbol from static config if API returned 'Unknown'
+      const underlyingSymbol =
+        m.underlyingSymbol === 'Unknown' && symbolFromConfig
+          ? symbolFromConfig
+          : m.underlyingSymbol;
+      return { ...m, underlyingSymbol };
+    });
+  }, [markets, addressToSymbol]);
+
+  const enhancedActiveMarkets = useMemo(() => {
+    return enhancedMarkets.filter((m) => !m.isExpired);
+  }, [enhancedMarkets]);
 
   // Prepare chart data grouped by underlying
   const { chartDataByUnderlying, allUnderlyings, maxY, maxX } = useMemo(() => {
-    const sourceMarkets = showExpired ? markets : activeMarkets;
+    const sourceMarkets = showExpired ? enhancedMarkets : enhancedActiveMarkets;
     const filtered = underlyings
       ? sourceMarkets.filter((m) =>
           underlyings.map((u) => u.toUpperCase()).includes(m.underlyingSymbol.toUpperCase())
@@ -165,7 +228,16 @@ export function YieldCurveChart({
       maxY: Math.ceil(maxApyValue * 1.1), // Add 10% headroom
       maxX: Math.ceil(maxTimeValue * 1.1),
     };
-  }, [markets, activeMarkets, underlyings, showExpired]);
+  }, [enhancedMarkets, enhancedActiveMarkets, underlyings, showExpired]);
+
+  // Get PT price history for single-market time series view
+  const singleMarketAddress =
+    enhancedActiveMarkets.length === 1 ? enhancedActiveMarkets[0]?.address : undefined;
+  const { dataPoints: apyHistory, isLoading: isApyHistoryLoading } = usePtPriceHistory({
+    market: singleMarketAddress,
+    days: 90,
+    enabled: !!singleMarketAddress,
+  });
 
   // Loading state
   if (isLoading) {
@@ -201,6 +273,100 @@ export function YieldCurveChart({
         </CardHeader>
         <CardContent className="py-8 text-center">
           <p className="text-muted-foreground text-sm">No active markets available</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Single market case: show APY over time instead of term structure
+  const isSingleMarket = enhancedActiveMarkets.length === 1;
+  const singleMarket = enhancedActiveMarkets[0];
+
+  if (isSingleMarket && singleMarket) {
+    // Format APY history data for chart
+    const apyChartData = apyHistory.map((p) => ({
+      date: new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      impliedApyPercent: p.impliedApyPercent,
+    }));
+
+    const hasHistoricalData = apyChartData.length > 1;
+    const maxApyValue = Math.max(...apyChartData.map((d) => d.impliedApyPercent), 0);
+
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <div>
+            <CardTitle>Implied APY History</CardTitle>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {singleMarket.underlyingSymbol} market -{' '}
+              {String(Math.round(singleMarket.timeToExpiryDays))} days to maturity
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isApyHistoryLoading ? (
+            <Skeleton className="w-full" style={{ height }} />
+          ) : hasHistoricalData ? (
+            <ResponsiveContainer width="100%" height={height}>
+              <LineChart data={apyChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis
+                  domain={[0, Math.ceil(maxApyValue * 1.2) || 10]}
+                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip content={<ApyHistoryTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="impliedApyPercent"
+                  stroke="var(--primary)"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Implied APY"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[200px] items-center justify-center">
+              <p className="text-muted-foreground text-sm">
+                Historical data is building up. Check back soon for APY trends.
+              </p>
+            </div>
+          )}
+
+          {/* Summary stats */}
+          <div className="mt-4 grid grid-cols-3 gap-4 border-t pt-4 text-sm">
+            <div>
+              <div className="text-muted-foreground text-xs">Current APY</div>
+              <div className="text-primary font-medium">
+                {formatApy(singleMarket.impliedApyPercent)}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground text-xs">PT Price</div>
+              <div className="text-foreground font-medium">
+                {singleMarket.ptPriceInSy.toFixed(4)} SY
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground text-xs">Time to Maturity</div>
+              <div className="text-foreground font-medium">
+                {formatTimeToExpiry(singleMarket.timeToExpiryYears)}
+              </div>
+            </div>
+          </div>
+
+          {/* Info note */}
+          <div className="bg-muted/50 mt-4 rounded-lg p-3">
+            <p className="text-muted-foreground text-xs">
+              <strong>Note:</strong> Term structure visualization requires multiple markets with
+              different maturities. Currently showing implied APY history for the single active
+              market.
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -280,7 +446,7 @@ export function YieldCurveChart({
         <div className="mt-4 grid grid-cols-3 gap-4 border-t pt-4 text-sm">
           <div>
             <div className="text-muted-foreground text-xs">Active Markets</div>
-            <div className="text-foreground font-medium">{activeMarkets.length}</div>
+            <div className="text-foreground font-medium">{enhancedActiveMarkets.length}</div>
           </div>
           <div>
             <div className="text-muted-foreground text-xs">Underlyings</div>
@@ -290,9 +456,9 @@ export function YieldCurveChart({
             <div className="text-muted-foreground text-xs">Avg APY</div>
             <div className="text-primary font-medium">
               {formatApy(
-                activeMarkets.length > 0
-                  ? activeMarkets.reduce((sum, m) => sum + m.impliedApyPercent, 0) /
-                      activeMarkets.length
+                enhancedActiveMarkets.length > 0
+                  ? enhancedActiveMarkets.reduce((sum, m) => sum + m.impliedApyPercent, 0) /
+                      enhancedActiveMarkets.length
                   : 0
               )}
             </div>

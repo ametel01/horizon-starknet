@@ -10,12 +10,13 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  Legend,
   ReferenceLine,
 } from 'recharts';
 
 import { useImpliedVsRealized } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
 
@@ -109,6 +110,18 @@ export function ImpliedVsRealizedChart({
     days,
   });
 
+  // Get proper symbol from dashboard markets if API returns Unknown
+  const { markets: dashboardMarkets } = useDashboardMarkets();
+  const resolvedSymbol = useMemo(() => {
+    if (underlyingSymbol && underlyingSymbol !== 'Unknown') {
+      return underlyingSymbol;
+    }
+    const market = dashboardMarkets.find(
+      (m) => m.address.toLowerCase() === marketAddress.toLowerCase()
+    );
+    return market?.metadata?.yieldTokenSymbol ?? underlyingSymbol;
+  }, [underlyingSymbol, dashboardMarkets, marketAddress]);
+
   // Format data for the chart
   const chartData = useMemo((): ChartDataPoint[] => {
     return dataPoints.map((point) => ({
@@ -189,27 +202,49 @@ export function ImpliedVsRealizedChart({
         <div>
           <CardTitle>Implied vs Realized APY</CardTitle>
           <p className="text-muted-foreground mt-1 text-sm">
-            {underlyingSymbol && `${underlyingSymbol} market`}
+            {resolvedSymbol && `${resolvedSymbol} market`}
           </p>
         </div>
 
         {showControls && (
           <div className="flex items-center gap-2">
-            <select
-              value={days}
-              onChange={(e) => {
-                setDays(Number(e.target.value));
+            <Select
+              value={String(days)}
+              onValueChange={(value) => {
+                setDays(Number(value));
               }}
-              className="bg-background border-input h-8 rounded-md border px-2 text-sm"
             >
-              <option value={7}>7D</option>
-              <option value={30}>30D</option>
-              <option value={90}>90D</option>
-            </select>
+              <SelectTrigger size="sm" className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7D</SelectItem>
+                <SelectItem value="30">30D</SelectItem>
+                <SelectItem value="90">90D</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
       </CardHeader>
       <CardContent>
+        {/* Custom legend with clear visual distinction */}
+        <div className="mb-4 flex items-center justify-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="bg-primary h-0.5 w-6" />
+            <span className="text-muted-foreground">Implied APY</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className="h-0.5 w-6"
+              style={{
+                background:
+                  'repeating-linear-gradient(to right, var(--chart-2), var(--chart-2) 4px, transparent 4px, transparent 8px)',
+              }}
+            />
+            <span className="text-muted-foreground">Realized APY</span>
+          </div>
+        </div>
+
         <ResponsiveContainer width="100%" height={height}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
@@ -232,12 +267,6 @@ export function ImpliedVsRealizedChart({
               tickFormatter={(v: number) => `${v.toFixed(0)}%`}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ paddingTop: 16 }}
-              formatter={(value: string) => (
-                <span className="text-foreground text-sm">{value}</span>
-              )}
-            />
 
             {/* Reference line at 0% */}
             <ReferenceLine y={0} stroke="var(--border)" strokeDasharray="3 3" />
@@ -264,6 +293,7 @@ export function ImpliedVsRealizedChart({
               strokeWidth={2}
               dot={false}
               name="Implied APY"
+              legendType="none"
             />
 
             {/* Realized APY line */}
@@ -275,6 +305,7 @@ export function ImpliedVsRealizedChart({
               dot={false}
               name="Realized APY"
               strokeDasharray="4 4"
+              legendType="none"
             />
           </ComposedChart>
         </ResponsiveContainer>

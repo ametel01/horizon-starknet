@@ -19,9 +19,15 @@ import {
   type ImpactDistributionBucket,
   type DailyImpactStats,
 } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Card,
   CardContent,
   CardHeader,
@@ -127,6 +133,18 @@ export function ExecutionQualityPanel({
   const { summary, distribution, timeSeries, recentSwaps, underlyingSymbol, isLoading, isError } =
     useExecutionQuality({ market: marketAddress, days });
 
+  // Get proper symbol from dashboard markets if API returns Unknown
+  const { markets: dashboardMarkets } = useDashboardMarkets();
+  const resolvedSymbol = useMemo(() => {
+    if (underlyingSymbol && underlyingSymbol !== 'Unknown') {
+      return underlyingSymbol;
+    }
+    const market = dashboardMarkets.find(
+      (m) => m.address.toLowerCase() === marketAddress.toLowerCase()
+    );
+    return market?.metadata?.yieldTokenSymbol ?? underlyingSymbol;
+  }, [underlyingSymbol, dashboardMarkets, marketAddress]);
+
   // Format time series data
   const timeSeriesData = useMemo(() => {
     return timeSeries.map((d) => ({
@@ -193,7 +211,7 @@ export function ExecutionQualityPanel({
         <div>
           <CardTitle>Execution Quality</CardTitle>
           <p className="text-muted-foreground mt-1 text-sm">
-            {underlyingSymbol && `${underlyingSymbol} market`} - {summary.totalSwaps} swaps
+            {resolvedSymbol && `${resolvedSymbol} market`} - {summary.totalSwaps} swaps
           </p>
         </div>
 
@@ -215,17 +233,21 @@ export function ExecutionQualityPanel({
             {qualityGrade.label}
           </div>
 
-          <select
-            value={days}
-            onChange={(e) => {
-              setDays(Number(e.target.value));
+          <Select
+            value={String(days)}
+            onValueChange={(value) => {
+              setDays(Number(value));
             }}
-            className="bg-background border-input h-8 rounded-md border px-2 text-sm"
           >
-            <option value={7}>7D</option>
-            <option value={30}>30D</option>
-            <option value={90}>90D</option>
-          </select>
+            <SelectTrigger size="sm" className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7D</SelectItem>
+              <SelectItem value="30">30D</SelectItem>
+              <SelectItem value="90">90D</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
