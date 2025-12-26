@@ -4,15 +4,16 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { uint256, type ProviderInterface } from 'starknet';
 
-import { getCostBasis, calculateUnrealizedPnl } from '@/lib/position/pnl';
+import type { MarketData } from '@entities/market';
 import {
+  getCostBasis,
+  calculateUnrealizedPnl,
   calculatePtPriceInSy,
   calculateYtPriceInSy,
   calculateLpValue,
   calculatePositionValue,
   getTimeToExpiry,
-} from '@/lib/position/value';
-import type { MarketData } from '@entities/market';
+} from '@entities/position';
 import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useAccount, useStarknet } from '@features/wallet';

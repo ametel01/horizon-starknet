@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { useIndexerHealth } from '@/hooks/api';
+import { useIndexerHealth } from '@features/analytics';
 import { cn } from '@shared/lib/utils';
 import { Badge } from '@shared/ui/badge';
 

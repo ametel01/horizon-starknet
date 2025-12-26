@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { formatUsd, formatPercent } from '@/lib/position/value';
+import { formatUsd, formatPercent } from '@entities/position';
 import {
   EnhancedPositionCard,
   type YieldEarnedData,

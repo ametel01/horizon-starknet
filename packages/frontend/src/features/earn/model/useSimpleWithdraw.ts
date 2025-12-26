@@ -2,11 +2,11 @@
 
 import { useCallback, useMemo } from 'react';
 
-import { buildWithdrawCalls } from '@/lib/transaction-builder';
 import { useTokenAllowance, useTokenBalance } from '@features/portfolio';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
+import { buildWithdrawCalls } from '@shared/starknet';
 
 interface UseSimpleWithdrawParams {
   underlyingAddress: string;

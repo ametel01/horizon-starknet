@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { useProtocolFees } from '@/hooks/api';
+import { useProtocolFees } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { cn } from '@shared/lib/utils';

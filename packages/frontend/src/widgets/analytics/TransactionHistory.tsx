@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useRef } from 'react';
 
-import { useUserHistory } from '@/hooks/api';
+import { useUserHistory } from '@features/portfolio';
 import type { HistoryEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';

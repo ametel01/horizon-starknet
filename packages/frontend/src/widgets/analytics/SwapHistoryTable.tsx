@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useRef } from 'react';
 
-import { useMarketSwaps } from '@/hooks/api';
+import { useMarketSwaps } from '@features/markets';
 import type { SwapEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
