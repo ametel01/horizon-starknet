@@ -6,7 +6,17 @@ import { type ReactNode, useState } from 'react';
 
 import { useDashboardMarkets } from '@features/markets';
 // Direct imports for above-the-fold content
-import { Collapsible, CollapsibleContent, CollapsibleTrigger, Skeleton } from '@shared/ui';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from '@shared/ui';
 import { ProtocolStats } from '@widgets/analytics/ProtocolStats';
 import { ProtocolTvlCard } from '@widgets/analytics/ProtocolTvlCard';
 
@@ -124,6 +134,7 @@ function CollapsibleSectionHeader({
 export function AnalyticsPage(): ReactNode {
   const { markets } = useDashboardMarkets();
   const [selectedMarket, setSelectedMarket] = useState<string | undefined>(undefined);
+  const [executionOpen, setExecutionOpen] = useState(false);
   const [tvlOpen, setTvlOpen] = useState(false);
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [feesOpen, setFeesOpen] = useState(false);
@@ -183,20 +194,30 @@ export function AnalyticsPage(): ReactNode {
             <label className="text-muted-foreground mb-2 block text-sm">
               Select market for detailed analysis:
             </label>
-            <select
+            <Select
               value={marketAddress}
-              onChange={(e) => {
-                setSelectedMarket(e.target.value);
+              onValueChange={(value) => {
+                setSelectedMarket(value ?? undefined);
               }}
-              className="bg-background border-input w-full max-w-md rounded-md border px-3 py-2 text-sm"
             >
-              {activeMarkets.map((market) => (
-                <option key={market.address} value={market.address}>
-                  PT-{market.metadata?.yieldTokenSymbol ?? 'Unknown'} (
-                  {Math.round(market.daysToExpiry)} days)
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue>
+                  {(() => {
+                    const selected = activeMarkets.find((m) => m.address === marketAddress);
+                    if (!selected) return 'Select a market';
+                    return `PT-${selected.metadata?.yieldTokenSymbol ?? 'Unknown'} (${String(Math.round(selected.daysToExpiry))} days)`;
+                  })()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {activeMarkets.map((market) => (
+                  <SelectItem key={market.address} value={market.address}>
+                    PT-{market.metadata?.yieldTokenSymbol ?? 'Unknown'} (
+                    {Math.round(market.daysToExpiry)} days)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
@@ -213,35 +234,24 @@ export function AnalyticsPage(): ReactNode {
       </section>
 
       {/* ============================================ */}
-      {/* EXECUTION QUALITY SECTION                   */}
+      {/* MARKET DEPTH & EXECUTION (Collapsible)      */}
       {/* ============================================ */}
-      {marketAddress && (
-        <section className="mb-8">
-          <div className="mb-4">
-            <h2 className="text-foreground text-lg font-semibold">Execution Quality</h2>
-            <p className="text-muted-foreground text-sm">
-              Price impact and liquidity depth analysis
-            </p>
-          </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ExecutionQualityPanel marketAddress={marketAddress} />
-            <DepthCurve marketAddress={marketAddress} />
-          </div>
-        </section>
-      )}
-
-      {/* ============================================ */}
-      {/* MARKET MICROSTRUCTURE SECTION (Phase 3)     */}
-      {/* ============================================ */}
-      <section className="mb-8">
-        <div className="mb-4">
-          <h2 className="text-foreground text-lg font-semibold">Market Microstructure</h2>
-          <p className="text-muted-foreground text-sm">
-            Protocol-wide liquidity health and spread metrics
-          </p>
-        </div>
-        <LiquidityHealthScore />
-      </section>
+      <Collapsible open={executionOpen} onOpenChange={setExecutionOpen} className="mb-4">
+        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
+          <CollapsibleSectionHeader title="Market Depth & Execution" isOpen={executionOpen} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-4 space-y-6">
+          {/* Execution Quality Charts */}
+          {marketAddress && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ExecutionQualityPanel marketAddress={marketAddress} />
+              <DepthCurve marketAddress={marketAddress} />
+            </div>
+          )}
+          {/* Liquidity Health Score */}
+          <LiquidityHealthScore />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* ============================================ */}
       {/* COLLAPSIBLE SECTIONS (Existing Analytics)   */}
