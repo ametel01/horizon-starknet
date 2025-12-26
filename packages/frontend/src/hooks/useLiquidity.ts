@@ -3,9 +3,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call, uint256 } from 'starknet';
 
-import { getAddresses } from '@/lib/constants/addresses';
-import { getDeadline } from '@/lib/deadline';
-import { getERC20Contract, getMarketContract, getRouterContract } from '@/lib/starknet/contracts';
+import { getAddresses } from '@shared/config/addresses';
+import { getDeadline } from '@shared/lib/deadline';
+import { getERC20Contract, getMarketContract, getRouterContract } from '@shared/starknet/contracts';
 
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';

@@ -2,10 +2,10 @@
 
 import { type ReactNode, useMemo, useState } from 'react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useMarketRates } from '@/hooks/useMarketRates';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format percentage with appropriate precision

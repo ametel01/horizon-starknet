@@ -4,7 +4,6 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { uint256, type ProviderInterface } from 'starknet';
 
-import { WAD_BIGINT, fromWad } from '@/lib/math/wad';
 import { getCostBasis, calculateUnrealizedPnl } from '@/lib/position/pnl';
 import {
   calculatePtPriceInSy,
@@ -13,9 +12,10 @@ import {
   calculatePositionValue,
   getTimeToExpiry,
 } from '@/lib/position/value';
-import { getERC20Contract, getMarketContract, getYTContract } from '@/lib/starknet/contracts';
 import type { MarketData } from '@/types/market';
 import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@/types/position';
+import { WAD_BIGINT, fromWad } from '@shared/math/wad';
+import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
 
 import { useAccount } from './useAccount';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from './usePrices';

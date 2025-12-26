@@ -2,14 +2,14 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
+import { cn } from '@shared/lib/utils';
 import {
   formatPriceImpact,
   getPriceImpactSeverity,
   type PriceImpactSeverity,
-} from '@/lib/math/amm';
-import { cn } from '@/lib/utils';
+} from '@shared/math/amm';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent } from '@shared/ui/Card';
 
 interface PriceImpactWarningProps {
   priceImpact: number;

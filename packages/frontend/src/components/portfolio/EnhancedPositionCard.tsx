@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { formatWadCompact } from '@/lib/math/wad';
-import { formatExpiry } from '@/lib/math/yield';
 import { formatUsd, formatPercent } from '@/lib/position/value';
-import { cn } from '@/lib/utils';
 import type { EnhancedPosition } from '@/types/position';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import { formatExpiry } from '@shared/math/yield';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader } from '@shared/ui/Card';
 
 export interface YieldEarnedData {
   totalClaimed: bigint;

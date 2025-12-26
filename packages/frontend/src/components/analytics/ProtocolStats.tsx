@@ -2,13 +2,13 @@
 
 import { type ReactNode, useMemo } from 'react';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useProtocolStats } from '@/hooks/api';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
-import { fromWad } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { Card, CardContent } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format USD value with compact notation for large numbers

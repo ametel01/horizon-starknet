@@ -8,16 +8,16 @@ import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } f
 import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
 import { AddLiquidityForm } from '@/components/forms/AddLiquidityForm';
 import { RemoveLiquidityForm } from '@/components/forms/RemoveLiquidityForm';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { SkeletonCard } from '@/components/ui/Skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApyBreakdown } from '@/hooks/useApyBreakdown';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { formatWadCompact } from '@/lib/math/wad';
 import type { MarketData } from '@/types/market';
+import { formatWadCompact } from '@shared/math/wad';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { SkeletonCard } from '@shared/ui/Skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 
 type PoolTab = 'add' | 'remove';
 

@@ -2,10 +2,16 @@
 
 import { Component, type ReactNode } from 'react';
 
-import { logError } from '@/lib/logger';
-
-import { Button } from './ui/Button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/Card';
+import { logError } from '@shared/server/logger';
+import { Button } from '@shared/ui/Button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@shared/ui/Card';
 
 interface ErrorBoundaryProps {
   children: ReactNode;

@@ -10,12 +10,12 @@
  *   useIndexedMarkets,
  *   useUserHistory,
  *   useProtocolTvl,
- * } from '@/hooks/api';
+ * } from '@shared/api';
  * ```
  */
 
 // API client
-export { api, ApiError } from '@/lib/api';
+export { api, ApiError } from '@shared/api';
 
 // Types
 export type {
@@ -47,7 +47,7 @@ export type {
   FeesResponse,
   MarketFeeBreakdown,
   FeeCollection,
-} from './types';
+} from '@shared/api/types';
 
 // Health hook
 export { useIndexerHealth } from './useIndexerHealth';

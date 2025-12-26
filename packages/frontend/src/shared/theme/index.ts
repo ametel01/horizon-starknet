@@ -1,2 +1,3 @@
 // Theme context - UI mode (simple/advanced)
-// Will be populated in Phase 1.11
+
+export * from './ui-mode-context';

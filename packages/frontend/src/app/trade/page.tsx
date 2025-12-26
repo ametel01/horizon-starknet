@@ -7,14 +7,14 @@ import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } f
 
 import { ApyBreakdownCard } from '@/components/display/ApyBreakdown';
 import { SwapForm } from '@/components/forms/SwapForm';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { useApyBreakdown } from '@/hooks/useApyBreakdown';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { usePositions } from '@/hooks/usePositions';
 import { useStarknet } from '@/hooks/useStarknet';
-import { formatWadCompact } from '@/lib/math/wad';
+import { formatWadCompact } from '@shared/math/wad';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
 
 // Lazy load chart components (recharts is heavy)
 const ImpliedRateChart = dynamic(

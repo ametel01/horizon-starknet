@@ -10,8 +10,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import { calculateMinOutput } from '@/hooks/useSwap';
-import { parseWad } from '@/lib/math/wad';
 import { WAD } from '@/test/setup';
+import { parseWad } from '@shared/math/wad';
 
 type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';
 type TokenType = 'PT' | 'YT';

@@ -2,12 +2,12 @@
 
 import { type ReactNode, useId } from 'react';
 
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
-import { NumberInput } from '@/components/ui/Input';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { formatWad, fromWad } from '@/lib/math/wad';
+import { formatWad, fromWad } from '@shared/math/wad';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent } from '@shared/ui/Card';
+import { NumberInput } from '@shared/ui/Input';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 interface TokenInputProps {
   label: string;

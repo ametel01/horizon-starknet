@@ -14,11 +14,11 @@ import {
   YAxis,
 } from 'recharts';
 
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useMarketRates, type ProcessedRateDataPoint } from '@/hooks/useMarketRates';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format percentage with appropriate precision

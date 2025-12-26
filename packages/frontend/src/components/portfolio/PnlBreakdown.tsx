@@ -3,15 +3,15 @@
 import { type ReactNode, useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { usePortfolioHistory } from '@/hooks/api';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
 import { useStarknet } from '@/hooks/useStarknet';
-import { fromWad } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format USD value with compact notation

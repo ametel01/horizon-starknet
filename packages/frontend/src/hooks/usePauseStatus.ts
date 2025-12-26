@@ -8,7 +8,7 @@ import {
   getSYContract,
   getPTContract,
   getYTContract,
-} from '@/lib/starknet/contracts';
+} from '@shared/starknet/contracts';
 
 import { useStarknet } from './useStarknet';
 

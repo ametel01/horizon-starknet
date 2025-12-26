@@ -2,8 +2,8 @@
 
 import { type ReactNode } from 'react';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { Card, CardContent } from '@shared/ui/Card';
 
 interface SummaryCardProps {
   label: string;

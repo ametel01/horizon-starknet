@@ -1,8 +1,8 @@
 import BigNumber from 'bignumber.js';
 import { type ReactNode } from 'react';
 
-import { lnRateToApy } from '@/lib/math/yield';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { lnRateToApy } from '@shared/math/yield';
 
 interface ImpliedYieldProps {
   /** The ln(implied_rate) from the AMM in WAD format */

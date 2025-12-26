@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 
-import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/label';
+import { Input } from '@shared/ui/Input';
+import { Label } from '@shared/ui/label';
 
 export function PriceSimulator(): React.ReactNode {
   const [impliedYield, setImpliedYield] = useState('10');

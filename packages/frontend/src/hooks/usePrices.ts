@@ -2,7 +2,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { logWarn } from '@/lib/logger';
+import { logWarn } from '@shared/server/logger';
 
 const AVNU_PRICES_API = 'https://starknet.impulse.avnu.fi/v3/tokens/prices';
 

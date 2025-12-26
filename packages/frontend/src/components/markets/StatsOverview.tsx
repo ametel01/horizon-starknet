@@ -2,11 +2,11 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { formatWadCompact } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import { Card, CardContent } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 export function StatsOverview(): ReactNode {
   const { markets, totalTvl, avgApy, isLoading } = useDashboardMarkets();

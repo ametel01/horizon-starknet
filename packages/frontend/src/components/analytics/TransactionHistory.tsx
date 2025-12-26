@@ -2,13 +2,13 @@
 
 import { type ReactNode, useCallback, useRef } from 'react';
 
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useUserHistory } from '@/hooks/api';
-import type { HistoryEvent } from '@/hooks/api/types';
-import { formatWadCompact } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
+import type { HistoryEvent } from '@shared/api/types';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import { Badge } from '@shared/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 interface TransactionHistoryProps {
   /** Filter by event types */

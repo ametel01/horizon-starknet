@@ -9,10 +9,10 @@ import { SimpleEarnForm } from '@/components/forms/SimpleEarnForm';
 import { SimpleWithdrawForm } from '@/components/forms/SimpleWithdrawForm';
 import { UnwrapSyForm } from '@/components/forms/UnwrapSyForm';
 import { WrapToSyForm } from '@/components/forms/WrapToSyForm';
-import { SkeletonCard } from '@/components/ui/Skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useUIMode } from '@/contexts/ui-mode-context';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
+import { useUIMode } from '@shared/theme/ui-mode-context';
+import { SkeletonCard } from '@shared/ui/Skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 
 type TabType = 'wrap' | 'split' | 'unwrap';
 type SimpleTabType = 'earn' | 'withdraw';

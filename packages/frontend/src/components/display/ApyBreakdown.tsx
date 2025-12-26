@@ -2,10 +2,10 @@
 
 import { type ReactNode } from 'react';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import { formatApyPercent, getApyColorClass } from '@/lib/math/apy-breakdown';
-import { cn } from '@/lib/utils';
 import type { MarketApyBreakdown } from '@/types/apy';
+import { cn } from '@shared/lib/utils';
+import { formatApyPercent, getApyColorClass } from '@shared/math/apy-breakdown';
+import { Card, CardContent } from '@shared/ui/Card';
 
 interface ApyBreakdownProps {
   breakdown: MarketApyBreakdown;

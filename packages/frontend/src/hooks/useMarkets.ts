@@ -4,12 +4,12 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
 import { uint256, type ProviderInterface } from 'starknet';
 
-import { getMarketInfoByAddress, getMarketInfos } from '@/lib/constants/addresses';
-import { logError, logWarn } from '@/lib/logger';
-import { daysToExpiry, lnRateToApy } from '@/lib/math/yield';
-import { getMarketContract, getMarketFactoryContract } from '@/lib/starknet/contracts';
-import type { NetworkId } from '@/lib/starknet/provider';
 import type { MarketData, MarketInfo, MarketState } from '@/types/market';
+import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
+import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
+import { logError, logWarn } from '@shared/server/logger';
+import { getMarketContract, getMarketFactoryContract } from '@shared/starknet/contracts';
+import type { NetworkId } from '@shared/starknet/provider';
 
 import { useStarknet } from './useStarknet';
 

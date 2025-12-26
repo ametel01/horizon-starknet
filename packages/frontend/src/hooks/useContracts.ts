@@ -19,7 +19,7 @@ import {
   type TypedSY,
   type TypedYT,
   type TypedMockYieldToken,
-} from '@/lib/starknet/contracts';
+} from '@shared/starknet/contracts';
 
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';

@@ -2,9 +2,8 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
-
-import type { RatesResponse, SwapEvent, SwapsResponse, TvlResponse } from './types';
+import { api } from '@shared/api';
+import type { RatesResponse, SwapEvent, SwapsResponse, TvlResponse } from '@shared/api/types';
 
 // ============================================================================
 // Market Swaps Hook

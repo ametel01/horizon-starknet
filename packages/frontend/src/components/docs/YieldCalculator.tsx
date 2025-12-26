@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 
-import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/label';
+import { Input } from '@shared/ui/Input';
+import { Label } from '@shared/ui/label';
 
 export function YieldCalculator(): React.ReactNode {
   const [ptPrice, setPtPrice] = useState('0.95');

@@ -2,9 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
-
-import type { IndexedMarket, MarketDetailResponse, MarketsResponse } from './types';
+import { api } from '@shared/api';
+import type { IndexedMarket, MarketDetailResponse, MarketsResponse } from '@shared/api/types';
 
 interface UseIndexedMarketsOptions {
   /** Only return active (non-expired) markets (default: true) */

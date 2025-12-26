@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { getSYContract } from '@/lib/starknet/contracts';
+import { getSYContract } from '@shared/starknet/contracts';
 
 import { useStarknet } from './useStarknet';
 

@@ -2,7 +2,7 @@ import { desc, gte } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { getCacheHeaders } from '@/lib/cache';
+import { getCacheHeaders } from '@shared/server/cache';
 import {
   db,
   protocolDailyStats,
@@ -10,10 +10,10 @@ import {
   marketFeesCollected,
   enrichedRouterSwap,
   enrichedRouterSwapYT,
-} from '@/lib/db';
-import { logError, logWarn } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
-import { validateQuery, analyticsFeesQuerySchema } from '@/lib/validations/api';
+} from '@shared/server/db';
+import { logError, logWarn } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
+import { validateQuery, analyticsFeesQuerySchema } from '@shared/server/validations/api';
 
 interface FeesDataPoint {
   date: string;

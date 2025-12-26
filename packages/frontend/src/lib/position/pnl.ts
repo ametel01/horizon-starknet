@@ -5,8 +5,7 @@
  */
 
 import type { CostBasis } from '@/types/position';
-
-import { WAD_BIGINT, fromWad, wadDiv, wadMul } from '../math/wad';
+import { WAD_BIGINT, fromWad, wadDiv, wadMul } from '@shared/math/wad';
 
 const COST_BASIS_KEY = 'horizon_cost_basis';
 

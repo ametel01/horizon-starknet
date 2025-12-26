@@ -2,11 +2,11 @@
 
 import { type ReactNode } from 'react';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import { useUIMode } from '@/contexts/ui-mode-context';
-import type { TxStatus as TxStatusType } from '@/hooks/useTransaction';
-import { getModeAwareErrorMessage } from '@/lib/errors';
-import { cn } from '@/lib/utils';
+import type { TxStatus as TxStatusType } from '@shared/hooks/useTransaction';
+import { getModeAwareErrorMessage } from '@shared/lib/errors';
+import { cn } from '@shared/lib/utils';
+import { useUIMode } from '@shared/theme/ui-mode-context';
+import { Card, CardContent } from '@shared/ui/Card';
 
 interface TxStatusProps {
   status: TxStatusType;

@@ -3,14 +3,14 @@
 import { useCallback, useMemo } from 'react';
 import { type Call, uint256 } from 'starknet';
 
-import { getAddresses } from '@/lib/constants/addresses';
-import { getDeadline } from '@/lib/deadline';
-import { toWad } from '@/lib/math/wad';
+import { getAddresses } from '@shared/config/addresses';
+import { useTransaction } from '@shared/hooks/useTransaction';
+import { getDeadline } from '@shared/lib/deadline';
+import { toWad } from '@shared/math/wad';
 
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
 import { useTokenAllowance, useTokenBalance } from './useTokenBalance';
-import { useTransaction } from './useTransaction';
 
 interface UseMintParams {
   syAddress: string;

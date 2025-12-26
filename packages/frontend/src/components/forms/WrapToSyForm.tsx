@@ -4,14 +4,14 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { TxStatus } from '@/components/display/TxStatus';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAccount } from '@/hooks/useAccount';
 import { useUnderlyingAddress } from '@/hooks/useUnderlying';
 import { useWrapToSy } from '@/hooks/useWrapToSy';
-import { toWad } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
+import { cn } from '@shared/lib/utils';
+import { toWad } from '@shared/math/wad';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 
 import { TokenInput, TokenOutput } from './TokenInput';
 

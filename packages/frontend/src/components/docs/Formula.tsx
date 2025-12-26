@@ -3,7 +3,7 @@
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
 
 interface FormulaProps {
   children: string;

@@ -2,11 +2,11 @@ import { eq, desc, asc } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { getCacheHeaders } from '@/lib/cache';
-import { db, marketCurrentState } from '@/lib/db';
-import { logError } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
-import { validateQuery, marketsQuerySchema } from '@/lib/validations/api';
+import { getCacheHeaders } from '@shared/server/cache';
+import { db, marketCurrentState } from '@shared/server/db';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
+import { validateQuery, marketsQuerySchema } from '@shared/server/validations/api';
 
 interface MarketListItem {
   market: string;

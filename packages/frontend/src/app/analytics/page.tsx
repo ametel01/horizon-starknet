@@ -7,7 +7,7 @@ import { type ReactNode } from 'react';
 // Direct imports for above-the-fold content
 import { ProtocolStats } from '@/components/analytics/ProtocolStats';
 import { ProtocolTvlCard } from '@/components/analytics/ProtocolTvlCard';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 // Lazy load chart components (recharts is heavy ~200KB)
 const TvlChart = dynamic(() => import('@/components/analytics/TvlChart').then((m) => m.TvlChart), {

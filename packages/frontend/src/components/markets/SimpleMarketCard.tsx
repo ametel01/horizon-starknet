@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 import { TokenAmount } from '@/components/display/TokenAmount';
-import { buttonVariants } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { formatExpiry } from '@/lib/math/yield';
-import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
+import { cn } from '@shared/lib/utils';
+import { formatExpiry } from '@shared/math/yield';
+import { buttonVariants } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 
 interface SimpleMarketCardProps {
   market: MarketData;

@@ -4,19 +4,19 @@ import Link from 'next/link';
 import { type ReactNode, useCallback, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useAccount } from '@/hooks/useAccount';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useSimpleWithdraw } from '@/hooks/useSimpleWithdraw';
 import { useClaimYield } from '@/hooks/useYield';
-import { formatWadCompact } from '@/lib/math/wad';
-import { formatExpiry } from '@/lib/math/yield';
 import { formatUsd } from '@/lib/position/value';
-import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
 import type { EnhancedPosition } from '@/types/position';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import { formatExpiry } from '@shared/math/yield';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 interface SimplePortfolioProps {
   markets: MarketData[];

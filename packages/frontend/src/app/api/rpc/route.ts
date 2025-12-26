@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { logError } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 
 /**
  * RPC Proxy Route

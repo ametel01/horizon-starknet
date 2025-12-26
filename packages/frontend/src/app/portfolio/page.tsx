@@ -20,10 +20,6 @@ import { SummaryCard } from '@/components/portfolio/SummaryCard';
 import { YieldByPosition } from '@/components/portfolio/YieldByPosition';
 import { YieldEarnedCard } from '@/components/portfolio/YieldEarnedCard';
 import { YieldHistory } from '@/components/portfolio/YieldHistory';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { SkeletonCard } from '@/components/ui/Skeleton';
-import { useUIMode } from '@/contexts/ui-mode-context';
 import { useUserIndexedPositions } from '@/hooks/api/useUserData';
 import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
@@ -32,9 +28,13 @@ import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@/hooks/u
 import { useStarknet } from '@/hooks/useStarknet';
 import { useUserYield } from '@/hooks/useUserYield';
 import { useClaimAllYield, useClaimYield } from '@/hooks/useYield';
-import { formatWad, formatWadCompact } from '@/lib/math/wad';
 import { formatUsd, formatPercent } from '@/lib/position/value';
 import type { EnhancedPosition } from '@/types/position';
+import { formatWad, formatWadCompact } from '@shared/math/wad';
+import { useUIMode } from '@shared/theme/ui-mode-context';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { SkeletonCard } from '@shared/ui/Skeleton';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);

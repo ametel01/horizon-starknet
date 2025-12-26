@@ -4,16 +4,16 @@ import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Switch } from '@/components/ui/switch';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@/hooks/useLiquidity';
 import { useStarknet } from '@/hooks/useStarknet';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { formatWad, formatWadCompact, parseWad } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
+import { cn } from '@shared/lib/utils';
+import { formatWad, formatWadCompact, parseWad } from '@shared/math/wad';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Switch } from '@shared/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 
 import { TokenInput } from './TokenInput';
 

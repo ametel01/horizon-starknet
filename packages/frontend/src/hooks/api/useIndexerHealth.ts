@@ -2,9 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
-
-import type { HealthResponse, PoolMode } from './types';
+import { api } from '@shared/api';
+import type { HealthResponse, PoolMode } from '@shared/api/types';
 
 interface UseIndexerHealthOptions {
   /** Refetch interval in milliseconds (default: 30000) */

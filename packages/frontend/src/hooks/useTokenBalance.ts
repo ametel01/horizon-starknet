@@ -3,7 +3,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { uint256 } from 'starknet';
 
-import { getERC20Contract } from '@/lib/starknet/contracts';
+import { getERC20Contract } from '@shared/starknet/contracts';
 
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';

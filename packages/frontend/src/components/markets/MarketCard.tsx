@@ -5,11 +5,11 @@ import { type ReactNode } from 'react';
 
 import { ExpiryBadge } from '@/components/display/ExpiryCountdown';
 import { ApyDisplay, TokenAmount } from '@/components/display/TokenAmount';
-import { buttonVariants } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { useUIMode } from '@/contexts/ui-mode-context';
-import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
+import { cn } from '@shared/lib/utils';
+import { useUIMode } from '@shared/theme/ui-mode-context';
+import { buttonVariants } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 
 interface MarketCardProps {
   market: MarketData;

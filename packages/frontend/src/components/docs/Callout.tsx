@@ -1,6 +1,6 @@
 import { AlertCircle, AlertTriangle, Info, Lightbulb } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
 
 type CalloutType = 'info' | 'warning' | 'danger' | 'tip';
 

@@ -4,12 +4,12 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { uint256 } from 'starknet';
 
-import { ESTIMATED_YIELD_APYS } from '@/lib/constants/addresses';
-import { calculateApyBreakdown } from '@/lib/math/apy-breakdown';
-import { WAD_BIGINT } from '@/lib/math/wad';
-import { getSYContract } from '@/lib/starknet/contracts';
 import type { MarketApyBreakdown, SyRateData } from '@/types/apy';
 import type { MarketData } from '@/types/market';
+import { ESTIMATED_YIELD_APYS } from '@shared/config/addresses';
+import { calculateApyBreakdown } from '@shared/math/apy-breakdown';
+import { WAD_BIGINT } from '@shared/math/wad';
+import { getSYContract } from '@shared/starknet/contracts';
 
 import { useStarknet } from './useStarknet';
 

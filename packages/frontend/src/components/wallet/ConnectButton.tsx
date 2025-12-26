@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 
-import { Button } from '@/components/ui/Button';
 import { useStarknet } from '@/hooks/useStarknet';
-import { formatAddress } from '@/lib/starknet/wallet';
+import { formatAddress } from '@shared/starknet/wallet';
+import { Button } from '@shared/ui/Button';
 
 import { DisclaimerDialog } from './DisclaimerDialog';
 

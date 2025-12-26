@@ -2,7 +2,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import type { MarketRatesResponse } from './api/types';
+import type { MarketRatesResponse } from '@shared/api/types';
 
 /**
  * Processed rate data point for display

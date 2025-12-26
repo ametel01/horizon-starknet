@@ -2,11 +2,11 @@ import { desc, gte } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { getCacheHeaders } from '@/lib/cache';
-import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@/lib/db';
-import { logError, logWarn } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
-import { validateQuery, analyticsVolumeQuerySchema } from '@/lib/validations/api';
+import { getCacheHeaders } from '@shared/server/cache';
+import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@shared/server/db';
+import { logError, logWarn } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
+import { validateQuery, analyticsVolumeQuerySchema } from '@shared/server/validations/api';
 
 interface VolumeDataPoint {
   date: string;

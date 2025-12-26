@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 
-import { formatWad, formatWadCompact } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { formatWad, formatWadCompact } from '@shared/math/wad';
 
 interface TokenAmountProps {
   amount: bigint | string;

@@ -1,2 +1,1 @@
-// Configuration - addresses, network config
-// Will be populated in Phase 1.7
+export * from './addresses';

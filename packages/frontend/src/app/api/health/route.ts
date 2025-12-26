@@ -2,9 +2,9 @@ import { sql } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@/lib/db';
-import { logError } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
+import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@shared/server/db';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 

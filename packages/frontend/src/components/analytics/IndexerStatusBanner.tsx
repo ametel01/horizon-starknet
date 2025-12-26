@@ -2,9 +2,9 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
 import { useIndexerHealth } from '@/hooks/api';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { Badge } from '@shared/ui/badge';
 
 interface IndexerStatusBannerProps {
   /** Only show when there are issues (default: true) */

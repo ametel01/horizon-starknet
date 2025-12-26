@@ -2,10 +2,7 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
-
-import { useAccount } from '../useAccount';
-
+import { api } from '@shared/api';
 import type {
   HistoryEvent,
   HistoryResponse,
@@ -17,7 +14,9 @@ import type {
   PyPosition,
   YieldResponse,
   YieldSummary,
-} from './types';
+} from '@shared/api/types';
+
+import { useAccount } from '../useAccount';
 
 // ============================================================================
 // User Transaction History Hook

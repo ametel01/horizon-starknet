@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { Call } from 'starknet';
 
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Separator } from '@/components/ui/separator';
 import { useStarknet } from '@/hooks/useStarknet';
-import { useTransaction } from '@/hooks/useTransaction';
-import { getFaucetInfo } from '@/lib/constants/addresses';
-import { logError } from '@/lib/logger';
-import { getFaucetContract } from '@/lib/starknet/contracts';
+import { getFaucetInfo } from '@shared/config/addresses';
+import { useTransaction } from '@shared/hooks/useTransaction';
+import { logError } from '@shared/server/logger';
+import { getFaucetContract } from '@shared/starknet/contracts';
+import { Button } from '@shared/ui/Button';
+import { Input } from '@shared/ui/Input';
+import { Separator } from '@shared/ui/separator';
 
 export default function FaucetPage(): React.ReactNode {
   const { address, isConnected, provider, network } = useStarknet();

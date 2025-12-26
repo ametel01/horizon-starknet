@@ -11,15 +11,15 @@ import {
   YAxis,
 } from 'recharts';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { usePortfolioHistory } from '@/hooks/api';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
 import { useStarknet } from '@/hooks/useStarknet';
-import { fromWad } from '@/lib/math/wad';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 
 /**
  * Format USD value with compact notation for large numbers

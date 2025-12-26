@@ -1,2 +1,7 @@
 // Layout components - Header, Footer, mode toggles
-// Will be populated in Phase 1.2
+
+export { Header } from './Header';
+export { Footer } from './Footer';
+export { ModeToggle } from './mode-toggle';
+export { ModeTransition } from './mode-transition';
+export { ThemeToggle } from './theme-toggle';

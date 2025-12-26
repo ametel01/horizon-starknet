@@ -37,7 +37,7 @@ src/
 ```
 src/
 ├── app/                    # Routing only (thin)
-├── pages/                  # Route page compositions (NEW)
+├── page-compositions/                  # Route page compositions (NEW)
 ├── widgets/                # Page sections (NEW)
 ├── features/               # Domain features (NEW)
 ├── entities/               # Domain entities (NEW)
@@ -71,7 +71,7 @@ mkdir -p src/shared/{ui,layout,security,api,config,server,math,starknet,lib,hook
 mkdir -p src/entities/{market,position,token}/{model,ui,lib}
 mkdir -p src/features/{wallet,swap,liquidity,mint,redeem,earn,tx-settings,docs,faucet,analytics}/{ui,model,api}
 mkdir -p src/widgets/{markets,portfolio,analytics,shell}
-mkdir -p src/pages/{trade,portfolio,mint,pools,analytics,faucet}
+mkdir -p src/page-compositions/{trade,portfolio,mint,pools,analytics,faucet}
 ```
 
 ### 0.2 Verify TypeScript Path Aliases ✅
@@ -89,7 +89,22 @@ The `eslint.config.mjs` already enforces:
 
 ---
 
-## Phase 1: Shared Layer (Lowest Risk)
+## Phase 1: Shared Layer (Lowest Risk) ✅ COMPLETED
+
+> **Status:** Completed on 2025-12-26
+> - Moved 15 UI primitives to `shared/ui/`
+> - Moved layout components to `shared/layout/`
+> - Moved security components to `shared/security/`
+> - Moved server-only code to `shared/server/`
+> - Moved math utilities to `shared/math/`
+> - Moved generic utilities to `shared/lib/`
+> - Moved config/constants to `shared/config/`
+> - Moved starknet code to `shared/starknet/`
+> - Moved API utilities to `shared/api/`
+> - Moved generic hooks to `shared/hooks/`
+> - Moved theme context to `shared/theme/`
+> - All tests passing (347 tests)
+> - Typecheck and lint passing
 
 Move foundational, business-logic-free code first. These have no domain dependencies.
 
@@ -797,32 +812,32 @@ bun run test
 Create thin page compositions.
 
 ### 5.1 Trade Page
-**Destination:** `pages/trade/TradePage.tsx`
+**Destination:** `page-compositions/trade/TradePage.tsx`
 
 Extract route logic from `app/trade/page.tsx` into a composable page component.
 
 ### 5.2 Portfolio Page
-**Destination:** `pages/portfolio/PortfolioPage.tsx`
+**Destination:** `page-compositions/portfolio/PortfolioPage.tsx`
 
 Extract route logic from `app/portfolio/page.tsx` into a composable page component.
 
 ### 5.3 Mint Page
-**Destination:** `pages/mint/MintPage.tsx`
+**Destination:** `page-compositions/mint/MintPage.tsx`
 
 Extract route logic from `app/mint/page.tsx` into a composable page component.
 
 ### 5.4 Pools Page
-**Destination:** `pages/pools/PoolsPage.tsx`
+**Destination:** `page-compositions/pools/PoolsPage.tsx`
 
 Extract route logic from `app/pools/page.tsx` into a composable page component.
 
 ### 5.5 Analytics Page
-**Destination:** `pages/analytics/AnalyticsPage.tsx`
+**Destination:** `page-compositions/analytics/AnalyticsPage.tsx`
 
 Extract route logic from `app/analytics/page.tsx` into a composable page component.
 
 ### 5.6 Faucet Page
-**Destination:** `pages/faucet/FaucetPage.tsx`
+**Destination:** `page-compositions/faucet/FaucetPage.tsx`
 
 Extract route logic from `app/faucet/page.tsx` into a composable page component.
 
@@ -909,7 +924,7 @@ Update `CLAUDE.md` with new architecture documentation.
 3. **Phase 2**: `entities/*` - market, position, token
 4. **Phase 3**: `features/*` - wallet, swap, liquidity, mint, redeem, earn, tx-settings, markets, portfolio, yield, analytics, price, protocol-status, docs
 5. **Phase 4**: `widgets/*` - portfolio, analytics, shell, display
-6. **Phase 5**: `pages/*` - trade, portfolio, mint, pools, analytics, faucet
+6. **Phase 5**: `page-compositions/*` - trade, portfolio, mint, pools, analytics, faucet
 7. **Phase 6**: Cleanup legacy directories, update imports
 8. **Phase 7**: Final verification
 

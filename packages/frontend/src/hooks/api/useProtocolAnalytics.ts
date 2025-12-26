@@ -2,14 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
-
+import { api } from '@shared/api';
 import type {
   FeesResponse,
   ProtocolStatsResponse,
   ProtocolTvlResponse,
   VolumeResponse,
-} from './types';
+} from '@shared/api/types';
 
 // ============================================================================
 // Protocol TVL Hook

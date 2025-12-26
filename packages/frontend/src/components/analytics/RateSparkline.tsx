@@ -3,9 +3,9 @@
 import { type ReactNode, useMemo } from 'react';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useMarketRates } from '@/hooks/useMarketRates';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format percentage with appropriate precision

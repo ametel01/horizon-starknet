@@ -1,8 +1,8 @@
 import { type ReactNode } from 'react';
 
-import { Badge } from '@/components/ui/badge';
-import { formatExpiry, formatTimeToExpiry, isExpired } from '@/lib/math/yield';
-import { cn } from '@/lib/utils';
+import { cn } from '@shared/lib/utils';
+import { formatExpiry, formatTimeToExpiry, isExpired } from '@shared/math/yield';
+import { Badge } from '@shared/ui/badge';
 
 interface ExpiryCountdownProps {
   expiryTimestamp: number;

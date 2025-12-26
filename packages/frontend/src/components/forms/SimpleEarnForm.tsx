@@ -3,14 +3,14 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAccount } from '@/hooks/useAccount';
 import { useSimpleDeposit } from '@/hooks/useSimpleDeposit';
-import { formatWad, toWad } from '@/lib/math/wad';
-import { formatExpiry } from '@/lib/math/yield';
-import { cn } from '@/lib/utils';
 import type { MarketData } from '@/types/market';
+import { cn } from '@shared/lib/utils';
+import { formatWad, toWad } from '@shared/math/wad';
+import { formatExpiry } from '@shared/math/yield';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 
 import { TokenInput } from './TokenInput';
 

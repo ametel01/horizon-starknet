@@ -1,4 +1,4 @@
-import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
+import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
 
 export default function Loading(): React.ReactNode {
   return (

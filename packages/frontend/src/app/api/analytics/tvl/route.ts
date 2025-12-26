@@ -2,10 +2,10 @@ import { desc, sql } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { getCacheHeaders } from '@/lib/cache';
-import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@/lib/db';
-import { logError, logWarn } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
+import { getCacheHeaders } from '@shared/server/cache';
+import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@shared/server/db';
+import { logError, logWarn } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 
 interface TvlDataPoint {
   date: string;

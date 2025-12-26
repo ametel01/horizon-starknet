@@ -1,2 +1,5 @@
-// Generic API utilities - fetcher, types
-// Will be populated in Phase 1.9
+// Generic API utilities - fetcher, types, client
+
+export { apiFetch } from './fetcher';
+export * from './types';
+export { api, ApiClient, ApiError } from './client';

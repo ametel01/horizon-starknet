@@ -2,9 +2,9 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useDashboardMarkets } from '@/hooks/useMarkets';
+import { Card, CardContent } from '@shared/ui/Card';
+import { SkeletonCard } from '@shared/ui/Skeleton';
 
 import { SimpleMarketCard } from './SimpleMarketCard';
 

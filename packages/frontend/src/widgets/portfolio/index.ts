@@ -1,2 +1,1 @@
-// Portfolio widget - portfolio page sections (charts, tables, cards)
-// Will be populated in Phase 4.1
+// Widget public API - exports will be added as files are migrated

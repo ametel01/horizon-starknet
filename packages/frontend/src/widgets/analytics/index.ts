@@ -1,2 +1,1 @@
-// Analytics widget - analytics page sections (charts, stats)
-// Will be populated in Phase 4.2
+// Widget public API - exports will be added as files are migrated

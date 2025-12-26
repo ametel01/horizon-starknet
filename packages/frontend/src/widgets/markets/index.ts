@@ -1,2 +1,1 @@
-// Markets widget - market listing page sections
-// Will be populated in Phase 4
+// Widget public API - exports will be added as files are migrated

@@ -8,7 +8,7 @@
 
 import { type Call, uint256 } from 'starknet';
 
-import { getDeadline } from './deadline';
+import { getDeadline } from '@shared/lib/deadline';
 
 /**
  * Parameters for building deposit and earn calls

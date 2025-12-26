@@ -2,9 +2,6 @@
 
 import { type ReactNode, useState } from 'react';
 
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   DEADLINE_OPTIONS,
   DEFAULT_DEADLINE_MINUTES,
@@ -16,7 +13,10 @@ import {
   SLIPPAGE_OPTIONS,
   useTransactionSettings,
 } from '@/contexts/transaction-settings-context';
-import { useUIMode } from '@/contexts/ui-mode-context';
+import { useUIMode } from '@shared/theme/ui-mode-context';
+import { Button } from '@shared/ui/Button';
+import { Input } from '@shared/ui/Input';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 
 /**
  * Transaction Settings Panel

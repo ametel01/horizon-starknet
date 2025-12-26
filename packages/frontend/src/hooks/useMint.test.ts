@@ -8,9 +8,9 @@
 import { describe, expect, test } from 'bun:test';
 import { uint256 } from 'starknet';
 
-import { getDeadline } from '@/lib/deadline';
-import { toWad } from '@/lib/math/wad';
 import { WAD } from '@/test/setup';
+import { getDeadline } from '@shared/lib/deadline';
+import { toWad } from '@shared/math/wad';
 
 describe('Mint amount conversion', () => {
   test('converts string amount to WAD', () => {

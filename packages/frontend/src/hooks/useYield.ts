@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call } from 'starknet';
 
-import { getYTContract } from '@/lib/starknet/contracts';
+import { getYTContract } from '@shared/starknet/contracts';
 
 import { useAccount } from './useAccount';
 
