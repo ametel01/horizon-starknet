@@ -400,7 +400,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
                           : priceImpactSeverity === 'high'
                             ? 'text-destructive'
                             : priceImpactSeverity === 'medium'
-                              ? 'text-chart-1'
+                              ? 'text-warning'
                               : 'text-foreground'
                     }
                   >
