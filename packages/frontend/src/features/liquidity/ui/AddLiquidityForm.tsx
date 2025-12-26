@@ -4,18 +4,17 @@ import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
-import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@/hooks/useLiquidity';
-import { useStarknet } from '@/hooks/useStarknet';
-import { useTokenBalance } from '@/hooks/useTokenBalance';
 import type { MarketData } from '@entities/market';
+import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@features/liquidity';
+import { TokenInput } from '@features/mint';
+import { useTokenBalance } from '@features/portfolio';
+import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact, parseWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Switch } from '@shared/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
-
-import { TokenInput } from './TokenInput';
 
 interface AddLiquidityFormProps {
   market: MarketData;

@@ -3,12 +3,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call, uint256 } from 'starknet';
 
+import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getMarketContract, getRouterContract } from '@shared/starknet/contracts';
-
-import { useAccount } from './useAccount';
-import { useStarknet } from './useStarknet';
 
 interface AddLiquidityParams {
   marketAddress: string;
