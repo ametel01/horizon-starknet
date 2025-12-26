@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 
-import { Button } from '@/components/ui/Button';
+import { logError } from '@shared/server/logger';
+import { Button } from '@shared/ui/Button';
 import {
   Card,
   CardContent,
@@ -11,8 +12,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/Card';
-import { logError } from '@/lib/logger';
+} from '@shared/ui/Card';
 
 interface TradeErrorProps {
   error: Error & { digest?: string };

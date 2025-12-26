@@ -4,14 +4,14 @@ import type { StarknetWindowObject } from '@starknet-io/get-starknet';
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import type { RpcProvider } from 'starknet';
 
-import { createProvider, getNetworkId, type NetworkId } from '@/lib/starknet/provider';
+import { createProvider, getNetworkId, type NetworkId } from '@shared/starknet/provider';
 import {
   connectWallet,
   disconnectWallet,
   getAccounts,
   getChainId as getWalletChainId,
   type WalletConnection,
-} from '@/lib/starknet/wallet';
+} from '@shared/starknet/wallet';
 
 export interface StarknetContextValue {
   // Provider

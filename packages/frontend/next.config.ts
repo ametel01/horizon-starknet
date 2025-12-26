@@ -6,7 +6,7 @@ import path from 'path';
 
 // Bundle analyzer - enabled with ANALYZE=true
 const bundleAnalyzer = withBundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
+  enabled: process.env['ANALYZE'] === 'true',
 });
 
 // Security headers are now set dynamically in proxy.ts with CSP nonce support
@@ -68,8 +68,8 @@ const withMDX = createMDX({
 });
 
 // Sentry configuration options - only include org/project if defined
-const sentryOrg = process.env.SENTRY_ORG;
-const sentryProject = process.env.SENTRY_PROJECT;
+const sentryOrg = process.env['SENTRY_ORG'];
+const sentryProject = process.env['SENTRY_PROJECT'];
 
 const sentryWebpackPluginOptions = {
   // For all available options, see:
@@ -80,7 +80,7 @@ const sentryWebpackPluginOptions = {
   ...(sentryProject && { project: sentryProject }),
 
   // Only upload source maps in production with a valid auth token
-  silent: !process.env.CI,
+  silent: !process.env['CI'],
 
   // Upload source maps for error tracking
   widenClientFileUpload: true,

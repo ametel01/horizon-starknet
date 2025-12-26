@@ -1,8 +1,8 @@
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 
-import { Callout } from '@/components/docs/Callout';
-import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@features/docs';
+import { CodeBlock } from '@features/docs';
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {

@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Public_Sans } from 'next/font/google';
 
-import { IndexerStatusBanner } from '@/components/analytics/IndexerStatusBanner';
-import { Footer } from '@/components/layout/Footer';
-import { Header } from '@/components/layout/Header';
-import { Toaster } from '@/components/ui/sonner';
 import { Providers } from '@/providers';
+import { Footer } from '@shared/layout/Footer';
+import { Header } from '@shared/layout/Header';
+import { Toaster } from '@shared/ui/sonner';
+import { IndexerStatusBanner } from '@widgets/analytics/IndexerStatusBanner';
 
 import './globals.css';
 

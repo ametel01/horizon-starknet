@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import { logError } from '@/lib/logger';
+import { logError } from '@shared/server/logger';
 
 /**
  * Global error boundary for the entire application.

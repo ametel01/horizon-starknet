@@ -1,9 +1,10 @@
 import { eq, or, sql } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-import { db, userPyPositions, marketLpPositions, marketCurrentState } from '@/lib/db';
-import { logError } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
+import { db, userPyPositions, marketLpPositions, marketCurrentState } from '@shared/server/db';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 

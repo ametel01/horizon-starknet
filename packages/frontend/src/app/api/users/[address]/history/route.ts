@@ -1,7 +1,8 @@
 import { desc, or, sql } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-import { db } from '@/lib/db';
+import { db } from '@shared/server/db';
 import {
   enrichedRouterSwap,
   enrichedRouterSwapYT,
@@ -9,9 +10,9 @@ import {
   enrichedRouterRemoveLiquidity,
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
-} from '@/lib/db/schema';
-import { logError } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
+} from '@shared/server/db/schema';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 
 /**
  * Normalize a Starknet address for database comparison.

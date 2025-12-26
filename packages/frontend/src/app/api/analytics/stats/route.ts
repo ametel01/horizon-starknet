@@ -1,7 +1,8 @@
 import { desc, gte } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-import { getCacheHeaders } from '@/lib/cache';
+import { getCacheHeaders } from '@shared/server/cache';
 import {
   db,
   marketCurrentState,
@@ -16,9 +17,9 @@ import {
   enrichedRouterRemoveLiquidity,
   syDeposit,
   syRedeem,
-} from '@/lib/db';
-import { logError } from '@/lib/logger';
-import { applyRateLimit } from '@/lib/rate-limit';
+} from '@shared/server/db';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 
 // Query timeout in milliseconds (10 seconds)
 const QUERY_TIMEOUT_MS = 10_000;

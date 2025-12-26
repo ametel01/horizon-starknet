@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { DocsLayout } from '@/components/docs/DocsLayout';
+import { DocsLayout } from '@features/docs';
 
 export const metadata: Metadata = {
   title: 'Documentation | Horizon Protocol',

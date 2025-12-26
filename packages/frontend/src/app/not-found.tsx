@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import { Button } from '@/components/ui/Button';
+import { Button } from '@shared/ui/Button';
 
 export default function NotFound(): React.ReactNode {
   return (
