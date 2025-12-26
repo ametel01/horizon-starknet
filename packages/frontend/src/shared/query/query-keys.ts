@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { queryKeys } from '@/lib/query-keys';
+ * import { queryKeys } from '@shared/query';
  *
  * // Use in useQuery
  * useQuery({
