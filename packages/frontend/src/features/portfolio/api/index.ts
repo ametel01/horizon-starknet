@@ -1,2 +1,2 @@
-// Feature API - data fetching hooks
-// Will be populated in Phase 3
+// Portfolio feature API
+export * from './useUserData';

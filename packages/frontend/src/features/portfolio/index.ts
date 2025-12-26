@@ -1,1 +1,3 @@
-// Feature public API - exports will be added as files are migrated
+// Portfolio feature public API
+export * from './model';
+export * from './api';

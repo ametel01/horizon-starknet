@@ -1,2 +1,4 @@
-// Feature model - hooks and state management
-// Will be populated in Phase 3
+// Portfolio feature model
+export * from './usePositions';
+export * from './useEnhancedPositions';
+export * from './useTokenBalance';

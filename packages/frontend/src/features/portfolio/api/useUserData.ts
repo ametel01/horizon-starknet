@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
+import { useAccount } from '@features/wallet';
 import { api } from '@shared/api';
 import type {
   HistoryEvent,
@@ -15,8 +16,6 @@ import type {
   YieldResponse,
   YieldSummary,
 } from '@shared/api/types';
-
-import { useAccount } from '../useAccount';
 
 // ============================================================================
 // User Transaction History Hook

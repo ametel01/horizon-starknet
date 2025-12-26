@@ -14,12 +14,10 @@ import {
 } from '@/lib/position/value';
 import type { MarketData } from '@entities/market';
 import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useAccount, useStarknet } from '@features/wallet';
 import { WAD_BIGINT, fromWad } from '@shared/math/wad';
 import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
-
-import { useAccount } from './useAccount';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from './usePrices';
-import { useStarknet } from './useStarknet';
 
 // Helper to convert Uint256 or bigint to bigint
 function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {

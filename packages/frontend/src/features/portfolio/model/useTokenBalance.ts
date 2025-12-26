@@ -3,10 +3,8 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { uint256 } from 'starknet';
 
+import { useAccount, useStarknet } from '@features/wallet';
 import { getERC20Contract } from '@shared/starknet/contracts';
-
-import { useAccount } from './useAccount';
-import { useStarknet } from './useStarknet';
 
 interface TokenInfo {
   name: string;
