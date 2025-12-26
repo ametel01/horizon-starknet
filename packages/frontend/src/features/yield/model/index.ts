@@ -1,2 +1,5 @@
-// Feature model - hooks and state management
-// Will be populated in Phase 3
+// Yield feature model
+export * from './useYield';
+export * from './useUserYield';
+export * from './useApyBreakdown';
+export * from './useUnderlying';

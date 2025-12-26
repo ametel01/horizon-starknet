@@ -228,7 +228,7 @@ export function ApyCompact({ breakdown, view, className }: ApyCompactProps): Rea
 /**
  * APY Breakdown Card wrapper
  */
-interface ApyBreakdownCardProps {
+interface ApyBreakdownProps {
   breakdown: MarketApyBreakdown;
   view: 'pt' | 'yt' | 'lp';
   title?: string;
@@ -240,7 +240,7 @@ export function ApyBreakdownCard({
   view,
   title,
   className,
-}: ApyBreakdownCardProps): ReactNode {
+}: ApyBreakdownProps): ReactNode {
   const defaultTitle = view === 'pt' ? 'PT Yield' : view === 'yt' ? 'YT Yield' : 'LP Yield';
 
   return (

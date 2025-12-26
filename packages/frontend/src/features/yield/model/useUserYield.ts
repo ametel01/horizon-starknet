@@ -2,7 +2,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { useAccount } from './useAccount';
+import { useAccount } from '@features/wallet';
 
 /**
  * Yield claim event from the API

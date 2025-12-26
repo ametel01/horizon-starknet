@@ -2,9 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+import { useStarknet } from '@features/wallet';
 import { getSYContract } from '@shared/starknet/contracts';
-
-import { useStarknet } from './useStarknet';
 
 /**
  * Hook to fetch the underlying token address from an SY contract

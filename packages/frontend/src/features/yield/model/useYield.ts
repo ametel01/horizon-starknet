@@ -3,9 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call } from 'starknet';
 
+import { useAccount } from '@features/wallet';
 import { getYTContract } from '@shared/starknet/contracts';
-
-import { useAccount } from './useAccount';
 
 interface ClaimYieldParams {
   ytAddress: string;
