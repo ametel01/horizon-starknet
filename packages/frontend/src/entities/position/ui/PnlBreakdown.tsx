@@ -4,10 +4,10 @@ import { type ReactNode, useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { usePortfolioHistory } from '@/hooks/api';
-import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
-import { useStarknet } from '@/hooks/useStarknet';
+import { useDashboardMarkets } from '@features/markets';
+import { useEnhancedPositions } from '@features/portfolio';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';

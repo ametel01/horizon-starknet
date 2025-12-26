@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { useDashboardMarkets } from '@/hooks/useMarkets';
+import { useDashboardMarkets } from '@features/markets';
 import { Card, CardContent } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 

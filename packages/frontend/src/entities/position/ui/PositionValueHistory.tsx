@@ -3,9 +3,9 @@
 import { type ReactNode, useMemo } from 'react';
 
 import { usePortfolioHistory, type PortfolioValueEvent } from '@/hooks/api';
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
-import { useStarknet } from '@/hooks/useStarknet';
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';

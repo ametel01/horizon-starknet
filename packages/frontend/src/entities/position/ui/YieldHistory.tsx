@@ -2,9 +2,9 @@
 
 import { type ReactNode, useMemo } from 'react';
 
-import { useDashboardMarkets } from '@/hooks/useMarkets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@/hooks/usePrices';
-import { useUserYield, type YieldClaimEvent } from '@/hooks/useUserYield';
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useUserYield, type YieldClaimEvent } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact, fromWad } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';

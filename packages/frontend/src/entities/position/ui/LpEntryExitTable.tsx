@@ -2,7 +2,7 @@
 
 import { type ReactNode, useMemo } from 'react';
 
-import { useUserHistory } from '@/hooks/api/useUserData';
+import { useUserHistory } from '@features/portfolio';
 import type { HistoryEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';

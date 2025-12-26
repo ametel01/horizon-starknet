@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { type ReactNode, useCallback, useState } from 'react';
 
 import { TxStatus } from '@/components/display/TxStatus';
-import { useAccount } from '@/hooks/useAccount';
-import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
-import { useSimpleWithdraw } from '@/hooks/useSimpleWithdraw';
-import { useClaimYield } from '@/hooks/useYield';
 import { formatUsd } from '@/lib/position/value';
 import type { MarketData } from '@entities/market';
+import { useSimpleWithdraw } from '@features/earn';
+import { useEnhancedPositions } from '@features/portfolio';
+import { useAccount } from '@features/wallet';
+import { useClaimYield } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { formatExpiry } from '@shared/math/yield';
