@@ -1,6 +1,7 @@
 // UI primitives - shadcn/ui components
 
 export { Badge, badgeVariants } from './badge';
+export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './Collapsible';
 export { Button, buttonVariants } from './Button';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
 export {
