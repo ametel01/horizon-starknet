@@ -1,1 +1,1 @@
-// Page composition - exports will be added as pages are migrated
+export { AnalyticsPage } from './AnalyticsPage';

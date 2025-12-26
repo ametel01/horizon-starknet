@@ -1,2 +1,7 @@
 // Pages layer - thin route page compositions
-// Exports will be added as pages are migrated in Phase 5
+export { TradePage } from './trade';
+export { PortfolioPage } from './portfolio';
+export { MintPage } from './mint';
+export { PoolsPage } from './pools';
+export { AnalyticsPage } from './analytics';
+export { FaucetPage } from './faucet';
