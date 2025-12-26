@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 
+import type { TxStatus as TxStatusType } from '@shared/hooks/useTransaction';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { formatExpiry } from '@shared/math/yield';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader } from '@shared/ui/Card';
+import { TxStatus } from '@widgets/display/TxStatus';
 
 import { formatUsd, formatPercent } from '../lib';
 import type { EnhancedPosition } from '../model/types';
@@ -21,11 +23,17 @@ export interface YieldEarnedData {
 interface EnhancedPositionCardProps {
   position: EnhancedPosition;
   yieldEarned?: YieldEarnedData | undefined;
-  onClaimYield?: () => void;
-  onRedeemPtYt?: () => void;
-  onRedeemPt?: () => void;
-  isClaimingYield?: boolean;
-  isRedeeming?: boolean;
+  onClaimYield?: (() => void) | undefined;
+  onRedeemPtYt?: (() => void) | undefined;
+  onRedeemPt?: (() => void) | undefined;
+  onUnwrapSy?: (() => void) | undefined;
+  isClaimingYield?: boolean | undefined;
+  isRedeeming?: boolean | undefined;
+  isUnwrapping?: boolean | undefined;
+  // Transaction status for unwrap SY
+  unwrapTxStatus?: TxStatusType | undefined;
+  unwrapTxHash?: string | null | undefined;
+  unwrapError?: Error | null | undefined;
 }
 
 export function EnhancedPositionCard({
@@ -34,8 +42,13 @@ export function EnhancedPositionCard({
   onClaimYield,
   onRedeemPtYt,
   onRedeemPt,
+  onUnwrapSy,
   isClaimingYield,
   isRedeeming,
+  isUnwrapping,
+  unwrapTxStatus,
+  unwrapTxHash,
+  unwrapError,
 }: EnhancedPositionCardProps): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -230,6 +243,44 @@ export function EnhancedPositionCard({
               >
                 Redeem Expired {ptSymbol}
               </Button>
+            )}
+          </div>
+        )}
+
+        {/* Unwrap SY to Underlying */}
+        {sy.amount > 0n && onUnwrapSy && (
+          <div className="border-chart-3/30 bg-chart-3/10 mb-4 rounded border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-chart-3 text-sm">Withdraw {sySymbol}</div>
+                <div className="text-foreground font-medium">
+                  {formatWadCompact(sy.amount)} {sySymbol}
+                  <span className="text-muted-foreground ml-1 text-sm">
+                    ({formatUsd(sy.valueUsd)})
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Convert to {market.metadata?.yieldTokenSymbol ?? 'underlying'}
+                </p>
+              </div>
+              <Button
+                nativeButton
+                size="sm"
+                variant="secondary"
+                onClick={onUnwrapSy}
+                disabled={isUnwrapping === true}
+              >
+                {isUnwrapping === true ? 'Withdrawing...' : 'Withdraw'}
+              </Button>
+            </div>
+            {unwrapTxStatus && unwrapTxStatus !== 'idle' && (
+              <div className="mt-2">
+                <TxStatus
+                  status={unwrapTxStatus}
+                  txHash={unwrapTxHash ?? null}
+                  error={unwrapError ?? null}
+                />
+              </div>
             )}
           </div>
         )}
