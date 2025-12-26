@@ -34,8 +34,9 @@ src/
 │   ├── math_fp.cairo  # cairo_fp-based math utilities
 │   ├── errors.cairo   # Custom error definitions
 │   └── roles.cairo    # RBAC role constants
-├── interfaces/        # All contract interfaces (i_*.cairo)
-├── oracles/           # Pragma oracle integration
+├── interfaces/        # Contract interfaces (i_*.cairo)
+├── oracles/
+│   └── pragma_index_oracle.cairo  # Pragma TWAP oracle for yield index
 └── mocks/             # Mock contracts for testing
 ```
 
@@ -61,9 +62,9 @@ Underlying Asset → SY (deposit) → PT + YT (mint_py)
 
 Test utilities in `tests/utils.cairo` provide:
 - Standard test addresses: `admin()`, `user1()`, `user2()`, `alice()`, `bob()`
-- Time constants: `CURRENT_TIME`, `ONE_YEAR`, `ONE_MONTH`, `ONE_DAY`
+- Time constants: `CURRENT_TIME`, `ONE_YEAR`, `ONE_MONTH`, `ONE_DAY`, `DEFAULT_DEADLINE`
 - Setup functions: `setup_sy()`, `setup_full()`, `setup_full_with_expiry()`
-- Helper functions: `mint_and_deposit_sy()`, `mint_and_mint_py()`
+- Helper functions: `mint_and_deposit_sy()`, `mint_and_mint_py()`, `mint_yield_token_to_user()`, `set_yield_index()`
 
 ### Test File Naming
 
