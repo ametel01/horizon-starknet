@@ -11,7 +11,7 @@ bun run dev:fork              # Dev with mainnet fork (real Pragma oracle)
 bun run build                 # Production build
 bun run check                 # Run typecheck + lint + format:check
 bun run test                  # Run tests (Bun test runner)
-bun test src/lib/math/amm.test.ts  # Run specific test
+bun test src/shared/math/amm.test.ts  # Run specific test
 bun run codegen               # Generate TypeScript types from contract ABIs
 ```
 
@@ -27,38 +27,53 @@ bun run codegen               # Generate TypeScript types from contract ABIs
 
 ## Architecture
 
-### Directory Structure
+This codebase follows **Feature-Sliced Design (FSD)** architecture with strict layer boundaries enforced by ESLint.
+
+### Layer Structure
 
 ```
 src/
-├── app/              # Next.js App Router pages
-├── components/       # React components
-│   ├── ui/           # Base UI (shadcn)
-│   ├── forms/        # Transaction forms (MintForm, SwapForm, etc.)
-│   ├── markets/      # Market display components
-│   └── layout/       # Header, Footer, Navigation
-├── hooks/            # Custom React hooks (data fetching, mutations)
-├── lib/              # Core utilities
-│   ├── starknet/     # Contract interactions, provider, wallet
+├── app/              # Next.js App Router pages and API routes
+├── widgets/          # Page-level compositions (MarketCard, Shell, Analytics)
+├── features/         # User interactions (swap, mint, redeem, portfolio, etc.)
+├── entities/         # Domain concepts (market, position, token)
+├── shared/           # Business-logic-free utilities and primitives
+│   ├── ui/           # Base UI components (shadcn)
 │   ├── math/         # WAD fixed-point math, AMM calculations
-│   └── constants/    # Network addresses, config
-├── providers/        # React context providers
-├── contexts/         # Global state (transaction settings, UI mode)
-└── types/            # TypeScript types
-    └── generated/    # Auto-generated from contract ABIs
+│   ├── starknet/     # Contract interactions, provider, wallet
+│   ├── config/       # Network addresses, constants
+│   ├── api/          # API client utilities
+│   ├── lib/          # General utilities, error handling
+│   ├── security/     # SecureScript wrapper
+│   ├── hooks/        # Shared React hooks
+│   └── server/       # Server-only code (db, rate-limit) - NOT exported
+└── types/            # TypeScript types (including generated contract types)
 ```
+
+### Import Rules (ESLint enforced)
+
+- **Legacy paths forbidden**: `@/components`, `@/hooks`, `@/contexts`, `@/lib` are blocked
+- **Use FSD paths**: `@shared/*`, `@entities/*`, `@features/*`, `@widgets/*`
+- **Server isolation**: DB/server modules cannot be imported into client code
+
+### Path Aliases
+
+- `@shared/*` → `src/shared/*`
+- `@entities/*` → `src/entities/*`
+- `@features/*` → `src/features/*`
+- `@widgets/*` → `src/widgets/*`
+- `@/*` → `src/*`
+- `@contracts/*` → `../../contracts/target/dev/*`
+- `@deploy/*` → `../../deploy/*`
 
 ### Data Flow Pattern
 
-User action → Hook (useSwap, useMint) → Starknet contract call → Wallet signature → Transaction → React Query invalidation → UI update
-
-All blockchain data flows through typed contracts and React Query for caching.
+User action → Feature hook (useSwap, useMint) → Starknet contract call → Wallet signature → Transaction → React Query invalidation → UI update
 
 ### Key Patterns
 
 **Type-Safe Contracts:**
 ```typescript
-// Auto-generated types from ABIs using abi-wan-kanabi
 import { ROUTER_ABI } from '@/types/generated';
 const router = new Contract(ROUTER_ABI, address, provider).typedv2(ROUTER_ABI);
 await router.mint_py_from_sy(...);  // Full TypeScript support
@@ -66,19 +81,19 @@ await router.mint_py_from_sy(...);  // Full TypeScript support
 
 **WAD Fixed-Point Math (10^18):**
 ```typescript
-import { WAD, fromWad, toWad, wadMul, formatWad } from '@/lib/math/wad';
+import { WAD, fromWad, toWad, wadMul, formatWad } from '@shared/math';
 const value = 1000000000000000000n;  // 1 WAD
 formatWad(value);  // "1.0000"
 ```
 
-**Hook Pattern:**
+**Feature Hook Pattern:**
 ```typescript
-// Data fetching with React Query
+// Data fetching (features/*/model/)
 export function useMarkets() {
   return useQuery({ queryKey: ['markets'], queryFn: fetchMarketData });
 }
 
-// Mutations for transactions
+// Mutations (features/*/model/)
 export function useSwap() {
   return useMutation({ mutationFn: executeSwap });
 }
@@ -94,23 +109,6 @@ Set via `NEXT_PUBLIC_NETWORK` environment variable:
 
 Contract addresses are loaded from `@deploy/addresses/{network}.json`.
 
-### UI Mode System
-
-Two UI modes for different users:
-- **Simple Mode**: Beginner-friendly, hides technical details
-- **Advanced Mode**: Full protocol features
-
-```typescript
-const { isSimple } = useUIMode();
-```
-
-### Transaction Settings Context
-
-Global slippage and deadline settings:
-```typescript
-const { slippageBps, deadlineMinutes } = useTransactionSettings();
-```
-
 ## Code Patterns
 
 ### Contract Error Handling
@@ -123,11 +121,13 @@ const CONTRACT_ERROR_MESSAGES = {
 };
 ```
 
-### Path Aliases
+### TypeScript Configuration
 
-- `@/*` → `src/*`
-- `@contracts/*` → `../../contracts/*`
-- `@deploy/*` → `../../deploy/*`
+Strict mode is enabled with additional strictness:
+- `noUncheckedIndexedAccess` - Array/object access may be undefined
+- `exactOptionalPropertyTypes` - Optional properties must match exactly
+- `noPropertyAccessFromIndexSignature` - Use bracket notation for index signatures
+- `@typescript-eslint/strict-boolean-expressions` - No implicit boolean coercion
 
 ## Type Generation Workflow
 
@@ -144,8 +144,9 @@ bun run codegen       # Generate TypeScript types from ABIs
 Database connection is configured in `.env.local` via `DATABASE_URL`.
 
 ```bash
-bun run scripts/query-users.ts  # Query unique protocol users with tx hashes (JSON output)
+bun run scripts/query-users.ts  # Query unique protocol users with tx hashes
 ```
 
-MANDATORY: Use shadcn/ui Components
+## Mandatory: Use shadcn/ui Components
+
 All new components **MUST** use the shadcn/ui library. An MCP server is available for component discovery and installation.
