@@ -4,7 +4,7 @@
  * Types for comprehensive position tracking with USD values and P&L.
  */
 
-import type { MarketData } from './market';
+import type { MarketData } from '@entities/market';
 
 /**
  * Position value with multiple denominations

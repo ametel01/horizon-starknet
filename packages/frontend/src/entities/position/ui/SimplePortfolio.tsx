@@ -9,14 +9,15 @@ import { useEnhancedPositions } from '@/hooks/useEnhancedPositions';
 import { useSimpleWithdraw } from '@/hooks/useSimpleWithdraw';
 import { useClaimYield } from '@/hooks/useYield';
 import { formatUsd } from '@/lib/position/value';
-import type { MarketData } from '@/types/market';
-import type { EnhancedPosition } from '@/types/position';
+import type { MarketData } from '@entities/market';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { formatExpiry } from '@shared/math/yield';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+
+import type { EnhancedPosition } from '../model/types';
 
 interface SimplePortfolioProps {
   markets: MarketData[];

@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 
 import { formatUsd, formatPercent } from '@/lib/position/value';
-import type { EnhancedPosition } from '@/types/position';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { formatExpiry } from '@shared/math/yield';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader } from '@shared/ui/Card';
+
+import type { EnhancedPosition } from '../model/types';
 
 export interface YieldEarnedData {
   totalClaimed: bigint;
