@@ -36,9 +36,9 @@ import { Card, CardContent } from './Card';
 
 interface FormLayoutProps {
   children: React.ReactNode;
-  className?: string;
+  className?: string | undefined;
   /** Optional gradient overlay for directional forms (buy/sell) */
-  gradient?: 'primary' | 'destructive' | 'success' | 'none';
+  gradient?: 'primary' | 'destructive' | 'success' | 'none' | undefined;
 }
 
 /**
@@ -74,7 +74,7 @@ function FormLayout({
 
 interface FormSectionProps {
   children: React.ReactNode;
-  className?: string;
+  className?: string | undefined;
 }
 
 /**
@@ -139,9 +139,9 @@ function FormDivider({ children, className }: FormSectionProps): React.JSX.Eleme
  */
 interface FormHeaderProps {
   title: string;
-  description?: string;
-  className?: string;
-  action?: React.ReactNode;
+  description?: string | undefined;
+  className?: string | undefined;
+  action?: React.ReactNode | undefined;
 }
 
 function FormHeader({ title, description, className, action }: FormHeaderProps): React.JSX.Element {
@@ -163,9 +163,9 @@ function FormHeader({ title, description, className, action }: FormHeaderProps):
 interface FormRowProps {
   label: string;
   value: React.ReactNode;
-  className?: string;
-  labelClassName?: string;
-  valueClassName?: string;
+  className?: string | undefined;
+  labelClassName?: string | undefined;
+  valueClassName?: string | undefined;
 }
 
 function FormRow({
