@@ -19,6 +19,7 @@ import {
 import { useYieldCurve, usePtPriceHistory, type YieldCurveMarket } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
+import { Badge } from '@shared/ui/badge';
 import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
@@ -344,6 +345,9 @@ export function YieldCurveChart({
           <div className="flex items-center gap-2">
             <TrendingUp className="text-primary h-4 w-4" />
             <h3 className="text-foreground text-sm font-semibold">Implied APY History</h3>
+            <Badge variant="live" className="text-[10px]">
+              Live
+            </Badge>
           </div>
           <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
             <span
@@ -457,6 +461,9 @@ export function YieldCurveChart({
         <div className="flex items-center gap-2">
           <Activity className="text-primary h-4 w-4" />
           <h3 className="text-foreground text-sm font-semibold">Term Structure</h3>
+          <Badge variant="live" className="text-[10px]">
+            Live
+          </Badge>
         </div>
         <div className="text-muted-foreground flex items-center gap-2 text-xs">
           {allUnderlyings.map((symbol) => (
