@@ -4,7 +4,10 @@ test.describe('Navigation', () => {
   test('should navigate to home page', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/Horizon Protocol/);
-    await expect(page.getByRole('heading', { name: /Horizon Protocol/i })).toBeVisible();
+    // Hero h1 heading shows "Split Your Yield" (advanced) or "Earn Fixed Yield" (simple)
+    await expect(
+      page.getByRole('heading', { name: /(Split Your Yield|Earn Fixed Yield)/i, level: 1 })
+    ).toBeVisible();
   });
 
   test('should navigate to trade page', async ({ page }) => {
@@ -56,7 +59,7 @@ test.describe('Navigation', () => {
 
   test('should navigate back to dashboard', async ({ page }) => {
     await page.goto('/trade');
-    await page.getByRole('link', { name: /Back to Dashboard/i }).click();
+    await page.getByRole('link', { name: /Back/i }).click();
     await expect(page).toHaveURL('/');
   });
 });
@@ -108,8 +111,10 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
 
-    // On mobile, page should still load and show main content
-    await expect(page.getByRole('heading', { name: /Horizon Protocol/i })).toBeVisible();
+    // On mobile, page should still load and show main content (h1 hero heading)
+    await expect(
+      page.getByRole('heading', { name: /(Split Your Yield|Earn Fixed Yield)/i, level: 1 })
+    ).toBeVisible();
 
     // Navigation might be in a hamburger menu - check for menu button or visible nav
     const menuButton = page.getByRole('button', { name: /menu|navigation/i });
@@ -126,8 +131,10 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/');
 
-    // Page should load correctly
-    await expect(page.getByRole('heading', { name: /Horizon Protocol/i })).toBeVisible();
+    // Page should load correctly (h1 hero heading)
+    await expect(
+      page.getByRole('heading', { name: /(Split Your Yield|Earn Fixed Yield)/i, level: 1 })
+    ).toBeVisible();
   });
 });
 
