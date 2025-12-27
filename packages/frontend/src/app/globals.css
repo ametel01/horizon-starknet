@@ -702,6 +702,54 @@
       transition-duration: 0ms;
     }
   }
+
+  /* ============================================ */
+  /* Mobile & Touch Utilities                    */
+  /* ============================================ */
+
+  /* Touch-friendly tap targets (min 44x44px per WCAG) */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Safe area height for notched devices */
+  .h-safe-area-bottom {
+    height: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pb-safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Bottom navigation spacer */
+  .pb-mobile-nav {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 768px) {
+    .pb-mobile-nav {
+      padding-bottom: 0;
+    }
+  }
+
+  /* Mobile card padding */
+  @media (max-width: 640px) {
+    .card-responsive {
+      padding: 1rem;
+    }
+
+    .metric-responsive {
+      font-size: 1.5rem;
+    }
+  }
+
+  /* Tablet optimizations */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .grid-tablet-optimize {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
 }
 
 /* ============================================ */
