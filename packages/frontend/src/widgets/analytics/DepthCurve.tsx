@@ -1,23 +1,24 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
+import { Activity, Gauge, Info, Layers, TrendingUp } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
-  Line,
-  LineChart,
+  Area,
+  AreaChart,
   CartesianGrid,
+  Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  Legend,
-  ReferenceLine,
 } from 'recharts';
 
 import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { calcSwapExactPtForSy, calcSwapExactSyForPt, type MarketState } from '@shared/math/amm';
 import { formatWadCompact, WAD_BIGINT } from '@shared/math/wad';
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format basis points
@@ -36,7 +37,7 @@ interface ChartDataPoint {
 }
 
 /**
- * Custom tooltip for depth curve
+ * Custom tooltip for depth curve with modern styling
  */
 function DepthTooltip({
   active,
@@ -51,19 +52,28 @@ function DepthTooltip({
   if (!data) return null;
 
   return (
-    <div className="bg-popover text-popover-foreground rounded-lg border p-3 shadow-md">
-      <div className="text-foreground mb-2 font-medium">{data.percent.toFixed(1)}% of TVL</div>
-      <div className="space-y-1 text-sm">
+    <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
+      <div className="mb-2 flex items-center gap-2">
+        <Gauge className="text-muted-foreground h-4 w-4" />
+        <span className="text-foreground font-medium">{data.percent.toFixed(1)}% of TVL</span>
+      </div>
+      <div className="space-y-1.5 text-sm">
         {data.buyImpact !== null && (
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Buy PT Impact:</span>
-            <span className="text-primary font-medium">{formatBps(data.buyImpact)}</span>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground flex items-center gap-1.5">
+              <span className="bg-primary h-2 w-2 rounded-full" />
+              Buy PT
+            </span>
+            <span className="text-primary font-mono font-medium">{formatBps(data.buyImpact)}</span>
           </div>
         )}
         {data.sellImpact !== null && (
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Sell PT Impact:</span>
-            <span className="text-chart-2 font-medium">{formatBps(data.sellImpact)}</span>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground flex items-center gap-1.5">
+              <span className="bg-chart-2 h-2 w-2 rounded-full" />
+              Sell PT
+            </span>
+            <span className="text-chart-2 font-mono font-medium">{formatBps(data.sellImpact)}</span>
           </div>
         )}
       </div>
@@ -176,7 +186,17 @@ export function DepthCurve({
   points = 20,
   maxPercent = 10,
 }: DepthCurveProps): ReactNode {
+  const [mounted, setMounted] = useState(false);
   const { markets, isLoading } = useDashboardMarkets();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
 
   // Find the market by address
   const market = useMemo(() => {
@@ -244,71 +264,102 @@ export function DepthCurve({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="w-full" style={{ height }} />
-        </CardContent>
-      </Card>
+      <ChartSkeleton
+        className={className}
+        height={height}
+        chartType="area"
+        showHeader
+        showFooter={false}
+      />
     );
   }
 
   // Not found state
   if (!market) {
     return (
-      <Card className={cn('border-destructive/50', className)}>
-        <CardContent className="py-8 text-center">
+      <div
+        className={cn(
+          'border-destructive/50 bg-card overflow-hidden rounded-xl border',
+          mounted ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
+          'transition-all duration-500',
+          className
+        )}
+      >
+        <div className="py-8 text-center">
           <p className="text-destructive text-sm">Market not found</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   // Empty state
   if (chartData.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Depth Curve</CardTitle>
-        </CardHeader>
-        <CardContent className="py-8 text-center">
+      <div
+        className={cn(
+          'border-border/50 bg-card overflow-hidden rounded-xl border',
+          mounted ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
+          'transition-all duration-500',
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 border-b p-4">
+          <Layers className="text-primary h-5 w-5" />
+          <span className="font-medium">Depth Curve</span>
+        </div>
+        <div className="py-8 text-center">
+          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
           <p className="text-muted-foreground text-sm">No liquidity data available</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div
+      className={cn(
+        'border-border/50 bg-card overflow-hidden rounded-xl border',
+        mounted ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
+        'transition-all duration-500',
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b p-4">
+        <div className="flex items-center gap-2">
+          <Layers className="text-primary h-5 w-5" />
           <div>
-            <CardTitle>Depth Curve</CardTitle>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <span className="font-medium">Depth Curve</span>
+            <p className="text-muted-foreground text-xs">
               {underlyingSymbol && `${underlyingSymbol} market`} - Price impact vs trade size
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-muted-foreground text-xs">TVL</div>
-            <div className="text-foreground font-medium">{formatWadCompact(tvlSy)} SY</div>
-          </div>
         </div>
-      </CardHeader>
-      <CardContent>
+        <div className="text-right">
+          <div className="text-muted-foreground text-xs">TVL</div>
+          <div className="text-foreground font-mono font-medium">{formatWadCompact(tvlSy)} SY</div>
+        </div>
+      </div>
+
+      <div className="p-4">
         {/* Key metrics */}
-        <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="bg-muted/50 rounded-lg p-3">
-            <div className="text-muted-foreground text-xs">50 bps slippage at</div>
-            <div className="text-primary text-lg font-medium">
+            <div className="mb-1 flex items-center gap-1.5">
+              <TrendingUp className="text-primary h-3.5 w-3.5" />
+              <span className="text-muted-foreground text-xs">50 bps slippage at</span>
+            </div>
+            <div className="text-primary font-mono text-lg font-semibold">
               {summary.slippage50bpsSize > 0 ? `${summary.slippage50bpsSize.toFixed(1)}%` : '>10%'}{' '}
               TVL
             </div>
           </div>
           <div className="bg-muted/50 rounded-lg p-3">
-            <div className="text-muted-foreground text-xs">100 bps slippage at</div>
-            <div className="text-chart-2 text-lg font-medium">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Activity className="text-chart-2 h-3.5 w-3.5" />
+              <span className="text-muted-foreground text-xs">100 bps slippage at</span>
+            </div>
+            <div className="text-chart-2 font-mono text-lg font-semibold">
               {summary.slippage100bpsSize > 0
                 ? `${summary.slippage100bpsSize.toFixed(1)}%`
                 : '>10%'}{' '}
@@ -317,13 +368,24 @@ export function DepthCurve({
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Chart with gradient fills */}
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="buyGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.05} />
+              </linearGradient>
+              <linearGradient id="sellGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
             <XAxis
               dataKey="percent"
-              fontSize={12}
+              fontSize={11}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${String(v)}%`}
@@ -335,7 +397,7 @@ export function DepthCurve({
               }}
             />
             <YAxis
-              fontSize={12}
+              fontSize={11}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${String(v)}bps`}
@@ -377,41 +439,42 @@ export function DepthCurve({
               }}
             />
 
-            <Line
+            <Area
               type="monotone"
               dataKey="buyImpact"
               stroke="var(--primary)"
               strokeWidth={2}
-              dot={false}
+              fill="url(#buyGradient)"
               name="Buy PT"
               connectNulls
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="sellImpact"
               stroke="var(--chart-2)"
               strokeWidth={2}
-              dot={false}
+              fill="url(#sellGradient)"
               name="Sell PT"
               connectNulls
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
 
         {/* Educational note */}
-        <div className="bg-muted/50 mt-4 rounded-lg p-3">
+        <div className="bg-muted/50 mt-4 flex items-start gap-2 rounded-lg p-3">
+          <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
           <p className="text-muted-foreground text-xs">
             <strong>Depth Curve:</strong> Shows how price impact increases with trade size. Lower
             curves indicate deeper liquidity. Use this to plan trade sizing and expected slippage.
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 /**
- * Compact depth indicator
+ * Compact depth indicator badge
  */
 interface DepthIndicatorProps {
   marketAddress: string;
@@ -439,13 +502,28 @@ export function DepthIndicator({ marketAddress, className }: DepthIndicatorProps
 
   const depth =
     slippage50bpsSize >= 5
-      ? { label: 'Deep', color: 'bg-primary/10 text-primary' }
+      ? { label: 'Deep', color: 'bg-primary/10 text-primary', icon: <Layers className="h-3 w-3" /> }
       : slippage50bpsSize >= 2
-        ? { label: 'Medium', color: 'bg-chart-2/10 text-chart-2' }
-        : { label: 'Shallow', color: 'bg-destructive/10 text-destructive' };
+        ? {
+            label: 'Medium',
+            color: 'bg-chart-2/10 text-chart-2',
+            icon: <Activity className="h-3 w-3" />,
+          }
+        : {
+            label: 'Shallow',
+            color: 'bg-destructive/10 text-destructive',
+            icon: <TrendingUp className="h-3 w-3" />,
+          };
 
   return (
-    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', depth.color, className)}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+        depth.color,
+        className
+      )}
+    >
+      {depth.icon}
       {depth.label} Liquidity
     </span>
   );

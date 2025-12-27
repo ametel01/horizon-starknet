@@ -19,7 +19,12 @@ export { IndexerStatusBanner } from './IndexerStatusBanner';
 export { ProtocolStats, ProtocolStatsCompact } from './ProtocolStats';
 export { ProtocolTvlCard, ProtocolTvlInline } from './ProtocolTvlCard';
 export { RateHistoryTable, RateHistoryInline } from './RateHistoryTable';
-export { RateSparkline, RateSparklineLarge, RateBadgeWithSparkline } from './RateSparkline';
+export {
+  RateBadgeWithSparkline,
+  RateSparkline,
+  RateSparklineCard,
+  RateSparklineLarge,
+} from './RateSparkline';
 export { SwapHistoryTable } from './SwapHistoryTable';
 export { TransactionHistory } from './TransactionHistory';
 export { TvlBreakdown, TvlBreakdownCompact } from './TvlBreakdown';
