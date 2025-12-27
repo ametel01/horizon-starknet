@@ -1,11 +1,13 @@
 'use client';
 
+import { Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { memo, type ReactNode, useMemo } from 'react';
 
 import { TokenAmount } from '@entities/token';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { Badge } from '@shared/ui/badge';
 import { buttonVariants } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
@@ -14,6 +16,8 @@ import type { MarketData } from '../model/types';
 
 interface MarketCardProps {
   market: MarketData;
+  /** Highlight this market as the recommended option (Paradox of Choice) */
+  isRecommended?: boolean;
   className?: string | undefined;
 }
 
@@ -69,6 +73,7 @@ const YieldBar = memo(function YieldBar({ apy }: { apy: number }): ReactNode {
  */
 export const MarketCard = memo(function MarketCard({
   market,
+  isRecommended = false,
   className,
 }: MarketCardProps): ReactNode {
   const { isAdvanced } = useUIMode();
@@ -90,6 +95,7 @@ export const MarketCard = memo(function MarketCard({
         'transition-all duration-300',
         'hover:shadow-primary/5 hover:shadow-lg',
         'card-hover-glow',
+        isRecommended && 'ring-primary/30 ring-2',
         className
       )}
     >
@@ -110,8 +116,17 @@ export const MarketCard = memo(function MarketCard({
                 <span className="text-primary font-mono text-xs">PT</span>
               </div>
               <div className="min-w-0 overflow-hidden">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="truncate text-base font-semibold">PT-{tokenSymbol}</span>
+                  {isRecommended && (
+                    <Badge
+                      variant="default"
+                      className="bg-primary text-primary-foreground gap-0.5 px-1.5 py-0 text-[10px]"
+                    >
+                      <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
+                      <span>Top</span>
+                    </Badge>
+                  )}
                   <ExpiryBadge expiryTimestamp={market.expiry} />
                 </div>
                 <p className="text-muted-foreground mt-0.5 truncate text-xs">{tokenName}</p>

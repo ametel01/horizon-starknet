@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { useDashboardMarkets } from '@features/markets';
 import { StaggeredList } from '@shared/ui/animations';
@@ -20,6 +20,26 @@ export function MarketList({ className }: MarketListProps): ReactNode {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Determine the recommended market (Paradox of Choice mitigation)
+  // Criteria: Highest APY among non-expired markets with reasonable TVL
+  // Note: Must be called before any early returns (React hooks rules)
+  const recommendedMarketAddress = useMemo(() => {
+    if (markets.length === 0) return null;
+
+    // Filter to non-expired markets
+    const activeMarkets = markets.filter((m) => !m.isExpired);
+    if (activeMarkets.length === 0) return null;
+
+    // Find the market with the highest APY
+    const best = activeMarkets.reduce((prev, curr) => {
+      const prevApy = prev.impliedApy.toNumber();
+      const currApy = curr.impliedApy.toNumber();
+      return currApy > prevApy ? curr : prev;
+    });
+
+    return best.address;
+  }, [markets]);
 
   // Show skeleton on server and during initial client render to prevent hydration mismatch
   if (!mounted || isLoading) {
@@ -69,7 +89,11 @@ export function MarketList({ className }: MarketListProps): ReactNode {
         staggerDelay={50}
       >
         {markets.map((market) => (
-          <MarketCard key={market.address} market={market} />
+          <MarketCard
+            key={market.address}
+            market={market}
+            isRecommended={market.address === recommendedMarketAddress}
+          />
         ))}
       </StaggeredList>
     </div>
