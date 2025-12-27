@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertTriangle, Info, ShieldAlert, TrendingDown } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { cn } from '@shared/lib/utils';
@@ -9,7 +10,6 @@ import {
   type PriceImpactSeverity,
 } from '@shared/math/amm';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent } from '@shared/ui/Card';
 
 interface PriceImpactWarningProps {
   priceImpact: number;
@@ -25,45 +25,23 @@ interface SeverityConfig {
   variant: 'warning' | 'destructive';
 }
 
-const WarningIcon = ({ className }: { className?: string }): ReactNode => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-    />
-  </svg>
-);
-
-const AlertIcon = ({ className }: { className?: string }): ReactNode => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
 const SEVERITY_CONFIG: Record<Exclude<PriceImpactSeverity, 'low'>, SeverityConfig> = {
   medium: {
-    icon: <AlertIcon className="h-5 w-5" />,
+    icon: <Info className="h-5 w-5" />,
     title: 'Moderate Price Impact',
     description:
       'This trade has a moderate price impact. The larger your trade relative to liquidity, the more you pay above market price.',
     variant: 'warning',
   },
   high: {
-    icon: <WarningIcon className="h-5 w-5" />,
+    icon: <TrendingDown className="h-5 w-5" />,
     title: 'High Price Impact',
     description:
       'This trade has significant price impact. Consider splitting into smaller trades or waiting for more liquidity.',
     variant: 'warning',
   },
   'very-high': {
-    icon: <WarningIcon className="h-5 w-5" />,
+    icon: <AlertTriangle className="h-5 w-5" />,
     title: 'Very High Price Impact',
     description:
       'This trade has extremely high price impact. You will receive significantly less than the market rate. Only proceed if you understand the risks.',
@@ -78,7 +56,17 @@ export function PriceImpactWarning({
   className,
 }: PriceImpactWarningProps): ReactNode {
   const [localAcknowledged, setLocalAcknowledged] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const severity = getPriceImpactSeverity(priceImpact);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
 
   if (severity === 'low') {
     return null;
@@ -95,65 +83,67 @@ export function PriceImpactWarning({
   };
 
   return (
-    <Card
-      size="sm"
+    <div
       className={cn(
-        'border',
+        'overflow-hidden rounded-xl border p-4 transition-all duration-500',
         isDestructive
           ? 'border-destructive/30 bg-destructive/10'
           : 'border-warning/30 bg-warning/10',
+        mounted ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
         className
       )}
     >
-      <CardContent className="p-3">
-        <div className="flex items-start gap-3">
-          <div
-            className={cn('mt-0.5 shrink-0', isDestructive ? 'text-destructive' : 'text-warning')}
-          >
-            {config.icon}
-          </div>
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center justify-between">
-              <span
-                className={cn('font-medium', isDestructive ? 'text-destructive' : 'text-warning')}
-              >
-                {config.title}
-              </span>
-              <span
-                className={cn(
-                  'font-mono text-sm font-semibold',
-                  isDestructive ? 'text-destructive' : 'text-warning'
-                )}
-              >
-                {formatPriceImpact(priceImpact)}
-              </span>
-            </div>
-            <p className={cn('text-sm', isDestructive ? 'text-destructive/80' : 'text-warning/80')}>
-              {config.description}
-            </p>
-
-            {requiresAcknowledgment && (
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAcknowledge}
-                  className="border-destructive/30 text-destructive hover:bg-destructive/20 w-full"
-                >
-                  I understand the risks, proceed anyway
-                </Button>
-              </div>
-            )}
-
-            {severity === 'very-high' && isAcknowledged && (
-              <p className="text-destructive/80 text-xs">
-                Warning acknowledged. You may proceed with the swap.
-              </p>
-            )}
-          </div>
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            'mt-0.5 shrink-0 rounded-lg p-1.5',
+            isDestructive ? 'bg-destructive/20 text-destructive' : 'bg-warning/20 text-warning'
+          )}
+        >
+          {config.icon}
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center justify-between">
+            <span
+              className={cn('font-medium', isDestructive ? 'text-destructive' : 'text-warning')}
+            >
+              {config.title}
+            </span>
+            <span
+              className={cn(
+                'font-mono text-sm font-semibold',
+                isDestructive ? 'text-destructive' : 'text-warning'
+              )}
+            >
+              {formatPriceImpact(priceImpact)}
+            </span>
+          </div>
+          <p className={cn('text-sm', isDestructive ? 'text-destructive/80' : 'text-warning/80')}>
+            {config.description}
+          </p>
+
+          {requiresAcknowledgment && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAcknowledge}
+                className="border-destructive/30 text-destructive hover:bg-destructive/20 w-full gap-2"
+              >
+                <ShieldAlert className="h-4 w-4" />I understand the risks, proceed anyway
+              </Button>
+            </div>
+          )}
+
+          {severity === 'very-high' && isAcknowledged && (
+            <p className="text-destructive/80 flex items-center gap-1.5 text-xs">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Warning acknowledged. You may proceed with the swap.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
