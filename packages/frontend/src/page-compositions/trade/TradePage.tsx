@@ -11,7 +11,7 @@ import { SwapForm } from '@features/swap';
 import { useStarknet } from '@features/wallet';
 import { useApyBreakdown, ApyBreakdown } from '@features/yield';
 import { formatWadCompact } from '@shared/math/wad';
-import { Button } from '@shared/ui/Button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
 
@@ -98,41 +98,40 @@ function TradePageContent(): ReactNode {
           ) : (
             <div className="space-y-4">
               {/* Market Selector */}
-              {markets.length > 1 && (
-                <Card>
-                  <CardContent className="pt-4">
-                    <label className="text-muted-foreground mb-2 block text-sm font-medium">
-                      Select Market
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {markets.map((market) => (
-                        <Button
-                          key={market.address}
-                          variant={
-                            market.address === selectedMarket.address ? 'default' : 'outline'
-                          }
-                          size="sm"
-                          onClick={() => {
-                            handleMarketChange(market.address);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          <span className="font-medium">{getMarketSymbol(market)}</span>
-                          <span
-                            className={
-                              market.address === selectedMarket.address
-                                ? 'text-primary-foreground/70'
-                                : 'text-muted-foreground'
-                            }
-                          >
+              <div>
+                <label className="text-foreground mb-2 block text-sm font-medium">
+                  Select Market
+                </label>
+                <Select
+                  value={selectedMarket.address}
+                  onValueChange={(value) => {
+                    if (value) handleMarketChange(value);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                      {getMarketSymbol(selectedMarket)} -{' '}
+                      {selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (
+                      {selectedMarket.impliedApy.multipliedBy(100).toFixed(1)}% APY)
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {markets.map((market) => (
+                      <SelectItem key={market.address} value={market.address}>
+                        <div className="flex items-center justify-between gap-4">
+                          <span>
+                            {getMarketSymbol(market)} -{' '}
+                            {market.metadata?.yieldTokenName ?? 'Unknown'}
+                          </span>
+                          <span className="text-primary font-mono text-sm">
                             {market.impliedApy.multipliedBy(100).toFixed(1)}%
                           </span>
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Swap Form */}
               <SwapForm market={selectedMarket} />

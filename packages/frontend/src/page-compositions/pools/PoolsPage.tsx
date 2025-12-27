@@ -12,7 +12,7 @@ import { useTokenBalance } from '@features/portfolio';
 import { useStarknet } from '@features/wallet';
 import { useApyBreakdown, ApyBreakdown } from '@features/yield';
 import { formatWadCompact } from '@shared/math/wad';
-import { Button } from '@shared/ui/Button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
@@ -122,37 +122,40 @@ function PoolsPageContent(): ReactNode {
           ) : (
             <div className="space-y-4">
               {/* Pool Selector */}
-              <Card>
-                <CardContent className="pt-4">
-                  <label className="text-muted-foreground mb-2 block text-sm font-medium">
-                    Select Pool
-                  </label>
-                  <div className="flex flex-wrap gap-2">
+              <div>
+                <label className="text-foreground mb-2 block text-sm font-medium">
+                  Select Pool
+                </label>
+                <Select
+                  value={selectedMarket.address}
+                  onValueChange={(value) => {
+                    if (value) handleMarketChange(value);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                      {getPoolSymbol(selectedMarket)} Pool -{' '}
+                      {selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (
+                      {selectedMarket.impliedApy.multipliedBy(100).toFixed(1)}% APY)
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
                     {markets.map((market) => (
-                      <Button
-                        key={market.address}
-                        variant={market.address === selectedMarket.address ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => {
-                          handleMarketChange(market.address);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <span className="font-medium">{getPoolSymbol(market)}</span>
-                        <span
-                          className={
-                            market.address === selectedMarket.address
-                              ? 'text-primary-foreground/70'
-                              : 'text-muted-foreground'
-                          }
-                        >
-                          {market.impliedApy.multipliedBy(100).toFixed(1)}%
-                        </span>
-                      </Button>
+                      <SelectItem key={market.address} value={market.address}>
+                        <div className="flex items-center justify-between gap-4">
+                          <span>
+                            {getPoolSymbol(market)} Pool -{' '}
+                            {market.metadata?.yieldTokenName ?? 'Unknown'}
+                          </span>
+                          <span className="text-primary font-mono text-sm">
+                            {market.impliedApy.multipliedBy(100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </SelectItem>
                     ))}
-                  </div>
-                </CardContent>
-              </Card>
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Add/Remove Tabs */}
               <Tabs

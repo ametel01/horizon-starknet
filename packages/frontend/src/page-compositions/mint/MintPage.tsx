@@ -54,33 +54,38 @@ function SimpleModeContent(): ReactNode {
         {/* Form Section */}
         <div>
           {/* Market Selector */}
-          {markets.length > 1 && (
-            <div className="mb-4">
-              <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
-              <Select
-                value={selectedMarket?.address ?? ''}
-                onValueChange={(value) => {
-                  setSelectedMarketAddress(value);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {selectedMarket
-                      ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'}`
-                      : 'Select an asset'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {markets.map((m) => (
-                    <SelectItem key={m.address} value={m.address}>
-                      {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
-                      {m.metadata?.yieldTokenName ?? 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="mb-4">
+            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+            <Select
+              value={selectedMarket?.address ?? ''}
+              onValueChange={(value) => {
+                setSelectedMarketAddress(value);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {selectedMarket
+                    ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (${selectedMarket.impliedApy.multipliedBy(100).toFixed(1)}% APY)`
+                    : 'Select an asset'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {markets.map((m) => (
+                  <SelectItem key={m.address} value={m.address}>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>
+                        {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                        {m.metadata?.yieldTokenName ?? 'Unknown'}
+                      </span>
+                      <span className="text-primary font-mono text-sm">
+                        {m.impliedApy.multipliedBy(100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Simple Tabs */}
           <Tabs
@@ -264,33 +269,38 @@ function AdvancedModeContent(): ReactNode {
         {/* Form Section */}
         <div>
           {/* Market Selector */}
-          {markets.length > 1 && (
-            <div className="mb-4">
-              <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
-              <Select
-                value={selectedMarket?.address ?? ''}
-                onValueChange={(value) => {
-                  setSelectedMarketAddress(value);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {selectedMarket
-                      ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'}`
-                      : 'Select an asset'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {markets.map((m) => (
-                    <SelectItem key={m.address} value={m.address}>
-                      {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
-                      {m.metadata?.yieldTokenName ?? 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="mb-4">
+            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+            <Select
+              value={selectedMarket?.address ?? ''}
+              onValueChange={(value) => {
+                setSelectedMarketAddress(value);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {selectedMarket
+                    ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (${selectedMarket.impliedApy.multipliedBy(100).toFixed(1)}% APY)`
+                    : 'Select an asset'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {markets.map((m) => (
+                  <SelectItem key={m.address} value={m.address}>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>
+                        {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                        {m.metadata?.yieldTokenName ?? 'Unknown'}
+                      </span>
+                      <span className="text-primary font-mono text-sm">
+                        {m.impliedApy.multipliedBy(100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Tabs */}
           <Tabs
