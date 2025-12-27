@@ -13,12 +13,10 @@ export default function HomePage(): ReactNode {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12">
-      {/* Hero Section */}
+      {/* Hero Section - Uses display font for elegant heading */}
       <div className="py-8 text-center">
-        <h1 className="text-foreground text-5xl font-extrabold tracking-tight sm:text-6xl">
-          Horizon Protocol
-        </h1>
-        <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-xl">
+        <h1 className="text-foreground">Horizon Protocol</h1>
+        <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-xl leading-relaxed">
           {isSimple
             ? 'Earn fixed yields on your tokens'
             : 'Split yield-bearing assets into Principal and Yield Tokens'}
@@ -27,11 +25,11 @@ export default function HomePage(): ReactNode {
 
       {/* Protocol Stats */}
       <div className="mt-12">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-foreground text-lg font-semibold">Protocol Stats</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-foreground">Protocol Stats</h3>
           <Link
             href="/analytics"
-            className="text-primary hover:text-primary/80 text-sm font-medium"
+            className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
           >
             View Analytics →
           </Link>
@@ -42,9 +40,9 @@ export default function HomePage(): ReactNode {
       {/* Markets Section */}
       <div className="mt-12">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-foreground text-xl font-semibold">
+          <h3 className="text-foreground">
             {isSimple ? 'Earning Opportunities' : 'Active Markets'}
-          </h2>
+          </h3>
           <Button nativeButton={false} render={<Link href="/mint" />}>
             {isSimple ? 'Start Earning' : 'Mint PT + YT'}
           </Button>
@@ -54,7 +52,7 @@ export default function HomePage(): ReactNode {
 
       {/* Features - Mode aware */}
       <div className="mt-16">
-        <h2 className="text-foreground text-xl font-semibold">What you can do</h2>
+        <h3 className="text-foreground">What you can do</h3>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {isSimple ? (
             <>
@@ -114,10 +112,10 @@ function FeatureCard({ title, description, href }: FeatureCardProps): ReactNode 
   return (
     <Link
       href={href}
-      className="group border-border bg-card hover:border-primary rounded-lg border p-6 transition-colors"
+      className="group border-border bg-card hover:border-primary/50 hover:shadow-primary/5 rounded-lg border p-6 transition-all hover:shadow-lg"
     >
-      <h3 className="text-foreground group-hover:text-primary font-semibold">{title}</h3>
-      <p className="text-muted-foreground mt-2 text-sm">{description}</p>
+      <h4 className="text-foreground group-hover:text-primary transition-colors">{title}</h4>
+      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{description}</p>
     </Link>
   );
 }
