@@ -1,5 +1,6 @@
 'use client';
 
+import { Wallet, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useCallback, useState } from 'react';
 
@@ -13,8 +14,10 @@ import { useClaimYield } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { formatExpiry } from '@shared/math/yield';
+import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
+import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -33,33 +36,28 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
 
   if (!isConnected) {
     return (
-      <Card className="w-full">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground mb-4 text-center">
-            Connect your wallet to view your positions
-          </p>
-        </CardContent>
-      </Card>
+      <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
+        <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <Wallet className="text-muted-foreground h-8 w-8" />
+        </div>
+        <h3 className="text-foreground text-lg font-semibold">Connect your wallet</h3>
+        <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+          Connect your wallet to view your yield positions and earnings.
+        </p>
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-48" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <Skeleton className="h-16" />
-              <Skeleton className="h-16" />
-              <Skeleton className="h-16" />
-            </div>
-          </CardContent>
-        </Card>
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
+      <div className="space-y-6">
+        <div className="grid auto-rows-[minmax(120px,auto)] grid-cols-12 gap-4">
+          <Skeleton className="col-span-12 h-[120px] rounded-xl md:col-span-4" />
+          <Skeleton className="col-span-6 h-[120px] rounded-xl md:col-span-4" />
+          <Skeleton className="col-span-6 h-[120px] rounded-xl md:col-span-4" />
+        </div>
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
       </div>
     );
   }
@@ -73,52 +71,80 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
   // Calculate simple totals (exclude LP)
   const totalValue = activePositions.reduce((sum, p) => sum + p.pt.valueUsd + p.yt.valueUsd, 0);
 
+  const totalClaimable = portfolio?.totalClaimableUsd ?? 0;
+
   return (
-    <div className="space-y-6">
-      {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Portfolio</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground text-sm">Total Value</div>
-              <div className="text-foreground text-2xl font-bold">{formatUsd(totalValue)}</div>
+    <div className="space-y-8">
+      {/* Summary Bento Grid */}
+      <BentoGrid>
+        {/* Total Value - Hero card */}
+        <BentoCard colSpan={{ default: 12, md: 4 }} rowSpan={1} featured animationDelay={0}>
+          <div className="flex h-full flex-col justify-center p-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="text-primary h-4 w-4" />
+              <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                Total Value
+              </span>
             </div>
-            <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground text-sm">Active Positions</div>
-              <div className="text-foreground text-2xl font-bold">{activePositions.length}</div>
-            </div>
-            <div className="bg-muted rounded-lg p-4">
-              <div className="text-muted-foreground text-sm">Claimable Yield</div>
-              <div className="text-primary text-2xl font-bold">
-                {formatUsd(portfolio?.totalClaimableUsd ?? 0)}
-              </div>
-            </div>
+            <span className="text-foreground mt-2 font-mono text-3xl font-semibold">
+              <AnimatedNumber value={totalValue} formatter={formatUsd} duration={600} />
+            </span>
           </div>
-        </CardContent>
-      </Card>
+        </BentoCard>
+
+        {/* Active Positions */}
+        <BentoCard colSpan={{ default: 6, md: 4 }} rowSpan={1} animationDelay={50}>
+          <div className="flex h-full flex-col justify-center p-4">
+            <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+              Active Positions
+            </span>
+            <span className="text-foreground mt-2 font-mono text-3xl font-semibold">
+              {activePositions.length}
+            </span>
+          </div>
+        </BentoCard>
+
+        {/* Claimable Yield */}
+        <BentoCard colSpan={{ default: 6, md: 4 }} rowSpan={1} animationDelay={100}>
+          <div className="flex h-full flex-col justify-center p-4">
+            <div className="flex items-center gap-2">
+              <Zap className="text-primary h-4 w-4" />
+              <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                Claimable Yield
+              </span>
+            </div>
+            <span className="text-primary mt-2 font-mono text-3xl font-semibold">
+              <AnimatedNumber value={totalClaimable} formatter={formatUsd} duration={600} />
+            </span>
+          </div>
+        </BentoCard>
+      </BentoGrid>
 
       {/* Positions List */}
       {hasPositions ? (
-        <div className="space-y-4">
-          <h2 className="text-foreground text-lg font-semibold">Your Positions</h2>
+        <section className="space-y-4">
+          <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+            Your Positions
+          </h2>
           {activePositions.map((position) => (
             <SimplePositionCard key={position.market.address} position={position} />
           ))}
-        </div>
+        </section>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4 text-center">
-              You don&apos;t have any positions yet.
-            </p>
+        <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
+          <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+            <Wallet className="text-muted-foreground h-8 w-8" />
+          </div>
+          <h3 className="text-foreground text-lg font-semibold">No positions yet</h3>
+          <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+            Start earning fixed yield by depositing your tokens.
+          </p>
+          <div className="mt-6">
             <Button nativeButton={false} render={<Link href="/mint" />}>
               Start Earning
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
