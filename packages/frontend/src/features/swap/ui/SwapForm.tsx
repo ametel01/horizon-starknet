@@ -280,8 +280,18 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   };
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <CardContent className="space-y-4 p-5">
+    <Card className={cn('relative overflow-hidden', className)}>
+      {/* Directional gradient based on buy/sell */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 transition-all duration-500',
+          isBuying
+            ? 'from-primary/5 bg-gradient-to-br via-transparent to-transparent'
+            : 'from-destructive/5 bg-gradient-to-br via-transparent to-transparent'
+        )}
+        aria-hidden="true"
+      />
+      <CardContent className="relative space-y-4 p-5">
         {/* Token type + direction as inline pills */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ToggleGroup className="bg-muted rounded-lg p-1">

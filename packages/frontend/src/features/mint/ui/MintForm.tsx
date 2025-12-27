@@ -95,8 +95,14 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
   const ytSymbol = `YT-${tokenSymbol}`;
 
   return (
-    <Card className={cn('flex flex-col', className)}>
-      <CardHeader>
+    <Card className={cn('relative flex flex-col overflow-hidden', className)}>
+      {/* Ambient gradient overlay */}
+      <div
+        className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent"
+        aria-hidden="true"
+      />
+
+      <CardHeader className="relative">
         <div className="flex items-center justify-between">
           <CardTitle>Mint PT + YT</CardTitle>
           <ExpiryBadge expiryTimestamp={market.expiry} />
@@ -106,7 +112,7 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
         </p>
       </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+      <CardContent className="relative flex flex-1 flex-col justify-between gap-4">
         {/* Top Section - Inputs */}
         <div className="space-y-4">
           {/* Input */}
