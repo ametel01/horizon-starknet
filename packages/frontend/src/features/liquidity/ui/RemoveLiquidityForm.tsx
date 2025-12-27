@@ -4,14 +4,28 @@ import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import type { MarketData } from '@entities/market';
-import { calculateMinOutputs, useRemoveLiquidity } from '@features/liquidity';
+import {
+  buildRemoveLiquidityCalls,
+  calculateMinOutputs,
+  useRemoveLiquidity,
+} from '@features/liquidity';
 import { TokenInput } from '@features/mint';
 import { useTokenBalance } from '@features/portfolio';
-import { useStarknet } from '@features/wallet';
-import { cn } from '@shared/lib/utils';
+import { useAccount, useStarknet } from '@features/wallet';
+import { getAddresses } from '@shared/config/addresses';
+import { useEstimateFee } from '@shared/hooks';
 import { formatWad, formatWadCompact, parseWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Card, CardContent } from '@shared/ui/Card';
+import {
+  FormActions,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormRow,
+} from '@shared/ui/FormLayout';
+import { GasEstimate } from '@shared/ui/GasEstimate';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -34,10 +48,12 @@ const PERCENTAGE_OPTIONS = [
 ];
 
 export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormProps): ReactNode {
-  const { isConnected } = useStarknet();
+  const { isConnected, address } = useAccount();
+  const { network } = useStarknet();
   const [lpAmount, setLpAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
 
+  const addresses = getAddresses(network);
   const { removeLiquidity, isRemoving, isSuccess, isError, error, transactionHash } =
     useRemoveLiquidity();
 
@@ -82,6 +98,28 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
       slippageBps
     );
   }, [parsedLpAmount, market.state, slippageBps]);
+
+  // Build calls for gas estimation
+  const removeLiquidityCalls = useMemo(() => {
+    if (!address || parsedLpAmount === BigInt(0)) return null;
+    try {
+      return buildRemoveLiquidityCalls(addresses.router, address, {
+        marketAddress: market.address,
+        lpAmount: parsedLpAmount,
+        minSyOut,
+        minPtOut,
+      });
+    } catch {
+      return null;
+    }
+  }, [address, addresses.router, market.address, parsedLpAmount, minSyOut, minPtOut]);
+
+  // Estimate gas fee
+  const {
+    formattedFee,
+    isLoading: isEstimatingFee,
+    error: feeError,
+  } = useEstimateFee(removeLiquidityCalls);
 
   // Calculate share of pool being removed
   const poolShareRemoved = useMemo(() => {
@@ -136,154 +174,149 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   }, [isSuccess]);
 
   return (
-    <Card className={cn('relative flex flex-col overflow-hidden', className)}>
-      {/* Ambient gradient overlay */}
-      <div
-        className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent"
-        aria-hidden="true"
-      />
+    <FormLayout gradient="primary" className={className}>
+      {/* Header */}
+      <FormHeader title="Remove Liquidity" />
 
-      <CardHeader className="relative">
-        <CardTitle>Remove Liquidity</CardTitle>
-      </CardHeader>
-      <CardContent className="relative flex flex-1 flex-col justify-between gap-4">
-        {/* Top Section - Inputs */}
-        <div className="space-y-4">
-          {/* LP Token Input */}
-          <TokenInput
-            label="LP to Remove"
-            tokenAddress={market.address}
-            tokenSymbol={lpSymbol}
-            value={lpAmount}
-            onChange={setLpAmount}
-            error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
-          />
+      {/* Input Section */}
+      <FormInputSection>
+        <TokenInput
+          label="LP to Remove"
+          tokenAddress={market.address}
+          tokenSymbol={lpSymbol}
+          value={lpAmount}
+          onChange={setLpAmount}
+          error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
+        />
+      </FormInputSection>
 
-          {/* Percentage Buttons */}
-          <div className="flex gap-2">
-            {PERCENTAGE_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                variant="outline"
-                size="sm"
-                onClick={(): void => {
-                  handlePercentage(option.value);
-                }}
-                className="flex-1"
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-
-          {/* Output Preview */}
-          <Card size="sm" className="bg-muted">
-            <CardContent className="p-4">
-              <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={
-                      isValidAmount
-                        ? 'text-foreground text-lg font-semibold'
-                        : 'text-muted-foreground text-lg font-semibold'
-                    }
-                  >
-                    {isValidAmount ? formatWad(expectedSyOut, 6) : '0.000000'} SY
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    min: {isValidAmount ? formatWad(minSyOut, 6) : '-'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span
-                    className={
-                      isValidAmount
-                        ? 'text-foreground text-lg font-semibold'
-                        : 'text-muted-foreground text-lg font-semibold'
-                    }
-                  >
-                    {isValidAmount ? formatWad(expectedPtOut, 6) : '0.000000'} PT
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    min: {isValidAmount ? formatWad(minPtOut, 6) : '-'}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Section - Info & Submit */}
-        <div className="space-y-4">
-          {/* Pool Info - Always visible */}
-          <Card size="sm" className="bg-muted/30">
-            <CardContent className="space-y-2 p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Pool Share Removed</span>
-                <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
-                  {isValidAmount ? poolShareRemoved.toFixed(4) : '-'}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Current Pool Reserves</span>
-                <span className="text-foreground">
-                  {formatWadCompact(market.state.syReserve)} SY /{' '}
-                  {formatWadCompact(market.state.ptReserve)} PT
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Slippage Tolerance</span>
-                <span className="text-foreground">{slippageBps / 100}%</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Slippage Settings */}
-          <div>
-            <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
-            <ToggleGroup className="flex gap-1">
-              {SLIPPAGE_OPTIONS.map((option) => (
-                <ToggleGroupItem
-                  key={option.value}
-                  pressed={slippageBps === option.value}
-                  onPressedChange={() => {
-                    setSlippageBps(option.value);
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  {option.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-
-          {/* Transaction Status */}
-          {txStatus !== 'idle' && (
-            <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
-          )}
-
-          {/* Submit Button */}
+      {/* Percentage Buttons */}
+      <div className="flex gap-2">
+        {PERCENTAGE_OPTIONS.map((option) => (
           <Button
-            onClick={handleRemoveLiquidity}
-            disabled={!canRemoveLiquidity || isRemoving}
-            className="h-12 w-full text-base font-medium"
+            key={option.value}
+            variant="outline"
+            size="sm"
+            onClick={(): void => {
+              handlePercentage(option.value);
+            }}
+            className="flex-1"
           >
-            {isRemoving
-              ? 'Removing Liquidity...'
-              : !isConnected
-                ? 'Connect Wallet'
-                : !isValidAmount
-                  ? 'Enter Amount'
-                  : hasInsufficientBalance
-                    ? 'Insufficient LP Balance'
-                    : isSuccess
-                      ? 'Liquidity Removed!'
-                      : 'Remove Liquidity'}
+            {option.label}
           </Button>
+        ))}
+      </div>
+
+      {/* Output Preview */}
+      <Card size="sm" className="bg-muted">
+        <CardContent className="p-4">
+          <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span
+                className={
+                  isValidAmount
+                    ? 'text-foreground text-lg font-semibold'
+                    : 'text-muted-foreground text-lg font-semibold'
+                }
+              >
+                {isValidAmount ? formatWad(expectedSyOut, 6) : '0.000000'} SY
+              </span>
+              <span className="text-muted-foreground text-sm">
+                min: {isValidAmount ? formatWad(minSyOut, 6) : '-'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span
+                className={
+                  isValidAmount
+                    ? 'text-foreground text-lg font-semibold'
+                    : 'text-muted-foreground text-lg font-semibold'
+                }
+              >
+                {isValidAmount ? formatWad(expectedPtOut, 6) : '0.000000'} PT
+              </span>
+              <span className="text-muted-foreground text-sm">
+                min: {isValidAmount ? formatWad(minPtOut, 6) : '-'}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pool Info */}
+      <FormInfoSection>
+        <div className="space-y-2">
+          <FormRow
+            label="Pool Share Removed"
+            value={isValidAmount ? `${poolShareRemoved.toFixed(4)}%` : '-'}
+            valueClassName={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}
+          />
+          <FormRow
+            label="Current Pool Reserves"
+            value={`${formatWadCompact(market.state.syReserve)} SY / ${formatWadCompact(market.state.ptReserve)} PT`}
+          />
+          <FormRow label="Slippage Tolerance" value={`${(slippageBps / 100).toString()}%`} />
+          {isValidAmount && (
+            <FormRow
+              label="Estimated Gas"
+              value={
+                <GasEstimate
+                  formattedFee={formattedFee}
+                  isLoading={isEstimatingFee}
+                  error={feeError}
+                />
+              }
+            />
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </FormInfoSection>
+
+      {/* Slippage Settings */}
+      <div>
+        <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+        <ToggleGroup className="flex gap-1">
+          {SLIPPAGE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              pressed={slippageBps === option.value}
+              onPressedChange={() => {
+                setSlippageBps(option.value);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      {/* Transaction Status */}
+      {txStatus !== 'idle' && (
+        <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+      )}
+
+      {/* Actions */}
+      <FormActions>
+        <Button
+          onClick={handleRemoveLiquidity}
+          disabled={!canRemoveLiquidity || isRemoving}
+          className="h-12 w-full text-base font-medium"
+        >
+          {isRemoving
+            ? 'Removing Liquidity...'
+            : !isConnected
+              ? 'Connect Wallet'
+              : !isValidAmount
+                ? 'Enter Amount'
+                : hasInsufficientBalance
+                  ? 'Insufficient LP Balance'
+                  : isSuccess
+                    ? 'Liquidity Removed!'
+                    : 'Remove Liquidity'}
+        </Button>
+      </FormActions>
+    </FormLayout>
   );
 }

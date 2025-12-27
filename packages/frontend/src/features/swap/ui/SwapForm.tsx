@@ -3,6 +3,7 @@
 import BigNumber from 'bignumber.js';
 import { ArrowUpDown, ChevronDown } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import type { Call } from 'starknet';
 
 import type { MarketData } from '@entities/market';
 import { TokenInput } from '@features/mint';
@@ -16,8 +17,10 @@ import {
 import { calculateMinOutput, type SwapDirection, useSwap } from '@features/swap';
 import { PriceImpactMeter } from '@features/swap/ui/PriceImpactMeter';
 import { TransactionSettingsPanel, useTransactionSettings } from '@features/tx-settings';
-import { useStarknet } from '@features/wallet';
-import { getMarketParams } from '@shared/config/addresses';
+import { useAccount, useStarknet } from '@features/wallet';
+import { getAddresses, getMarketParams } from '@shared/config/addresses';
+import { useEstimateFee } from '@shared/hooks';
+import { getDeadline } from '@shared/lib/deadline';
 import { cn } from '@shared/lib/utils';
 import {
   calcSwapExactPtForSy,
@@ -27,10 +30,12 @@ import {
   type MarketState as AmmMarketState,
   type SwapResult,
 } from '@shared/math/amm';
-import { formatWad, parseWad, WAD_BIGINT } from '@shared/math/wad';
+import { formatWad, fromWad, parseWad, WAD_BIGINT } from '@shared/math/wad';
+import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@shared/ui/Collapsible';
+import { GasEstimate } from '@shared/ui/GasEstimate';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -53,7 +58,9 @@ type TokenType = 'PT' | 'YT';
  */
 export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
+  const { address } = useAccount();
   const { slippageBps, slippagePercent } = useTransactionSettings();
+  const addresses = getAddresses(network);
   const [tokenType, setTokenType] = useState<TokenType>('PT');
   const [isBuying, setIsBuying] = useState(true);
   const [inputAmount, setInputAmount] = useState('');
@@ -179,6 +186,22 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   const expectedOutput = swapResult?.amountOut ?? BigInt(0);
   const priceImpact = swapResult?.priceImpact ?? 0;
 
+  // Animate output for Change Blindness prevention (UI/UX Law)
+  const numericOutput = useMemo(() => fromWad(expectedOutput).toNumber(), [expectedOutput]);
+  const animatedOutput = useAnimatedNumber(numericOutput, { duration: 300, decimals: 6 });
+  const formattedAnimatedOutput = useMemo(() => {
+    if (animatedOutput === 0) return '0.000000';
+    const formatted = animatedOutput.toFixed(6);
+    const parts = formatted.split('.');
+    const intPart = parts[0] ?? '0';
+    const decPart = parts[1];
+    if (decPart !== undefined) {
+      const trimmed = decPart.replace(/0+$/, '').padEnd(2, '0');
+      return `${intPart}.${trimmed}`;
+    }
+    return formatted;
+  }, [animatedOutput]);
+
   // Price impact warning management
   const priceImpactWarning = usePriceImpactWarning(priceImpact);
 
@@ -198,6 +221,117 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   const minOutput = useMemo(() => {
     return calculateMinOutput(expectedOutput, slippageBps);
   }, [expectedOutput, slippageBps]);
+
+  // Build swap calls for gas estimation (Jakob's Law - users expect to see fees)
+  const swapCalls: Call[] | null = useMemo(() => {
+    if (!address || parsedInputAmount === BigInt(0)) return null;
+
+    const routerAddress = addresses.router;
+    const deadline = getDeadline();
+    const calls: Call[] = [];
+
+    // Helper to convert bigint to uint256 calldata
+    const toU256 = (value: bigint): [string, string] => {
+      const low = value & BigInt('0xffffffffffffffffffffffffffffffff');
+      const high = value >> BigInt(128);
+      return [low.toString(), high.toString()];
+    };
+
+    if (direction === 'buy_pt') {
+      // Approve SY
+      const [amtLow, amtHigh] = toU256(parsedInputAmount);
+      calls.push({
+        contractAddress: market.syAddress,
+        entrypoint: 'approve',
+        calldata: [routerAddress, amtLow, amtHigh],
+      });
+      // Swap SY for PT
+      const [minLow, minHigh] = toU256(minOutput);
+      calls.push({
+        contractAddress: routerAddress,
+        entrypoint: 'swap_exact_sy_for_pt',
+        calldata: [market.address, address, amtLow, amtHigh, minLow, minHigh, deadline.toString()],
+      });
+    } else if (direction === 'sell_pt') {
+      // Approve PT
+      const [amtLow, amtHigh] = toU256(parsedInputAmount);
+      calls.push({
+        contractAddress: market.ptAddress,
+        entrypoint: 'approve',
+        calldata: [routerAddress, amtLow, amtHigh],
+      });
+      // Swap PT for SY
+      const [minLow, minHigh] = toU256(minOutput);
+      calls.push({
+        contractAddress: routerAddress,
+        entrypoint: 'swap_exact_pt_for_sy',
+        calldata: [market.address, address, amtLow, amtHigh, minLow, minHigh, deadline.toString()],
+      });
+    } else if (direction === 'buy_yt') {
+      // Approve SY
+      const [amtLow, amtHigh] = toU256(parsedInputAmount);
+      calls.push({
+        contractAddress: market.syAddress,
+        entrypoint: 'approve',
+        calldata: [routerAddress, amtLow, amtHigh],
+      });
+      // Swap SY for YT
+      const [minLow, minHigh] = toU256(minOutput);
+      calls.push({
+        contractAddress: routerAddress,
+        entrypoint: 'swap_exact_sy_for_yt',
+        calldata: [
+          market.ytAddress,
+          market.address,
+          address,
+          amtLow,
+          amtHigh,
+          minLow,
+          minHigh,
+          deadline.toString(),
+        ],
+      });
+    } else {
+      // sell_yt - approve YT and SY for collateral
+      const [amtLow, amtHigh] = toU256(parsedInputAmount);
+      const collateral = parsedInputAmount * BigInt(4);
+      const [colLow, colHigh] = toU256(collateral);
+
+      calls.push({
+        contractAddress: market.ytAddress,
+        entrypoint: 'approve',
+        calldata: [routerAddress, amtLow, amtHigh],
+      });
+      calls.push({
+        contractAddress: market.syAddress,
+        entrypoint: 'approve',
+        calldata: [routerAddress, colLow, colHigh],
+      });
+      // Swap YT for SY
+      const [minLow, minHigh] = toU256(minOutput);
+      calls.push({
+        contractAddress: routerAddress,
+        entrypoint: 'swap_exact_yt_for_sy',
+        calldata: [
+          market.ytAddress,
+          market.address,
+          address,
+          amtLow,
+          amtHigh,
+          colLow,
+          colHigh,
+          minLow,
+          minHigh,
+          deadline.toString(),
+        ],
+      });
+    }
+
+    return calls;
+  }, [address, parsedInputAmount, minOutput, direction, market, addresses.router]);
+
+  // Estimate gas fee for the swap
+  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(swapCalls);
 
   // Validation
   const hasInsufficientBalance = inputBalance !== undefined && parsedInputAmount > inputBalance;
@@ -376,7 +510,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-foreground min-w-0 flex-1 truncate font-mono text-2xl font-semibold tabular-nums">
-                {formatWad(expectedOutput, 6)}
+                {formattedAnimatedOutput}
               </span>
               {/* Token badge - consistent with TokenInput */}
               <div
@@ -479,6 +613,16 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
                   ? `${formatWad(swapResult.fee, 6)} ${syLabel}`
                   : '-'}
               </span>
+            </div>
+
+            {/* Estimated Gas Fee */}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Estimated Gas</span>
+              <GasEstimate
+                formattedFee={formattedFee}
+                isLoading={isEstimatingFee}
+                error={feeError}
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>

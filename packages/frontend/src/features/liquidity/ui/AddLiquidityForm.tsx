@@ -4,14 +4,29 @@ import BigNumber from 'bignumber.js';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import type { MarketData } from '@entities/market';
-import { calculateBalancedAmounts, calculateMinLpOut, useAddLiquidity } from '@features/liquidity';
+import {
+  buildAddLiquidityCalls,
+  calculateBalancedAmounts,
+  calculateMinLpOut,
+  useAddLiquidity,
+} from '@features/liquidity';
 import { TokenInput } from '@features/mint';
 import { useTokenBalance } from '@features/portfolio';
-import { useStarknet } from '@features/wallet';
-import { cn } from '@shared/lib/utils';
+import { useAccount, useStarknet } from '@features/wallet';
+import { getAddresses } from '@shared/config/addresses';
+import { useEstimateFee } from '@shared/hooks';
 import { formatWad, formatWadCompact, parseWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Card, CardContent } from '@shared/ui/Card';
+import {
+  FormActions,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormRow,
+} from '@shared/ui/FormLayout';
+import { GasEstimate } from '@shared/ui/GasEstimate';
 import { Switch } from '@shared/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
@@ -28,12 +43,14 @@ const SLIPPAGE_OPTIONS = [
 ];
 
 export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): ReactNode {
-  const { isConnected } = useStarknet();
+  const { isConnected, address } = useAccount();
+  const { network } = useStarknet();
   const [syAmount, setSyAmount] = useState('');
   const [ptAmount, setPtAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
   const [isBalanced, setIsBalanced] = useState(true);
 
+  const addresses = getAddresses(network);
   const { addLiquidity, isAdding, isSuccess, isError, error, transactionHash } = useAddLiquidity();
 
   // Get token symbols from metadata for proper naming (I-06)
@@ -110,6 +127,39 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     );
   }, [parsedSyAmount, parsedPtAmount, market.state, slippageBps]);
 
+  // Build calls for gas estimation
+  const addLiquidityCalls = useMemo(() => {
+    if (!address || parsedSyAmount === BigInt(0) || parsedPtAmount === BigInt(0)) return null;
+    try {
+      return buildAddLiquidityCalls(addresses.router, address, {
+        marketAddress: market.address,
+        syAddress: market.syAddress,
+        ptAddress: market.ptAddress,
+        syAmount: parsedSyAmount,
+        ptAmount: parsedPtAmount,
+        minLpOut,
+      });
+    } catch {
+      return null;
+    }
+  }, [
+    address,
+    addresses.router,
+    market.address,
+    market.syAddress,
+    market.ptAddress,
+    parsedSyAmount,
+    parsedPtAmount,
+    minLpOut,
+  ]);
+
+  // Estimate gas fee
+  const {
+    formattedFee,
+    isLoading: isEstimatingFee,
+    error: feeError,
+  } = useEstimateFee(addLiquidityCalls);
+
   // Calculate share of pool
   const poolShare = useMemo(() => {
     if (expectedLpOut === BigInt(0)) return new BigNumber(0);
@@ -164,138 +214,131 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
   }, [isSuccess]);
 
   return (
-    <Card className={cn('relative flex flex-col overflow-hidden', className)}>
-      {/* Ambient gradient overlay */}
-      <div
-        className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent"
-        aria-hidden="true"
-      />
+    <FormLayout gradient="primary" className={className}>
+      {/* Header */}
+      <FormHeader title="Add Liquidity" />
 
-      <CardHeader className="relative">
-        <CardTitle>Add Liquidity</CardTitle>
-      </CardHeader>
-      <CardContent className="relative flex flex-1 flex-col justify-between gap-4">
-        {/* Top Section - Inputs */}
-        <div className="space-y-4">
-          {/* Balanced Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <Switch checked={isBalanced} onCheckedChange={setIsBalanced} />
-            <span className="text-muted-foreground text-sm">Balanced deposit</span>
+      {/* Balanced Mode Toggle */}
+      <div className="flex items-center gap-2">
+        <Switch checked={isBalanced} onCheckedChange={setIsBalanced} />
+        <span className="text-muted-foreground text-sm">Balanced deposit</span>
+      </div>
+
+      {/* Input Section */}
+      <FormInputSection>
+        <TokenInput
+          label="SY Amount"
+          tokenAddress={market.syAddress}
+          tokenSymbol={sySymbol}
+          value={syAmount}
+          onChange={setSyAmount}
+          error={hasInsufficientSyBalance ? 'Insufficient balance' : undefined}
+        />
+        <TokenInput
+          label="PT Amount"
+          tokenAddress={market.ptAddress}
+          tokenSymbol={ptSymbol}
+          value={ptAmount}
+          onChange={(value): void => {
+            if (!isBalanced) {
+              setPtAmount(value);
+            }
+          }}
+          disabled={isBalanced}
+          error={hasInsufficientPtBalance ? 'Insufficient balance' : undefined}
+        />
+      </FormInputSection>
+
+      {/* Output Preview */}
+      <Card size="sm" className="bg-muted">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
+            <span className="text-muted-foreground text-sm">
+              Min: {isValidAmount ? formatWad(minLpOut, 6) : '-'} LP
+            </span>
           </div>
+          <div className="text-foreground mt-2 text-2xl font-semibold">
+            {isValidAmount ? formatWad(expectedLpOut, 6) : '0.000000'} LP
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* SY Input */}
-          <TokenInput
-            label="SY Amount"
-            tokenAddress={market.syAddress}
-            tokenSymbol={sySymbol}
-            value={syAmount}
-            onChange={setSyAmount}
-            error={hasInsufficientSyBalance ? 'Insufficient balance' : undefined}
+      {/* Pool Info */}
+      <FormInfoSection>
+        <div className="space-y-2">
+          <FormRow
+            label="Share of Pool"
+            value={isValidAmount ? `${poolShare.toFixed(4)}%` : '-'}
+            valueClassName={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}
           />
-
-          {/* PT Input */}
-          <TokenInput
-            label="PT Amount"
-            tokenAddress={market.ptAddress}
-            tokenSymbol={ptSymbol}
-            value={ptAmount}
-            onChange={(value): void => {
-              if (!isBalanced) {
-                setPtAmount(value);
+          <FormRow
+            label="Pool Reserves"
+            value={`${formatWadCompact(market.state.syReserve)} SY / ${formatWadCompact(market.state.ptReserve)} PT`}
+          />
+          <FormRow label="Slippage Tolerance" value={`${(slippageBps / 100).toString()}%`} />
+          {isValidAmount && (
+            <FormRow
+              label="Estimated Gas"
+              value={
+                <GasEstimate
+                  formattedFee={formattedFee}
+                  isLoading={isEstimatingFee}
+                  error={feeError}
+                />
               }
-            }}
-            disabled={isBalanced}
-            error={hasInsufficientPtBalance ? 'Insufficient balance' : undefined}
-          />
-
-          {/* Output Preview */}
-          <Card size="sm" className="bg-muted">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
-                <span className="text-muted-foreground text-sm">
-                  Min: {isValidAmount ? formatWad(minLpOut, 6) : '-'} LP
-                </span>
-              </div>
-              <div className="text-foreground mt-2 text-2xl font-semibold">
-                {isValidAmount ? formatWad(expectedLpOut, 6) : '0.000000'} LP
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Section - Info & Submit */}
-        <div className="space-y-4">
-          {/* Pool Info - Always visible */}
-          <Card size="sm" className="bg-muted/30">
-            <CardContent className="space-y-2 p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Share of Pool</span>
-                <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
-                  {isValidAmount ? poolShare.toFixed(4) : '-'}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Pool Reserves</span>
-                <span className="text-foreground">
-                  {formatWadCompact(market.state.syReserve)} SY /{' '}
-                  {formatWadCompact(market.state.ptReserve)} PT
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Slippage Tolerance</span>
-                <span className="text-foreground">{slippageBps / 100}%</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Slippage Settings */}
-          <div>
-            <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
-            <ToggleGroup className="flex gap-1">
-              {SLIPPAGE_OPTIONS.map((option) => (
-                <ToggleGroupItem
-                  key={option.value}
-                  pressed={slippageBps === option.value}
-                  onPressedChange={() => {
-                    setSlippageBps(option.value);
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  {option.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-
-          {/* Transaction Status */}
-          {txStatus !== 'idle' && (
-            <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+            />
           )}
-
-          {/* Submit Button */}
-          <Button
-            onClick={handleAddLiquidity}
-            disabled={!canAddLiquidity || isAdding}
-            className="h-12 w-full text-base font-medium"
-          >
-            {isAdding
-              ? 'Adding Liquidity...'
-              : !isConnected
-                ? 'Connect Wallet'
-                : !isValidAmount
-                  ? 'Enter Amounts'
-                  : hasInsufficientSyBalance
-                    ? 'Insufficient SY Balance'
-                    : hasInsufficientPtBalance
-                      ? 'Insufficient PT Balance'
-                      : isSuccess
-                        ? 'Liquidity Added!'
-                        : 'Add Liquidity'}
-          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </FormInfoSection>
+
+      {/* Slippage Settings */}
+      <div>
+        <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+        <ToggleGroup className="flex gap-1">
+          {SLIPPAGE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              pressed={slippageBps === option.value}
+              onPressedChange={() => {
+                setSlippageBps(option.value);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      {/* Transaction Status */}
+      {txStatus !== 'idle' && (
+        <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+      )}
+
+      {/* Actions */}
+      <FormActions>
+        <Button
+          onClick={handleAddLiquidity}
+          disabled={!canAddLiquidity || isAdding}
+          className="h-12 w-full text-base font-medium"
+        >
+          {isAdding
+            ? 'Adding Liquidity...'
+            : !isConnected
+              ? 'Connect Wallet'
+              : !isValidAmount
+                ? 'Enter Amounts'
+                : hasInsufficientSyBalance
+                  ? 'Insufficient SY Balance'
+                  : hasInsufficientPtBalance
+                    ? 'Insufficient PT Balance'
+                    : isSuccess
+                      ? 'Liquidity Added!'
+                      : 'Add Liquidity'}
+        </Button>
+      </FormActions>
+    </FormLayout>
   );
 }

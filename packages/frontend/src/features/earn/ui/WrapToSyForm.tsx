@@ -7,10 +7,19 @@ import { useWrapToSy } from '@features/earn';
 import { TokenInput, TokenOutput } from '@features/mint';
 import { useAccount } from '@features/wallet';
 import { useUnderlyingAddress } from '@features/yield';
-import { cn } from '@shared/lib/utils';
+import { useEstimateFee } from '@shared/hooks';
 import { toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import {
+  FormActions,
+  FormDivider,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormRow,
+} from '@shared/ui/FormLayout';
+import { GasEstimate } from '@shared/ui/GasEstimate';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -32,6 +41,7 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
     underlyingBalance,
     underlyingBalanceLoading,
     wrap,
+    buildWrapCalls,
     status,
     txHash,
     error,
@@ -72,6 +82,20 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
 
     return null;
   }, [amount, underlyingBalance]);
+
+  // Build calls for gas estimation
+  const wrapCalls = useMemo(() => {
+    if (!amount || amount === '0' || validationError || !underlyingAddress) return null;
+    try {
+      const amountWad = toWad(amount);
+      return buildWrapCalls(amountWad);
+    } catch {
+      return null;
+    }
+  }, [amount, validationError, underlyingAddress, buildWrapCalls]);
+
+  // Estimate gas fee
+  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(wrapCalls);
 
   // Handle wrap
   const handleWrap = useCallback(async () => {
@@ -118,96 +142,90 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
   const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
-    <Card className={cn('relative flex flex-col overflow-hidden', className)}>
-      {/* Ambient gradient overlay */}
-      <div
-        className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent"
-        aria-hidden="true"
+    <FormLayout gradient="primary" className={className}>
+      {/* Header */}
+      <FormHeader
+        title={`Deposit ${underlyingSymbol}`}
+        description={`Deposit your ${tokenName} to use in the protocol`}
+        action={<ExpiryBadge expiryTimestamp={market.expiry} />}
       />
 
-      <CardHeader className="relative">
-        <div className="flex items-center justify-between">
-          <CardTitle>Deposit {underlyingSymbol}</CardTitle>
-          <ExpiryBadge expiryTimestamp={market.expiry} />
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Deposit your {tokenName} to use in the protocol
-        </p>
-      </CardHeader>
+      {/* Input Section */}
+      <FormInputSection>
+        <TokenInput
+          label="You deposit"
+          tokenAddress={underlyingAddress ?? ''}
+          tokenSymbol={underlyingSymbol}
+          value={amount}
+          onChange={setAmount}
+          disabled={isLoading || !underlyingAddress}
+          error={validationError ?? undefined}
+        />
+      </FormInputSection>
 
-      <CardContent className="relative flex flex-1 flex-col justify-between gap-4">
-        {/* Top Section - Inputs */}
-        <div className="space-y-4">
-          {/* Input */}
-          <TokenInput
-            label="You deposit"
-            tokenAddress={underlyingAddress ?? ''}
-            tokenSymbol={underlyingSymbol}
-            value={amount}
-            onChange={setAmount}
-            disabled={isLoading || !underlyingAddress}
-            error={validationError ?? undefined}
+      {/* Divider */}
+      <FormDivider>
+        <Button variant="ghost" size="icon" className="rounded-full" disabled>
+          <svg
+            className="text-muted-foreground h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
+        </Button>
+      </FormDivider>
+
+      {/* Output */}
+      <TokenOutput
+        label="Available to mint"
+        amount={outputAmount}
+        tokenSymbol={sySymbol}
+        isLoading={underlyingBalanceLoading}
+      />
+
+      {/* Info Section */}
+      <FormInfoSection>
+        <FormRow label="Exchange Rate" value="1:1" />
+        {outputAmount > BigInt(0) && (
+          <FormRow
+            label="Estimated Gas"
+            value={
+              <GasEstimate
+                formattedFee={formattedFee}
+                isLoading={isEstimatingFee}
+                error={feeError}
+              />
+            }
           />
+        )}
+      </FormInfoSection>
 
-          {/* Arrow */}
-          <div className="flex justify-center">
-            <Button variant="ghost" size="icon" className="rounded-full" disabled>
-              <svg
-                className="text-muted-foreground h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                />
-              </svg>
-            </Button>
-          </div>
+      {/* Transaction Status */}
+      {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
 
-          {/* Output */}
-          <TokenOutput
-            label="Available to mint"
-            amount={outputAmount}
-            tokenSymbol={sySymbol}
-            isLoading={underlyingBalanceLoading}
-          />
-        </div>
-
-        {/* Bottom Section - Info & Action */}
-        <div className="space-y-4">
-          {/* Info */}
-          <Card size="sm" className="bg-muted">
-            <CardContent className="p-3 text-sm">
-              <div className="text-muted-foreground flex justify-between">
-                <span>Exchange Rate</span>
-                <span className="text-foreground">1:1</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Transaction Status */}
-          {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
-
-          {/* Actions */}
-          {status === 'success' ? (
-            <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
-              Deposit More
-            </Button>
-          ) : (
-            <Button
-              onClick={handleWrap}
-              disabled={buttonDisabled}
-              className="h-12 w-full text-base font-medium"
-            >
-              {buttonText}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Actions */}
+      <FormActions>
+        {status === 'success' ? (
+          <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
+            Deposit More
+          </Button>
+        ) : (
+          <Button
+            onClick={handleWrap}
+            disabled={buttonDisabled}
+            className="h-12 w-full text-base font-medium"
+          >
+            {buttonText}
+          </Button>
+        )}
+      </FormActions>
+    </FormLayout>
   );
 }

@@ -1,10 +1,11 @@
 'use client';
 
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 
 import { useTokenBalance } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
-import { formatWad, fromWad } from '@shared/math/wad';
+import { formatWad, fromWad, toWad } from '@shared/math/wad';
+import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
 
@@ -19,6 +20,8 @@ interface TokenInputProps {
   /** Optional token type badge (e.g., "PT", "YT", "SY") */
   tokenType?: string | undefined;
   className?: string | undefined;
+  /** Enable inline balance validation (Error Prevention) */
+  validateBalance?: boolean | undefined;
 }
 
 /**
@@ -41,11 +44,32 @@ export function TokenInput({
   error,
   tokenType,
   className,
+  validateBalance = true,
 }: TokenInputProps): ReactNode {
   const inputId = useId();
   const errorId = useId();
   const [isFocused, setIsFocused] = useState(false);
   const { data: balance, isLoading: balanceLoading } = useTokenBalance(tokenAddress);
+
+  // Inline balance validation (Error Prevention)
+  const inlineError = useMemo(() => {
+    if (!validateBalance || balance === undefined || !value || value === '0') {
+      return null;
+    }
+    try {
+      const inputAmount = toWad(value);
+      if (inputAmount > balance) {
+        return 'Insufficient balance';
+      }
+    } catch {
+      // Invalid input format
+      return null;
+    }
+    return null;
+  }, [value, balance, validateBalance]);
+
+  // Combined error (prop error takes precedence)
+  const displayError = error ?? inlineError;
 
   const handleMaxClick = (): void => {
     if (balance !== undefined) {
@@ -53,6 +77,37 @@ export function TokenInput({
       onChange(maxValue);
     }
   };
+
+  // Prevent non-numeric input at keydown level (Error Prevention)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
+    // Allow control keys
+    const allowedKeys = [
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Escape',
+      'Enter',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+    ];
+    if (allowedKeys.includes(e.key)) return;
+
+    // Allow Ctrl/Cmd + A, C, V, X
+    if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
+
+    // Allow numbers
+    if (/^[0-9]$/.test(e.key)) return;
+
+    // Allow one decimal point if not already present
+    if (e.key === '.' && !e.currentTarget.value.includes('.')) return;
+
+    // Block everything else
+    e.preventDefault();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const inputValue = e.target.value;
@@ -77,7 +132,7 @@ export function TokenInput({
       className={cn(
         'group relative overflow-hidden transition-all duration-200',
         isFocused && 'ring-primary/50 ring-2',
-        error !== undefined && 'ring-destructive/50 ring-2',
+        displayError !== null && 'ring-destructive/50 ring-2',
         className
       )}
       role="group"
@@ -129,6 +184,7 @@ export function TokenInput({
             autoComplete="off"
             value={value}
             onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             onFocus={() => {
               setIsFocused(true);
             }}
@@ -137,8 +193,8 @@ export function TokenInput({
             }}
             placeholder="0.00"
             disabled={disabled}
-            aria-invalid={error !== undefined}
-            aria-describedby={error !== undefined ? errorId : undefined}
+            aria-invalid={displayError !== null}
+            aria-describedby={displayError !== null ? errorId : undefined}
             className={cn(
               'min-h-[44px] min-w-0 flex-1 bg-transparent outline-none',
               'font-mono text-2xl font-semibold tabular-nums',
@@ -173,10 +229,10 @@ export function TokenInput({
           </div>
         </div>
 
-        {/* Error message */}
-        {error !== undefined && (
+        {/* Error message (prop error or inline validation) */}
+        {displayError !== null && (
           <p id={errorId} className="text-destructive text-sm font-medium" role="alert">
-            {error}
+            {displayError}
           </p>
         )}
       </CardContent>
@@ -214,7 +270,31 @@ export function TokenOutput({
   minAmount,
   className,
 }: TokenOutputProps): ReactNode {
-  const formattedAmount = formatWad(amount, 6);
+  // Convert bigint to number for animation (Change Blindness prevention)
+  const numericAmount = useMemo(() => fromWad(amount).toNumber(), [amount]);
+
+  // Animate the numeric value with smooth easing
+  const animatedAmount = useAnimatedNumber(numericAmount, {
+    duration: 300,
+    decimals: 6,
+  });
+
+  // Format the animated value
+  const formattedAmount = useMemo(() => {
+    // Handle edge cases
+    if (animatedAmount === 0) return '0.000000';
+    // Format with 6 decimal places, trim trailing zeros but keep at least 2
+    const formatted = animatedAmount.toFixed(6);
+    const parts = formatted.split('.');
+    const intPart = parts[0] ?? '0';
+    const decPart = parts[1];
+    if (decPart !== undefined) {
+      // Keep at least 2 decimal places
+      const trimmed = decPart.replace(/0+$/, '').padEnd(2, '0');
+      return `${intPart}.${trimmed}`;
+    }
+    return formatted;
+  }, [animatedAmount]);
 
   // Derive token type from symbol if not provided
   const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
