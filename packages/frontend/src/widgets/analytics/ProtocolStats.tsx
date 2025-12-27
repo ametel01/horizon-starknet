@@ -106,7 +106,8 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
     >
       <StatCard
         label="Total TVL"
-        value={formatUsdCompact(tvlUsd)}
+        numericValue={tvlUsd}
+        valueFormatter={formatUsdCompact}
         delta={`${String(stats.marketCount)} markets`}
         icon={<DollarSign className="h-4 w-4" />}
         compact
@@ -114,21 +115,24 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
       />
       <StatCard
         label="24h Volume"
-        value={formatUsdCompact(volumeUsd)}
+        numericValue={volumeUsd}
+        valueFormatter={formatUsdCompact}
         icon={<TrendingUp className="h-4 w-4" />}
         compact
         animationDelay={50}
       />
       <StatCard
         label="24h Swaps"
-        value={stats.swaps24h.toLocaleString()}
+        numericValue={stats.swaps24h}
+        valueFormatter={(v) => Math.round(v).toLocaleString()}
         icon={<Activity className="h-4 w-4" />}
         compact
         animationDelay={100}
       />
       <StatCard
         label="24h Fees"
-        value={formatUsdCompact(feesUsd)}
+        numericValue={feesUsd}
+        valueFormatter={formatUsdCompact}
         trend="up"
         compact
         animationDelay={150}
@@ -137,7 +141,8 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
       {showUniqueUsers && (
         <StatCard
           label="Unique Users"
-          value={stats.uniqueUsers24h.toLocaleString()}
+          numericValue={stats.uniqueUsers24h}
+          valueFormatter={(v) => Math.round(v).toLocaleString()}
           delta="24h"
           icon={<Users className="h-4 w-4" />}
           compact

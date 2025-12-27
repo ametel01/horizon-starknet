@@ -4,7 +4,7 @@ import { Layers, Percent, Vault } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { useDashboardMarkets } from '@features/markets';
-import { formatWadCompact } from '@shared/math/wad';
+import { formatWadCompact, fromWad } from '@shared/math/wad';
 import { StatCard, StatCardGrid, StatCardSkeleton } from '@shared/ui/StatCard';
 
 export function StatsOverview(): ReactNode {
@@ -26,23 +26,30 @@ export function StatsOverview(): ReactNode {
     );
   }
 
+  // Convert WAD bigint to number for animation
+  const tvlNumber = Number(fromWad(totalTvl));
+  const apyNumber = avgApy.multipliedBy(100).toNumber();
+
   return (
     <StatCardGrid columns={{ default: 1, sm: 3 }}>
       <StatCard
         label="Total Markets"
-        value={String(markets.length)}
+        numericValue={markets.length}
+        valueFormatter={(v) => String(Math.round(v))}
         icon={<Layers className="h-4 w-4" />}
         animationDelay={0}
       />
       <StatCard
         label="Total TVL"
-        value={`${formatWadCompact(totalTvl)} SY`}
+        numericValue={tvlNumber}
+        valueFormatter={(v) => `${formatWadCompact(BigInt(Math.round(v * 1e18)))} SY`}
         icon={<Vault className="h-4 w-4" />}
         animationDelay={50}
       />
       <StatCard
         label="Avg. Implied APY"
-        value={`${avgApy.multipliedBy(100).toFixed(2)}%`}
+        numericValue={apyNumber}
+        valueFormatter={(v) => `${v.toFixed(2)}%`}
         trend="up"
         icon={<Percent className="h-4 w-4" />}
         animationDelay={100}
