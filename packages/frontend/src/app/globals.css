@@ -118,6 +118,15 @@
   --gradient-start: oklch(0.837 0.128 66.29);
   --gradient-end: oklch(0.705 0.213 47.604);
   --gradient-accent: oklch(0.646 0.222 41.116);
+
+  /* ============================================ */
+  /* Spacing Tokens - UI/UX Law Compliance       */
+  /* ============================================ */
+  /* Gestalt Proximity: Consistent spacing scale */
+  --space-section: 1.5rem; /* 24px - Between major form sections */
+  --space-group: 1rem; /* 16px - Between related elements */
+  --space-element: 0.5rem; /* 8px - Between component parts */
+  --space-tight: 0.25rem; /* 4px - Compact spacing */
 }
 
 .dark {
