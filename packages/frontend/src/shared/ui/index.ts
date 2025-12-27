@@ -109,6 +109,18 @@ export {
   StaggeredList,
 } from './animations';
 
+// Form layout components (UI/UX Law compliant)
+export {
+  FormActions,
+  FormDivider,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormOutputSection,
+  FormRow,
+} from './FormLayout';
+
 // Sparkline and mini-chart components
 export {
   MiniBarChart,
