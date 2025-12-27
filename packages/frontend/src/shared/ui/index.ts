@@ -36,7 +36,19 @@ export {
 export { Input } from './Input';
 export { Label } from './label';
 export { Separator } from './separator';
-export { Skeleton } from './Skeleton';
+export {
+  ChartSkeleton,
+  FormSkeleton,
+  HeroSkeleton,
+  ListSkeleton,
+  MarketCardSkeleton,
+  Skeleton,
+  SkeletonCard,
+  SkeletonGrid,
+  SparklineSkeleton,
+  StatCardSkeleton,
+  TableSkeleton,
+} from './Skeleton';
 export { Toaster } from './sonner';
 export { Switch } from './switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
@@ -89,3 +101,13 @@ export {
   SlideIn,
   StaggeredList,
 } from './animations';
+
+// Sparkline and mini-chart components
+export {
+  MiniBarChart,
+  Sparkline,
+  SparklineStat,
+  SparklineWithValue,
+  TrendIndicator,
+  type SparklineDataPoint,
+} from './Sparkline';
