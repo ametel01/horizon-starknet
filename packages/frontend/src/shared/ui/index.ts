@@ -40,6 +40,7 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './dropdown-menu';
+export { GasEstimate } from './GasEstimate';
 export { Input } from './Input';
 export { Label } from './label';
 export { Separator } from './separator';
@@ -130,3 +131,6 @@ export {
   TrendIndicator,
   type SparklineDataPoint,
 } from './Sparkline';
+
+// Step progress components for multi-step flows
+export { StepCounter, StepIndicator, StepProgress, type Step } from './StepProgress';
