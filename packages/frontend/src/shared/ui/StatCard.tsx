@@ -5,14 +5,19 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@shared/lib/utils';
 
+import { AnimatedNumber } from './AnimatedNumber';
 import { Card, CardContent } from './Card';
 import { Skeleton } from './Skeleton';
 
 export interface StatCardProps {
   /** Label text displayed above the value */
   label: string;
-  /** Main value to display */
-  value: string;
+  /** Main value to display (string, or use numericValue for animation) */
+  value?: string | undefined;
+  /** Numeric value for animated display */
+  numericValue?: number | undefined;
+  /** Formatter for numeric value */
+  valueFormatter?: ((value: number) => string) | undefined;
   /** Optional delta change (e.g., "+12.4%", "-5%") */
   delta?: string | undefined;
   /** Trend direction for coloring the delta */
@@ -42,6 +47,8 @@ export interface StatCardProps {
 export function StatCard({
   label,
   value,
+  numericValue,
+  valueFormatter,
   delta,
   trend,
   icon,
@@ -111,7 +118,16 @@ export function StatCard({
                 compact ? 'text-xl' : 'text-2xl'
               )}
             >
-              {value}
+              {numericValue !== undefined ? (
+                <AnimatedNumber
+                  value={numericValue}
+                  formatter={valueFormatter ?? ((v) => v.toLocaleString())}
+                  duration={600}
+                  delay={animationDelay}
+                />
+              ) : (
+                value
+              )}
             </span>
 
             {delta !== undefined && (
