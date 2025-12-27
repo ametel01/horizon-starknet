@@ -1,13 +1,14 @@
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import eslintJs from '@eslint/js';
+import nextPlugin from '@next/eslint-plugin-next';
+import { defineConfig } from 'eslint/config';
+import importPlugin from 'eslint-plugin-import';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
-import importPlugin from 'eslint-plugin-import';
-import nextPlugin from '@next/eslint-plugin-next';
 import unusedImports from 'eslint-plugin-unused-imports';
+import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
-  eslint.configs.recommended,
+export default defineConfig(
+  eslintJs.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
 
@@ -135,11 +136,7 @@ export default tseslint.config(
   // Server-only code: allow Node deps and server patterns
   // ------------------------------------------------------------------
   {
-    files: [
-      'src/app/api/**/*.ts',
-      'src/app/**/route.ts',
-      'src/shared/server/**/*.ts',
-    ],
+    files: ['src/app/api/**/*.ts', 'src/app/**/route.ts', 'src/shared/server/**/*.ts'],
     rules: {
       'no-console': 'off',
       // Server files CAN use drizzle-orm and postgres
@@ -170,7 +167,14 @@ export default tseslint.config(
             // Anything DB / server-only must never be imported into UI/client bundles
             // NOTE: @shared/server/logger is allowed (logError works client-side too)
             {
-              group: ['postgres', 'drizzle-orm', 'drizzle-orm/*', '@shared/server/db/**', '@shared/server/rate-limit*', '@shared/server/validations/**'],
+              group: [
+                'postgres',
+                'drizzle-orm',
+                'drizzle-orm/*',
+                '@shared/server/db/**',
+                '@shared/server/rate-limit*',
+                '@shared/server/validations/**',
+              ],
               message: 'Server-only module (db) cannot be imported into client/UI code.',
             },
           ],
