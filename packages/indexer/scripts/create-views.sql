@@ -150,9 +150,10 @@ SELECT
   mi.fee_rate,
   mi.initial_exchange_rate,
   mi.created_at,
-  -- Reserves: try market events first, then router liquidity calculation
-  COALESCE(lir.sy_reserve, lm.sy_reserve, ls.sy_reserve, rr.sy_reserve, 0) as sy_reserve,
-  COALESCE(lir.pt_reserve, lm.pt_reserve, ls.pt_reserve, rr.pt_reserve, 0) as pt_reserve,
+  -- Reserves: prioritize swap/mint (correct parsing), then implied_rate, then router
+  -- Note: implied_rate table had incorrect parsing before indexer fix - use as fallback
+  COALESCE(ls.sy_reserve, lm.sy_reserve, lir.sy_reserve, rr.sy_reserve, 0) as sy_reserve,
+  COALESCE(ls.pt_reserve, lm.pt_reserve, lir.pt_reserve, rr.pt_reserve, 0) as pt_reserve,
   COALESCE(lir.total_lp, rr.total_lp, 0) as total_lp,
   COALESCE(ls.implied_rate, lir.implied_rate, lm.implied_rate, 0) as implied_rate,
   COALESCE(ls.exchange_rate, lir.exchange_rate, mi.initial_exchange_rate) as exchange_rate,

@@ -9,6 +9,7 @@ import { useDashboardMarkets } from '@features/markets';
 import { MintForm } from '@features/mint';
 import { UnwrapSyForm } from '@features/redeem';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 
@@ -56,20 +57,28 @@ function SimpleModeContent(): ReactNode {
           {markets.length > 1 && (
             <div className="mb-4">
               <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
-              <select
+              <Select
                 value={selectedMarket?.address ?? ''}
-                onChange={(e) => {
-                  setSelectedMarketAddress(e.target.value);
+                onValueChange={(value) => {
+                  setSelectedMarketAddress(value);
                 }}
-                className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
               >
-                {markets.map((m) => (
-                  <option key={m.address} value={m.address}>
-                    {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
-                    {m.metadata?.yieldTokenName ?? 'Unknown'}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {selectedMarket
+                      ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'}`
+                      : 'Select an asset'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {markets.map((m) => (
+                    <SelectItem key={m.address} value={m.address}>
+                      {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                      {m.metadata?.yieldTokenName ?? 'Unknown'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -258,20 +267,28 @@ function AdvancedModeContent(): ReactNode {
           {markets.length > 1 && (
             <div className="mb-4">
               <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
-              <select
+              <Select
                 value={selectedMarket?.address ?? ''}
-                onChange={(e) => {
-                  setSelectedMarketAddress(e.target.value);
+                onValueChange={(value) => {
+                  setSelectedMarketAddress(value);
                 }}
-                className="border-border bg-muted text-foreground focus:border-primary focus:ring-primary w-full rounded-lg border px-4 py-3 focus:ring-1 focus:outline-none"
               >
-                {markets.map((m) => (
-                  <option key={m.address} value={m.address}>
-                    {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
-                    {m.metadata?.yieldTokenName ?? 'Unknown'}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {selectedMarket
+                      ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'}`
+                      : 'Select an asset'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {markets.map((m) => (
+                    <SelectItem key={m.address} value={m.address}>
+                      {m.metadata?.yieldTokenSymbol ?? m.address.slice(0, 10)} -{' '}
+                      {m.metadata?.yieldTokenName ?? 'Unknown'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

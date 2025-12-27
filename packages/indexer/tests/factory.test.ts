@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { hash } from "starknet";
-import { matchSelector, decodeByteArray } from "../src/lib/utils";
+import { matchSelector, decodeByteArray, readU256 } from "../src/lib/utils";
 
 // Event selectors
 const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName("YieldContractsCreated");
@@ -31,7 +31,8 @@ function transformFactoryEvent(event: {
     const creator = data[2];
     const underlying = data[3];
     const underlyingSymbol = decodeByteArray(data, 4);
-    const initialExchangeRate = data[7] ?? "0";
+    // data[7-8] = initial_exchange_rate (u256), data[9] = timestamp, data[10] = market_index
+    const initialExchangeRate = readU256(data, 7);
     const marketIndex = data[10] ?? "0";
 
     return {
@@ -79,9 +80,10 @@ describe("Factory Indexer", () => {
         "0x789abc", // yt
         "0xdef012", // creator
         "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7", // underlying (ETH)
-        "0x455448", // underlying_symbol "ETH"
-        "0x0", // pending_word_len
-        "0x0", // data_len
+        // ByteArray for "ETH": [array_len, pending_word, pending_word_len]
+        "0x0", // array_len (no full 31-byte chunks)
+        "0x455448", // pending_word "ETH"
+        "0x3", // pending_word_len (3 bytes)
         "0xde0b6b3a7640000", // initial_exchange_rate (1e18)
         "0x0",
         "0x0",
@@ -106,7 +108,7 @@ describe("Factory Indexer", () => {
       creator: "0xdef012",
       underlying: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
       underlying_symbol: "ETH",
-      initial_exchange_rate: "0xde0b6b3a7640000",
+      initial_exchange_rate: "1000000000000000000",
       market_index: 1,
     });
   });

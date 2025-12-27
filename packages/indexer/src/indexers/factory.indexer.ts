@@ -21,7 +21,7 @@ import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
-import { decodeByteArray, matchSelector } from "../lib/utils";
+import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
 
 // Event selectors using Apibara's getSelector helper
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
@@ -101,7 +101,8 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           const creator = data[2];
           const underlying = data[3];
           const underlyingSymbol = decodeByteArray(data as string[], 4);
-          const initialExchangeRate = BigInt(data[7] ?? "0");
+          // data[7-8] = initial_exchange_rate (u256), data[9] = timestamp, data[10] = market_index
+          const initialExchangeRate = readU256(data as string[], 7);
           const marketIndex = Number(data[10] ?? "0");
 
           console.log(
@@ -119,7 +120,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             creator: creator ?? "",
             underlying: underlying ?? "",
             underlying_symbol: underlyingSymbol,
-            initial_exchange_rate: initialExchangeRate.toString(),
+            initial_exchange_rate: initialExchangeRate,
             market_index: marketIndex,
           });
         } else if (matchSelector(eventKey, CLASS_HASHES_UPDATED)) {

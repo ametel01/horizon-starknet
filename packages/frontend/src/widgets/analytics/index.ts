@@ -1,4 +1,16 @@
 // Analytics widgets - page sections for analytics views
+
+// Yield-Native Analytics (primary focus)
+export { YieldCurveChart, YieldCurveCompact } from './YieldCurveChart';
+export { PtConvergenceChart, PtPriceCompact } from './PtConvergenceChart';
+export { ImpliedVsRealizedChart, SpreadIndicator } from './ImpliedVsRealizedChart';
+export { ExecutionQualityPanel, ExecutionQualityBadge } from './ExecutionQualityPanel';
+
+// Market Microstructure (Phase 3)
+export { DepthCurve, DepthIndicator } from './DepthCurve';
+export { LiquidityHealthScore, LiquidityHealthBadge } from './LiquidityHealthScore';
+
+// Protocol-level analytics
 export { FeeByMarket, FeeByMarketCompact } from './FeeByMarket';
 export { FeeCollectionLog, FeeCollectionInline } from './FeeCollectionLog';
 export { FeeRevenueChart, FeeStatsCard } from './FeeRevenueChart';

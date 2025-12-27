@@ -101,34 +101,34 @@ export function PriceImpactWarning({
         'border',
         isDestructive
           ? 'border-destructive/30 bg-destructive/10'
-          : 'border-chart-1/30 bg-chart-1/10',
+          : 'border-warning/30 bg-warning/10',
         className
       )}
     >
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
           <div
-            className={cn('mt-0.5 shrink-0', isDestructive ? 'text-destructive' : 'text-chart-1')}
+            className={cn('mt-0.5 shrink-0', isDestructive ? 'text-destructive' : 'text-warning')}
           >
             {config.icon}
           </div>
           <div className="flex-1 space-y-2">
             <div className="flex items-center justify-between">
               <span
-                className={cn('font-medium', isDestructive ? 'text-destructive' : 'text-chart-1')}
+                className={cn('font-medium', isDestructive ? 'text-destructive' : 'text-warning')}
               >
                 {config.title}
               </span>
               <span
                 className={cn(
                   'font-mono text-sm font-semibold',
-                  isDestructive ? 'text-destructive' : 'text-chart-1'
+                  isDestructive ? 'text-destructive' : 'text-warning'
                 )}
               >
                 {formatPriceImpact(priceImpact)}
               </span>
             </div>
-            <p className={cn('text-sm', isDestructive ? 'text-destructive/80' : 'text-chart-1/80')}>
+            <p className={cn('text-sm', isDestructive ? 'text-destructive/80' : 'text-warning/80')}>
               {config.description}
             </p>
 

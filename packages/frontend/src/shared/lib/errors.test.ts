@@ -42,7 +42,17 @@ describe('extractContractError', () => {
     expect(extractContractError(error)).toBe('HZN: zero amount');
   });
 
-  test('returns null for non-HZN errors', () => {
+  test('extracts ERC20: error from string', () => {
+    const error = 'Transaction failed: ERC20: insufficient balance';
+    expect(extractContractError(error)).toBe('ERC20: insufficient balance');
+  });
+
+  test('extracts ERC20: error from Error object', () => {
+    const error = new Error('ERC20: insufficient allowance');
+    expect(extractContractError(error)).toBe('ERC20: insufficient allowance');
+  });
+
+  test('returns null for non-contract errors', () => {
     expect(extractContractError('Regular error message')).toBeNull();
     expect(extractContractError(new Error('Something went wrong'))).toBeNull();
   });
@@ -126,6 +136,35 @@ describe('parseContractError', () => {
       });
     }
   });
+
+  describe('ERC20 error handling', () => {
+    test('returns mapped message for ERC20 insufficient balance', () => {
+      expect(parseContractError('ERC20: insufficient balance', false)).toBe(
+        'Insufficient token balance.'
+      );
+      expect(parseContractError('ERC20: insufficient balance', true)).toBe(
+        'Not enough tokens in your wallet.'
+      );
+    });
+
+    test('returns mapped message for ERC20 insufficient allowance', () => {
+      expect(parseContractError('ERC20: insufficient allowance', false)).toBe(
+        'Token approval required.'
+      );
+      expect(parseContractError('ERC20: insufficient allowance', true)).toBe(
+        'Please approve tokens first.'
+      );
+    });
+
+    test('returns mapped message for ERC20 transfer exceeds balance', () => {
+      expect(parseContractError('ERC20: transfer amount exceeds balance', false)).toBe(
+        'Insufficient token balance.'
+      );
+      expect(parseContractError('ERC20: transfer amount exceeds balance', true)).toBe(
+        'Not enough tokens in your wallet.'
+      );
+    });
+  });
 });
 
 describe('isContractError', () => {
@@ -179,22 +218,37 @@ describe('isPauseError', () => {
 });
 
 describe('isInsufficientBalanceError', () => {
-  test('returns true for insufficient balance errors', () => {
+  test('returns true for HZN insufficient balance errors', () => {
     expect(isInsufficientBalanceError('HZN: insufficient balance')).toBe(true);
     expect(isInsufficientBalanceError('HZN: insufficient PT')).toBe(true);
     expect(isInsufficientBalanceError('HZN: insufficient YT')).toBe(true);
     expect(isInsufficientBalanceError('HZN: insufficient SY')).toBe(true);
   });
 
+  test('returns true for ERC20 insufficient balance errors', () => {
+    expect(isInsufficientBalanceError('ERC20: insufficient balance')).toBe(true);
+    expect(isInsufficientBalanceError('ERC20: transfer amount exceeds balance')).toBe(true);
+  });
+
   test('returns false for other errors', () => {
     expect(isInsufficientBalanceError('HZN: slippage exceeded')).toBe(false);
     expect(isInsufficientBalanceError('Not enough tokens')).toBe(false);
+    expect(isInsufficientBalanceError('ERC20: insufficient allowance')).toBe(false);
   });
 });
 
 describe('getSimpleErrorMessage', () => {
   test('returns simplified message for HZN errors', () => {
     expect(getSimpleErrorMessage('HZN: insufficient balance')).toBe('Not enough tokens.');
+  });
+
+  test('returns simplified message for ERC20 errors', () => {
+    expect(getSimpleErrorMessage('ERC20: insufficient balance')).toBe(
+      'Not enough tokens in your wallet.'
+    );
+    expect(getSimpleErrorMessage('ERC20: insufficient allowance')).toBe(
+      'Please approve tokens first.'
+    );
   });
 
   test('returns simplified message for legacy error patterns', () => {
@@ -242,6 +296,18 @@ describe('getModeAwareErrorMessage', () => {
   test('handles HZN errors in simple mode', () => {
     expect(getModeAwareErrorMessage('HZN: insufficient SY', true)).toBe(
       'Not enough deposited tokens.'
+    );
+  });
+
+  test('handles ERC20 errors in advanced mode', () => {
+    expect(getModeAwareErrorMessage('ERC20: insufficient balance', false)).toBe(
+      'Insufficient token balance.'
+    );
+  });
+
+  test('handles ERC20 errors in simple mode', () => {
+    expect(getModeAwareErrorMessage('ERC20: insufficient balance', true)).toBe(
+      'Not enough tokens in your wallet.'
     );
   });
 
@@ -326,6 +392,24 @@ describe('getErrorHelpText', () => {
   test('returns null for unrecognized errors', () => {
     expect(getErrorHelpText('Some random error', true)).toBeNull();
     expect(getErrorHelpText('Unknown technical issue', false)).toBeNull();
+  });
+
+  test('returns help text for ERC20 insufficient balance', () => {
+    expect(getErrorHelpText('ERC20: insufficient balance', true)).toBe(
+      'You need more tokens in your wallet to complete this action.'
+    );
+    expect(getErrorHelpText('ERC20: insufficient balance', false)).toBe(
+      'Your wallet token balance is insufficient. Check your balance and try a smaller amount.'
+    );
+  });
+
+  test('returns help text for ERC20 insufficient allowance', () => {
+    expect(getErrorHelpText('ERC20: insufficient allowance', true)).toBe(
+      'You need to approve tokens before this action.'
+    );
+    expect(getErrorHelpText('ERC20: insufficient allowance', false)).toBe(
+      'Token allowance is insufficient. Approve tokens for the contract first.'
+    );
   });
 });
 

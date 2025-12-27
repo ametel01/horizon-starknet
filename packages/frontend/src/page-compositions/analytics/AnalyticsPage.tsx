@@ -2,12 +2,55 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
+import { useDashboardMarkets } from '@features/markets';
 // Direct imports for above-the-fold content
-import { Skeleton } from '@shared/ui/Skeleton';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from '@shared/ui';
 import { ProtocolStats } from '@widgets/analytics/ProtocolStats';
 import { ProtocolTvlCard } from '@widgets/analytics/ProtocolTvlCard';
+
+// Lazy load yield-native chart components (primary focus)
+const YieldCurveChart = dynamic(
+  () => import('@widgets/analytics/YieldCurveChart').then((m) => m.YieldCurveChart),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+const PtConvergenceChart = dynamic(
+  () => import('@widgets/analytics/PtConvergenceChart').then((m) => m.PtConvergenceChart),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+const ImpliedVsRealizedChart = dynamic(
+  () => import('@widgets/analytics/ImpliedVsRealizedChart').then((m) => m.ImpliedVsRealizedChart),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+const ExecutionQualityPanel = dynamic(
+  () => import('@widgets/analytics/ExecutionQualityPanel').then((m) => m.ExecutionQualityPanel),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+// Phase 3: Market Microstructure
+const DepthCurve = dynamic(
+  () => import('@widgets/analytics/DepthCurve').then((m) => m.DepthCurve),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+const LiquidityHealthScore = dynamic(
+  () => import('@widgets/analytics/LiquidityHealthScore').then((m) => m.LiquidityHealthScore),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
 
 // Lazy load chart components (recharts is heavy ~200KB)
 const TvlChart = dynamic(() => import('@widgets/analytics/TvlChart').then((m) => m.TvlChart), {
@@ -63,7 +106,45 @@ function CardSkeleton(): ReactNode {
   return <Skeleton className="h-[200px] w-full rounded-lg" />;
 }
 
+/**
+ * Collapsible section header component
+ */
+function CollapsibleSectionHeader({
+  title,
+  isOpen,
+}: {
+  title: string;
+  isOpen: boolean;
+}): ReactNode {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-foreground text-lg font-semibold">{title}</h2>
+      <svg
+        className={`text-muted-foreground h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+  );
+}
+
 export function AnalyticsPage(): ReactNode {
+  const { markets } = useDashboardMarkets();
+  const [selectedMarket, setSelectedMarket] = useState<string | undefined>(undefined);
+  const [executionOpen, setExecutionOpen] = useState(false);
+  const [tvlOpen, setTvlOpen] = useState(false);
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  const [feesOpen, setFeesOpen] = useState(false);
+
+  // Get active markets for the selector
+  const activeMarkets = markets.filter((m) => !m.isExpired);
+
+  // Default to first active market if none selected
+  const marketAddress = selectedMarket ?? activeMarkets[0]?.address;
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12">
       {/* Header */}
@@ -84,69 +165,144 @@ export function AnalyticsPage(): ReactNode {
         </Link>
         <h1 className="text-foreground text-3xl font-bold">Protocol Analytics</h1>
         <p className="text-muted-foreground mt-2">
-          Real-time metrics and historical data for Horizon Protocol
+          Yield-native analytics and real-time metrics for Horizon Protocol
         </p>
       </div>
 
-      {/* Protocol Stats Overview */}
+      {/* Protocol Stats Overview (compact) */}
       <section className="mb-8">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Overview</h2>
         <ProtocolStats />
       </section>
 
-      {/* TVL Section */}
+      {/* ============================================ */}
+      {/* YIELD ANALYTICS SECTION (Primary Focus)     */}
+      {/* ============================================ */}
       <section className="mb-8">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Total Value Locked</h2>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* TVL Card */}
-          <ProtocolTvlCard className="lg:col-span-1" />
-
-          {/* TVL Chart */}
-          <TvlChart className="lg:col-span-2" />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-foreground text-lg font-semibold">Yield Analytics</h2>
+          <p className="text-muted-foreground text-sm">Term structure and yield insights</p>
         </div>
+
+        {/* Yield Curve - Full Width */}
+        <div className="mb-6">
+          <YieldCurveChart />
+        </div>
+
+        {/* Market Selector for market-specific charts */}
+        {activeMarkets.length > 0 && (
+          <div className="mb-4">
+            <label className="text-muted-foreground mb-2 block text-sm">
+              Select market for detailed analysis:
+            </label>
+            <Select
+              value={marketAddress}
+              onValueChange={(value) => {
+                setSelectedMarket(value ?? undefined);
+              }}
+            >
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue>
+                  {(() => {
+                    const selected = activeMarkets.find((m) => m.address === marketAddress);
+                    if (!selected) return 'Select a market';
+                    return `PT-${selected.metadata?.yieldTokenSymbol ?? 'Unknown'} (${String(Math.round(selected.daysToExpiry))} days)`;
+                  })()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {activeMarkets.map((market) => (
+                  <SelectItem key={market.address} value={market.address}>
+                    PT-{market.metadata?.yieldTokenSymbol ?? 'Unknown'} (
+                    {Math.round(market.daysToExpiry)} days)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Market-specific yield charts */}
+        {marketAddress && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* PT Convergence Chart */}
+            <PtConvergenceChart marketAddress={marketAddress} />
+
+            {/* Implied vs Realized APY */}
+            <ImpliedVsRealizedChart marketAddress={marketAddress} />
+          </div>
+        )}
       </section>
 
-      {/* TVL Breakdown */}
-      <section className="mb-8">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">TVL by Market</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <TvlBreakdown />
-          <VolumeByMarket />
-        </div>
-      </section>
+      {/* ============================================ */}
+      {/* MARKET DEPTH & EXECUTION (Collapsible)      */}
+      {/* ============================================ */}
+      <Collapsible open={executionOpen} onOpenChange={setExecutionOpen} className="mb-4">
+        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
+          <CollapsibleSectionHeader title="Market Depth & Execution" isOpen={executionOpen} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-4 space-y-6">
+          {/* Execution Quality Charts */}
+          {marketAddress && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ExecutionQualityPanel marketAddress={marketAddress} />
+              <DepthCurve marketAddress={marketAddress} />
+            </div>
+          )}
+          {/* Liquidity Health Score */}
+          <LiquidityHealthScore />
+        </CollapsibleContent>
+      </Collapsible>
 
-      {/* Volume Section */}
-      <section className="mb-8">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Trading Volume</h2>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Volume Stats Card */}
-          <VolumeStatsCard className="lg:col-span-1" />
+      {/* ============================================ */}
+      {/* COLLAPSIBLE SECTIONS (Existing Analytics)   */}
+      {/* ============================================ */}
 
-          {/* Volume Chart */}
-          <VolumeChart className="lg:col-span-2" />
-        </div>
-      </section>
+      {/* TVL Section (Collapsible) */}
+      <Collapsible open={tvlOpen} onOpenChange={setTvlOpen} className="mb-4">
+        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
+          <CollapsibleSectionHeader title="Total Value Locked" isOpen={tvlOpen} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-4 space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <ProtocolTvlCard className="lg:col-span-1" />
+            <TvlChart className="lg:col-span-2" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <TvlBreakdown />
+            <VolumeByMarket />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
-      {/* Fee Revenue Section */}
-      <section className="mb-8">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Fee Revenue</h2>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Fee Stats Card */}
-          <FeeStatsCard className="lg:col-span-1" />
+      {/* Volume Section (Collapsible) */}
+      <Collapsible open={volumeOpen} onOpenChange={setVolumeOpen} className="mb-4">
+        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
+          <CollapsibleSectionHeader title="Trading Volume" isOpen={volumeOpen} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-4">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <VolumeStatsCard className="lg:col-span-1" />
+            <VolumeChart className="lg:col-span-2" />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
-          {/* Fee Revenue Chart */}
-          <FeeRevenueChart className="lg:col-span-2" />
-        </div>
-      </section>
-
-      {/* Fee Breakdown Section */}
-      <section className="mb-8">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Fee Breakdown</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <FeeByMarket />
-          <FeeCollectionLog />
-        </div>
-      </section>
+      {/* Fee Revenue Section (Collapsible) */}
+      <Collapsible open={feesOpen} onOpenChange={setFeesOpen} className="mb-8">
+        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
+          <CollapsibleSectionHeader title="Fee Revenue" isOpen={feesOpen} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-4 space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <FeeStatsCard className="lg:col-span-1" />
+            <FeeRevenueChart className="lg:col-span-2" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <FeeByMarket />
+            <FeeCollectionLog />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Info Section */}
       <section>
@@ -154,30 +310,38 @@ export function AnalyticsPage(): ReactNode {
           <h2 className="text-foreground mb-4 text-lg font-semibold">About Analytics</h2>
           <div className="text-muted-foreground space-y-3 text-sm">
             <p>
-              <span className="text-foreground font-medium">Total Value Locked (TVL)</span>{' '}
-              represents the total value of assets deposited in Horizon Protocol markets, measured
-              as the sum of SY and PT reserves across all markets.
+              <span className="text-foreground font-medium">Term Structure (Yield Curve)</span>{' '}
+              shows the relationship between time to maturity and implied APY across all markets.
+              This is the primary view for understanding yield expectations at different horizons.
             </p>
             <p>
-              <span className="text-foreground font-medium">Trading Volume</span> tracks all swap
-              activity including PT/SY trades in the AMM. Volume is broken down by token type to
-              show the distribution of trading activity.
+              <span className="text-foreground font-medium">PT Convergence</span> visualizes how
+              Principal Tokens trade at a discount that converges to par (1.0) as maturity
+              approaches. The discount represents the market&apos;s implied yield.
             </p>
             <p>
-              <span className="text-foreground font-medium">Market Breakdown</span> shows how TVL
-              and volume are distributed across different yield-bearing assets. Each market
-              represents a different underlying token with its own maturity date.
+              <span className="text-foreground font-medium">Implied vs Realized APY</span> compares
+              the market&apos;s expected yield (from PT pricing) against the actual underlying
+              yield. Positive spread means traders expect higher future yields.
             </p>
             <p>
-              <span className="text-foreground font-medium">Fee Revenue</span> tracks protocol fees
-              collected from swaps. Fees are charged on each trade and distributed between LPs and
-              the protocol. The fee collection log shows when accumulated fees are withdrawn by
-              administrators.
+              <span className="text-foreground font-medium">Execution Quality</span> measures price
+              impact on trades. Lower impact indicates better liquidity depth. The median impact
+              under 10 bps is considered excellent.
             </p>
             <p>
-              <span className="text-foreground font-medium">Note:</span> Historical data is being
-              built as the protocol operates. Charts will show more data points over time as the
-              indexer captures daily snapshots.
+              <span className="text-foreground font-medium">Depth Curve</span> shows how price
+              impact increases with trade size. Use this to plan trade sizing and understand
+              liquidity depth at different volume levels.
+            </p>
+            <p>
+              <span className="text-foreground font-medium">Liquidity Health</span> aggregates
+              spread proxies, depth scores, and activity metrics into a single health score (0-100)
+              for each market. Scores 80+ are excellent.
+            </p>
+            <p>
+              <span className="text-foreground font-medium">Note:</span> Historical data builds up
+              as the protocol operates. Charts will show more data points over time.
             </p>
           </div>
         </div>

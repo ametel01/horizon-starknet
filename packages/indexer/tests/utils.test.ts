@@ -79,20 +79,28 @@ describe("readI256", () => {
 });
 
 describe("decodeByteArray", () => {
-  it("should decode short string", () => {
-    // "ETH" = 0x455448
-    const data = ["0x455448"];
+  // Cairo ByteArray format: [array_len, ...chunks, pending_word, pending_word_len]
+
+  it("should decode short string (3 chars)", () => {
+    // "ETH" = 0x455448, length = 3
+    const data = ["0x0", "0x455448", "0x3"];
     expect(decodeByteArray(data, 0)).toBe("ETH");
   });
 
-  it("should decode longer string", () => {
-    // "STRK" = 0x5354524b
-    const data = ["0x5354524b"];
+  it("should decode short string (4 chars)", () => {
+    // "STRK" = 0x5354524b, length = 4
+    const data = ["0x0", "0x5354524b", "0x4"];
     expect(decodeByteArray(data, 0)).toBe("STRK");
   });
 
-  it("should return empty for 0x0", () => {
-    const data = ["0x0"];
+  it("should decode 10-char string", () => {
+    // "SY-hrzSTRK" = 0x53592d68727a5354524b, length = 10
+    const data = ["0x0", "0x53592d68727a5354524b", "0xa"];
+    expect(decodeByteArray(data, 0)).toBe("SY-hrzSTRK");
+  });
+
+  it("should return empty for zero-length pending_word", () => {
+    const data = ["0x0", "0x0", "0x0"];
     expect(decodeByteArray(data, 0)).toBe("");
   });
 
@@ -101,9 +109,28 @@ describe("decodeByteArray", () => {
     expect(decodeByteArray(data, 0)).toBe("");
   });
 
-  it("should handle null bytes", () => {
-    // "AB" followed by null = 0x414200
-    const data = ["0x414200"];
+  it("should decode from non-zero startIndex", () => {
+    // Some prefix data, then ByteArray at index 2
+    const data = ["0xabc", "0xdef", "0x0", "0x455448", "0x3"];
+    expect(decodeByteArray(data, 2)).toBe("ETH");
+  });
+
+  it("should handle 2-char string", () => {
+    // "AB" = 0x4142, length = 2
+    const data = ["0x0", "0x4142", "0x2"];
     expect(decodeByteArray(data, 0)).toBe("AB");
+  });
+
+  it("should decode 29-char string (max pending_word size)", () => {
+    // "SY-hrzSTRK-symbol,for-TESTING" = 29 chars (fits in single pending_word < 31 bytes)
+    // - array_len = 0x00 (no full chunks)
+    // - pending_word = 0x53592d68727a5354524b2d73796d626f6c2c666f722d54455354494e47
+    // - pending_word_len = 0x1d (29 bytes)
+    const data = [
+      "0x0",
+      "0x53592d68727a5354524b2d73796d626f6c2c666f722d54455354494e47",
+      "0x1d",
+    ];
+    expect(decodeByteArray(data, 0)).toBe("SY-hrzSTRK-symbol,for-TESTING");
   });
 });

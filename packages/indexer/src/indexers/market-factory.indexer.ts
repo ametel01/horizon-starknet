@@ -21,7 +21,7 @@ import type { ApibaraRuntimeConfig } from "apibara/types";
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { streamTimeoutPlugin } from "../lib/plugins";
-import { decodeByteArray, matchSelector } from "../lib/utils";
+import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
 
 // Event selectors using Apibara's getSelector helper
 const MARKET_CREATED = getSelector("MarketCreated");
@@ -97,18 +97,20 @@ export default function marketFactoryIndexer(
           const pt = event.keys[1];
           const expiry = BigInt(event.keys[2] ?? "0");
 
-          const data = event.data;
+          const data = event.data as string[];
           const market = data[0];
           const creator = data[1];
-          const scalarRoot = BigInt(data[2] ?? "0");
-          const initialAnchor = BigInt(data[4] ?? "0");
-          const feeRate = BigInt(data[6] ?? "0");
+          // u256 fields use 2 felts each (low, high)
+          const scalarRoot = readU256(data, 2);
+          const initialAnchor = readU256(data, 4);
+          const feeRate = readU256(data, 6);
           const sy = data[8];
           const yt = data[9];
           const underlying = data[10];
-          const underlyingSymbol = decodeByteArray(data as string[], 11);
-          const initialExchangeRate = BigInt(data[14] ?? "0");
-          const marketIndex = Number(data[16] ?? "0");
+          const underlyingSymbol = decodeByteArray(data, 11);
+          const initialExchangeRate = readU256(data, 14);
+          const _timestamp = BigInt(data[16] ?? "0");
+          const marketIndex = Number(data[17] ?? "0");
 
           marketCreatedRows.push({
             block_number: blockNumber,
@@ -118,14 +120,14 @@ export default function marketFactoryIndexer(
             expiry: Number(expiry),
             market: market ?? "",
             creator: creator ?? "",
-            scalar_root: scalarRoot.toString(),
-            initial_anchor: initialAnchor.toString(),
-            fee_rate: feeRate.toString(),
+            scalar_root: scalarRoot,
+            initial_anchor: initialAnchor,
+            fee_rate: feeRate,
             sy: sy ?? "",
             yt: yt ?? "",
             underlying: underlying ?? "",
             underlying_symbol: underlyingSymbol,
-            initial_exchange_rate: initialExchangeRate.toString(),
+            initial_exchange_rate: initialExchangeRate,
             market_index: marketIndex,
           });
         } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {

@@ -62,7 +62,7 @@ export function IndexerStatusBanner({
     return (
       <div
         className={cn(
-          'rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-2 text-yellow-600 dark:text-yellow-500',
+          'border-warning/20 bg-warning/10 text-warning rounded-lg border px-4 py-2',
           className
         )}
       >
@@ -71,7 +71,7 @@ export function IndexerStatusBanner({
             <WarningIcon />
             <span className="text-sm font-medium">Data may be stale</span>
           </div>
-          <Badge variant="outline" className="text-yellow-600 dark:text-yellow-500">
+          <Badge variant="outline" className="text-warning">
             {formatLag(lagBlocks)} behind
           </Badge>
         </div>

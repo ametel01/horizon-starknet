@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { hash } from "starknet";
-import { matchSelector, decodeByteArray } from "../src/lib/utils";
+import { matchSelector, decodeByteArray, readU256 } from "../src/lib/utils";
 
 // Event selectors
 const MARKET_CREATED = hash.getSelectorFromName("MarketCreated");
@@ -30,15 +30,16 @@ function transformMarketFactoryEvent(event: {
     const expiry = Number(BigInt(keys[2] ?? "0"));
     const market = data[0];
     const creator = data[1];
-    const scalarRoot = BigInt(data[2] ?? "0");
-    const initialAnchor = BigInt(data[4] ?? "0");
-    const feeRate = BigInt(data[6] ?? "0");
+    // u256 fields use 2 felts each (low, high)
+    const scalarRoot = readU256(data, 2);
+    const initialAnchor = readU256(data, 4);
+    const feeRate = readU256(data, 6);
     const sy = data[8];
     const yt = data[9];
     const underlying = data[10];
     const underlyingSymbol = decodeByteArray(data, 11);
-    const initialExchangeRate = BigInt(data[14] ?? "0");
-    const marketIndex = Number(data[16] ?? "0");
+    const initialExchangeRate = readU256(data, 14);
+    const marketIndex = Number(data[17] ?? "0");
 
     return {
       event_type: "MarketCreated",
@@ -49,14 +50,14 @@ function transformMarketFactoryEvent(event: {
       expiry,
       market: market ?? "",
       creator: creator ?? "",
-      scalar_root: scalarRoot.toString(),
-      initial_anchor: initialAnchor.toString(),
-      fee_rate: feeRate.toString(),
+      scalar_root: scalarRoot,
+      initial_anchor: initialAnchor,
+      fee_rate: feeRate,
       sy: sy ?? "",
       yt: yt ?? "",
       underlying: underlying ?? "",
       underlying_symbol: underlyingSymbol,
-      initial_exchange_rate: initialExchangeRate.toString(),
+      initial_exchange_rate: initialExchangeRate,
       market_index: marketIndex,
     };
   } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {
@@ -96,11 +97,13 @@ describe("MarketFactory Indexer", () => {
         "0xsy_address", // sy
         "0xyt_address", // yt
         "0xunderlying", // underlying
-        "0x455448", // underlying_symbol "ETH"
-        "0x0", // pending_word_len
-        "0x0", // data_len
-        "0xde0b6b3a7640000", // initial_exchange_rate
-        "0x0",
+        // ByteArray for "ETH": [array_len, pending_word, pending_word_len]
+        "0x0", // array_len (no full 31-byte chunks)
+        "0x455448", // pending_word "ETH"
+        "0x3", // pending_word_len (3 bytes)
+        "0xde0b6b3a7640000", // initial_exchange_rate (low)
+        "0x0", // initial_exchange_rate (high)
+        "0x12345678", // timestamp
         "0x1", // market_index
       ],
       transactionHash: "0xabc123",

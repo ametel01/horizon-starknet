@@ -111,8 +111,14 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
     );
   }
 
+  // Dynamic grid: 5 columns if showing unique users, 4 columns otherwise
+  const showUniqueUsers = stats.uniqueUsers24h > 10;
+  const gridCols = showUniqueUsers
+    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+    : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-4';
+
   return (
-    <div className={cn('grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6', className)}>
+    <div className={cn('grid gap-4', gridCols, className)}>
       <StatCard
         label="Total TVL"
         value={formatUsdCompact(tvlUsd)}
@@ -122,13 +128,15 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
       <StatCard label="24h Volume" value={formatUsdCompact(volumeUsd)} isLoading={isLoading} />
       <StatCard label="24h Swaps" value={stats.swaps24h.toLocaleString()} isLoading={isLoading} />
       <StatCard label="24h Fees" value={formatUsdCompact(feesUsd)} isLoading={isLoading} />
-      <StatCard
-        label="Unique Users"
-        value={stats.uniqueUsers24h.toLocaleString()}
-        subValue="last 24h"
-        isLoading={isLoading}
-      />
-      <StatCard label="Active Markets" value={stats.marketCount.toString()} isLoading={isLoading} />
+      {/* Only show unique users once there's meaningful user activity (>10) */}
+      {showUniqueUsers && (
+        <StatCard
+          label="Unique Users"
+          value={stats.uniqueUsers24h.toLocaleString()}
+          subValue="last 24h"
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 }

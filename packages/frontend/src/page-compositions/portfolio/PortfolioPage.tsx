@@ -23,7 +23,12 @@ import {
 import { useDashboardMarkets } from '@features/markets';
 import { useUserIndexedPositions, useEnhancedPositions } from '@features/portfolio';
 import { type MarketPosition, usePositions } from '@features/portfolio';
-import { calculateMinSyOut, useRedeemPtPostExpiry, useRedeemPy } from '@features/redeem';
+import {
+  calculateMinSyOut,
+  useRedeemPtPostExpiry,
+  useRedeemPy,
+  useUnwrapSy,
+} from '@features/redeem';
 import { useStarknet } from '@features/wallet';
 import { useUserYield, useClaimAllYield, useClaimYield } from '@features/yield';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
@@ -33,6 +38,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 import { TransactionHistory } from '@widgets/analytics/TransactionHistory';
 import { TxStatus } from '@widgets/display/TxStatus';
+import {
+  BeatImpliedScore,
+  LpApyBreakdown,
+  PositionPnlTimeline,
+  YtCashflowChart,
+} from '@widgets/portfolio';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -74,6 +85,21 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
     reset: resetRedeemPt,
   } = useRedeemPtPostExpiry();
 
+  // Unwrap SY hook
+  const underlyingAddress = position.market.metadata?.underlyingAddress ?? '';
+  const {
+    unwrap,
+    isLoading: isUnwrapping,
+    status: unwrapStatus,
+    txHash: unwrapTxHash,
+    error: unwrapErrorMsg,
+  } = useUnwrapSy({
+    underlyingAddress,
+    syAddress: position.market.syAddress,
+  });
+  const unwrapSuccess = unwrapStatus === 'success';
+  const unwrapError = unwrapStatus === 'error';
+
   const hasAnyBalance =
     position.syBalance > BigInt(0) ||
     position.ptBalance > BigInt(0) ||
@@ -103,6 +129,14 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
     if (redeemPtError) return 'error' as const;
     return 'idle' as const;
   }, [isRedeemingPt, redeemPtSuccess, redeemPtError]);
+
+  // Unwrap SY status
+  const unwrapTxStatus = useMemo(() => {
+    if (isUnwrapping) return 'pending' as const;
+    if (unwrapSuccess) return 'success' as const;
+    if (unwrapError) return 'error' as const;
+    return 'idle' as const;
+  }, [isUnwrapping, unwrapSuccess, unwrapError]);
 
   // Reset states after success
   useEffect(() => {
@@ -141,6 +175,9 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
     return undefined;
   }, [redeemPtSuccess, resetRedeemPt]);
 
+  // Note: We intentionally don't auto-reset unwrap status like deposit form
+  // The success message stays visible until user takes another action
+
   const handleClaimYield = (): void => {
     claimYield({ ytAddress: position.market.ytAddress });
   };
@@ -169,6 +206,16 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
       minSyOut,
     });
   };
+
+  const handleUnwrapSy = (): void => {
+    if (position.syBalance <= BigInt(0)) return;
+    // Convert bigint to string for the unwrap function (WAD format)
+    const amountStr = formatWad(position.syBalance, 18);
+    void unwrap(amountStr);
+  };
+
+  // Can only unwrap if we have underlying address configured
+  const canUnwrapSy = position.syBalance > BigInt(0) && underlyingAddress !== '';
 
   if (!hasAnyBalance && position.claimableYield === BigInt(0)) {
     return null;
@@ -421,6 +468,43 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
           </div>
         )}
 
+        {/* Unwrap SY to Underlying */}
+        {canUnwrapSy && (
+          <div className="mt-4">
+            <h4 className="text-foreground mb-3 text-sm font-medium">Withdraw</h4>
+            <div className="border-chart-3/30 bg-chart-3/10 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-chart-3 text-sm">Withdraw {sySymbol}</div>
+                  <div className="text-muted-foreground text-xs">
+                    Convert {sySymbol} to {tokenSymbol}
+                  </div>
+                  <div className="text-foreground mt-1 font-mono text-sm">
+                    {formatWad(position.syBalance, 4)} {sySymbol} → {tokenSymbol}
+                  </div>
+                </div>
+                <Button
+                  onClick={handleUnwrapSy}
+                  disabled={isUnwrapping || unwrapSuccess}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {isUnwrapping ? 'Withdrawing...' : unwrapSuccess ? 'Withdrawn!' : 'Withdraw'}
+                </Button>
+              </div>
+              {unwrapTxStatus !== 'idle' && (
+                <div className="mt-2">
+                  <TxStatus
+                    status={unwrapTxStatus}
+                    txHash={unwrapTxHash ?? null}
+                    error={unwrapErrorMsg}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="mt-4 flex gap-2">
           <Button
@@ -480,6 +564,20 @@ function EnhancedPositionCardWrapper({
     reset: resetRedeemPt,
   } = useRedeemPtPostExpiry();
 
+  // Unwrap SY hook - only enabled if we have underlying address
+  const underlyingAddress = position.market.metadata?.underlyingAddress ?? '';
+  const {
+    unwrap,
+    isLoading: isUnwrapping,
+    status: unwrapStatus,
+    txHash: unwrapTxHash,
+    error: unwrapError,
+  } = useUnwrapSy({
+    underlyingAddress,
+    syAddress: position.market.syAddress,
+  });
+  const unwrapSuccess = unwrapStatus === 'success';
+
   // Reset states after success
   useEffect(() => {
     if (claimSuccess) {
@@ -517,6 +615,9 @@ function EnhancedPositionCardWrapper({
     return undefined;
   }, [redeemPtSuccess, resetRedeemPt]);
 
+  // Note: We intentionally don't auto-reset unwrap status like deposit form
+  // The success message stays visible until user takes another action
+
   const handleClaimYield = (): void => {
     claimYield({ ytAddress: position.market.ytAddress });
   };
@@ -549,7 +650,17 @@ function EnhancedPositionCardWrapper({
     });
   };
 
+  const handleUnwrapSy = (): void => {
+    if (position.sy.amount <= 0n) return;
+    // Convert bigint to string for the unwrap function (WAD format)
+    const amountStr = formatWad(position.sy.amount, 18);
+    void unwrap(amountStr);
+  };
+
   const isRedeeming = isRedeemingPy || isRedeemingPt || redeemPySuccess || redeemPtSuccess;
+
+  // Only show unwrap option if we have underlying address configured
+  const canUnwrapSy = position.sy.amount > 0n && underlyingAddress !== '';
 
   return (
     <EnhancedPositionCard
@@ -558,8 +669,13 @@ function EnhancedPositionCardWrapper({
       onClaimYield={handleClaimYield}
       onRedeemPtYt={handleRedeemPtYt}
       onRedeemPt={handleRedeemPt}
+      onUnwrapSy={canUnwrapSy ? handleUnwrapSy : undefined}
       isClaimingYield={isClaimingYield || claimSuccess}
       isRedeeming={isRedeeming}
+      isUnwrapping={isUnwrapping || unwrapSuccess}
+      unwrapTxStatus={unwrapStatus}
+      unwrapTxHash={unwrapTxHash}
+      unwrapError={unwrapError}
     />
   );
 }
@@ -799,6 +915,7 @@ function PortfolioContent(): ReactNode {
           <YieldEarnedCard />
           <YieldByPosition />
         </div>
+        <YtCashflowChart />
         <YieldHistory limit={10} />
       </div>
 
@@ -806,6 +923,7 @@ function PortfolioContent(): ReactNode {
       {activeLpPositions.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-foreground text-lg font-semibold">LP Analytics</h2>
+          <LpApyBreakdown />
           <div className="grid gap-4 lg:grid-cols-2">
             {activeLpPositions.map((lpPosition) => {
               const poolReserves = poolReservesByMarket.get(lpPosition.market.toLowerCase());
@@ -827,6 +945,10 @@ function PortfolioContent(): ReactNode {
       <div className="space-y-4">
         <h2 className="text-foreground text-lg font-semibold">Portfolio Value</h2>
         <PortfolioValueChart />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PositionPnlTimeline />
+          <BeatImpliedScore />
+        </div>
         <PnlBreakdown />
         <PositionValueHistory limit={10} />
       </div>
