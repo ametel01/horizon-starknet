@@ -782,10 +782,10 @@ export function TokenInputMobile({ label, token, value, onChange, balance }) {
 - [x] Stats cards with motion
 
 ### Phase 3: Pages (Week 5-6)
-- [ ] Hero section implementation
-- [ ] Analytics bento grid layout
-- [ ] Portfolio page polish
-- [ ] Trade page refinement
+- [x] Hero section implementation
+- [x] Analytics bento grid layout
+- [x] Portfolio page polish
+- [x] Trade page refinement
 
 ### Phase 4: Data Visualization (Week 7-8)
 - [ ] Yield curve chart enhancement
