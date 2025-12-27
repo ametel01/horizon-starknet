@@ -1,5 +1,12 @@
 // UI primitives - shadcn/ui components
 
+export {
+  AnimatedCurrency,
+  AnimatedNumber,
+  AnimatedPercent,
+  easings,
+  useAnimatedNumber,
+} from './AnimatedNumber';
 export { Badge, badgeVariants } from './badge';
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './Collapsible';
 export { Button, buttonVariants } from './Button';
