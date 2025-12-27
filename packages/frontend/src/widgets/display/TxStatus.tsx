@@ -38,6 +38,10 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
         status === 'error' && 'border-destructive/20 bg-destructive/10',
         className
       )}
+      // Accessibility: announce status changes to screen readers
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
@@ -69,18 +73,35 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
 
 function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'signing') {
-    return <div className="bg-chart-1 h-5 w-5 animate-pulse rounded-full" />;
+    return (
+      <div
+        className="bg-chart-1 h-5 w-5 animate-pulse rounded-full"
+        role="img"
+        aria-label="Waiting for signature"
+      />
+    );
   }
 
   if (status === 'pending') {
     return (
-      <div className="border-muted-foreground h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
+      <div
+        className="border-muted-foreground h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"
+        role="img"
+        aria-label="Transaction pending"
+      />
     );
   }
 
   if (status === 'success') {
     return (
-      <svg className="text-primary h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg
+        className="text-primary h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        role="img"
+        aria-label="Transaction successful"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
     );
@@ -93,6 +114,8 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
+        role="img"
+        aria-label="Transaction failed"
       >
         <path
           strokeLinecap="round"

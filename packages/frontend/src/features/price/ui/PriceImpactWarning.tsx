@@ -92,6 +92,9 @@ export function PriceImpactWarning({
         mounted ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
         className
       )}
+      // Accessibility: announce warning immediately to screen readers
+      role="alert"
+      aria-live="assertive"
     >
       <div className="flex items-start gap-3">
         <div
