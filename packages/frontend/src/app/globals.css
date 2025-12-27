@@ -683,8 +683,9 @@
     animation: negative-flash 0.6s ease-out;
   }
 
-  /* Reduced motion support */
+  /* Reduced motion support - comprehensive accessibility */
   @media (prefers-reduced-motion: reduce) {
+    /* Disable all entrance/exit animations */
     .animate-fade-up,
     .animate-fade-in,
     .animate-scale-in,
@@ -701,22 +702,225 @@
     .value-changed,
     .value-positive-flash,
     .value-negative-flash,
-    .skeleton-pulse {
+    .skeleton-pulse,
+    /* Micro-interaction animations */
+    .animate-shake,
+    .animate-check,
+    .animate-expand,
+    .animate-collapse,
+    .badge-bounce,
+    .tooltip-enter,
+    .tooltip-exit,
+    .switch-thumb-animate,
+    .progress-fill-animate,
+    .counter-increment {
       animation: none;
     }
 
+    /* Disable pulse effects */
+    .pulse-dot::before {
+      animation: none;
+      opacity: 0.2;
+    }
+
+    /* Disable ripple effects */
+    .ripple-container::after {
+      display: none;
+    }
+
+    /* Disable transform-based hover effects */
     .hover-lift:hover,
-    .hover-scale:hover {
+    .hover-scale:hover,
+    .hover-lift-subtle:hover,
+    .press-feedback:active,
+    .icon-flip.flipped,
+    .icon-rotate-hover:hover {
       transform: none;
     }
 
+    /* Reduce all transition durations to instant */
     .transition-micro,
     .transition-ui,
     .transition-smooth,
     .transition-reveal,
-    .transition-spring {
+    .transition-spring,
+    .icon-flip,
+    .icon-rotate-hover,
+    .input-focus-glow,
+    .magnetic-hover,
+    .text-highlight-hover {
       transition-duration: 0ms;
     }
+
+    /* Keep focus indicators visible but remove animation */
+    .input-focus-glow:focus {
+      box-shadow: 0 0 0 3px oklch(from var(--primary) l c h / 20%);
+    }
+  }
+
+  /* ============================================ */
+  /* Micro-interaction Utilities                 */
+  /* ============================================ */
+
+  /* Ripple effect container for buttons */
+  .ripple-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ripple-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, oklch(from var(--primary) l c h / 20%) 0%, transparent 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition:
+      transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.3s ease-out;
+  }
+
+  .ripple-container:active::after {
+    transform: scale(2.5);
+    opacity: 1;
+    transition:
+      transform 0s,
+      opacity 0s;
+  }
+
+  /* Icon flip animation (for toggle buttons) */
+  .icon-flip {
+    transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .icon-flip.flipped {
+    transform: rotate(180deg);
+  }
+
+  /* Icon rotate animation (for refresh, swap) */
+  .icon-rotate-hover {
+    transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .icon-rotate-hover:hover {
+    transform: rotate(180deg);
+  }
+
+  /* Pulse dot for live/active indicators */
+  .pulse-dot {
+    position: relative;
+  }
+
+  .pulse-dot::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.4;
+    animation: pulse-ring 1.5s ease-out infinite;
+  }
+
+  /* Input focus glow */
+  .input-focus-glow {
+    transition:
+      border-color 150ms,
+      box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .input-focus-glow:focus {
+    border-color: var(--primary);
+    box-shadow:
+      0 0 0 3px oklch(from var(--primary) l c h / 15%),
+      0 0 12px oklch(from var(--primary) l c h / 10%);
+  }
+
+  /* Shake animation for validation errors */
+  .animate-shake {
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  /* Success checkmark animation */
+  .animate-check {
+    animation: check-draw 0.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+
+  /* Expand/collapse animation */
+  .animate-expand {
+    animation: expand 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-collapse {
+    animation: collapse 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Subtle hover lift for interactive elements */
+  .hover-lift-subtle {
+    transition:
+      transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .hover-lift-subtle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px oklch(0 0 0 / 8%);
+  }
+
+  /* Button press feedback */
+  .press-feedback {
+    transition: transform 100ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .press-feedback:active {
+    transform: scale(0.97);
+  }
+
+  /* Magnetic hover effect (subtle pull toward cursor) */
+  .magnetic-hover {
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Text highlight on hover */
+  .text-highlight-hover {
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+    background-image: linear-gradient(transparent 60%, oklch(from var(--primary) l c h / 20%) 60%);
+    transition: background-size 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .text-highlight-hover:hover {
+    background-size: 100% 100%;
+  }
+
+  /* Badge bounce for notifications */
+  .badge-bounce {
+    animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Tooltip fade with slight translate */
+  .tooltip-enter {
+    animation: tooltip-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .tooltip-exit {
+    animation: tooltip-out 0.1s ease-out forwards;
+  }
+
+  /* Switch toggle animation */
+  .switch-thumb-animate {
+    transition:
+      transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 150ms;
+  }
+
+  /* Progress bar fill animation */
+  .progress-fill-animate {
+    transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Counter increment animation */
+  .counter-increment {
+    animation: counter-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   /* ============================================ */
@@ -975,6 +1179,143 @@
   100% {
     color: inherit;
     text-shadow: none;
+  }
+}
+
+/* Micro-interaction keyframes */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes check-draw {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes expand {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: scaleY(0.95);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes collapse {
+  from {
+    opacity: 1;
+    max-height: 500px;
+    transform: scaleY(1);
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    transform: scaleY(0.95);
+  }
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tooltip-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+}
+
+@keyframes counter-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes number-roll-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes number-roll-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
