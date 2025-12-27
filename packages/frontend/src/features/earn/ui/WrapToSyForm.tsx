@@ -188,11 +188,15 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
 
           {/* Actions */}
           {status === 'success' ? (
-            <Button onClick={handleReset} className="w-full">
+            <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
               Deposit More
             </Button>
           ) : (
-            <Button onClick={handleWrap} disabled={buttonDisabled} className="w-full">
+            <Button
+              onClick={handleWrap}
+              disabled={buttonDisabled}
+              className="h-12 w-full text-base font-medium"
+            >
               {buttonText}
             </Button>
           )}

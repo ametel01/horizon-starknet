@@ -301,11 +301,15 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
 
           {/* Actions */}
           {status === 'success' ? (
-            <Button onClick={handleReset} className="w-full">
+            <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
               Withdraw More
             </Button>
           ) : (
-            <Button onClick={handleWithdraw} disabled={buttonDisabled} className="w-full">
+            <Button
+              onClick={handleWithdraw}
+              disabled={buttonDisabled}
+              className="h-12 w-full text-base font-medium"
+            >
               {buttonText}
             </Button>
           )}

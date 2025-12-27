@@ -272,7 +272,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
           <Button
             onClick={handleAddLiquidity}
             disabled={!canAddLiquidity || isAdding}
-            className="w-full"
+            className="h-12 w-full text-base font-medium"
           >
             {isAdding
               ? 'Adding Liquidity...'

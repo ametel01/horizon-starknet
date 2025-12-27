@@ -82,9 +82,11 @@ export default function TradeError({ error, reset }: TradeErrorProps): React.Rea
               </div>
             ) : null}
           </CardContent>
-          <CardFooter className="gap-2">
-            <Button onClick={reset}>Retry</Button>
-            <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
+          <CardFooter className="gap-3">
+            <Button size="lg" onClick={reset}>
+              Retry
+            </Button>
+            <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/" />}>
               Go to Dashboard
             </Button>
           </CardFooter>

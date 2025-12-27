@@ -15,10 +15,10 @@ export default function NotFound(): React.ReactNode {
         </p>
       </div>
       <div className="flex gap-3">
-        <Button nativeButton={false} render={<Link href="/" />}>
+        <Button size="lg" nativeButton={false} render={<Link href="/" />}>
           Go Home
         </Button>
-        <Button nativeButton={false} variant="outline" render={<Link href="/trade" />}>
+        <Button size="lg" nativeButton={false} variant="outline" render={<Link href="/trade" />}>
           Start Trading
         </Button>
       </div>

@@ -203,11 +203,15 @@ export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): Reac
 
           {/* Actions */}
           {status === 'success' ? (
-            <Button onClick={handleReset} className="w-full">
+            <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
               Deposit More
             </Button>
           ) : (
-            <Button onClick={handleDeposit} disabled={buttonDisabled} className="w-full">
+            <Button
+              onClick={handleDeposit}
+              disabled={buttonDisabled}
+              className="h-12 w-full text-base font-medium"
+            >
               {buttonText}
             </Button>
           )}

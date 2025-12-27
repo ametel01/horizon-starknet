@@ -262,7 +262,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
           <Button
             onClick={handleRemoveLiquidity}
             disabled={!canRemoveLiquidity || isRemoving}
-            className="w-full"
+            className="h-12 w-full text-base font-medium"
           >
             {isRemoving
               ? 'Removing Liquidity...'

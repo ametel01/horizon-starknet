@@ -61,9 +61,12 @@ export default function GlobalError({ error, reset }: GlobalErrorProps): React.R
             </div>
           ) : null}
         </CardContent>
-        <CardFooter className="gap-2">
-          <Button onClick={reset}>Try Again</Button>
+        <CardFooter className="gap-3">
+          <Button size="lg" onClick={reset}>
+            Try Again
+          </Button>
           <Button
+            size="lg"
             variant="outline"
             onClick={() => {
               window.location.href = '/';

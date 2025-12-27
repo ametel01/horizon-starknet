@@ -71,10 +71,16 @@ export function HeroSection(): ReactNode {
           )}
           style={{ animationDelay: '200ms' }}
         >
-          <Button nativeButton={false} render={<Link href="/mint" />} className="min-w-[160px]">
+          <Button
+            size="lg"
+            nativeButton={false}
+            render={<Link href="/mint" />}
+            className="min-w-[160px]"
+          >
             {isSimple ? 'Start Earning' : 'Mint PT + YT'}
           </Button>
           <Button
+            size="lg"
             nativeButton={false}
             render={<Link href="/trade" />}
             variant="outline"
