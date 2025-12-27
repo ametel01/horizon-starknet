@@ -30,6 +30,9 @@ interface UseWrapToSyReturn {
   error: Error | null;
   isLoading: boolean;
   reset: () => void;
+
+  // For gas estimation
+  buildWrapCalls: (amountWad: bigint) => Call[];
 }
 
 export function useWrapToSy({
@@ -137,6 +140,7 @@ export function useWrapToSy({
       error,
       isLoading,
       reset,
+      buildWrapCalls,
     }),
     [
       underlyingBalance,
@@ -150,6 +154,7 @@ export function useWrapToSy({
       error,
       isLoading,
       reset,
+      buildWrapCalls,
     ]
   );
 }
