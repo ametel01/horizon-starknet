@@ -145,7 +145,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
         <div className="space-y-4">
           {/* LP Token Input */}
           <TokenInput
-            label={`${lpSymbol} Tokens to Remove`}
+            label="LP to Remove"
             tokenAddress={market.address}
             tokenSymbol={lpSymbol}
             value={lpAmount}

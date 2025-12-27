@@ -179,7 +179,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
 
           {/* SY Input */}
           <TokenInput
-            label={`${sySymbol} Amount`}
+            label="SY Amount"
             tokenAddress={market.syAddress}
             tokenSymbol={sySymbol}
             value={syAmount}
@@ -189,7 +189,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
 
           {/* PT Input */}
           <TokenInput
-            label={`${ptSymbol} Amount`}
+            label="PT Amount"
             tokenAddress={market.ptAddress}
             tokenSymbol={ptSymbol}
             value={ptAmount}
