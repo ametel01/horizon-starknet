@@ -1,25 +1,26 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
+import { Activity, Calendar, CircleDot, Clock, Coins, Layers, TrendingUp } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
-  ScatterChart,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  ReferenceLine,
+  ResponsiveContainer,
   Scatter,
+  ScatterChart,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Legend,
-  LineChart,
-  Line,
 } from 'recharts';
 
 import { useYieldCurve, usePtPriceHistory, type YieldCurveMarket } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
+import { Badge } from '@shared/ui/badge';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Color palette for different underlying assets
@@ -96,24 +97,44 @@ function CustomTooltip({
   const { market } = data;
 
   return (
-    <div className="bg-popover text-popover-foreground rounded-lg border p-3 shadow-md">
-      <div className="mb-2 font-medium">{market.underlyingSymbol} Market</div>
-      <div className="space-y-1 text-sm">
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Implied APY:</span>
-          <span className="text-primary font-medium">{formatApy(market.impliedApyPercent)}</span>
+    <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
+      <div className="mb-2 flex items-center gap-2">
+        <div
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: getUnderlyingColor(market.underlyingSymbol) }}
+        />
+        <span className="font-semibold">{market.underlyingSymbol} Market</span>
+      </div>
+      <div className="space-y-1.5 text-sm">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <TrendingUp className="h-3 w-3" />
+            Implied APY
+          </span>
+          <span className="text-primary font-mono font-medium">
+            {formatApy(market.impliedApyPercent)}
+          </span>
         </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Time to Expiry:</span>
-          <span>{formatTimeToExpiry(market.timeToExpiryYears)}</span>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <Clock className="h-3 w-3" />
+            Time Left
+          </span>
+          <span className="font-mono">{formatTimeToExpiry(market.timeToExpiryYears)}</span>
         </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Days Left:</span>
-          <span>{Math.round(market.timeToExpiryDays)} days</span>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <Calendar className="h-3 w-3" />
+            Days
+          </span>
+          <span className="font-mono">{Math.round(market.timeToExpiryDays)}</span>
         </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">PT Price:</span>
-          <span>{market.ptPriceInSy.toFixed(4)}</span>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <Coins className="h-3 w-3" />
+            PT Price
+          </span>
+          <span className="font-mono">{market.ptPriceInSy.toFixed(4)} SY</span>
         </div>
       </div>
     </div>
@@ -136,11 +157,19 @@ function ApyHistoryTooltip({
   if (!data) return null;
 
   return (
-    <div className="bg-popover text-popover-foreground rounded-lg border p-3 shadow-md">
-      <div className="text-muted-foreground mb-1 text-xs">{data.date}</div>
-      <div className="flex justify-between gap-4 text-sm">
-        <span className="text-muted-foreground">Implied APY:</span>
-        <span className="text-primary font-medium">{formatApy(data.impliedApyPercent)}</span>
+    <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
+      <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs">
+        <Calendar className="h-3 w-3" />
+        {data.date}
+      </div>
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <span className="text-muted-foreground flex items-center gap-1.5">
+          <TrendingUp className="h-3 w-3" />
+          Implied APY
+        </span>
+        <span className="text-primary font-mono font-medium">
+          {formatApy(data.impliedApyPercent)}
+        </span>
       </div>
     </div>
   );
@@ -161,8 +190,13 @@ export function YieldCurveChart({
   underlyings,
   showExpired = false,
 }: YieldCurveChartProps): ReactNode {
+  const [mounted, setMounted] = useState(false);
   const { markets, isLoading, isError } = useYieldCurve();
   const { markets: dashboardMarkets } = useDashboardMarkets();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Build a map of market address to symbol from dashboard markets (static config)
   const addressToSymbol = useMemo(() => {
@@ -242,39 +276,43 @@ export function YieldCurveChart({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="w-full" style={{ height }} />
-        </CardContent>
-      </Card>
+      <ChartSkeleton
+        className={className}
+        height={height}
+        chartType="scatter"
+        showHeader
+        showFooter
+      />
     );
   }
 
   // Error state
   if (isError) {
     return (
-      <Card className={cn('border-destructive/50', className)}>
-        <CardContent className="py-8 text-center">
+      <div
+        className={cn('border-destructive/50 bg-card overflow-hidden rounded-xl border', className)}
+      >
+        <div className="py-8 text-center">
+          <Activity className="text-destructive mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-destructive text-sm">Failed to load yield curve data</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   // Empty state
   if (allUnderlyings.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Yield Curve</CardTitle>
-        </CardHeader>
-        <CardContent className="py-8 text-center">
+      <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
+        <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
+          <Activity className="text-primary h-4 w-4" />
+          <h3 className="text-foreground text-sm font-semibold">Yield Curve</h3>
+        </div>
+        <div className="py-8 text-center">
+          <CircleDot className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No active markets available</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -293,22 +331,46 @@ export function YieldCurveChart({
     const maxApyValue = Math.max(...apyChartData.map((d) => d.impliedApyPercent), 0);
 
     return (
-      <Card className={className}>
-        <CardHeader>
-          <div>
-            <CardTitle>Implied APY History</CardTitle>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {singleMarket.underlyingSymbol} market -{' '}
-              {String(Math.round(singleMarket.timeToExpiryDays))} days to maturity
-            </p>
+      <div
+        className={cn(
+          'border-border/50 bg-card overflow-hidden rounded-xl border',
+          'translate-y-2 opacity-0',
+          mounted && 'translate-y-0 opacity-100',
+          'transition-all duration-500',
+          className
+        )}
+      >
+        {/* Header */}
+        <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="text-primary h-4 w-4" />
+            <h3 className="text-foreground text-sm font-semibold">Implied APY History</h3>
+            <Badge variant="live" className="text-[10px]">
+              Live
+            </Badge>
           </div>
-        </CardHeader>
-        <CardContent>
+          <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: getUnderlyingColor(singleMarket.underlyingSymbol) }}
+            />
+            {singleMarket.underlyingSymbol} · {Math.round(singleMarket.timeToExpiryDays)}d
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="p-4">
           {isApyHistoryLoading ? (
-            <Skeleton className="w-full" style={{ height }} />
+            <Skeleton className="w-full rounded-lg" style={{ height }} />
           ) : hasHistoricalData ? (
             <ResponsiveContainer width="100%" height={height}>
-              <LineChart data={apyChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+              <AreaChart data={apyChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                <defs>
+                  <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                 <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis
@@ -319,70 +381,105 @@ export function YieldCurveChart({
                   axisLine={false}
                 />
                 <Tooltip content={<ApyHistoryTooltip />} />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="impliedApyPercent"
                   stroke="var(--primary)"
                   strokeWidth={2}
-                  dot={false}
+                  fill="url(#apyGradient)"
                   name="Implied APY"
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex h-[200px] items-center justify-center">
-              <p className="text-muted-foreground text-sm">
-                Historical data is building up. Check back soon for APY trends.
-              </p>
+              <div className="text-center">
+                <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+                <p className="text-muted-foreground text-sm">
+                  Historical data is building up. Check back soon for APY trends.
+                </p>
+              </div>
             </div>
           )}
 
           {/* Summary stats */}
-          <div className="mt-4 grid grid-cols-3 gap-4 border-t pt-4 text-sm">
-            <div>
-              <div className="text-muted-foreground text-xs">Current APY</div>
-              <div className="text-primary font-medium">
+          <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
+            <div className="text-center">
+              <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+                <TrendingUp className="h-3 w-3" />
+                Current APY
+              </div>
+              <div className="text-primary font-mono text-lg font-semibold">
                 {formatApy(singleMarket.impliedApyPercent)}
               </div>
             </div>
-            <div>
-              <div className="text-muted-foreground text-xs">PT Price</div>
-              <div className="text-foreground font-medium">
-                {singleMarket.ptPriceInSy.toFixed(4)} SY
+            <div className="text-center">
+              <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+                <Coins className="h-3 w-3" />
+                PT Price
+              </div>
+              <div className="text-foreground font-mono text-lg font-semibold">
+                {singleMarket.ptPriceInSy.toFixed(4)}
               </div>
             </div>
-            <div>
-              <div className="text-muted-foreground text-xs">Time to Maturity</div>
-              <div className="text-foreground font-medium">
+            <div className="text-center">
+              <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+                <Clock className="h-3 w-3" />
+                Maturity
+              </div>
+              <div className="text-foreground font-mono text-lg font-semibold">
                 {formatTimeToExpiry(singleMarket.timeToExpiryYears)}
               </div>
             </div>
           </div>
 
           {/* Info note */}
-          <div className="bg-muted/50 mt-4 rounded-lg p-3">
+          <div className="bg-muted/30 mt-4 flex items-start gap-2 rounded-lg p-3">
+            <Activity className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
             <p className="text-muted-foreground text-xs">
-              <strong>Note:</strong> Term structure visualization requires multiple markets with
-              different maturities. Currently showing implied APY history for the single active
-              market.
+              Term structure visualization requires multiple markets. Showing APY history for the
+              single active market.
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div>
-          <CardTitle>Term Structure</CardTitle>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Implied APY vs time to maturity across all markets
-          </p>
+    <div
+      className={cn(
+        'border-border/50 bg-card overflow-hidden rounded-xl border',
+        'translate-y-2 opacity-0',
+        mounted && 'translate-y-0 opacity-100',
+        'transition-all duration-500',
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Activity className="text-primary h-4 w-4" />
+          <h3 className="text-foreground text-sm font-semibold">Term Structure</h3>
+          <Badge variant="live" className="text-[10px]">
+            Live
+          </Badge>
         </div>
-      </CardHeader>
-      <CardContent>
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+          {allUnderlyings.map((symbol) => (
+            <span key={symbol} className="flex items-center gap-1">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: getUnderlyingColor(symbol) }}
+              />
+              {symbol}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="p-4">
         <ResponsiveContainer width="100%" height={height}>
           <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -443,18 +540,31 @@ export function YieldCurveChart({
         </ResponsiveContainer>
 
         {/* Summary stats */}
-        <div className="mt-4 grid grid-cols-3 gap-4 border-t pt-4 text-sm">
-          <div>
-            <div className="text-muted-foreground text-xs">Active Markets</div>
-            <div className="text-foreground font-medium">{enhancedActiveMarkets.length}</div>
+        <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <CircleDot className="h-3 w-3" />
+              Active Markets
+            </div>
+            <div className="text-foreground font-mono text-lg font-semibold">
+              {enhancedActiveMarkets.length}
+            </div>
           </div>
-          <div>
-            <div className="text-muted-foreground text-xs">Underlyings</div>
-            <div className="text-foreground font-medium">{allUnderlyings.length}</div>
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <Layers className="h-3 w-3" />
+              Underlyings
+            </div>
+            <div className="text-foreground font-mono text-lg font-semibold">
+              {allUnderlyings.length}
+            </div>
           </div>
-          <div>
-            <div className="text-muted-foreground text-xs">Avg APY</div>
-            <div className="text-primary font-medium">
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <TrendingUp className="h-3 w-3" />
+              Avg APY
+            </div>
+            <div className="text-primary font-mono text-lg font-semibold">
               {formatApy(
                 enhancedActiveMarkets.length > 0
                   ? enhancedActiveMarkets.reduce((sum, m) => sum + m.impliedApyPercent, 0) /
@@ -464,8 +574,8 @@ export function YieldCurveChart({
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

@@ -5,10 +5,19 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import type { MarketData } from '@entities/market';
 import { useMint, TokenInput, TokenOutput } from '@features/mint';
 import { useAccount } from '@features/wallet';
-import { cn } from '@shared/lib/utils';
+import { useEstimateFee } from '@shared/hooks';
 import { toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import {
+  FormActions,
+  FormDivider,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormRow,
+} from '@shared/ui/FormLayout';
+import { GasEstimate } from '@shared/ui/GasEstimate';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -21,7 +30,17 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
   const { isConnected } = useAccount();
   const [amountSy, setAmountSy] = useState('');
 
-  const { syBalance, syBalanceLoading, mint, status, txHash, error, isLoading, reset } = useMint({
+  const {
+    syBalance,
+    syBalanceLoading,
+    mint,
+    status,
+    txHash,
+    error,
+    isLoading,
+    reset,
+    buildMintCalls,
+  } = useMint({
     syAddress: market.syAddress,
     ytAddress: market.ytAddress,
   });
@@ -56,6 +75,22 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
 
     return null;
   }, [amountSy, syBalance]);
+
+  // Build calls for gas estimation (Jakob's Law - users expect to see fees)
+  const mintCalls = useMemo(() => {
+    if (!amountSy || amountSy === '0' || validationError) return null;
+    try {
+      const amountWad = toWad(amountSy);
+      // Default slippage: 0.5%
+      const minPyOut = (amountWad * BigInt(995)) / BigInt(1000);
+      return buildMintCalls(amountWad, minPyOut);
+    } catch {
+      return null;
+    }
+  }, [amountSy, validationError, buildMintCalls]);
+
+  // Estimate gas fee
+  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(mintCalls);
 
   // Handle mint
   const handleMint = useCallback(async () => {
@@ -95,89 +130,87 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
   const ytSymbol = `YT-${tokenSymbol}`;
 
   return (
-    <Card className={cn('flex flex-col', className)}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Mint PT + YT</CardTitle>
-          <ExpiryBadge expiryTimestamp={market.expiry} />
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Split your deposit into Principal Token and Yield Token
-        </p>
-      </CardHeader>
+    <FormLayout gradient="primary" className={className}>
+      {/* Header */}
+      <FormHeader
+        title="Mint PT + YT"
+        description="Split your deposit into Principal Token and Yield Token"
+        action={<ExpiryBadge expiryTimestamp={market.expiry} />}
+      />
 
-      <CardContent className="flex flex-1 flex-col justify-between gap-4">
-        {/* Top Section - Inputs */}
-        <div className="space-y-4">
-          {/* Input */}
-          <TokenInput
-            label="You use"
-            tokenAddress={market.syAddress}
-            tokenSymbol={sySymbol}
-            value={amountSy}
-            onChange={setAmountSy}
-            disabled={isLoading}
-            error={validationError ?? undefined}
-          />
+      {/* Input Section */}
+      <FormInputSection>
+        <TokenInput
+          label="You use"
+          tokenAddress={market.syAddress}
+          tokenSymbol={sySymbol}
+          value={amountSy}
+          onChange={setAmountSy}
+          disabled={isLoading}
+          error={validationError ?? undefined}
+        />
+      </FormInputSection>
 
-          {/* Arrow */}
-          <div className="flex justify-center">
-            <Button variant="ghost" size="icon" className="rounded-full" disabled>
-              <svg
-                className="text-muted-foreground h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                />
-              </svg>
-            </Button>
-          </div>
-
-          {/* Outputs */}
-          <div className="space-y-2">
-            <TokenOutput
-              label="You receive"
-              amount={outputAmount}
-              tokenSymbol={ptSymbol}
-              isLoading={syBalanceLoading}
+      {/* Divider */}
+      <FormDivider>
+        <Button variant="ghost" size="icon" className="rounded-full" disabled>
+          <svg
+            className="text-muted-foreground h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
             />
-            <TokenOutput label="You receive" amount={outputAmount} tokenSymbol={ytSymbol} />
-          </div>
-        </div>
+          </svg>
+        </Button>
+      </FormDivider>
 
-        {/* Bottom Section - Info & Actions */}
-        <div className="space-y-4">
-          {/* Info */}
-          <Card size="sm" className="bg-muted">
-            <CardContent className="p-3 text-sm">
-              <div className="text-muted-foreground flex justify-between">
-                <span>Exchange Rate</span>
-                <span className="text-foreground">1 : 1 PT + 1 YT</span>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Outputs */}
+      <div className="space-y-2">
+        <TokenOutput
+          label="You receive"
+          amount={outputAmount}
+          tokenSymbol={ptSymbol}
+          isLoading={syBalanceLoading}
+        />
+        <TokenOutput label="You receive" amount={outputAmount} tokenSymbol={ytSymbol} />
+      </div>
 
-          {/* Transaction Status */}
-          {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+      {/* Info Section */}
+      <FormInfoSection>
+        <FormRow label="Exchange Rate" value="1 : 1 PT + 1 YT" />
+        <FormRow
+          label="Estimated Gas"
+          value={
+            <GasEstimate formattedFee={formattedFee} isLoading={isEstimatingFee} error={feeError} />
+          }
+        />
+      </FormInfoSection>
 
-          {/* Actions */}
-          {status === 'success' ? (
-            <Button onClick={handleReset} className="w-full">
-              Mint More
-            </Button>
-          ) : (
-            <Button onClick={handleMint} disabled={buttonDisabled} className="w-full">
-              {buttonText}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Transaction Status */}
+      {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+
+      {/* Actions */}
+      <FormActions>
+        {status === 'success' ? (
+          <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
+            Mint More
+          </Button>
+        ) : (
+          <Button
+            onClick={handleMint}
+            disabled={buttonDisabled}
+            className="h-12 w-full text-base font-medium"
+          >
+            {buttonText}
+          </Button>
+        )}
+      </FormActions>
+    </FormLayout>
   );
 }

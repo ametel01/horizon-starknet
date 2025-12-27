@@ -1,6 +1,15 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
+import {
+  Activity,
+  ArrowLeftRight,
+  BarChart3,
+  Calendar,
+  Layers,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { useDashboardMarkets } from '@features/markets';
@@ -8,8 +17,7 @@ import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/p
 import { useProtocolVolume } from '@features/protocol-status';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
+import { ChartSkeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -39,12 +47,116 @@ interface ChartDataPoint {
 }
 
 /**
+ * Custom tooltip for volume chart
+ */
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: ChartDataPoint }[];
+}): ReactNode {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
+      <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs">
+        <Calendar className="h-3 w-3" />
+        {data.displayDate}
+      </div>
+      <div className="space-y-1.5 text-sm">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <BarChart3 className="h-3 w-3" />
+            Volume
+          </span>
+          <span className="text-primary font-mono font-medium">
+            {formatUsdCompact(data.volumeUsd)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <ArrowLeftRight className="h-3 w-3" />
+            Swaps
+          </span>
+          <span className="font-mono">{data.swapCount}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Custom tooltip for stacked volume chart
+ */
+function StackedTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: {
+    payload: { displayDate: string; syVolumeUsd: number; ptVolumeUsd: number; swapCount: number };
+  }[];
+}): ReactNode {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
+      <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs">
+        <Calendar className="h-3 w-3" />
+        {data.displayDate}
+      </div>
+      <div className="space-y-1.5 text-sm">
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5">
+            <span
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: 'var(--chart-1)' }}
+            />
+            <span className="text-muted-foreground">SY Volume</span>
+          </span>
+          <span className="font-mono">{formatUsdCompact(data.syVolumeUsd)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5">
+            <span
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: 'var(--chart-3)' }}
+            />
+            <span className="text-muted-foreground">PT Volume</span>
+          </span>
+          <span className="font-mono">{formatUsdCompact(data.ptVolumeUsd)}</span>
+        </div>
+        <div className="border-border/50 flex items-center justify-between gap-4 border-t pt-1.5">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <ArrowLeftRight className="h-3 w-3" />
+            Swaps
+          </span>
+          <span className="font-mono">{data.swapCount}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Bar chart showing daily trading volume over time.
  * Displays volume in USD using token prices.
  */
 export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartProps): ReactNode {
+  const [mounted, setMounted] = useState(false);
   const { data: volumeData, isLoading: volumeLoading, isError } = useProtocolVolume({ days });
   const { markets } = useDashboardMarkets();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get token addresses for pricing
   const tokenAddresses = useMemo(() => {
@@ -128,92 +240,143 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
     return data;
   }, [volumeData, avgPrice]);
 
-  // Calculate current volume for display
-  const currentVolume = useMemo(() => {
-    if (!volumeData) return 0;
-    const vol24h = Number(fromWad(volumeData.total24h.totalVolume));
-    return vol24h * avgPrice;
+  // Calculate stats for display
+  const stats = useMemo(() => {
+    if (!volumeData) {
+      return { vol24h: 0, vol7d: 0, swaps24h: 0, uniqueUsers: 0 };
+    }
+    return {
+      vol24h: Number(fromWad(volumeData.total24h.totalVolume)) * avgPrice,
+      vol7d: Number(fromWad(volumeData.total7d.totalVolume)) * avgPrice,
+      swaps24h: volumeData.total24h.swapCount,
+      uniqueUsers: volumeData.total24h.uniqueSwappers,
+    };
   }, [volumeData, avgPrice]);
 
+  const isLoading = volumeLoading || pricesLoading;
+
   // Loading state
-  if (volumeLoading || pricesLoading) {
+  if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="w-full" style={{ height }} />
-        </CardContent>
-      </Card>
+      <ChartSkeleton className={className} height={height} chartType="bar" showHeader showFooter />
     );
   }
 
   // Error state
   if (isError) {
     return (
-      <Card className={cn('border-destructive/50', className)}>
-        <CardContent className="py-8 text-center">
+      <div
+        className={cn('border-destructive/50 bg-card overflow-hidden rounded-xl border', className)}
+      >
+        <div className="py-8 text-center">
+          <BarChart3 className="text-destructive mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-destructive text-sm">Failed to load volume data</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   // Empty state
   if (chartData.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Trading Volume</CardTitle>
-        </CardHeader>
-        <CardContent className="py-8 text-center">
+      <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
+        <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
+          <BarChart3 className="text-primary h-4 w-4" />
+          <h3 className="text-foreground text-sm font-semibold">Trading Volume</h3>
+        </div>
+        <div className="py-8 text-center">
+          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No volume data available</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
+  const maxVolume = Math.max(...chartData.map((d) => d.volumeUsd));
+
   return (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Trading Volume</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            24h:{' '}
-            <span className="text-foreground font-medium">{formatUsdCompact(currentVolume)}</span>
-          </p>
+    <div
+      className={cn(
+        'border-border/50 bg-card overflow-hidden rounded-xl border',
+        'translate-y-2 opacity-0',
+        mounted && 'translate-y-0 opacity-100',
+        'transition-all duration-500',
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="text-primary h-4 w-4" />
+          <h3 className="text-foreground text-sm font-semibold">Trading Volume</h3>
         </div>
-      </CardHeader>
-      <CardContent>
+        <div className="text-primary font-mono text-sm font-semibold">
+          {formatUsdCompact(stats.vol24h)}
+          <span className="text-muted-foreground ml-1 font-normal">24h</span>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="p-4">
         <ResponsiveContainer width="100%" height={height}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
             <XAxis dataKey="displayDate" fontSize={12} tickLine={false} axisLine={false} />
             <YAxis
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              domain={[0, maxVolume * 1.1]}
               tickFormatter={(value: number) => {
                 if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
                 if (value >= 1000) return `$${(value / 1000).toFixed(1)}K`;
                 return `$${value.toFixed(0)}`;
               }}
             />
-            <Tooltip
-              contentStyle={{ borderRadius: '8px' }}
-              cursor={false}
-              formatter={(value: number | undefined) => [
-                `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                'Volume',
-              ]}
-              labelFormatter={(label: string) => label}
-            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} />
             <Bar dataKey="volumeUsd" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
           </BarChart>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+
+        {/* Summary stats */}
+        <div className="border-border/50 mt-4 grid grid-cols-4 gap-4 border-t pt-4">
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <TrendingUp className="h-3 w-3" />
+              24h Vol
+            </div>
+            <div className="text-foreground font-mono text-sm font-semibold">
+              {formatUsdCompact(stats.vol24h)}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <BarChart3 className="h-3 w-3" />
+              7d Vol
+            </div>
+            <div className="text-foreground font-mono text-sm font-semibold">
+              {formatUsdCompact(stats.vol7d)}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <ArrowLeftRight className="h-3 w-3" />
+              24h Swaps
+            </div>
+            <div className="text-foreground font-mono text-sm font-semibold">{stats.swaps24h}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+              <Users className="h-3 w-3" />
+              Traders
+            </div>
+            <div className="text-foreground font-mono text-sm font-semibold">
+              {stats.uniqueUsers}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -231,8 +394,13 @@ export function VolumeStackedChart({
   height = 300,
   days = 30,
 }: VolumeStackedChartProps): ReactNode {
+  const [mounted, setMounted] = useState(false);
   const { data: volumeData, isLoading: volumeLoading, isError } = useProtocolVolume({ days });
   const { markets } = useDashboardMarkets();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get token addresses for pricing
   const tokenAddresses = useMemo(() => {
@@ -278,52 +446,89 @@ export function VolumeStackedChart({
     });
   }, [volumeData, avgPrice]);
 
-  if (volumeLoading || pricesLoading) {
+  // Calculate totals for stats
+  const totals = useMemo(() => {
+    if (!volumeData) return { syTotal: 0, ptTotal: 0 };
+    const sy = Number(fromWad(volumeData.total7d.syVolume)) * avgPrice;
+    const pt = Number(fromWad(volumeData.total7d.ptVolume)) * avgPrice;
+    return { syTotal: sy, ptTotal: pt };
+  }, [volumeData, avgPrice]);
+
+  const isLoading = volumeLoading || pricesLoading;
+
+  if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="w-full" style={{ height }} />
-        </CardContent>
-      </Card>
+      <ChartSkeleton
+        className={className}
+        height={height}
+        chartType="bar"
+        showHeader
+        showFooter={false}
+      />
     );
   }
 
   if (isError) {
     return (
-      <Card className={cn('border-destructive/50', className)}>
-        <CardContent className="py-8 text-center">
+      <div
+        className={cn('border-destructive/50 bg-card overflow-hidden rounded-xl border', className)}
+      >
+        <div className="py-8 text-center">
+          <BarChart3 className="text-destructive mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-destructive text-sm">Failed to load volume data</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (chartData.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Volume by Token Type</CardTitle>
-        </CardHeader>
-        <CardContent className="py-8 text-center">
+      <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
+        <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
+          <Layers className="text-primary h-4 w-4" />
+          <h3 className="text-foreground text-sm font-semibold">Volume by Token Type</h3>
+        </div>
+        <div className="py-8 text-center">
+          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No volume data available</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Volume by Token Type</CardTitle>
-        <p className="text-muted-foreground text-sm">SY and PT trading volume breakdown</p>
-      </CardHeader>
-      <CardContent>
+    <div
+      className={cn(
+        'border-border/50 bg-card overflow-hidden rounded-xl border',
+        'translate-y-2 opacity-0',
+        mounted && 'translate-y-0 opacity-100',
+        'transition-all duration-500',
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Layers className="text-primary h-4 w-4" />
+          <h3 className="text-foreground text-sm font-semibold">Volume by Token Type</h3>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
+            SY
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
+            PT
+          </span>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="p-4">
         <ResponsiveContainer width="100%" height={height}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
             <XAxis dataKey="displayDate" fontSize={12} tickLine={false} axisLine={false} />
             <YAxis
               fontSize={12}
@@ -335,18 +540,7 @@ export function VolumeStackedChart({
                 return `$${value.toFixed(0)}`;
               }}
             />
-            <Tooltip
-              contentStyle={{ borderRadius: '8px' }}
-              cursor={false}
-              formatter={(value: number | undefined, name: string | undefined) => {
-                const label = name === 'syVolumeUsd' ? 'SY Volume' : 'PT Volume';
-                return [
-                  `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                  label,
-                ];
-              }}
-              labelFormatter={(label: string) => label}
-            />
+            <Tooltip content={<StackedTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} />
             <Bar
               dataKey="syVolumeUsd"
               stackId="volume"
@@ -366,18 +560,28 @@ export function VolumeStackedChart({
           </BarChart>
         </ResponsiveContainer>
 
-        {/* Legend */}
-        <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
-            <span className="text-muted-foreground">SY Volume</span>
+        {/* Summary stats */}
+        <div className="border-border/50 mt-4 grid grid-cols-2 gap-4 border-t pt-4">
+          <div className="text-center">
+            <div className="mb-1 flex items-center justify-center gap-1 text-xs">
+              <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
+              <span className="text-muted-foreground">SY Volume (7d)</span>
+            </div>
+            <div className="text-foreground font-mono text-lg font-semibold">
+              {formatUsdCompact(totals.syTotal)}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
-            <span className="text-muted-foreground">PT Volume</span>
+          <div className="text-center">
+            <div className="mb-1 flex items-center justify-center gap-1 text-xs">
+              <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
+              <span className="text-muted-foreground">PT Volume (7d)</span>
+            </div>
+            <div className="text-foreground font-mono text-lg font-semibold">
+              {formatUsdCompact(totals.ptTotal)}
+            </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -85,11 +85,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 </div>
               ) : null}
             </CardContent>
-            <CardFooter className="gap-2">
-              <Button variant="secondary" onClick={this.handleReset}>
+            <CardFooter className="gap-3">
+              <Button size="lg" variant="secondary" onClick={this.handleReset}>
                 Try Again
               </Button>
-              <Button variant="outline" onClick={this.handleReload}>
+              <Button size="lg" variant="outline" onClick={this.handleReload}>
                 Reload Page
               </Button>
             </CardFooter>
@@ -135,6 +135,7 @@ export function PageErrorBoundary({ children }: PageErrorBoundaryProps): ReactNo
           </div>
           <div className="flex gap-3">
             <Button
+              size="lg"
               onClick={() => {
                 window.history.back();
               }}
@@ -142,6 +143,7 @@ export function PageErrorBoundary({ children }: PageErrorBoundaryProps): ReactNo
               Go Back
             </Button>
             <Button
+              size="lg"
               variant="outline"
               onClick={() => {
                 window.location.reload();

@@ -7,10 +7,19 @@ import { TokenInput, TokenOutput } from '@features/mint';
 import { useUnwrapSy } from '@features/redeem';
 import { useAccount } from '@features/wallet';
 import { useUnderlyingAddress } from '@features/yield';
-import { cn } from '@shared/lib/utils';
+import { useEstimateFee } from '@shared/hooks';
 import { toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import {
+  FormActions,
+  FormDivider,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormRow,
+} from '@shared/ui/FormLayout';
+import { GasEstimate } from '@shared/ui/GasEstimate';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -28,11 +37,20 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
     market.syAddress
   );
 
-  const { syBalance, syBalanceLoading, unwrap, status, txHash, error, isLoading, reset } =
-    useUnwrapSy({
-      underlyingAddress: underlyingAddress ?? '',
-      syAddress: market.syAddress,
-    });
+  const {
+    syBalance,
+    syBalanceLoading,
+    unwrap,
+    buildUnwrapCalls,
+    status,
+    txHash,
+    error,
+    isLoading,
+    reset,
+  } = useUnwrapSy({
+    underlyingAddress: underlyingAddress ?? '',
+    syAddress: market.syAddress,
+  });
 
   // Calculate output amount (1:1 ratio for SY)
   const outputAmount = useMemo(() => {
@@ -64,6 +82,20 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
 
     return null;
   }, [amount, syBalance]);
+
+  // Build calls for gas estimation
+  const unwrapCalls = useMemo(() => {
+    if (!amount || amount === '0' || validationError) return null;
+    try {
+      const amountWad = toWad(amount);
+      return buildUnwrapCalls(amountWad);
+    } catch {
+      return null;
+    }
+  }, [amount, validationError, buildUnwrapCalls]);
+
+  // Estimate gas fee
+  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(unwrapCalls);
 
   // Handle unwrap
   const handleUnwrap = useCallback(async () => {
@@ -110,86 +142,90 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
   const tokenName = market.metadata?.yieldTokenName ?? 'tokens';
 
   return (
-    <Card className={cn('flex flex-col', className)}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Withdraw {underlyingSymbol}</CardTitle>
-          <ExpiryBadge expiryTimestamp={market.expiry} />
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Withdraw your deposited {tokenName} from the protocol
-        </p>
-      </CardHeader>
+    <FormLayout gradient="primary" className={className}>
+      {/* Header */}
+      <FormHeader
+        title={`Withdraw ${underlyingSymbol}`}
+        description={`Withdraw your deposited ${tokenName} from the protocol`}
+        action={<ExpiryBadge expiryTimestamp={market.expiry} />}
+      />
 
-      <CardContent className="flex flex-1 flex-col justify-between gap-4">
-        {/* Top Section - Inputs */}
-        <div className="space-y-4">
-          {/* Input */}
-          <TokenInput
-            label="You withdraw"
-            tokenAddress={market.syAddress}
-            tokenSymbol={sySymbol}
-            value={amount}
-            onChange={setAmount}
-            disabled={isLoading}
-            error={validationError ?? undefined}
+      {/* Input Section */}
+      <FormInputSection>
+        <TokenInput
+          label="You withdraw"
+          tokenAddress={market.syAddress}
+          tokenSymbol={sySymbol}
+          value={amount}
+          onChange={setAmount}
+          disabled={isLoading}
+          error={validationError ?? undefined}
+        />
+      </FormInputSection>
+
+      {/* Divider */}
+      <FormDivider>
+        <Button variant="ghost" size="icon" className="rounded-full" disabled>
+          <svg
+            className="text-muted-foreground h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
+        </Button>
+      </FormDivider>
+
+      {/* Output */}
+      <TokenOutput
+        label="You receive"
+        amount={outputAmount}
+        tokenSymbol={underlyingSymbol}
+        isLoading={syBalanceLoading}
+      />
+
+      {/* Info Section */}
+      <FormInfoSection>
+        <FormRow label="Exchange Rate" value="1:1" />
+        {outputAmount > BigInt(0) && (
+          <FormRow
+            label="Estimated Gas"
+            value={
+              <GasEstimate
+                formattedFee={formattedFee}
+                isLoading={isEstimatingFee}
+                error={feeError}
+              />
+            }
           />
+        )}
+      </FormInfoSection>
 
-          {/* Arrow */}
-          <div className="flex justify-center">
-            <Button variant="ghost" size="icon" className="rounded-full" disabled>
-              <svg
-                className="text-muted-foreground h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                />
-              </svg>
-            </Button>
-          </div>
+      {/* Transaction Status */}
+      {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
 
-          {/* Output */}
-          <TokenOutput
-            label="You receive"
-            amount={outputAmount}
-            tokenSymbol={underlyingSymbol}
-            isLoading={syBalanceLoading}
-          />
-        </div>
-
-        {/* Bottom Section - Info & Actions */}
-        <div className="space-y-4">
-          {/* Info */}
-          <Card size="sm" className="bg-muted">
-            <CardContent className="p-3 text-sm">
-              <div className="text-muted-foreground flex justify-between">
-                <span>Exchange Rate</span>
-                <span className="text-foreground">1:1</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Transaction Status */}
-          {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
-
-          {/* Actions */}
-          {status === 'success' ? (
-            <Button onClick={handleReset} className="w-full">
-              Withdraw More
-            </Button>
-          ) : (
-            <Button onClick={handleUnwrap} disabled={buttonDisabled} className="w-full">
-              {buttonText}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Actions */}
+      <FormActions>
+        {status === 'success' ? (
+          <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
+            Withdraw More
+          </Button>
+        ) : (
+          <Button
+            onClick={handleUnwrap}
+            disabled={buttonDisabled}
+            className="h-12 w-full text-base font-medium"
+          >
+            {buttonText}
+          </Button>
+        )}
+      </FormActions>
+    </FormLayout>
   );
 }

@@ -1,12 +1,13 @@
 'use client';
 
+import { TrendingUp, Wallet, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { formatUsd, formatPercent } from '@entities/position';
+import { formatPercent, formatUsd } from '@entities/position';
 import {
   EnhancedPositionCard,
-  type YieldEarnedData,
+  type EnhancedPosition,
   ImpermanentLossCalc,
   LpEntryExitTable,
   LpPnlCard,
@@ -14,15 +15,14 @@ import {
   PortfolioValueChart,
   PositionValueHistory,
   SimplePortfolio,
-  SummaryCard,
+  type YieldEarnedData,
   YieldByPosition,
   YieldEarnedCard,
   YieldHistory,
-  type EnhancedPosition,
 } from '@entities/position';
 import { useDashboardMarkets } from '@features/markets';
-import { useUserIndexedPositions, useEnhancedPositions } from '@features/portfolio';
 import { type MarketPosition, usePositions } from '@features/portfolio';
+import { useEnhancedPositions, useUserIndexedPositions } from '@features/portfolio';
 import {
   calculateMinSyOut,
   useRedeemPtPostExpiry,
@@ -30,9 +30,12 @@ import {
   useUnwrapSy,
 } from '@features/redeem';
 import { useStarknet } from '@features/wallet';
-import { useUserYield, useClaimAllYield, useClaimYield } from '@features/yield';
+import { useClaimAllYield, useClaimYield, useUserYield } from '@features/yield';
+import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
+import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
@@ -786,8 +789,14 @@ function PortfolioContent(): ReactNode {
 
   if (!isConnected) {
     return (
-      <div className="border-border bg-card rounded-lg border p-8 text-center">
-        <p className="text-muted-foreground">Connect your wallet to view your portfolio.</p>
+      <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
+        <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <Wallet className="text-muted-foreground h-8 w-8" />
+        </div>
+        <h3 className="text-foreground text-lg font-semibold">Connect your wallet</h3>
+        <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+          Connect your wallet to view your positions, claim yield, and manage your portfolio.
+        </p>
       </div>
     );
   }
@@ -816,16 +825,19 @@ function PortfolioContent(): ReactNode {
   // - Or there are no active positions
   if (isError || activePositions.length === 0) {
     return (
-      <div className="border-border bg-card rounded-lg border p-8 text-center">
-        <p className="text-muted-foreground">You have no positions yet.</p>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Start by minting PT+YT, trading, or providing liquidity.
+      <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
+        <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <Wallet className="text-muted-foreground h-8 w-8" />
+        </div>
+        <h3 className="text-foreground text-lg font-semibold">No positions yet</h3>
+        <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+          Start earning yield by minting PT+YT tokens, trading, or providing liquidity.
         </p>
-        <div className="mt-4 flex justify-center gap-3">
+        <div className="mt-6 flex gap-3">
           <Button nativeButton={false} render={<Link href="/mint" />}>
             Mint PT + YT
           </Button>
-          <Button variant="secondary" nativeButton={false} render={<Link href="/trade" />}>
+          <Button variant="outline" nativeButton={false} render={<Link href="/trade" />}>
             Trade
           </Button>
         </div>
@@ -836,38 +848,111 @@ function PortfolioContent(): ReactNode {
   // Get enhanced positions or fall back to empty array
   const enhancedPositions = enhancedPortfolio?.positions ?? [];
 
+  const totalValue = enhancedPortfolio?.totalValueUsd ?? 0;
+  const totalPnl = enhancedPortfolio?.totalPnlUsd ?? 0;
+  const totalPnlPercent = enhancedPortfolio?.totalPnlPercent ?? 0;
+  const totalClaimable = enhancedPortfolio?.totalClaimableUsd ?? 0;
+
   return (
-    <div className="space-y-6">
-      {/* Enhanced Summary Cards with USD Values */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Total Value" value={formatUsd(enhancedPortfolio?.totalValueUsd ?? 0)} />
-        <SummaryCard
-          label="Unrealized P&L"
-          value={formatUsd(enhancedPortfolio?.totalPnlUsd ?? 0)}
-          subValue={formatPercent(enhancedPortfolio?.totalPnlPercent ?? 0)}
-          variant={(enhancedPortfolio?.totalPnlUsd ?? 0) >= 0 ? 'positive' : 'negative'}
-        />
-        <SummaryCard
-          label="Claimable Yield"
-          value={formatUsd(enhancedPortfolio?.totalClaimableUsd ?? 0)}
-          subValue={`${formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY`}
-          variant="positive"
-          action={
-            portfolio?.hasClaimableYield === true ? (
+    <div className="space-y-8">
+      {/* Summary Bento Grid */}
+      <BentoGrid>
+        {/* Total Value - Hero card */}
+        <BentoCard colSpan={{ default: 12, md: 6, lg: 4 }} rowSpan={1} featured animationDelay={0}>
+          <div className="flex h-full flex-col justify-center p-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="text-primary h-4 w-4" />
+              <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                Total Value
+              </span>
+            </div>
+            <span className="text-foreground mt-2 font-mono text-3xl font-semibold">
+              <AnimatedNumber value={totalValue} formatter={formatUsd} duration={600} />
+            </span>
+          </div>
+        </BentoCard>
+
+        {/* Unrealized P&L */}
+        <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} animationDelay={50}>
+          <div className="flex h-full flex-col justify-center p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp
+                className={cn('h-4 w-4', totalPnl >= 0 ? 'text-green-500' : 'text-red-500')}
+              />
+              <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                Unrealized P&L
+              </span>
+            </div>
+            <span
+              className={cn(
+                'mt-2 font-mono text-2xl font-semibold',
+                totalPnl >= 0 ? 'text-green-500' : 'text-red-500'
+              )}
+            >
+              <AnimatedNumber
+                value={totalPnl}
+                formatter={(v) => `${v >= 0 ? '+' : ''}${formatUsd(v)}`}
+                duration={600}
+              />
+            </span>
+            <span
+              className={cn(
+                'mt-1 text-sm',
+                totalPnlPercent >= 0 ? 'text-green-500/70' : 'text-red-500/70'
+              )}
+            >
+              {formatPercent(totalPnlPercent)}
+            </span>
+          </div>
+        </BentoCard>
+
+        {/* Active Positions */}
+        <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} animationDelay={100}>
+          <div className="flex h-full flex-col justify-center p-4">
+            <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+              Active Positions
+            </span>
+            <span className="text-foreground mt-2 font-mono text-3xl font-semibold">
+              {activePositions.length}
+            </span>
+            <span className="text-muted-foreground mt-1 text-sm">
+              across {markets.length} markets
+            </span>
+          </div>
+        </BentoCard>
+
+        {/* Claimable Yield - Full width with action */}
+        <BentoCard colSpan={{ default: 12 }} rowSpan={1} animationDelay={150}>
+          <div className="flex h-full items-center justify-between p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Zap className="text-primary h-4 w-4" />
+                <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                  Claimable Yield
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="text-primary font-mono text-2xl font-semibold">
+                  <AnimatedNumber value={totalClaimable} formatter={formatUsd} duration={600} />
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  ({formatWad(portfolio?.totalClaimableYield ?? BigInt(0), 4)} SY)
+                </span>
+              </div>
+            </div>
+            {portfolio?.hasClaimableYield === true && (
               <Button
                 nativeButton
                 onClick={handleClaimAll}
                 disabled={isClaimingAll || claimAllSuccess}
                 size="sm"
-                className="w-full"
               >
-                {isClaimingAll ? 'Claiming...' : claimAllSuccess ? 'Claimed!' : 'Claim All'}
+                {isClaimingAll ? 'Claiming...' : claimAllSuccess ? 'Claimed!' : 'Claim All Yield'}
               </Button>
-            ) : undefined
-          }
-        />
-        <SummaryCard label="Active Positions" value={activePositions.length.toString()} />
-      </div>
+            )}
+          </div>
+        </BentoCard>
+      </BentoGrid>
 
       {/* Claim All Transaction Status */}
       {claimAllTxStatus !== 'idle' && (
@@ -883,8 +968,10 @@ function PortfolioContent(): ReactNode {
       )}
 
       {/* Position Cards - Use enhanced positions with USD values */}
-      <div className="space-y-4">
-        <h2 className="text-foreground text-lg font-semibold">Your Positions</h2>
+      <section className="space-y-4">
+        <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+          Your Positions
+        </h2>
         {enhancedPositions.length > 0
           ? enhancedPositions.map((position) => {
               // Find the matching legacy position for transaction handlers
@@ -906,23 +993,27 @@ function PortfolioContent(): ReactNode {
             activePositions.map((position) => (
               <PositionCard key={position.market.address} position={position} />
             ))}
-      </div>
+      </section>
 
       {/* Yield Analytics Section */}
-      <div className="space-y-4">
-        <h2 className="text-foreground text-lg font-semibold">Yield Analytics</h2>
+      <section className="space-y-4">
+        <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+          Yield Analytics
+        </h2>
         <div className="grid gap-4 lg:grid-cols-2">
           <YieldEarnedCard />
           <YieldByPosition />
         </div>
         <YtCashflowChart />
         <YieldHistory limit={10} />
-      </div>
+      </section>
 
       {/* LP Analytics Section */}
       {activeLpPositions.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-foreground text-lg font-semibold">LP Analytics</h2>
+        <section className="space-y-4">
+          <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+            LP Analytics
+          </h2>
           <LpApyBreakdown />
           <div className="grid gap-4 lg:grid-cols-2">
             {activeLpPositions.map((lpPosition) => {
@@ -938,12 +1029,14 @@ function PortfolioContent(): ReactNode {
             })}
           </div>
           <LpEntryExitTable limit={10} />
-        </div>
+        </section>
       )}
 
       {/* Portfolio Value Over Time Section */}
-      <div className="space-y-4">
-        <h2 className="text-foreground text-lg font-semibold">Portfolio Value</h2>
+      <section className="space-y-4">
+        <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+          Portfolio Value
+        </h2>
         <PortfolioValueChart />
         <div className="grid gap-4 lg:grid-cols-2">
           <PositionPnlTimeline />
@@ -951,10 +1044,15 @@ function PortfolioContent(): ReactNode {
         </div>
         <PnlBreakdown />
         <PositionValueHistory limit={10} />
-      </div>
+      </section>
 
       {/* Transaction History */}
-      <TransactionHistory className="mt-8" />
+      <section className="space-y-4">
+        <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+          Transaction History
+        </h2>
+        <TransactionHistory />
+      </section>
     </div>
   );
 }
@@ -963,12 +1061,12 @@ export function PortfolioPage(): ReactNode {
   const { isSimple } = useUIMode();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
+    <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
+      <header className="mb-8">
         <Link
           href="/"
-          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
+          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -978,15 +1076,13 @@ export function PortfolioPage(): ReactNode {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to {isSimple ? 'Markets' : 'Dashboard'}
+          Back
         </Link>
-        <h1 className="text-foreground text-3xl font-bold">Portfolio</h1>
-        <p className="text-muted-foreground mt-2">
-          {isSimple
-            ? 'View and manage your yield positions'
-            : 'View your positions, claim accrued yield, and manage redemptions'}
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Portfolio</h1>
+        <p className="text-muted-foreground mt-1">
+          {isSimple ? 'Your yield positions' : 'Positions, yield, and redemptions'}
         </p>
-      </div>
+      </header>
 
       {/* Content */}
       <PortfolioContent />

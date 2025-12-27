@@ -20,6 +20,10 @@ interface UseSimpleDepositReturn {
   underlyingBalance: bigint | undefined;
   underlyingBalanceLoading: boolean;
 
+  // Allowances (for gas estimation)
+  underlyingAllowance: bigint | undefined;
+  syAllowance: bigint | undefined;
+
   // Transaction
   deposit: (amount: string) => Promise<void>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
@@ -122,6 +126,8 @@ export function useSimpleDeposit({
     () => ({
       underlyingBalance,
       underlyingBalanceLoading,
+      underlyingAllowance,
+      syAllowance,
       deposit,
       status,
       txHash,
@@ -129,6 +135,17 @@ export function useSimpleDeposit({
       isLoading,
       reset,
     }),
-    [underlyingBalance, underlyingBalanceLoading, deposit, status, txHash, error, isLoading, reset]
+    [
+      underlyingBalance,
+      underlyingBalanceLoading,
+      underlyingAllowance,
+      syAllowance,
+      deposit,
+      status,
+      txHash,
+      error,
+      isLoading,
+      reset,
+    ]
   );
 }

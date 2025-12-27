@@ -1,5 +1,12 @@
 // UI primitives - shadcn/ui components
 
+export {
+  AnimatedCurrency,
+  AnimatedNumber,
+  AnimatedPercent,
+  easings,
+  useAnimatedNumber,
+} from './AnimatedNumber';
 export { Badge, badgeVariants } from './badge';
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './Collapsible';
 export { Button, buttonVariants } from './Button';
@@ -33,10 +40,23 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './dropdown-menu';
+export { GasEstimate } from './GasEstimate';
 export { Input } from './Input';
 export { Label } from './label';
 export { Separator } from './separator';
-export { Skeleton } from './Skeleton';
+export {
+  ChartSkeleton,
+  FormSkeleton,
+  HeroSkeleton,
+  ListSkeleton,
+  MarketCardSkeleton,
+  Skeleton,
+  SkeletonCard,
+  SkeletonGrid,
+  SparklineSkeleton,
+  StatCardSkeleton,
+  TableSkeleton,
+} from './Skeleton';
 export { Toaster } from './sonner';
 export { Switch } from './switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
@@ -63,3 +83,54 @@ export {
   SelectTrigger,
   SelectValue,
 } from './select';
+
+// Typography components
+export {
+  AddressDisplay,
+  ApyMetric,
+  DataText,
+  Display,
+  GradientText,
+  Heading,
+  LabelText,
+  Metric,
+  StatDisplay,
+} from './typography';
+
+// Animation components
+export {
+  AnimatedValue,
+  BounceIn,
+  FadeUp,
+  GlowPulse,
+  InteractiveCard,
+  ScaleIn,
+  SkeletonPulse,
+  SlideIn,
+  StaggeredList,
+} from './animations';
+
+// Form layout components (UI/UX Law compliant)
+export {
+  FormActions,
+  FormDivider,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormOutputSection,
+  FormRow,
+} from './FormLayout';
+
+// Sparkline and mini-chart components
+export {
+  MiniBarChart,
+  Sparkline,
+  SparklineStat,
+  SparklineWithValue,
+  TrendIndicator,
+  type SparklineDataPoint,
+} from './Sparkline';
+
+// Step progress components for multi-step flows
+export { StepCounter, StepIndicator, StepProgress, type Step } from './StepProgress';

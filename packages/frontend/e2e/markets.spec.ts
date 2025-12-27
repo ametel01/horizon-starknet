@@ -12,9 +12,10 @@ test.describe('Markets Display', () => {
   test('should display protocol stats', async ({ page }) => {
     await page.goto('/');
 
-    // Wait for stats to load
-    const statsSection = page.getByText(/Protocol Stats/i);
-    await expect(statsSection).toBeVisible();
+    // Stats are now in the hero section as floating orbs
+    // Look for stat labels like "Total Value Locked", "Avg. Implied APY", "Active Markets"
+    const statsSection = page.getByText(/Total Value Locked|Avg.*APY|Active Markets/i);
+    await expect(statsSection.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to analytics page', async ({ page }) => {
@@ -175,7 +176,8 @@ test.describe('Analytics Page', () => {
   test('should display analytics page', async ({ page }) => {
     await page.goto('/analytics');
 
-    await expect(page.getByRole('heading', { name: /Protocol Analytics/i, level: 1 })).toBeVisible();
+    // Heading is now just "Analytics"
+    await expect(page.getByRole('heading', { name: /Analytics/i, level: 1 })).toBeVisible();
   });
 
   test('should display protocol metrics', async ({ page }) => {

@@ -22,6 +22,10 @@ interface UseSimpleWithdrawReturn {
   ytBalance: bigint | undefined;
   balancesLoading: boolean;
 
+  // Allowances (for gas estimation)
+  ptAllowance: bigint | undefined;
+  ytAllowance: bigint | undefined;
+
   // Transaction
   withdraw: (amount: bigint) => Promise<void>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
@@ -138,6 +142,8 @@ export function useSimpleWithdraw({
       ptBalance,
       ytBalance,
       balancesLoading,
+      ptAllowance,
+      ytAllowance,
       withdraw,
       status,
       txHash,
@@ -145,6 +151,18 @@ export function useSimpleWithdraw({
       isLoading,
       reset,
     }),
-    [ptBalance, ytBalance, balancesLoading, withdraw, status, txHash, error, isLoading, reset]
+    [
+      ptBalance,
+      ytBalance,
+      balancesLoading,
+      ptAllowance,
+      ytAllowance,
+      withdraw,
+      status,
+      txHash,
+      error,
+      isLoading,
+      reset,
+    ]
   );
 }

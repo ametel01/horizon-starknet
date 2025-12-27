@@ -1,5 +1,6 @@
 'use client';
 
+import { Activity, DollarSign, TrendingUp, Users } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
 
 import { useProtocolStats } from '@features/analytics';
@@ -7,8 +8,8 @@ import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
-import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { StatCard, StatCardGrid, StatCardSkeleton } from '@shared/ui/StatCard';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -20,34 +21,6 @@ function formatUsdCompact(value: number): string {
   if (value < 1_000_000) return `$${(value / 1000).toFixed(2)}K`;
   if (value < 1_000_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
   return `$${(value / 1_000_000_000).toFixed(2)}B`;
-}
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  subValue?: string;
-  isLoading?: boolean;
-  className?: string;
-}
-
-function StatCard({ label, value, subValue, isLoading, className }: StatCardProps): ReactNode {
-  return (
-    <Card size="sm" className={cn('min-w-[140px]', className)}>
-      <CardContent className="pt-4">
-        <div className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-          {label}
-        </div>
-        {isLoading ? (
-          <Skeleton className="mt-2 h-8 w-20" />
-        ) : (
-          <div className="mt-1">
-            <div className="text-2xl font-bold">{value}</div>
-            {subValue && <div className="text-muted-foreground text-xs">{subValue}</div>}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
 }
 
 interface ProtocolStatsProps {
@@ -111,33 +84,72 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
     );
   }
 
+  // Show loading skeletons
+  if (isLoading) {
+    return (
+      <StatCardGrid columns={{ default: 2, md: 2, lg: 4 }} className={className}>
+        <StatCardSkeleton compact />
+        <StatCardSkeleton compact />
+        <StatCardSkeleton compact />
+        <StatCardSkeleton compact />
+      </StatCardGrid>
+    );
+  }
+
   // Dynamic grid: 5 columns if showing unique users, 4 columns otherwise
   const showUniqueUsers = stats.uniqueUsers24h > 10;
-  const gridCols = showUniqueUsers
-    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
-    : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-4';
 
   return (
-    <div className={cn('grid gap-4', gridCols, className)}>
+    <StatCardGrid
+      columns={{ default: 2, md: showUniqueUsers ? 3 : 2, lg: showUniqueUsers ? 5 : 4 }}
+      className={className}
+    >
       <StatCard
         label="Total TVL"
-        value={formatUsdCompact(tvlUsd)}
-        subValue={String(stats.marketCount) + ' markets'}
-        isLoading={isLoading}
+        numericValue={tvlUsd}
+        valueFormatter={formatUsdCompact}
+        delta={`${String(stats.marketCount)} markets`}
+        icon={<DollarSign className="h-4 w-4" />}
+        compact
+        animationDelay={0}
       />
-      <StatCard label="24h Volume" value={formatUsdCompact(volumeUsd)} isLoading={isLoading} />
-      <StatCard label="24h Swaps" value={stats.swaps24h.toLocaleString()} isLoading={isLoading} />
-      <StatCard label="24h Fees" value={formatUsdCompact(feesUsd)} isLoading={isLoading} />
+      <StatCard
+        label="24h Volume"
+        numericValue={volumeUsd}
+        valueFormatter={formatUsdCompact}
+        icon={<TrendingUp className="h-4 w-4" />}
+        compact
+        animationDelay={50}
+      />
+      <StatCard
+        label="24h Swaps"
+        numericValue={stats.swaps24h}
+        valueFormatter={(v) => Math.round(v).toLocaleString()}
+        icon={<Activity className="h-4 w-4" />}
+        compact
+        animationDelay={100}
+      />
+      <StatCard
+        label="24h Fees"
+        numericValue={feesUsd}
+        valueFormatter={formatUsdCompact}
+        trend="up"
+        compact
+        animationDelay={150}
+      />
       {/* Only show unique users once there's meaningful user activity (>10) */}
       {showUniqueUsers && (
         <StatCard
           label="Unique Users"
-          value={stats.uniqueUsers24h.toLocaleString()}
-          subValue="last 24h"
-          isLoading={isLoading}
+          numericValue={stats.uniqueUsers24h}
+          valueFormatter={(v) => Math.round(v).toLocaleString()}
+          delta="24h"
+          icon={<Users className="h-4 w-4" />}
+          compact
+          animationDelay={200}
         />
       )}
-    </div>
+    </StatCardGrid>
   );
 }
 

@@ -49,12 +49,16 @@ export const DEFAULT_SLIPPAGE_BPS = 50;
 /** Default deadline: 20 minutes */
 export const DEFAULT_DEADLINE_MINUTES = 20;
 
-/** Predefined slippage options */
+/**
+ * Predefined slippage options with semantic labels.
+ *
+ * Implements Hick's Law: Reduced from 4 to 3 options with meaningful names.
+ * Users can still set custom values for advanced needs.
+ */
 export const SLIPPAGE_OPTIONS = [
-  { label: '0.1%', value: 10 },
-  { label: '0.5%', value: 50 },
-  { label: '1%', value: 100 },
-  { label: '2%', value: 200 },
+  { label: 'Low', percent: '0.1%', value: 10, description: 'May fail in volatile markets' },
+  { label: 'Standard', percent: '0.5%', value: 50, description: 'Recommended for most trades' },
+  { label: 'Fast', percent: '1%', value: 100, description: 'Higher chance of execution' },
 ] as const;
 
 /** Predefined deadline options */

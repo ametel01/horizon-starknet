@@ -101,64 +101,78 @@ export function TransactionSettingsPanel({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <ToggleGroup className="flex gap-1">
-            {SLIPPAGE_OPTIONS.map((option) => (
-              <ToggleGroupItem
-                key={option.value}
-                pressed={slippageBps === option.value && !showCustomSlippage}
-                onPressedChange={() => {
-                  setSlippageBps(option.value);
-                  setShowCustomSlippage(false);
-                }}
-                variant="outline"
-                size="sm"
-              >
-                {option.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <ToggleGroup className="flex flex-1 gap-1">
+              {SLIPPAGE_OPTIONS.map((option) => (
+                <ToggleGroupItem
+                  key={option.value}
+                  pressed={slippageBps === option.value && !showCustomSlippage}
+                  onPressedChange={() => {
+                    setSlippageBps(option.value);
+                    setShowCustomSlippage(false);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  aria-label={`${option.label} slippage: ${option.percent}`}
+                >
+                  <span className="flex flex-col items-center gap-0.5">
+                    <span className="font-medium">{option.label}</span>
+                    <span className="text-muted-foreground text-[10px]">{option.percent}</span>
+                  </span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
 
-          {showCustomSlippage ? (
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                min={MIN_SLIPPAGE_BPS / 100}
-                max={MAX_SLIPPAGE_BPS / 100}
-                step={0.1}
-                value={customSlippage}
-                onChange={(e) => {
-                  setCustomSlippage(e.target.value);
-                }}
-                placeholder="0.5"
-                className="h-8 w-20"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCustomSlippageSubmit();
-                  if (e.key === 'Escape') setShowCustomSlippage(false);
-                }}
-                autoFocus
-              />
-              <span className="text-muted-foreground text-sm">%</span>
+            {showCustomSlippage ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={MIN_SLIPPAGE_BPS / 100}
+                  max={MAX_SLIPPAGE_BPS / 100}
+                  step={0.1}
+                  value={customSlippage}
+                  onChange={(e) => {
+                    setCustomSlippage(e.target.value);
+                  }}
+                  placeholder="0.5"
+                  className="h-8 w-16"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCustomSlippageSubmit();
+                    if (e.key === 'Escape') setShowCustomSlippage(false);
+                  }}
+                  autoFocus
+                />
+                <span className="text-muted-foreground text-sm">%</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCustomSlippageSubmit}
+                  className="h-8 px-2"
+                >
+                  Set
+                </Button>
+              </div>
+            ) : (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleCustomSlippageSubmit}
-                className="h-8 px-2"
+                onClick={() => {
+                  setShowCustomSlippage(true);
+                }}
+                className="text-muted-foreground h-8 px-2 text-xs"
               >
-                Set
+                Custom
               </Button>
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setShowCustomSlippage(true);
-              }}
-              className="text-muted-foreground h-8 px-2 text-xs"
-            >
-              Custom
-            </Button>
+            )}
+          </div>
+
+          {/* Show description for selected preset */}
+          {isSlippagePreset && !showCustomSlippage && (
+            <p className="text-muted-foreground text-xs">
+              {SLIPPAGE_OPTIONS.find((opt) => opt.value === slippageBps)?.description}
+            </p>
           )}
         </div>
 

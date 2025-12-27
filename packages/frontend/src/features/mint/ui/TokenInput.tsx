@@ -1,12 +1,12 @@
 'use client';
 
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 
 import { useTokenBalance } from '@features/portfolio';
-import { formatWad, fromWad } from '@shared/math/wad';
-import { Button } from '@shared/ui/Button';
+import { cn } from '@shared/lib/utils';
+import { formatWad, fromWad, toWad } from '@shared/math/wad';
+import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Card, CardContent } from '@shared/ui/Card';
-import { NumberInput } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 
 interface TokenInputProps {
@@ -17,8 +17,23 @@ interface TokenInputProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   error?: string | undefined;
+  /** Optional token type badge (e.g., "PT", "YT", "SY") */
+  tokenType?: string | undefined;
+  className?: string | undefined;
+  /** Enable inline balance validation (Error Prevention) */
+  validateBalance?: boolean | undefined;
 }
 
+/**
+ * TokenInput - Mobile-optimized token input component
+ *
+ * Features:
+ * - Large touch-friendly targets (44px+ min)
+ * - inputMode="decimal" for mobile numeric keyboard
+ * - Combined balance/max button
+ * - Token type badge with icon
+ * - Smooth focus states and transitions
+ */
 export function TokenInput({
   label,
   tokenAddress,
@@ -27,80 +42,199 @@ export function TokenInput({
   onChange,
   disabled = false,
   error,
+  tokenType,
+  className,
+  validateBalance = true,
 }: TokenInputProps): ReactNode {
   const inputId = useId();
   const errorId = useId();
+  const [isFocused, setIsFocused] = useState(false);
   const { data: balance, isLoading: balanceLoading } = useTokenBalance(tokenAddress);
+
+  // Inline balance validation (Error Prevention)
+  const inlineError = useMemo(() => {
+    if (!validateBalance || balance === undefined || !value || value === '0') {
+      return null;
+    }
+    try {
+      const inputAmount = toWad(value);
+      if (inputAmount > balance) {
+        return 'Insufficient balance';
+      }
+    } catch {
+      // Invalid input format
+      return null;
+    }
+    return null;
+  }, [value, balance, validateBalance]);
+
+  // Combined error (prop error takes precedence)
+  const displayError = error ?? inlineError;
 
   const handleMaxClick = (): void => {
     if (balance !== undefined) {
-      // Convert from WAD to decimal string
       const maxValue = fromWad(balance).toString();
       onChange(maxValue);
     }
   };
 
+  // Prevent non-numeric input at keydown level (Error Prevention)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
+    // Allow control keys
+    const allowedKeys = [
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Escape',
+      'Enter',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+    ];
+    if (allowedKeys.includes(e.key)) return;
+
+    // Allow Ctrl/Cmd + A, C, V, X
+    if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
+
+    // Allow numbers
+    if (/^[0-9]$/.test(e.key)) return;
+
+    // Allow one decimal point if not already present
+    if (e.key === '.' && !e.currentTarget.value.includes('.')) return;
+
+    // Block everything else
+    e.preventDefault();
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const inputValue = e.target.value;
+
+    if (inputValue === '') {
+      onChange('');
+      return;
+    }
+
+    // Allow decimal numbers with up to 18 decimals
+    const regex = /^\d*\.?\d{0,18}$/;
+    if (regex.test(inputValue)) {
+      onChange(inputValue);
+    }
+  };
+
+  // Derive token type from symbol if not provided
+  const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
+
   return (
-    <Card size="sm" className="bg-muted" role="group" aria-labelledby={`${inputId}-label`}>
-      <CardContent className="p-4">
-        <div className="mb-2 flex items-center justify-between">
+    <Card
+      className={cn(
+        'group relative overflow-hidden transition-all duration-200',
+        isFocused && 'ring-primary/50 ring-2',
+        displayError !== null && 'ring-destructive/50 ring-2',
+        className
+      )}
+      role="group"
+      aria-labelledby={`${inputId}-label`}
+    >
+      <CardContent className="space-y-3 overflow-hidden p-4">
+        {/* Header row: Label and Balance/Max */}
+        <div className="flex min-w-0 items-center justify-between gap-2">
           <label
             id={`${inputId}-label`}
             htmlFor={inputId}
-            className="text-muted-foreground text-sm"
+            className="text-muted-foreground shrink-0 text-sm font-medium"
           >
             {label}
           </label>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-sm">Balance:</span>
+
+          {/* Balance + Max combined button */}
+          <button
+            type="button"
+            onClick={handleMaxClick}
+            disabled={disabled || balance === undefined || balance === BigInt(0)}
+            className={cn(
+              'flex min-w-0 shrink items-center gap-1 rounded-lg px-2 py-1 text-sm transition-colors',
+              'hover:bg-muted active:bg-muted/80',
+              'disabled:pointer-events-none disabled:opacity-50'
+            )}
+            aria-label={`Set maximum ${tokenSymbol} amount`}
+          >
             {balanceLoading ? (
               <Skeleton className="h-4 w-16" aria-label="Loading balance" />
             ) : (
-              <span
-                className="text-foreground font-mono text-sm"
-                aria-label={`Balance: ${balance !== undefined ? formatWad(balance, 4) : '0.0000'} ${tokenSymbol}`}
-              >
-                {balance !== undefined ? formatWad(balance, 4) : '0.0000'}
-              </span>
+              <>
+                <span className="text-foreground truncate font-mono text-xs">
+                  {balance !== undefined ? formatWad(balance, 4) : '0.00'}
+                </span>
+                <span className="text-primary shrink-0 text-xs font-semibold">MAX</span>
+              </>
             )}
-          </div>
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <NumberInput
+        {/* Input row: Amount and Token selector */}
+        <div className="flex min-w-0 items-center gap-2">
+          {/* Large, touch-friendly input */}
+          <input
             id={inputId}
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             value={value}
-            onChange={onChange}
-            placeholder="0.0"
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              setIsFocused(true);
+            }}
+            onBlur={() => {
+              setIsFocused(false);
+            }}
+            placeholder="0.00"
             disabled={disabled}
-            aria-invalid={error !== undefined}
-            aria-describedby={error !== undefined ? errorId : undefined}
-            className="border-0 bg-transparent text-2xl focus-visible:ring-0"
+            aria-invalid={displayError !== null}
+            aria-describedby={displayError !== null ? errorId : undefined}
+            className={cn(
+              'min-h-[44px] min-w-0 flex-1 bg-transparent outline-none',
+              'font-mono text-2xl font-semibold tabular-nums',
+              'placeholder:text-muted-foreground/40',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              'transition-colors'
+            )}
           />
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleMaxClick}
-              disabled={disabled || balance === undefined || balance === BigInt(0)}
-              aria-label={`Set maximum ${tokenSymbol} amount`}
-            >
-              MAX
-            </Button>
+
+          {/* Token badge - compact, shows only token type */}
+          <div
+            className={cn(
+              'flex h-10 shrink-0 items-center justify-center rounded-full px-3',
+              'border-border/50 border',
+              displayTokenType === 'PT' && 'bg-primary/10',
+              displayTokenType === 'YT' && 'bg-chart-2/10',
+              displayTokenType === 'SY' && 'bg-chart-1/10',
+              !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'bg-muted/80'
+            )}
+          >
             <span
-              className="text-foreground min-w-[60px] text-right font-medium"
-              aria-hidden="true"
+              className={cn(
+                'font-mono text-sm font-semibold',
+                displayTokenType === 'PT' && 'text-primary',
+                displayTokenType === 'YT' && 'text-chart-2',
+                displayTokenType === 'SY' && 'text-chart-1',
+                !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'text-muted-foreground'
+              )}
             >
-              {tokenSymbol}
+              {displayTokenType ?? tokenSymbol.slice(0, 4)}
             </span>
           </div>
         </div>
 
-        {error !== undefined ? (
-          <p id={errorId} className="text-destructive mt-2 text-sm" role="alert">
-            {error}
+        {/* Error message (prop error or inline validation) */}
+        {displayError !== null && (
+          <p id={errorId} className="text-destructive text-sm font-medium" role="alert">
+            {displayError}
           </p>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   );
@@ -111,37 +245,110 @@ interface TokenOutputProps {
   amount: bigint;
   tokenSymbol: string;
   isLoading?: boolean;
+  /** Optional token type badge (e.g., "PT", "YT", "SY") */
+  tokenType?: string | undefined;
+  /** Optional minimum amount to display */
+  minAmount?: bigint | undefined;
+  className?: string | undefined;
 }
 
+/**
+ * TokenOutput - Mobile-optimized token output display
+ *
+ * Features:
+ * - Consistent styling with TokenInput
+ * - Token type badge
+ * - Optional minimum amount display
+ * - Loading skeleton
+ */
 export function TokenOutput({
   label,
   amount,
   tokenSymbol,
   isLoading = false,
+  tokenType,
+  minAmount,
+  className,
 }: TokenOutputProps): ReactNode {
-  const formattedAmount = formatWad(amount, 4);
+  // Convert bigint to number for animation (Change Blindness prevention)
+  const numericAmount = useMemo(() => fromWad(amount).toNumber(), [amount]);
+
+  // Animate the numeric value with smooth easing
+  const animatedAmount = useAnimatedNumber(numericAmount, {
+    duration: 300,
+    decimals: 6,
+  });
+
+  // Format the animated value
+  const formattedAmount = useMemo(() => {
+    // Handle edge cases
+    if (animatedAmount === 0) return '0.000000';
+    // Format with 6 decimal places, trim trailing zeros but keep at least 2
+    const formatted = animatedAmount.toFixed(6);
+    const parts = formatted.split('.');
+    const intPart = parts[0] ?? '0';
+    const decPart = parts[1];
+    if (decPart !== undefined) {
+      // Keep at least 2 decimal places
+      const trimmed = decPart.replace(/0+$/, '').padEnd(2, '0');
+      return `${intPart}.${trimmed}`;
+    }
+    return formatted;
+  }, [animatedAmount]);
+
+  // Derive token type from symbol if not provided
+  const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
 
   return (
     <Card
-      size="sm"
-      className="bg-muted"
+      className={cn('bg-muted/50 relative overflow-hidden', className)}
       role="status"
       aria-label={`${label}: ${formattedAmount} ${tokenSymbol}`}
     >
-      <CardContent className="p-4">
-        <div className="mb-2">
-          <span className="text-muted-foreground text-sm">{label}</span>
+      <CardContent className="space-y-2 overflow-hidden p-4">
+        {/* Header row */}
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="text-muted-foreground shrink-0 text-sm font-medium">{label}</span>
+          {minAmount !== undefined && (
+            <span className="text-muted-foreground truncate text-xs">
+              Min: {formatWad(minAmount, 4)}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center justify-between">
+        {/* Output row */}
+        <div className="flex min-w-0 items-center gap-2">
           {isLoading ? (
-            <Skeleton className="h-8 w-32" aria-label="Loading amount" />
+            <Skeleton className="h-8 min-w-0 flex-1" aria-label="Loading amount" />
           ) : (
-            <span className="text-foreground font-mono text-2xl">{formattedAmount}</span>
+            <span className="text-foreground min-w-0 flex-1 truncate font-mono text-2xl font-semibold tabular-nums">
+              {formattedAmount}
+            </span>
           )}
-          <span className="text-foreground font-medium" aria-hidden="true">
-            {tokenSymbol}
-          </span>
+
+          {/* Token badge - compact, shows only token type */}
+          <div
+            className={cn(
+              'flex h-10 shrink-0 items-center justify-center rounded-full px-3',
+              'border-border/50 border',
+              displayTokenType === 'PT' && 'bg-primary/10',
+              displayTokenType === 'YT' && 'bg-chart-2/10',
+              displayTokenType === 'SY' && 'bg-chart-1/10',
+              !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'bg-muted/50'
+            )}
+          >
+            <span
+              className={cn(
+                'font-mono text-sm font-semibold',
+                displayTokenType === 'PT' && 'text-primary',
+                displayTokenType === 'YT' && 'text-chart-2',
+                displayTokenType === 'SY' && 'text-chart-1',
+                !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'text-muted-foreground'
+              )}
+            >
+              {displayTokenType ?? tokenSymbol.slice(0, 4)}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>

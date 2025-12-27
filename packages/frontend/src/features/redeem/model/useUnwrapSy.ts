@@ -26,6 +26,9 @@ interface UseUnwrapSyReturn {
   error: Error | null;
   isLoading: boolean;
   reset: () => void;
+
+  // For gas estimation
+  buildUnwrapCalls: (amountWad: bigint) => Call[];
 }
 
 export function useUnwrapSy({
@@ -106,6 +109,7 @@ export function useUnwrapSy({
       error,
       isLoading,
       reset,
+      buildUnwrapCalls,
     }),
     [
       underlyingBalance,
@@ -117,6 +121,7 @@ export function useUnwrapSy({
       error,
       isLoading,
       reset,
+      buildUnwrapCalls,
     ]
   );
 }
