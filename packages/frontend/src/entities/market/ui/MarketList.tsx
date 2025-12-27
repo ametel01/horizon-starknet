@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { useDashboardMarkets } from '@features/markets';
+import { StaggeredList } from '@shared/ui/animations';
 import { Card, CardContent } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 
@@ -62,11 +63,15 @@ export function MarketList({ className }: MarketListProps): ReactNode {
 
   return (
     <div className={className}>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <StaggeredList
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        initialDelay={100}
+        staggerDelay={50}
+      >
         {markets.map((market) => (
           <MarketCard key={market.address} market={market} />
         ))}
-      </div>
+      </StaggeredList>
     </div>
   );
 }

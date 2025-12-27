@@ -158,19 +158,14 @@ export const MarketCard = memo(function MarketCard({
             />
           </StatRow>
 
-          <StatRow label="PT Reserve">
-            <TokenAmount
-              amount={market.state.ptReserve}
-              symbol={`PT-${tokenSymbol}`}
-              compact
-              className="metric text-foreground"
-            />
-          </StatRow>
-
           <StatRow label="Days Left">
             <span className="metric text-foreground">
               {market.isExpired ? 'Expired' : Math.round(market.daysToExpiry)}
             </span>
+          </StatRow>
+
+          <StatRow label="Volume 24h">
+            <span className="metric text-muted-foreground">—</span>
           </StatRow>
 
           {/* Protocol Fees (Advanced mode only) */}
