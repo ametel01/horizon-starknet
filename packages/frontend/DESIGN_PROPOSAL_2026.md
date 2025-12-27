@@ -788,16 +788,15 @@ export function TokenInputMobile({ label, token, value, onChange, balance }) {
 - [x] Trade page refinement
 
 ### Phase 4: Data Visualization (Week 7-8)
-- [ ] Yield curve chart enhancement
-- [ ] Price impact visualization
-- [ ] Sparklines and mini-charts
-- [ ] Loading states and skeletons
+- [x] Yield curve chart enhancement
+- [x] Price impact visualization
+- [x] Sparklines and mini-charts
+- [x] Loading states and skeletons
 
 ### Phase 5: Polish (Week 9-10)
 - [ ] Micro-interactions throughout
 - [ ] Accessibility audit and fixes
 - [ ] Performance optimization
-- [ ] Cross-browser testing
 
 ---
 
