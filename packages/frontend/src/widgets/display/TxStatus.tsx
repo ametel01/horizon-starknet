@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 import type { TxStatus as TxStatusType } from '@shared/hooks/useTransaction';
@@ -13,9 +14,20 @@ interface TxStatusProps {
   txHash: string | null;
   error: Error | null;
   className?: string;
+  /** Optional: Show "What's next?" guidance on success */
+  showNextSteps?: boolean;
+  /** Network for explorer links (defaults to mainnet) */
+  network?: 'mainnet' | 'sepolia' | 'devnet';
 }
 
-export function TxStatus({ status, txHash, error, className }: TxStatusProps): ReactNode {
+export function TxStatus({
+  status,
+  txHash,
+  error,
+  className,
+  showNextSteps = true,
+  network = 'mainnet',
+}: TxStatusProps): ReactNode {
   const { isSimple } = useUIMode();
 
   if (status === 'idle') {
@@ -28,16 +40,94 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
   // Get mode-aware error message
   const errorMessage = error ? getModeAwareErrorMessage(error, isSimple) : null;
 
+  // Get explorer URL for transaction
+  const explorerUrl = txHash ? getExplorerUrl(network, txHash) : null;
+
+  // Enhanced success state (Peak-End Rule)
+  if (status === 'success') {
+    return (
+      <Card
+        size="sm"
+        className={cn('border-primary/20 bg-primary/10', className)}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            {/* Success header with animated icon */}
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/20 flex h-10 w-10 items-center justify-center rounded-full">
+                <svg
+                  className="text-primary animate-bounce-in h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  role="img"
+                  aria-label="Transaction successful"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-primary font-medium">{statusText}</p>
+                {txHash && explorerUrl ? (
+                  <a
+                    href={explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary/80 hover:text-primary mt-1 inline-flex items-center gap-1 font-mono text-sm transition-colors hover:underline"
+                  >
+                    View on Explorer
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                ) : null}
+              </div>
+            </div>
+
+            {/* What's next section */}
+            {showNextSteps && (
+              <div className="border-primary/20 flex items-center justify-between gap-2 border-t pt-3">
+                <span className="text-muted-foreground text-sm">What&apos;s next?</span>
+                <Link
+                  href="/portfolio"
+                  className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
+                >
+                  View Portfolio →
+                </Link>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Standard states (signing, pending, error)
   return (
     <Card
       size="sm"
       className={cn(
         status === 'signing' && 'border-chart-1/20 bg-chart-1/10',
         status === 'pending' && 'border-secondary/20 bg-secondary/10',
-        status === 'success' && 'border-primary/20 bg-primary/10',
         status === 'error' && 'border-destructive/20 bg-destructive/10',
         className
       )}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
@@ -48,7 +138,6 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
                 'font-medium',
                 status === 'signing' && 'text-chart-1',
                 status === 'pending' && 'text-muted-foreground',
-                status === 'success' && 'text-primary',
                 status === 'error' && 'text-destructive'
               )}
             >
@@ -69,18 +158,35 @@ export function TxStatus({ status, txHash, error, className }: TxStatusProps): R
 
 function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'signing') {
-    return <div className="bg-chart-1 h-5 w-5 animate-pulse rounded-full" />;
+    return (
+      <div
+        className="bg-chart-1 h-5 w-5 animate-pulse rounded-full"
+        role="img"
+        aria-label="Waiting for signature"
+      />
+    );
   }
 
   if (status === 'pending') {
     return (
-      <div className="border-muted-foreground h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
+      <div
+        className="border-muted-foreground h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"
+        role="img"
+        aria-label="Transaction pending"
+      />
     );
   }
 
   if (status === 'success') {
     return (
-      <svg className="text-primary h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg
+        className="text-primary h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        role="img"
+        aria-label="Transaction successful"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
     );
@@ -93,6 +199,8 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
+        role="img"
+        aria-label="Transaction failed"
       >
         <path
           strokeLinecap="round"

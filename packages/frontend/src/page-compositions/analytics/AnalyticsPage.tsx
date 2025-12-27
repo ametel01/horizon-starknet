@@ -1,11 +1,14 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 
 import { useDashboardMarkets } from '@features/markets';
-// Direct imports for above-the-fold content
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
 import {
   Collapsible,
   CollapsibleContent,
@@ -17,13 +20,13 @@ import {
   SelectValue,
   Skeleton,
 } from '@shared/ui';
-import { ProtocolStats } from '@widgets/analytics/ProtocolStats';
-import { ProtocolTvlCard } from '@widgets/analytics/ProtocolTvlCard';
+import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
+import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
 
 // Lazy load yield-native chart components (primary focus)
 const YieldCurveChart = dynamic(
   () => import('@widgets/analytics/YieldCurveChart').then((m) => m.YieldCurveChart),
-  { loading: () => <ChartSkeleton />, ssr: false }
+  { loading: () => <ChartSkeleton height="h-full min-h-[360px]" />, ssr: false }
 );
 
 const PtConvergenceChart = dynamic(
@@ -98,46 +101,18 @@ const FeeCollectionLog = dynamic(
   { loading: () => <ChartSkeleton /> }
 );
 
-function ChartSkeleton(): ReactNode {
-  return <Skeleton className="h-[300px] w-full rounded-lg" />;
+function ChartSkeleton({ height = 'h-[300px]' }: { height?: string }): ReactNode {
+  return <Skeleton className={cn(height, 'w-full rounded-lg')} />;
 }
 
 function CardSkeleton(): ReactNode {
   return <Skeleton className="h-[200px] w-full rounded-lg" />;
 }
 
-/**
- * Collapsible section header component
- */
-function CollapsibleSectionHeader({
-  title,
-  isOpen,
-}: {
-  title: string;
-  isOpen: boolean;
-}): ReactNode {
-  return (
-    <div className="flex items-center justify-between">
-      <h2 className="text-foreground text-lg font-semibold">{title}</h2>
-      <svg
-        className={`text-muted-foreground h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  );
-}
-
 export function AnalyticsPage(): ReactNode {
-  const { markets } = useDashboardMarkets();
+  const { markets, avgApy } = useDashboardMarkets();
   const [selectedMarket, setSelectedMarket] = useState<string | undefined>(undefined);
-  const [executionOpen, setExecutionOpen] = useState(false);
-  const [tvlOpen, setTvlOpen] = useState(false);
-  const [volumeOpen, setVolumeOpen] = useState(false);
-  const [feesOpen, setFeesOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Get active markets for the selector
   const activeMarkets = markets.filter((m) => !m.isExpired);
@@ -145,13 +120,36 @@ export function AnalyticsPage(): ReactNode {
   // Default to first active market if none selected
   const marketAddress = selectedMarket ?? activeMarkets[0]?.address;
 
+  // Get token addresses for USD pricing
+  const tokenAddresses = markets
+    .map(
+      (m) =>
+        getTokenAddressForPricing(m.metadata?.yieldTokenSymbol) ?? m.metadata?.underlyingAddress
+    )
+    .filter((addr): addr is string => addr !== undefined);
+
+  const { data: prices } = usePrices(tokenAddresses);
+
+  // Calculate TVL in USD
+  let tvlUsd = 0;
+  for (const market of markets) {
+    const symbol = market.metadata?.yieldTokenSymbol;
+    const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+    const price = getTokenPrice(priceAddr, prices);
+    const syReserve = Number(fromWad(market.state.syReserve));
+    const ptReserve = Number(fromWad(market.state.ptReserve));
+    tvlUsd += (syReserve + ptReserve) * price;
+  }
+
+  const apyPercent = avgApy.multipliedBy(100).toNumber();
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12">
-      {/* Header */}
-      <div className="mb-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      {/* Compact Header */}
+      <header className="mb-8">
         <Link
           href="/"
-          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
+          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -161,191 +159,313 @@ export function AnalyticsPage(): ReactNode {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Dashboard
+          Back
         </Link>
-        <h1 className="text-foreground text-3xl font-bold">Protocol Analytics</h1>
-        <p className="text-muted-foreground mt-2">
-          Yield-native analytics and real-time metrics for Horizon Protocol
-        </p>
-      </div>
-
-      {/* Protocol Stats Overview (compact) */}
-      <section className="mb-8">
-        <ProtocolStats />
-      </section>
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Analytics</h1>
+        <p className="text-muted-foreground mt-1">Yield-native protocol metrics</p>
+      </header>
 
       {/* ============================================ */}
-      {/* YIELD ANALYTICS SECTION (Primary Focus)     */}
+      {/* BENTO GRID - Primary Analytics              */}
       {/* ============================================ */}
-      <section className="mb-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-foreground text-lg font-semibold">Yield Analytics</h2>
-          <p className="text-muted-foreground text-sm">Term structure and yield insights</p>
-        </div>
-
-        {/* Yield Curve - Full Width */}
-        <div className="mb-6">
-          <YieldCurveChart />
-        </div>
-
-        {/* Market Selector for market-specific charts */}
-        {activeMarkets.length > 0 && (
-          <div className="mb-4">
-            <label className="text-muted-foreground mb-2 block text-sm">
-              Select market for detailed analysis:
-            </label>
-            <Select
-              value={marketAddress}
-              onValueChange={(value) => {
-                setSelectedMarket(value ?? undefined);
-              }}
-            >
-              <SelectTrigger className="w-full max-w-md">
-                <SelectValue>
-                  {(() => {
-                    const selected = activeMarkets.find((m) => m.address === marketAddress);
-                    if (!selected) return 'Select a market';
-                    return `PT-${selected.metadata?.yieldTokenSymbol ?? 'Unknown'} (${String(Math.round(selected.daysToExpiry))} days)`;
-                  })()}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {activeMarkets.map((market) => (
-                  <SelectItem key={market.address} value={market.address}>
-                    PT-{market.metadata?.yieldTokenSymbol ?? 'Unknown'} (
-                    {Math.round(market.daysToExpiry)} days)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Market-specific yield charts */}
-        {marketAddress && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* PT Convergence Chart */}
-            <PtConvergenceChart marketAddress={marketAddress} />
-
-            {/* Implied vs Realized APY */}
-            <ImpliedVsRealizedChart marketAddress={marketAddress} />
-          </div>
-        )}
-      </section>
-
-      {/* ============================================ */}
-      {/* MARKET DEPTH & EXECUTION (Collapsible)      */}
-      {/* ============================================ */}
-      <Collapsible open={executionOpen} onOpenChange={setExecutionOpen} className="mb-4">
-        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
-          <CollapsibleSectionHeader title="Market Depth & Execution" isOpen={executionOpen} />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4 space-y-6">
-          {/* Execution Quality Charts */}
-          {marketAddress && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ExecutionQualityPanel marketAddress={marketAddress} />
-              <DepthCurve marketAddress={marketAddress} />
+      <BentoGrid className="mb-8">
+        {/* Hero: Yield Curve - spans 8 columns on lg, 3 rows */}
+        <BentoCard colSpan={{ default: 12, lg: 8 }} rowSpan={3} featured animationDelay={0}>
+          <div className="flex h-full flex-col p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
+                Yield Curve
+              </h2>
+              <span className="text-muted-foreground text-xs">Term Structure</span>
             </div>
-          )}
-          {/* Liquidity Health Score */}
-          <LiquidityHealthScore />
-        </CollapsibleContent>
-      </Collapsible>
+            <div className="min-h-0 flex-1">
+              <YieldCurveChart />
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Stats stack - 4 columns each on lg */}
+        <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} animationDelay={50}>
+          <StatCell
+            label="Total TVL"
+            value={tvlUsd}
+            formatter={formatUsdCompact}
+            sublabel={`${String(markets.length)} markets`}
+          />
+        </BentoCard>
+
+        <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} animationDelay={100}>
+          <StatCell
+            label="Avg Implied APY"
+            value={apyPercent}
+            formatter={(v) => `${v.toFixed(2)}%`}
+            highlight
+          />
+        </BentoCard>
+
+        <BentoCard
+          colSpan={{ default: 12, lg: 4 }}
+          rowSpan={1}
+          animationDelay={150}
+          className="lg:row-span-1"
+        >
+          <div className="flex h-full flex-col justify-center p-4">
+            <span className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+              Select Market
+            </span>
+            {activeMarkets.length > 0 ? (
+              <Select
+                value={marketAddress}
+                onValueChange={(value) => {
+                  if (value) setSelectedMarket(value);
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue>
+                    {(() => {
+                      const selected = activeMarkets.find((m) => m.address === marketAddress);
+                      if (!selected) return 'Select';
+                      return `PT-${selected.metadata?.yieldTokenSymbol ?? '?'}`;
+                    })()}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {activeMarkets.map((market) => (
+                    <SelectItem key={market.address} value={market.address}>
+                      PT-{market.metadata?.yieldTokenSymbol ?? 'Unknown'} (
+                      {Math.round(market.daysToExpiry)}d)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="text-muted-foreground text-sm">No active markets</span>
+            )}
+          </div>
+        </BentoCard>
+
+        {/* PT Convergence - 6 columns, 2 rows */}
+        <BentoCard colSpan={{ default: 12, md: 6 }} rowSpan={2} animationDelay={200}>
+          <div className="flex h-full flex-col p-4">
+            <h3 className="text-foreground mb-2 text-sm font-semibold tracking-wider uppercase">
+              PT Convergence
+            </h3>
+            <div className="min-h-0 flex-1">
+              {marketAddress ? (
+                <PtConvergenceChart marketAddress={marketAddress} />
+              ) : (
+                <EmptyState message="Select a market" />
+              )}
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Implied vs Realized - 6 columns, 2 rows */}
+        <BentoCard colSpan={{ default: 12, md: 6 }} rowSpan={2} animationDelay={250}>
+          <div className="flex h-full flex-col p-4">
+            <h3 className="text-foreground mb-2 text-sm font-semibold tracking-wider uppercase">
+              Implied vs Realized APY
+            </h3>
+            <div className="min-h-0 flex-1">
+              {marketAddress ? (
+                <ImpliedVsRealizedChart marketAddress={marketAddress} />
+              ) : (
+                <EmptyState message="Select a market" />
+              )}
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Depth Curve - Full width, 2 rows */}
+        <BentoCard colSpan={{ default: 12 }} rowSpan={2} animationDelay={300}>
+          <div className="flex h-full flex-col p-4">
+            <h3 className="text-foreground mb-2 text-sm font-semibold tracking-wider uppercase">
+              Market Depth
+            </h3>
+            <div className="min-h-0 flex-1">
+              {marketAddress ? (
+                <DepthCurve marketAddress={marketAddress} />
+              ) : (
+                <EmptyState message="Select a market" />
+              )}
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Liquidity Health - Full width */}
+        <BentoCard colSpan={{ default: 12 }} rowSpan={2} animationDelay={350}>
+          <div className="p-4">
+            <h3 className="text-foreground mb-4 text-sm font-semibold tracking-wider uppercase">
+              Liquidity Health
+            </h3>
+            <LiquidityHealthScore />
+          </div>
+        </BentoCard>
+      </BentoGrid>
 
       {/* ============================================ */}
-      {/* COLLAPSIBLE SECTIONS (Existing Analytics)   */}
+      {/* ADVANCED ANALYTICS (Collapsible)            */}
       {/* ============================================ */}
-
-      {/* TVL Section (Collapsible) */}
-      <Collapsible open={tvlOpen} onOpenChange={setTvlOpen} className="mb-4">
-        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
-          <CollapsibleSectionHeader title="Total Value Locked" isOpen={tvlOpen} />
+      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="mb-8">
+        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors">
+          <div>
+            <h2 className="text-foreground text-lg font-semibold">Advanced Analytics</h2>
+            <p className="text-muted-foreground text-sm">
+              Execution quality, TVL breakdown, volume, and fee metrics
+            </p>
+          </div>
+          <ChevronDown
+            className={cn(
+              'text-muted-foreground h-5 w-5 transition-transform',
+              advancedOpen && 'rotate-180'
+            )}
+          />
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <ProtocolTvlCard className="lg:col-span-1" />
-            <TvlChart className="lg:col-span-2" />
-          </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <TvlBreakdown />
-            <VolumeByMarket />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+        <CollapsibleContent className="mt-4 space-y-8">
+          {/* Execution Quality */}
+          <section>
+            <h3 className="text-foreground mb-4 font-semibold">Execution Quality</h3>
+            {marketAddress ? (
+              <ExecutionQualityPanel marketAddress={marketAddress} />
+            ) : (
+              <EmptyState message="Select a market above" />
+            )}
+          </section>
 
-      {/* Volume Section (Collapsible) */}
-      <Collapsible open={volumeOpen} onOpenChange={setVolumeOpen} className="mb-4">
-        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
-          <CollapsibleSectionHeader title="Trading Volume" isOpen={volumeOpen} />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <VolumeStatsCard className="lg:col-span-1" />
-            <VolumeChart className="lg:col-span-2" />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+          {/* TVL Section */}
+          <section>
+            <h3 className="text-foreground mb-4 font-semibold">Total Value Locked</h3>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <TvlChart />
+              <TvlBreakdown />
+            </div>
+            <div className="mt-6">
+              <VolumeByMarket />
+            </div>
+          </section>
 
-      {/* Fee Revenue Section (Collapsible) */}
-      <Collapsible open={feesOpen} onOpenChange={setFeesOpen} className="mb-8">
-        <CollapsibleTrigger className="border-border bg-card hover:bg-muted/50 w-full rounded-lg border p-4 text-left transition-colors">
-          <CollapsibleSectionHeader title="Fee Revenue" isOpen={feesOpen} />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <FeeStatsCard className="lg:col-span-1" />
-            <FeeRevenueChart className="lg:col-span-2" />
-          </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <FeeByMarket />
-            <FeeCollectionLog />
-          </div>
+          {/* Volume Section */}
+          <section>
+            <h3 className="text-foreground mb-4 font-semibold">Trading Volume</h3>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <VolumeStatsCard className="lg:col-span-1" />
+              <VolumeChart className="lg:col-span-2" />
+            </div>
+          </section>
+
+          {/* Fee Revenue Section */}
+          <section>
+            <h3 className="text-foreground mb-4 font-semibold">Fee Revenue</h3>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <FeeStatsCard className="lg:col-span-1" />
+              <FeeRevenueChart className="lg:col-span-2" />
+            </div>
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <FeeByMarket />
+              <FeeCollectionLog />
+            </div>
+          </section>
         </CollapsibleContent>
       </Collapsible>
 
       {/* Info Section */}
-      <section>
-        <div className="border-border bg-card rounded-lg border p-6">
-          <h2 className="text-foreground mb-4 text-lg font-semibold">About Analytics</h2>
-          <div className="text-muted-foreground space-y-3 text-sm">
-            <p>
-              <span className="text-foreground font-medium">Term Structure (Yield Curve)</span>{' '}
-              shows the relationship between time to maturity and implied APY across all markets.
-              This is the primary view for understanding yield expectations at different horizons.
+      <section className="border-border bg-card/50 rounded-lg border p-6">
+        <h2 className="text-foreground mb-4 text-sm font-semibold tracking-wider uppercase">
+          About These Metrics
+        </h2>
+        <div className="text-muted-foreground grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <span className="text-foreground font-medium">Yield Curve</span>
+            <p className="mt-1">
+              Shows implied APY across maturities. The term structure reveals market yield
+              expectations.
             </p>
-            <p>
-              <span className="text-foreground font-medium">PT Convergence</span> visualizes how
-              Principal Tokens trade at a discount that converges to par (1.0) as maturity
-              approaches. The discount represents the market&apos;s implied yield.
+          </div>
+          <div>
+            <span className="text-foreground font-medium">PT Convergence</span>
+            <p className="mt-1">
+              Principal Tokens trade at discount, converging to par at maturity. Discount = implied
+              yield.
             </p>
-            <p>
-              <span className="text-foreground font-medium">Implied vs Realized APY</span> compares
-              the market&apos;s expected yield (from PT pricing) against the actual underlying
-              yield. Positive spread means traders expect higher future yields.
+          </div>
+          <div>
+            <span className="text-foreground font-medium">Implied vs Realized</span>
+            <p className="mt-1">
+              Compares market expectations to actual yield. Positive spread = bullish yield outlook.
             </p>
-            <p>
-              <span className="text-foreground font-medium">Execution Quality</span> measures price
-              impact on trades. Lower impact indicates better liquidity depth. The median impact
-              under 10 bps is considered excellent.
+          </div>
+          <div>
+            <span className="text-foreground font-medium">Market Depth</span>
+            <p className="mt-1">
+              Price impact by trade size. Use to plan sizing. Under 10bps impact is excellent.
             </p>
-            <p>
-              <span className="text-foreground font-medium">Depth Curve</span> shows how price
-              impact increases with trade size. Use this to plan trade sizing and understand
-              liquidity depth at different volume levels.
+          </div>
+          <div>
+            <span className="text-foreground font-medium">Liquidity Health</span>
+            <p className="mt-1">
+              Aggregated score (0-100) from spread, depth, and activity. 80+ is excellent.
             </p>
-            <p>
-              <span className="text-foreground font-medium">Liquidity Health</span> aggregates
-              spread proxies, depth scores, and activity metrics into a single health score (0-100)
-              for each market. Scores 80+ are excellent.
-            </p>
-            <p>
-              <span className="text-foreground font-medium">Note:</span> Historical data builds up
-              as the protocol operates. Charts will show more data points over time.
+          </div>
+          <div>
+            <span className="text-foreground font-medium">Note</span>
+            <p className="mt-1">
+              Historical data accumulates over time. Charts show more detail as protocol operates.
             </p>
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+interface StatCellProps {
+  label: string;
+  value: number;
+  formatter: (value: number) => string;
+  sublabel?: string | undefined;
+  highlight?: boolean | undefined;
+}
+
+function StatCell({
+  label,
+  value,
+  formatter,
+  sublabel,
+  highlight = false,
+}: StatCellProps): ReactNode {
+  return (
+    <div className="flex h-full flex-col justify-center p-4">
+      <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+        {label}
+      </span>
+      <span
+        className={cn(
+          'mt-1 font-mono text-2xl font-semibold',
+          highlight ? 'text-primary' : 'text-foreground'
+        )}
+      >
+        <AnimatedNumber value={value} formatter={formatter} duration={600} />
+      </span>
+      {sublabel !== undefined && (
+        <span className="text-muted-foreground mt-1 text-xs">{sublabel}</span>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }): ReactNode {
+  return (
+    <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+      {message}
+    </div>
+  );
+}
+
+function formatUsdCompact(value: number): string {
+  if (value === 0) return '$0';
+  if (value < 0.01) return '<$0.01';
+  if (value < 1000) return `$${value.toFixed(0)}`;
+  if (value < 1_000_000) return `$${(value / 1000).toFixed(1)}K`;
+  if (value < 1_000_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+  return `$${(value / 1_000_000_000).toFixed(2)}B`;
 }

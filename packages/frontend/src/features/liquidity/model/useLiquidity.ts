@@ -187,6 +187,93 @@ export function useRemoveLiquidity(): UseRemoveLiquidityReturn {
 }
 
 /**
+ * Build calls for adding liquidity (for gas estimation)
+ */
+export function buildAddLiquidityCalls(
+  routerAddress: string,
+  userAddress: string,
+  params: AddLiquidityParams
+): Call[] {
+  const calls: Call[] = [];
+
+  // Approve SY
+  const u256Sy = uint256.bnToUint256(params.syAmount);
+  calls.push({
+    contractAddress: params.syAddress,
+    entrypoint: 'approve',
+    calldata: [routerAddress, u256Sy.low, u256Sy.high],
+  });
+
+  // Approve PT
+  const u256Pt = uint256.bnToUint256(params.ptAmount);
+  calls.push({
+    contractAddress: params.ptAddress,
+    entrypoint: 'approve',
+    calldata: [routerAddress, u256Pt.low, u256Pt.high],
+  });
+
+  // Add liquidity
+  const u256MinLp = uint256.bnToUint256(params.minLpOut);
+  calls.push({
+    contractAddress: routerAddress,
+    entrypoint: 'add_liquidity',
+    calldata: [
+      params.marketAddress,
+      userAddress,
+      u256Sy.low,
+      u256Sy.high,
+      u256Pt.low,
+      u256Pt.high,
+      u256MinLp.low,
+      u256MinLp.high,
+      getDeadline().toString(),
+    ],
+  });
+
+  return calls;
+}
+
+/**
+ * Build calls for removing liquidity (for gas estimation)
+ */
+export function buildRemoveLiquidityCalls(
+  routerAddress: string,
+  userAddress: string,
+  params: RemoveLiquidityParams
+): Call[] {
+  const calls: Call[] = [];
+
+  // Approve LP tokens
+  const u256Lp = uint256.bnToUint256(params.lpAmount);
+  calls.push({
+    contractAddress: params.marketAddress,
+    entrypoint: 'approve',
+    calldata: [routerAddress, u256Lp.low, u256Lp.high],
+  });
+
+  // Remove liquidity
+  const u256MinSy = uint256.bnToUint256(params.minSyOut);
+  const u256MinPt = uint256.bnToUint256(params.minPtOut);
+  calls.push({
+    contractAddress: routerAddress,
+    entrypoint: 'remove_liquidity',
+    calldata: [
+      params.marketAddress,
+      userAddress,
+      u256Lp.low,
+      u256Lp.high,
+      u256MinSy.low,
+      u256MinSy.high,
+      u256MinPt.low,
+      u256MinPt.high,
+      getDeadline().toString(),
+    ],
+  });
+
+  return calls;
+}
+
+/**
  * Calculate minimum LP output with slippage protection
  * For simplicity, we estimate LP based on the smaller proportion of the deposit
  */

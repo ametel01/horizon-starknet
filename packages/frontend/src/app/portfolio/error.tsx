@@ -82,9 +82,16 @@ export default function PortfolioError({ error, reset }: PortfolioErrorProps): R
               </div>
             ) : null}
           </CardContent>
-          <CardFooter className="gap-2">
-            <Button onClick={reset}>Retry</Button>
-            <Button variant="outline" nativeButton={false} render={<Link href="/trade" />}>
+          <CardFooter className="gap-3">
+            <Button size="lg" onClick={reset}>
+              Retry
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/trade" />}
+            >
               Go to Trade
             </Button>
           </CardFooter>

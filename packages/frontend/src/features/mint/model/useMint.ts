@@ -31,6 +31,9 @@ interface UseMintReturn {
   error: Error | null;
   isLoading: boolean;
   reset: () => void;
+
+  // For gas estimation
+  buildMintCalls: (amountSyWad: bigint, minPyOut: bigint) => Call[];
 }
 
 export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn {
@@ -143,6 +146,7 @@ export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn 
       error,
       isLoading,
       reset,
+      buildMintCalls,
     }),
     [
       syBalance,
@@ -155,6 +159,7 @@ export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn 
       error,
       isLoading,
       reset,
+      buildMintCalls,
     ]
   );
 }

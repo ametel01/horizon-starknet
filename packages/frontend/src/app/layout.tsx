@@ -1,27 +1,31 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono, Public_Sans } from 'next/font/google';
+import { JetBrains_Mono, Outfit, Sora } from 'next/font/google';
 
 import { Providers } from '@/providers';
 import { Footer } from '@shared/layout/Footer';
 import { Header } from '@shared/layout/Header';
+import { MobileNav } from '@shared/layout/MobileNav';
 import { Toaster } from '@shared/ui/sonner';
 import { IndexerStatusBanner } from '@widgets/analytics/IndexerStatusBanner';
 
 import './globals.css';
 
-const publicSans = Public_Sans({
+// Display font: Modern geometric for headlines and hero text
+const displayFont = Sora({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+// Body font: Modern geometric sans with excellent readability
+const bodyFont = Outfit({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
 });
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const mono = JetBrains_Mono({
+// Mono font: Perfect for numbers, addresses, and data
+const monoFont = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
   display: 'swap',
@@ -99,18 +103,26 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps): React.ReactNode {
   return (
-    <html lang="en" className={publicSans.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         {/* Preconnect to external origins used early in page lifecycle */}
         <link rel="preconnect" href="https://starknet-mainnet.g.alchemy.com" />
         <link rel="preconnect" href="https://starknet.impulse.avnu.fi" />
+        {/* Preconnect to Google Fonts for faster font loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.variable} ${mono.variable} font-sans`}>
+      <body className="font-sans antialiased">
         <Providers>
           <Header />
           <IndexerStatusBanner showOnlyIssues={true} className="mx-4 mt-2" />
-          <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+          <main className="pb-mobile-nav min-h-[calc(100vh-4rem)]">{children}</main>
           <Footer />
+          <MobileNav />
           <Toaster />
         </Providers>
       </body>

@@ -82,9 +82,16 @@ export default function PoolsError({ error, reset }: PoolsErrorProps): React.Rea
               </div>
             ) : null}
           </CardContent>
-          <CardFooter className="gap-2">
-            <Button onClick={reset}>Retry</Button>
-            <Button variant="outline" nativeButton={false} render={<Link href="/portfolio" />}>
+          <CardFooter className="gap-3">
+            <Button size="lg" onClick={reset}>
+              Retry
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/portfolio" />}
+            >
               View Portfolio
             </Button>
           </CardFooter>
