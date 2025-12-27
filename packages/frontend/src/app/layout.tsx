@@ -4,6 +4,7 @@ import { JetBrains_Mono, Outfit, Sora } from 'next/font/google';
 import { Providers } from '@/providers';
 import { Footer } from '@shared/layout/Footer';
 import { Header } from '@shared/layout/Header';
+import { MobileNav } from '@shared/layout/MobileNav';
 import { Toaster } from '@shared/ui/sonner';
 import { IndexerStatusBanner } from '@widgets/analytics/IndexerStatusBanner';
 
@@ -119,8 +120,9 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
         <Providers>
           <Header />
           <IndexerStatusBanner showOnlyIssues={true} className="mx-4 mt-2" />
-          <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+          <main className="pb-mobile-nav min-h-[calc(100vh-4rem)]">{children}</main>
           <Footer />
+          <MobileNav />
           <Toaster />
         </Providers>
       </body>
