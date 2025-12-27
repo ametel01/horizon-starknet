@@ -75,7 +75,7 @@ export function HeroSection(): ReactNode {
             size="lg"
             nativeButton={false}
             render={<Link href="/mint" />}
-            className="min-w-[160px]"
+            className="min-w-40"
           >
             {isSimple ? 'Start Earning' : 'Mint PT + YT'}
           </Button>
@@ -84,7 +84,7 @@ export function HeroSection(): ReactNode {
             nativeButton={false}
             render={<Link href="/trade" />}
             variant="outline"
-            className="min-w-[160px]"
+            className="min-w-40"
           >
             {isSimple ? 'View Markets' : 'Trade'}
           </Button>
@@ -113,7 +113,7 @@ function HeroBackground(): ReactNode {
   return (
     <>
       {/* Base gradient - dark to slightly lighter */}
-      <div className="from-background via-background to-surface-sunken absolute inset-0 bg-gradient-to-b" />
+      <div className="from-background via-background to-surface-sunken absolute inset-0 bg-linear-to-b" />
 
       {/* Horizon glow - animated pulse */}
       <div
