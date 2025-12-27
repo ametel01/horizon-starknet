@@ -794,9 +794,9 @@ export function TokenInputMobile({ label, token, value, onChange, balance }) {
 - [x] Loading states and skeletons
 
 ### Phase 5: Polish (Week 9-10)
-- [ ] Micro-interactions throughout
-- [ ] Accessibility audit and fixes
-- [ ] Performance optimization
+- [x] Micro-interactions throughout
+- [x] Accessibility audit and fixes
+- [x] Performance optimization
 
 ---
 
