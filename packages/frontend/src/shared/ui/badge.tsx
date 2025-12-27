@@ -14,6 +14,12 @@ const badgeVariants = cva(
         outline: 'border-border text-foreground bg-input/30',
         ghost: 'hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50',
         link: 'text-primary underline-offset-4 hover:underline',
+        // DeFi-specific variants
+        success: 'border-transparent bg-green-500/10 text-green-600 dark:text-green-400',
+        warning: 'border-transparent bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        live: 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400 animate-pulse',
+        expiring: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        expired: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400',
       },
     },
     defaultVariants: {
