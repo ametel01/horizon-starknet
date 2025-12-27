@@ -1,0 +1,504 @@
+/**
+ * Zod validation schemas for Starknet event data
+ *
+ * Provides runtime validation for all 24 event types indexed by Horizon Protocol.
+ * Validation catches malformed events early, preventing silent data corruption.
+ *
+ * Schema naming convention: {Contract}{EventName}Schema
+ * E.g., factoryYieldContractsCreatedSchema for Factory.YieldContractsCreated
+ */
+
+import { z } from "zod";
+
+import { logger } from "./logger";
+
+// ============================================================
+// BASE SCHEMAS
+// ============================================================
+
+/**
+ * Hex string validation - matches Starknet felt252 format
+ */
+const hexString = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]+$/, "Invalid hex string format");
+
+/**
+ * Base event schema - common fields for all Starknet events
+ */
+export const baseEventSchema = z.object({
+  address: hexString,
+  keys: z.array(z.string()).min(1, "Events must have at least one key"),
+  data: z.array(z.string()),
+  transactionHash: hexString,
+  eventIndex: z.number().nonnegative().optional(),
+});
+
+export type BaseEvent = z.infer<typeof baseEventSchema>;
+
+// ============================================================
+// FACTORY EVENTS (2 schemas)
+// ============================================================
+
+/**
+ * Factory.YieldContractsCreated event
+ * keys: [selector, sy, expiry]
+ * data: [pt, yt, creator, underlying, symbol(ByteArray), initial_exchange_rate(u256), timestamp, market_index]
+ */
+export const factoryYieldContractsCreatedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "YieldContractsCreated requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(11, "YieldContractsCreated requires at least 11 data elements"),
+});
+
+/**
+ * Factory.ClassHashesUpdated event
+ * keys: [selector]
+ * data: [yt_class_hash, pt_class_hash]
+ */
+export const factoryClassHashesUpdatedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1),
+  data: z
+    .array(z.string())
+    .min(2, "ClassHashesUpdated requires at least 2 data elements"),
+});
+
+// ============================================================
+// MARKET FACTORY EVENTS (2 schemas)
+// ============================================================
+
+/**
+ * MarketFactory.MarketCreated event
+ * keys: [selector, pt, expiry]
+ * data: [market, creator, scalar_root(u256), initial_anchor(u256), fee_rate(u256),
+ *        sy, yt, underlying, symbol(ByteArray), initial_exchange_rate(u256), timestamp, market_index]
+ */
+export const marketFactoryMarketCreatedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "MarketCreated requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(18, "MarketCreated requires at least 18 data elements"),
+});
+
+/**
+ * MarketFactory.MarketClassHashUpdated event
+ * keys: [selector]
+ * data: [old_class_hash, new_class_hash]
+ */
+export const marketFactoryClassHashUpdatedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1),
+  data: z
+    .array(z.string())
+    .min(2, "MarketClassHashUpdated requires at least 2 data elements"),
+});
+
+// ============================================================
+// SY EVENTS (3 schemas)
+// ============================================================
+
+/**
+ * SY.Deposit event
+ * keys: [selector, caller, receiver, underlying]
+ * data: [amount_deposited(u256), amount_sy_minted(u256), exchange_rate(u256), total_supply_after(u256)]
+ */
+export const syDepositSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "Deposit requires at least 4 keys"),
+  data: z.array(z.string()).min(8, "Deposit requires at least 8 data elements"),
+});
+
+/**
+ * SY.Redeem event
+ * keys: [selector, caller, receiver, underlying]
+ * data: [amount_sy_burned(u256), amount_redeemed(u256), exchange_rate(u256), total_supply_after(u256)]
+ */
+export const syRedeemSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "Redeem requires at least 4 keys"),
+  data: z.array(z.string()).min(8, "Redeem requires at least 8 data elements"),
+});
+
+/**
+ * SY.OracleRateUpdated event
+ * keys: [selector, sy, underlying]
+ * data: [old_rate(u256), new_rate(u256), rate_change_bps(u256)]
+ */
+export const syOracleRateUpdatedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "OracleRateUpdated requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(6, "OracleRateUpdated requires at least 6 data elements"),
+});
+
+// ============================================================
+// YT EVENTS (5 schemas)
+// ============================================================
+
+/**
+ * YT.MintPY event
+ * keys: [selector, caller, receiver, expiry]
+ * data: [amount_sy_deposited(u256), amount_py_minted(u256), pt, sy, py_index(u256),
+ *        exchange_rate(u256), total_pt_supply(u256), total_yt_supply(u256)]
+ */
+export const ytMintPYSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "MintPY requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(14, "MintPY requires at least 14 data elements"),
+});
+
+/**
+ * YT.RedeemPY event
+ * keys: [selector, caller, receiver, expiry]
+ * data: [sy, pt, amount_py_redeemed(u256), amount_sy_returned(u256), py_index(u256), exchange_rate(u256)]
+ */
+export const ytRedeemPYSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "RedeemPY requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(10, "RedeemPY requires at least 10 data elements"),
+});
+
+/**
+ * YT.RedeemPYPostExpiry event
+ * keys: [selector, caller, receiver, expiry]
+ * data: [amount_pt_redeemed(u256), amount_sy_returned(u256), pt, sy, final_py_index(u256), final_exchange_rate(u256)]
+ */
+export const ytRedeemPYPostExpirySchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(4, "RedeemPYPostExpiry requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(10, "RedeemPYPostExpiry requires at least 10 data elements"),
+});
+
+/**
+ * YT.InterestClaimed event
+ * keys: [selector, user, yt, expiry]
+ * data: [amount_sy(u256), sy, yt_balance(u256), py_index_at_claim(u256), exchange_rate(u256)]
+ */
+export const ytInterestClaimedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "InterestClaimed requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(9, "InterestClaimed requires at least 9 data elements"),
+});
+
+/**
+ * YT.ExpiryReached event
+ * keys: [selector, market, yt, pt]
+ * data: [sy, expiry, final_exchange_rate(u256), final_py_index(u256),
+ *        total_pt_supply(u256), total_yt_supply(u256), sy_reserve(u256), pt_reserve(u256)]
+ */
+export const ytExpiryReachedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "ExpiryReached requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(14, "ExpiryReached requires at least 14 data elements"),
+});
+
+// ============================================================
+// MARKET EVENTS (6 schemas)
+// ============================================================
+
+/**
+ * Market.Mint event
+ * keys: [selector, sender, receiver, expiry]
+ * data: [sy, pt, sy_amount(u256), pt_amount(u256), lp_amount(u256), exchange_rate(u256),
+ *        implied_rate(u256), sy_reserve(u256), pt_reserve(u256), total_lp(u256)]
+ */
+export const marketMintSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "Mint requires at least 4 keys"),
+  data: z.array(z.string()).min(18, "Mint requires at least 18 data elements"),
+});
+
+/**
+ * Market.Burn event
+ * keys: [selector, sender, receiver, expiry]
+ * data: [sy, pt, lp_amount(u256), sy_amount(u256), pt_amount(u256), exchange_rate(u256),
+ *        implied_rate(u256), sy_reserve(u256), pt_reserve(u256), total_lp(u256)]
+ */
+export const marketBurnSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "Burn requires at least 4 keys"),
+  data: z.array(z.string()).min(18, "Burn requires at least 18 data elements"),
+});
+
+/**
+ * Market.Swap event
+ * keys: [selector, sender, receiver, expiry]
+ * data: [sy, pt, pt_in(u256), sy_in(u256), pt_out(u256), sy_out(u256), fee(u256),
+ *        implied_rate_before(u256), implied_rate_after(u256), exchange_rate(u256),
+ *        sy_reserve(u256), pt_reserve(u256)]
+ */
+export const marketSwapSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "Swap requires at least 4 keys"),
+  data: z.array(z.string()).min(22, "Swap requires at least 22 data elements"),
+});
+
+/**
+ * Market.ImpliedRateUpdated event
+ * keys: [selector, market, expiry]
+ * data: [old_rate(u256), new_rate(u256), timestamp, time_to_expiry, exchange_rate(u256),
+ *        sy_reserve(u256), pt_reserve(u256), total_lp(u256)]
+ */
+export const marketImpliedRateUpdatedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "ImpliedRateUpdated requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(14, "ImpliedRateUpdated requires at least 14 data elements"),
+});
+
+/**
+ * Market.FeesCollected event
+ * keys: [selector, collector, receiver, market]
+ * data: [amount(u256), expiry, fee_rate(u256)]
+ */
+export const marketFeesCollectedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(4, "FeesCollected requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(5, "FeesCollected requires at least 5 data elements"),
+});
+
+/**
+ * Market.ScalarRootUpdated event
+ * keys: [selector, market]
+ * data: [old_value(u256), new_value(u256), timestamp]
+ */
+export const marketScalarRootUpdatedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(2, "ScalarRootUpdated requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(4, "ScalarRootUpdated requires at least 4 data elements"),
+});
+
+// ============================================================
+// ROUTER EVENTS (6 schemas)
+// ============================================================
+
+/**
+ * Router.MintPY event
+ * keys: [selector, sender, receiver]
+ * data: [yt, sy_in(u256), pt_out(u256), yt_out(u256)]
+ */
+export const routerMintPYSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "MintPY requires at least 3 keys"),
+  data: z.array(z.string()).min(7, "MintPY requires at least 7 data elements"),
+});
+
+/**
+ * Router.RedeemPY event
+ * keys: [selector, sender, receiver]
+ * data: [yt, py_in(u256), sy_out(u256)]
+ */
+export const routerRedeemPYSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "RedeemPY requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(5, "RedeemPY requires at least 5 data elements"),
+});
+
+/**
+ * Router.AddLiquidity event
+ * keys: [selector, sender, receiver]
+ * data: [market, sy_used(u256), pt_used(u256), lp_out(u256)]
+ */
+export const routerAddLiquiditySchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "AddLiquidity requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(7, "AddLiquidity requires at least 7 data elements"),
+});
+
+/**
+ * Router.RemoveLiquidity event
+ * keys: [selector, sender, receiver]
+ * data: [market, lp_in(u256), sy_out(u256), pt_out(u256)]
+ */
+export const routerRemoveLiquiditySchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "RemoveLiquidity requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(7, "RemoveLiquidity requires at least 7 data elements"),
+});
+
+/**
+ * Router.Swap event
+ * keys: [selector, sender, receiver]
+ * data: [market, sy_in(u256), pt_in(u256), sy_out(u256), pt_out(u256)]
+ */
+export const routerSwapSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "Swap requires at least 3 keys"),
+  data: z.array(z.string()).min(9, "Swap requires at least 9 data elements"),
+});
+
+/**
+ * Router.SwapYT event
+ * keys: [selector, sender, receiver]
+ * data: [yt, market, sy_in(u256), yt_in(u256), sy_out(u256), yt_out(u256)]
+ */
+export const routerSwapYTSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "SwapYT requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(10, "SwapYT requires at least 10 data elements"),
+});
+
+// ============================================================
+// VALIDATION HELPERS
+// ============================================================
+
+/**
+ * Context for validation errors
+ */
+export interface ValidationContext {
+  indexer: string;
+  eventName: string;
+  blockNumber?: number;
+  transactionHash?: string;
+}
+
+/**
+ * Validate an event against a schema, returning null on failure
+ *
+ * This is the recommended way to validate events - it logs errors
+ * but returns null instead of throwing, allowing the indexer to
+ * continue processing other events.
+ *
+ * @param schema - Zod schema to validate against
+ * @param event - Raw event data from Apibara
+ * @param context - Context for error logging
+ * @returns Validated event or null if validation failed
+ *
+ * @example
+ * const validated = validateEvent(marketSwapSchema, event, {
+ *   indexer: "market",
+ *   eventName: "Swap",
+ *   blockNumber,
+ * });
+ * if (!validated) continue; // Skip this event
+ */
+export function validateEvent<T>(
+  schema: z.ZodType<T>,
+  event: unknown,
+  context: ValidationContext,
+): T | null {
+  const result = schema.safeParse(event);
+
+  if (!result.success) {
+    logger.error(
+      {
+        indexer: context.indexer,
+        eventName: context.eventName,
+        blockNumber: context.blockNumber,
+        transactionHash: context.transactionHash,
+        errors: result.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+          code: issue.code,
+        })),
+        event:
+          typeof event === "object" && event !== null
+            ? {
+                keysLength: (event as Record<string, unknown>)["keys"]
+                  ? ((event as Record<string, unknown>)["keys"] as unknown[])
+                      .length
+                  : 0,
+                dataLength: (event as Record<string, unknown>)["data"]
+                  ? ((event as Record<string, unknown>)["data"] as unknown[])
+                      .length
+                  : 0,
+              }
+            : "unknown",
+      },
+      "Event validation failed",
+    );
+    return null;
+  }
+
+  return result.data;
+}
+
+/**
+ * Validate an event against a schema, throwing on failure
+ *
+ * Use this when you want validation errors to bubble up.
+ *
+ * @param schema - Zod schema to validate against
+ * @param event - Raw event data from Apibara
+ * @param context - Context for error messages
+ * @returns Validated event
+ * @throws ZodError if validation fails
+ */
+export function validateEventStrict<T>(
+  schema: z.ZodType<T>,
+  event: unknown,
+  context: ValidationContext,
+): T {
+  try {
+    return schema.parse(event);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const errorDetails = err.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join(", ");
+      throw new Error(
+        `[${context.indexer}] ${context.eventName} validation failed: ${errorDetails}`,
+      );
+    }
+    throw err;
+  }
+}
+
+// ============================================================
+// SCHEMA EXPORTS MAP
+// ============================================================
+
+/**
+ * Map of all event schemas by name for dynamic access
+ */
+export const eventSchemas = {
+  // Factory
+  YieldContractsCreated: factoryYieldContractsCreatedSchema,
+  ClassHashesUpdated: factoryClassHashesUpdatedSchema,
+
+  // MarketFactory
+  MarketCreated: marketFactoryMarketCreatedSchema,
+  MarketClassHashUpdated: marketFactoryClassHashUpdatedSchema,
+
+  // SY
+  Deposit: syDepositSchema,
+  Redeem: syRedeemSchema,
+  OracleRateUpdated: syOracleRateUpdatedSchema,
+
+  // YT
+  "YT.MintPY": ytMintPYSchema,
+  "YT.RedeemPY": ytRedeemPYSchema,
+  RedeemPYPostExpiry: ytRedeemPYPostExpirySchema,
+  InterestClaimed: ytInterestClaimedSchema,
+  ExpiryReached: ytExpiryReachedSchema,
+
+  // Market
+  Mint: marketMintSchema,
+  Burn: marketBurnSchema,
+  "Market.Swap": marketSwapSchema,
+  ImpliedRateUpdated: marketImpliedRateUpdatedSchema,
+  FeesCollected: marketFeesCollectedSchema,
+  ScalarRootUpdated: marketScalarRootUpdatedSchema,
+
+  // Router
+  "Router.MintPY": routerMintPYSchema,
+  "Router.RedeemPY": routerRedeemPYSchema,
+  AddLiquidity: routerAddLiquiditySchema,
+  RemoveLiquidity: routerRemoveLiquiditySchema,
+  "Router.Swap": routerSwapSchema,
+  SwapYT: routerSwapYTSchema,
+} as const;

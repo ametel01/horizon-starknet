@@ -15,6 +15,13 @@
       "when": 1766607002300,
       "tag": "0001_wonderful_tenebrous",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766870535358,
+      "tag": "0002_fair_talon",
+      "breakpoints": true
     }
   ]
 }

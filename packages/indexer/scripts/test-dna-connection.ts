@@ -5,29 +5,36 @@
 import { createAuthenticatedClient } from "@apibara/protocol";
 import { StarknetStream } from "@apibara/starknet";
 
+import { createScriptLogger } from "../src/lib/logger";
+
+const log = createScriptLogger("test-dna-connection");
+
 async function testConnection() {
   const streamUrl = "https://mainnet.starknet.a5a.ch";
-  const dnaToken = process.env.DNA_TOKEN;
+  const dnaToken = process.env["DNA_TOKEN"];
 
-  console.log("Testing DNA connection...");
-  console.log(`Stream URL: ${streamUrl}`);
-  console.log(`DNA_TOKEN: ${dnaToken ? "set" : "NOT SET"}`);
+  log.info(
+    { streamUrl, tokenSet: Boolean(dnaToken) },
+    "Testing DNA connection...",
+  );
 
   if (!dnaToken) {
-    console.error("❌ DNA_TOKEN environment variable is required");
+    log.fatal("DNA_TOKEN environment variable is required");
     process.exit(1);
   }
 
   try {
     const client = createAuthenticatedClient(StarknetStream, streamUrl);
 
-    console.log("Fetching stream status...");
+    log.info("Fetching stream status...");
     const status = await client.status();
 
-    console.log("✅ Connection successful!");
-    console.log("Current block:", status.currentHead?.orderKey?.toString());
+    log.info(
+      { currentBlock: status.currentHead?.orderKey?.toString() },
+      "Connection successful",
+    );
   } catch (error) {
-    console.error("❌ Connection failed:", error);
+    log.fatal({ error }, "Connection failed");
     process.exit(1);
   }
 }

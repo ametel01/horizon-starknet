@@ -7,25 +7,41 @@
  */
 
 import {
-  marketFactoryClassHashUpdated,
-  marketFactoryMarketCreated,
-} from "@/schema";
-import {
   drizzle,
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-import type { ApibaraRuntimeConfig } from "apibara/types";
+
+import {
+  marketFactoryClassHashUpdated,
+  marketFactoryMarketCreated,
+} from "@/schema";
+
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
+import { isProgrammerError } from "../lib/errors";
+import {
+  createIndexerLogger,
+  logBlockProgress,
+  logIndexerStart,
+} from "../lib/logger";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
+import {
+  marketFactoryClassHashUpdatedSchema,
+  marketFactoryMarketCreatedSchema,
+  validateEvent,
+} from "../lib/validation";
+
+import type { ApibaraRuntimeConfig } from "apibara/types";
 
 // Event selectors using Apibara's getSelector helper
 const MARKET_CREATED = getSelector("MarketCreated");
 const MARKET_CLASS_HASH_UPDATED = getSelector("MarketClassHashUpdated");
+
+const log = createIndexerLogger("market-factory");
 
 export default function marketFactoryIndexer(
   runtimeConfig: ApibaraRuntimeConfig,
@@ -41,9 +57,7 @@ export default function marketFactoryIndexer(
     }),
   );
 
-  console.log(
-    `[market-factory] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
-  );
+  logIndexerStart(log, { streamUrl, startingBlock: config.startingBlock });
 
   return defineIndexer(StarknetStream)({
     streamUrl,
@@ -68,13 +82,8 @@ export default function marketFactoryIndexer(
       ],
     },
     async transform({ block, endCursor }) {
-      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNumber = Number(block.header.blockNumber);
-      if (blockNumber % 1000 === 0) {
-        console.log(
-          `[market-factory] Block ${blockNumber} | Cursor: ${endCursor?.orderKey}`,
-        );
-      }
+      logBlockProgress(log, blockNumber, endCursor?.orderKey);
 
       if (block.events.length === 0) return;
 
@@ -89,75 +98,156 @@ export default function marketFactoryIndexer(
       const marketCreatedRows: MarketCreatedRow[] = [];
       const classHashRows: ClassHashRow[] = [];
 
-      for (const event of events) {
+      // Track errors for this block
+      let errorCount = 0;
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events.at(i)!;
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
+        // Use event.eventIndex from Apibara, fallback to array position
+        const eventIndex = event.eventIndex ?? i;
 
-        if (matchSelector(eventKey, MARKET_CREATED)) {
-          const pt = event.keys[1];
-          const expiry = BigInt(event.keys[2] ?? "0");
+        try {
+          if (matchSelector(eventKey, MARKET_CREATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryMarketCreatedSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "MarketCreated",
+                blockNumber,
+                transactionHash,
+              },
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          const data = event.data as string[];
-          const market = data[0];
-          const creator = data[1];
-          // u256 fields use 2 felts each (low, high)
-          const scalarRoot = readU256(data, 2);
-          const initialAnchor = readU256(data, 4);
-          const feeRate = readU256(data, 6);
-          const sy = data[8];
-          const yt = data[9];
-          const underlying = data[10];
-          const underlyingSymbol = decodeByteArray(data, 11);
-          const initialExchangeRate = readU256(data, 14);
-          const _timestamp = BigInt(data[16] ?? "0");
-          const marketIndex = Number(data[17] ?? "0");
+            const pt = validated.keys[1];
+            const expiry = BigInt(validated.keys[2] ?? "0");
 
-          marketCreatedRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            pt: pt ?? "",
-            expiry: Number(expiry),
-            market: market ?? "",
-            creator: creator ?? "",
-            scalar_root: scalarRoot,
-            initial_anchor: initialAnchor,
-            fee_rate: feeRate,
-            sy: sy ?? "",
-            yt: yt ?? "",
-            underlying: underlying ?? "",
-            underlying_symbol: underlyingSymbol,
-            initial_exchange_rate: initialExchangeRate,
-            market_index: marketIndex,
-          });
-        } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {
-          const oldClassHash = event.data[0];
-          const newClassHash = event.data[1];
+            const data = validated.data;
+            const market = data[0];
+            const creator = data[1];
+            // u256 fields use 2 felts each (low, high)
+            const scalarRoot = readU256(data, 2, "scalar_root");
+            const initialAnchor = readU256(data, 4, "initial_anchor");
+            const feeRate = readU256(data, 6, "fee_rate");
+            const sy = data[8];
+            const yt = data[9];
+            const underlying = data[10];
+            const underlyingSymbol = decodeByteArray(
+              data,
+              11,
+              "underlying_symbol",
+            );
+            const initialExchangeRate = readU256(
+              data,
+              14,
+              "initial_exchange_rate",
+            );
+            // data[16] is timestamp (unused)
+            const marketIndex = Number(data[17] ?? "0");
 
-          classHashRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            old_class_hash: oldClassHash ?? "",
-            new_class_hash: newClassHash ?? "",
-          });
+            marketCreatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              pt: pt ?? "",
+              expiry: Number(expiry),
+              market: market ?? "",
+              creator: creator ?? "",
+              scalar_root: scalarRoot,
+              initial_anchor: initialAnchor,
+              fee_rate: feeRate,
+              sy: sy ?? "",
+              yt: yt ?? "",
+              underlying: underlying ?? "",
+              underlying_symbol: underlyingSymbol,
+              initial_exchange_rate: initialExchangeRate,
+              market_index: marketIndex,
+            });
+          } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryClassHashUpdatedSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "MarketClassHashUpdated",
+                blockNumber,
+                transactionHash,
+              },
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const oldClassHash = validated.data[0];
+            const newClassHash = validated.data[1];
+
+            classHashRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_class_hash: oldClassHash ?? "",
+              new_class_hash: newClassHash ?? "",
+            });
+          }
+        } catch (err) {
+          // Re-throw programmer errors - these should crash the indexer
+          if (isProgrammerError(err)) {
+            throw err;
+          }
+
+          // Log data errors and continue processing
+          log.error(
+            {
+              err,
+              blockNumber,
+              transactionHash,
+              eventIndex,
+              eventKey,
+            },
+            "Event processing failed",
+          );
+          errorCount++;
         }
       }
 
-      // Batch insert all events (parallel inserts for different tables)
-      const insertPromises: Promise<unknown>[] = [];
-      if (marketCreatedRows.length > 0)
-        insertPromises.push(
-          db.insert(marketFactoryMarketCreated).values(marketCreatedRows),
+      // Log if block had errors
+      if (errorCount > 0) {
+        log.warn(
+          {
+            blockNumber,
+            errorCount,
+            totalEvents: events.length,
+          },
+          "Block completed with errors",
         );
-      if (classHashRows.length > 0)
-        insertPromises.push(
-          db.insert(marketFactoryClassHashUpdated).values(classHashRows),
-        );
-
-      if (insertPromises.length > 0) {
-        await Promise.all(insertPromises);
       }
+
+      // Batch insert with transaction wrapping and conflict handling for idempotency
+      await db.transaction(async (tx) => {
+        if (marketCreatedRows.length > 0) {
+          await tx
+            .insert(marketFactoryMarketCreated)
+            .values(marketCreatedRows)
+            .onConflictDoNothing();
+        }
+        if (classHashRows.length > 0) {
+          await tx
+            .insert(marketFactoryClassHashUpdated)
+            .values(classHashRows)
+            .onConflictDoNothing();
+        }
+      });
     },
   });
 }

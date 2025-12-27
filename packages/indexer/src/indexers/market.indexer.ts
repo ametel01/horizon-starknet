@@ -13,6 +13,14 @@
  */
 
 import {
+  drizzle,
+  drizzleStorage,
+  useDrizzleStorage,
+} from "@apibara/plugin-drizzle";
+import { getSelector, StarknetStream } from "@apibara/starknet";
+import { defineIndexer } from "apibara/indexer";
+
+import {
   marketBurn,
   marketFeesCollected,
   marketImpliedRateUpdated,
@@ -20,18 +28,29 @@ import {
   marketScalarRootUpdated,
   marketSwap,
 } from "@/schema";
-import {
-  drizzle,
-  drizzleStorage,
-  useDrizzleStorage,
-} from "@apibara/plugin-drizzle";
-import { getSelector, StarknetStream } from "@apibara/starknet";
-import { defineIndexer } from "apibara/indexer";
-import type { ApibaraRuntimeConfig } from "apibara/types";
+
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
+import { isProgrammerError } from "../lib/errors";
+import {
+  createIndexerLogger,
+  logBatchInsert,
+  logBlockProgress,
+  logIndexerStart,
+} from "../lib/logger";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
+import {
+  marketBurnSchema,
+  marketFeesCollectedSchema,
+  marketImpliedRateUpdatedSchema,
+  marketMintSchema,
+  marketScalarRootUpdatedSchema,
+  marketSwapSchema,
+  validateEvent,
+} from "../lib/validation";
+
+import type { ApibaraRuntimeConfig } from "apibara/types";
 
 // MarketFactory event to discover Market contracts
 const MARKET_CREATED = getSelector("MarketCreated");
@@ -43,6 +62,8 @@ const SWAP = getSelector("Swap");
 const IMPLIED_RATE_UPDATED = getSelector("ImpliedRateUpdated");
 const FEES_COLLECTED = getSelector("FeesCollected");
 const SCALAR_ROOT_UPDATED = getSelector("ScalarRootUpdated");
+
+const log = createIndexerLogger("market");
 
 export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
@@ -60,24 +81,24 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     }),
   );
 
-  console.log(
-    `[market] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
-  );
+  logIndexerStart(log, {
+    streamUrl,
+    startingBlock: config.startingBlock,
+    knownContracts: config.knownMarkets.length,
+  });
 
   // Build initial filter with factory event + known Market contracts
   // This ensures the indexer works correctly after restarts when the checkpoint
   // is past the block where MarketCreated was emitted
-  const knownMarketFilters = config.knownMarkets.flatMap((marketAddress) => [
-    { address: marketAddress, keys: [MINT] },
-    { address: marketAddress, keys: [BURN] },
-    { address: marketAddress, keys: [SWAP] },
-    { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
-    { address: marketAddress, keys: [FEES_COLLECTED] },
-    { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
-  ]);
-
-  console.log(
-    `[market] Including ${config.knownMarkets.length} known Market contracts in initial filter`,
+  const knownMarketFilters = config.knownMarkets.flatMap(
+    (marketAddress: `0x${string}`) => [
+      { address: marketAddress, keys: [MINT] },
+      { address: marketAddress, keys: [BURN] },
+      { address: marketAddress, keys: [SWAP] },
+      { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
+      { address: marketAddress, keys: [FEES_COLLECTED] },
+      { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
+    ],
   );
 
   return defineIndexer(StarknetStream)({
@@ -109,7 +130,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         if (!matchSelector(event.keys[0], MARKET_CREATED)) return [];
 
         // MarketCreated: keys = [selector, pt, expiry], data = [market, ...]
-        const marketAddress = event.data[0] as `0x${string}`;
+        const marketAddress = event.data[0]!;
 
         return [
           { address: marketAddress, keys: [MINT] },
@@ -130,13 +151,8 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       };
     },
     async transform({ block, endCursor }) {
-      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNum = Number(block.header.blockNumber);
-      if (blockNum % 1000 === 0) {
-        console.log(
-          `[market] Block ${blockNum} | Cursor: ${endCursor?.orderKey}`,
-        );
-      }
+      logBlockProgress(log, blockNum, endCursor?.orderKey);
 
       if (block.events.length === 0) return;
 
@@ -161,220 +177,356 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const feesRows: FeesRow[] = [];
       const scalarRootRows: ScalarRootRow[] = [];
 
-      for (const event of events) {
+      // Track errors for this block
+      let errorCount = 0;
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events.at(i)!;
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
         const marketAddress = event.address;
-        const data = event.data as string[];
+        // Use event.eventIndex from Apibara, fallback to array position
+        const eventIndex = event.eventIndex ?? i;
 
-        if (matchSelector(eventKey, MINT)) {
-          const sender = event.keys[1] ?? "";
-          const receiver = event.keys[2] ?? "";
-          const expiry = Number(BigInt(event.keys[3] ?? "0"));
+        try {
+          if (matchSelector(eventKey, MINT)) {
+            // Validate event structure
+            const validated = validateEvent(marketMintSchema, event, {
+              indexer: "market",
+              eventName: "Mint",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          const sy = data[0] ?? "";
-          const pt = data[1] ?? "";
-          const syAmount = readU256(data, 2);
-          const ptAmount = readU256(data, 4);
-          const lpAmount = readU256(data, 6);
-          const exchangeRate = readU256(data, 8);
-          const impliedRate = readU256(data, 10);
-          const syReserve = readU256(data, 12);
-          const ptReserve = readU256(data, 14);
-          const totalLp = readU256(data, 16);
+            const sender = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const expiry = Number(BigInt(validated.keys[3] ?? "0"));
 
-          mintRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            sender,
-            receiver,
-            expiry,
-            market: marketAddress,
-            sy,
-            pt,
-            sy_amount: syAmount,
-            pt_amount: ptAmount,
-            lp_amount: lpAmount,
-            exchange_rate: exchangeRate,
-            implied_rate: impliedRate,
-            sy_reserve_after: syReserve,
-            pt_reserve_after: ptReserve,
-            total_lp_after: totalLp,
-          });
-        } else if (matchSelector(eventKey, BURN)) {
-          const sender = event.keys[1] ?? "";
-          const receiver = event.keys[2] ?? "";
-          const expiry = Number(BigInt(event.keys[3] ?? "0"));
+            const data = validated.data;
+            const sy = data[0] ?? "";
+            const pt = data[1] ?? "";
+            const syAmount = readU256(data, 2, "sy_amount");
+            const ptAmount = readU256(data, 4, "pt_amount");
+            const lpAmount = readU256(data, 6, "lp_amount");
+            const exchangeRate = readU256(data, 8, "exchange_rate");
+            const impliedRate = readU256(data, 10, "implied_rate");
+            const syReserve = readU256(data, 12, "sy_reserve");
+            const ptReserve = readU256(data, 14, "pt_reserve");
+            const totalLp = readU256(data, 16, "total_lp");
 
-          const sy = data[0] ?? "";
-          const pt = data[1] ?? "";
-          const lpAmount = readU256(data, 2);
-          const syAmount = readU256(data, 4);
-          const ptAmount = readU256(data, 6);
-          const exchangeRate = readU256(data, 8);
-          const impliedRate = readU256(data, 10);
-          const syReserve = readU256(data, 12);
-          const ptReserve = readU256(data, 14);
-          const totalLp = readU256(data, 16);
+            mintRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sender,
+              receiver,
+              expiry,
+              market: marketAddress,
+              sy,
+              pt,
+              sy_amount: syAmount,
+              pt_amount: ptAmount,
+              lp_amount: lpAmount,
+              exchange_rate: exchangeRate,
+              implied_rate: impliedRate,
+              sy_reserve_after: syReserve,
+              pt_reserve_after: ptReserve,
+              total_lp_after: totalLp,
+            });
+          } else if (matchSelector(eventKey, BURN)) {
+            // Validate event structure
+            const validated = validateEvent(marketBurnSchema, event, {
+              indexer: "market",
+              eventName: "Burn",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          burnRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            sender,
-            receiver,
-            expiry,
-            market: marketAddress,
-            sy,
-            pt,
-            lp_amount: lpAmount,
-            sy_amount: syAmount,
-            pt_amount: ptAmount,
-            exchange_rate: exchangeRate,
-            implied_rate: impliedRate,
-            sy_reserve_after: syReserve,
-            pt_reserve_after: ptReserve,
-            total_lp_after: totalLp,
-          });
-        } else if (matchSelector(eventKey, SWAP)) {
-          const sender = event.keys[1] ?? "";
-          const receiver = event.keys[2] ?? "";
-          const expiry = Number(BigInt(event.keys[3] ?? "0"));
+            const sender = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const expiry = Number(BigInt(validated.keys[3] ?? "0"));
 
-          const sy = data[0] ?? "";
-          const pt = data[1] ?? "";
-          const ptIn = readU256(data, 2);
-          const syIn = readU256(data, 4);
-          const ptOut = readU256(data, 6);
-          const syOut = readU256(data, 8);
-          const fee = readU256(data, 10);
-          const impliedRateBefore = readU256(data, 12);
-          const impliedRateAfter = readU256(data, 14);
-          const exchangeRate = readU256(data, 16);
-          const syReserve = readU256(data, 18);
-          const ptReserve = readU256(data, 20);
+            const data = validated.data;
+            const sy = data[0] ?? "";
+            const pt = data[1] ?? "";
+            const lpAmount = readU256(data, 2, "lp_amount");
+            const syAmount = readU256(data, 4, "sy_amount");
+            const ptAmount = readU256(data, 6, "pt_amount");
+            const exchangeRate = readU256(data, 8, "exchange_rate");
+            const impliedRate = readU256(data, 10, "implied_rate");
+            const syReserve = readU256(data, 12, "sy_reserve");
+            const ptReserve = readU256(data, 14, "pt_reserve");
+            const totalLp = readU256(data, 16, "total_lp");
 
-          swapRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            sender,
-            receiver,
-            expiry,
-            market: marketAddress,
-            sy,
-            pt,
-            pt_in: ptIn,
-            sy_in: syIn,
-            pt_out: ptOut,
-            sy_out: syOut,
-            fee,
-            implied_rate_before: impliedRateBefore,
-            implied_rate_after: impliedRateAfter,
-            exchange_rate: exchangeRate,
-            sy_reserve_after: syReserve,
-            pt_reserve_after: ptReserve,
-          });
-        } else if (matchSelector(eventKey, IMPLIED_RATE_UPDATED)) {
-          const market = event.keys[1] ?? marketAddress;
-          const expiry = Number(BigInt(event.keys[2] ?? "0"));
+            burnRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sender,
+              receiver,
+              expiry,
+              market: marketAddress,
+              sy,
+              pt,
+              lp_amount: lpAmount,
+              sy_amount: syAmount,
+              pt_amount: ptAmount,
+              exchange_rate: exchangeRate,
+              implied_rate: impliedRate,
+              sy_reserve_after: syReserve,
+              pt_reserve_after: ptReserve,
+              total_lp_after: totalLp,
+            });
+          } else if (matchSelector(eventKey, SWAP)) {
+            // Validate event structure
+            const validated = validateEvent(marketSwapSchema, event, {
+              indexer: "market",
+              eventName: "Swap",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          // Event structure:
-          // data[0-1]: old_rate (u256)
-          // data[2-3]: new_rate (u256)
-          // data[4]: timestamp (u64)
-          // data[5]: time_to_expiry (u64)
-          // data[6-7]: exchange_rate (u256)
-          // data[8-9]: sy_reserve (u256)
-          // data[10-11]: pt_reserve (u256)
-          // data[12-13]: total_lp (u256)
-          const oldRate = readU256(data, 0);
-          const newRate = readU256(data, 2);
-          // Note: data[4] is timestamp, data[5] is time_to_expiry
-          const timeToExpiry = Number(BigInt(data[5] ?? "0"));
-          const exchangeRate = readU256(data, 6);
-          const syReserve = readU256(data, 8);
-          const ptReserve = readU256(data, 10);
-          const totalLp = readU256(data, 12);
+            const sender = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const expiry = Number(BigInt(validated.keys[3] ?? "0"));
 
-          impliedRateRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            market,
-            expiry,
-            old_rate: oldRate,
-            new_rate: newRate,
-            time_to_expiry: timeToExpiry,
-            exchange_rate: exchangeRate,
-            sy_reserve: syReserve,
-            pt_reserve: ptReserve,
-            total_lp: totalLp,
-          });
-        } else if (matchSelector(eventKey, FEES_COLLECTED)) {
-          const collector = event.keys[1] ?? "";
-          const receiver = event.keys[2] ?? "";
-          const market = event.keys[3] ?? marketAddress;
+            const data = validated.data;
+            const sy = data[0] ?? "";
+            const pt = data[1] ?? "";
+            const ptIn = readU256(data, 2, "pt_in");
+            const syIn = readU256(data, 4, "sy_in");
+            const ptOut = readU256(data, 6, "pt_out");
+            const syOut = readU256(data, 8, "sy_out");
+            const fee = readU256(data, 10, "fee");
+            const impliedRateBefore = readU256(data, 12, "implied_rate_before");
+            const impliedRateAfter = readU256(data, 14, "implied_rate_after");
+            const exchangeRate = readU256(data, 16, "exchange_rate");
+            const syReserve = readU256(data, 18, "sy_reserve");
+            const ptReserve = readU256(data, 20, "pt_reserve");
 
-          const amount = readU256(data, 0);
-          const expiry = Number(BigInt(data[2] ?? "0"));
-          const feeRate = readU256(data, 3);
+            swapRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sender,
+              receiver,
+              expiry,
+              market: marketAddress,
+              sy,
+              pt,
+              pt_in: ptIn,
+              sy_in: syIn,
+              pt_out: ptOut,
+              sy_out: syOut,
+              fee,
+              implied_rate_before: impliedRateBefore,
+              implied_rate_after: impliedRateAfter,
+              exchange_rate: exchangeRate,
+              sy_reserve_after: syReserve,
+              pt_reserve_after: ptReserve,
+            });
+          } else if (matchSelector(eventKey, IMPLIED_RATE_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketImpliedRateUpdatedSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "ImpliedRateUpdated",
+                blockNumber,
+                transactionHash,
+              },
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          feesRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            collector,
-            receiver,
-            market,
-            amount,
-            expiry,
-            fee_rate: feeRate,
-          });
-        } else if (matchSelector(eventKey, SCALAR_ROOT_UPDATED)) {
-          // ScalarRootUpdated: keys = [selector, market], data = [old_value, new_value, timestamp]
-          const market = event.keys[1] ?? marketAddress;
+            const market = validated.keys[1] ?? marketAddress;
+            const expiry = Number(BigInt(validated.keys[2] ?? "0"));
 
-          const oldValue = readU256(data, 0);
-          const newValue = readU256(data, 2);
+            const data = validated.data;
+            // Event structure:
+            // data[0-1]: old_rate (u256)
+            // data[2-3]: new_rate (u256)
+            // data[4]: timestamp (u64)
+            // data[5]: time_to_expiry (u64)
+            // data[6-7]: exchange_rate (u256)
+            // data[8-9]: sy_reserve (u256)
+            // data[10-11]: pt_reserve (u256)
+            // data[12-13]: total_lp (u256)
+            const oldRate = readU256(data, 0, "old_rate");
+            const newRate = readU256(data, 2, "new_rate");
+            // Note: data[4] is timestamp, data[5] is time_to_expiry
+            const timeToExpiry = Number(BigInt(data[5] ?? "0"));
+            const exchangeRate = readU256(data, 6, "exchange_rate");
+            const syReserve = readU256(data, 8, "sy_reserve");
+            const ptReserve = readU256(data, 10, "pt_reserve");
+            const totalLp = readU256(data, 12, "total_lp");
 
-          scalarRootRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            market,
-            old_value: oldValue,
-            new_value: newValue,
-          });
+            impliedRateRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              market,
+              expiry,
+              old_rate: oldRate,
+              new_rate: newRate,
+              time_to_expiry: timeToExpiry,
+              exchange_rate: exchangeRate,
+              sy_reserve: syReserve,
+              pt_reserve: ptReserve,
+              total_lp: totalLp,
+            });
+          } else if (matchSelector(eventKey, FEES_COLLECTED)) {
+            // Validate event structure
+            const validated = validateEvent(marketFeesCollectedSchema, event, {
+              indexer: "market",
+              eventName: "FeesCollected",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const collector = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const market = validated.keys[3] ?? marketAddress;
+
+            const data = validated.data;
+            const amount = readU256(data, 0, "amount");
+            const expiry = Number(BigInt(data[2] ?? "0"));
+            const feeRate = readU256(data, 3, "fee_rate");
+
+            feesRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              collector,
+              receiver,
+              market,
+              amount,
+              expiry,
+              fee_rate: feeRate,
+            });
+          } else if (matchSelector(eventKey, SCALAR_ROOT_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketScalarRootUpdatedSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "ScalarRootUpdated",
+                blockNumber,
+                transactionHash,
+              },
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // ScalarRootUpdated: keys = [selector, market], data = [old_value, new_value, timestamp]
+            const market = validated.keys[1] ?? marketAddress;
+
+            const data = validated.data;
+            const oldValue = readU256(data, 0, "old_value");
+            const newValue = readU256(data, 2, "new_value");
+
+            scalarRootRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              market,
+              old_value: oldValue,
+              new_value: newValue,
+            });
+          }
+        } catch (err) {
+          // Re-throw programmer errors - these should crash the indexer
+          if (isProgrammerError(err)) {
+            throw err;
+          }
+
+          // Log data errors and continue processing
+          log.error(
+            {
+              err,
+              blockNumber,
+              transactionHash,
+              eventIndex,
+              eventKey,
+            },
+            "Event processing failed",
+          );
+          errorCount++;
         }
       }
 
-      // Batch insert all events (parallel inserts for different tables)
-      const insertPromises: Promise<unknown>[] = [];
-      if (mintRows.length > 0)
-        insertPromises.push(db.insert(marketMint).values(mintRows));
-      if (burnRows.length > 0)
-        insertPromises.push(db.insert(marketBurn).values(burnRows));
-      if (swapRows.length > 0)
-        insertPromises.push(db.insert(marketSwap).values(swapRows));
-      if (impliedRateRows.length > 0)
-        insertPromises.push(
-          db.insert(marketImpliedRateUpdated).values(impliedRateRows),
-        );
-      if (feesRows.length > 0)
-        insertPromises.push(db.insert(marketFeesCollected).values(feesRows));
-      if (scalarRootRows.length > 0)
-        insertPromises.push(
-          db.insert(marketScalarRootUpdated).values(scalarRootRows),
-        );
-
-      if (insertPromises.length > 0) {
-        await Promise.all(insertPromises);
-        console.log(
-          `[market] Block ${blockNum} | Inserted ${events.length} events`,
+      // Log if block had errors
+      if (errorCount > 0) {
+        log.warn(
+          {
+            blockNumber,
+            errorCount,
+            totalEvents: events.length,
+          },
+          "Block completed with errors",
         );
       }
+
+      // Batch insert with transaction wrapping and conflict handling for idempotency
+      await db.transaction(async (tx) => {
+        if (mintRows.length > 0) {
+          await tx.insert(marketMint).values(mintRows).onConflictDoNothing();
+        }
+        if (burnRows.length > 0) {
+          await tx.insert(marketBurn).values(burnRows).onConflictDoNothing();
+        }
+        if (swapRows.length > 0) {
+          await tx.insert(marketSwap).values(swapRows).onConflictDoNothing();
+        }
+        if (impliedRateRows.length > 0) {
+          await tx
+            .insert(marketImpliedRateUpdated)
+            .values(impliedRateRows)
+            .onConflictDoNothing();
+        }
+        if (feesRows.length > 0) {
+          await tx
+            .insert(marketFeesCollected)
+            .values(feesRows)
+            .onConflictDoNothing();
+        }
+        if (scalarRootRows.length > 0) {
+          await tx
+            .insert(marketScalarRootUpdated)
+            .values(scalarRootRows)
+            .onConflictDoNothing();
+        }
+      });
+
+      logBatchInsert(log, blockNum, events.length);
     },
   });
 }

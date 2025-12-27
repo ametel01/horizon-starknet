@@ -6,7 +6,7 @@ export default {
   dialect: "postgresql",
   dbCredentials: {
     url:
-      process.env.POSTGRES_CONNECTION_STRING ??
+      process.env["POSTGRES_CONNECTION_STRING"] ??
       "postgres://horizon:horizon@localhost:5432/horizon_indexer",
   },
 } satisfies Config;

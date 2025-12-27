@@ -4,8 +4,9 @@
  * Tests the transform logic for Deposit, Redeem, OracleRateUpdated events
  */
 
-import { describe, expect, it } from "vitest";
 import { hash } from "starknet";
+import { describe, expect, it } from "vitest";
+
 import { matchSelector, readU256 } from "../src/lib/utils";
 
 // Event selectors

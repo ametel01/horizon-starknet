@@ -5,125 +5,129 @@
 
 import postgres from "postgres";
 
+import { createScriptLogger } from "../src/lib/logger";
+
+const log = createScriptLogger("reset-checkpoints");
+
+const MATERIALIZED_VIEWS = [
+  "market_current_state",
+  "protocol_daily_stats",
+  "user_trading_stats",
+  "rate_history",
+  "oracle_rate_history",
+  "market_daily_stats",
+  "market_hourly_stats",
+  "user_py_positions",
+  "market_lp_positions",
+];
+
+const EVENT_TABLES = [
+  // Factory
+  "factory_yield_contracts_created",
+  "factory_class_hashes_updated",
+  // Market Factory
+  "market_factory_market_created",
+  "market_factory_class_hash_updated",
+  // SY
+  "sy_deposit",
+  "sy_redeem",
+  "sy_oracle_rate_updated",
+  // YT
+  "yt_mint_py",
+  "yt_redeem_py",
+  "yt_redeem_py_post_expiry",
+  "yt_interest_claimed",
+  "yt_expiry_reached",
+  // Market
+  "market_mint",
+  "market_burn",
+  "market_swap",
+  "market_implied_rate_updated",
+  "market_fees_collected",
+  // Router
+  "router_mint_py",
+  "router_redeem_py",
+  "router_add_liquidity",
+  "router_remove_liquidity",
+  "router_swap",
+  "router_swap_yt",
+];
+
+const CHECKPOINT_TABLES = [
+  "airfoil.checkpoints",
+  "airfoil.filters",
+  "airfoil.reorg_rollback",
+];
+
 async function resetCheckpoints() {
   // Support both Railway's DATABASE_URL and our POSTGRES_CONNECTION_STRING
   const databaseUrl =
-    process.env.DATABASE_URL ?? process.env.POSTGRES_CONNECTION_STRING;
+    process.env["DATABASE_URL"] ?? process.env["POSTGRES_CONNECTION_STRING"];
   if (!databaseUrl) {
-    console.error(
+    log.fatal(
       "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required",
     );
     process.exit(1);
   }
 
-  console.log("Connecting to database...");
+  log.info("Connecting to database...");
   const sql = postgres(databaseUrl);
 
   try {
     // Drop all materialized views first (they depend on the tables)
-    console.log("\n=== Dropping materialized views ===");
-    const materializedViews = [
-      "market_current_state",
-      "protocol_daily_stats",
-      "user_trading_stats",
-      "rate_history",
-      "oracle_rate_history",
-      "market_daily_stats",
-      "market_hourly_stats",
-      "user_py_positions",
-      "market_lp_positions",
-    ];
-
-    for (const view of materializedViews) {
+    log.info("Dropping materialized views...");
+    for (const view of MATERIALIZED_VIEWS) {
       try {
         await sql.unsafe(`DROP MATERIALIZED VIEW IF EXISTS ${view} CASCADE`);
-        console.log(`✓ Dropped ${view}`);
+        log.debug({ view }, "Dropped view");
       } catch (e: unknown) {
         const error = e as Error;
-        console.log(`  Could not drop ${view}: ${error.message}`);
+        log.warn({ view, error: error.message }, "Could not drop view");
       }
     }
 
     // Drop the refresh function
     try {
       await sql.unsafe(`DROP FUNCTION IF EXISTS refresh_all_views()`);
-      console.log(`✓ Dropped refresh_all_views function`);
+      log.debug("Dropped refresh_all_views function");
     } catch (e: unknown) {
       const error = e as Error;
-      console.log(`  Could not drop refresh_all_views: ${error.message}`);
+      log.warn({ error: error.message }, "Could not drop refresh_all_views");
     }
 
     // Truncate all event tables
-    console.log("\n=== Truncating event tables ===");
-    const eventTables = [
-      // Factory
-      "factory_yield_contracts_created",
-      "factory_class_hashes_updated",
-      // Market Factory
-      "market_factory_market_created",
-      "market_factory_class_hash_updated",
-      // SY
-      "sy_deposit",
-      "sy_redeem",
-      "sy_oracle_rate_updated",
-      // YT
-      "yt_mint_py",
-      "yt_redeem_py",
-      "yt_redeem_py_post_expiry",
-      "yt_interest_claimed",
-      "yt_expiry_reached",
-      // Market
-      "market_mint",
-      "market_burn",
-      "market_swap",
-      "market_implied_rate_updated",
-      "market_fees_collected",
-      // Router
-      "router_mint_py",
-      "router_redeem_py",
-      "router_add_liquidity",
-      "router_remove_liquidity",
-      "router_swap",
-      "router_swap_yt",
-    ];
-
-    for (const table of eventTables) {
+    log.info("Truncating event tables...");
+    for (const table of EVENT_TABLES) {
       try {
         await sql.unsafe(`TRUNCATE ${table} CASCADE`);
-        console.log(`✓ Truncated ${table}`);
+        log.debug({ table }, "Truncated table");
       } catch (e: unknown) {
         const error = e as Error;
         if (!error.message?.includes("does not exist")) {
-          console.log(`  Could not truncate ${table}: ${error.message}`);
+          log.warn({ table, error: error.message }, "Could not truncate table");
         }
       }
     }
 
     // Truncate airfoil (checkpoint) tables
-    console.log("\n=== Truncating checkpoint tables ===");
-    const checkpointTables = [
-      "airfoil.checkpoints",
-      "airfoil.filters",
-      "airfoil.reorg_rollback",
-    ];
-
-    for (const table of checkpointTables) {
+    log.info("Truncating checkpoint tables...");
+    for (const table of CHECKPOINT_TABLES) {
       try {
         await sql.unsafe(`TRUNCATE ${table} CASCADE`);
-        console.log(`✓ Truncated ${table}`);
+        log.debug({ table }, "Truncated table");
       } catch (e: unknown) {
         const error = e as Error;
         if (!error.message?.includes("does not exist")) {
-          console.log(`  Could not truncate ${table}: ${error.message}`);
+          log.warn({ table, error: error.message }, "Could not truncate table");
         }
       }
     }
 
-    console.log("\n=== Reset complete ===");
-    console.log("All event data and checkpoints have been cleared.");
-    console.log("Indexers will restart from their configured startingBlock.");
+    log.info(
+      "Reset complete. All event data and checkpoints cleared. Indexers will restart from startingBlock.",
+    );
   } catch (error) {
-    console.error("Failed to reset:", error);
+    log.fatal({ error }, "Failed to reset");
     process.exit(1);
   } finally {
     await sql.end();

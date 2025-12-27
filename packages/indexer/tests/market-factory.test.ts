@@ -4,8 +4,9 @@
  * Tests the transform logic for MarketCreated and MarketClassHashUpdated events
  */
 
-import { describe, expect, it } from "vitest";
 import { hash } from "starknet";
+import { describe, expect, it } from "vitest";
+
 import { matchSelector, decodeByteArray, readU256 } from "../src/lib/utils";
 
 // Event selectors
