@@ -773,13 +773,13 @@ export function TokenInputMobile({ label, token, value, onChange, balance }) {
 - [x] Typography system update (fonts, scales, utilities)
 - [x] Enhanced color tokens and gradients
 - [x] Animation utilities and CSS updates
-- [ ] Mobile navigation component
+- [x] Mobile navigation component
 
 ### Phase 2: Core Components (Week 3-4)
-- [ ] MarketCard redesign
-- [ ] SwapForm enhancement
-- [ ] TokenInput mobile optimization
-- [ ] Stats cards with motion
+- [x] MarketCard redesign
+- [x] SwapForm enhancement
+- [x] TokenInput mobile optimization
+- [x] Stats cards with motion
 
 ### Phase 3: Pages (Week 5-6)
 - [ ] Hero section implementation
