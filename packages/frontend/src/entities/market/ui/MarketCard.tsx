@@ -25,7 +25,12 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
   const tokenName = market.metadata?.yieldTokenName ?? 'Unknown Market';
 
   return (
-    <Card className={cn('hover:border-border/80 transition-colors', className)}>
+    <Card
+      className={cn(
+        'hover:border-primary/30 hover:shadow-primary/5 transition-all hover:shadow-lg',
+        className
+      )}
+    >
       <CardHeader className="flex flex-row items-start justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
@@ -33,7 +38,7 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
             <ExpiryBadge expiryTimestamp={market.expiry} />
           </CardTitle>
           <p className="text-muted-foreground mt-1 text-sm">{tokenName}</p>
-          <p className="text-muted-foreground mt-0.5 font-mono text-xs">{shortAddress}</p>
+          <p className="address text-muted-foreground mt-0.5 text-xs">{shortAddress}</p>
         </div>
       </CardHeader>
 
@@ -41,46 +46,46 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
         <div className="space-y-3">
           {/* Implied APY */}
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">Implied APY</span>
+            <span className="text-compact text-muted-foreground">Implied APY</span>
             <ApyDisplay apy={market.impliedApy.toNumber()} />
           </div>
 
           {/* TVL */}
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">TVL</span>
+            <span className="text-compact text-muted-foreground">TVL</span>
             <TokenAmount
               amount={market.tvlSy}
               symbol={tokenSymbol}
               compact
-              className="text-foreground"
+              className="metric text-foreground"
             />
           </div>
 
           {/* Reserves */}
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">Liquidity</span>
+            <span className="text-compact text-muted-foreground">Liquidity</span>
             <TokenAmount
               amount={market.state.syReserve}
               symbol={tokenSymbol}
               compact
-              className="text-foreground"
+              className="metric text-foreground"
             />
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">PT Reserve</span>
+            <span className="text-compact text-muted-foreground">PT Reserve</span>
             <TokenAmount
               amount={market.state.ptReserve}
               symbol={`PT-${tokenSymbol}`}
               compact
-              className="text-foreground"
+              className="metric text-foreground"
             />
           </div>
 
           {/* Days to Expiry */}
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">Days to Expiry</span>
-            <span className="text-foreground font-mono">
+            <span className="text-compact text-muted-foreground">Days to Expiry</span>
+            <span className="metric text-foreground">
               {market.isExpired ? 'Expired' : market.daysToExpiry.toFixed(1)}
             </span>
           </div>
@@ -88,12 +93,12 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
           {/* Protocol Fees (Advanced mode only) */}
           {isAdvanced && market.state.feesCollected > 0n && (
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-sm">Protocol Fees</span>
+              <span className="text-compact text-muted-foreground">Protocol Fees</span>
               <TokenAmount
                 amount={market.state.feesCollected}
                 symbol={tokenSymbol}
                 compact
-                className="text-foreground"
+                className="metric text-foreground"
               />
             </div>
           )}

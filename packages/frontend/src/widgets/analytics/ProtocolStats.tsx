@@ -34,14 +34,12 @@ function StatCard({ label, value, subValue, isLoading, className }: StatCardProp
   return (
     <Card size="sm" className={cn('min-w-[140px]', className)}>
       <CardContent className="pt-4">
-        <div className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-          {label}
-        </div>
+        <div className="label">{label}</div>
         {isLoading ? (
           <Skeleton className="mt-2 h-8 w-20" />
         ) : (
           <div className="mt-1">
-            <div className="text-2xl font-bold">{value}</div>
+            <div className="metric text-2xl font-semibold">{value}</div>
             {subValue && <div className="text-muted-foreground text-xs">{subValue}</div>}
           </div>
         )}
