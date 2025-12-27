@@ -63,3 +63,29 @@ export {
   SelectTrigger,
   SelectValue,
 } from './select';
+
+// Typography components
+export {
+  AddressDisplay,
+  ApyMetric,
+  DataText,
+  Display,
+  GradientText,
+  Heading,
+  LabelText,
+  Metric,
+  StatDisplay,
+} from './typography';
+
+// Animation components
+export {
+  AnimatedValue,
+  BounceIn,
+  FadeUp,
+  GlowPulse,
+  InteractiveCard,
+  ScaleIn,
+  SkeletonPulse,
+  SlideIn,
+  StaggeredList,
+} from './animations';
