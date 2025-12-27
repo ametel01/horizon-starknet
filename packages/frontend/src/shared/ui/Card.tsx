@@ -2,17 +2,52 @@ import * as React from 'react';
 
 import { cn } from '@shared/lib/utils';
 
+interface CardProps extends React.ComponentProps<'div'> {
+  size?: 'default' | 'sm';
+  /** Enable interactive hover effects (lift, glow) */
+  interactive?: boolean;
+}
+
+/**
+ * Card component with optional micro-interactions.
+ *
+ * Features:
+ * - `interactive` prop enables hover lift and border glow
+ * - Smooth transitions for all state changes
+ * - Focus-within ring for keyboard navigation
+ */
 function Card({
   className,
   size = 'default',
+  interactive = false,
   ...props
-}: React.ComponentProps<'div'> & { size?: 'default' | 'sm' }): React.JSX.Element {
+}: CardProps): React.JSX.Element {
   return (
     <div
       data-slot="card"
       data-size={size}
+      data-interactive={interactive ? '' : undefined}
       className={cn(
-        'ring-foreground/10 group/card bg-card text-card-foreground flex flex-col gap-6 overflow-hidden rounded-2xl py-6 text-sm ring-1 has-[>img:first-child]:pt-0 data-[size=sm]:gap-4 data-[size=sm]:py-4 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl',
+        // Base styles
+        'group/card bg-card text-card-foreground ring-foreground/10 flex flex-col gap-6 overflow-hidden rounded-2xl py-6 text-sm ring-1',
+        // Image handling
+        'has-[>img:first-child]:pt-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl',
+        // Size variants
+        'data-[size=sm]:gap-4 data-[size=sm]:py-4',
+        // Micro-interactions: smooth transitions
+        'transition-all duration-200 ease-out',
+        // Interactive mode: hover effects
+        interactive && [
+          'cursor-pointer',
+          // Lift on hover
+          'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5',
+          // Border glow on hover
+          'hover:ring-primary/20',
+          // Active press feedback
+          'active:translate-y-0 active:shadow-md active:transition-transform active:duration-75',
+          // Focus-within for keyboard nav
+          'focus-within:ring-ring/50 focus-within:ring-2',
+        ],
         className
       )}
       {...props}

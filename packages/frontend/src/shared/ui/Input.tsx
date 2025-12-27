@@ -3,6 +3,14 @@ import * as React from 'react';
 import { cn } from '@shared/lib/utils';
 import { Label } from '@shared/ui/label';
 
+/**
+ * Input component with focus micro-interactions.
+ *
+ * Features:
+ * - Smooth focus transitions with glow effect
+ * - Ring animation on focus
+ * - Hover state feedback
+ */
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
   ({ className, type, ...props }, ref) => {
     return (
@@ -11,12 +19,24 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
         ref={ref}
         data-slot="input"
         className={cn(
-          'bg-input/30 border-input flex h-9 w-full rounded-lg border px-3 py-1 text-base transition-colors',
+          // Base styles
+          'bg-input/30 border-input flex h-9 w-full rounded-lg border px-3 py-1 text-base',
+          // Micro-interactions: smooth transitions
+          'transition-all duration-150 ease-out',
+          // Hover state
+          'hover:border-input/80 hover:bg-input/40',
+          // File input styles
           'file:text-foreground file:border-0 file:bg-transparent file:text-sm file:font-medium',
-          'placeholder:text-muted-foreground',
-          'focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
+          // Placeholder
+          'placeholder:text-muted-foreground placeholder:transition-opacity focus:placeholder:opacity-70',
+          // Focus state with glow effect
+          'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
+          'focus-visible:bg-input/50',
+          // Disabled state
+          'disabled:hover:border-input disabled:hover:bg-input/30 disabled:cursor-not-allowed disabled:opacity-50',
+          // Error state
+          'aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-invalid:focus-visible:ring-destructive/30',
+          // Responsive text
           'md:text-sm',
           className
         )}
