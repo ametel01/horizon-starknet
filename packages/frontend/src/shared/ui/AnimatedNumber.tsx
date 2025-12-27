@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { memo, type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@shared/lib/utils';
 
@@ -124,6 +124,8 @@ export interface AnimatedNumberProps {
  * - Optional highlight flash on change
  * - Respects prefers-reduced-motion
  *
+ * Memoized to prevent unnecessary re-renders in lists
+ *
  * @example
  * <AnimatedNumber
  *   value={tvl}
@@ -132,7 +134,7 @@ export interface AnimatedNumberProps {
  *   highlightChange
  * />
  */
-export function AnimatedNumber({
+export const AnimatedNumber = memo(function AnimatedNumber({
   value,
   formatter = (v) => v.toLocaleString(),
   duration = 600,
@@ -175,11 +177,14 @@ export function AnimatedNumber({
         'motion-reduce:transition-none',
         className
       )}
+      // Accessibility: announce value changes to screen readers
+      aria-live="polite"
+      aria-atomic="true"
     >
       {formatter(animatedValue)}
     </span>
   );
-}
+});
 
 export interface AnimatedCurrencyProps {
   /** Value in base units (e.g., cents, wei) or decimal */
@@ -198,12 +203,13 @@ export interface AnimatedCurrencyProps {
 
 /**
  * AnimatedCurrency - Specialized animated number for currency values
+ * Memoized to prevent unnecessary re-renders
  *
  * @example
  * <AnimatedCurrency value={1234567.89} currency="$" compact />
  * // Displays "$1.23M" with smooth animation
  */
-export function AnimatedCurrency({
+export const AnimatedCurrency = memo(function AnimatedCurrency({
   value,
   currency = '$',
   decimals = 2,
@@ -229,7 +235,7 @@ export function AnimatedCurrency({
   return (
     <AnimatedNumber value={value} formatter={formatter} duration={duration} className={className} />
   );
-}
+});
 
 export interface AnimatedPercentProps {
   /** Value as decimal (0.15 = 15%) or percentage (15 = 15%) */
@@ -248,12 +254,13 @@ export interface AnimatedPercentProps {
 
 /**
  * AnimatedPercent - Specialized animated number for percentage values
+ * Memoized to prevent unnecessary re-renders
  *
  * @example
  * <AnimatedPercent value={0.0842} decimals={2} />
  * // Displays "8.42%" with smooth animation
  */
-export function AnimatedPercent({
+export const AnimatedPercent = memo(function AnimatedPercent({
   value,
   isPercentage = false,
   decimals = 2,
@@ -277,4 +284,4 @@ export function AnimatedPercent({
       highlightChange={showSign}
     />
   );
-}
+});

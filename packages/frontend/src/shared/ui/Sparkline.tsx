@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { memo, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { cn } from '@shared/lib/utils';
 
@@ -32,9 +32,15 @@ interface SparklineProps {
   strokeWidth?: number;
   /** Curve type */
   curve?: 'linear' | 'smooth';
+  /** Accessible label for screen readers */
+  'aria-label'?: string;
 }
 
-export function Sparkline({
+/**
+ * SVG-based sparkline component
+ * Memoized for performance when used in lists
+ */
+export const Sparkline = memo(function Sparkline({
   data,
   width = 64,
   height = 24,
@@ -44,6 +50,7 @@ export function Sparkline({
   animated = true,
   strokeWidth = 1.5,
   curve = 'smooth',
+  'aria-label': ariaLabel,
 }: SparklineProps): ReactNode {
   const [mounted, setMounted] = useState(!animated);
 
@@ -149,19 +156,34 @@ export function Sparkline({
     };
   }, [values, width, height, color, curve]);
 
+  // Generate accessible description from data trend (must be before early return)
+  const trendDescription = useMemo(() => {
+    if (ariaLabel) return ariaLabel;
+    if (values.length < 2) return 'No trend data';
+    const first = values[0] ?? 0;
+    const last = values[values.length - 1] ?? 0;
+    const change = ((last - first) / (first || 1)) * 100;
+    if (Math.abs(change) < 0.1) return 'Trend chart showing stable values';
+    return change > 0
+      ? `Trend chart showing ${change.toFixed(1)}% increase`
+      : `Trend chart showing ${Math.abs(change).toFixed(1)}% decrease`;
+  }, [ariaLabel, values]);
+
+  // Calculate path length for animation
+  const pathLength = width * 2;
+
   if (values.length < 2) {
     return (
       <div
         className={cn('bg-muted/50 flex items-center justify-center rounded', className)}
         style={{ width, height }}
+        role="img"
+        aria-label="Insufficient data for trend"
       >
-        <Minus className="text-muted-foreground h-3 w-3" />
+        <Minus className="text-muted-foreground h-3 w-3" aria-hidden="true" />
       </div>
     );
   }
-
-  // Calculate path length for animation
-  const pathLength = width * 2;
 
   return (
     <svg
@@ -169,6 +191,9 @@ export function Sparkline({
       height={height}
       viewBox={`0 0 ${String(width)} ${String(height)}`}
       className={cn('overflow-visible', className)}
+      // Accessibility: describe the chart for screen readers
+      role="img"
+      aria-label={trendDescription}
     >
       {showFill && (
         <defs>
@@ -202,7 +227,7 @@ export function Sparkline({
       />
     </svg>
   );
-}
+});
 
 /**
  * Sparkline with value display
@@ -218,7 +243,7 @@ interface SparklineWithValueProps extends SparklineProps {
   valuePosition?: 'left' | 'right';
 }
 
-export function SparklineWithValue({
+export const SparklineWithValue = memo(function SparklineWithValue({
   value,
   change,
   label,
@@ -247,7 +272,7 @@ export function SparklineWithValue({
       </div>
     </div>
   );
-}
+});
 
 /**
  * Mini bar chart for volume/distribution data
@@ -262,9 +287,15 @@ interface MiniBarChartProps {
   gap?: number;
   /** Show animated entrance */
   animated?: boolean;
+  /** Accessible label for screen readers */
+  'aria-label'?: string;
 }
 
-export function MiniBarChart({
+/**
+ * Mini bar chart for volume/distribution data
+ * Memoized for performance when used in lists
+ */
+export const MiniBarChart = memo(function MiniBarChart({
   data,
   width = 64,
   height = 24,
@@ -272,6 +303,7 @@ export function MiniBarChart({
   color = 'primary',
   gap = 0.2,
   animated = true,
+  'aria-label': ariaLabel,
 }: MiniBarChartProps): ReactNode {
   const [mounted, setMounted] = useState(!animated);
 
@@ -327,13 +359,24 @@ export function MiniBarChart({
     }));
   }, [data, width, height, color, gap]);
 
+  // Generate accessible description from data (must be before early return)
+  const chartDescription = useMemo(() => {
+    if (ariaLabel) return ariaLabel;
+    if (data.length === 0) return 'No data';
+    const max = Math.max(...data);
+    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+    return `Bar chart with ${String(data.length)} bars, max value ${max.toFixed(1)}, average ${avg.toFixed(1)}`;
+  }, [ariaLabel, data]);
+
   if (data.length === 0) {
     return (
       <div
         className={cn('bg-muted/50 flex items-center justify-center rounded', className)}
         style={{ width, height }}
+        role="img"
+        aria-label="No data available"
       >
-        <Minus className="text-muted-foreground h-3 w-3" />
+        <Minus className="text-muted-foreground h-3 w-3" aria-hidden="true" />
       </div>
     );
   }
@@ -344,6 +387,9 @@ export function MiniBarChart({
       height={height}
       viewBox={`0 0 ${String(width)} ${String(height)}`}
       className={className}
+      // Accessibility: describe the chart for screen readers
+      role="img"
+      aria-label={chartDescription}
     >
       {bars.map((bar, i) => (
         <rect
@@ -360,7 +406,7 @@ export function MiniBarChart({
       ))}
     </svg>
   );
-}
+});
 
 /**
  * Trend indicator with arrow and change
@@ -378,7 +424,11 @@ interface TrendIndicatorProps {
   showNeutral?: boolean;
 }
 
-export function TrendIndicator({
+/**
+ * Trend indicator with arrow and change
+ * Memoized as it's frequently rendered in lists
+ */
+export const TrendIndicator = memo(function TrendIndicator({
   value,
   className,
   isPercentage = true,
@@ -435,7 +485,7 @@ export function TrendIndicator({
       {isPercentage ? '%' : ''}
     </span>
   );
-}
+});
 
 /**
  * Compact stat with sparkline background
@@ -448,7 +498,11 @@ interface SparklineStatProps {
   className?: string;
 }
 
-export function SparklineStat({
+/**
+ * Compact stat with sparkline background
+ * Memoized for dashboard performance
+ */
+export const SparklineStat = memo(function SparklineStat({
   label,
   value,
   data,
@@ -486,4 +540,4 @@ export function SparklineStat({
       </div>
     </div>
   );
-}
+});

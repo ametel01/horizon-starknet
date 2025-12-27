@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { type ReactNode, useMemo } from 'react';
+import { memo, type ReactNode, useMemo } from 'react';
 
 import { TokenAmount } from '@entities/token';
 import { cn } from '@shared/lib/utils';
@@ -19,20 +19,28 @@ interface MarketCardProps {
 
 /**
  * Stat row component for compact data display
+ * Memoized to prevent re-renders in the stats grid
  */
-function StatRow({ label, children }: { label: string; children: ReactNode }): ReactNode {
+const StatRow = memo(function StatRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}): ReactNode {
   return (
     <div className="flex items-center justify-between gap-2 overflow-hidden">
       <span className="text-compact text-muted-foreground flex-shrink-0">{label}</span>
       <span className="truncate text-right">{children}</span>
     </div>
   );
-}
+});
 
 /**
  * Visual yield bar that scales with APY percentage
+ * Memoized since it's purely presentational
  */
-function YieldBar({ apy }: { apy: number }): ReactNode {
+const YieldBar = memo(function YieldBar({ apy }: { apy: number }): ReactNode {
   // Cap at 100% width, scale so 20% APY = 100% bar
   const width = Math.min(apy * 5, 100);
 
@@ -44,7 +52,7 @@ function YieldBar({ apy }: { apy: number }): ReactNode {
       />
     </div>
   );
-}
+});
 
 /**
  * MarketCard - Redesigned with visual hierarchy and yield indicators
@@ -56,8 +64,13 @@ function YieldBar({ apy }: { apy: number }): ReactNode {
  * - Visual yield bar
  * - Compact 2-column stats grid
  * - Hover effects and animations
+ *
+ * Memoized to prevent re-renders when parent list updates
  */
-export function MarketCard({ market, className }: MarketCardProps): ReactNode {
+export const MarketCard = memo(function MarketCard({
+  market,
+  className,
+}: MarketCardProps): ReactNode {
   const { isAdvanced } = useUIMode();
 
   // Token naming derived from SY symbol
@@ -191,4 +204,4 @@ export function MarketCard({ market, className }: MarketCardProps): ReactNode {
       </CardContent>
     </Card>
   );
-}
+});
