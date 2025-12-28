@@ -39,6 +39,7 @@ pub struct MarketState {
 pub struct MarketPreCompute {
     pub rate_scalar: u256,
     pub rate_anchor: u256,
+    pub rate_anchor_is_negative: bool // Rate anchor can be negative at extreme proportions
 }
 
 /// Seconds per year for APY calculations
@@ -140,7 +141,8 @@ fn logit(proportion: u256) -> (u256, bool) {
 /// Calculate the rate anchor based on last implied rate
 /// Pendle: rateAnchor = targetExchangeRate - ln(proportion/(1-proportion))/rateScalar
 /// This ensures implied rate continuity across trades
-pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> u256 {
+/// Returns (magnitude, is_negative) to handle signed arithmetic properly
+pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> (u256, bool) {
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
 
     // Calculate target exchange rate from last implied rate
@@ -164,30 +166,36 @@ pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> u256 {
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
 
     // rateAnchor = targetExchangeRate - ln_proportion / rateScalar
+    // Handle signed arithmetic properly to preserve the invariant that
+    // exchange_rate = target_exchange_rate when querying at current proportion
     let scaled_ln = wad_div(ln_proportion, rate_scalar);
 
     if ln_is_negative {
-        // Proportion < 0.5, ln is negative, so we add
-        target_exchange_rate + scaled_ln
+        // Proportion < 0.5, ln is negative, so rateAnchor = target + |scaled_ln|
+        (target_exchange_rate + scaled_ln, false)
     } else if scaled_ln >= target_exchange_rate {
-        WAD // Floor at 1
+        // rateAnchor is negative: target - scaled_ln < 0
+        (scaled_ln - target_exchange_rate, true)
     } else {
-        target_exchange_rate - scaled_ln
+        // rateAnchor is positive: target - scaled_ln > 0
+        (target_exchange_rate - scaled_ln, false)
     }
 }
 
 /// Get pre-computed values for trade calculations
 pub fn get_market_pre_compute(state: @MarketState, time_to_expiry: u64) -> MarketPreCompute {
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
-    let rate_anchor = get_rate_anchor(state, time_to_expiry);
+    let (rate_anchor, rate_anchor_is_negative) = get_rate_anchor(state, time_to_expiry);
 
-    MarketPreCompute { rate_scalar, rate_anchor }
+    MarketPreCompute { rate_scalar, rate_anchor, rate_anchor_is_negative }
 }
 
 /// Calculate exchange rate (PT price in SY terms) using Pendle's logit curve
 /// exchangeRate = ln(newProportion/(1-newProportion))/rateScalar + rateAnchor
 ///
 /// This uses cubit's high-precision ln for accurate logit calculation
+/// Handles signed arithmetic to preserve the invariant that at current proportion,
+/// exchange_rate = target_exchange_rate (the logit terms cancel out)
 pub fn get_exchange_rate(
     pt_reserve: u256,
     sy_reserve: u256,
@@ -195,6 +203,7 @@ pub fn get_exchange_rate(
     is_pt_out: bool,
     rate_scalar: u256,
     rate_anchor: u256,
+    rate_anchor_is_negative: bool,
 ) -> u256 {
     // Calculate new PT reserve after trade
     let new_pt_reserve = if is_pt_out {
@@ -215,16 +224,34 @@ pub fn get_exchange_rate(
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
 
     // exchangeRate = ln_proportion / rateScalar + rateAnchor
+    // Handle signed arithmetic properly:
+    // - ln_proportion can be positive (proportion > 0.5) or negative (proportion < 0.5)
+    // - rate_anchor can be positive or negative
     let scaled_ln = wad_div(ln_proportion, rate_scalar);
 
-    let exchange_rate = if ln_is_negative {
-        if scaled_ln >= rate_anchor {
-            WAD
-        } else {
+    // Compute: scaled_ln (with sign ln_is_negative) + rate_anchor (with sign
+    // rate_anchor_is_negative)
+    let exchange_rate = if ln_is_negative && rate_anchor_is_negative {
+        // Both negative: -|scaled_ln| + (-|rate_anchor|) = -(|scaled_ln| + |rate_anchor|)
+        // Exchange rate would be negative, floor to WAD
+        WAD
+    } else if ln_is_negative && !rate_anchor_is_negative {
+        // -|scaled_ln| + |rate_anchor|
+        if rate_anchor >= scaled_ln {
             rate_anchor - scaled_ln
+        } else {
+            WAD // Would be negative
+        }
+    } else if !ln_is_negative && rate_anchor_is_negative {
+        // |scaled_ln| + (-|rate_anchor|) = |scaled_ln| - |rate_anchor|
+        if scaled_ln >= rate_anchor {
+            scaled_ln - rate_anchor
+        } else {
+            WAD // Would be negative
         }
     } else {
-        rate_anchor + scaled_ln
+        // Both positive: |scaled_ln| + |rate_anchor|
+        scaled_ln + rate_anchor
     };
 
     // Exchange rate must be >= 1 (PT never worth more than SY)
@@ -311,10 +338,14 @@ pub fn calc_swap_exact_pt_for_sy(
         false, // PT entering pool
         comp.rate_scalar,
         comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     // SY out = PT_in / exchangeRate (using cubit precision)
     let sy_out_before_fee = wad_div(exact_pt_in, exchange_rate);
+
+    // Ensure output doesn't exceed available reserves
+    assert(sy_out_before_fee < *state.sy_reserve, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
 
     // Apply time-adjusted fee
     let adjusted_fee_rate = get_time_adjusted_fee_rate(*state.fee_rate, time_to_expiry);
@@ -348,7 +379,13 @@ pub fn calc_swap_exact_sy_for_pt(
 
     // Initial estimate
     let current_exchange_rate = get_exchange_rate(
-        *state.pt_reserve, *state.sy_reserve, 0, false, comp.rate_scalar, comp.rate_anchor,
+        *state.pt_reserve,
+        *state.sy_reserve,
+        0,
+        false,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     let initial_guess = wad_mul(sy_in_after_fee, current_exchange_rate);
@@ -356,7 +393,13 @@ pub fn calc_swap_exact_sy_for_pt(
 
     // Binary search for exact PT_out
     let pt_out = binary_search_pt_out(
-        state, sy_in_after_fee, initial_guess, max_pt_out, comp.rate_scalar, comp.rate_anchor,
+        state,
+        sy_in_after_fee,
+        initial_guess,
+        max_pt_out,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     (pt_out, fee)
@@ -370,6 +413,7 @@ fn binary_search_pt_out(
     max_pt_out: u256,
     rate_scalar: u256,
     rate_anchor: u256,
+    rate_anchor_is_negative: bool,
 ) -> u256 {
     let mut low: u256 = 0;
     let mut high: u256 = max_pt_out;
@@ -384,7 +428,13 @@ fn binary_search_pt_out(
         }
 
         let exchange_rate = get_exchange_rate(
-            *state.pt_reserve, *state.sy_reserve, mid, true, rate_scalar, rate_anchor,
+            *state.pt_reserve,
+            *state.sy_reserve,
+            mid,
+            true,
+            rate_scalar,
+            rate_anchor,
+            rate_anchor_is_negative,
         );
 
         // sy_in = pt_out / exchangeRate
@@ -427,6 +477,7 @@ pub fn calc_swap_sy_for_exact_pt(
         true, // PT leaving pool
         comp.rate_scalar,
         comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     // SY required = PT_out / exchangeRate
@@ -458,17 +509,29 @@ pub fn calc_swap_pt_for_exact_sy(
     let comp = get_market_pre_compute(state, time_to_expiry);
 
     // Binary search for PT_in
-    let pt_in = binary_search_pt_in(state, sy_out_before_fee, comp.rate_scalar, comp.rate_anchor);
+    let pt_in = binary_search_pt_in(
+        state, sy_out_before_fee, comp.rate_scalar, comp.rate_anchor, comp.rate_anchor_is_negative,
+    );
 
     (pt_in, fee)
 }
 
 /// Binary search for PT_in where SY_out = PT_in / exchangeRate(PT_in)
 fn binary_search_pt_in(
-    state: @MarketState, sy_out: u256, rate_scalar: u256, rate_anchor: u256,
+    state: @MarketState,
+    sy_out: u256,
+    rate_scalar: u256,
+    rate_anchor: u256,
+    rate_anchor_is_negative: bool,
 ) -> u256 {
     let current_exchange_rate = get_exchange_rate(
-        *state.pt_reserve, *state.sy_reserve, 0, false, rate_scalar, rate_anchor,
+        *state.pt_reserve,
+        *state.sy_reserve,
+        0,
+        false,
+        rate_scalar,
+        rate_anchor,
+        rate_anchor_is_negative,
     );
 
     let initial_guess = wad_mul(sy_out, current_exchange_rate);
@@ -492,7 +555,13 @@ fn binary_search_pt_in(
         }
 
         let exchange_rate = get_exchange_rate(
-            *state.pt_reserve, *state.sy_reserve, mid, false, rate_scalar, rate_anchor,
+            *state.pt_reserve,
+            *state.sy_reserve,
+            mid,
+            false,
+            rate_scalar,
+            rate_anchor,
+            rate_anchor_is_negative,
         );
 
         // sy_out = pt_in / exchangeRate

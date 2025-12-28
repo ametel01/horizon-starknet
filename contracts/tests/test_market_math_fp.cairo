@@ -4,8 +4,9 @@
 use horizon::libraries::math_fp::{HALF_WAD, WAD, abs_diff};
 use horizon::market::market_math_fp::{
     MAX_PROPORTION, MIN_PROPORTION, MarketState, calc_burn_lp, calc_mint_lp, calc_price_impact,
-    calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, get_exchange_rate, get_implied_apy,
-    get_market_exchange_rate, get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
+    calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
+    calc_swap_sy_for_exact_pt, get_exchange_rate, get_implied_apy, get_market_exchange_rate,
+    get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
     get_time_adjusted_fee_rate, get_time_to_expiry,
 };
 
@@ -144,7 +145,13 @@ fn test_get_exchange_rate_balanced() {
 
     // No trade, just get current exchange rate
     let exchange_rate = get_exchange_rate(
-        state.pt_reserve, state.sy_reserve, 0, false, comp.rate_scalar, comp.rate_anchor,
+        state.pt_reserve,
+        state.sy_reserve,
+        0,
+        false,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     // Exchange rate should be close to anchor at balanced pool
@@ -159,13 +166,25 @@ fn test_get_exchange_rate_pt_out_changes() {
 
     // Exchange rate with no trade
     let rate_before = get_exchange_rate(
-        state.pt_reserve, state.sy_reserve, 0, false, comp.rate_scalar, comp.rate_anchor,
+        state.pt_reserve,
+        state.sy_reserve,
+        0,
+        false,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     // Exchange rate after PT leaves pool (user buys PT)
     let pt_out = 100_000 * WAD;
     let rate_after = get_exchange_rate(
-        state.pt_reserve, state.sy_reserve, pt_out, true, comp.rate_scalar, comp.rate_anchor,
+        state.pt_reserve,
+        state.sy_reserve,
+        pt_out,
+        true,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
     );
 
     // Exchange rate should change after trade (direction depends on curve shape)
@@ -422,4 +441,166 @@ fn test_get_time_to_expiry_past_expiry() {
     let current: u64 = 1500;
     let result = get_time_to_expiry(expiry, current);
     assert(result == 1, 'min time past expiry');
+}
+
+// ============================================
+// BOUNDARY CONDITION TESTS (Step 1.2)
+// ============================================
+
+/// Test exchange rate calculation at minimum proportion (0.1% PT)
+/// This tests the lower bound of the proportion range where the logit curve
+/// approaches -infinity, requiring careful numerical handling.
+#[test]
+fn test_exchange_rate_at_min_proportion() {
+    // Create market with 0.1% PT / 99.9% SY (at MIN_PROPORTION)
+    let mut state = create_test_market();
+    // For proportion = 0.1%, we need pt / (pt + sy) = 0.001
+    // If sy = 1M, then pt = 1M * 0.001 / 0.999 ≈ 1001 WAD
+    state.pt_reserve = 1001 * WAD; // ~0.1% of total
+    state.sy_reserve = 1_000_000 * WAD; // 99.9% of total
+
+    let proportion = get_proportion(@state);
+    // Verify we're near MIN_PROPORTION
+    assert(proportion <= MIN_PROPORTION * 2, 'proportion near min');
+
+    let time_to_expiry: u64 = 31_536_000;
+    let comp = get_market_pre_compute(@state, time_to_expiry);
+
+    // Exchange rate should be calculable without panic
+    let exchange_rate = get_exchange_rate(
+        state.pt_reserve,
+        state.sy_reserve,
+        0,
+        false,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
+    );
+
+    // At low proportion, PT is scarce so exchange rate should be >= 1
+    assert(exchange_rate >= WAD, 'rate >= 1 at min proportion');
+    // The rate should be bounded (no overflow)
+    assert(exchange_rate < 100 * WAD, 'rate bounded at min proportion');
+}
+
+/// Test exchange rate calculation at maximum proportion (96% PT)
+/// This tests the upper bound where the logit curve approaches +infinity,
+/// also requiring careful numerical handling.
+#[test]
+fn test_exchange_rate_at_max_proportion() {
+    // Create market with 96% PT / 4% SY (at MAX_PROPORTION)
+    let mut state = create_test_market();
+    // For proportion = 96%, we need pt / (pt + sy) = 0.96
+    // If pt = 24M, then sy = pt * (1-0.96) / 0.96 = 1M
+    state.pt_reserve = 24_000_000 * WAD; // 96% of total
+    state.sy_reserve = 1_000_000 * WAD; // 4% of total
+
+    let proportion = get_proportion(@state);
+    // Verify we're near MAX_PROPORTION
+    assert(proportion >= MAX_PROPORTION - WAD / 100, 'proportion near max');
+
+    let time_to_expiry: u64 = 31_536_000;
+    let comp = get_market_pre_compute(@state, time_to_expiry);
+
+    // Exchange rate should be calculable without panic
+    let exchange_rate = get_exchange_rate(
+        state.pt_reserve,
+        state.sy_reserve,
+        0,
+        false,
+        comp.rate_scalar,
+        comp.rate_anchor,
+        comp.rate_anchor_is_negative,
+    );
+
+    // At high proportion, PT is abundant so exchange rate should still be >= 1
+    assert(exchange_rate >= WAD, 'rate >= 1 at max proportion');
+    // The rate should be bounded (no overflow) - Pendle caps proportion at 96%
+    // to prevent extreme exchange rates. If rate > 100x, the clamping may be broken.
+    assert(exchange_rate < 100 * WAD, 'rate bounded at max proportion');
+}
+
+/// Test binary search behavior with trades that stress the iteration limit
+/// Large trades can require more iterations to converge on the exact output.
+#[test]
+fn test_binary_search_max_iterations() {
+    let state = create_test_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Large trade: 40% of SY reserve
+    // This should stress the binary search but still converge
+    let large_sy_in = 400_000 * WAD;
+
+    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, large_sy_in, time_to_expiry);
+
+    // Binary search should converge and produce valid output
+    assert(pt_out > 0, 'pt_out > 0 for large trade');
+    assert(pt_out < state.pt_reserve, 'pt_out < reserves');
+    assert(fee > 0, 'fee applied for large trade');
+
+    // Verify the output is reasonable (not more than input considering exchange rate)
+    // PT out should be greater than SY in (since PT trades at discount to SY)
+    assert(pt_out > large_sy_in / 2, 'reasonable pt_out');
+}
+
+/// Test binary search with amounts near the tolerance boundary
+/// This verifies the search terminates correctly when within tolerance.
+#[test]
+fn test_binary_search_tolerance_edge() {
+    let state = create_test_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Very small swap: just above tolerance threshold
+    // BINARY_SEARCH_TOLERANCE = 1000 wei
+    let small_sy_in = 10_000; // 10x tolerance, but still very small
+
+    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, small_sy_in, time_to_expiry);
+
+    // Should produce valid (possibly zero due to rounding) output
+    // The key is no panic occurs
+    assert(pt_out <= small_sy_in * 2, 'pt_out bounded');
+
+    // Test with amount at exactly tolerance level
+    let tiny_sy_in = 1000; // Exactly BINARY_SEARCH_TOLERANCE
+    let (pt_out_tiny, _) = calc_swap_exact_sy_for_pt(@state, tiny_sy_in, time_to_expiry);
+
+    // Should handle without panic (may round to 0)
+    assert(pt_out_tiny <= tiny_sy_in * 2, 'tiny pt_out bounded');
+}
+
+/// Test swap that would attempt to drain the entire SY reserve
+/// This should be rejected to prevent emptying the pool.
+/// Note: calc_swap_exact_pt_for_sy won't drain the pool due to slippage -
+/// the exchange rate increases as more PT enters, limiting SY output.
+/// Instead, we use calc_swap_pt_for_exact_sy which explicitly requests
+/// exact SY output and should fail when requesting the full reserve.
+#[test]
+#[should_panic(expected: 'HZN: insufficient liquidity')]
+fn test_swap_drains_entire_reserve() {
+    let state = create_test_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Try to get exactly as much SY out as exists in reserves
+    // The calc_swap_pt_for_exact_sy function checks: exact_sy_out < state.sy_reserve
+    // Requesting the full reserve should fail
+    let exact_sy_out = state.sy_reserve;
+
+    // This should panic with insufficient liquidity
+    let (_, _) = calc_swap_pt_for_exact_sy(@state, exact_sy_out, time_to_expiry);
+}
+
+/// Test swap where the output amount equals the reserve
+/// This should be rejected as it would leave 0 liquidity.
+#[test]
+#[should_panic(expected: 'HZN: insufficient liquidity')]
+fn test_swap_amount_equals_reserve() {
+    let state = create_test_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Try to get exactly as much PT out as exists in reserves
+    // This should fail the < check (output must be strictly less than reserve)
+    let exact_reserve_pt_out = state.pt_reserve;
+
+    // Use calc_swap_sy_for_exact_pt which allows specifying exact output
+    let (_, _) = calc_swap_sy_for_exact_pt(@state, exact_reserve_pt_out, time_to_expiry);
 }
