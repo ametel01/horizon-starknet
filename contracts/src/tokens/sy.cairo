@@ -266,6 +266,9 @@ pub mod SY {
             let caller = get_caller_address();
 
             // Transfer underlying shares from caller to this contract
+            // SECURITY: This external call happens before mint (CEI violation).
+            // We trust underlying to be a standard ERC20 without transfer hooks.
+            // Underlying tokens are vetted yield-bearing assets (stETH, nstSTRK, etc).
             let underlying_addr = self.underlying.read();
             let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
             let success = underlying_token
