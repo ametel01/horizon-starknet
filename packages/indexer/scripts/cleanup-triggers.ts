@@ -31,35 +31,52 @@ async function cleanupTriggers() {
     log.info("Dropping reorg triggers...");
 
     // Query for all triggers that match the Apibara reorg pattern
-    const triggers = await sql<{ trigger_name: string; event_object_table: string }[]>`
-      SELECT trigger_name, event_object_table
-      FROM information_schema.triggers
-      WHERE trigger_name LIKE '%_reorg_%'
+    // NOTE: We must use pg_trigger, not information_schema.triggers, because
+    // Apibara creates CONSTRAINT TRIGGERS which don't appear in information_schema
+    const triggers = await sql<{ trigger_name: string; table_name: string }[]>`
+      SELECT t.tgname as trigger_name, c.relname as table_name
+      FROM pg_trigger t
+      JOIN pg_class c ON t.tgrelid = c.oid
+      JOIN pg_namespace n ON c.relnamespace = n.oid
+      WHERE t.tgname LIKE '%_reorg_%'
+        AND n.nspname = 'public'
     `;
 
     if (triggers.length === 0) {
-      log.info("No reorg triggers found");
-      return;
-    }
+      log.info("No reorg triggers found in database");
+    } else {
+      log.info(
+        {
+          count: triggers.length,
+          triggers: triggers.map((t) => t.trigger_name),
+        },
+        "Found reorg triggers to drop",
+      );
 
-    log.info({ count: triggers.length }, "Found reorg triggers to drop");
-
-    for (const { trigger_name, event_object_table } of triggers) {
-      try {
-        await sql.unsafe(
-          `DROP TRIGGER IF EXISTS ${trigger_name} ON ${event_object_table}`,
-        );
-        log.debug({ trigger: trigger_name, table: event_object_table }, "Dropped trigger");
-      } catch (e: unknown) {
-        const error = e as Error;
-        log.warn(
-          { trigger: trigger_name, table: event_object_table, error: error.message },
-          "Could not drop trigger",
-        );
+      for (const { trigger_name, table_name } of triggers) {
+        try {
+          await sql.unsafe(
+            `DROP TRIGGER IF EXISTS "${trigger_name}" ON "${table_name}"`,
+          );
+          log.info(
+            { trigger: trigger_name, table: table_name },
+            "Dropped trigger",
+          );
+        } catch (e: unknown) {
+          const error = e as Error;
+          log.warn(
+            {
+              trigger: trigger_name,
+              table: table_name,
+              error: error.message,
+            },
+            "Could not drop trigger",
+          );
+        }
       }
-    }
 
-    log.info("Trigger cleanup complete");
+      log.info("Trigger cleanup complete");
+    }
   } catch (error) {
     log.error({ error }, "Failed to cleanup triggers");
     // Don't exit with error - let the indexers try anyway
