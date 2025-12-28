@@ -26,6 +26,7 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -105,6 +106,8 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     try {
       return buildRemoveLiquidityCalls(addresses.router, address, {
         marketAddress: market.address,
+        syAddress: market.syAddress,
+        ptAddress: market.ptAddress,
         lpAmount: parsedLpAmount,
         minSyOut,
         minPtOut,
@@ -112,7 +115,16 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     } catch {
       return null;
     }
-  }, [address, addresses.router, market.address, parsedLpAmount, minSyOut, minPtOut]);
+  }, [
+    address,
+    addresses.router,
+    market.address,
+    market.syAddress,
+    market.ptAddress,
+    parsedLpAmount,
+    minSyOut,
+    minPtOut,
+  ]);
 
   // Estimate gas fee
   const {
@@ -146,12 +158,29 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     return 'idle' as const;
   }, [isRemoving, isSuccess, isError]);
 
+  // Transaction steps for StepProgress
+  const transactionSteps: Step[] = useMemo(() => {
+    return [
+      { label: 'Approve LP', description: `Approve ${lpSymbol} spending` },
+      { label: 'Remove Liquidity', description: 'Withdraw tokens from pool' },
+    ];
+  }, [lpSymbol]);
+
+  // Calculate current step based on transaction state
+  const currentStep = useMemo(() => {
+    if (isSuccess) return transactionSteps.length; // All complete
+    if (isRemoving) return transactionSteps.length - 1; // Show last step as active during tx
+    return -1; // No transaction in progress
+  }, [isRemoving, isSuccess, transactionSteps.length]);
+
   // Handle remove liquidity
   const handleRemoveLiquidity = (): void => {
     if (!canRemoveLiquidity) return;
 
     removeLiquidity({
       marketAddress: market.address,
+      syAddress: market.syAddress,
+      ptAddress: market.ptAddress,
       lpAmount: parsedLpAmount,
       minSyOut,
       minPtOut,
@@ -292,9 +321,21 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
         </ToggleGroup>
       </div>
 
-      {/* Transaction Status */}
+      {/* Transaction Progress */}
       {txStatus !== 'idle' && (
-        <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+        <div className="space-y-4">
+          <StepProgress steps={transactionSteps} currentStep={currentStep} />
+          <TxStatus
+            status={txStatus}
+            txHash={transactionHash ?? null}
+            error={error}
+            gasEstimate={{
+              formattedFee,
+              isLoading: isEstimatingFee,
+              error: feeError,
+            }}
+          />
+        </div>
       )}
 
       {/* Actions */}
@@ -302,7 +343,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
         <Button
           onClick={handleRemoveLiquidity}
           disabled={!canRemoveLiquidity || isRemoving}
-          className="h-12 w-full text-base font-medium"
+          variant="form-primary"
         >
           {isRemoving
             ? 'Removing Liquidity...'

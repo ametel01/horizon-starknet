@@ -1,7 +1,8 @@
 'use client';
 
 import BigNumber from 'bignumber.js';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import type { MarketData } from '@entities/market';
 import {
@@ -27,6 +28,7 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { Switch } from '@shared/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
@@ -191,6 +193,27 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     return 'idle' as const;
   }, [isAdding, isSuccess, isError]);
 
+  // Transaction steps for StepProgress
+  const transactionSteps: Step[] = useMemo(() => {
+    return [
+      { label: 'Approve SY', description: `Approve ${sySymbol} spending` },
+      { label: 'Approve PT', description: `Approve ${ptSymbol} spending` },
+      { label: 'Add Liquidity', description: 'Deposit tokens to pool' },
+    ];
+  }, [sySymbol, ptSymbol]);
+
+  // Calculate current step based on transaction state
+  // Starknet multicall executes all steps atomically, so we show:
+  // - idle: -1 (no steps active)
+  // - pending: 2 (all steps in progress, showing final step as active)
+  // - success: 3 (all complete)
+  // - error: stays at last attempted step
+  const currentStep = useMemo(() => {
+    if (isSuccess) return transactionSteps.length; // All complete
+    if (isAdding) return transactionSteps.length - 1; // Show last step as active during tx
+    return -1; // No transaction in progress
+  }, [isAdding, isSuccess, transactionSteps.length]);
+
   // Handle add liquidity
   const handleAddLiquidity = (): void => {
     if (!canAddLiquidity) return;
@@ -213,6 +236,17 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     }
   }, [isSuccess]);
 
+  // Handle balanced mode toggle with confirmation feedback
+  const handleBalancedChange = useCallback((checked: boolean): void => {
+    setIsBalanced(checked);
+    toast.success(checked ? 'Balanced deposit enabled' : 'Custom amounts enabled', {
+      description: checked
+        ? 'PT amount will auto-calculate based on pool ratio'
+        : 'You can now set custom SY and PT amounts',
+      duration: 2000,
+    });
+  }, []);
+
   return (
     <FormLayout gradient="primary" className={className}>
       {/* Header */}
@@ -220,7 +254,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
 
       {/* Balanced Mode Toggle */}
       <div className="flex items-center gap-2">
-        <Switch checked={isBalanced} onCheckedChange={setIsBalanced} />
+        <Switch checked={isBalanced} onCheckedChange={handleBalancedChange} />
         <span className="text-muted-foreground text-sm">Balanced deposit</span>
       </div>
 
@@ -312,9 +346,21 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
         </ToggleGroup>
       </div>
 
-      {/* Transaction Status */}
+      {/* Transaction Progress */}
       {txStatus !== 'idle' && (
-        <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
+        <div className="space-y-4">
+          <StepProgress steps={transactionSteps} currentStep={currentStep} />
+          <TxStatus
+            status={txStatus}
+            txHash={transactionHash ?? null}
+            error={error}
+            gasEstimate={{
+              formattedFee,
+              isLoading: isEstimatingFee,
+              error: feeError,
+            }}
+          />
+        </div>
       )}
 
       {/* Actions */}
@@ -322,7 +368,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
         <Button
           onClick={handleAddLiquidity}
           disabled={!canAddLiquidity || isAdding}
-          className="h-12 w-full text-base font-medium"
+          variant="form-primary"
         >
           {isAdding
             ? 'Adding Liquidity...'

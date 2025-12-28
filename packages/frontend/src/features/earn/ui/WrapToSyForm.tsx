@@ -20,6 +20,7 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -136,6 +137,21 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
     return 'Deposit';
   }, [isConnected, underlyingLoading, underlyingAddress, isLoading, validationError, amount]);
 
+  // Transaction steps for StepProgress
+  const transactionSteps: Step[] = useMemo(() => {
+    return [
+      { label: 'Approve', description: 'Approve token spending' },
+      { label: 'Deposit', description: 'Deposit tokens to protocol' },
+    ];
+  }, []);
+
+  // Calculate current step based on transaction state
+  const currentStep = useMemo(() => {
+    if (status === 'success') return transactionSteps.length; // All complete
+    if (status === 'pending' || status === 'signing') return transactionSteps.length - 1; // Show last step as active
+    return -1; // No transaction in progress
+  }, [status, transactionSteps.length]);
+
   // Get token symbols from metadata
   const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
   const sySymbol = `SY-${underlyingSymbol}`;
@@ -207,21 +223,31 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
         )}
       </FormInfoSection>
 
-      {/* Transaction Status */}
-      {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+      {/* Transaction Progress */}
+      {status !== 'idle' && (
+        <div className="space-y-4">
+          <StepProgress steps={transactionSteps} currentStep={currentStep} />
+          <TxStatus
+            status={status}
+            txHash={txHash}
+            error={error}
+            gasEstimate={{
+              formattedFee,
+              isLoading: isEstimatingFee,
+              error: feeError,
+            }}
+          />
+        </div>
+      )}
 
       {/* Actions */}
       <FormActions>
         {status === 'success' ? (
-          <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
+          <Button onClick={handleReset} variant="form-primary">
             Deposit More
           </Button>
         ) : (
-          <Button
-            onClick={handleWrap}
-            disabled={buttonDisabled}
-            className="h-12 w-full text-base font-medium"
-          >
+          <Button onClick={handleWrap} disabled={buttonDisabled} variant="form-primary">
             {buttonText}
           </Button>
         )}
