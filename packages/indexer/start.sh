@@ -45,18 +45,21 @@ run_indexer() {
   done
 }
 
-# Stagger startup to avoid database connection storms
-# Railway PostgreSQL has limited connections, starting all at once causes failures
+# Stagger startup to avoid database deadlocks on DDL operations
+# The Apibara drizzle plugin creates reorg triggers at startup.
+# If multiple indexers run DROP TRIGGER / CREATE TRIGGER concurrently,
+# PostgreSQL can deadlock. 8s delay ensures each indexer completes
+# its DDL operations before the next one starts.
 run_indexer factory &
-sleep 3
+sleep 8
 run_indexer market-factory &
-sleep 3
+sleep 8
 run_indexer router &
-sleep 3
+sleep 8
 run_indexer sy &
-sleep 3
+sleep 8
 run_indexer yt &
-sleep 3
+sleep 8
 run_indexer market &
 
 wait
