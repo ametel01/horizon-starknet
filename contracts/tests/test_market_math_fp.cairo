@@ -554,7 +554,7 @@ fn test_binary_search_tolerance_edge() {
     // BINARY_SEARCH_TOLERANCE = 1000 wei
     let small_sy_in = 10_000; // 10x tolerance, but still very small
 
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, small_sy_in, time_to_expiry);
+    let (pt_out, _fee) = calc_swap_exact_sy_for_pt(@state, small_sy_in, time_to_expiry);
 
     // Should produce valid (possibly zero due to rounding) output
     // The key is no panic occurs
