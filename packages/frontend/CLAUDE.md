@@ -12,7 +12,10 @@ bun run build                 # Production build
 bun run check                 # Run typecheck + lint + format:check
 bun run test                  # Run tests (Bun test runner)
 bun test src/shared/math/amm.test.ts  # Run specific test
+bun run test:e2e              # Run Playwright E2E tests (all browsers)
+bun run test:e2e --project=chromium  # Run E2E tests (Chromium only)
 bun run codegen               # Generate TypeScript types from contract ABIs
+bun run commit:check          # Full pre-commit validation (install, codegen, build, lint, test, e2e)
 ```
 
 ## Tech Stack
@@ -86,6 +89,8 @@ const value = 1000000000000000000n;  // 1 WAD
 formatWad(value);  // "1.0000"
 ```
 
+Note: The codebase uses `cairo-fp` library for some fixed-point conversions and `@shared/math` for WAD operations. Prefer `@shared/math` for new code.
+
 **Feature Hook Pattern:**
 ```typescript
 // Data fetching (features/*/model/)
@@ -127,7 +132,13 @@ Strict mode is enabled with additional strictness:
 - `noUncheckedIndexedAccess` - Array/object access may be undefined
 - `exactOptionalPropertyTypes` - Optional properties must match exactly
 - `noPropertyAccessFromIndexSignature` - Use bracket notation for index signatures
-- `@typescript-eslint/strict-boolean-expressions` - No implicit boolean coercion
+- `@typescript-eslint/strict-boolean-expressions` - No implicit boolean coercion (nullable booleans and strings allowed)
+
+### ESLint Import Rules
+
+- `import/order` enforced with alphabetical ordering and grouped by type
+- `import/no-cycle` prevents circular dependencies
+- `@typescript-eslint/consistent-type-imports` requires `type` keyword for type-only imports
 
 ## Type Generation Workflow
 
@@ -150,3 +161,16 @@ bun run scripts/query-users.ts  # Query unique protocol users with tx hashes
 ## Mandatory: Use shadcn/ui Components
 
 All new components **MUST** use the shadcn/ui library. An MCP server is available for component discovery and installation.
+
+## Feature Structure Convention
+
+Each feature follows FSD's segmented structure:
+```
+features/<name>/
+├── api/       # Contract calls, API functions
+├── model/     # React hooks (useQuery, useMutation), state
+├── ui/        # React components
+└── index.ts   # Public API (re-exports from model/ and ui/)
+```
+
+Export only what's needed through `index.ts`. Internal helpers stay private to the segment.

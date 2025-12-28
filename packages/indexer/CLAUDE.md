@@ -21,11 +21,12 @@ bun run codegen              # Regenerate event ABIs from contracts
 ### Testing Commands
 
 ```bash
-bun run test                 # Run snapshot tests (uses vitest + cassettes)
+bun run test                 # Run all tests
 bun run test:watch           # Watch mode for development
+bunx vitest run utils        # Run specific test file
 ```
 
-Tests use Apibara's VCR pattern - cassettes in `cassettes/` record DNA stream data for replay.
+Tests use vitest. Integration tests previously used Apibara's VCR pattern with cassettes.
 
 ### Database Commands
 
@@ -37,6 +38,7 @@ bun run db:push              # Push schema directly (dev only, skips migrations)
 bun run db:studio            # Open Drizzle Studio (database GUI)
 bun run db:create-views      # Create/update PostgreSQL views
 bun run db:refresh-views     # Refresh materialized views
+bun run db:reset-checkpoints # Reset indexer checkpoints (for reindexing)
 ```
 
 Migrations auto-apply on indexer startup via the Apibara drizzle plugin.
@@ -62,6 +64,10 @@ Migrations auto-apply on indexer startup via the Apibara drizzle plugin.
 | `src/schema/index.ts` | 24 Drizzle ORM tables + 15 view definitions |
 | `src/lib/constants.ts` | Network configs with `knownContracts` for factory indexers |
 | `src/lib/utils.ts` | `matchSelector`, `readU256`, `readI256`, `decodeByteArray` |
+| `src/lib/validation.ts` | Zod schemas for runtime event validation |
+| `src/lib/errors.ts` | Error classification (programmer vs data errors) |
+| `src/lib/health.ts` | Health check endpoint for monitoring |
+| `src/lib/metrics.ts` | Prometheus metrics for observability |
 | `apibara.config.ts` | Apibara config with devnet/sepolia/mainnet presets |
 
 ### Schema Conventions
@@ -89,13 +95,51 @@ if (matchSelector(event.keys[0], MINT_PY)) { ... }
 ### U256 Parsing (uses starknet.js)
 ```typescript
 import { readU256 } from "../lib/utils";
-const amount = readU256(data, 2);  // reads data[2] (low) + data[3] (high)
+const amount = readU256(data, 2, "sy_amount");  // reads data[2] (low) + data[3] (high)
 ```
 
 ### ByteArray Decoding (for Cairo strings)
 ```typescript
 import { decodeByteArray } from "../lib/utils";
-const symbol = decodeByteArray(data, 4);  // reads ByteArray starting at index 4
+const symbol = decodeByteArray(data, 4, "underlying_symbol");  // reads ByteArray starting at index 4
+```
+
+### Event Validation with Zod
+```typescript
+import { validateEvent, marketSwapSchema } from "../lib/validation";
+
+const validated = validateEvent(marketSwapSchema, event, {
+  indexer: "market",
+  eventName: "Swap",
+  blockNumber,
+  transactionHash,
+});
+if (!validated) continue;  // malformed event logged, skip it
+```
+
+### Error Handling Pattern
+```typescript
+import { isProgrammerError, ParseError } from "../lib/errors";
+
+try {
+  // Parse event
+} catch (err) {
+  // Re-throw programmer errors (bugs) - should crash indexer
+  if (isProgrammerError(err)) throw err;
+  // Log data errors (malformed events) and continue
+  log.error({ err, eventKey }, "Event processing failed");
+  errorCount++;
+}
+```
+
+### Idempotent Batch Inserts
+```typescript
+// Use onConflictDoNothing() for idempotency during reorgs
+await db.transaction(async (tx) => {
+  if (rows.length > 0) {
+    await tx.insert(marketSwap).values(rows).onConflictDoNothing();
+  }
+});
 ```
 
 ### Factory Pattern with Known Contracts
@@ -129,28 +173,15 @@ return defineIndexer(StarknetStream)({
 });
 ```
 
-### Batch Inserts Pattern
-```typescript
-const { db } = useDrizzleStorage();
-const rows: typeof marketSwap.$inferInsert[] = [];
-
-for (const event of events) {
-  rows.push({ ... });
-}
-
-if (rows.length > 0) {
-  await db.insert(marketSwap).values(rows);
-}
-```
-
 ## Adding a New Event
 
-1. Add table definition in `src/schema/index.ts`
-2. Run `bun run db:generate` to create migration
-3. Add event selector in indexer: `const NEW_EVENT = getSelector("NewEvent");`
-4. Add filter: `{ address: config.contract, keys: [NEW_EVENT] }`
-5. Add parsing logic in transform function
-6. Update `knownContracts` in `src/lib/constants.ts` if factory pattern
+1. Add Zod validation schema in `src/lib/validation.ts`
+2. Add table definition in `src/schema/index.ts`
+3. Run `bun run db:generate` to create migration
+4. Add event selector in indexer: `const NEW_EVENT = getSelector("NewEvent");`
+5. Add filter: `{ address: config.contract, keys: [NEW_EVENT] }`
+6. Add parsing logic with validation and error handling
+7. Update `knownContracts` in `src/lib/constants.ts` if factory pattern
 
 ## Bun-Specific Guidelines
 
