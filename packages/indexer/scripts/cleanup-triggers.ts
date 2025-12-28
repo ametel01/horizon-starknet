@@ -28,7 +28,11 @@ async function cleanupTriggers() {
     { url: databaseUrl.replace(/:[^:@]+@/, ":***@") },
     "Connecting to database...",
   );
-  const sql = postgres(databaseUrl);
+  const sql = postgres(databaseUrl, {
+    connect_timeout: 10, // 10 second connection timeout
+    idle_timeout: 10,
+    max_lifetime: 30,
+  });
 
   try {
     // Verify connection works and check database

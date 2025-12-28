@@ -24,14 +24,14 @@ fi
 
 # Create materialized views if they don't exist
 echo "Ensuring materialized views exist..."
-bun run scripts/create-views.ts || echo "Warning: Could not create views, continuing anyway..."
+timeout 30 bun run scripts/create-views.ts || echo "Warning: Could not create views, continuing anyway..."
 
 # Clean up stale reorg triggers from previous failed deployments
 # The Apibara drizzle plugin creates constraint triggers for reorg handling.
 # If a deployment fails mid-startup, triggers can be left behind causing
 # "trigger already exists" errors on subsequent starts.
 echo "Cleaning up stale triggers..."
-bun run scripts/cleanup-triggers.ts || echo "Warning: Could not cleanup triggers, continuing anyway..."
+timeout 30 bun run scripts/cleanup-triggers.ts || echo "Warning: Could not cleanup triggers, continuing anyway..."
 
 # Background job to refresh materialized views every 30 minutes
 refresh_views() {
