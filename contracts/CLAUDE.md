@@ -60,6 +60,8 @@ Underlying Asset → SY (deposit) → PT + YT (mint_py)
 
 ## Testing
 
+the tests should expose smart contract bugs not be adapted to implementation to make them pass, always assume the smart contract is wrong until full investigation is completed.
+
 Test utilities in `tests/utils.cairo` provide:
 - Standard test addresses: `admin()`, `user1()`, `user2()`, `alice()`, `bob()`
 - Time constants: `CURRENT_TIME`, `ONE_YEAR`, `ONE_MONTH`, `ONE_DAY`, `DEFAULT_DEADLINE`
@@ -75,4 +77,24 @@ Tests mirror source files: `test_sy.cairo` tests `tokens/sy.cairo`, `test_market
 - `starknet 2.15.0` - Starknet core
 - `openzeppelin_*` (v3.0.0) - Token standards, access control, upgrades
 - `cairo_fp 1.0.0` - Fixed-point math library
-- `snforge_std 0.54.0` - Testing framework
+- `snforge_std 0.54.1` - Testing framework
+
+## Intentional Compaction
+
+Intentional compaction is the deliberate compression of context into a minimal, high-signal representation.
+
+Instead of dragging an ever-growing conversation forward, you:
+
+- **Summarize the current state into a markdown artifact**
+- **Review and validate it as a human**
+- **Start a fresh context seeded with that artifact**
+- **What to compact**
+  - Relevant files and line ranges
+  - Verified architectural behavior
+  - Decisions already made
+  - Explicit constraints and non-goals
+- **What not to compact**
+  - Raw logs
+  - Tool traces
+  - Full file contents
+  - Repetitive error explanations
