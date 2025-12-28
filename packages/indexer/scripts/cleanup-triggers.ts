@@ -24,11 +24,35 @@ async function cleanupTriggers() {
     process.exit(1);
   }
 
-  log.info("Connecting to database...");
+  log.info(
+    { url: databaseUrl.replace(/:[^:@]+@/, ":***@") },
+    "Connecting to database...",
+  );
   const sql = postgres(databaseUrl);
 
   try {
-    log.info("Dropping reorg triggers...");
+    // Verify connection works and check database
+    const dbInfo = await sql<
+      { db: string; schema: string }[]
+    >`SELECT current_database() as db, current_schema() as schema`;
+    log.info(
+      { database: dbInfo[0]?.db, schema: dbInfo[0]?.schema },
+      "Database connection verified",
+    );
+
+    // Check total trigger count to verify query works
+    const allTriggers = await sql<{ cnt: string }[]>`
+      SELECT count(*) as cnt FROM pg_trigger t
+      JOIN pg_class c ON t.tgrelid = c.oid
+      JOIN pg_namespace n ON c.relnamespace = n.oid
+      WHERE n.nspname = 'public'
+    `;
+    log.info(
+      { totalPublicTriggers: allTriggers[0]?.cnt },
+      "Trigger count in public schema",
+    );
+
+    log.info("Querying for reorg triggers in pg_trigger...");
 
     // Query for all triggers that match the Apibara reorg pattern
     // NOTE: We must use pg_trigger, not information_schema.triggers, because
@@ -41,6 +65,8 @@ async function cleanupTriggers() {
       WHERE t.tgname LIKE '%_reorg_%'
         AND n.nspname = 'public'
     `;
+
+    log.info({ rawCount: triggers.length }, "Query completed");
 
     if (triggers.length === 0) {
       log.info("No reorg triggers found in database");
