@@ -18,6 +18,18 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  /* Visual regression test settings */
+  expect: {
+    toHaveScreenshot: {
+      /* Allow 0.2% pixel difference for anti-aliasing */
+      maxDiffPixelRatio: 0.002,
+      /* Threshold for individual pixel color difference */
+      threshold: 0.2,
+      /* Animation timing - wait for animations to complete */
+      animations: 'disabled',
+    },
+  },
+
   projects: [
     {
       name: 'chromium',
@@ -32,6 +44,20 @@ export default defineConfig({
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
+    },
+    /* Visual regression tests - run only on chromium for consistency */
+    {
+      name: 'visual',
+      testMatch: /visual\/.*\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        /* Consistent viewport for visual tests */
+        viewport: { width: 1280, height: 720 },
+        /* Disable animations for consistent screenshots */
+        launchOptions: {
+          args: ['--force-prefers-reduced-motion'],
+        },
+      },
     },
   ],
 
