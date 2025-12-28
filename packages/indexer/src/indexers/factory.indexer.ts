@@ -27,6 +27,7 @@ import {
   logBlockProgress,
   logIndexerStart,
 } from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
 import {
@@ -230,20 +231,27 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }
 
       // Batch insert with transaction wrapping and conflict handling for idempotency
-      await db.transaction(async (tx) => {
-        if (yieldContractsRows.length > 0) {
-          await tx
-            .insert(factoryYieldContractsCreated)
-            .values(yieldContractsRows)
-            .onConflictDoNothing();
-        }
-        if (classHashesRows.length > 0) {
-          await tx
-            .insert(factoryClassHashesUpdated)
-            .values(classHashesRows)
-            .onConflictDoNothing();
-        }
+      await measureDbLatency("factory", async () => {
+        await db.transaction(async (tx) => {
+          if (yieldContractsRows.length > 0) {
+            await tx
+              .insert(factoryYieldContractsCreated)
+              .values(yieldContractsRows)
+              .onConflictDoNothing();
+          }
+          if (classHashesRows.length > 0) {
+            await tx
+              .insert(factoryClassHashesUpdated)
+              .values(classHashesRows)
+              .onConflictDoNothing();
+          }
+        });
       });
+
+      // Record metrics
+      const successCount = yieldContractsRows.length + classHashesRows.length;
+      recordEvents("factory", successCount, errorCount);
+      recordBlock("factory", blockNumber);
     },
   });
 }

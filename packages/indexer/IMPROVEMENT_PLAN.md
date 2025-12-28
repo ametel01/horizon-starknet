@@ -11,8 +11,8 @@
 | Phase | Status | Completion Date |
 |-------|--------|-----------------|
 | Phase 1: Database Safety & Idempotency | **COMPLETE** | 2025-12-28 |
-| Phase 2: Input Validation & Error Handling | Pending | - |
-| Phase 3: Observability & Metrics | Pending | - |
+| Phase 2: Input Validation & Error Handling | **COMPLETE** | 2025-12-28 |
+| Phase 3: Observability & Metrics | **COMPLETE** | 2025-12-28 |
 | Phase 4: Testing & Quality Assurance | Pending | - |
 | Phase 5: Graceful Shutdown & Recovery | Pending | - |
 | Phase 6: Configuration & Environment | Pending | - |
@@ -26,11 +26,11 @@
 | Architecture | 85% | Good | One-way deps enforced, clean boundaries |
 | Schema Design | **95%** | **IMPROVED** | Unique constraints + event_index added |
 | Database Safety | **95%** | **IMPROVED** | Idempotency + transaction wrapping complete |
-| Error Handling | 50% | Pending | Silent failures, no programmer/data distinction |
-| Logging | 90% | Good | Pino is production-grade, but no metrics |
+| Error Handling | **90%** | **IMPROVED** | Programmer/data error distinction, ParseError with context |
+| Logging | 90% | Good | Pino is production-grade, now with metrics |
 | Testing | 40% | Pending | Only 2/7 indexers tested, no VCR tests |
-| Validation | 20% | Pending | No Zod, no input guards, no ABI versioning |
-| Observability | 30% | Pending | No metrics, no alerting integration |
+| Validation | **90%** | **IMPROVED** | Zod schemas for all 24 events, bounds checking |
+| Observability | **90%** | **IMPROVED** | Metrics tracking, health endpoint, latency monitoring |
 | Idempotency | **95%** | **IMPROVED** | Unique constraints + onConflictDoNothing() |
 
 ---

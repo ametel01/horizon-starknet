@@ -27,6 +27,7 @@ import {
   logBlockProgress,
   logIndexerStart,
 } from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
 import {
@@ -234,20 +235,27 @@ export default function marketFactoryIndexer(
       }
 
       // Batch insert with transaction wrapping and conflict handling for idempotency
-      await db.transaction(async (tx) => {
-        if (marketCreatedRows.length > 0) {
-          await tx
-            .insert(marketFactoryMarketCreated)
-            .values(marketCreatedRows)
-            .onConflictDoNothing();
-        }
-        if (classHashRows.length > 0) {
-          await tx
-            .insert(marketFactoryClassHashUpdated)
-            .values(classHashRows)
-            .onConflictDoNothing();
-        }
+      await measureDbLatency("market-factory", async () => {
+        await db.transaction(async (tx) => {
+          if (marketCreatedRows.length > 0) {
+            await tx
+              .insert(marketFactoryMarketCreated)
+              .values(marketCreatedRows)
+              .onConflictDoNothing();
+          }
+          if (classHashRows.length > 0) {
+            await tx
+              .insert(marketFactoryClassHashUpdated)
+              .values(classHashRows)
+              .onConflictDoNothing();
+          }
+        });
       });
+
+      // Record metrics
+      const successCount = marketCreatedRows.length + classHashRows.length;
+      recordEvents("market-factory", successCount, errorCount);
+      recordBlock("market-factory", blockNumber);
     },
   });
 }

@@ -37,6 +37,7 @@ import {
   logContractDiscovery,
   logIndexerStart,
 } from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
 import {
@@ -427,35 +428,47 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }
 
       // Batch insert with transaction wrapping and conflict handling for idempotency
-      await db.transaction(async (tx) => {
-        if (mintPYRows.length > 0) {
-          await tx.insert(ytMintPY).values(mintPYRows).onConflictDoNothing();
-        }
-        if (redeemPYRows.length > 0) {
-          await tx
-            .insert(ytRedeemPY)
-            .values(redeemPYRows)
-            .onConflictDoNothing();
-        }
-        if (redeemPostExpiryRows.length > 0) {
-          await tx
-            .insert(ytRedeemPYPostExpiry)
-            .values(redeemPostExpiryRows)
-            .onConflictDoNothing();
-        }
-        if (interestClaimedRows.length > 0) {
-          await tx
-            .insert(ytInterestClaimed)
-            .values(interestClaimedRows)
-            .onConflictDoNothing();
-        }
-        if (expiryReachedRows.length > 0) {
-          await tx
-            .insert(ytExpiryReached)
-            .values(expiryReachedRows)
-            .onConflictDoNothing();
-        }
+      await measureDbLatency("yt", async () => {
+        await db.transaction(async (tx) => {
+          if (mintPYRows.length > 0) {
+            await tx.insert(ytMintPY).values(mintPYRows).onConflictDoNothing();
+          }
+          if (redeemPYRows.length > 0) {
+            await tx
+              .insert(ytRedeemPY)
+              .values(redeemPYRows)
+              .onConflictDoNothing();
+          }
+          if (redeemPostExpiryRows.length > 0) {
+            await tx
+              .insert(ytRedeemPYPostExpiry)
+              .values(redeemPostExpiryRows)
+              .onConflictDoNothing();
+          }
+          if (interestClaimedRows.length > 0) {
+            await tx
+              .insert(ytInterestClaimed)
+              .values(interestClaimedRows)
+              .onConflictDoNothing();
+          }
+          if (expiryReachedRows.length > 0) {
+            await tx
+              .insert(ytExpiryReached)
+              .values(expiryReachedRows)
+              .onConflictDoNothing();
+          }
+        });
       });
+
+      // Record metrics
+      const successCount =
+        mintPYRows.length +
+        redeemPYRows.length +
+        redeemPostExpiryRows.length +
+        interestClaimedRows.length +
+        expiryReachedRows.length;
+      recordEvents("yt", successCount, errorCount);
+      recordBlock("yt", blockNumber);
 
       logBatchInsert(log, blockNum, events.length);
     },

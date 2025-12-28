@@ -28,6 +28,7 @@ import {
   logBlockProgress,
   logIndexerStart,
 } from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
 import {
@@ -299,20 +300,31 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }
 
       // Batch insert with transaction wrapping and conflict handling for idempotency
-      await db.transaction(async (tx) => {
-        if (depositRows.length > 0) {
-          await tx.insert(syDeposit).values(depositRows).onConflictDoNothing();
-        }
-        if (redeemRows.length > 0) {
-          await tx.insert(syRedeem).values(redeemRows).onConflictDoNothing();
-        }
-        if (oracleRateRows.length > 0) {
-          await tx
-            .insert(syOracleRateUpdated)
-            .values(oracleRateRows)
-            .onConflictDoNothing();
-        }
+      await measureDbLatency("sy", async () => {
+        await db.transaction(async (tx) => {
+          if (depositRows.length > 0) {
+            await tx
+              .insert(syDeposit)
+              .values(depositRows)
+              .onConflictDoNothing();
+          }
+          if (redeemRows.length > 0) {
+            await tx.insert(syRedeem).values(redeemRows).onConflictDoNothing();
+          }
+          if (oracleRateRows.length > 0) {
+            await tx
+              .insert(syOracleRateUpdated)
+              .values(oracleRateRows)
+              .onConflictDoNothing();
+          }
+        });
       });
+
+      // Record metrics
+      const successCount =
+        depositRows.length + redeemRows.length + oracleRateRows.length;
+      recordEvents("sy", successCount, errorCount);
+      recordBlock("sy", blockNumber);
 
       logBatchInsert(log, blockNum, events.length);
     },

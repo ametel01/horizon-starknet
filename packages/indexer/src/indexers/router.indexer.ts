@@ -36,6 +36,7 @@ import {
   logBlockProgress,
   logIndexerStart,
 } from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
 import {
@@ -375,41 +376,54 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }
 
       // Batch insert with transaction wrapping and conflict handling for idempotency
-      await db.transaction(async (tx) => {
-        if (mintPYRows.length > 0) {
-          await tx
-            .insert(routerMintPY)
-            .values(mintPYRows)
-            .onConflictDoNothing();
-        }
-        if (redeemPYRows.length > 0) {
-          await tx
-            .insert(routerRedeemPY)
-            .values(redeemPYRows)
-            .onConflictDoNothing();
-        }
-        if (addLiquidityRows.length > 0) {
-          await tx
-            .insert(routerAddLiquidity)
-            .values(addLiquidityRows)
-            .onConflictDoNothing();
-        }
-        if (removeLiquidityRows.length > 0) {
-          await tx
-            .insert(routerRemoveLiquidity)
-            .values(removeLiquidityRows)
-            .onConflictDoNothing();
-        }
-        if (swapRows.length > 0) {
-          await tx.insert(routerSwap).values(swapRows).onConflictDoNothing();
-        }
-        if (swapYTRows.length > 0) {
-          await tx
-            .insert(routerSwapYT)
-            .values(swapYTRows)
-            .onConflictDoNothing();
-        }
+      await measureDbLatency("router", async () => {
+        await db.transaction(async (tx) => {
+          if (mintPYRows.length > 0) {
+            await tx
+              .insert(routerMintPY)
+              .values(mintPYRows)
+              .onConflictDoNothing();
+          }
+          if (redeemPYRows.length > 0) {
+            await tx
+              .insert(routerRedeemPY)
+              .values(redeemPYRows)
+              .onConflictDoNothing();
+          }
+          if (addLiquidityRows.length > 0) {
+            await tx
+              .insert(routerAddLiquidity)
+              .values(addLiquidityRows)
+              .onConflictDoNothing();
+          }
+          if (removeLiquidityRows.length > 0) {
+            await tx
+              .insert(routerRemoveLiquidity)
+              .values(removeLiquidityRows)
+              .onConflictDoNothing();
+          }
+          if (swapRows.length > 0) {
+            await tx.insert(routerSwap).values(swapRows).onConflictDoNothing();
+          }
+          if (swapYTRows.length > 0) {
+            await tx
+              .insert(routerSwapYT)
+              .values(swapYTRows)
+              .onConflictDoNothing();
+          }
+        });
       });
+
+      // Record metrics
+      const successCount =
+        mintPYRows.length +
+        redeemPYRows.length +
+        addLiquidityRows.length +
+        removeLiquidityRows.length +
+        swapRows.length +
+        swapYTRows.length;
+      recordEvents("router", successCount, errorCount);
+      recordBlock("router", blockNumber);
 
       logBatchInsert(log, blockNum, events.length);
     },

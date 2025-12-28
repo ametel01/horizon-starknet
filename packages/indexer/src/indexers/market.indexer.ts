@@ -38,6 +38,7 @@ import {
   logBlockProgress,
   logIndexerStart,
 } from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
 import {
@@ -496,35 +497,48 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       }
 
       // Batch insert with transaction wrapping and conflict handling for idempotency
-      await db.transaction(async (tx) => {
-        if (mintRows.length > 0) {
-          await tx.insert(marketMint).values(mintRows).onConflictDoNothing();
-        }
-        if (burnRows.length > 0) {
-          await tx.insert(marketBurn).values(burnRows).onConflictDoNothing();
-        }
-        if (swapRows.length > 0) {
-          await tx.insert(marketSwap).values(swapRows).onConflictDoNothing();
-        }
-        if (impliedRateRows.length > 0) {
-          await tx
-            .insert(marketImpliedRateUpdated)
-            .values(impliedRateRows)
-            .onConflictDoNothing();
-        }
-        if (feesRows.length > 0) {
-          await tx
-            .insert(marketFeesCollected)
-            .values(feesRows)
-            .onConflictDoNothing();
-        }
-        if (scalarRootRows.length > 0) {
-          await tx
-            .insert(marketScalarRootUpdated)
-            .values(scalarRootRows)
-            .onConflictDoNothing();
-        }
+      await measureDbLatency("market", async () => {
+        await db.transaction(async (tx) => {
+          if (mintRows.length > 0) {
+            await tx.insert(marketMint).values(mintRows).onConflictDoNothing();
+          }
+          if (burnRows.length > 0) {
+            await tx.insert(marketBurn).values(burnRows).onConflictDoNothing();
+          }
+          if (swapRows.length > 0) {
+            await tx.insert(marketSwap).values(swapRows).onConflictDoNothing();
+          }
+          if (impliedRateRows.length > 0) {
+            await tx
+              .insert(marketImpliedRateUpdated)
+              .values(impliedRateRows)
+              .onConflictDoNothing();
+          }
+          if (feesRows.length > 0) {
+            await tx
+              .insert(marketFeesCollected)
+              .values(feesRows)
+              .onConflictDoNothing();
+          }
+          if (scalarRootRows.length > 0) {
+            await tx
+              .insert(marketScalarRootUpdated)
+              .values(scalarRootRows)
+              .onConflictDoNothing();
+          }
+        });
       });
+
+      // Record metrics
+      const successCount =
+        mintRows.length +
+        burnRows.length +
+        swapRows.length +
+        impliedRateRows.length +
+        feesRows.length +
+        scalarRootRows.length;
+      recordEvents("market", successCount, errorCount);
+      recordBlock("market", blockNumber);
 
       logBatchInsert(log, blockNum, events.length);
     },
