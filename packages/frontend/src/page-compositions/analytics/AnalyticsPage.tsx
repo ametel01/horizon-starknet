@@ -101,6 +101,24 @@ const FeeCollectionLog = dynamic(
   { loading: () => <ChartSkeleton /> }
 );
 
+// Priority 2: Enhanced Analytics - Protocol-wide TVL card for header
+const ProtocolTvlCard = dynamic(
+  () => import('@widgets/analytics/ProtocolTvlCard').then((m) => m.ProtocolTvlCard),
+  { loading: () => <CardSkeleton /> }
+);
+
+// Priority 2: Enhanced Analytics - Rate history table for advanced section
+const RateHistoryTable = dynamic(
+  () => import('@widgets/analytics/RateHistoryTable').then((m) => m.RateHistoryTable),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+// Priority 2: Enhanced Analytics - Compact TVL breakdown for mobile
+const TvlBreakdownCompact = dynamic(
+  () => import('@widgets/analytics/TvlBreakdown').then((m) => m.TvlBreakdownCompact),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
 function ChartSkeleton({ height = 'h-[300px]' }: { height?: string }): ReactNode {
   return <Skeleton className={cn(height, 'w-full rounded-lg')} />;
 }
@@ -161,8 +179,16 @@ export function AnalyticsPage(): ReactNode {
           </svg>
           Back
         </Link>
-        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Analytics</h1>
-        <p className="text-muted-foreground mt-1">Yield-native protocol metrics</p>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Analytics</h1>
+            <p className="text-muted-foreground mt-1">Yield-native protocol metrics</p>
+          </div>
+          {/* Protocol TVL Summary Card - prominent header position */}
+          <div className="w-full lg:w-80">
+            <ProtocolTvlCard showSparkline={false} />
+          </div>
+        </div>
       </header>
 
       {/* ============================================ */}
@@ -332,12 +358,28 @@ export function AnalyticsPage(): ReactNode {
             )}
           </section>
 
+          {/* Rate History Table - complements yield charts with tabular data */}
+          <section>
+            <h3 className="text-foreground mb-4 font-semibold">Rate History</h3>
+            {marketAddress ? (
+              <RateHistoryTable marketAddress={marketAddress} showExchangeRate />
+            ) : (
+              <EmptyState message="Select a market above" />
+            )}
+          </section>
+
           {/* TVL Section */}
           <section>
             <h3 className="text-foreground mb-4 font-semibold">Total Value Locked</h3>
             <div className="grid gap-6 lg:grid-cols-2">
               <TvlChart />
-              <TvlBreakdown />
+              {/* Responsive TVL Breakdown: compact pie chart on mobile, full version on desktop */}
+              <div className="hidden md:block">
+                <TvlBreakdown />
+              </div>
+              <div className="md:hidden">
+                <TvlBreakdownCompact height={200} />
+              </div>
             </div>
             <div className="mt-6">
               <VolumeByMarket />

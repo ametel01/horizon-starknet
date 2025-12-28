@@ -194,6 +194,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
     redeemPy({
       ytAddress: position.market.ytAddress,
       ptAddress: position.market.ptAddress,
+      syAddress: position.market.syAddress,
       amount,
       minSyOut,
     });
@@ -205,6 +206,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
     redeemPtPostExpiry({
       ytAddress: position.market.ytAddress,
       ptAddress: position.market.ptAddress,
+      syAddress: position.market.syAddress,
       amount: position.ptBalance,
       minSyOut,
     });
@@ -636,6 +638,7 @@ function EnhancedPositionCardWrapper({
     redeemPy({
       ytAddress: position.market.ytAddress,
       ptAddress: position.market.ptAddress,
+      syAddress: position.market.syAddress,
       amount,
       minSyOut,
     });
@@ -648,6 +651,7 @@ function EnhancedPositionCardWrapper({
     redeemPtPostExpiry({
       ytAddress: position.market.ytAddress,
       ptAddress: position.market.ptAddress,
+      syAddress: position.market.syAddress,
       amount: legacyPosition.ptBalance,
       minSyOut,
     });

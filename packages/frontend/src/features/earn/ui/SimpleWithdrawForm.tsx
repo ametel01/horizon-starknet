@@ -348,7 +348,18 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
       )}
 
       {/* Transaction Status */}
-      {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+      {status !== 'idle' && (
+        <TxStatus
+          status={status}
+          txHash={txHash}
+          error={error}
+          gasEstimate={{
+            formattedFee,
+            isLoading: isEstimatingFee,
+            error: feeError,
+          }}
+        />
+      )}
 
       {/* Actions */}
       <FormActions>

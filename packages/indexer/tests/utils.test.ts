@@ -5,6 +5,8 @@
  */
 
 import { describe, expect, it } from "vitest";
+
+import { ParseError } from "../src/lib/errors";
 import {
   matchSelector,
   readU256,
@@ -48,9 +50,9 @@ describe("readU256", () => {
     expect(readU256(data, 0)).toBe("340282366920938463463374607431768211456");
   });
 
-  it("should handle missing data", () => {
+  it("should throw ParseError for missing data", () => {
     const data: string[] = [];
-    expect(readU256(data, 0)).toBe("0");
+    expect(() => readU256(data, 0)).toThrow(ParseError);
   });
 
   it("should read from correct index", () => {
@@ -72,9 +74,9 @@ describe("readI256", () => {
     expect(readI256(data, 0)).toBe("-1");
   });
 
-  it("should handle missing data", () => {
+  it("should throw ParseError for missing data", () => {
     const data: string[] = [];
-    expect(readI256(data, 0)).toBe("0");
+    expect(() => readI256(data, 0)).toThrow(ParseError);
   });
 });
 
@@ -104,9 +106,9 @@ describe("decodeByteArray", () => {
     expect(decodeByteArray(data, 0)).toBe("");
   });
 
-  it("should return empty for missing data", () => {
+  it("should throw ParseError for missing data", () => {
     const data: string[] = [];
-    expect(decodeByteArray(data, 0)).toBe("");
+    expect(() => decodeByteArray(data, 0)).toThrow(ParseError);
   });
 
   it("should decode from non-zero startIndex", () => {

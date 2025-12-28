@@ -19,6 +19,10 @@ interface AddLiquidityParams {
 
 interface RemoveLiquidityParams {
   marketAddress: string;
+  /** SY token address (for optimistic UI updates) */
+  syAddress: string;
+  /** PT token address (for optimistic UI updates) */
+  ptAddress: string;
   lpAmount: bigint;
   minSyOut: bigint;
   minPtOut: bigint;
@@ -26,6 +30,24 @@ interface RemoveLiquidityParams {
 
 interface LiquidityResult {
   transactionHash: string;
+}
+
+/**
+ * Context for optimistic update rollback (add liquidity)
+ */
+interface AddLiquidityOptimisticContext {
+  previousSyBalance: string | undefined;
+  previousPtBalance: string | undefined;
+  previousLpBalance: string | undefined;
+}
+
+/**
+ * Context for optimistic update rollback (remove liquidity)
+ */
+interface RemoveLiquidityOptimisticContext {
+  previousSyBalance: string | undefined;
+  previousPtBalance: string | undefined;
+  previousLpBalance: string | undefined;
 }
 
 interface UseAddLiquidityReturn {
@@ -101,8 +123,99 @@ export function useAddLiquidity(): UseAddLiquidityReturn {
         transactionHash: result.transaction_hash,
       };
     },
-    onSuccess: () => {
-      // Invalidate relevant queries
+
+    /**
+     * Optimistic UI: Update balances immediately (Doherty Threshold)
+     */
+    onMutate: async (params: AddLiquidityParams): Promise<AddLiquidityOptimisticContext> => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.syAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ptAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.marketAddress, address],
+      });
+
+      // Snapshot previous values
+      const previousSyBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.syAddress,
+        address,
+      ]);
+      const previousPtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ptAddress,
+        address,
+      ]);
+      const previousLpBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.marketAddress,
+        address,
+      ]);
+
+      // Optimistically decrease SY balance
+      if (previousSyBalance !== undefined) {
+        const newBalance = BigInt(previousSyBalance) - params.syAmount;
+        queryClient.setQueryData(
+          ['token-balance', params.syAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically decrease PT balance
+      if (previousPtBalance !== undefined) {
+        const newBalance = BigInt(previousPtBalance) - params.ptAmount;
+        queryClient.setQueryData(
+          ['token-balance', params.ptAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically increase LP balance
+      if (previousLpBalance !== undefined) {
+        const newBalance = BigInt(previousLpBalance) + params.minLpOut;
+        queryClient.setQueryData(
+          ['token-balance', params.marketAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      return { previousSyBalance, previousPtBalance, previousLpBalance };
+    },
+
+    /**
+     * Rollback on error
+     */
+    onError: (_err, params, context) => {
+      if (context) {
+        if (context.previousSyBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.syAddress, address],
+            context.previousSyBalance
+          );
+        }
+        if (context.previousPtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ptAddress, address],
+            context.previousPtBalance
+          );
+        }
+        if (context.previousLpBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.marketAddress, address],
+            context.previousLpBalance
+          );
+        }
+      }
+    },
+
+    /**
+     * Always refetch to get actual blockchain state
+     */
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['market'] });
       void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
       void queryClient.invalidateQueries({ queryKey: ['token-allowance'] });
@@ -165,8 +278,99 @@ export function useRemoveLiquidity(): UseRemoveLiquidityReturn {
         transactionHash: result.transaction_hash,
       };
     },
-    onSuccess: () => {
-      // Invalidate relevant queries
+
+    /**
+     * Optimistic UI: Update balances immediately (Doherty Threshold)
+     */
+    onMutate: async (params: RemoveLiquidityParams): Promise<RemoveLiquidityOptimisticContext> => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.syAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ptAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.marketAddress, address],
+      });
+
+      // Snapshot previous values
+      const previousSyBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.syAddress,
+        address,
+      ]);
+      const previousPtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ptAddress,
+        address,
+      ]);
+      const previousLpBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.marketAddress,
+        address,
+      ]);
+
+      // Optimistically increase SY balance
+      if (previousSyBalance !== undefined) {
+        const newBalance = BigInt(previousSyBalance) + params.minSyOut;
+        queryClient.setQueryData(
+          ['token-balance', params.syAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      // Optimistically increase PT balance
+      if (previousPtBalance !== undefined) {
+        const newBalance = BigInt(previousPtBalance) + params.minPtOut;
+        queryClient.setQueryData(
+          ['token-balance', params.ptAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      // Optimistically decrease LP balance
+      if (previousLpBalance !== undefined) {
+        const newBalance = BigInt(previousLpBalance) - params.lpAmount;
+        queryClient.setQueryData(
+          ['token-balance', params.marketAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      return { previousSyBalance, previousPtBalance, previousLpBalance };
+    },
+
+    /**
+     * Rollback on error
+     */
+    onError: (_err, params, context) => {
+      if (context) {
+        if (context.previousSyBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.syAddress, address],
+            context.previousSyBalance
+          );
+        }
+        if (context.previousPtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ptAddress, address],
+            context.previousPtBalance
+          );
+        }
+        if (context.previousLpBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.marketAddress, address],
+            context.previousLpBalance
+          );
+        }
+      }
+    },
+
+    /**
+     * Always refetch to get actual blockchain state
+     */
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['market'] });
       void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
       void queryClient.invalidateQueries({ queryKey: ['token-allowance'] });

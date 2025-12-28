@@ -3,6 +3,7 @@
 import BigNumber from 'bignumber.js';
 import { ArrowUpDown, ChevronDown } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import type { Call } from 'starknet';
 
 import type { MarketData } from '@entities/market';
@@ -35,7 +36,16 @@ import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@shared/ui/Collapsible';
+import {
+  FormActions,
+  FormDivider,
+  FormInputSection,
+  FormLayout,
+  FormOutputSection,
+  FormRow,
+} from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -359,6 +369,32 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
     return 'idle' as const;
   }, [isSwapping, isSuccess, isError]);
 
+  // Transaction steps for StepProgress (varies by direction)
+  const transactionSteps: Step[] = useMemo(() => {
+    if (direction === 'sell_yt') {
+      // Selling YT requires extra collateral approval
+      return [
+        { label: 'Approve YT', description: 'Approve YT tokens' },
+        { label: 'Approve Collateral', description: 'Approve SY as collateral' },
+        { label: 'Swap', description: 'Execute swap' },
+      ];
+    }
+    // All other directions: single approval + swap
+    const approveLabel =
+      direction === 'buy_pt' || direction === 'buy_yt' ? 'Approve SY' : 'Approve PT';
+    return [
+      { label: approveLabel, description: `Approve token spending` },
+      { label: 'Swap', description: 'Execute swap' },
+    ];
+  }, [direction]);
+
+  // Calculate current step based on transaction state
+  const currentStep = useMemo(() => {
+    if (isSuccess) return transactionSteps.length; // All complete
+    if (isSwapping) return transactionSteps.length - 1; // Show last step as active
+    return -1; // No transaction in progress
+  }, [isSwapping, isSuccess, transactionSteps.length]);
+
   // Handle swap
   const handleSwap = (): void => {
     if (!canSwap) return;
@@ -393,85 +429,87 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
     }, 150);
   };
 
-  // Handle token type change
+  // Handle token type change with confirmation feedback
   const handleTokenTypeChange = (newType: string): void => {
     if (newType === 'PT' || newType === 'YT') {
       setTokenType(newType);
       setInputAmount('');
       resetSwap();
       priceImpactWarning.reset();
+      toast.success(`Switched to ${newType}`, {
+        description:
+          newType === 'PT'
+            ? 'Principal Token – fixed yield at maturity'
+            : 'Yield Token – leveraged yield exposure',
+        duration: 2000,
+      });
     }
   };
 
-  // Handle buy/sell change
+  // Handle buy/sell change with confirmation feedback
   const handleDirectionChange = (value: string): void => {
     if (value === 'buy' || value === 'sell') {
-      setIsBuying(value === 'buy');
+      const buying = value === 'buy';
+      setIsBuying(buying);
       setInputAmount('');
       resetSwap();
       priceImpactWarning.reset();
+      toast.success(buying ? 'Buy mode' : 'Sell mode', {
+        description: buying ? `Pay SY to receive ${tokenType}` : `Pay ${tokenType} to receive SY`,
+        duration: 2000,
+      });
     }
   };
 
   return (
-    <Card className={cn('relative overflow-hidden', className)}>
-      {/* Directional gradient based on buy/sell */}
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 transition-all duration-500',
-          isBuying
-            ? 'from-primary/5 bg-gradient-to-br via-transparent to-transparent'
-            : 'from-destructive/5 bg-gradient-to-br via-transparent to-transparent'
-        )}
-        aria-hidden="true"
-      />
-      <CardContent className="relative space-y-4 p-5">
-        {/* Token type + direction as inline pills */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <ToggleGroup className="bg-muted rounded-lg p-1">
-            <ToggleGroupItem
-              pressed={tokenType === 'PT'}
-              onPressedChange={() => {
-                handleTokenTypeChange('PT');
-              }}
-              className="data-[pressed]:bg-primary data-[pressed]:text-primary-foreground rounded-md px-4"
-            >
-              PT
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              pressed={tokenType === 'YT'}
-              onPressedChange={() => {
-                handleTokenTypeChange('YT');
-              }}
-              className="data-[pressed]:bg-chart-2 data-[pressed]:text-foreground rounded-md px-4"
-            >
-              YT
-            </ToggleGroupItem>
-          </ToggleGroup>
+    <FormLayout className={className} gradient={isBuying ? 'primary' : 'destructive'}>
+      {/* Token type + direction as inline pills */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ToggleGroup className="bg-muted rounded-lg p-1">
+          <ToggleGroupItem
+            pressed={tokenType === 'PT'}
+            onPressedChange={() => {
+              handleTokenTypeChange('PT');
+            }}
+            className="data-[pressed]:bg-primary data-[pressed]:text-primary-foreground rounded-md px-4"
+          >
+            PT
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            pressed={tokenType === 'YT'}
+            onPressedChange={() => {
+              handleTokenTypeChange('YT');
+            }}
+            className="data-[pressed]:bg-chart-2 data-[pressed]:text-foreground rounded-md px-4"
+          >
+            YT
+          </ToggleGroupItem>
+        </ToggleGroup>
 
-          <ToggleGroup className="bg-muted rounded-lg p-1">
-            <ToggleGroupItem
-              pressed={isBuying}
-              onPressedChange={() => {
-                handleDirectionChange('buy');
-              }}
-              className="data-[pressed]:bg-primary/20 data-[pressed]:text-primary rounded-md px-4"
-            >
-              Buy
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              pressed={!isBuying}
-              onPressedChange={() => {
-                handleDirectionChange('sell');
-              }}
-              className="data-[pressed]:bg-destructive/20 data-[pressed]:text-destructive rounded-md px-4"
-            >
-              Sell
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
+        <ToggleGroup className="bg-muted rounded-lg p-1">
+          <ToggleGroupItem
+            pressed={isBuying}
+            onPressedChange={() => {
+              handleDirectionChange('buy');
+            }}
+            className="data-[pressed]:bg-primary/20 data-[pressed]:text-primary rounded-md px-4"
+          >
+            Buy
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            pressed={!isBuying}
+            onPressedChange={() => {
+              handleDirectionChange('sell');
+            }}
+            className="data-[pressed]:bg-destructive/20 data-[pressed]:text-destructive rounded-md px-4"
+          >
+            Sell
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
 
-        {/* Input Token */}
+      {/* Input Section */}
+      <FormInputSection>
         <TokenInput
           label="You pay"
           tokenAddress={inputToken}
@@ -480,78 +518,78 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
           onChange={setInputAmount}
           error={hasInsufficientBalance ? 'Insufficient balance' : undefined}
         />
+      </FormInputSection>
 
-        {/* Animated swap direction button */}
-        <div className="relative flex justify-center">
-          <div className="bg-background absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleDirection}
+      {/* Animated swap direction button */}
+      <FormDivider>
+        <div className="bg-background absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleDirection}
+            className={cn(
+              'bg-background h-10 w-10 rounded-full shadow-lg transition-transform duration-300',
+              isFlipping && 'rotate-180'
+            )}
+            aria-label="Toggle swap direction"
+          >
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
+        </div>
+      </FormDivider>
+
+      {/* Output Preview */}
+      <FormOutputSection>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground shrink-0 text-sm">You receive</span>
+          <span className="text-muted-foreground truncate text-xs">
+            Min: {formatWad(minOutput, 4)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-foreground min-w-0 flex-1 truncate font-mono text-2xl font-semibold tabular-nums">
+            {formattedAnimatedOutput}
+          </span>
+          {/* Token badge - consistent with TokenInput */}
+          <div
+            className={cn(
+              'flex h-10 shrink-0 items-center justify-center rounded-full px-3',
+              'border-border/50 border',
+              isBuying && tokenType === 'PT' && 'bg-primary/10',
+              isBuying && tokenType === 'YT' && 'bg-chart-2/10',
+              !isBuying && 'bg-chart-1/10'
+            )}
+          >
+            <span
               className={cn(
-                'bg-background h-10 w-10 rounded-full shadow-lg transition-transform duration-300',
-                isFlipping && 'rotate-180'
+                'font-mono text-sm font-semibold',
+                isBuying && tokenType === 'PT' && 'text-primary',
+                isBuying && tokenType === 'YT' && 'text-chart-2',
+                !isBuying && 'text-chart-1'
               )}
-              aria-label="Toggle swap direction"
             >
-              <ArrowUpDown className="h-4 w-4" />
-            </Button>
+              {isBuying ? tokenType : 'SY'}
+            </span>
           </div>
         </div>
+      </FormOutputSection>
 
-        {/* Output Preview */}
-        <Card className="bg-muted/50 overflow-hidden">
-          <CardContent className="space-y-2 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground shrink-0 text-sm">You receive</span>
-              <span className="text-muted-foreground truncate text-xs">
-                Min: {formatWad(minOutput, 4)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-foreground min-w-0 flex-1 truncate font-mono text-2xl font-semibold tabular-nums">
-                {formattedAnimatedOutput}
-              </span>
-              {/* Token badge - consistent with TokenInput */}
-              <div
-                className={cn(
-                  'flex h-10 shrink-0 items-center justify-center rounded-full px-3',
-                  'border-border/50 border',
-                  isBuying && tokenType === 'PT' && 'bg-primary/10',
-                  isBuying && tokenType === 'YT' && 'bg-chart-2/10',
-                  !isBuying && 'bg-chart-1/10'
-                )}
-              >
-                <span
-                  className={cn(
-                    'font-mono text-sm font-semibold',
-                    isBuying && tokenType === 'PT' && 'text-primary',
-                    isBuying && tokenType === 'YT' && 'text-chart-2',
-                    !isBuying && 'text-chart-1'
-                  )}
-                >
-                  {isBuying ? tokenType : 'SY'}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Price Impact Meter */}
+      {isValidAmount && <PriceImpactMeter impact={priceImpact} />}
 
-        {/* Price Impact Meter */}
-        {isValidAmount && <PriceImpactMeter impact={priceImpact} />}
-
-        {/* Collapsible Swap Details */}
-        <Collapsible>
-          <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between text-sm transition-colors">
-            <span>Swap Details</span>
-            <ChevronDown className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-2 pt-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Rate</span>
-              <span
-                className={isValidAmount ? 'text-foreground font-mono' : 'text-muted-foreground'}
-              >
+      {/* Collapsible Swap Details */}
+      <Collapsible>
+        <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between text-sm transition-colors">
+          <span>Swap Details</span>
+          <ChevronDown className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-2 pt-3 text-sm">
+          <FormRow
+            label="Rate"
+            labelClassName="text-sm"
+            valueClassName={cn('font-mono text-sm', !isValidAmount && 'text-muted-foreground')}
+            value={
+              <>
                 1 {inputLabel} ={' '}
                 {parsedInputAmount > BigInt(0)
                   ? new BigNumber(expectedOutput.toString())
@@ -559,14 +597,18 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
                       .toFixed(4)
                   : '-'}{' '}
                 {outputLabel}
-              </span>
-            </div>
+              </>
+            }
+          />
 
-            {/* Implied APY Change */}
-            {(direction === 'buy_pt' || direction === 'sell_pt') && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Implied APY</span>
-                <span className={isValidAmount ? 'text-foreground' : 'text-muted-foreground'}>
+          {/* Implied APY Change */}
+          {(direction === 'buy_pt' || direction === 'sell_pt') && (
+            <FormRow
+              label="Implied APY"
+              labelClassName="text-sm"
+              valueClassName={cn('text-sm', !isValidAmount && 'text-muted-foreground')}
+              value={
+                <>
                   {(impliedApyBefore * 100).toFixed(2)}%{' '}
                   <span className="text-muted-foreground">→</span>{' '}
                   <span
@@ -581,109 +623,128 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
                       : (impliedApyBefore * 100).toFixed(2)}
                     %
                   </span>
-                </span>
-              </div>
+                </>
+              }
+            />
+          )}
+
+          {historicalAvgImpact !== null && (
+            <FormRow
+              label="Historical Avg Impact"
+              labelClassName="text-sm"
+              valueClassName="text-muted-foreground font-mono text-sm"
+              value={`${historicalAvgImpact.toFixed(2)}%`}
+            />
+          )}
+
+          <FormRow
+            label="Slippage Tolerance"
+            labelClassName="text-sm"
+            valueClassName="text-sm"
+            value={slippagePercent}
+          />
+
+          <FormRow
+            label="Swap Fee"
+            labelClassName="text-sm"
+            valueClassName={cn(
+              'font-mono text-sm',
+              !(isValidAmount && swapResult !== null && swapResult.fee > 0n) &&
+                'text-muted-foreground'
             )}
+            value={
+              isValidAmount && swapResult !== null && swapResult.fee > 0n
+                ? `${formatWad(swapResult.fee, 6)} ${syLabel}`
+                : '-'
+            }
+          />
 
-            {historicalAvgImpact !== null && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Historical Avg Impact</span>
-                <span className="text-muted-foreground font-mono">
-                  {historicalAvgImpact.toFixed(2)}%
-                </span>
-              </div>
-            )}
-
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Slippage Tolerance</span>
-              <span className="text-foreground">{slippagePercent}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Swap Fee</span>
-              <span
-                className={cn(
-                  'font-mono',
-                  isValidAmount && swapResult !== null && swapResult.fee > 0n
-                    ? 'text-foreground'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {isValidAmount && swapResult !== null && swapResult.fee > 0n
-                  ? `${formatWad(swapResult.fee, 6)} ${syLabel}`
-                  : '-'}
-              </span>
-            </div>
-
-            {/* Estimated Gas Fee */}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Estimated Gas</span>
+          {/* Estimated Gas Fee */}
+          <FormRow
+            label="Estimated Gas"
+            labelClassName="text-sm"
+            value={
               <GasEstimate
                 formattedFee={formattedFee}
                 isLoading={isEstimatingFee}
                 error={feeError}
               />
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Price Impact Warning */}
-        {isValidAmount && priceImpactWarning.severity !== 'low' && (
-          <PriceImpactWarning
-            priceImpact={priceImpact}
-            onAcknowledge={priceImpactWarning.acknowledge}
-            acknowledged={priceImpactWarning.acknowledged}
+            }
           />
-        )}
+        </CollapsibleContent>
+      </Collapsible>
 
-        {/* Transaction Settings */}
-        <TransactionSettingsPanel />
+      {/* Price Impact Warning */}
+      {isValidAmount && priceImpactWarning.severity !== 'low' && (
+        <PriceImpactWarning
+          priceImpact={priceImpact}
+          onAcknowledge={priceImpactWarning.acknowledge}
+          acknowledged={priceImpactWarning.acknowledged}
+        />
+      )}
 
-        {/* YT Sell Collateral Warning */}
-        {direction === 'sell_yt' && isValidAmount && (
-          <Card className="border-warning/30 bg-warning/10">
-            <CardContent className="flex items-start gap-2 p-3 text-sm">
-              <svg
-                className="text-warning mt-0.5 h-4 w-4 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <p className="text-warning font-medium">Collateral Required</p>
-                <p className="text-warning/80 mt-1">
-                  Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
-                  collateral.
+      {/* Transaction Settings */}
+      <TransactionSettingsPanel />
+
+      {/* YT Sell Collateral Warning */}
+      {direction === 'sell_yt' && isValidAmount && (
+        <Card className="border-warning/30 bg-warning/10">
+          <CardContent className="flex items-start gap-2 p-3 text-sm">
+            <svg
+              className="text-warning mt-0.5 h-4 w-4 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <p className="text-warning font-medium">Collateral Required</p>
+              <p className="text-warning/80 mt-1">
+                Selling YT requires {formatWad(collateralRequired, 4)} {syLabel} as temporary
+                collateral.
+              </p>
+              {hasInsufficientCollateral && (
+                <p className="text-destructive mt-1">
+                  Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
                 </p>
-                {hasInsufficientCollateral && (
-                  <p className="text-destructive mt-1">
-                    Insufficient {syLabel} balance. You have {formatWad(syBalance, 4)}.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Transaction Status */}
-        {txStatus !== 'idle' && (
-          <TxStatus status={txStatus} txHash={transactionHash ?? null} error={error} />
-        )}
+      {/* Transaction Progress */}
+      {txStatus !== 'idle' && (
+        <div className="space-y-4">
+          <StepProgress steps={transactionSteps} currentStep={currentStep} />
+          <TxStatus
+            status={txStatus}
+            txHash={transactionHash ?? null}
+            error={error}
+            gasEstimate={{
+              formattedFee,
+              isLoading: isEstimatingFee,
+              error: feeError,
+            }}
+          />
+        </div>
+      )}
 
-        {/* Submit Button */}
+      {/* Submit Button */}
+      <FormActions>
         <Button
           onClick={handleSwap}
           disabled={!canSwap || isSwapping}
+          size="xl"
           className={cn(
-            'h-12 w-full text-base font-medium',
-            isBuying ? '' : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+            'w-full',
+            !isBuying && 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
           )}
         >
           {isSwapping
@@ -702,7 +763,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
                         ? 'Swapped!'
                         : `${isBuying ? 'Buy' : 'Sell'} ${tokenType}`}
         </Button>
-      </CardContent>
-    </Card>
+      </FormActions>
+    </FormLayout>
   );
 }

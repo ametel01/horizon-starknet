@@ -38,8 +38,16 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive/10 hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/20 text-destructive focus-visible:border-destructive/40 dark:hover:bg-destructive/30',
         link: 'text-primary underline-offset-4 hover:underline active:scale-100',
-        // New: Glow variant for primary actions
+        // Glow variant for primary actions
         glow: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30',
+        // Form-specific variants: combine size, width, and styling for form submit buttons
+        // These provide better DX than manually combining size="xl" + className overrides
+        'form-primary':
+          'h-12 w-full text-base font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25',
+        'form-secondary':
+          'h-10 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        'form-destructive':
+          'h-12 w-full text-base font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90',
       },
       size: {
         default:

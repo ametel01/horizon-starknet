@@ -36,6 +36,16 @@ interface UseSwapReturn {
   reset: () => void;
 }
 
+/**
+ * Context for optimistic update rollback
+ */
+interface OptimisticContext {
+  previousInputBalance: string | undefined;
+  previousOutputBalance: string | undefined;
+  inputTokenAddress: string;
+  outputTokenAddress: string;
+}
+
 export function useSwap(): UseSwapReturn {
   const { network } = useStarknet();
   const { account, address } = useAccount();
@@ -157,8 +167,100 @@ export function useSwap(): UseSwapReturn {
         amountOut: params.minAmountOut, // Will be updated after tx confirmation
       };
     },
-    onSuccess: () => {
-      // Invalidate relevant queries
+
+    /**
+     * Optimistic UI: Update balances immediately for perceived speed (Doherty Threshold)
+     * This creates the illusion of instant response while the blockchain confirms
+     */
+    onMutate: async (params: SwapParams): Promise<OptimisticContext> => {
+      // Determine input/output tokens based on direction
+      const inputTokenAddress =
+        params.direction === 'buy_pt' || params.direction === 'buy_yt'
+          ? params.syAddress
+          : params.direction === 'sell_pt'
+            ? params.ptAddress
+            : params.ytAddress;
+
+      const outputTokenAddress =
+        params.direction === 'buy_pt'
+          ? params.ptAddress
+          : params.direction === 'buy_yt'
+            ? params.ytAddress
+            : params.syAddress;
+
+      // Cancel any outgoing refetches to prevent overwriting optimistic update
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', inputTokenAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', outputTokenAddress, address],
+      });
+
+      // Snapshot previous values for rollback
+      const previousInputBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        inputTokenAddress,
+        address,
+      ]);
+      const previousOutputBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        outputTokenAddress,
+        address,
+      ]);
+
+      // Optimistically update input balance (decrease)
+      if (previousInputBalance !== undefined) {
+        const newInputBalance = BigInt(previousInputBalance) - params.amountIn;
+        queryClient.setQueryData(
+          ['token-balance', inputTokenAddress, address],
+          (newInputBalance > 0n ? newInputBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically update output balance (increase)
+      if (previousOutputBalance !== undefined) {
+        const newOutputBalance = BigInt(previousOutputBalance) + params.minAmountOut;
+        queryClient.setQueryData(
+          ['token-balance', outputTokenAddress, address],
+          newOutputBalance.toString()
+        );
+      }
+
+      // Return context for rollback
+      return {
+        previousInputBalance,
+        previousOutputBalance,
+        inputTokenAddress,
+        outputTokenAddress,
+      };
+    },
+
+    /**
+     * Rollback optimistic update on error
+     */
+    onError: (_err, _params, context) => {
+      if (context) {
+        // Restore previous input balance
+        if (context.previousInputBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', context.inputTokenAddress, address],
+            context.previousInputBalance
+          );
+        }
+        // Restore previous output balance
+        if (context.previousOutputBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', context.outputTokenAddress, address],
+            context.previousOutputBalance
+          );
+        }
+      }
+    },
+
+    /**
+     * Always refetch after mutation settles to get actual blockchain state
+     */
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['market'] });
       void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
       void queryClient.invalidateQueries({ queryKey: ['token-allowance'] });

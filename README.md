@@ -277,13 +277,110 @@ make dev-fork-down
 │   │   └── mocks/               # Test mocks (MockYieldToken, MockPragma, Faucet)
 │   └── tests/                   # Unit & integration tests
 ├── packages/
-│   └── frontend/                # Next.js dApp (Bun, React 19, TailwindCSS 4)
+│   ├── frontend/                # Next.js dApp (Bun, React 19, TailwindCSS 4)
+│   └── indexer/                 # Event indexer (Bun, Apibara DNA, PostgreSQL)
 ├── deploy/
 │   ├── scripts/                 # deploy.sh, declare.sh, export-addresses.sh
 │   ├── addresses/               # Deployed addresses (devnet.json, mainnet.json)
 │   └── accounts/                # sncast account files
 └── .github/workflows/           # CI pipelines (build, test, fmt)
 ```
+
+## Indexer
+
+The indexer captures all protocol events from Starknet and stores them in PostgreSQL for analytics and frontend queries.
+
+### Architecture
+
+- **Runtime**: Bun + Apibara DNA (Starknet indexing framework)
+- **Database**: PostgreSQL 16 (hosted on Railway)
+- **Tables**: 24 event tables + 15 materialized views for analytics
+
+### Local Development
+
+```bash
+cd packages/indexer
+
+# Install dependencies
+bun install
+
+# Start local infrastructure (PostgreSQL + DNA server)
+bun run docker:up
+
+# Run indexer with devnet preset
+bun run dev
+
+# Run with mainnet preset
+bun run dev:mainnet
+
+# Run tests
+bun run test
+
+# Type check + lint + format
+bun run check
+```
+
+### Database Commands
+
+```bash
+# Generate migrations after schema changes
+bun run db:generate
+
+# Push schema directly (dev only)
+bun run db:push
+
+# Open Drizzle Studio (database GUI)
+bun run db:studio
+
+# Create/refresh materialized views
+bun run db:create-views
+bun run db:refresh-views
+```
+
+### Remote Database Access
+
+The production indexer runs on Railway with a PostgreSQL database.
+
+```bash
+# Install Railway CLI (one-time setup)
+bun add -g @railway/cli
+
+# Login to Railway (opens browser for authentication)
+~/.bun/bin/railway login
+
+# Link to the indexer project (select from list)
+cd packages/indexer
+~/.bun/bin/railway link
+
+# Connect to PostgreSQL console
+~/.bun/bin/railway connect Postgres
+```
+
+Once connected, you can run SQL queries directly. For example, to check table row counts:
+```sql
+SELECT 'router_swap' as table_name, COUNT(*) FROM router_swap
+UNION ALL
+SELECT 'market_swap', COUNT(*) FROM market_swap;
+```
+
+### Key Tables
+
+| Table | Description |
+|-------|-------------|
+| `factory_yield_contracts_created` | SY/PT/YT pair deployments |
+| `market_factory_market_created` | Market deployments |
+| `router_swap` | All swap transactions |
+| `router_add_liquidity` / `router_remove_liquidity` | LP operations |
+| `market_implied_rate_updated` | Implied rate changes |
+| `sy_deposit` / `sy_redeem` | SY token operations |
+| `yt_interest_claimed` | Yield claims |
+
+### Materialized Views
+
+Analytics views are refreshed periodically for dashboard queries:
+- `market_stats` - Market TVL, volume, fees
+- `user_positions` - Aggregated user holdings
+- `yield_history` - Historical yield rates
 
 ## Security
 

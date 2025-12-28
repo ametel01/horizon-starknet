@@ -2,7 +2,7 @@
  * Contract addresses and configuration per network
  */
 
-export type NetworkConfig = {
+export interface NetworkConfig {
   factory: `0x${string}`;
   marketFactory: `0x${string}`;
   router: `0x${string}`;
@@ -11,7 +11,7 @@ export type NetworkConfig = {
   knownYTContracts: `0x${string}`[];
   knownSYContracts: `0x${string}`[];
   knownMarkets: `0x${string}`[];
-};
+}
 
 export const MAINNET: NetworkConfig = {
   factory: "0x04fd6d42072f76612ae0a5f97d191ab4c5ede3688d2df0185352e01b7f2fc444",
@@ -90,6 +90,7 @@ export function getNetworkConfig(preset?: string): NetworkConfig {
       return SEPOLIA;
     case "devnet":
       return DEVNET;
+    case undefined:
     default:
       return MAINNET;
   }

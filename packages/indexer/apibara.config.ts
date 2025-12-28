@@ -7,7 +7,7 @@ export default defineConfig({
     starknet: {
       startingBlock: 0,
       // For devnet: use self-hosted DNA server
-      streamUrl: process.env.DNA_STREAM_URL ?? "http://localhost:7171",
+      streamUrl: process.env["DNA_STREAM_URL"] ?? "http://localhost:7171",
     },
   },
   presets: {
@@ -18,7 +18,7 @@ export default defineConfig({
           startingBlock: 4_643_300, // Horizon mainnet deployment block (2025-12-23)
           // Apibara hosted DNA stream (requires DNA_TOKEN)
           // Can override with DNA_STREAM_URL env var for self-hosted DNA
-          streamUrl: process.env.DNA_STREAM_URL ?? "https://mainnet.starknet.a5a.ch",
+          streamUrl: process.env["DNA_STREAM_URL"] ?? "https://mainnet.starknet.a5a.ch",
         },
       },
     },
@@ -38,7 +38,7 @@ export default defineConfig({
         starknet: {
           startingBlock: 0,
           // Self-hosted DNA for local devnet
-          streamUrl: process.env.DNA_STREAM_URL ?? "http://localhost:7171",
+          streamUrl: process.env["DNA_STREAM_URL"] ?? "http://localhost:7171",
         },
       },
     },

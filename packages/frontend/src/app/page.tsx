@@ -1,11 +1,29 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { MarketList, SimpleMarketList } from '@entities/market';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { StatCardSkeleton } from '@shared/ui/StatCard';
 import { HeroSection } from '@widgets/hero';
+
+// Dynamic import for ProtocolStats to reduce initial bundle
+const ProtocolStats = dynamic(
+  () => import('@widgets/analytics/ProtocolStats').then((m) => m.ProtocolStats),
+  {
+    loading: () => (
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCardSkeleton compact />
+        <StatCardSkeleton compact />
+        <StatCardSkeleton compact />
+        <StatCardSkeleton compact />
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 export default function HomePage(): ReactNode {
   const { isSimple } = useUIMode();
@@ -14,6 +32,13 @@ export default function HomePage(): ReactNode {
     <div>
       {/* Hero Section - Immersive gradient with stats */}
       <HeroSection />
+
+      {/* Protocol Stats - Detailed metrics below hero */}
+      <div className="border-border/50 bg-surface-sunken/50 border-y">
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <ProtocolStats />
+        </div>
+      </div>
 
       {/* Content sections with container */}
       <div className="mx-auto max-w-7xl px-4 py-16">

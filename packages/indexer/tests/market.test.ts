@@ -5,8 +5,9 @@
  * FeesCollected events
  */
 
-import { describe, expect, it } from "vitest";
 import { hash } from "starknet";
+import { describe, expect, it } from "vitest";
+
 import { matchSelector, readU256 } from "../src/lib/utils";
 
 // Event selectors
@@ -406,12 +407,7 @@ describe("Market Indexer", () => {
 
   it("should transform FeesCollected event", () => {
     const event = {
-      keys: [
-        FEES_COLLECTED,
-        "0xcollector",
-        "0xreceiver",
-        "0xmarket_address",
-      ],
+      keys: [FEES_COLLECTED, "0xcollector", "0xreceiver", "0xmarket_address"],
       data: [
         "0x2386f26fc10000", // amount low (0.01e18)
         "0x0", // amount high

@@ -11,6 +11,8 @@ import { getERC20Contract, getRouterContract } from '@shared/starknet/contracts'
 interface RedeemPyToSyParams {
   ytAddress: string;
   ptAddress: string;
+  /** SY address for optimistic UI updates */
+  syAddress: string;
   amount: bigint;
   minSyOut: bigint;
 }
@@ -18,12 +20,23 @@ interface RedeemPyToSyParams {
 interface RedeemPtPostExpiryParams {
   ytAddress: string;
   ptAddress: string;
+  /** SY address for optimistic UI updates */
+  syAddress: string;
   amount: bigint;
   minSyOut: bigint;
 }
 
 interface RedeemResult {
   transactionHash: string;
+}
+
+/**
+ * Context for optimistic update rollback
+ */
+interface RedeemOptimisticContext {
+  previousPtBalance: string | undefined;
+  previousYtBalance: string | undefined;
+  previousSyBalance: string | undefined;
 }
 
 interface UseRedeemPyReturn {
@@ -91,8 +104,99 @@ export function useRedeemPy(): UseRedeemPyReturn {
         transactionHash: result.transaction_hash,
       };
     },
-    onSuccess: () => {
-      // Invalidate relevant queries
+
+    /**
+     * Optimistic UI: Update balances immediately (Doherty Threshold)
+     */
+    onMutate: async (params: RedeemPyToSyParams): Promise<RedeemOptimisticContext> => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ptAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ytAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.syAddress, address],
+      });
+
+      // Snapshot previous values
+      const previousPtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ptAddress,
+        address,
+      ]);
+      const previousYtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ytAddress,
+        address,
+      ]);
+      const previousSyBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.syAddress,
+        address,
+      ]);
+
+      // Optimistically decrease PT balance
+      if (previousPtBalance !== undefined) {
+        const newBalance = BigInt(previousPtBalance) - params.amount;
+        queryClient.setQueryData(
+          ['token-balance', params.ptAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically decrease YT balance
+      if (previousYtBalance !== undefined) {
+        const newBalance = BigInt(previousYtBalance) - params.amount;
+        queryClient.setQueryData(
+          ['token-balance', params.ytAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically increase SY balance
+      if (previousSyBalance !== undefined) {
+        const newBalance = BigInt(previousSyBalance) + params.minSyOut;
+        queryClient.setQueryData(
+          ['token-balance', params.syAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      return { previousPtBalance, previousYtBalance, previousSyBalance };
+    },
+
+    /**
+     * Rollback on error
+     */
+    onError: (_err, params, context) => {
+      if (context) {
+        if (context.previousPtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ptAddress, address],
+            context.previousPtBalance
+          );
+        }
+        if (context.previousYtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ytAddress, address],
+            context.previousYtBalance
+          );
+        }
+        if (context.previousSyBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.syAddress, address],
+            context.previousSyBalance
+          );
+        }
+      }
+    },
+
+    /**
+     * Always refetch to get actual blockchain state
+     */
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['positions'] });
       void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
       void queryClient.invalidateQueries({ queryKey: ['market'] });
@@ -168,8 +272,82 @@ export function useRedeemPtPostExpiry(): UseRedeemPtPostExpiryReturn {
         transactionHash: result.transaction_hash,
       };
     },
-    onSuccess: () => {
-      // Invalidate relevant queries
+
+    /**
+     * Optimistic UI: Update balances immediately (Doherty Threshold)
+     * Post-expiry redemption only burns PT (YT is worthless after expiry)
+     */
+    onMutate: async (params: RedeemPtPostExpiryParams): Promise<RedeemOptimisticContext> => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ptAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.syAddress, address],
+      });
+
+      // Snapshot previous values
+      const previousPtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ptAddress,
+        address,
+      ]);
+      const previousSyBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.syAddress,
+        address,
+      ]);
+
+      // Optimistically decrease PT balance
+      if (previousPtBalance !== undefined) {
+        const newBalance = BigInt(previousPtBalance) - params.amount;
+        queryClient.setQueryData(
+          ['token-balance', params.ptAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically increase SY balance
+      if (previousSyBalance !== undefined) {
+        const newBalance = BigInt(previousSyBalance) + params.minSyOut;
+        queryClient.setQueryData(
+          ['token-balance', params.syAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      // YT balance unchanged (already worthless post-expiry)
+      return {
+        previousPtBalance,
+        previousYtBalance: undefined,
+        previousSyBalance,
+      };
+    },
+
+    /**
+     * Rollback on error
+     */
+    onError: (_err, params, context) => {
+      if (context) {
+        if (context.previousPtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ptAddress, address],
+            context.previousPtBalance
+          );
+        }
+        if (context.previousSyBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.syAddress, address],
+            context.previousSyBalance
+          );
+        }
+      }
+    },
+
+    /**
+     * Always refetch to get actual blockchain state
+     */
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['positions'] });
       void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
       void queryClient.invalidateQueries({ queryKey: ['market'] });

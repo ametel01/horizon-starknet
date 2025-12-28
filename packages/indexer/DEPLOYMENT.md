@@ -372,6 +372,22 @@ packages/indexer/
     └── lib/                # Shared utilities
 ```
 
+```
+# Truncate all tables in the database
+
+TRUNCATE TABLE
+    market_burn, market_mint, market_swap, market_fees_collected,
+    market_implied_rate_updated,
+    factory_class_hashes_updated, factory_yield_contracts_created,
+    market_factory_class_hash_updated, market_factory_market_created,
+    router_add_liquidity, router_mint_py, router_redeem_py,
+    router_remove_liquidity, router_swap, router_swap_yt,
+    sy_deposit, sy_redeem, sy_oracle_rate_updated,
+    yt_expiry_reached, yt_interest_claimed, yt_mint_py,
+    yt_redeem_py, yt_redeem_py_post_expiry
+  CASCADE;
+```
+
 ---
 
 ## Next Steps After Deployment

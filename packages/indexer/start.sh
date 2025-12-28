@@ -24,7 +24,14 @@ fi
 
 # Create materialized views if they don't exist
 echo "Ensuring materialized views exist..."
-bun run scripts/create-views.ts || echo "Warning: Could not create views, continuing anyway..."
+timeout 30 bun run scripts/create-views.ts || echo "Warning: Could not create views, continuing anyway..."
+
+# Clean up stale reorg triggers from previous failed deployments
+# The Apibara drizzle plugin creates constraint triggers for reorg handling.
+# If a deployment fails mid-startup, triggers can be left behind causing
+# "trigger already exists" errors on subsequent starts.
+echo "Cleaning up stale triggers..."
+timeout 30 bun run scripts/cleanup-triggers.ts || echo "Warning: Could not cleanup triggers, continuing anyway..."
 
 # Background job to refresh materialized views every 30 minutes
 refresh_views() {
@@ -37,26 +44,51 @@ refresh_views() {
 refresh_views &
 
 # Run indexer with auto-restart on failure
+# Uses exponential backoff with jitter to avoid thundering herd on DNA server recovery
 run_indexer() {
+  local name=$1
+  local retry_count=0
+  local max_delay=30
+
   while true; do
-    bun run apibara start --indexer $1 --preset $PRESET || true
-    echo "[$1] Restarting in 5s..."
-    sleep 5
+    bun run apibara start --indexer $name --preset $PRESET || true
+
+    # Exponential backoff: 2^retry_count seconds, capped at max_delay
+    local delay=$((2 ** retry_count))
+    if [ $delay -gt $max_delay ]; then
+      delay=$max_delay
+    fi
+
+    # Add jitter (0-2 seconds) to prevent all indexers restarting simultaneously
+    local jitter=$((RANDOM % 3))
+    delay=$((delay + jitter))
+
+    echo "[$name] Restarting in ${delay}s (attempt $((retry_count + 1)))..."
+    sleep $delay
+
+    # Increase retry count, but reset after successful long run
+    retry_count=$((retry_count + 1))
+    if [ $retry_count -gt 5 ]; then
+      retry_count=5  # Cap at ~30s delay
+    fi
   done
 }
 
-# Stagger startup to avoid database connection storms
-# Railway PostgreSQL has limited connections, starting all at once causes failures
+# Stagger startup to avoid database deadlocks on DDL operations
+# The Apibara drizzle plugin creates reorg triggers at startup.
+# If multiple indexers run DROP TRIGGER / CREATE TRIGGER concurrently,
+# PostgreSQL can deadlock. 8s delay ensures each indexer completes
+# its DDL operations before the next one starts.
 run_indexer factory &
-sleep 3
+sleep 8
 run_indexer market-factory &
-sleep 3
+sleep 8
 run_indexer router &
-sleep 3
+sleep 8
 run_indexer sy &
-sleep 3
+sleep 8
 run_indexer yt &
-sleep 3
+sleep 8
 run_indexer market &
 
 wait

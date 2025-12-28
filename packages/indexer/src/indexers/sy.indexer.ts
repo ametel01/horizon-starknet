@@ -9,7 +9,6 @@
  * - OracleRateUpdated: Exchange rate update from oracle
  */
 
-import { syDeposit, syOracleRateUpdated, syRedeem } from "@/schema";
 import {
   drizzle,
   drizzleStorage,
@@ -17,11 +16,31 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-import type { ApibaraRuntimeConfig } from "apibara/types";
+
+import { syDeposit, syOracleRateUpdated, syRedeem } from "@/schema";
+
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
+import { isProgrammerError } from "../lib/errors";
+import {
+  createIndexerLogger,
+  logBatchInsert,
+  logBlockProgress,
+  logIndexerStart,
+} from "../lib/logger";
+import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
+import {
+  syDepositSchema,
+  syOracleRateUpdatedSchema,
+  syRedeemSchema,
+  validateEvent,
+} from "../lib/validation";
+
+import type { ApibaraRuntimeConfig } from "apibara/types";
+
+const log = createIndexerLogger("sy");
 
 // Factory event to discover SY contracts
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
@@ -44,21 +63,21 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     }),
   );
 
-  console.log(
-    `[sy] Starting indexer with streamUrl: ${streamUrl}, startingBlock: ${config.startingBlock}`,
-  );
+  logIndexerStart(log, {
+    streamUrl,
+    startingBlock: config.startingBlock,
+    knownContracts: config.knownSYContracts.length,
+  });
 
   // Build initial filter with factory event + known SY contracts
   // This ensures the indexer works correctly after restarts when the checkpoint
   // is past the block where YieldContractsCreated was emitted
-  const knownSYFilters = config.knownSYContracts.flatMap((syAddress) => [
-    { address: syAddress, keys: [DEPOSIT] },
-    { address: syAddress, keys: [REDEEM] },
-    { address: syAddress, keys: [ORACLE_RATE_UPDATED] },
-  ]);
-
-  console.log(
-    `[sy] Including ${config.knownSYContracts.length} known SY contracts in initial filter`,
+  const knownSYFilters = config.knownSYContracts.flatMap(
+    (syAddress: `0x${string}`) => [
+      { address: syAddress, keys: [DEPOSIT] },
+      { address: syAddress, keys: [REDEEM] },
+      { address: syAddress, keys: [ORACLE_RATE_UPDATED] },
+    ],
   );
 
   return defineIndexer(StarknetStream)({
@@ -90,7 +109,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         if (!matchSelector(event.keys[0], YIELD_CONTRACTS_CREATED)) return [];
 
         // YieldContractsCreated: keys = [selector, sy, expiry]
-        const syAddress = event.keys[1] as `0x${string}`;
+        const syAddress = event.keys[1]!;
 
         return [
           { address: syAddress, keys: [DEPOSIT] },
@@ -108,11 +127,8 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       };
     },
     async transform({ block, endCursor }) {
-      // Log progress every 1000 blocks (reduced frequency for performance)
       const blockNum = Number(block.header.blockNumber);
-      if (blockNum % 1000 === 0) {
-        console.log(`[sy] Block ${blockNum} | Cursor: ${endCursor?.orderKey}`);
-      }
+      logBlockProgress(log, blockNum, endCursor?.orderKey);
 
       if (block.events.length === 0) return;
 
@@ -131,96 +147,186 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const redeemRows: RedeemRow[] = [];
       const oracleRateRows: OracleRateRow[] = [];
 
-      for (const event of events) {
+      // Track errors for this block
+      let errorCount = 0;
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events.at(i)!;
         const transactionHash = event.transactionHash;
         const eventKey = event.keys[0];
         const syAddress = event.address;
-        const data = event.data as string[];
+        // Use event.eventIndex from Apibara, fallback to array position
+        const eventIndex = event.eventIndex ?? i;
 
-        if (matchSelector(eventKey, DEPOSIT)) {
-          const caller = event.keys[1] ?? "";
-          const receiver = event.keys[2] ?? "";
-          const underlying = event.keys[3] ?? "";
+        try {
+          if (matchSelector(eventKey, DEPOSIT)) {
+            // Validate event structure
+            const validated = validateEvent(syDepositSchema, event, {
+              indexer: "sy",
+              eventName: "Deposit",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          const amountDeposited = readU256(data, 0);
-          const amountSyMinted = readU256(data, 2);
-          const exchangeRate = readU256(data, 4);
-          const totalSupplyAfter = readU256(data, 6);
+            const caller = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const underlying = validated.keys[3] ?? "";
 
-          depositRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            caller,
-            receiver,
-            underlying,
-            sy: syAddress,
-            amount_deposited: amountDeposited,
-            amount_sy_minted: amountSyMinted,
-            exchange_rate: exchangeRate,
-            total_supply_after: totalSupplyAfter,
-          });
-        } else if (matchSelector(eventKey, REDEEM)) {
-          const caller = event.keys[1] ?? "";
-          const receiver = event.keys[2] ?? "";
-          const underlying = event.keys[3] ?? "";
+            const data = validated.data;
+            const amountDeposited = readU256(data, 0, "amount_deposited");
+            const amountSyMinted = readU256(data, 2, "amount_sy_minted");
+            const exchangeRate = readU256(data, 4, "exchange_rate");
+            const totalSupplyAfter = readU256(data, 6, "total_supply_after");
 
-          const amountSyBurned = readU256(data, 0);
-          const amountRedeemed = readU256(data, 2);
-          const exchangeRate = readU256(data, 4);
-          const totalSupplyAfter = readU256(data, 6);
+            depositRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              receiver,
+              underlying,
+              sy: syAddress,
+              amount_deposited: amountDeposited,
+              amount_sy_minted: amountSyMinted,
+              exchange_rate: exchangeRate,
+              total_supply_after: totalSupplyAfter,
+            });
+          } else if (matchSelector(eventKey, REDEEM)) {
+            // Validate event structure
+            const validated = validateEvent(syRedeemSchema, event, {
+              indexer: "sy",
+              eventName: "Redeem",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
 
-          redeemRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            caller,
-            receiver,
-            underlying,
-            sy: syAddress,
-            amount_sy_burned: amountSyBurned,
-            amount_redeemed: amountRedeemed,
-            exchange_rate: exchangeRate,
-            total_supply_after: totalSupplyAfter,
-          });
-        } else if (matchSelector(eventKey, ORACLE_RATE_UPDATED)) {
-          const sy = event.keys[1] ?? syAddress;
-          const underlying = event.keys[2] ?? "";
+            const caller = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const underlying = validated.keys[3] ?? "";
 
-          const oldRate = readU256(data, 0);
-          const newRate = readU256(data, 2);
-          const rateChangeBps = readU256(data, 4);
+            const data = validated.data;
+            const amountSyBurned = readU256(data, 0, "amount_sy_burned");
+            const amountRedeemed = readU256(data, 2, "amount_redeemed");
+            const exchangeRate = readU256(data, 4, "exchange_rate");
+            const totalSupplyAfter = readU256(data, 6, "total_supply_after");
 
-          oracleRateRows.push({
-            block_number: blockNumber,
-            block_timestamp: blockTimestamp,
-            transaction_hash: transactionHash,
-            sy,
-            underlying,
-            old_rate: oldRate,
-            new_rate: newRate,
-            rate_change_bps: rateChangeBps,
-          });
+            redeemRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              receiver,
+              underlying,
+              sy: syAddress,
+              amount_sy_burned: amountSyBurned,
+              amount_redeemed: amountRedeemed,
+              exchange_rate: exchangeRate,
+              total_supply_after: totalSupplyAfter,
+            });
+          } else if (matchSelector(eventKey, ORACLE_RATE_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(syOracleRateUpdatedSchema, event, {
+              indexer: "sy",
+              eventName: "OracleRateUpdated",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const sy = validated.keys[1] ?? syAddress;
+            const underlying = validated.keys[2] ?? "";
+
+            const data = validated.data;
+            const oldRate = readU256(data, 0, "old_rate");
+            const newRate = readU256(data, 2, "new_rate");
+            const rateChangeBps = readU256(data, 4, "rate_change_bps");
+
+            oracleRateRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sy,
+              underlying,
+              old_rate: oldRate,
+              new_rate: newRate,
+              rate_change_bps: rateChangeBps,
+            });
+          }
+        } catch (err) {
+          // Re-throw programmer errors - these should crash the indexer
+          if (isProgrammerError(err)) {
+            throw err;
+          }
+
+          // Log data errors and continue processing
+          log.error(
+            {
+              err,
+              blockNumber,
+              transactionHash,
+              eventIndex,
+              eventKey,
+            },
+            "Event processing failed",
+          );
+          errorCount++;
         }
       }
 
-      // Batch insert all events (parallel inserts for different tables)
-      const insertPromises: Promise<unknown>[] = [];
-      if (depositRows.length > 0)
-        insertPromises.push(db.insert(syDeposit).values(depositRows));
-      if (redeemRows.length > 0)
-        insertPromises.push(db.insert(syRedeem).values(redeemRows));
-      if (oracleRateRows.length > 0)
-        insertPromises.push(
-          db.insert(syOracleRateUpdated).values(oracleRateRows),
-        );
-
-      if (insertPromises.length > 0) {
-        await Promise.all(insertPromises);
-        console.log(
-          `[sy] Block ${blockNum} | Inserted ${events.length} events`,
+      // Log if block had errors
+      if (errorCount > 0) {
+        log.warn(
+          {
+            blockNumber,
+            errorCount,
+            totalEvents: events.length,
+          },
+          "Block completed with errors",
         );
       }
+
+      // Batch insert with transaction wrapping and conflict handling for idempotency
+      await measureDbLatency("sy", async () => {
+        await db.transaction(async (tx) => {
+          if (depositRows.length > 0) {
+            await tx
+              .insert(syDeposit)
+              .values(depositRows)
+              .onConflictDoNothing();
+          }
+          if (redeemRows.length > 0) {
+            await tx.insert(syRedeem).values(redeemRows).onConflictDoNothing();
+          }
+          if (oracleRateRows.length > 0) {
+            await tx
+              .insert(syOracleRateUpdated)
+              .values(oracleRateRows)
+              .onConflictDoNothing();
+          }
+        });
+      });
+
+      // Record metrics
+      const successCount =
+        depositRows.length + redeemRows.length + oracleRateRows.length;
+      recordEvents("sy", successCount, errorCount);
+      recordBlock("sy", blockNumber);
+
+      logBatchInsert(log, blockNum, events.length);
     },
   });
 }

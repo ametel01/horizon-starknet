@@ -5,11 +5,14 @@ import Link from 'next/link';
 import { memo, type ReactNode, useMemo } from 'react';
 
 import { TokenAmount } from '@entities/token';
+import { useApyBreakdown, ApyBreakdown } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Badge } from '@shared/ui/badge';
 import { buttonVariants } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
+import { RateSparkline } from '@widgets/analytics/RateSparkline';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 
 import type { MarketData } from '../model/types';
@@ -88,6 +91,9 @@ export const MarketCard = memo(function MarketCard({
   // Glow intensity scales with APY (capped at 20% APY = max glow)
   const glowOpacity = useMemo(() => Math.min(apyPercent / 20, 1), [apyPercent]);
 
+  // Get APY breakdown for hover display
+  const { data: apyBreakdown } = useApyBreakdown(market);
+
   return (
     <Card
       className={cn(
@@ -134,16 +140,26 @@ export const MarketCard = memo(function MarketCard({
             </CardTitle>
           </div>
 
-          {/* APY Hero Display - compact */}
-          <div className="flex-shrink-0 text-right">
-            <div className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-              APY
-            </div>
-            <div className="text-primary font-mono text-xl font-semibold tabular-nums">
-              {apyPercent >= 0 ? '+' : ''}
-              {apyPercent.toFixed(1)}%
-            </div>
-          </div>
+          {/* APY Hero Display - compact with hover breakdown */}
+          <HoverCard>
+            <HoverCardTrigger className="flex-shrink-0 cursor-help text-right">
+              <div className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+                APY
+              </div>
+              <div className="text-primary font-mono text-xl font-semibold tabular-nums">
+                {apyPercent >= 0 ? '+' : ''}
+                {apyPercent.toFixed(1)}%
+              </div>
+            </HoverCardTrigger>
+            {apyBreakdown && (
+              <HoverCardContent side="top" align="end" className="w-80">
+                <div className="space-y-2">
+                  <div className="text-foreground text-sm font-medium">APY Breakdown</div>
+                  <ApyBreakdown breakdown={apyBreakdown} view="pt" />
+                </div>
+              </HoverCardContent>
+            )}
+          </HoverCard>
         </div>
       </CardHeader>
 
@@ -179,8 +195,14 @@ export const MarketCard = memo(function MarketCard({
             </span>
           </StatRow>
 
-          <StatRow label="Volume 24h">
-            <span className="metric text-muted-foreground">—</span>
+          <StatRow label="7d Trend">
+            <RateSparkline
+              marketAddress={market.address}
+              width={56}
+              height={20}
+              days={7}
+              showChange
+            />
           </StatRow>
 
           {/* Protocol Fees (Advanced mode only) */}

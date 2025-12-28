@@ -8,6 +8,8 @@ import { getModeAwareErrorMessage } from '@shared/lib/errors';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Card, CardContent } from '@shared/ui/Card';
+import { GasEstimate } from '@shared/ui/GasEstimate';
+import { Progress, ProgressIndicator, ProgressTrack } from '@shared/ui/progress';
 
 interface TxStatusProps {
   status: TxStatusType;
@@ -18,6 +20,12 @@ interface TxStatusProps {
   showNextSteps?: boolean;
   /** Network for explorer links (defaults to mainnet) */
   network?: 'mainnet' | 'sepolia' | 'devnet';
+  /** Optional: Gas estimate to display during signing state (Jakob's Law) */
+  gasEstimate?: {
+    formattedFee: string;
+    isLoading?: boolean;
+    error?: Error | null;
+  };
 }
 
 export function TxStatus({
@@ -27,6 +35,7 @@ export function TxStatus({
   className,
   showNextSteps = true,
   network = 'mainnet',
+  gasEstimate,
 }: TxStatusProps): ReactNode {
   const { isSimple } = useUIMode();
 
@@ -149,8 +158,28 @@ export function TxStatus({
               </p>
             ) : null}
             {errorMessage ? <p className="text-destructive mt-1 text-sm">{errorMessage}</p> : null}
+            {/* Show gas estimate during signing state (Jakob's Law - users expect gas info) */}
+            {status === 'signing' && gasEstimate && (
+              <div className="mt-2">
+                <GasEstimate
+                  formattedFee={gasEstimate.formattedFee}
+                  {...(gasEstimate.isLoading !== undefined && { isLoading: gasEstimate.isLoading })}
+                  {...(gasEstimate.error !== undefined && { error: gasEstimate.error })}
+                />
+              </div>
+            )}
           </div>
         </div>
+        {/* Progress bar for pending state - indeterminate animation */}
+        {status === 'pending' && (
+          <div className="mt-3">
+            <Progress value={null}>
+              <ProgressTrack className="h-1.5">
+                <ProgressIndicator className="bg-muted-foreground animate-progress-indeterminate" />
+              </ProgressTrack>
+            </Progress>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

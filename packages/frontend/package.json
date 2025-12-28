@@ -1,6 +1,6 @@
 {
   "name": "horizon-frontend",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "browserslist": [
@@ -33,7 +33,7 @@
     "commit:check": "bun install && bun run codegen && bun run build && bun run format && bun run check && bun run test && bun run test:e2e"
   },
   "dependencies": {
-    "@avnu/avnu-sdk": "^4.0.0",
+    "@avnu/avnu-sdk": "^4.0.1",
     "@base-ui/react": "^1.0.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",

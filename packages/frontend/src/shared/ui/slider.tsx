@@ -41,9 +41,10 @@ function Slider({
           className
         )}
       >
+        {/* Track height: 8px (h-2) per Steering Law - wider tracks are easier to navigate */}
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="bg-muted relative overflow-hidden rounded-4xl select-none data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-3"
+          className="bg-muted relative overflow-hidden rounded-4xl select-none data-horizontal:h-2 data-horizontal:w-full data-vertical:h-full data-vertical:w-2"
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"

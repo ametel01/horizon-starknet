@@ -19,6 +19,7 @@ import {
   pgView,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -34,6 +35,7 @@ export const factoryYieldContractsCreated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sy: text("sy").notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
@@ -55,6 +57,11 @@ export const factoryYieldContractsCreated = pgTable(
     index("factory_ycc_expiry_idx").on(table.expiry),
     index("factory_ycc_creator_idx").on(table.creator),
     index("factory_ycc_underlying_idx").on(table.underlying),
+    uniqueIndex("factory_ycc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -65,9 +72,17 @@ export const factoryClassHashesUpdated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     yt_class_hash: text("yt_class_hash").notNull(),
     pt_class_hash: text("pt_class_hash").notNull(),
   },
+  (table) => [
+    uniqueIndex("factory_chu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
 );
 
 // ============================================================
@@ -81,6 +96,7 @@ export const marketFactoryMarketCreated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     pt: text("pt").notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
@@ -108,6 +124,11 @@ export const marketFactoryMarketCreated = pgTable(
     index("mf_mc_expiry_idx").on(table.expiry),
     index("mf_mc_market_idx").on(table.market),
     index("mf_mc_underlying_idx").on(table.underlying),
+    uniqueIndex("mf_mc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -118,9 +139,17 @@ export const marketFactoryClassHashUpdated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     old_class_hash: text("old_class_hash").notNull(),
     new_class_hash: text("new_class_hash").notNull(),
   },
+  (table) => [
+    uniqueIndex("mf_chu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
 );
 
 // ============================================================
@@ -134,6 +163,7 @@ export const syDeposit = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
     receiver: text("receiver").notNull(),
@@ -163,6 +193,11 @@ export const syDeposit = pgTable(
     index("sy_deposit_sy_idx").on(table.sy),
     index("sy_deposit_underlying_idx").on(table.underlying),
     index("sy_deposit_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_deposit_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -173,6 +208,7 @@ export const syRedeem = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
     receiver: text("receiver").notNull(),
@@ -201,6 +237,11 @@ export const syRedeem = pgTable(
     index("sy_redeem_receiver_idx").on(table.receiver),
     index("sy_redeem_sy_idx").on(table.sy),
     index("sy_redeem_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_redeem_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -211,6 +252,7 @@ export const syOracleRateUpdated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sy: text("sy").notNull(),
     underlying: text("underlying").notNull(),
@@ -225,6 +267,11 @@ export const syOracleRateUpdated = pgTable(
   (table) => [
     index("sy_oru_sy_idx").on(table.sy),
     index("sy_oru_underlying_idx").on(table.underlying),
+    uniqueIndex("sy_oru_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -239,6 +286,7 @@ export const ytMintPY = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
     receiver: text("receiver").notNull(),
@@ -274,6 +322,11 @@ export const ytMintPY = pgTable(
     index("yt_mint_receiver_idx").on(table.receiver),
     index("yt_mint_expiry_idx").on(table.expiry),
     index("yt_mint_yt_idx").on(table.yt),
+    uniqueIndex("yt_mint_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -284,6 +337,7 @@ export const ytRedeemPY = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
     receiver: text("receiver").notNull(),
@@ -310,6 +364,11 @@ export const ytRedeemPY = pgTable(
     index("yt_redeem_caller_idx").on(table.caller),
     index("yt_redeem_receiver_idx").on(table.receiver),
     index("yt_redeem_expiry_idx").on(table.expiry),
+    uniqueIndex("yt_redeem_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -320,6 +379,7 @@ export const ytRedeemPYPostExpiry = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
     receiver: text("receiver").notNull(),
@@ -349,6 +409,11 @@ export const ytRedeemPYPostExpiry = pgTable(
     index("yt_redeem_pe_caller_idx").on(table.caller),
     index("yt_redeem_pe_receiver_idx").on(table.receiver),
     index("yt_redeem_pe_expiry_idx").on(table.expiry),
+    uniqueIndex("yt_redeem_pe_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -359,6 +424,7 @@ export const ytInterestClaimed = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     user: text("user").notNull(),
     yt: text("yt").notNull(),
@@ -380,6 +446,11 @@ export const ytInterestClaimed = pgTable(
     index("yt_ic_user_idx").on(table.user),
     index("yt_ic_yt_idx").on(table.yt),
     index("yt_ic_expiry_idx").on(table.expiry),
+    uniqueIndex("yt_ic_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -390,6 +461,7 @@ export const ytExpiryReached = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     market: text("market").notNull(),
     yt: text("yt").notNull(),
@@ -420,6 +492,11 @@ export const ytExpiryReached = pgTable(
     index("yt_er_yt_idx").on(table.yt),
     index("yt_er_pt_idx").on(table.pt),
     index("yt_er_expiry_idx").on(table.expiry),
+    uniqueIndex("yt_er_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -434,6 +511,7 @@ export const marketMint = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -471,6 +549,11 @@ export const marketMint = pgTable(
     index("market_mint_receiver_idx").on(table.receiver),
     index("market_mint_expiry_idx").on(table.expiry),
     index("market_mint_market_idx").on(table.market),
+    uniqueIndex("market_mint_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -481,6 +564,7 @@ export const marketBurn = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -518,6 +602,11 @@ export const marketBurn = pgTable(
     index("market_burn_receiver_idx").on(table.receiver),
     index("market_burn_expiry_idx").on(table.expiry),
     index("market_burn_market_idx").on(table.market),
+    uniqueIndex("market_burn_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -528,6 +617,7 @@ export const marketSwap = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -568,6 +658,11 @@ export const marketSwap = pgTable(
     index("market_swap_expiry_idx").on(table.expiry),
     index("market_swap_market_idx").on(table.market),
     index("market_swap_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_swap_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -578,6 +673,7 @@ export const marketImpliedRateUpdated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     market: text("market").notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
@@ -597,6 +693,11 @@ export const marketImpliedRateUpdated = pgTable(
     index("market_iru_market_idx").on(table.market),
     index("market_iru_expiry_idx").on(table.expiry),
     index("market_iru_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_iru_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -607,6 +708,7 @@ export const marketFeesCollected = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     collector: text("collector").notNull(),
     receiver: text("receiver").notNull(),
@@ -620,6 +722,11 @@ export const marketFeesCollected = pgTable(
     index("market_fc_collector_idx").on(table.collector),
     index("market_fc_receiver_idx").on(table.receiver),
     index("market_fc_market_idx").on(table.market),
+    uniqueIndex("market_fc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -630,6 +737,7 @@ export const marketScalarRootUpdated = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     market: text("market").notNull(),
     // Event data
@@ -639,6 +747,11 @@ export const marketScalarRootUpdated = pgTable(
   (table) => [
     index("market_sru_market_idx").on(table.market),
     index("market_sru_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_sru_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -653,6 +766,7 @@ export const routerMintPY = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -667,6 +781,11 @@ export const routerMintPY = pgTable(
     index("router_mint_receiver_idx").on(table.receiver),
     index("router_mint_yt_idx").on(table.yt),
     index("router_mint_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_mint_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -677,6 +796,7 @@ export const routerRedeemPY = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -689,6 +809,11 @@ export const routerRedeemPY = pgTable(
     index("router_redeem_sender_idx").on(table.sender),
     index("router_redeem_receiver_idx").on(table.receiver),
     index("router_redeem_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_redeem_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -699,6 +824,7 @@ export const routerAddLiquidity = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -713,6 +839,11 @@ export const routerAddLiquidity = pgTable(
     index("router_al_receiver_idx").on(table.receiver),
     index("router_al_market_idx").on(table.market),
     index("router_al_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_al_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -723,6 +854,7 @@ export const routerRemoveLiquidity = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -737,6 +869,11 @@ export const routerRemoveLiquidity = pgTable(
     index("router_rl_receiver_idx").on(table.receiver),
     index("router_rl_market_idx").on(table.market),
     index("router_rl_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_rl_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -747,6 +884,7 @@ export const routerSwap = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -762,6 +900,11 @@ export const routerSwap = pgTable(
     index("router_swap_receiver_idx").on(table.receiver),
     index("router_swap_market_idx").on(table.market),
     index("router_swap_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_swap_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 
@@ -772,6 +915,7 @@ export const routerSwapYT = pgTable(
     block_number: bigint("block_number", { mode: "number" }).notNull(),
     block_timestamp: timestamp("block_timestamp").notNull(),
     transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     sender: text("sender").notNull(),
     receiver: text("receiver").notNull(),
@@ -789,6 +933,11 @@ export const routerSwapYT = pgTable(
     index("router_swap_yt_market_idx").on(table.market),
     index("router_swap_yt_yt_idx").on(table.yt),
     index("router_swap_yt_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_swap_yt_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
   ],
 );
 

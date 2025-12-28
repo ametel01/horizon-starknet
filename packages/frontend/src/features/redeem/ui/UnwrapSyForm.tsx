@@ -20,6 +20,7 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
 
@@ -136,6 +137,18 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
     return 'Withdraw';
   }, [isConnected, underlyingLoading, underlyingAddress, isLoading, validationError, amount]);
 
+  // Transaction steps for StepProgress
+  const transactionSteps: Step[] = useMemo(() => {
+    return [{ label: 'Withdraw', description: 'Redeem SY for underlying tokens' }];
+  }, []);
+
+  // Calculate current step based on transaction state
+  const currentStep = useMemo(() => {
+    if (status === 'success') return transactionSteps.length; // Complete
+    if (status === 'pending' || status === 'signing') return 0; // Active
+    return -1; // No transaction in progress
+  }, [status, transactionSteps.length]);
+
   // Get token symbols from metadata
   const underlyingSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
   const sySymbol = `SY-${underlyingSymbol}`;
@@ -207,21 +220,31 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
         )}
       </FormInfoSection>
 
-      {/* Transaction Status */}
-      {status !== 'idle' && <TxStatus status={status} txHash={txHash} error={error} />}
+      {/* Transaction Progress */}
+      {status !== 'idle' && (
+        <div className="space-y-4">
+          <StepProgress steps={transactionSteps} currentStep={currentStep} />
+          <TxStatus
+            status={status}
+            txHash={txHash}
+            error={error}
+            gasEstimate={{
+              formattedFee,
+              isLoading: isEstimatingFee,
+              error: feeError,
+            }}
+          />
+        </div>
+      )}
 
       {/* Actions */}
       <FormActions>
         {status === 'success' ? (
-          <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
+          <Button onClick={handleReset} variant="form-primary">
             Withdraw More
           </Button>
         ) : (
-          <Button
-            onClick={handleUnwrap}
-            disabled={buttonDisabled}
-            className="h-12 w-full text-base font-medium"
-          >
+          <Button onClick={handleUnwrap} disabled={buttonDisabled} variant="form-primary">
             {buttonText}
           </Button>
         )}

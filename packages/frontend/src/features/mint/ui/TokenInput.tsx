@@ -1,13 +1,23 @@
 'use client';
 
+import { AlertCircle, AlertTriangle } from 'lucide-react';
 import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 
 import { useTokenBalance } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
-import { formatWad, fromWad, toWad } from '@shared/math/wad';
+import { formatWad, fromWad, toWad, WAD_BIGINT } from '@shared/math/wad';
 import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+
+/** Validation result with severity level */
+interface ValidationResult {
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+/** Minimum meaningful amount (0.0001 = dust threshold) */
+const DUST_THRESHOLD = WAD_BIGINT / BigInt(10000); // 0.0001 in WAD
 
 interface TokenInputProps {
   label: string;
@@ -22,6 +32,8 @@ interface TokenInputProps {
   className?: string | undefined;
   /** Enable inline balance validation (Error Prevention) */
   validateBalance?: boolean | undefined;
+  /** Minimum amount to show dust warning (default: 0.0001) */
+  minAmount?: bigint | undefined;
 }
 
 /**
@@ -45,31 +57,57 @@ export function TokenInput({
   tokenType,
   className,
   validateBalance = true,
+  minAmount,
 }: TokenInputProps): ReactNode {
   const inputId = useId();
   const errorId = useId();
   const [isFocused, setIsFocused] = useState(false);
   const { data: balance, isLoading: balanceLoading } = useTokenBalance(tokenAddress);
 
-  // Inline balance validation (Error Prevention)
-  const inlineError = useMemo(() => {
-    if (!validateBalance || balance === undefined || !value || value === '0') {
+  // Enhanced inline validation with severity levels (Error Prevention)
+  const inlineValidation = useMemo((): ValidationResult | null => {
+    // Skip validation if no value or disabled
+    if (!value || value === '' || disabled) {
       return null;
     }
+
     try {
       const inputAmount = toWad(value);
-      if (inputAmount > balance) {
-        return 'Insufficient balance';
+
+      // Error: Insufficient balance (blocking)
+      if (validateBalance && balance !== undefined && inputAmount > balance) {
+        return { message: 'Insufficient balance', severity: 'error' };
+      }
+
+      // Warning: Zero amount
+      if (inputAmount === BigInt(0)) {
+        return { message: 'Enter an amount', severity: 'warning' };
+      }
+
+      // Warning: Dust amount (too small to be meaningful)
+      const dustLimit = minAmount ?? DUST_THRESHOLD;
+      if (inputAmount > BigInt(0) && inputAmount < dustLimit) {
+        return { message: 'Amount may be too small', severity: 'warning' };
       }
     } catch {
-      // Invalid input format
+      // Invalid input format - handled by input validation
       return null;
     }
-    return null;
-  }, [value, balance, validateBalance]);
 
-  // Combined error (prop error takes precedence)
-  const displayError = error ?? inlineError;
+    return null;
+  }, [value, balance, validateBalance, disabled, minAmount]);
+
+  // Combined validation (prop error takes precedence as error)
+  const displayValidation = useMemo((): ValidationResult | null => {
+    if (error) {
+      return { message: error, severity: 'error' };
+    }
+    return inlineValidation;
+  }, [error, inlineValidation]);
+
+  // Convenience flags for styling
+  const hasError = displayValidation?.severity === 'error';
+  const hasWarning = displayValidation?.severity === 'warning';
 
   const handleMaxClick = (): void => {
     if (balance !== undefined) {
@@ -124,6 +162,39 @@ export function TokenInput({
     }
   };
 
+  // Format cleanup on blur (Error Prevention)
+  const handleBlur = useCallback((): void => {
+    setIsFocused(false);
+
+    if (!value) return;
+
+    let cleanedValue = value;
+
+    // Remove trailing decimal point: "123." -> "123"
+    if (cleanedValue.endsWith('.')) {
+      cleanedValue = cleanedValue.slice(0, -1);
+    }
+
+    // Remove leading zeros: "007" -> "7", but keep "0.7"
+    if (cleanedValue.length > 1 && cleanedValue.startsWith('0') && cleanedValue[1] !== '.') {
+      cleanedValue = cleanedValue.replace(/^0+/, '') || '0';
+    }
+
+    // Remove trailing zeros after decimal: "1.500" -> "1.5", but keep "1.0"
+    if (cleanedValue.includes('.')) {
+      cleanedValue = cleanedValue.replace(/\.?0+$/, '');
+      // If we removed all decimals, ensure there's no trailing dot
+      if (cleanedValue.endsWith('.')) {
+        cleanedValue = cleanedValue.slice(0, -1);
+      }
+    }
+
+    // Only update if value changed
+    if (cleanedValue !== value) {
+      onChange(cleanedValue);
+    }
+  }, [value, onChange]);
+
   // Derive token type from symbol if not provided
   const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
 
@@ -131,8 +202,12 @@ export function TokenInput({
     <Card
       className={cn(
         'group relative overflow-hidden transition-all duration-200',
-        isFocused && 'ring-primary/50 ring-2',
-        displayError !== null && 'ring-destructive/50 ring-2',
+        // Focus ring (lowest priority)
+        isFocused && !hasError && !hasWarning && 'ring-primary/50 ring-2',
+        // Warning ring (medium priority)
+        hasWarning && 'ring-warning/50 ring-2',
+        // Error ring (highest priority)
+        hasError && 'ring-destructive/50 ring-2',
         className
       )}
       role="group"
@@ -157,6 +232,8 @@ export function TokenInput({
             className={cn(
               'flex min-w-0 shrink items-center gap-1 rounded-lg px-2 py-1 text-sm transition-colors',
               'hover:bg-muted active:bg-muted/80',
+              // Focus indicator for keyboard accessibility (Feedback Principle)
+              'focus-visible:ring-ring/50 focus-visible:ring-2 focus-visible:outline-none',
               'disabled:pointer-events-none disabled:opacity-50'
             )}
             aria-label={`Set maximum ${tokenSymbol} amount`}
@@ -188,13 +265,11 @@ export function TokenInput({
             onFocus={() => {
               setIsFocused(true);
             }}
-            onBlur={() => {
-              setIsFocused(false);
-            }}
+            onBlur={handleBlur}
             placeholder="0.00"
             disabled={disabled}
-            aria-invalid={displayError !== null}
-            aria-describedby={displayError !== null ? errorId : undefined}
+            aria-invalid={hasError}
+            aria-describedby={displayValidation !== null ? errorId : undefined}
             className={cn(
               'min-h-[44px] min-w-0 flex-1 bg-transparent outline-none',
               'font-mono text-2xl font-semibold tabular-nums',
@@ -229,10 +304,23 @@ export function TokenInput({
           </div>
         </div>
 
-        {/* Error message (prop error or inline validation) */}
-        {displayError !== null && (
-          <p id={errorId} className="text-destructive text-sm font-medium" role="alert">
-            {displayError}
+        {/* Validation message with icon (error or warning) */}
+        {displayValidation !== null && (
+          <p
+            id={errorId}
+            className={cn(
+              'flex items-center gap-1.5 text-sm font-medium',
+              hasError && 'text-destructive',
+              hasWarning && 'text-warning'
+            )}
+            role={hasError ? 'alert' : 'status'}
+          >
+            {hasError ? (
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {displayValidation.message}
           </p>
         )}
       </CardContent>

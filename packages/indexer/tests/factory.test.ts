@@ -4,12 +4,15 @@
  * Tests the transform logic for YieldContractsCreated and ClassHashesUpdated events
  */
 
-import { describe, expect, it } from "vitest";
 import { hash } from "starknet";
+import { describe, expect, it } from "vitest";
+
 import { matchSelector, decodeByteArray, readU256 } from "../src/lib/utils";
 
 // Event selectors
-const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName("YieldContractsCreated");
+const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName(
+  "YieldContractsCreated",
+);
 const CLASS_HASHES_UPDATED = hash.getSelectorFromName("ClassHashesUpdated");
 
 // Transform function (extracted from indexer logic)
@@ -106,7 +109,8 @@ describe("Factory Indexer", () => {
       pt: "0x123456",
       yt: "0x789abc",
       creator: "0xdef012",
-      underlying: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+      underlying:
+        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
       underlying_symbol: "ETH",
       initial_exchange_rate: "1000000000000000000",
       market_index: 1,

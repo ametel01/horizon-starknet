@@ -9,13 +9,17 @@
  * Usage: bun run scripts/generate-events-abi.ts
  */
 
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { createScriptLogger } from "../src/lib/logger";
+
+const log = createScriptLogger("generate-events-abi");
 
 // Configuration
 const FRONTEND_ABI_DIR = join(
   import.meta.dir,
-  "../../frontend/src/types/generated"
+  "../../frontend/src/types/generated",
 );
 const OUTPUT_DIR = join(import.meta.dir, "../src/lib/abi");
 
@@ -30,13 +34,13 @@ const CONTRACTS = [
   "YT",
 ] as const;
 
-type AbiItem = {
+interface AbiItem {
   type: string;
   name: string;
   kind?: string;
-  members?: Array<{ name: string; type: string; kind?: string }>;
-  variants?: Array<{ name: string; type: string; kind?: string }>;
-};
+  members?: { name: string; type: string; kind?: string }[];
+  variants?: { name: string; type: string; kind?: string }[];
+}
 
 function extractReferencedTypes(members: AbiItem["members"]): Set<string> {
   const types = new Set<string>();
@@ -47,14 +51,14 @@ function extractReferencedTypes(members: AbiItem["members"]): Set<string> {
     types.add(member.type);
 
     // Handle generic types like Span<T>, Array<T>, Option<T>
-    const genericMatch = member.type.match(/<(.+)>/);
-    if (genericMatch) {
+    const genericMatch = /<(.+)>/.exec(member.type);
+    if (genericMatch?.[1]) {
       types.add(genericMatch[1]);
     }
 
     // Handle tuple types like (T1, T2)
-    const tupleMatch = member.type.match(/^\((.+)\)$/);
-    if (tupleMatch) {
+    const tupleMatch = /^\((.+)\)$/.exec(member.type);
+    if (tupleMatch?.[1]) {
       const innerTypes = tupleMatch[1].split(",").map((t) => t.trim());
       for (const t of innerTypes) {
         types.add(t);
@@ -77,7 +81,7 @@ function processContract(name: string): boolean {
   const inputPath = join(FRONTEND_ABI_DIR, `${name}.ts`);
 
   if (!existsSync(inputPath)) {
-    console.warn(`  Skipping ${name}: file not found`);
+    log.warn({ contract: name }, "Skipping contract: file not found");
     return false;
   }
 
@@ -87,17 +91,17 @@ function processContract(name: string): boolean {
   const fullAbi: AbiItem[] = abiModule[abiName];
 
   if (!fullAbi || !Array.isArray(fullAbi)) {
-    console.warn(`  Skipping ${name}: ABI not found or invalid`);
+    log.warn({ contract: name }, "Skipping contract: ABI not found or invalid");
     return false;
   }
 
   // Step 1: Find all Horizon events (struct kind only, not enum wrappers)
   const horizonEvents = fullAbi.filter(
-    (item) => isHorizonEvent(item) && isStructEvent(item)
+    (item) => isHorizonEvent(item) && isStructEvent(item),
   );
 
   if (horizonEvents.length === 0) {
-    console.log(`  ${name}: No Horizon events found`);
+    log.info({ contract: name }, "No Horizon events found");
     return false;
   }
 
@@ -121,7 +125,7 @@ function processContract(name: string): boolean {
     processedStructs.add(typeName);
 
     const struct = fullAbi.find(
-      (item) => item.type === "struct" && item.name === typeName
+      (item) => item.type === "struct" && item.name === typeName,
     );
     if (struct) {
       requiredStructs.push(struct);
@@ -142,19 +146,26 @@ function processContract(name: string): boolean {
   const outputPath = join(OUTPUT_DIR, `${name.toLowerCase()}.json`);
   writeFileSync(outputPath, JSON.stringify(eventsAbi, null, 2));
 
-  console.log(
-    `  ${name}: ${horizonEvents.length} events, ${requiredStructs.length} structs`
+  log.info(
+    {
+      contract: name,
+      events: horizonEvents.length,
+      structs: requiredStructs.length,
+    },
+    "Processed contract",
   );
 
   return true;
 }
 
 function main(): void {
-  console.log("Generating events-only ABIs for indexer...\n");
+  log.info("Generating events-only ABIs for indexer...");
 
   if (!existsSync(FRONTEND_ABI_DIR)) {
-    console.error(`Frontend ABIs not found: ${FRONTEND_ABI_DIR}`);
-    console.log("Run 'bun run codegen' in packages/frontend first.");
+    log.fatal(
+      { path: FRONTEND_ABI_DIR },
+      "Frontend ABIs not found. Run 'bun run codegen' in packages/frontend first.",
+    );
     process.exit(1);
   }
 
@@ -175,7 +186,7 @@ function main(): void {
   // Generate index file only for contracts with events
   const imports = processedContracts.map(
     (c) =>
-      `import ${c.toLowerCase()}Abi from "./${c.toLowerCase()}.json" with { type: "json" };`
+      `import ${c.toLowerCase()}Abi from "./${c.toLowerCase()}.json" with { type: "json" };`,
   );
 
   const exports = processedContracts.map((c) => {
@@ -197,7 +208,7 @@ ${exports.join("\n")}
 
   writeFileSync(join(OUTPUT_DIR, "index.ts"), indexContent);
 
-  console.log(`\nOutput: ${OUTPUT_DIR}`);
+  log.info({ outputDir: OUTPUT_DIR }, "Generation complete");
 }
 
 main();
