@@ -1,5 +1,6 @@
 // UI primitives - shadcn/ui components
 
+export { Alert, AlertAction, AlertDescription, alertVariants, AlertTitle } from './alert';
 export {
   AnimatedCurrency,
   AnimatedNumber,
@@ -83,6 +84,14 @@ export {
   SelectTrigger,
   SelectValue,
 } from './select';
+
+// Near-expiry warning component
+export {
+  NearExpiryWarning,
+  type ExpiryThreshold,
+  type NearExpiryWarningProps,
+  type Severity as ExpirySeverity,
+} from './NearExpiryWarning';
 
 // Typography components
 export {
