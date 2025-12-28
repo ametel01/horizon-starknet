@@ -18,6 +18,7 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
@@ -153,6 +154,9 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
         description="Split your deposit into Principal Token and Yield Token"
         action={<ExpiryBadge expiryTimestamp={market.expiry} />}
       />
+
+      {/* Near-expiry warning banner */}
+      <NearExpiryWarning expiryTimestamp={market.expiry} context="mint" />
 
       {/* Input Section */}
       <FormInputSection>

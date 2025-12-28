@@ -899,6 +899,12 @@ export const YT_ABI = [
   },
   {
     type: 'event',
+    name: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
+    kind: 'enum',
+    variants: [],
+  },
+  {
+    type: 'event',
     name: 'horizon::tokens::yt::YT::MintPY',
     kind: 'struct',
     members: [
@@ -1230,6 +1236,11 @@ export const YT_ABI = [
       {
         name: 'UpgradeableEvent',
         type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
+        kind: 'flat',
+      },
+      {
+        name: 'ReentrancyGuardEvent',
+        type: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
         kind: 'flat',
       },
       {

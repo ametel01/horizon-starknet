@@ -45,6 +45,7 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
@@ -507,6 +508,9 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
+
+      {/* Near-expiry warning banner */}
+      {!market.isExpired && <NearExpiryWarning expiryTimestamp={market.expiry} context="swap" />}
 
       {/* Input Section */}
       <FormInputSection>
