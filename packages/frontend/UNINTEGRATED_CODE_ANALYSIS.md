@@ -9,45 +9,41 @@
 
 ## Executive Summary
 
-The codebase is **very well-integrated** overall (~95% usage rate). The unused code falls into three categories:
+The codebase is **very well-integrated** overall (~96% usage rate). After verification on 2025-12-28:
 
-1. **Shadcn/ui primitives** - base components available but not yet needed
-2. **Analytics widget variants** - compact/inline exports for future use
-3. **Utility functions** - helper exports not yet consumed
+**Fully Integrated (Priority 1 + 3):**
+- ✅ HoverCard → MarketCard APY tooltips
+- ✅ Progress → TxStatus pending indicator
+- ✅ RateSparkline → MarketCard 7d trend
+- ✅ ProtocolStats → Home page stats section
+- ✅ getSlippageLabel → TransactionSettingsPanel
+
+**Remaining Unused Code:**
+1. **Analytics widgets** - RateHistoryTable, ProtocolTvlCard (Priority 2)
+2. **Compact/inline variants** - 17 widget variants for responsive/mobile views
 
 ---
 
-## Category 1: Unused Base UI Components
+## Category 1: Unused Base UI Components ✅ ALL INTEGRATED
 
-| Component | File | Status | Integration Opportunity |
-|-----------|------|--------|-------------------------|
-| **HoverCard** | `src/shared/ui/hover-card.tsx` | Exported, never imported | Use for token info tooltips on MarketCard, or APY explanations on hover |
-| **Progress** | `src/shared/ui/progress.tsx` | Exported, never imported | Use for multi-step transaction progress, LP position health bars, or loading states with percentage |
+> **Note:** Upon verification on 2025-12-28, all base UI components were found to be already integrated.
 
-### HoverCard Details
+| Component | File | Status | Integration Location |
+|-----------|------|--------|---------------------|
+| **HoverCard** | `src/shared/ui/hover-card.tsx` | ✅ Integrated | `MarketCard.tsx` - APY breakdown on hover |
+| **Progress** | `src/shared/ui/progress.tsx` | ✅ Integrated | `TxStatus.tsx` - Transaction pending indicator |
 
-```tsx
-// Currently exported from src/shared/ui/hover-card.tsx
-export { HoverCard, HoverCardTrigger, HoverCardContent };
-```
+### HoverCard Integration
 
-**Suggested Integration Points:**
-- Token symbol hover → show full token details
-- APY percentage hover → show APY breakdown
-- Address hover → show truncated with copy button
-- MarketCard metrics → contextual explanations
+Used in `src/entities/market/ui/MarketCard.tsx` for APY breakdown tooltips:
+- APY percentage hover → shows full APY breakdown component
+- Provides educational context without cluttering the card UI
 
-### Progress Details
+### Progress Integration
 
-```tsx
-// Currently exported from src/shared/ui/progress.tsx
-export { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue };
-```
-
-**Suggested Integration Points:**
-- `TxStatus.tsx` → show transaction confirmation progress
-- Portfolio loading → show sync progress with percentage
-- LP position health → visual health indicator bar
+Used in `src/widgets/display/TxStatus.tsx` for transaction progress:
+- Indeterminate progress bar during pending state
+- Uses `animate-progress-indeterminate` CSS animation
 
 ---
 
@@ -55,23 +51,23 @@ export { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValu
 
 These are fully implemented but NOT loaded in `AnalyticsPage.tsx`:
 
-| Widget | File | Purpose | Integration Opportunity |
-|--------|------|---------|-------------------------|
-| **RateHistoryTable** | `src/widgets/analytics/RateHistoryTable.tsx` | Historical rate data in table format | Add to Analytics page "Advanced" section under yield charts |
-| **RateSparkline** | `src/widgets/analytics/RateSparkline.tsx` | Compact rate trend visualization | Add to MarketCard or trade page market selector |
-| **ProtocolTvlCard** | `src/widgets/analytics/ProtocolTvlCard.tsx` | Protocol-wide TVL card | Add to home page hero section or analytics header |
-| **ProtocolStats** | `src/widgets/analytics/ProtocolStats.tsx` | Aggregate protocol metrics | Add to home page or analytics page header |
+| Widget | File | Status | Integration Opportunity |
+|--------|------|--------|-------------------------|
+| **RateHistoryTable** | `src/widgets/analytics/RateHistoryTable.tsx` | ⏳ Unused | Add to Analytics page "Advanced" section under yield charts |
+| **RateSparkline** | `src/widgets/analytics/RateSparkline.tsx` | ✅ Integrated | Used in `MarketCard.tsx` for 7d trend display |
+| **ProtocolTvlCard** | `src/widgets/analytics/ProtocolTvlCard.tsx` | ⏳ Unused | Add to analytics header |
+| **ProtocolStats** | `src/widgets/analytics/ProtocolStats.tsx` | ✅ Integrated | Used in `src/app/page.tsx` (home page) |
 
 ### RateSparkline Exports
 
-The `RateSparkline.tsx` file exports multiple variants, none currently used:
+The `RateSparkline.tsx` file exports multiple variants:
 
 ```tsx
 export {
-  RateBadgeWithSparkline,  // Badge with inline sparkline
-  RateSparkline,           // Standalone sparkline
-  RateSparklineCard,       // Card wrapper with sparkline
-  RateSparklineLarge,      // Larger sparkline for featured display
+  RateBadgeWithSparkline,  // Badge with inline sparkline - unused
+  RateSparkline,           // Standalone sparkline - ✅ USED in MarketCard
+  RateSparklineCard,       // Card wrapper with sparkline - unused
+  RateSparklineLarge,      // Larger sparkline for featured display - unused
 };
 ```
 
@@ -79,6 +75,8 @@ export {
 
 ```tsx
 export { ProtocolStats, ProtocolStatsCompact };
+// ProtocolStats - ✅ USED in home page
+// ProtocolStatsCompact - unused (available for header/navbar)
 ```
 
 ---
@@ -109,16 +107,15 @@ These are exported alongside their full-size counterparts but never imported els
 
 ---
 
-## Category 4: Unused Utility Functions
+## Category 4: Unused Utility Functions ✅ ALL INTEGRATED
 
-| Function | File | Description |
-|----------|------|-------------|
-| `getSlippageLabel` | `src/features/tx-settings/model/useSmartSlippage.ts` | Returns human-readable labels ("Very Low", "Low", "Standard", "High", "Very High") for slippage BPS values |
+| Function | File | Status |
+|----------|------|--------|
+| `getSlippageLabel` | `src/features/tx-settings/model/useSmartSlippage.ts` | ✅ Integrated into `TransactionSettingsPanel.tsx` |
 
 ### getSlippageLabel Implementation
 
 ```typescript
-// Currently exported but never imported
 export function getSlippageLabel(bps: number): string {
   if (bps <= 15) return 'Very Low';
   if (bps <= 50) return 'Low';
@@ -128,9 +125,10 @@ export function getSlippageLabel(bps: number): string {
 }
 ```
 
-**Suggested Integration:**
-- Add to `TransactionSettingsPanel.tsx` to show labels next to slippage values
-- Use in trade confirmation dialogs
+**Integration Completed (2025-12-28):**
+- Added to `TransactionSettingsPanel.tsx` compact mode display
+- Added to `TransactionSettingsPanel.tsx` custom slippage display
+- Added to `TransactionSettingsDisplay` component
 
 ---
 
@@ -168,68 +166,60 @@ The `useSmartSlippage` hook IS integrated in `TransactionSettingsPanel.tsx` with
 
 ## Recommended Integration Plan
 
-### Priority 1: High (User-Facing Value)
+### Priority 1: High (User-Facing Value) ✅ ALREADY INTEGRATED
 
-#### 1.1 ProtocolStats → Home Page
+> **Note:** Upon verification on 2025-12-28, all Priority 1 items were found to be already integrated in the codebase.
 
-**Location:** `src/app/(main)/page.tsx`
+#### 1.1 ProtocolStats → Home Page ✅
 
-**Rationale:** Shows protocol health at a glance to new visitors.
+**Status:** Already integrated in `src/app/page.tsx`
 
+**Implementation:** Dynamic import with loading skeleton (lines 12-26, 37-41)
 ```tsx
-import { ProtocolStats } from '@widgets/analytics';
-
-// In hero section
-<ProtocolStats />
+const ProtocolStats = dynamic(
+  () => import('@widgets/analytics/ProtocolStats').then((m) => m.ProtocolStats),
+  { loading: () => <StatCardSkeleton />, ssr: false }
+);
 ```
 
-#### 1.2 RateSparkline → MarketCard
+#### 1.2 RateSparkline → MarketCard ✅
 
-**Location:** `src/entities/market/ui/MarketCard.tsx`
+**Status:** Already integrated in `src/entities/market/ui/MarketCard.tsx`
 
-**Rationale:** Shows rate trend in compact form, helping users identify trending markets.
-
+**Implementation:** Shows 7-day trend in stats grid (lines 15, 198-206)
 ```tsx
-import { RateBadgeWithSparkline } from '@widgets/analytics';
-
-// In MarketCard metric section
-<RateBadgeWithSparkline marketAddress={market.address} />
+<StatRow label="7d Trend">
+  <RateSparkline marketAddress={market.address} width={56} height={20} days={7} showChange />
+</StatRow>
 ```
 
-#### 1.3 Progress → TxStatus
+#### 1.3 Progress → TxStatus ✅
 
-**Location:** `src/widgets/display/TxStatus.tsx`
+**Status:** Already integrated in `src/widgets/display/TxStatus.tsx`
 
-**Rationale:** Multi-step transactions (approve + execute) benefit from progress indication.
-
+**Implementation:** Indeterminate progress bar during pending state (lines 12, 174-182)
 ```tsx
-import { Progress, ProgressIndicator, ProgressTrack } from '@shared/ui/progress';
-
-// During 'signing' or 'pending' states
 {status === 'pending' && (
-  <Progress value={50}>
-    <ProgressTrack>
-      <ProgressIndicator />
+  <Progress value={null}>
+    <ProgressTrack className="h-1.5">
+      <ProgressIndicator className="animate-progress-indeterminate" />
     </ProgressTrack>
   </Progress>
 )}
 ```
 
-#### 1.4 HoverCard → APY Displays
+#### 1.4 HoverCard → APY Displays ✅
 
-**Location:** `src/entities/market/ui/MarketCard.tsx`, `src/features/yield/ui/ApyBreakdown.tsx`
+**Status:** Already integrated in `src/entities/market/ui/MarketCard.tsx`
 
-**Rationale:** Explain complex APY calculations on hover without cluttering UI.
-
+**Implementation:** APY breakdown on hover (lines 14, 144-162)
 ```tsx
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@shared/ui/hover-card';
-
 <HoverCard>
-  <HoverCardTrigger>
-    <span className="cursor-help">{formatPercent(apy)}%</span>
+  <HoverCardTrigger className="cursor-help">
+    <div className="text-primary font-mono text-xl">{apyPercent.toFixed(1)}%</div>
   </HoverCardTrigger>
-  <HoverCardContent>
-    <ApyBreakdown market={market} />
+  <HoverCardContent side="top" align="end">
+    <ApyBreakdown breakdown={apyBreakdown} view="pt" />
   </HoverCardContent>
 </HoverCard>
 ```
@@ -282,22 +272,26 @@ const isMobile = useMediaQuery('(max-width: 768px)');
 )}
 ```
 
-### Priority 3: Low (Future Enhancement)
+### Priority 3: Low (Future Enhancement) ✅ COMPLETED
 
-#### 3.1 getSlippageLabel → TransactionSettingsPanel
+#### 3.1 getSlippageLabel → TransactionSettingsPanel ✅
 
 **Location:** `src/features/tx-settings/ui/TransactionSettingsPanel.tsx`
 
-**Rationale:** Human-readable labels improve UX for slippage understanding.
+**Status:** Integrated on 2025-12-28
 
-```tsx
-import { getSlippageLabel } from '../model/useSmartSlippage';
+**Implementation:**
+- Added `getSlippageLabel` import from `@features/tx-settings`
+- Integrated labels in compact mode: `Slippage: 0.5% (Low)`
+- Integrated labels in custom slippage display: `Custom: 0.75% (Low)`
+- Integrated labels in `TransactionSettingsDisplay`: `Slippage: 0.5% (Low)`
 
-// Next to slippage display
-<span className="text-muted-foreground text-xs">
-  ({getSlippageLabel(slippageBps)})
-</span>
-```
+The labels provide human-readable context for slippage values:
+- ≤15 BPS → "Very Low"
+- ≤50 BPS → "Low"
+- ≤100 BPS → "Standard"
+- ≤200 BPS → "High"
+- >200 BPS → "Very High"
 
 ---
 
@@ -305,11 +299,18 @@ import { getSlippageLabel } from '../model/useSmartSlippage';
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Unused UI components | 2 | Ready for integration |
-| Unused analytics widgets | 4 | Ready for integration |
+| Unused UI components | 0 | ✅ All integrated (HoverCard, Progress) |
+| Unused analytics widgets | 2 | RateHistoryTable, ProtocolTvlCard |
 | Unused compact variants | 17 | Available for mobile/responsive |
-| Unused utility functions | 1 | Ready for integration |
-| **Total unused exports** | **24** | ~5% of codebase |
+| Unused utility functions | 0 | ✅ All integrated |
+| **Total unused exports** | **19** | ~4% of codebase |
+
+### Integration Progress (2025-12-28)
+- ✅ `HoverCard` → MarketCard APY tooltips
+- ✅ `Progress` → TxStatus pending indicator
+- ✅ `RateSparkline` → MarketCard 7d trend
+- ✅ `ProtocolStats` → Home page stats section
+- ✅ `getSlippageLabel` → TransactionSettingsPanel
 
 ---
 
@@ -334,15 +335,15 @@ This pattern follows good software design principles:
 ```
 src/
 ├── shared/ui/
-│   ├── hover-card.tsx       # UNUSED - HoverCard components
-│   └── progress.tsx         # UNUSED - Progress components
+│   ├── hover-card.tsx       # ✅ Integrated in MarketCard
+│   └── progress.tsx         # ✅ Integrated in TxStatus
 ├── widgets/analytics/
-│   ├── RateHistoryTable.tsx # UNUSED - Full widget
-│   ├── RateSparkline.tsx    # UNUSED - All 4 exports
-│   ├── ProtocolTvlCard.tsx  # UNUSED - Full widget + inline
-│   └── ProtocolStats.tsx    # UNUSED - Full widget + compact
+│   ├── RateHistoryTable.tsx # ⏳ UNUSED - Full widget
+│   ├── RateSparkline.tsx    # ✅ RateSparkline used, 3 variants unused
+│   ├── ProtocolTvlCard.tsx  # ⏳ UNUSED - Full widget + inline
+│   └── ProtocolStats.tsx    # ✅ ProtocolStats used, Compact variant unused
 └── features/tx-settings/model/
-    └── useSmartSlippage.ts  # UNUSED - getSlippageLabel function
+    └── useSmartSlippage.ts  # ✅ getSlippageLabel now integrated
 ```
 
 ---
