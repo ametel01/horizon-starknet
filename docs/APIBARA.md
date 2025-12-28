@@ -23,7 +23,7 @@ updatedAt: 2025-06-11
 This tutorial shows how to setup an Apibara project from scratch. The goal is to
 start indexing data as quickly as possible and to understand the basic structure
 of a project. By the end of this tutorial, you will have a basic indexer that
-streams data from two networks (Ethereum and Starknet).
+streams data from Starknet.
 
 ## Installation
 
@@ -80,10 +80,9 @@ The streams hosted by Apibara require an API key.
 - Create an API key,
 - Export the API key as the `DNA_TOKEN` environment variable.
 
-## EVM Indexer
+## Starknet indexer
 
-Let's create the first EVM indexer. All indexers must go in the `indexers`
-directory and have a name that ends with `.indexer.ts` or `.indexer.js`.
+All indexers must go in the `indexers` directory and have a name that ends with `.indexer.ts` or `.indexer.js`.
 The Apibara CLI will automatically detect the indexers in this directory and
 make them available to the project.
 
@@ -94,157 +93,6 @@ command does the following:
 - asks about your preferred storage solution.
 - creates the indexer.
 - adds dependencies to your `package.json`.
-
-:::cli-command
-
-```bash [Terminal]
-pnpm apibara add
-```
-
-```
-✔ Indexer ID: … rocket-pool
-✔ Select a chain: › Ethereum
-✔ Select a network: › Mainnet
-✔ Select a storage: › None
-✔ Updated apibara.config.ts
-✔ Updated package.json
-✔ Created rocket-pool.indexer.ts
-
-ℹ Before running the indexer, run pnpm run install & pnpm run prepare
-```
-
-:::
-
-After installing dependencies, you can look at the changes to `apibara.config.ts`.
-Notice the indexer's specific runtime configuration. This is a good time to update
-the indexing starting block.
-
-```typescript [apibara.config.ts]
-import { defineConfig } from "apibara/config";
-
-export default defineConfig({
-  runtimeConfig: {
-    rocketPool: {
-      startingBlock: 21_000_000,
-      streamUrl: "https://mainnet.ethereum.a5a.ch",
-    },
-  },
-});
-```
-
-Implement the indexer by editing `indexers/rocket-pool.indexer.ts`.
-
-```typescript [rocket-pool.indexer.ts]
-import { defineIndexer } from "apibara/indexer";
-import { useLogger } from "apibara/plugins";
-
-import { EvmStream } from "@apibara/evm";
-import type { ApibaraRuntimeConfig } from "apibara/types";
-
-export default function (runtimeConfig: ApibaraRuntimeConfig) {
-  const { startingBlock, streamUrl } = runtimeConfig.rocketPool;
-
-  return defineIndexer(EvmStream)({
-    streamUrl,
-    finality: "accepted",
-    startingBlock: BigInt(startingBlock),
-    filter: {
-      logs: [
-        {
-          address: "0xae78736Cd615f374D3085123A210448E74Fc6393",
-        },
-      ],
-    },
-    plugins: [],
-    async transform({ block }) {
-      const logger = useLogger();
-      const { logs, header } = block;
-      logger.log(`Block number ${header?.blockNumber}`);
-      for (const log of logs) {
-        logger.log(
-          `Log ${log.logIndex} from ${log.address} tx=${log.transactionHash}`
-        );
-      }
-    },
-  });
-}
-```
-
-Notice the following:
-
-- The indexer file exports a single indexer.
-- The `defineIndexer` function takes the stream as parameter. In this case, the
-  `EvmStream` is used. This is needed because Apibara supports multiple networks
-  with different data types.
-- `streamUrl` specifies where the data comes from. You can connect to streams hosted
-  by us, or to self-hosted streams.
-- `startingBlock` specifies from which block to start streaming.
-- These two properties are read from the `runtimeConfig` object. Use the runtime configuration
-  object to have multiple presets for the same indexer.
-- The `filter` specifies which data to receive. You can read more about the available
-  data for EVM chains in the [EVM documentation](/docs/networks/evm/filter).
-- The `transform` function is called for each block. It receives the block as parameter.
-  This is where your indexer processes the data.
-- The `useLogger` hook returns an indexer-specific logger.
-
-There are more indexer options available, you can find them [in the documentation](/docs/getting-started/indexers).
-
-## Running the indexer
-
-During development, you will use the `apibara` CLI to build and run indexers. For convenience,
-the template adds the following scripts to your `package.json`:
-
-```json [package.json]
-{
-  "scripts": {
-    "dev": "apibara dev",
-    "build": "apibara build",
-    "start": "apibara start"
-  }
-}
-```
-
-- `dev`: runs all indexers in development mode. Indexers are automatically
-  reloaded and restarted when they change.
-- `build`: builds the indexers for production.
-- `start`: runs a _single indexer_ in production mode. Notice you must first
-  build the indexers.
-
-Before running the indexer, you must set the `DNA_TOKEN` environment variable to your DNA API key, created from the dashboard.
-You can store the environment variable in a `.env` file, but make sure not to commit it to git!
-
-Now, run the indexer in development mode.
-
-:::cli-command
-
-```bash [Terminal]
-pnpm run dev
-```
-
-```
-> apibara-app@0.1.0 dev /tmp/my-indexer
-> apibara dev
-
-✔ Output directory .apibara/build cleaned
-✔ Types written to .apibara/types
-✔ Indexers built in 19369 ms
-✔ Restarting indexers
-rocket-pool | log Block number 21000071
-rocket-pool | log Log 239 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0xe3b7e285c02e9a1dad654ba095ee517cf4c15bf0c2c0adec555045e86ea1de89
-rocket-pool | log Block number 21000097
-rocket-pool | log Log 265 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0x8946aaa1ae303a19576d6dca9abe0f774709ff6c3f2de40c11dfda2ab276fbba
-rocket-pool | log Log 266 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0x8946aaa1ae303a19576d6dca9abe0f774709ff6c3f2de40c11dfda2ab276fbba
-rocket-pool | log Block number 21000111
-rocket-pool | log Log 589 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0xa01ec6551e76364f6cf687f52823d66b1c07f7a47ce157a9cd9e441691a021f0
-...
-```
-
-:::
-
-## Starknet indexer
-
-You can index data on different networks in the same project. Let's add an indexer for Starknet.
-Like before, you can use the `apibara add` command to add an indexer to your project.
 
 :::cli-command
 
@@ -266,27 +114,25 @@ pnpm apibara add
 
 :::
 
-After that, you can implement the indexer. In this case, the indexer listens for all events
-emitted by the STRK staking contract.
-
-Let's start by updating the `apibara.config.ts` file with the starting block.
+After installing dependencies, you can look at the changes to `apibara.config.ts`.
+Notice the indexer's specific runtime configuration. This is a good time to update
+the indexing starting block.
 
 ```typescript [apibara.config.ts]
-// ...
+import { defineConfig } from "apibara/config";
 
 export default defineConfig({
   runtimeConfig: {
-    // ...
     strkStaking: {
       startingBlock: 900_000,
       streamUrl: "https://mainnet.starknet.a5a.ch",
     },
   },
-  // ...
 });
 ```
 
-Then you can implement the indexer.
+Now implement the indexer. In this case, the indexer listens for all events
+emitted by the STRK staking contract.
 
 ```typescript [strk-staking.indexer.ts]
 import { defineIndexer } from "apibara/indexer";
@@ -323,7 +169,50 @@ export default function (runtimeConfig: ApibaraRuntimeConfig) {
 }
 ```
 
-You can now run the indexer. In this case, you can specify which indexer you want to run
+Notice the following:
+
+- The indexer file exports a single indexer.
+- The `defineIndexer` function takes the stream as parameter. In this case, the
+  `StarknetStream` is used. This is needed because Apibara supports multiple networks
+  with different data types.
+- `streamUrl` specifies where the data comes from. You can connect to streams hosted
+  by us, or to self-hosted streams.
+- `startingBlock` specifies from which block to start streaming.
+- These two properties are read from the `runtimeConfig` object. Use the runtime configuration
+  object to have multiple presets for the same indexer.
+- The `filter` specifies which data to receive. You can read more about the available
+  data for Starknet in the [Starknet documentation](/docs/networks/starknet/filter).
+- The `transform` function is called for each block. It receives the block as parameter.
+  This is where your indexer processes the data.
+- The `useLogger` hook returns an indexer-specific logger.
+
+There are more indexer options available, you can find them [in the documentation](/docs/getting-started/indexers).
+
+## Running the indexer
+
+During development, you will use the `apibara` CLI to build and run indexers. For convenience,
+the template adds the following scripts to your `package.json`:
+
+```json [package.json]
+{
+  "scripts": {
+    "dev": "apibara dev",
+    "build": "apibara build",
+    "start": "apibara start"
+  }
+}
+```
+
+- `dev`: runs all indexers in development mode. Indexers are automatically
+  reloaded and restarted when they change.
+- `build`: builds the indexers for production.
+- `start`: runs a _single indexer_ in production mode. Notice you must first
+  build the indexers.
+
+Before running the indexer, you must set the `DNA_TOKEN` environment variable to your DNA API key, created from the dashboard.
+You can store the environment variable in a `.env` file, but make sure not to commit it to git!
+
+Now, run the indexer in development mode. You can specify which indexer you want to run
 with the `--indexers` option. When the flag is omitted, all indexers are run concurrently.
 
 :::cli-command
@@ -373,7 +262,7 @@ pnpm run build
 
 ✔ Output directory .apibara/build cleaned
 ✔ Types written to .apibara/types
-◐ Building 2 indexers
+◐ Building 1 indexers
 ✔ Build succeeded!
 ℹ You can start the indexers with apibara start
 ```
@@ -389,20 +278,19 @@ Once the indexers are built, you can run them in two (equivalent) ways:
 :::cli-command
 
 ```bash [Terminal]
-pnpm run start --indexer rocket-pool
+pnpm run start --indexer strk-staking
 ```
 
 ```
 > apibara-app@0.1.0 start /tmp/my-indexer
-> apibara start "--indexer" "rocket-pool"
+> apibara start "--indexer" "strk-staking"
 
-◐ Starting indexer rocket-pool
-rocket-pool  | log Block number 21000071
-rocket-pool  | log Log 239 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0xe3b7e285c02e9a1dad654ba095ee517cf4c15bf0c2c0adec555045e86ea1de89
-rocket-pool  | log Block number 21000097
-rocket-pool  | log Log 265 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0x8946aaa1ae303a19576d6dca9abe0f774709ff6c3f2de40c11dfda2ab276fbba
-rocket-pool  | log Log 266 from 0xae78736cd615f374d3085123a210448e74fc6393 tx=0x8946aaa1ae303a19576d6dca9abe0f774709ff6c3f2de40c11dfda2ab276fbba
-rocket-pool  | log Block number 21000111
+◐ Starting indexer strk-staking
+strk-staking | log Block number 929092
+strk-staking | log Event 233 tx=0x012f8356ef02c36ed1ffddd5252c4f03707166cabcccb49046acf4ab565051c7
+strk-staking | log Event 234 tx=0x012f8356ef02c36ed1ffddd5252c4f03707166cabcccb49046acf4ab565051c7
+strk-staking | log Event 235 tx=0x012f8356ef02c36ed1ffddd5252c4f03707166cabcccb49046acf4ab565051c7
+strk-staking | log Block number 929119
 ...
 ```
 
@@ -577,33 +465,9 @@ If, for any reason, you need to receive notifications about reorgs, you can defi
 
 By default, the indexer is stateless (restarts from the beginning on restart) and does not provide any storage. You can add persistence and storage by using one of the provided storage plugins.
 
-### Examples
+### Example
 
-The following examples show how to create indexers for the Beacon Chain, EVM (Ethereum), and Starknet.
-
-**Beacon Chain indexer**
-
-```ts [beaconchain.indexer.ts]
-import { BeaconChainStream } from "@apibara/beaconchain";
-import { defineIndexer } from "@apibara/indexer";
-
-export default defineIndexer(BeaconChainStream)({
-  /* ... */
-});
-```
-
-**EVM (Ethereum) indexer**
-
-```ts [evm.indexer.ts]
-import { EvmStream } from "@apibara/evm";
-import { defineIndexer } from "@apibara/indexer";
-
-export default defineIndexer(EvmStream)({
-  /* ... */
-});
-```
-
-**Starknet indexer**
+The following example shows how to create an indexer for Starknet.
 
 ```ts [starknet.indexer.ts]
 import { StarknetStream } from "@apibara/starknet";
@@ -619,12 +483,12 @@ export default defineIndexer(StarknetStream)({
 To configure the indexer at runtime, export a function that takes the configuration and returns the indexer's definition.
 
 ```ts
-import { EvmStream } from "@apibara/evm";
+import { StarknetStream } from "@apibara/starknet";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import { defineIndexer } from "@apibara/indexer";
 
 export default function (runtimeConfig: ApibaraRuntimeConfig) {
-  return defineIndexer(EvmStream)({
+  return defineIndexer(StarknetStream)({
     // ...
   });
 }
@@ -635,7 +499,7 @@ export default function (runtimeConfig: ApibaraRuntimeConfig) {
 All indexers take the same configuration options.
 
 - **`streamUrl`**<span class="arg-type">`string`</span><br/><span class="arg-description">The URL of the DNA stream to connect to.</span>
-- **`filter`**<span class="arg-type">`TFilter`</span><br/><span class="arg-description">The filter to apply to the DNA stream. This argument is specific to the stream definition. You should refer to the chain's filter reference for the available options (see [Beacon Chain](/docs/networks/beaconchain/filter), [EVM (Ethereum)](/docs/networks/evm/filter), [Starknet](/docs/networks/starknet/filter)).</span>
+- **`filter`**<span class="arg-type">`TFilter`</span><br/><span class="arg-description">The filter to apply to the DNA stream. This argument is specific to the stream definition. You should refer to the [Starknet filter reference](/docs/networks/starknet/filter) for the available options.</span>
 - **`finality`**<span class="arg-type">`"finalized" | "accepted" | "pending"`</span><br/><span class="arg-description">Receive data with the specified finality. Defaults to `accepted`.</span>
 - **`startingCursor`**<span class="arg-type">`{ orderKey: bigint, uniqueKey?: string }`</span><br/><span class="arg-description">The cursor to start the indexer from. Defaults to the genesis block. The `orderKey` represents the block number, and the `uniqueKey` represents the block hash (optional).</span>
 - **`debug`**<span class="arg-type">`boolean`</span><br/><span class="arg-description">Enable debug mode. This will print debug information to the console.</span>
@@ -650,7 +514,7 @@ The `transform` function is invoked for each block received from the DNA stream.
 
 **Arguments**
 
-- **`block`**<span class="arg-type">`TBlock`</span><br/><span class="arg-description">The block received from the DNA stream. This is chain-specific (see [Beacon Chain](/docs/networks/beaconchain/data), [EVM (Ethereum)](/docs/networks/evm/data), [Starknet](/docs/networks/starknet/data)).</span>
+- **`block`**<span class="arg-type">`TBlock`</span><br/><span class="arg-description">The block received from the DNA stream. See the [Starknet data reference](/docs/networks/starknet/data) for more details.</span>
 - **`cursor`**<span class="arg-type">`{ orderKey: bigint, uniqueKey?: string }`</span><br/><span class="arg-description">The cursor of the block before the received block.</span>
 - **`endCursor`**<span class="arg-type">`{ orderKey: bigint, uniqueKey?: string }`</span><br/><span class="arg-description">The cursor of the current block.</span>
 - **`finality`**<span class="arg-type">`"finalized" | "accepted" | "pending"`</span><br/><span class="arg-description">The finality of the block.</span>
@@ -658,12 +522,12 @@ The `transform` function is invoked for each block received from the DNA stream.
 
 The following example shows a minimal indexer that streams block headers and prints them to the console.
 
-```ts [evm.indexer.ts]
-import { EvmStream } from "@apibara/evm";
+```ts [starknet.indexer.ts]
+import { StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "@apibara/indexer";
 
-export default defineIndexer(EvmStream)({
-  streamUrl: "https://mainnet.ethereum.a5a.ch",
+export default defineIndexer(StarknetStream)({
+  streamUrl: "https://mainnet.starknet.a5a.ch",
   filter: {
     header: "always",
   },
@@ -680,34 +544,34 @@ The `factory` function is used to add data filters at runtime. This is useful fo
 
 **Arguments**
 
-- **`block`**<span class="arg-type">`TBlock`</span><br/><span class="arg-description">The block received from the DNA stream. This is chain-specific (see [Beacon Chain](/docs/networks/beaconchain/data), [EVM (Ethereum)](/docs/networks/evm/data), [Starknet](/docs/networks/starknet/data)).</span>
+- **`block`**<span class="arg-type">`TBlock`</span><br/><span class="arg-description">The block received from the DNA stream. See the [Starknet data reference](/docs/networks/starknet/data) for more details.</span>
 - **`context`**<span class="arg-type">`object`</span><br/><span class="arg-description">The context shared between the indexer and the plugins.</span>
 
-The following example shows a minimal indexer that streams `PairCreated` events from Uniswap V2 to detect new pools, and then streams the pool's events.
+The following example shows a minimal indexer that uses the factory function to dynamically add filters for new contracts.
 
-```ts [uniswap-v2.indexer.ts]
-import { EvmStream } from "@apibara/evm";
+```ts [factory.indexer.ts]
+import { StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "@apibara/indexer";
 
-export default defineIndexer(EvmStream)({
-  streamUrl: "https://mainnet.ethereum.a5a.ch",
+export default defineIndexer(StarknetStream)({
+  streamUrl: "https://mainnet.starknet.a5a.ch",
   filter: {
-    logs: [
+    events: [
       {
         /* ... */
       },
     ],
   },
   async factory({ block }) {
-    const { logs } = block;
+    const { events } = block;
     return {
       /* ... */
     };
   },
   async transform({ block }) {
-    const { header, logs } = block;
+    const { header, events } = block;
     console.log(header);
-    console.log(logs);
+    console.log(events);
   },
 });
 ```
@@ -748,13 +612,13 @@ The following hooks are available in all indexers.
 You can register plugins in the indexer's configuration, under the `plugins` key.
 
 ```ts [my-indexer.indexer.ts]
-import { BeaconChainStream } from "@apibara/beaconchain";
+import { StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "@apibara/indexer";
 
 import { myAwesomePlugin } from "@/lib/my-plugin.ts";
 
-export default defineIndexer(BeaconChainStream)({
-  streamUrl: "https://beaconchain.preview.apibara.org",
+export default defineIndexer(StarknetStream)({
+  streamUrl: "https://mainnet.starknet.a5a.ch",
   filter: { /* ... */ },
   plugins: [myAwesomePlugin()],
   async transform({ block: { header, validators } }) {
@@ -828,13 +692,13 @@ For all cases where you want to use a hook without creating a plugin, you can us
 IMPORTANT: inline hooks are the recommended way to add hooks to an indexer. If the same hook is needed in multiple indexers, it is better to create a plugin. Usually, plugins lives in the `lib` folder, for example `lib/my-plugin.ts`.
 
 ```ts [my-indexer.indexer.ts]
-import { BeaconChainStream } from "@apibara/beaconchain";
+import { StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "@apibara/indexer";
 
-export default defineIndexer(BeaconChainStream)({
-  streamUrl: "https://beaconchain.preview.apibara.org",
+export default defineIndexer(StarknetStream)({
+  streamUrl: "https://mainnet.starknet.a5a.ch",
   filter: { /* ... */ },
-  async transform({ block: { header, validators } }) {
+  async transform({ block: { header, events } }) {
     /* ... */
   },
   hooks: {
@@ -1647,7 +1511,7 @@ const db = drizzle({
   },
 });
 
-export default defineIndexer(EvmStream)({
+export default defineIndexer(StarknetStream)({
   // ...
   plugins: [drizzleStorage({ db })],
   // ...
@@ -1684,7 +1548,7 @@ The plugin allows you to specify the id column name for each table in the schema
 This example uses the same id column name (`_id`) for all tables.
 
 ```ts [my-indexer.indexer.ts]
-export default defineIndexer(EvmStream)({
+export default defineIndexer(StarknetStream)({
   // ...
   plugins: [
     drizzleStorage({
@@ -1699,7 +1563,7 @@ export default defineIndexer(EvmStream)({
 This example uses different id column names for each table. The `transfers` table will use `transfer_id` as the id column, while all other tables will use `_id`.
 
 ```ts [my-indexer.indexer.ts]
-export default defineIndexer(EvmStream)({
+export default defineIndexer(StarknetStream)({
   // ...
   plugins: [
     drizzleStorage({
@@ -1722,7 +1586,7 @@ it is. Thanks to the way the plugin works and handles chain reorganizations, it
 can expose the full Drizzle ORM API without any limitations.
 
 ```ts [my-indexer.indexer.ts]
-export default defineIndexer(EvmStream)({
+export default defineIndexer(StarknetStream)({
   // ...
   async transform({ endCursor, block, context, finality }) {
     const { db } = useDrizzleStorage();
@@ -1747,7 +1611,7 @@ is used to automatically deduce the database schema.
 ```ts [my-indexer.indexer.ts]
 const database = drizzle({ schema, connectionString });
 
-export default defineIndexer(EvmStream)({
+export default defineIndexer(StarknetStream)({
   // ...
   async transform({ endCursor, block, context, finality }) {
     const { db } = useDrizzleStorage(database);
@@ -1775,7 +1639,7 @@ import { drizzle } from "@apibara/plugin-drizzle";
 
 const database = drizzle({ schema });
 
-export default defineIndexer(EvmStream)({
+export default defineIndexer(StarknetStream)({
   // ...
   plugins: [
     drizzleStorage({
@@ -1870,7 +1734,7 @@ describe("my indexer", () => {
       /* runtime configuration */
     });
 
-    const testResult = await vcr.run("ethereum-usdc-transfers", indexer, {
+    const testResult = await vcr.run("starknet-strk-transfers", indexer, {
       range: {
         fromBlock: 10_000_000n,
         toBlock: 10_000_005n,
@@ -2228,1089 +2092,6 @@ for (const event of block.events) {
 const transfers = block.events.map((event) => decodeEvent(event));
 await db.insert(schema.transfers).values(transfers);
 ```
-
-
----
-title: Beacon Chain filter reference
-description: "Beacon Chain: DNA data filter reference guide."
-diataxis: reference
-updatedAt: 2024-10-22
----
-
-# Beacon Chain filter reference
-
-This page contains reference about the available data filters for Beacon Chain
-DNA streams.
-
-### Related pages
-
-- [Beacon Chain block data reference](/docs/networks/beaconchain/data)
-
-## Filter ID
-
-All filters have an associated ID. When the server filters a block, it will
-return a list of all filters that matched a piece of data with the data.
-You can use this ID to build powerful abstractions in your indexers.
-
-## Filter types
-
-### Root
-
-The root filter object contains a collection of filters.
-Notice that providing an empty filter object is an error.
-
-```ts
-export type Filter = {
-  header?: HeaderFilter;
-  transactions: TransactionFilter[];
-  blobs: BlobFilter[];
-  validators: ValidatorFilter[];
-};
-```
-
-### Header
-
-The `HeaderFilter` object controls when the block header is returned to the client.
-
-```ts
-export type HeaderFilter = "always" | "on_data" | "on_data_or_on_new_block";
-```
-
-The values have the following meaning:
-
-- `always`: Always return the header, even if no other filter matches.
-- `on_data`: Return the header only if any other filter matches. This is the default value.
-- `on_data_or_on_new_block`: Return the header only if any other filter matches. If no other filter matches, return the header only if the block is a new block.
-
-### Transactions
-
-DNA includes decoded transactions submitted to the network.
-
-```ts
-export type TransactionFilter = {
-  id?: number;
-  from?: `0x${string}`;
-  to?: `0x${string}`;
-  create?: boolean;
-  includeBlob?: boolean;
-};
-```
-
-**Properties**
-
-- `from`: filter by sender address. If empty, matches any sender address.
-- `to`: filter by receiver address. If empty, matches any receiver address.
-- `create`: filter by whether the transaction is a create transaction.
-- `includeBlob`: also return all blobs included in the transaction.
-
-**Examples**
-
-- All blobs included in a transaction to a specific contract.
-
-```ts
-const filter = [
-  {
-    transactions: [
-      {
-        to: "0xff00000000000000000000000000000000074248",
-        includeBlob: true,
-      },
-    ],
-  },
-];
-```
-
-### Blobs
-
-A blob and its content.
-
-```ts
-export type BlobFilter = {
-  id?: number;
-  includeTransaction?: boolean;
-};
-```
-
-**Properties**
-
-- `includeTransaction`: also return the transaction that included the blob.
-
-**Examples**
-
-- All blobs posted to the network together with the transaction that posted them.
-
-```ts
-const filter = [
-  {
-    blobs: [
-      {
-        includeTransaction: true,
-      },
-    ],
-  },
-];
-```
-
-### Validators
-
-Validators and their historical balances.
-
-```ts
-export type ValidatorStatus =
-  | "pending_initialized"
-  | "pending_queued"
-  | "active_ongoing"
-  | "active_exiting"
-  | "active_slashed"
-  | "exited_unslashed"
-  | "exited_slashed"
-  | "withdrawal_possible"
-  | "withdrawal_done";
-
-export type ValidatorFilter = {
-  id?: number;
-  validatorIndex?: number;
-  status?: ValidatorStatus;
-};
-```
-
-**Properties**
-
-- `validatorIndex`: filter by the validator index.
-- `status`: filter by validator status.
-
-**Examples**
-
-- All validators that exited, both slashed and unlashed.
-
-```ts
-const filter = [
-  {
-    validators: [
-      {
-        status: "exited_unslashed",
-      },
-      {
-        status: "exited_slashed",
-      },
-    ],
-  },
-];
-```
-
-
----
-title: Beacon Chain data reference
-description: "Beacon Chain: DNA data data reference guide."
-diataxis: reference
-updatedAt: 2024-10-22
----
-
-# Beacon Chain data reference
-
-This page contains reference about the available data in Beacon Chain DNA streams.
-
-### Related pages
-
-- [Beacon Chain data filter reference](/docs/networks/beaconchain/filter)
-
-## Filter ID
-
-All filters have an associated ID. To help clients correlate filters with data,
-the filter ID is included in the `filterIds` field of all data objects.
-This field contains the list of _all filter IDs_ that matched a piece of data.
-
-## Nullable fields
-
-**Important**: most fields are nullable to allow evolving the protocol. You should
-always assert the presence of a field for critical indexers.
-
-## Scalar types
-
-The `@apibara/beaconchain` package defines the following scalar types:
-
-- `Address`: a 20-byte Ethereum address, represented as a `0x${string}` type.
-- `B256`: a 32-byte Ethereum value, represented as a `0x${string}` type.
-- `B384`: a 48-byte Ethereum value, represented as a `0x${string}` type.
-- `Bytes`: arbitrary length bytes, represented as a `0x${string}` type.
-
-## Data type
-
-### Block
-
-The root object is the `Block`.
-
-```ts
-export type Block = {
-  header?: BlockHeader;
-  transactions: Transaction[];
-  blobs: Blob[];
-  validators: Validator[];
-};
-```
-
-### Header
-
-This is the block header, which contains information about the block.
-
-```ts
-export type BlockHeader = {
-  slot?: bigint;
-  proposerIndex?: number;
-  parentRoot?: B256;
-  stateRoot?: B256;
-  randaoReveal?: Bytes;
-  depositCount?: bigint;
-  depositRoot?: B256;
-  blockHash?: B256;
-  graffiti?: B256;
-  executionPayload?: ExecutionPayload;
-  blobKzgCommitments: B384[];
-};
-
-export type ExecutionPayload = {
-  parentHash?: B256;
-  feeRecipient?: Address;
-  stateRoot?: B256;
-  receiptsRoot?: B256;
-  logsBloom?: Bytes;
-  prevRandao?: B256;
-  blockNumber?: bigint;
-  timestamp?: Date;
-};
-```
-
-**Properties**
-
-- `slot`: the slot number.
-- `proposerIndex`: the index of the validator that proposed the block.
-- `parentRoot`: the parent root.
-- `stateRoot`: the state root.
-- `randaoReveal`: the randao reveal.
-- `depositCount`: the number of deposits.
-- `depositRoot`: the deposit root.
-- `blockHash`: the block hash.
-- `graffiti`: the graffiti.
-- `executionPayload`: the execution payload.
-- `blobKzgCommitments`: the blob kzg commitments.
-
-### Transaction
-
-An EVM transaction.
-
-```ts
-export type Transaction = {
-  filterIds: number[];
-  transactionIndex?: number;
-  transactionHash?: B256;
-  nonce?: bigint;
-  from?: Address;
-  to?: Address;
-  value?: bigint;
-  gasPrice?: bigint;
-  gas?: bigint;
-  maxFeePerGas?: bigint;
-  maxPriorityFeePerGas?: bigint;
-  input: Bytes;
-  signature?: Signature;
-  chainId?: bigint;
-  accessList: AccessListItem[];
-  transactionType?: bigint;
-  maxFeePerBlobGas?: bigint;
-  blobVersionedHashes?: B256[];
-};
-
-export type Signature = {
-  r?: bigint;
-  s?: bigint;
-  v?: bigint;
-  yParity: boolean;
-};
-
-export type AccessListItem = {
-  address?: Address;
-  storageKeys: B256[];
-};
-```
-
-**Properties**
-
-- `transactionIndex`: the index of the transaction in the block.
-- `transactionHash`: the hash of the transaction.
-- `nonce`: the nonce of the transaction.
-- `from`: the sender of the transaction.
-- `to`: the recipient of the transaction. Empty if it's a create transaction.
-- `value`: the value of the transaction, in wei.
-- `gasPrice`: the gas price of the transaction.
-- `gas`: the gas limit of the transaction.
-- `maxFeePerGas`: the max fee per gas of the transaction.
-- `maxPriorityFeePerGas`: the max priority fee per gas of the transaction.
-- `input`: the input data of the transaction.
-- `signature`: the signature of the transaction.
-- `chainId`: the chain ID of the transaction.
-- `accessList`: the access list of the transaction.
-- `transactionType`: the transaction type.
-- `maxFeePerBlobGas`: the max fee per blob gas of the transaction.
-- `blobVersionedHashes`: the hashes of blobs posted by the transaction.
-- `transactionStatus`: the status of the transaction.
-
-**Relevant filters**
-
-- `filter.transactions`
-- `filter.blobs[].includeTransaction`
-
-### Blob
-
-A blob and its content.
-
-```ts
-export type Blob = {
-  filterIds: number[];
-  blobIndex?: number;
-  blob?: Uint8Array;
-  kzgCommitment?: B384;
-  kzgProof?: B384;
-  kzgCommitmentInclusionProof: B256[];
-  blobHash?: B256;
-  transactionIndex?: number;
-  transactionHash?: B256;
-};
-```
-
-**Properties**
-
-- `blobIndex`: the index of the blob in the block.
-- `blob`: the blob content.
-- `kzgCommitment`: the blob kzg commitment.
-- `kzgProof`: the blob kzg proof.
-- `kzgCommitmentInclusionProof`: the blob kzg commitment inclusion proof.
-- `blobHash`: the hash of the blob content.
-- `transactionIndex`: the index of the transaction that included the blob.
-- `transactionHash`: the hash of the transaction that included the blob.
-
-**Relevant filters**
-
-- `filter.blobs`
-- `filter.transactions[].includeBlob`
-
-### Validator
-
-Data about validators.
-
-```ts
-export type ValidatorStatus =
-  | "pending_initialized"
-  | "pending_queued"
-  | "active_ongoing"
-  | "active_exiting"
-  | "active_slashed"
-  | "exited_unslashed"
-  | "exited_slashed"
-  | "withdrawal_possible"
-  | "withdrawal_done";
-
-export type Validator = {
-  filterIds: number[];
-  validatorIndex?: number;
-  balance?: bigint;
-  status?: ValidatorStatus;
-  pubkey?: B384;
-  withdrawalCredentials?: B256;
-  effectiveBalance?: bigint;
-  slashed?: boolean;
-  activationEligibilityEpoch?: bigint;
-  activationEpoch?: bigint;
-  exitEpoch?: bigint;
-  withdrawableEpoch?: bigint;
-};
-```
-
-**Properties**
-
-- `validatorIndex`: the index of the validator.
-- `balance`: the balance of the validator.
-- `status`: the status of the validator.
-- `pubkey`: the validator's public key.
-- `withdrawalCredentials`: the withdrawal credentials.
-- `effectiveBalance`: the effective balance of the validator.
-- `slashed`: whether the validator is slashed.
-- `activationEligibilityEpoch`: the epoch at which the validator can be activated.
-- `activationEpoch`: the epoch at which the validator was activated.
-- `exitEpoch`: the epoch at which the validator exited.
-- `withdrawableEpoch`: the epoch at which the validator can withdraw.
-
-**Relevant filters**
-
-- `filter.validators`
-
-
----
-title: Ethereum EVM
-description: "Stream Ethereum data with Apibara."
-diataxis: reference
-updatedAt: 2024-10-22
----
-
-# Ethereum EVM
-
-```
-
-                              @
-                             @@@
-                           .@@@@@@
-                          @@@@@@@@@
-                         @@@@@@@@@@@.
-                       .@@@@@@@@@@@@@@
-                      @@@@@@@@@@@@@@@@@
-                     @@@@@@@@@@@@@@@@@@@.
-                    @@@@@@@@@@@@@@@@@@@@@@
-                  @@@@@@@@@@@@((@@@@@@@@@@@
-                 @@@@@@@@@@((((((((@@@@@@@@@.
-                @@@@@@@@((((((((((((((@@@@@@@@
-              @@@@@@(((((((((((((((((((((@@@@@@
-             @@@((((((((((((((((((((((((((((@@@@
-            (((((((((((((((((((((((((((((((((((((,
-               (((((((((((((((((((((((((((((((^
-                  *((((((((((((((((((((((((
-                      (((((((((((((((((
-              @@@.        (((((((((*       .@@^
-                @@@@.        *((       .@@@@@
-                 @@@@@@@           ..@@@@@@
-                   @@@@@@@@@.   .@@@@@@@@@
-                    ^@@@@@@@@@@@@@@@@@@@
-                      @@@@@@@@@@@@@@@@@
-                       @@@@@@@@@@@@@@
-                         @@@@@@@@@@^
-                           @@@@@@@
-                            @@@@^
-                              @
-
-```
-
-Apibara provides data streams for Ethereum mainnet. Notice that these
-stream URLs are going to change in the future when DNA v2 is released.
-
-**Ethereum Mainnet**
-
-```txt
-https://mainnet.ethereum.a5a.ch
-```
-
-**Ethereum Sepolia**
-
-```txt
-https://sepolia.ethereum.a5a.ch
-```
-
-### Typescript package
-
-Types for EVM chains are provided by the `@apibara/evm` package.
-
-```bash [Terminal]
-npm install @apibara/evm@next
-```
-
-
----
-title: EVM filter reference
-description: "EVM: DNA data filter reference guide."
-diataxis: reference
-updatedAt: 2024-10-22
----
-
-# EVM filter reference
-
-This page contains reference about the available data filters for EVM DNA
-streams.
-
-### Related pages
-
-- [EVM block data reference](/docs/networks/evm/data)
-
-## Filter ID
-
-All filters have an associated ID. When the server filters a block, it will
-return a list of all filters that matched a piece of data with the data.
-You can use this ID to build powerful abstractions in your indexers.
-
-## Usage with viem
-
-Most types are compatible with [viem](https://viem.sh/).
-For example, you can generate log filters with the following code:
-
-```ts
-import { encodeEventTopics, parseAbi } from "viem";
-
-const abi = parseAbi([
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-]);
-
-const filter = {
-  logs: [
-    {
-      topics: encodeEventTopics({
-        abi,
-        eventName: "Transfer",
-        args: { from: null, to: null },
-      }),
-      strict: true,
-    },
-  ],
-};
-```
-
-## Filter types
-
-### Root
-
-The root filter object contains a collection of filters.
-Notice that providing an empty filter object is an error.
-
-```ts
-export type Filter = {
-  header?: HeaderFilter;
-  logs?: LogFilter[];
-  transactions?: TransactionFilter[];
-  withdrawals?: WithdrawalFilter[];
-};
-```
-
-### Header
-
-The `HeaderFilter` object controls when the block header is returned to the client.
-
-```ts
-export type HeaderFilter = "always" | "on_data" | "on_data_or_on_new_block";
-```
-
-The values have the following meaning:
-
-- `always`: Always return the header, even if no other filter matches.
-- `on_data`: Return the header only if any other filter matches. This is the default value.
-- `on_data_or_on_new_block`: Return the header only if any other filter matches. If no other filter matches, return the header only if the block is a new block.
-
-## Logs
-
-Logs are the most common type of DNA filters. Use this filter to get the logs and
-their associated data like transactions, receipts, and sibling logs.
-
-```ts
-export type LogFilter = {
-  id?: number;
-  address?: `0x${string}`;
-  topics?: `0x${string} | null`[];
-  strict?: boolean;
-  transactionStatus?: "succeeded" | "reverted" | "all";
-  includeTransaction?: boolean;
-  includeReceipt?: boolean;
-  includeSiblings?: boolean;
-};
-```
-
-**Properties**
-
-- `address`: filter by contract address. If empty, matches any contract
-  address.
-- `topics`: filter by topic. Use `null` to match _any_ value.
-- `strict`: return logs whose topics length matches the filter. By default, the
-  filter does a prefix match on the topics.
-- `transactionStatus`: return logs emitted by transactions with the provided
-  status. Defaults to `succeeded`.
-- `includeTransaction`: also return the transaction that emitted the log.
-- `includeReceipt`: also return the receipt of the transaction that emitted the
-  log.
-- `includeSiblings`: also return all other logs emitted by the same transaction
-  that emitted the matched log.
-
-**Examples**
-
-- All logs in a block emitted by successful transactions.
-
-```ts
-const filter = {
-  logs: [{}],
-};
-```
-
-- All `Transfer` events emitted by successful transactions. Notice that this will
-  match logs from ERC-20, ERC-721, and other contracts that emit `Transfer`.
-
-```ts
-const filter = {
-  logs: [
-    {
-      topics: [
-        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-      ],
-    },
-  ],
-};
-```
-
-- All `Transfer` events that follow the ERC-721 standard. Notice that this will
-  not match logs from ERC-20 since the number of indexed parameters is different.
-
-```ts
-const filter = {
-  logs: [
-    {
-      topics: [
-        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        null, // from
-        null, // to
-        null, // tokenId
-      ],
-      strict: true,
-    },
-  ],
-};
-```
-
-- All logs emitted by `CONTRACT_A` OR `CONTRACT_B`.
-
-```ts
-const filter = {
-  logs: [
-    {
-      address: CONTRACT_A,
-    },
-    {
-      address: CONTRACT_B,
-    },
-  ],
-};
-```
-
-## Transactions
-
-Request Ethereum transactions.
-
-```ts
-export type TransactionFilter = {
-  id?: number;
-  from?: `0x${string}`;
-  to?: `0x${string}`;
-  create?: true;
-  transactionStatus?: "succeeded" | "reverted" | "all";
-  includeReceipt?: boolean;
-  includeLogs?: boolean;
-};
-```
-
-**Properties**
-
-- `from`: filter by sender address. If empty, matches any sender address.
-- `to`: filter by receiver address. If empty, matches any receiver address.
-- `create`: filter by whether the transaction is a create transaction.
-- `transactionStatus`: return transactions with the provided status. Defaults to
-  `succeeded`.
-- `includeReceipt`: also return the receipt of the transaction.
-- `includeLogs`: also return the logs emitted by the transaction.
-
-**Examples**
-
-- All transactions in a block.
-
-```ts
-const filter = {
-  transactions: [{}],
-};
-```
-
-- All transactions from `0xAB...`.
-
-```ts
-const filter = {
-  transactions: [
-    {
-      from: "0xAB...",
-    },
-  ],
-};
-```
-
-- All create transactions.
-
-```ts
-const filter = {
-  transactions: [
-    {
-      create: true,
-    },
-  ],
-};
-```
-
-## Withdrawals
-
-Request Ethereum withdrawals.
-
-```ts
-export type WithdrawalFilter = {
-  id?: number;
-  validatorIndex?: number;
-  address?: string;
-};
-```
-
-**Properties**
-
-- `validatorIndex`: filter by validator's index. If empty, matches any
-  validator's index.
-- `address`: filter by withdrawal address. If empty, matches any withdrawal
-  address.
-
-**Examples**
-
-- All withdrawals
-
-```ts
-const filter = {
-  withdrawals: [{}],
-};
-```
-
-- All withdrawals from validator with index `1234`.
-
-```ts
-const filter = {
-  withdrawals: [
-    {
-      validatorIndex: 1234,
-    },
-  ],
-};
-```
-
-- All withdrawals from validators with index `1234` OR `7890`.
-
-```ts
-const filter = {
-  withdrawals: [
-    {
-      validatorIndex: 1234,
-    },
-    {
-      validatorIndex: 7890,
-    },
-  ],
-};
-```
-
-- All withdrawals to address `0xAB...`.
-
-```ts
-const filter = {
-  withdrawals: [
-    {
-      address: "0xAB...",
-    },
-  ],
-};
-```
-
-
----
-title: EVM data reference
-description: "EVM: DNA data data reference guide."
-diataxis: reference
-updatedAt: 2024-10-22
----
-
-# EVM data reference
-
-This page contains reference about the available data in EVM DNA streams.
-
-### Related pages
-
-- [EVM data filter reference](/docs/networks/evm/filter)
-
-## Filter ID
-
-All filters have an associated ID. To help clients correlate filters with data,
-the filter ID is included in the `filterIds` field of all data objects.
-This field contains the list of _all filter IDs_ that matched a piece of data.
-
-## Nullable fields
-
-**Important**: most fields are nullable to allow evolving the protocol. You should
-always assert the presence of a field for critical indexers.
-
-## Scalar types
-
-The `@apibara/evm` package defines the following scalar types:
-
-- `Address`: a 20-byte Ethereum address, represented as a `0x${string}` type.
-- `B256`: a 32-byte Ethereum value, represented as a `0x${string}` type.
-- `Bytes`: arbitrary length bytes, represented as a `0x${string}` type.
-
-## Usage with viem
-
-Most types are compatible with [viem](https://viem.sh/).
-For example, you can decode logs with the following code:
-
-```ts
-import type { B256 } from "@apibara/evm";
-import { decodeEventLog, parseAbi } from "viem";
-
-const abi = parseAbi([
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-]);
-
-// Somewhere in your indexer...
-for (const log of logs) {
-  const { args, eventName } = decodeEventLog({
-    abi,
-    topics: log.topics as [B256, ...B256[]],
-    data: log.data,
-  });
-}
-```
-
-## Data type
-
-### Block
-
-The root object is the `Block`.
-
-```ts
-export type Block = {
-  header?: BlockHeader;
-  logs: Log[];
-  transactions: Transaction[];
-  receipts: TransactionReceipt[];
-  withdrawals: Withdrawal[];
-};
-```
-
-### Header
-
-This is the block header, which contains information about the block.
-
-```ts
-export type Bloom = Bytes;
-
-export type BlockHeader = {
-  blockNumber?: bigint;
-  blockHash?: B256;
-  parentBlockHash?: B256;
-  unclesHash?: B256;
-  miner?: Address;
-  stateRoot?: B256;
-  transactionsRoot?: B256;
-  receiptsRoot?: B256;
-  logsBloom?: Bloom;
-  difficulty?: bigint;
-  gasLimit?: bigint;
-  gasUsed?: bigint;
-  timestamp?: Date;
-  extraData?: Bytes;
-  mixHash?: B256;
-  nonce?: bigint;
-  baseFeePerGas?: bigint;
-  withdrawalsRoot?: B256;
-  totalDifficulty?: bigint;
-  blobGasUsed?: bigint;
-  excessBlobGas?: bigint;
-  parentBeaconBlockRoot?: B256;
-};
-```
-
-**Properties**
-
-- `blockNumber`: the block number.
-- `blockHash`: the block hash.
-- `parentBlockHash`: the block hash of the parent block.
-- `unclesHash`: the block hash of the uncles.
-- `miner`: the address of the miner.
-- `stateRoot`: the state root.
-- `transactionsRoot`: the transactions root.
-- `receiptsRoot`: the receipts root.
-- `logsBloom`: the logs bloom.
-- `difficulty`: the block difficulty.
-- `gasLimit`: the block gas limit.
-- `gasUsed`: the gas used by transactions in the block.
-- `timestamp`: the block timestamp.
-- `extraData`: extra bytes data picked by the miner.
-- `mixHash`: the mix hash.
-- `nonce`: the nonce.
-- `baseFeePerGas`: the base fee per gas.
-- `withdrawalsRoot`: the withdrawals root.
-- `totalDifficulty`: the total difficulty.
-- `blobGasUsed`: the gas used by transactions posting blob data in the block.
-- `excessBlobGas`: the excess blob gas.
-- `parentBeaconBlockRoot`: the parent beacon block root.
-
-### Log
-
-An EVM log. It comes together with the essential information about the transaction
-that emitted the log.
-
-```ts
-export type Log = {
-  filterIds: number[];
-  address?: Address;
-  topics: B256[];
-  data: Bytes;
-  logIndex: number;
-  transactionIndex: number;
-  transactionHash: B256;
-  transactionStatus: "succeeded" | "reverted";
-};
-```
-
-**Properties**
-
-- `address`: the address of the contract that emitted the log.
-- `topics`: the topics of the log.
-- `data`: the data of the log.
-- `logIndex`: the index of the log in the block.
-- `transactionIndex`: the index of the transaction that emitted the log.
-- `transactionHash`: the hash of the transaction that emitted the log.
-- `transactionStatus`: the status of the transaction that emitted the log.
-
-**Relevant filters**
-
-- `filter.logs`
-- `filter.logs[].includeSiblings`
-- `filter.transactions[].includeLogs`
-
-### Transaction
-
-An EVM transaction.
-
-```ts
-export type Transaction = {
-  filterIds: number[];
-  transactionIndex?: number;
-  transactionHash?: B256;
-  nonce?: bigint;
-  from?: Address;
-  to?: Address;
-  value?: bigint;
-  gasPrice?: bigint;
-  gas?: bigint;
-  maxFeePerGas?: bigint;
-  maxPriorityFeePerGas?: bigint;
-  input: Bytes;
-  signature?: Signature;
-  chainId?: bigint;
-  accessList: AccessListItem[];
-  transactionType?: bigint;
-  maxFeePerBlobGas?: bigint;
-  blobVersionedHashes?: B256[];
-  transactionStatus: "succeeded" | "reverted";
-};
-
-export type Signature = {
-  r?: bigint;
-  s?: bigint;
-  v?: bigint;
-  yParity: boolean;
-};
-
-export type AccessListItem = {
-  address?: Address;
-  storageKeys: B256[];
-};
-```
-
-**Properties**
-
-- `transactionIndex`: the index of the transaction in the block.
-- `transactionHash`: the hash of the transaction.
-- `nonce`: the nonce of the transaction.
-- `from`: the sender of the transaction.
-- `to`: the recipient of the transaction. Empty if it's a create transaction.
-- `value`: the value of the transaction, in wei.
-- `gasPrice`: the gas price of the transaction.
-- `gas`: the gas limit of the transaction.
-- `maxFeePerGas`: the max fee per gas of the transaction.
-- `maxPriorityFeePerGas`: the max priority fee per gas of the transaction.
-- `input`: the input data of the transaction.
-- `signature`: the signature of the transaction.
-- `chainId`: the chain ID of the transaction.
-- `accessList`: the access list of the transaction.
-- `transactionType`: the transaction type.
-- `maxFeePerBlobGas`: the max fee per blob gas of the transaction.
-- `blobVersionedHashes`: the hashes of blobs posted by the transaction.
-- `transactionStatus`: the status of the transaction.
-
-**Relevant filters**
-
-- `filter.transactions`
-- `filter.logs[].includeTransaction`
-
-### Transaction Receipt
-
-Information about the transaction's execution.
-
-```ts
-export type TransactionReceipt = {
-  filterIds: number[];
-  transactionIndex?: number;
-  transactionHash?: B256;
-  cumulativeGasUsed?: bigint;
-  gasUsed?: bigint;
-  effectiveGasPrice?: bigint;
-  from?: Address;
-  to?: Address;
-  contractAddress?: Address;
-  logsBloom?: Bloom;
-  transactionType?: bigint;
-  blobGasUsed?: bigint;
-  blobGasPrice?: bigint;
-  transactionStatus: "succeeded" | "reverted";
-};
-```
-
-**Properties**
-
-- `transactionIndex`: the transaction index in the block.
-- `transactionHash`: the hash of the transaction.
-- `cumulativeGasUsed`: the cumulative gas used by the transactions.
-- `gasUsed`: the gas used by the transaction.
-- `effectiveGasPrice`: the effective gas price of the transaction.
-- `from`: the sender of the transaction.
-- `to`: the recipient of the transaction. Empty if it's a create transaction.
-- `contractAddress`: the address of the contract created by the transaction.
-- `logsBloom`: the logs bloom of the transaction.
-- `transactionType`: the transaction type.
-- `blobGasUsed`: the gas used by the transaction posting blob data.
-- `blobGasPrice`: the gas price of the transaction posting blob data.
-- `transactionStatus`: the status of the transaction.
-
-**Relevant filters**
-
-- `filter.transactions[].includeReceipt`
-- `filter.logs[].includeReceipt`
-
-### Withdrawal
-
-A withdrawal from the Ethereum network.
-
-```ts
-export type Withdrawal = {
-  filterIds: number[];
-  withdrawalIndex?: number;
-  index?: bigint;
-  validatorIndex?: number;
-  address?: Address;
-  amount?: bigint;
-};
-```
-
-**Properties**
-
-- `withdrawalIndex`: the index of the withdrawal in the block.
-- `index`: the global index of the withdrawal.
-- `validatorIndex`: the index of the validator that created the withdrawal.
-- `address`: the destination address of the withdrawal.
-- `amount`: the amount of the withdrawal, in wei.
-
-**Relevant filters**
-
-- `filter.withdrawals`
 
 
 ---
