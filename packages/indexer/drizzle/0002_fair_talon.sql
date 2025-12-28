@@ -9,29 +9,29 @@ CREATE TABLE "market_scalar_root_updated" (
 	"new_value" numeric(78, 0) NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "factory_class_hashes_updated" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "factory_yield_contracts_created" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_burn" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_factory_class_hash_updated" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_factory_market_created" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_fees_collected" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_implied_rate_updated" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_mint" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_swap" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "router_add_liquidity" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "router_mint_py" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "router_redeem_py" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "router_remove_liquidity" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "router_swap" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "router_swap_yt" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "sy_deposit" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "sy_oracle_rate_updated" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "sy_redeem" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "yt_expiry_reached" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "yt_interest_claimed" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "yt_mint_py" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "yt_redeem_py" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "yt_redeem_py_post_expiry" ADD COLUMN "event_index" integer NOT NULL;--> statement-breakpoint
+ALTER TABLE "factory_class_hashes_updated" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "factory_yield_contracts_created" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_burn" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_factory_class_hash_updated" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_factory_market_created" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_fees_collected" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_implied_rate_updated" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_mint" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "market_swap" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "router_add_liquidity" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "router_mint_py" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "router_redeem_py" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "router_remove_liquidity" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "router_swap" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "router_swap_yt" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "sy_deposit" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "sy_oracle_rate_updated" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "sy_redeem" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "yt_expiry_reached" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "yt_interest_claimed" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "yt_mint_py" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "yt_redeem_py" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "yt_redeem_py_post_expiry" ADD COLUMN "event_index" integer NOT NULL DEFAULT 0;--> statement-breakpoint
 CREATE INDEX "market_sru_market_idx" ON "market_scalar_root_updated" USING btree ("market");--> statement-breakpoint
 CREATE INDEX "market_sru_timestamp_idx" ON "market_scalar_root_updated" USING btree ("block_timestamp");--> statement-breakpoint
 CREATE UNIQUE INDEX "market_sru_event_key" ON "market_scalar_root_updated" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
