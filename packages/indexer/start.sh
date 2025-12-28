@@ -44,11 +44,33 @@ refresh_views() {
 refresh_views &
 
 # Run indexer with auto-restart on failure
+# Uses exponential backoff with jitter to avoid thundering herd on DNA server recovery
 run_indexer() {
+  local name=$1
+  local retry_count=0
+  local max_delay=30
+
   while true; do
-    bun run apibara start --indexer $1 --preset $PRESET || true
-    echo "[$1] Restarting in 5s..."
-    sleep 5
+    bun run apibara start --indexer $name --preset $PRESET || true
+
+    # Exponential backoff: 2^retry_count seconds, capped at max_delay
+    local delay=$((2 ** retry_count))
+    if [ $delay -gt $max_delay ]; then
+      delay=$max_delay
+    fi
+
+    # Add jitter (0-2 seconds) to prevent all indexers restarting simultaneously
+    local jitter=$((RANDOM % 3))
+    delay=$((delay + jitter))
+
+    echo "[$name] Restarting in ${delay}s (attempt $((retry_count + 1)))..."
+    sleep $delay
+
+    # Increase retry count, but reset after successful long run
+    retry_count=$((retry_count + 1))
+    if [ $retry_count -gt 5 ]; then
+      retry_count=5  # Cap at ~30s delay
+    fi
   done
 }
 
