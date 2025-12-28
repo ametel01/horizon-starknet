@@ -722,7 +722,8 @@
     .tooltip-exit,
     .switch-thumb-animate,
     .progress-fill-animate,
-    .counter-increment {
+    .counter-increment,
+    .animate-progress-indeterminate {
       animation: none;
     }
 
@@ -925,6 +926,12 @@
   /* Progress bar fill animation */
   .progress-fill-animate {
     transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Indeterminate progress bar animation */
+  .animate-progress-indeterminate {
+    width: 30%;
+    animation: progress-indeterminate 1.5s ease-in-out infinite;
   }
 
   /* Counter increment animation */
@@ -1303,6 +1310,18 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(-100%);
   }
 }
 
