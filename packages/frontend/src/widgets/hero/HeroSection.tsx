@@ -41,8 +41,7 @@ export function HeroSection(): ReactNode {
         <h1
           className={cn(
             'font-display text-4xl font-normal tracking-tight sm:text-5xl md:text-6xl lg:text-7xl',
-            'translate-y-4 opacity-0',
-            mounted && 'animate-fade-up'
+            mounted ? 'animate-fade-up' : 'translate-y-4 opacity-0'
           )}
         >
           {isSimple ? 'Earn Fixed Yield' : 'Split Your Yield'}
@@ -52,8 +51,7 @@ export function HeroSection(): ReactNode {
         <p
           className={cn(
             'text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl',
-            'translate-y-4 opacity-0',
-            mounted && 'animate-fade-up'
+            mounted ? 'animate-fade-up' : 'translate-y-4 opacity-0'
           )}
           style={{ animationDelay: '100ms' }}
         >
@@ -66,8 +64,7 @@ export function HeroSection(): ReactNode {
         <div
           className={cn(
             'mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row',
-            'translate-y-4 opacity-0',
-            mounted && 'animate-fade-up'
+            mounted ? 'animate-fade-up' : 'translate-y-4 opacity-0'
           )}
           style={{ animationDelay: '200ms' }}
         >
@@ -94,8 +91,7 @@ export function HeroSection(): ReactNode {
         <div
           className={cn(
             'mt-16 flex flex-wrap justify-center gap-8 sm:gap-12',
-            'translate-y-4 opacity-0',
-            mounted && 'animate-fade-up'
+            mounted ? 'animate-fade-up' : 'translate-y-4 opacity-0'
           )}
           style={{ animationDelay: '300ms' }}
         >
