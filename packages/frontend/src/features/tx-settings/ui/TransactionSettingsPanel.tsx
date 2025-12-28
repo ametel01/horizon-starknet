@@ -9,6 +9,7 @@ import {
   DEFAULT_DEADLINE_MINUTES,
   DEFAULT_SLIPPAGE_BPS,
   formatSlippagePercent,
+  getSlippageLabel,
   MAX_DEADLINE_MINUTES,
   MAX_SLIPPAGE_BPS,
   MIN_DEADLINE_MINUTES,
@@ -146,7 +147,10 @@ export function TransactionSettingsPanel({
   if (compact) {
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Slippage: {(slippageBps / 100).toFixed(1)}%</span>
+        <span className="text-muted-foreground">
+          Slippage: {(slippageBps / 100).toFixed(1)}%{' '}
+          <span className="text-xs opacity-70">({getSlippageLabel(slippageBps)})</span>
+        </span>
         {shouldShowDeadline && (
           <span className="text-muted-foreground">Deadline: {deadlineMinutes}m</span>
         )}
@@ -166,7 +170,10 @@ export function TransactionSettingsPanel({
               Auto: {formatSlippagePercent(slippageBps)}
             </span>
           ) : !isSlippagePreset ? (
-            <span className="text-primary text-xs">Custom: {(slippageBps / 100).toFixed(2)}%</span>
+            <span className="text-primary text-xs">
+              Custom: {(slippageBps / 100).toFixed(2)}%{' '}
+              <span className="text-muted-foreground">({getSlippageLabel(slippageBps)})</span>
+            </span>
           ) : null}
         </div>
 
@@ -390,11 +397,14 @@ export function TransactionSettingsPanel({
  */
 export function TransactionSettingsDisplay(): ReactNode {
   const { isAdvanced } = useUIMode();
-  const { slippagePercent, deadlineMinutes } = useTransactionSettings();
+  const { slippageBps, slippagePercent, deadlineMinutes } = useTransactionSettings();
 
   return (
     <div className="text-muted-foreground flex items-center gap-3 text-sm">
-      <span>Slippage: {slippagePercent}</span>
+      <span>
+        Slippage: {slippagePercent}{' '}
+        <span className="text-xs opacity-70">({getSlippageLabel(slippageBps)})</span>
+      </span>
       {isAdvanced && <span>Deadline: {deadlineMinutes}m</span>}
     </div>
   );
