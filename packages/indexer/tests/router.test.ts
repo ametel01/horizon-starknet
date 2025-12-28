@@ -185,6 +185,140 @@ describe("Router Indexer", () => {
     });
   });
 
+  it("should transform RedeemPY event", () => {
+    const event = {
+      keys: [REDEEM_PY, "0xsender", "0xreceiver"],
+      data: [
+        "0xyt_address",
+        "0xde0b6b3a7640000", // py_in low (1e18)
+        "0x0", // py_in high
+        "0xde0b6b3a7640000", // sy_out low
+        "0x0", // sy_out high
+      ],
+      transactionHash: "0xredeem123",
+      blockNumber: 4643450,
+      blockTimestamp: "1234567850",
+    };
+
+    const result = transformRouterEvent(event);
+
+    expect(result).toEqual({
+      event_type: "RedeemPY",
+      block_number: 4643450,
+      block_timestamp: "1234567850",
+      transaction_hash: "0xredeem123",
+      sender: "0xsender",
+      receiver: "0xreceiver",
+      yt: "0xyt_address",
+      py_in: "1000000000000000000",
+      sy_out: "1000000000000000000",
+    });
+  });
+
+  it("should transform AddLiquidity event", () => {
+    const event = {
+      keys: [ADD_LIQUIDITY, "0xsender", "0xreceiver"],
+      data: [
+        "0xmarket_address",
+        "0xde0b6b3a7640000", // sy_used low (1e18)
+        "0x0", // sy_used high
+        "0xde0b6b3a7640000", // pt_used low
+        "0x0", // pt_used high
+        "0x1bc16d674ec80000", // lp_out low (2e18)
+        "0x0", // lp_out high
+      ],
+      transactionHash: "0xaddliq123",
+      blockNumber: 4643550,
+      blockTimestamp: "1234567950",
+    };
+
+    const result = transformRouterEvent(event);
+
+    expect(result).toEqual({
+      event_type: "AddLiquidity",
+      block_number: 4643550,
+      block_timestamp: "1234567950",
+      transaction_hash: "0xaddliq123",
+      sender: "0xsender",
+      receiver: "0xreceiver",
+      market: "0xmarket_address",
+      sy_used: "1000000000000000000",
+      pt_used: "1000000000000000000",
+      lp_out: "2000000000000000000",
+    });
+  });
+
+  it("should transform RemoveLiquidity event", () => {
+    const event = {
+      keys: [REMOVE_LIQUIDITY, "0xsender", "0xreceiver"],
+      data: [
+        "0xmarket_address",
+        "0x1bc16d674ec80000", // lp_in low (2e18)
+        "0x0", // lp_in high
+        "0xde0b6b3a7640000", // sy_out low
+        "0x0", // sy_out high
+        "0xde0b6b3a7640000", // pt_out low
+        "0x0", // pt_out high
+      ],
+      transactionHash: "0xremliq123",
+      blockNumber: 4643600,
+      blockTimestamp: "1234568000",
+    };
+
+    const result = transformRouterEvent(event);
+
+    expect(result).toEqual({
+      event_type: "RemoveLiquidity",
+      block_number: 4643600,
+      block_timestamp: "1234568000",
+      transaction_hash: "0xremliq123",
+      sender: "0xsender",
+      receiver: "0xreceiver",
+      market: "0xmarket_address",
+      lp_in: "2000000000000000000",
+      sy_out: "1000000000000000000",
+      pt_out: "1000000000000000000",
+    });
+  });
+
+  it("should transform SwapYT event", () => {
+    const event = {
+      keys: [SWAP_YT, "0xsender", "0xreceiver"],
+      data: [
+        "0xyt_address",
+        "0xmarket_address",
+        "0xde0b6b3a7640000", // sy_in low (1e18)
+        "0x0", // sy_in high
+        "0x0", // yt_in low
+        "0x0", // yt_in high
+        "0x0", // sy_out low
+        "0x0", // sy_out high
+        "0xde0b6b3a7640000", // yt_out low
+        "0x0", // yt_out high
+      ],
+      transactionHash: "0xswapyt123",
+      blockNumber: 4643650,
+      blockTimestamp: "1234568050",
+    };
+
+    const result = transformRouterEvent(event);
+
+    expect(result).toEqual({
+      event_type: "SwapYT",
+      block_number: 4643650,
+      block_timestamp: "1234568050",
+      transaction_hash: "0xswapyt123",
+      sender: "0xsender",
+      receiver: "0xreceiver",
+      yt: "0xyt_address",
+      market: "0xmarket_address",
+      sy_in: "1000000000000000000",
+      yt_in: "0",
+      sy_out: "0",
+      yt_out: "1000000000000000000",
+    });
+  });
+
   it("should return null for unknown events", () => {
     const event = {
       keys: ["0xunknown"],
