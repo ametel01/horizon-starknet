@@ -30,7 +30,7 @@ This plan addresses gaps between the specification (SPEC.md) and current impleme
 
 ### Implementation Steps
 
-#### Step 1.1: Create fuzz test infrastructure
+#### Step 1.1: Create fuzz test infrastructure **COMPLETE**
 **File**: `tests/fuzz/fuzz_market_math.cairo`
 
 ```cairo
@@ -48,7 +48,7 @@ This plan addresses gaps between the specification (SPEC.md) and current impleme
 - All tests pass without panics
 - Output values within expected bounds (no negative amounts, no amounts > input)
 
-#### Step 1.2: Add boundary condition tests
+#### Step 1.2: Add boundary condition tests **COMPLETE**
 **File**: `tests/test_market_math_fp.cairo` (add new tests)
 
 ```cairo
@@ -65,7 +65,7 @@ This plan addresses gaps between the specification (SPEC.md) and current impleme
 - Tests pass or fail with expected errors
 - No panics from math overflow/underflow
 
-#### Step 1.3: Add invariant tests
+#### Step 1.3: Add invariant tests **COMPLETE**
 **File**: `tests/test_market_invariants.cairo`
 
 ```cairo
@@ -94,54 +94,72 @@ This plan addresses gaps between the specification (SPEC.md) and current impleme
 
 ### Implementation Steps
 
-#### Step 2.1: Analyze attack vectors
+#### Step 2.1: Analyze attack vectors **COMPLETE**
 **Task**: Document all external calls in token contracts
 
-| Contract | Function | External Call | Attack Vector |
-|----------|----------|---------------|---------------|
-| SY | deposit | `transfer_from(caller, this)` | Callback on sender |
-| SY | redeem | `transfer(receiver)` | Callback on receiver |
-| YT | mint_py | `sy.transfer_from(caller, this)` | SY callback |
-| YT | redeem_py | `sy.transfer(receiver)` | SY callback |
-| YT | redeem_due_interest | `sy.transfer(user)` | SY callback |
-| YT | transfer/transfer_from | `_update_user_interest` first | State updated before call |
+| Contract | Function | External Call | Verdict |
+|----------|----------|---------------|---------|
+| SY | deposit | `underlying.transfer_from` | `LOW RISK` - CEI violation; relies on trusted underlying |
+| SY | redeem | `underlying.transfer` | `SAFE` - Burns before transfer |
+| PT | mint/burn | None | `SAFE` - No external calls |
+| YT | mint_py | `sy.transfer_from`, `pt.mint` | `SAFE` - State updated first |
+| YT | redeem_py | `pt.burn`, `sy.transfer` | `SAFE` - Burns before transfer |
+| YT | redeem_py_post_expiry | `pt.burn`, `sy.transfer` | `SAFE` - Burns before transfer |
+| YT | redeem_due_interest | `sy.transfer` | `SAFE` - Interest cleared first |
+| YT | transfer/transfer_from | None (oracle read only) | `SAFE` - Read-only external call |
 
-**Validation**: Document in SECURITY.md with verdict for each
+**Validation**: Documented in `SECURITY.md` ✓
 
-#### Step 2.2: Add reentrancy tests
+**Key Findings:**
+1. SY.deposit has CEI violation but practical exploit requires malicious underlying token
+2. YT operations follow CEI pattern correctly
+3. PT has no external calls in state-changing functions
+4. Router provides additional reentrancy protection for all user-facing operations
+
+#### Step 2.2: Add reentrancy tests **COMPLETE**
 **File**: `tests/test_reentrancy.cairo`
 
-```cairo
-// Deploy mock attacker contracts that:
-// 1. Re-enter during transfer callbacks
-// 2. Try to double-claim interest
-// 3. Try to manipulate py_index during operations
+Created comprehensive test suite with 16 tests:
+- `test_sy_deposit_normal_operation` - Basic deposit works
+- `test_sy_deposit_reentrancy_safe` - CEI violation is safe with trusted underlying
+- `test_sy_redeem_reentrancy_safe` - Burns before transfer (CEI pattern)
+- `test_sy_redeem_insufficient_balance` - Reverts on insufficient balance
+- `test_yt_mint_py_normal_operation` - Basic mint works
+- `test_yt_mint_py_reentrancy_protected` - ReentrancyGuard active
+- `test_yt_redeem_py_reentrancy_protected` - Burns before transfer
+- `test_yt_redeem_due_interest_reentrancy_protected` - Interest cleared before transfer
+- `test_yt_transfer_interest_update_order` - Interest snapshots before balance changes
+- `test_pt_mint_no_external_calls` - No reentrancy vectors
+- `test_pt_burn_no_external_calls` - No reentrancy vectors
+- `test_pt_transfer_no_external_calls` - Standard ERC20, no reentrancy
+- `test_sy_multiple_deposits_no_gaming` - Attack doesn't affect other users
+- `test_sy_deposit_zero_reverts` - Zero amount reverts
+- `test_sy_redeem_zero_reverts` - Zero amount reverts
+- `test_yt_mint_py_zero_reverts` - Zero amount reverts
 
-#[test] fn test_sy_deposit_reentrancy_safe() { ... }
-#[test] fn test_sy_redeem_reentrancy_safe() { ... }
-#[test] fn test_yt_mint_reentrancy_safe() { ... }
-#[test] fn test_yt_transfer_interest_update_order() { ... }
-```
+**Mock**: `src/mocks/mock_reentrant_token.cairo`
+- ERC20 token with attack modes
+- Attempts to call back during transfers
+- Tracks attack callback count
 
-**Validation**:
-- Reentrancy attempts revert or produce no extra benefit
-- State remains consistent after attack attempts
+**Validation**: All 16 tests pass ✓
 
-#### Step 2.3: Add ReentrancyGuard to YT contract (if needed)
+#### Step 2.3: Add ReentrancyGuard to YT contract **COMPLETE**
 **File**: `src/tokens/yt.cairo`
 
-If analysis shows vulnerability:
+Added `ReentrancyGuardComponent` for defense-in-depth (analysis showed no critical vulnerability, but added for future-proofing):
+
 ```cairo
 component!(path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
-fn mint_py(...) {
-    self.reentrancy_guard.start();
-    // ... existing logic ...
-    self.reentrancy_guard.end();
-}
+// Protected functions:
+// - mint_py
+// - redeem_py
+// - redeem_py_post_expiry
+// - redeem_due_interest
 ```
 
-**Validation**: Reentrancy tests pass, no regression in existing tests
+**Validation**: All 28 YT tests pass ✓, all 17 SY tests pass ✓
 
 ---
 
