@@ -26,7 +26,19 @@ bun run dev                   # Start dev server
 bun run dev:fork              # Dev with fork network (real Pragma oracle)
 bun run check                 # Run typecheck + lint + format:check
 bun run test                  # Run tests
+bun run test:e2e              # Run Playwright E2E tests
 bun run codegen               # Generate TypeScript types from ABIs
+```
+
+### Indexer (Bun/Apibara)
+```bash
+cd packages/indexer
+bun install                   # Install dependencies
+bun run dev                   # Run indexer with devnet preset
+bun run dev:mainnet           # Run with mainnet preset
+bun run check                 # Run typecheck + lint + format:check
+bun run test                  # Run tests
+bun run db:studio             # Open Drizzle Studio (database GUI)
 ```
 
 ### Local Development (Docker)
@@ -121,13 +133,16 @@ contracts/
 └── tests/                   # Unit & integration tests
 
 packages/
-└── frontend/                # Next.js dApp
+├── frontend/                # Next.js dApp (React 19, TypeScript, Bun)
+└── indexer/                 # Event indexer (Apibara, Drizzle ORM, PostgreSQL)
 
 deploy/
 ├── scripts/                 # deploy.sh, declare.sh, export-addresses.sh
 ├── addresses/               # Deployed contract addresses by network
 └── accounts/                # sncast account files
 ```
+
+Each subdirectory (contracts/, packages/frontend/, packages/indexer/, deploy/) has its own CLAUDE.md with component-specific guidance.
 
 ## Deployment
 
