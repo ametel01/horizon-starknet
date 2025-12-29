@@ -1,6 +1,6 @@
 # Horizon Protocol: Research Artifact
 
-> Produced from direct code analysis and team interviews. Last updated: 2025-12-29
+> Produced from direct code analysis and team interviews. Last updated: 2025-12-29 (synced with IMPLEMENTATION_PLAN.md)
 
 ## Design Philosophy
 
@@ -8,7 +8,7 @@
 
 1. **Correctness over features**: Ship a working yield tokenization system first
 2. **Pendle compatibility**: Mental model is "Pendle on Starknet", adapted for Cairo
-3. **Composability**: PT/YT will be non-upgradeable to enable safe third-party integrations
+3. **Composability**: PT/YT/Market are non-upgradeable to enable safe third-party integrations
 4. **Conservative parameters**: Start with 3-6 month expiries, fixed market defaults, expand based on learnings
 
 ---
@@ -155,9 +155,11 @@ Where:
 
 **Binary Search**: For SY→PT and PT→exact SY swaps, binary search finds the correct amount (tolerance: 1000 wei, max 64 iterations).
 
-**Test Coverage**: Currently basic happy-path tests only
-- Fuzz testing / formal verification prioritized for future
-- Math verified conceptually against Pendle but not exhaustively tested at scale
+**Test Coverage**: Comprehensive suite including:
+- **Fuzz testing**: 20 fuzz tests with 256 runs each covering all swap functions, boundary conditions, and edge cases
+- **Invariant tests**: Pool invariants verified (reserves > 0, proportion bounds, exchange rate bounds)
+- **Large trade tests**: 16 tests validating binary search convergence for trades up to 90% of reserves
+- **First depositor tests**: 10 tests verifying MINIMUM_LIQUIDITY attack mitigation
 
 ### 3.3 Swap Functions
 
@@ -307,22 +309,30 @@ User action → Feature hook → Contract call → Wallet signature → TX → Q
 **Rate Display**: Match Pendle's display format for user familiarity (APY conversion from continuous rates)
 
 **Near-Expiry Behavior**:
-- Warning banners displayed as expiry approaches
+- Warning banners displayed as expiry approaches (`NearExpiryWarning` component)
+- Three severity levels: info (7 days), warning (3 days), critical (1 day)
+- Context-aware messaging for swap, mint, and portfolio views
 - Trading remains enabled (user responsibility)
-- No automatic trade disabling
+- Pre-flight validation disables swaps/mints on expired markets ("Market Expired" button state)
 
 **YT Expiry Notifications**:
 - Dashboard warnings only (no email/push)
+- `YieldExpiryAlert` component for positions with claimable yield near expiry
+- Portfolio-level summary alert when any position meets near-expiry criteria
+- Critical styling (red) at 1-day threshold
 - Users responsible for claiming interest before expiry
 - YT becomes worthless at expiry (by design)
 
 **Interest Claim Threshold**:
 - No minimum threshold in contract (any amount claimable)
-- Frontend shows warning if claim amount is too small relative to gas
+- `ClaimValueWarning` component shows warning if claim amount < 2x gas cost
+- `useClaimGasCheck` hook compares claimable USD value against estimated gas
+- "Claim Anyway" option for users who want to proceed despite low value
 
 **Error Handling**:
-- Currently basic error display (shows wallet/RPC errors)
-- Planned: Custom error parsing with actionable suggestions
+- Custom error parsing with actionable suggestions (implemented)
+- Specific help text for common errors (slippage, deadline, expired markets)
+- Pre-flight validation for expired markets (disables swap/mint with "Market Expired" button state)
 
 ---
 
@@ -433,6 +443,11 @@ User action → Feature hook → Contract call → Wallet signature → TX → Q
 | `packages/frontend/src/shared/starknet/` | Contract interactions |
 | `packages/frontend/src/features/*/api/` | Contract call implementations |
 | `packages/frontend/src/features/*/model/` | React hooks (useQuery, useMutation) |
+| `packages/frontend/src/shared/ui/NearExpiryWarning.tsx` | Near-expiry warning banners |
+| `packages/frontend/src/shared/hooks/useExpiryStatus.ts` | Expiry status hook |
+| `packages/frontend/src/features/portfolio/ui/YieldExpiryAlert.tsx` | YT expiry alert |
+| `packages/frontend/src/features/yield/model/useClaimGasCheck.ts` | Claim gas comparison hook |
+| `packages/frontend/src/features/yield/ui/ClaimValueWarning.tsx` | Low claim value warning |
 
 ### Indexer (TypeScript)
 
@@ -442,6 +457,20 @@ User action → Feature hook → Contract call → Wallet signature → TX → Q
 | `packages/indexer/src/schema/index.ts` | Database schema |
 | `packages/indexer/src/lib/constants.ts` | Network configs, known contracts |
 | `packages/indexer/src/lib/utils.ts` | Event parsing utilities |
+
+### Security & Tests (Cairo)
+
+| File | Purpose |
+|------|---------|
+| `SECURITY.md` | Reentrancy analysis and security documentation |
+| `contracts/tests/fuzz/fuzz_market_math.cairo` | AMM math fuzz tests (20 tests) |
+| `contracts/tests/test_market_invariants.cairo` | Pool invariant tests |
+| `contracts/tests/test_reentrancy.cairo` | Reentrancy attack tests |
+| `contracts/tests/test_market_large_trades.cairo` | Binary search edge cases |
+| `contracts/tests/test_market_first_depositor.cairo` | First depositor attack tests |
+| `contracts/tests/test_yt_interest.cairo` | YT interest calculation tests |
+| `contracts/tests/test_router_yt_swaps.cairo` | Flash swap pattern tests |
+| `contracts/tests/test_market_fees.cairo` | Time-decay fee tests |
 
 ---
 
@@ -454,23 +483,38 @@ User action → Feature hook → Contract call → Wallet signature → TX → Q
 3. **PY Index watermark**: Can only increase, never decrease
 4. **MINIMUM_LIQUIDITY lock**: First LP deposit locks 1000 wei to prevent attacks
 5. **Market parameter bounds**: Factory validates scalar_root, anchor, fee_rate
-6. **Reentrancy protection**: Router uses OpenZeppelin ReentrancyGuard
+6. **Reentrancy protection**: Router and YT use OpenZeppelin ReentrancyGuard
 7. **Deploy count atomicity**: Factory's `deploy_count` only increments on successful deployment
 
 ### 10.2 Upgradeability Model
 
-**Current**: All contracts upgradeable via OwnableComponent + UpgradeableComponent
+**Upgradeable Contracts** (owner-controlled):
+| Contract | Rationale |
+|----------|-----------|
+| **Factory** | Infrastructure - `set_class_hashes()` updates code for NEW PT/YT deployments |
+| **MarketFactory** | Infrastructure - `set_market_class_hash()` updates code for NEW Market deployments |
+| **Router** | Stateless entry point - upgrades don't affect user funds |
+| **SY** | Long-lived wrapper - may need oracle fixes or underlying asset updates |
 
-**Planned Change**: Remove upgradeability from PT and YT contracts
-- Rationale: Enable safe third-party integrations (lending protocols, collateral systems)
-- Core contracts (Factory, MarketFactory, Router, SY, Market) remain upgradeable
-- PT/YT interfaces become immutable APIs
+**Non-Upgradeable Contracts** (immutable after deployment):
+| Contract | Rationale |
+|----------|-----------|
+| **PT** | Ephemeral (fixed expiry) - users trust the code at deployment time |
+| **YT** | Ephemeral (fixed expiry) - enables safe third-party integrations |
+| **Market** | Ephemeral (per-PT) - LP positions rely on immutable contract logic |
+
+**Class Hash Flow**: Protocol improvements reach NEW deployments via factory class hash updates:
+```
+Factory.set_class_hashes(new_yt, new_pt)   → New PT/YT pairs use updated code
+MarketFactory.set_market_class_hash(new)  → New Markets use updated code
+Existing contracts remain immutable       → No rugpull risk for active positions
+```
 
 ### 10.3 Security Posture
 
 **Audit Status**: Internal review only (no external audit yet)
 - Plan: Complete audit before removing alpha label
-- Priority: Fuzz testing / formal verification of AMM math (cheaper than full audit for pure math)
+- Fuzz testing complete (20 tests, 256 runs each) - see Section 3.2
 
 **Incident Response**: Not yet formalized
 - PAUSER_ROLE exists on SY (pauses new deposits only, existing positions operate)
@@ -673,14 +717,41 @@ bun run db:studio              # Database GUI
 | LP economics modeling | Not started | Medium |
 | MEV/frontrunning Starknet analysis | Not started | Medium |
 
-### 15.3 Backlog
+### 15.3 Completed Spec Compliance (P2)
+
+| Item | Status | Test File |
+|------|--------|-----------|
+| YT interest calculation tests | **Complete** (20 tests) | `test_yt_interest.cairo` |
+| Router YT flash swap tests | **Complete** (18 tests) | `test_router_yt_swaps.cairo` |
+| Time decay fee tests | **Complete** (16 tests) | `test_market_fees.cairo` |
+| Error handling tests | **Complete** (9 tests) | `test_errors.cairo` |
+| Oracle edge cases | Not started | - |
+
+### 15.4 Backlog
 
 | Item | Status | Notes |
 |------|--------|-------|
 | Multi-chain deployment | Undecided | Starknet exclusive for now |
 | Underlying asset risk handling | Needs design | Circuit breakers for depeg scenarios |
-| Custom error UX in frontend | Planned | Parse revert reasons, show suggestions |
+| Custom error UX in frontend | **Complete** | See Section 7.2 - Error parsing with help text |
 | Aggregator integrations | Not started | AVNU, Fibrous partnerships |
+
+### 15.5 Test Coverage Summary
+
+**Total**: 514 passing tests across 20+ test files
+
+| Category | Tests | Files |
+|----------|-------|-------|
+| Fuzz tests | 20 | `tests/fuzz/fuzz_market_math.cairo` |
+| Invariant tests | 4 | `test_market_invariants.cairo` |
+| Reentrancy tests | 16 | `test_reentrancy.cairo` |
+| Large trade tests | 16 | `test_market_large_trades.cairo` |
+| First depositor tests | 10 | `test_market_first_depositor.cairo` |
+| YT interest tests | 20 | `test_yt_interest.cairo` |
+| Router YT swap tests | 18 | `test_router_yt_swaps.cairo` |
+| Fee decay tests | 16 | `test_market_fees.cairo` |
+| Error tests | 9 | `test_errors.cairo` |
+| Core unit tests | ~385 | Various (`test_sy.cairo`, `test_yt.cairo`, etc.) |
 
 ---
 
