@@ -72,14 +72,24 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
 }
 
 /**
- * Calculate PT fixed APY from ln(implied_rate)
+ * Converts ln(implied_rate) to APY percentage.
+ *
+ * Formula: APY = e^(ln_rate) - 1
+ *
+ * This matches Pendle's display format for user familiarity.
  *
  * The on-chain lnImpliedRate is ALREADY annualized:
  * lnImpliedRate = ln(exchangeRate) * SECONDS_PER_YEAR / timeToExpiry
  *
- * Therefore: APY = e^(ln_implied_rate) - 1 (no additional annualization needed)
+ * Therefore no additional annualization is needed.
  *
- * @param lnImpliedRate The ln of implied rate in WAD (already annualized)
+ * @example
+ * // ln_rate of 0.05 WAD → APY of ~5.127% (not exactly 5%)
+ * // The difference from simple percentage is due to continuous compounding.
+ * calculatePtFixedApy(50000000000000000n) // 0.05 WAD → 0.05127...
+ *
+ * @param lnImpliedRate The ln of implied rate in WAD (10^18 fixed-point, already annualized)
+ * @returns APY as a decimal (0.05 = 5%)
  */
 export function calculatePtFixedApy(lnImpliedRate: bigint): number {
   if (lnImpliedRate === 0n) {
@@ -205,20 +215,59 @@ function calculateYtMetrics(
 }
 
 /**
- * Format APY as percentage string
+ * Format APY as percentage string.
+ *
+ * This matches Pendle's display format for user familiarity:
+ * - 2 decimal places by default
+ * - Color coding handled by getApyColorClass()
+ * - Very small values shown as "< 0.01%"
+ * - Very large values shown as "> 1000%"
+ * - Negative values preserved for YT loss scenarios
+ *
+ * @example
+ * formatApyPercent(0.05127)  // "5.13%"
+ * formatApyPercent(-0.05)    // "-5.00%"
+ * formatApyPercent(0.00001)  // "< 0.01%"
+ * formatApyPercent(15.5)     // "> 1000%"
+ *
+ * @param apy APY as decimal (0.05 = 5%)
+ * @param decimals Number of decimal places (default: 2)
+ * @returns Formatted percentage string
  */
 export function formatApyPercent(apy: number, decimals = 2): string {
+  // Handle non-finite values
+  if (!Number.isFinite(apy)) {
+    return '-.--%-';
+  }
+
   const percent = apy * 100;
 
+  // Handle very small values
   if (Math.abs(percent) < 0.01 && percent !== 0) {
     return percent > 0 ? '< 0.01%' : '> -0.01%';
+  }
+
+  // Handle very large values (>1000% APY is unrealistic for display)
+  if (percent > 1000) {
+    return '> 1000%';
+  }
+  if (percent < -1000) {
+    return '< -1000%';
   }
 
   return `${percent.toFixed(decimals)}%`;
 }
 
 /**
- * Get APY display color class based on value
+ * Get APY display color class based on value.
+ *
+ * This matches Pendle's color conventions:
+ * - Positive APY: Green (text-primary)
+ * - Negative APY: Red (text-destructive) - common for YT in loss scenarios
+ * - Zero APY: Neutral (text-foreground)
+ *
+ * @param apy APY as decimal (0.05 = 5%)
+ * @returns Tailwind CSS color class
  */
 export function getApyColorClass(apy: number): string {
   if (apy > 0) {
