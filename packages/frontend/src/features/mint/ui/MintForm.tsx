@@ -113,17 +113,23 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
     reset();
   }, [reset]);
 
-  // Button state
+  // Button state (Gap 4: Pre-flight validation for expired markets)
   const buttonDisabled =
-    !isConnected || !amountSy || amountSy === '0' || !!validationError || isLoading;
+    !isConnected ||
+    !amountSy ||
+    amountSy === '0' ||
+    !!validationError ||
+    isLoading ||
+    market.isExpired;
 
   const buttonText = useMemo(() => {
     if (!isConnected) return 'Connect Wallet';
+    if (market.isExpired) return 'Market Expired'; // Gap 4: Pre-flight validation
     if (isLoading) return 'Minting...';
     if (validationError) return validationError;
     if (!amountSy || amountSy === '0') return 'Enter Amount';
     return 'Mint PT + YT';
-  }, [isConnected, isLoading, validationError, amountSy]);
+  }, [isConnected, market.isExpired, isLoading, validationError, amountSy]);
 
   // Transaction steps for StepProgress
   const transactionSteps: Step[] = useMemo(() => {

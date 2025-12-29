@@ -360,6 +360,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
     !hasInsufficientCollateral &&
     !isSwapping &&
     !isSuccess &&
+    !market.isExpired && // Gap 4: Pre-flight validation for expired markets
     priceImpactWarning.canProceed;
 
   // Determine transaction status
@@ -755,17 +756,20 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
             ? 'Swapping...'
             : !isConnected
               ? 'Connect Wallet'
-              : !isValidAmount
-                ? 'Enter Amount'
-                : hasInsufficientBalance
-                  ? 'Insufficient Balance'
-                  : hasInsufficientCollateral
-                    ? 'Insufficient Collateral'
-                    : priceImpactWarning.requiresAcknowledgment && !priceImpactWarning.acknowledged
-                      ? 'Acknowledge Price Impact'
-                      : isSuccess
-                        ? 'Swapped!'
-                        : `${isBuying ? 'Buy' : 'Sell'} ${tokenType}`}
+              : market.isExpired
+                ? 'Market Expired'
+                : !isValidAmount
+                  ? 'Enter Amount'
+                  : hasInsufficientBalance
+                    ? 'Insufficient Balance'
+                    : hasInsufficientCollateral
+                      ? 'Insufficient Collateral'
+                      : priceImpactWarning.requiresAcknowledgment &&
+                          !priceImpactWarning.acknowledged
+                        ? 'Acknowledge Price Impact'
+                        : isSuccess
+                          ? 'Swapped!'
+                          : `${isBuying ? 'Buy' : 'Sell'} ${tokenType}`}
         </Button>
       </FormActions>
     </FormLayout>
