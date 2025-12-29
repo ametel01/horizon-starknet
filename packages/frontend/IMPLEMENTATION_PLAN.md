@@ -20,7 +20,7 @@ This plan addresses **5 specific gaps** between the SPEC.md requirements and the
 
 ### Implementation Steps
 
-#### Step 1.1: Create NearExpiryWarning Component
+#### Step 1.1: Create NearExpiryWarning Component **COMPLETE**
 **File**: `src/shared/ui/NearExpiryWarning.tsx` (new)
 
 ```typescript
@@ -49,7 +49,7 @@ interface NearExpiryWarningProps {
 - Missing threshold prop silently uses defaults
 - Expired positions handled by `isExpired()` check before rendering warning
 
-#### Step 1.2: Create useExpiryStatus Hook
+#### Step 1.2: Create useExpiryStatus Hook **COMPLETE**
 **File**: `src/shared/hooks/useExpiryStatus.ts` (new)
 
 ```typescript
@@ -70,7 +70,7 @@ export function useExpiryStatus(expiryTimestamp: number): {
 1. Test: Returns correct severity at threshold boundaries
 2. Test: Handles edge case of expiry at midnight
 
-#### Step 1.3: Integrate into SwapForm
+#### Step 1.3: Integrate into SwapForm **COMPLETE**
 **File**: `src/features/swap/ui/SwapForm.tsx` (line ~509, after toggle groups)
 
 **Change**:
@@ -85,7 +85,7 @@ export function useExpiryStatus(expiryTimestamp: number): {
 1. E2E test: Warning appears when market is 3 days from expiry
 2. Manual: Verify warning doesn't block swap action
 
-#### Step 1.4: Integrate into MintForm
+#### Step 1.4: Integrate into MintForm **COMPLETE**
 **File**: `src/features/mint/ui/MintForm.tsx` (line ~155, after FormHeader)
 
 **Change**:
@@ -112,7 +112,7 @@ export function useExpiryStatus(expiryTimestamp: number): {
 
 ### Implementation Steps
 
-#### Step 2.1: Create YieldExpiryAlert Component
+#### Step 2.1: Create YieldExpiryAlert Component **COMPLETE**
 **File**: `src/features/portfolio/ui/YieldExpiryAlert.tsx` (new)
 
 ```typescript
@@ -137,7 +137,7 @@ interface YieldExpiryAlertProps {
 2. Test: Critical styling at 1 day threshold
 3. E2E: Click "Claim Now" triggers claim flow
 
-#### Step 2.2: Integrate into SimplePositionCard
+#### Step 2.2: Integrate into SimplePositionCard **COMPLETE**
 **File**: `src/widgets/portfolio/SimplePortfolio.tsx` (line ~259, before claimable yield section)
 
 **Current code at line 259**:
@@ -177,7 +177,7 @@ interface YieldExpiryAlertProps {
 2. E2E: Position with 10 days to expiry shows standard card
 3. Test: Alert has correct ARIA attributes
 
-#### Step 2.3: Add Portfolio-Level Summary Alert
+#### Step 2.3: Add Portfolio-Level Summary Alert **COMPLETE**
 **File**: `src/widgets/portfolio/SimplePortfolio.tsx` (line ~123, before positions list)
 
 **Change**: Add summary alert above position list if any position is near expiry:
@@ -217,7 +217,7 @@ interface YieldExpiryAlertProps {
 
 ### Implementation Steps
 
-#### Step 3.1: Create useClaimGasCheck Hook
+#### Step 3.1: Create useClaimGasCheck Hook **COMPLETE**
 **File**: `src/features/yield/model/useClaimGasCheck.ts` (new)
 
 ```typescript
@@ -252,7 +252,7 @@ export function useClaimGasCheck(
 2. Test: Handles loading state correctly
 3. Test: Edge case: Zero claimable returns `isWorthClaiming: false`
 
-#### Step 3.2: Create ClaimValueWarning Component
+#### Step 3.2: Create ClaimValueWarning Component **COMPLETE**
 **File**: `src/features/yield/ui/ClaimValueWarning.tsx` (new)
 
 ```typescript
@@ -274,7 +274,7 @@ interface ClaimValueWarningProps {
 2. Test: Hidden when ratio >= 2
 3. E2E: "Claim Anyway" button works
 
-#### Step 3.3: Integrate into SimplePositionCard
+#### Step 3.3: Integrate into SimplePositionCard **COMPLETE**
 **File**: `src/widgets/portfolio/SimplePortfolio.tsx` (line ~268, inside claimable yield section)
 
 **Change**:
@@ -324,7 +324,7 @@ interface ClaimValueWarningProps {
 
 ### Implementation Steps
 
-#### Step 4.1: Audit Existing Error Integration
+#### Step 4.1: Audit Existing Error Integration **COMPLETE**
 **Files to check**:
 - `src/widgets/display/TxStatus.tsx` - How errors are displayed
 - `src/features/swap/ui/SwapForm.tsx:729` - Error passed to TxStatus
@@ -337,7 +337,7 @@ interface ClaimValueWarningProps {
 
 **Issue**: `error` is raw `Error | null`, not parsed with `parseContractError()`
 
-#### Step 4.2: Enhance TxStatus Component
+#### Step 4.2: Enhance TxStatus Component **COMPLETE**
 **File**: `src/widgets/display/TxStatus.tsx`
 
 **Change**: Parse errors and display actionable suggestions
@@ -372,7 +372,7 @@ const helpText = parsedError ? getErrorHelpText(parsedError) : null;
 2. Test: "HZN: deadline passed" shows appropriate message
 3. E2E: Slippage action button opens settings panel
 
-#### Step 4.3: Add Pre-flight Validation for Expired Markets
+#### Step 4.3: Add Pre-flight Validation for Expired Markets **COMPLETE**
 **File**: `src/features/swap/ui/SwapForm.tsx`
 
 **Current**: No check for `market.isExpired` before swap
@@ -401,7 +401,7 @@ const canSwap =
 2. E2E: Button is disabled for expired markets
 3. Test: `canSwap` returns false when `market.isExpired`
 
-#### Step 4.4: Add Pre-flight Validation for MintForm
+#### Step 4.4: Add Pre-flight Validation for MintForm **COMPLETE**
 **File**: `src/features/mint/ui/MintForm.tsx`
 
 **Change** (around line 116):
@@ -438,7 +438,7 @@ if (market.isExpired) return 'Market Expired';
 
 ### Implementation Steps
 
-#### Step 5.1: Verify Formula Accuracy
+#### Step 5.1: Verify Formula Accuracy **COMPLETE**
 **File**: `src/shared/math/apy-breakdown.ts:47`
 
 **Current**:
@@ -457,7 +457,7 @@ export function calculatePtFixedApy(lnImpliedRate: bigint): number {
 1. Unit test: `calculatePtFixedApy(0.05 WAD)` returns ~5.127% (not 5%)
 2. Cross-check with Pendle UI for same ln_implied_rate
 
-#### Step 5.2: Standardize Display Format
+#### Step 5.2: Standardize Display Format **COMPLETE**
 **File**: `src/shared/math/apy-breakdown.ts:54`
 
 **Current**:

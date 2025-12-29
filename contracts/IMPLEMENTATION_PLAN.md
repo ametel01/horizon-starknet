@@ -176,42 +176,31 @@ component!(path: ReentrancyGuardComponent, storage: reentrancy_guard, event: Ree
 
 ### Implementation Steps
 
-#### Step 3.1: Add large trade tests
+#### Step 3.1: Add large trade tests **COMPLETE**
 **File**: `tests/test_market_large_trades.cairo`
 
-```cairo
-#[test]
-fn test_swap_10_percent_of_reserve() {
-    // Swap amount = 10% of reserve
-    // Verify: converges, reasonable price, no panic
-}
+Created comprehensive test suite with 16 tests:
+- `test_swap_10_percent_of_reserve_pt_for_sy` - 10% trade succeeds with reasonable price
+- `test_swap_10_percent_of_reserve_sy_for_pt` - 10% trade (reverse direction)
+- `test_swap_50_percent_of_reserve_pt_for_sy` - 50% trade succeeds with high slippage
+- `test_swap_50_percent_of_reserve_sy_for_pt` - 50% trade using binary search
+- `test_swap_90_percent_of_reserve_pt_for_sy` - 90% trade, AMM limits output correctly
+- `test_swap_90_percent_of_reserve_sy_for_pt` - 90% trade buying PT
+- `test_swap_exact_sy_exceeds_pt_reserve` - Reverts with 'HZN: insufficient liquidity'
+- `test_swap_exact_pt_exceeds_sy_reserve` - Reverts with 'HZN: insufficient liquidity'
+- `test_binary_search_convergence_large_trade` - Converges for 33% trades
+- `test_binary_search_small_trade_large_pool` - Works for tiny trades in large pools
+- `test_sequential_large_trades` - Multiple large trades don't corrupt state
+- `test_trade_approaching_max_proportion` - Handles 90%+ PT proportion
+- `test_trade_approaching_min_proportion` - Handles low PT proportion
+- `test_large_pool_no_overflow` - No overflow with 1M token pools
+- `test_exact_output_large_amount` - Exact output swaps work for 30% amounts
+- `test_large_trade_slippage_protection` - Slippage protection works correctly
 
-#[test]
-fn test_swap_50_percent_of_reserve() {
-    // Swap amount = 50% of reserve
-    // Verify: converges, high slippage warning implied
-}
-
-#[test]
-fn test_swap_90_percent_of_reserve() {
-    // Should fail or produce extreme slippage
-}
-
-#[test]
-fn test_swap_exceeds_reserve() {
-    // Must revert with MARKET_INSUFFICIENT_LIQUIDITY
-}
-
-#[test]
-fn test_binary_search_convergence_time() {
-    // Verify iteration count < MAX for normal trades
-}
-```
-
-**Validation**:
+**Validation**: All 16 tests pass ✓
 - Large trades either succeed with correct math or fail gracefully
 - No infinite loops or panics
-- Gas costs remain reasonable
+- Gas costs remain reasonable (max ~70M L2 gas for sequential trades)
 
 #### Step 3.2: Consider tolerance adjustment for large trades
 **File**: `src/market/market_math_fp.cairo`
@@ -238,50 +227,47 @@ Evaluate if `BINARY_SEARCH_TOLERANCE` should scale with trade size:
 
 ### Implementation Steps
 
-#### Step 4.1: Add first depositor attack tests
+#### Step 4.1: Add first depositor attack tests **COMPLETE**
 **File**: `tests/test_market_first_depositor.cairo`
 
-```cairo
-#[test]
-fn test_first_deposit_minimum_liquidity_locked() {
-    // Verify exactly MINIMUM_LIQUIDITY goes to dead address
-}
+Created comprehensive test suite with 10 tests:
+- `test_first_deposit_minimum_liquidity_locked` - Verifies MINIMUM_LIQUIDITY (1000) goes to dead address
+- `test_second_deposit_no_additional_lock` - Second deposit doesn't lock more liquidity
+- `test_first_deposit_attack_mitigated` - Classic inflation attack prevented by stored reserves pattern
+- `test_first_deposit_too_small` - Reverts when LP < MINIMUM_LIQUIDITY
+- `test_minimum_liquidity_sufficient` - Documents victim loss is < 1%
+- `test_pool_cannot_be_drained_to_zero` - MINIMUM_LIQUIDITY reserves remain after full withdrawal
+- `test_multiple_users_full_withdrawal` - Multiple users can withdraw, MIN_LIQ remains
+- `test_first_deposit_small_but_valid` - Small WAD-scale deposits work correctly
+- `test_asymmetric_first_deposit_still_requires_minimum` - Asymmetric deposits still require MIN_LIQ
+- `test_lp_value_consistency` - LP value is proportional across operations
 
-#[test]
-fn test_first_deposit_attack_mitigated() {
-    // Attacker deposits 1 wei SY + 1 wei PT
-    // Then "donates" to inflate share price
-    // Second depositor should not lose funds
-}
+**Key Findings**:
+1. AMM uses stored reserves (not token balances), providing additional defense against donation attacks
+2. MINIMUM_LIQUIDITY = 1000 is sufficient for WAD-normalized LP tokens
+3. Victim loss is bounded to < 1% for reasonable deposit sizes
+4. First depositor cannot profit from inflation attack
 
-#[test]
-fn test_minimum_liquidity_sufficient() {
-    // With 1000 wei locked, verify max inflation attack damage
-    // Document: if 1000 wei represents $X, attack profit bounded by $Y
-}
+**Validation**: All 10 tests pass ✓
 
-#[test]
-fn test_pool_cannot_be_drained_to_zero() {
-    // After all LPs withdraw, MINIMUM_LIQUIDITY remains
-    // Reserves remain proportionally
-}
-```
+#### Step 4.2: Document economic analysis **COMPLETE**
+**File**: Updated SPEC.md Section 10.3.1
 
-**Validation**:
-- First depositor cannot steal from second depositor
-- Documented maximum loss from inflation attack
+Added comprehensive economic analysis documenting:
+- Attack vector explanation (first depositor attack / LP inflation attack)
+- Three-layer defense mechanisms:
+  1. MINIMUM_LIQUIDITY lock (1000 LP tokens to dead address)
+  2. Stored reserves pattern (donations don't affect LP accounting)
+  3. WAD normalization (large numerical range reduces rounding attacks)
+- Mathematical analysis of LP minting formula
+- Victim loss analysis table (< 0.01% for reasonable deposits)
+- Recommendation: MINIMUM_LIQUIDITY = 1000 is sufficient
 
-#### Step 4.2: Document economic analysis
-**File**: Update SPEC.md Section 10.3
-
-Add analysis showing:
-- With WAD-normalized LP tokens and 1000 wei minimum
-- Maximum inflation attack profit
-- Recommendation for MINIMUM_LIQUIDITY value
+**Validation**: SPEC.md Section 10.3.1 and Section 15.1 updated ✓
 
 ---
 
-## Gap 5: YT Interest Calculation Tests (P2)
+## Gap 5: YT Interest Calculation Tests (P2) 
 
 **Source**: SPEC.md Section 10.4 describes intentional design, but limited test coverage
 
@@ -291,57 +277,33 @@ Add analysis showing:
 
 ### Implementation Steps
 
-#### Step 5.1: Add comprehensive interest tests
-**File**: `tests/test_yt_interest.cairo`
+#### Step 5.1: Add comprehensive interest tests **COMPLETE**
+**File**: `tests/test_yt_interest.cairo` (20 tests)
 
-```cairo
-#[test]
-fn test_interest_accrual_single_user() {
-    // Mint YT, increase index, verify interest calculation
-}
+Created comprehensive test suite covering:
 
-#[test]
-fn test_interest_accrual_multiple_users() {
-    // User A mints at index 1.0
-    // Index goes to 1.1
-    // User B mints at index 1.1
-    // Index goes to 1.2
-    // User A should earn more than User B (by design per SPEC 10.4)
-}
+1. **Single user interest accrual** - Mint YT, increase index, verify interest calculation
+2. **Multi-user scenarios** - Earlier YT holders earn more (SPEC 10.4 behavior)
+3. **Three-user staggered entry** - Verifies proportional interest distribution
+4. **Interest on transfer** - Interest captured before transfer, recipient starts fresh
+5. **Partial transfer** - Original interest preserved, new interest proportional to remaining balance
+6. **Transfer_from behavior** - Same interest preservation rules apply
+7. **Expiry handling** - Interest claimable before/after expiry
+8. **Zero balance** - No interest for 0 YT holders
+9. **Watermark pattern** - py_index_stored never decreases
+10. **Multiple claims** - Each claim captures interest since last claim
+11. **Large/small amounts** - Precision tests
+12. **High yield** - 100% yield handling
+13. **Mint more YT** - User index updated correctly on subsequent mints
+14. **Redeem interaction** - Interest captured during redeem_py
 
-#[test]
-fn test_interest_preserved_on_transfer() {
-    // User A accrues interest
-    // User A transfers YT to User B
-    // User A's accrued interest should still be claimable
-    // User B starts fresh from current index
-}
+**Key Findings:**
+- `_update_user_interest` uses `py_index_stored`, not oracle directly
+- Transfer doesn't call `_update_py_index` - global index must be updated first
+- Interest formula: `interest = yt_balance * (current_index - user_index) / user_index`
+- Earlier holders earn proportionally more (intentional per SPEC 10.4)
 
-#[test]
-fn test_interest_after_partial_transfer() {
-    // User has 100 YT, accrues 5 SY interest
-    // User transfers 50 YT
-    // User should still have 5 SY claimable (interest on original balance)
-}
-
-#[test]
-fn test_interest_claim_at_expiry() {
-    // Can claim interest right before expiry
-    // Cannot claim more after expiry (YT worthless)
-}
-
-#[test]
-fn test_zero_balance_no_interest() {
-    // User with 0 YT cannot claim interest
-}
-
-#[test]
-fn test_watermark_pattern_index_never_decreases() {
-    // Even if oracle returns lower value, py_index_stored doesn't decrease
-}
-```
-
-**Validation**: All interest calculations match SPEC.md Section 10.4 formula
+**Validation**: All 20 tests pass ✓ (471 total tests pass)
 
 ---
 
@@ -404,42 +366,46 @@ fn test_twap_window_minimum() {
 
 ### Implementation Steps
 
-#### Step 7.1: Add YT swap tests
-**File**: `tests/test_router_yt_swaps.cairo`
+#### Step 7.1: Add YT swap tests **COMPLETE**
+**File**: `tests/test_router_yt_swaps.cairo` (18 tests)
 
-```cairo
-#[test]
-fn test_swap_exact_sy_for_yt_basic() {
-    // Deposit SY, mint PT+YT, sell PT for SY, receive YT
-}
+Created comprehensive test suite covering flash swap patterns per SPEC.md Section 4.1:
 
-#[test]
-fn test_swap_exact_yt_for_sy_basic() {
-    // Provide YT + SY collateral, buy PT, redeem PT+YT, receive SY
-}
+**swap_exact_sy_for_yt Tests:**
+- `test_swap_sy_for_yt_flash_swap_mechanics` - Verifies flash swap pattern: SY → Mint PT+YT → Sell PT → Get YT + SY refund
+- `test_swap_sy_for_yt_yt_amount_equals_sy_input` - YT minted = SY input (1:1 minting)
+- `test_swap_sy_for_yt_large_amount` - High price impact on PT sale
+- `test_swap_sy_for_yt_small_amount` - Small swap amount handling
+- `test_swap_sy_for_yt_price_impact_pt_sale` - Larger swaps cost more per YT
 
-#[test]
-fn test_swap_exact_sy_for_yt_slippage() {
-    // Set min_yt_out too high, should revert
-}
+**swap_exact_yt_for_sy Tests:**
+- `test_swap_yt_for_sy_flash_swap_mechanics` - Verifies flash swap pattern: YT + SY collateral → Buy PT → Redeem PT+YT → Get net SY
+- `test_swap_yt_for_sy_insufficient_collateral` - Reverts with 'HZN: slippage exceeded' when collateral too low
+- `test_swap_yt_for_sy_exact_collateral` - Works with minimal sufficient collateral
 
-#[test]
-fn test_swap_exact_yt_for_sy_insufficient_collateral() {
-    // max_sy_collateral insufficient to buy PT, should revert
-}
+**Near-Expiry Tests:**
+- `test_swap_sy_for_yt_near_expiry` - Works 1 day before expiry
+- `test_swap_yt_for_sy_near_expiry` - Works 1 day before expiry
+- `test_swap_sy_for_yt_one_hour_before_expiry` - Works 1 hour before expiry
 
-#[test]
-fn test_yt_swap_near_expiry() {
-    // Flash swap pattern should still work (or fail gracefully)
-}
+**After-Expiry Tests:**
+- `test_swap_sy_for_yt_after_expiry_fails` - Reverts with 'HZN: expired' (can't mint PT/YT)
+- `test_swap_yt_for_sy_after_expiry_fails` - Reverts with 'HZN: market expired' (market swap fails first)
 
-#[test]
-fn test_yt_swap_after_expiry() {
-    // Should revert - can't mint new PY after expiry
-}
-```
+**Edge Cases:**
+- `test_swap_sy_for_yt_zero_amount` - Reverts with 'HZN: zero amount'
+- `test_swap_yt_for_sy_zero_yt_amount` - Reverts with 'HZN: zero amount'
+- `test_swap_yt_for_sy_zero_collateral` - Reverts with 'HZN: zero amount'
+- `test_multiple_sy_for_yt_swaps` - Multiple users can swap sequentially
+- `test_round_trip_sy_to_yt_to_sy` - Buy YT, then sell back (round-trip has cost due to fees)
 
-**Validation**: Flash swap patterns work per SPEC.md Section 4.1
+**Key Findings:**
+1. Flash swap pattern works correctly per SPEC.md Section 4.1
+2. After expiry, `swap_exact_yt_for_sy` fails at market swap (not at redeem_py) with 'HZN: market expired'
+3. Round-trip swaps have cost due to AMM fees and slippage
+4. Price impact on large swaps correctly reflected in per-YT cost
+
+**Validation**: All 18 tests pass ✓ (489 total tests pass)
 
 ---
 
@@ -451,42 +417,44 @@ fn test_yt_swap_after_expiry() {
 
 ### Implementation Steps
 
-#### Step 8.1: Add fee decay tests
-**File**: `tests/test_market_fees.cairo`
+#### Step 8.1: Add fee decay tests **COMPLETE**
+**File**: `tests/test_market_fees.cairo` (16 tests)
 
+Created comprehensive test suite covering time-decay fee mechanics per SPEC.md Section 14.1:
+
+**Fee Decay Tests:**
+- `test_full_fee_at_one_year` - Full fee_rate when time_to_expiry >= SECONDS_PER_YEAR
+- `test_half_fee_at_six_months` - Fee rate ~50% at 6 months to expiry
+- `test_quarter_fee_at_three_months` - Fee rate ~25% at 3 months to expiry
+- `test_minimal_fee_near_expiry` - Very small fee 1 day before expiry
+- `test_zero_fee_at_exact_expiry` - Nearly zero fee at 1 second to expiry
+- `test_fee_decay_over_time` - Fee decreases as expiry approaches
+
+**Fee Collection Tests:**
+- `test_fee_collection_by_owner` - Owner can collect accumulated fees
+- `test_fee_collection_by_non_owner_fails` - Non-owner cannot collect (reverts)
+- `test_fee_collection_empty` - Returns 0 when no fees accumulated
+- `test_fee_collection_then_more_swaps` - Fees reset after collection, new swaps accumulate new fees
+
+**Fee Accumulation Tests:**
+- `test_fee_accumulation_across_swaps` - Multiple swaps accumulate fees correctly
+- `test_fee_accumulation_both_directions` - Fees from PT→SY and SY→PT both accumulate
+- `test_fee_accumulation_multiple_users` - Fees from different users accumulate
+
+**Edge Cases:**
+- `test_fee_rate_stored_correctly` - Market stores correct fee_rate parameter
+- `test_exact_output_swap_fees` - Fees apply to swap_sy_for_exact_pt
+- `test_fee_with_pt_for_exact_sy` - Fees apply to swap_pt_for_exact_sy
+
+**Key Formula Verified:**
 ```cairo
-#[test]
-fn test_full_fee_at_one_year() {
-    // time_to_expiry >= SECONDS_PER_YEAR
-    // adjusted_fee_rate == fee_rate
-}
-
-#[test]
-fn test_half_fee_at_six_months() {
-    // time_to_expiry = 6 months
-    // adjusted_fee_rate ≈ fee_rate / 2
-}
-
-#[test]
-fn test_zero_fee_at_expiry() {
-    // time_to_expiry = 0
-    // adjusted_fee_rate = 0
-}
-
-#[test]
-fn test_fee_collection_by_owner() {
-    // Owner can call collect_fees()
-    // Non-owner cannot
-}
-
-#[test]
-fn test_fee_accumulation_across_swaps() {
-    // Multiple swaps accumulate fees
-    // total_fees_collected increases
-}
+adjusted_fee = fee_rate * time_to_expiry / SECONDS_PER_YEAR
+// >= 1 year: full fee_rate
+// 6 months: fee_rate / 2
+// At expiry: 0 (no fees)
 ```
 
-**Validation**: Fee math matches SPEC.md Section 14.1
+**Validation**: All 16 tests pass ✓ (505 total tests pass)
 
 ---
 

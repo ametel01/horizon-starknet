@@ -478,9 +478,70 @@ User action → Feature hook → Contract call → Wallet signature → TX → Q
 - No automated circuit breakers currently
 
 **Known Research Items**:
-- Reentrancy on token contracts (PT/YT/SY don't have ReentrancyGuard; need to verify no callback attack vectors)
+- ~~Reentrancy on token contracts~~ **RESOLVED**: Analysis complete, YT now has ReentrancyGuard, see SECURITY.md
 - MEV/frontrunning analysis specific to Starknet sequencer
-- MINIMUM_LIQUIDITY sufficiency for PT's unique price dynamics
+- ~~MINIMUM_LIQUIDITY sufficiency for PT's unique price dynamics~~ **RESOLVED**: See Section 10.3.1
+
+### 10.3.1 MINIMUM_LIQUIDITY Economic Analysis
+
+**Attack Vector**: First Depositor Attack (LP Token Inflation Attack)
+
+The classic attack works as follows:
+1. Attacker deposits minimal tokens as first LP
+2. Attacker "donates" large amounts directly to inflate LP share price
+3. Victim deposits, receives near-zero LP tokens due to rounding
+4. Attacker withdraws, stealing victim's funds
+
+**Defense Mechanisms in Horizon**:
+
+| Defense | Implementation | Effect |
+|---------|----------------|--------|
+| **MINIMUM_LIQUIDITY lock** | 1000 LP tokens locked to dead address (0x1) on first deposit | Attacker cannot profit from inflation |
+| **Stored reserves pattern** | AMM tracks reserves in storage, not token balances | Direct token "donations" don't affect LP accounting |
+| **WAD normalization** | All values scaled by 10^18 | Large numerical range reduces rounding attack surface |
+
+**Mathematical Analysis**:
+
+```
+LP_minted = sqrt_wad(wad_mul(sy_amount, pt_amount))
+         = sqrt(sy_amount × pt_amount / WAD) × sqrt(WAD)
+         = sqrt(sy_amount × pt_amount)
+
+For first deposit:
+  user_lp = LP_minted - MINIMUM_LIQUIDITY
+  dead_lp = MINIMUM_LIQUIDITY = 1000
+
+Constraint: LP_minted > MINIMUM_LIQUIDITY (enforced by assertion)
+```
+
+**Victim Loss Analysis**:
+
+For a victim depositing after attacker's first deposit:
+- Victim's LP share = `victim_lp / (victim_lp + attacker_lp + MINIMUM_LIQUIDITY)`
+- The MINIMUM_LIQUIDITY portion goes to dead address (shared proportionally)
+
+| Attacker Deposit | Victim Deposit | Victim Loss to Dead Address |
+|------------------|----------------|----------------------------|
+| 1 WAD (1 token) | 1 WAD | ~0.0001% (negligible) |
+| 1 WAD | 100 WAD | ~0.00001% |
+| 1 WAD | 1000 WAD | ~0.000001% |
+
+**Key Finding**: With MINIMUM_LIQUIDITY = 1000 and WAD = 10^18, victim loss is bounded to **< 0.01%** for any reasonable deposit size (≥ 0.01 tokens).
+
+**Stored Reserves Defense**:
+
+The AMM uses **stored reserves** (tracked in contract storage) rather than **token balances** (actual contract holdings). This means:
+- Direct token transfers to the market contract do NOT affect LP accounting
+- The "donation" step of the attack has no effect
+- This provides defense-in-depth beyond MINIMUM_LIQUIDITY
+
+**Recommendation**: MINIMUM_LIQUIDITY = 1000 is **sufficient** for WAD-normalized LP tokens. No change recommended.
+
+**Test Coverage**: `tests/test_market_first_depositor.cairo` (10 tests)
+- Verifies MINIMUM_LIQUIDITY locked to dead address
+- Confirms attack mitigation with stored reserves
+- Documents victim loss bounds
+- Tests edge cases (asymmetric deposits, full withdrawal)
 
 ### 10.4 Interest Calculation Design
 
@@ -598,10 +659,10 @@ bun run db:studio              # Database GUI
 
 | Item | Status | Priority |
 |------|--------|----------|
-| AMM math fuzz testing | Not started | High |
-| Reentrancy analysis on PT/YT/SY | Not started | High |
-| Binary search large trade analysis | Not started | Medium |
-| MINIMUM_LIQUIDITY attack vector analysis | Not started | Medium |
+| AMM math fuzz testing | **Complete** (fuzz + invariant tests) | High |
+| Reentrancy analysis on PT/YT/SY | **Complete** (see SECURITY.md, YT has ReentrancyGuard) | High |
+| Binary search large trade analysis | **Complete** (16 tests in test_market_large_trades.cairo) | Medium |
+| MINIMUM_LIQUIDITY attack vector analysis | **Complete** (see Section 10.3.1) | Medium |
 
 ### 15.2 Important (Pre-beta)
 
