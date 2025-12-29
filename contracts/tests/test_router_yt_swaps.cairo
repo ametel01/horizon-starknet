@@ -265,7 +265,7 @@ fn test_swap_sy_for_yt_large_amount() {
     sy.approve(router.contract_address, swap_sy);
     stop_cheat_caller_address(sy.contract_address);
 
-    let sy_before = sy.balance_of(user);
+    let _sy_before = sy.balance_of(user);
 
     start_cheat_caller_address(router.contract_address, user);
     let yt_out = router
@@ -346,7 +346,7 @@ fn test_swap_yt_for_sy_flash_swap_mechanics() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(router.contract_address, user);
-    let effective_sy_out = router
+    let _effective_sy_out = router
         .swap_exact_yt_for_sy(
             yt.contract_address,
             market.contract_address,
