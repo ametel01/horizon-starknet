@@ -19,29 +19,25 @@ pub mod PT {
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
-    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
-    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // Only use internal impl - we implement our own IPT interface
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
     impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
-    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl AccessControlImpl =
@@ -63,8 +59,6 @@ pub mod PT {
         pausable: PausableComponent::Storage,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
-        #[substorage(v0)]
-        upgradeable: UpgradeableComponent::Storage,
         // The SY token this PT is derived from
         sy: ContractAddress,
         // The corresponding YT contract (only YT can mint/burn PT)
@@ -88,8 +82,6 @@ pub mod PT {
         PausableEvent: PausableComponent::Event,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
-        #[flat]
-        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[constructor]
@@ -236,16 +228,6 @@ pub mod PT {
         fn unpause(ref self: ContractState) {
             self.access_control.assert_only_role(PAUSER_ROLE);
             self.pausable.unpause();
-        }
-    }
-
-    // Upgradeable implementation
-    #[abi(embed_v0)]
-    impl UpgradeableImpl of IUpgradeable<ContractState> {
-        /// Upgrade the contract to a new implementation (owner only)
-        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-            self.ownable.assert_only_owner();
-            self.upgradeable.upgrade(new_class_hash);
         }
     }
 

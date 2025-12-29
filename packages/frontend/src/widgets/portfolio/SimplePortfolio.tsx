@@ -1,6 +1,6 @@
 'use client';
 
-import { Wallet, Zap } from 'lucide-react';
+import { AlertTriangleIcon, Wallet, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useCallback, useState } from 'react';
 
@@ -8,12 +8,13 @@ import type { MarketData } from '@entities/market';
 import type { EnhancedPosition } from '@entities/position';
 import { formatUsd } from '@entities/position/lib';
 import { useSimpleWithdraw } from '@features/earn';
-import { useEnhancedPositions } from '@features/portfolio';
+import { useEnhancedPositions, YieldExpiryAlert } from '@features/portfolio';
 import { useAccount } from '@features/wallet';
-import { useClaimYield } from '@features/yield';
+import { ClaimValueWarning, useClaimYield } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
-import { formatExpiry } from '@shared/math/yield';
+import { daysToExpiry, formatExpiry } from '@shared/math/yield';
+import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
 import { Button } from '@shared/ui/Button';
@@ -119,6 +120,20 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
           </div>
         </BentoCard>
       </BentoGrid>
+
+      {/* Portfolio-level expiry warning */}
+      {activePositions.some(
+        (p) => daysToExpiry(p.market.expiry) <= 7 && p.yield.claimable > 0n && !p.market.isExpired
+      ) && (
+        <Alert variant="warning" className="mb-4">
+          <AlertTriangleIcon className="size-4" />
+          <AlertTitle>Yield expiring soon</AlertTitle>
+          <AlertDescription>
+            You have positions with yield that will expire soon. Claim your yield before expiry to
+            avoid loss.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Positions List */}
       {hasPositions ? (
@@ -256,8 +271,20 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
           </div>
         </div>
 
-        {/* Claimable Yield */}
-        {hasClaimableYield && (
+        {/* YT Expiry Alert (near-expiry with claimable yield) */}
+        {hasClaimableYield && daysToExpiry(market.expiry) <= 7 && !market.isExpired && (
+          <YieldExpiryAlert
+            expiryTimestamp={market.expiry}
+            claimableAmount={yieldData.claimable}
+            claimableUsd={yieldData.claimableUsd}
+            tokenSymbol={tokenSymbol}
+            onClaim={handleClaim}
+            isClaiming={isClaiming}
+          />
+        )}
+
+        {/* Standard Claimable Yield (not near expiry or already expired) */}
+        {hasClaimableYield && (daysToExpiry(market.expiry) > 7 || market.isExpired) && (
           <div className="border-primary/30 bg-primary/10 mb-4 rounded-lg border p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -270,6 +297,8 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
                 {isClaiming ? 'Claiming...' : 'Claim'}
               </Button>
             </div>
+            {/* Gas cost warning for small claims */}
+            <ClaimValueWarning ytAddress={market.ytAddress} claimableUsd={yieldData.claimableUsd} />
           </div>
         )}
 

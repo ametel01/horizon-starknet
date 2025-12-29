@@ -174,3 +174,24 @@ features/<name>/
 ```
 
 Export only what's needed through `index.ts`. Internal helpers stay private to the segment.
+
+
+## Intentional Compaction
+
+Intentional compaction is the deliberate compression of context into a minimal, high-signal representation.
+
+Instead of dragging an ever-growing conversation forward, you:
+
+- **Summarize the current state into a markdown artifact**
+- **Review and validate it as a human**
+- **Start a fresh context seeded with that artifact**
+- **What to compact**
+  - Relevant files and line ranges
+  - Verified architectural behavior
+  - Decisions already made
+  - Explicit constraints and non-goals
+- **What not to compact**
+  - Raw logs
+  - Tool traces
+  - Full file contents
+  - Repetitive error explanations

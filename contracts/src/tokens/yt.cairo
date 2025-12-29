@@ -14,11 +14,10 @@ pub mod YT {
     use horizon::tokens::pt::{IPTInitDispatcher, IPTInitDispatcherTrait};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
-    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
+    use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
-    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
@@ -34,13 +33,15 @@ pub mod YT {
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(
+        path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent,
+    );
 
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
     impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
-    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+    impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl AccessControlImpl =
@@ -63,7 +64,7 @@ pub mod YT {
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
-        upgradeable: UpgradeableComponent::Storage,
+        reentrancy_guard: ReentrancyGuardComponent::Storage,
         // The SY token this YT is derived from
         sy: ContractAddress,
         // The corresponding PT contract
@@ -94,7 +95,7 @@ pub mod YT {
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
-        UpgradeableEvent: UpgradeableComponent::Event,
+        ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
         MintPY: MintPY,
         RedeemPY: RedeemPY,
         RedeemPYPostExpiry: RedeemPYPostExpiry,
@@ -342,6 +343,9 @@ pub mod YT {
         ) -> (u256, u256) {
             // Check not paused - mint operations can be paused in emergency
             self.pausable.assert_not_paused();
+            // Defense-in-depth: prevent reentrancy during external calls
+            self.reentrancy_guard.start();
+
             assert(!self.is_expired(), Errors::YT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_mint > 0, Errors::ZERO_AMOUNT);
@@ -394,6 +398,7 @@ pub mod YT {
                     },
                 );
 
+            self.reentrancy_guard.end();
             (amount_py, amount_py)
         }
 
@@ -404,6 +409,9 @@ pub mod YT {
         fn redeem_py(
             ref self: ContractState, receiver: ContractAddress, amount_py_to_redeem: u256,
         ) -> u256 {
+            // Defense-in-depth: prevent reentrancy during external calls
+            self.reentrancy_guard.start();
+
             assert(!self.is_expired(), Errors::YT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_py_to_redeem > 0, Errors::ZERO_AMOUNT);
@@ -449,6 +457,7 @@ pub mod YT {
                     },
                 );
 
+            self.reentrancy_guard.end();
             amount_sy
         }
 
@@ -459,6 +468,9 @@ pub mod YT {
         fn redeem_py_post_expiry(
             ref self: ContractState, receiver: ContractAddress, amount_pt: u256,
         ) -> u256 {
+            // Defense-in-depth: prevent reentrancy during external calls
+            self.reentrancy_guard.start();
+
             assert(self.is_expired(), Errors::YT_NOT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_pt > 0, Errors::ZERO_AMOUNT);
@@ -527,6 +539,7 @@ pub mod YT {
                     },
                 );
 
+            self.reentrancy_guard.end();
             amount_sy
         }
 
@@ -545,6 +558,9 @@ pub mod YT {
         /// @param user Address to claim interest for
         /// @return Amount of SY claimed
         fn redeem_due_interest(ref self: ContractState, user: ContractAddress) -> u256 {
+            // Defense-in-depth: prevent reentrancy during external calls
+            self.reentrancy_guard.start();
+
             // Update global index and user's interest
             self._update_py_index();
             self._update_user_interest(user);
@@ -555,6 +571,7 @@ pub mod YT {
             // Get and clear user's accrued interest
             let interest = self.user_interest.read(user);
             if interest == 0 {
+                self.reentrancy_guard.end();
                 return 0;
             }
 
@@ -581,6 +598,7 @@ pub mod YT {
                     },
                 );
 
+            self.reentrancy_guard.end();
             interest
         }
 
@@ -618,16 +636,6 @@ pub mod YT {
         fn unpause(ref self: ContractState) {
             self.access_control.assert_only_role(PAUSER_ROLE);
             self.pausable.unpause();
-        }
-    }
-
-    // Upgradeable implementation
-    #[abi(embed_v0)]
-    impl UpgradeableImpl of IUpgradeable<ContractState> {
-        /// Upgrade the contract to a new implementation (owner only)
-        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-            self.ownable.assert_only_owner();
-            self.upgradeable.upgrade(new_class_hash);
         }
     }
 

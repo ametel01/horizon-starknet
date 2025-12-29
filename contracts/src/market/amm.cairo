@@ -2,7 +2,7 @@
 /// Implements the PT/SY trading pool with time-aware pricing.
 /// The market acts as an LP token itself (ERC20) for liquidity providers.
 /// - Pausable: Can be paused in emergencies by PAUSER_ROLE
-/// - Upgradeable: Can be upgraded by owner
+/// - Non-upgradeable: Deployed per-PT via MarketFactory, new markets use new class hash
 
 #[starknet::contract]
 pub mod Market {
@@ -19,22 +19,17 @@ pub mod Market {
     };
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
-    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
-    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{
-        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
-    };
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // ERC20 component for LP token functionality
     #[abi(embed_v0)]
@@ -59,9 +54,6 @@ pub mod Market {
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
-    // Upgradeable - internal only
-    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
-
     #[storage]
     struct Storage {
         #[substorage(v0)]
@@ -74,8 +66,6 @@ pub mod Market {
         pausable: PausableComponent::Storage,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
-        #[substorage(v0)]
-        upgradeable: UpgradeableComponent::Storage,
         // Token addresses
         sy: ContractAddress,
         pt: ContractAddress,
@@ -108,8 +98,6 @@ pub mod Market {
         PausableEvent: PausableComponent::Event,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
-        #[flat]
-        UpgradeableEvent: UpgradeableComponent::Event,
         Mint: Mint,
         Burn: Burn,
         Swap: Swap,
@@ -874,16 +862,6 @@ pub mod Market {
                         timestamp: get_block_timestamp(),
                     },
                 );
-        }
-    }
-
-    // Upgradeable implementation
-    #[abi(embed_v0)]
-    impl UpgradeableImpl of IUpgradeable<ContractState> {
-        /// Upgrade the contract to a new implementation (owner only)
-        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-            self.ownable.assert_only_owner();
-            self.upgradeable.upgrade(new_class_hash);
         }
     }
 

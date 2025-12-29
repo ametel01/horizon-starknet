@@ -4,9 +4,15 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 import type { TxStatus as TxStatusType } from '@shared/hooks/useTransaction';
-import { getModeAwareErrorMessage } from '@shared/lib/errors';
+import {
+  getModeAwareErrorMessage,
+  getErrorHelpText,
+  isSlippageError,
+  isDeadlineError,
+} from '@shared/lib/errors';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { Progress, ProgressIndicator, ProgressTrack } from '@shared/ui/progress';
@@ -26,6 +32,8 @@ interface TxStatusProps {
     isLoading?: boolean;
     error?: Error | null;
   };
+  /** Optional: Callback when user wants to adjust slippage settings */
+  onAdjustSlippage?: () => void;
 }
 
 export function TxStatus({
@@ -36,6 +44,7 @@ export function TxStatus({
   showNextSteps = true,
   network = 'mainnet',
   gasEstimate,
+  onAdjustSlippage,
 }: TxStatusProps): ReactNode {
   const { isSimple } = useUIMode();
 
@@ -48,6 +57,12 @@ export function TxStatus({
 
   // Get mode-aware error message
   const errorMessage = error ? getModeAwareErrorMessage(error, isSimple) : null;
+
+  // Get actionable help text for errors (Gap 4: Enhanced Error UX)
+  const helpText = error ? getErrorHelpText(error, isSimple) : null;
+  const showSlippageAction =
+    error !== null && isSlippageError(error) && onAdjustSlippage !== undefined;
+  const showDeadlineHint = error !== null && isDeadlineError(error);
 
   // Get explorer URL for transaction
   const explorerUrl = txHash ? getExplorerUrl(network, txHash) : null;
@@ -157,7 +172,27 @@ export function TxStatus({
                 Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
               </p>
             ) : null}
-            {errorMessage ? <p className="text-destructive mt-1 text-sm">{errorMessage}</p> : null}
+            {/* Enhanced error display with actionable suggestions (Gap 4: Enhanced Error UX) */}
+            {errorMessage ? (
+              <div className="mt-1 space-y-2">
+                <p className="text-destructive text-sm">{errorMessage}</p>
+                {helpText ? (
+                  <p className="text-muted-foreground text-sm">
+                    <span className="font-medium">Suggestion:</span> {helpText}
+                  </p>
+                ) : null}
+                {showSlippageAction ? (
+                  <Button size="sm" variant="outline" onClick={onAdjustSlippage} className="mt-1">
+                    Adjust Slippage
+                  </Button>
+                ) : null}
+                {showDeadlineHint && !helpText ? (
+                  <p className="text-muted-foreground text-sm">
+                    Try again with a longer deadline or during lower network congestion.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {/* Show gas estimate during signing state (Jakob's Law - users expect gas info) */}
             {status === 'signing' && gasEstimate && (
               <div className="mt-2">
