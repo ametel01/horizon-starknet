@@ -26,6 +26,11 @@ const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   'HZN: zero deposit': 'Deposit amount cannot be zero.',
   'HZN: zero redeem': 'Redeem amount cannot be zero.',
   'HZN: insufficient balance': 'Insufficient token balance.',
+  'HZN: insufficient shares out': 'Slippage exceeded on wrap. Try increasing slippage tolerance.',
+  'HZN: insufficient token out': 'Slippage exceeded on unwrap. Try increasing slippage tolerance.',
+
+  // Pausable errors (OpenZeppelin)
+  'Pausable: paused': 'This token is temporarily paused. Withdrawals are still available.',
 
   // PT errors
   'HZN: only YT': 'Only the YT contract can perform this action.',
@@ -99,6 +104,9 @@ const CONTRACT_ERROR_SIMPLE: Record<string, string> = {
   'HZN: insufficient PT': 'Not enough Fixed-Rate Position.',
   'HZN: insufficient YT': 'Not enough Variable-Rate Position.',
   'HZN: insufficient SY': 'Not enough deposited tokens.',
+  'HZN: insufficient shares out': 'Price changed during wrap. Try again.',
+  'HZN: insufficient token out': 'Price changed during unwrap. Try again.',
+  'Pausable: paused': 'This token is temporarily unavailable.',
   'HZN: expired': 'This position has matured.',
   'HZN: not expired': 'Position is still active.',
   'HZN: market expired': 'This market has matured.',
@@ -177,6 +185,15 @@ export function extractContractError(error: unknown): string | null {
     return erc20Match[0].trim();
   }
 
+  // Match Pausable: prefixed errors (OpenZeppelin)
+  const pausablePattern = /Pausable:\s*[^"'\]}\n]+/;
+  const pausableMatch = pausablePattern.test(errorString)
+    ? pausablePattern.exec(errorString)
+    : null;
+  if (pausableMatch) {
+    return pausableMatch[0].trim();
+  }
+
   return null;
 }
 
@@ -202,6 +219,15 @@ export function parseContractError(error: unknown, isSimple = false): string {
     // Check ERC20: errors (OpenZeppelin)
     if (contractError.startsWith('ERC20:')) {
       const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
+      const message = messageMap[contractError];
+      if (message) {
+        return message;
+      }
+    }
+
+    // Check Pausable: errors (OpenZeppelin)
+    if (contractError.startsWith('Pausable:')) {
+      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
       const message = messageMap[contractError];
       if (message) {
         return message;
@@ -235,17 +261,24 @@ export function isDeadlineError(error: unknown): boolean {
 
 /**
  * Check if error is a slippage exceeded error
+ * Includes market slippage and SY wrap/unwrap slippage
  */
 export function isSlippageError(error: unknown): boolean {
-  const hznError = extractContractError(error);
-  return hznError === 'HZN: slippage exceeded';
+  const contractError = extractContractError(error);
+  return (
+    contractError === 'HZN: slippage exceeded' ||
+    contractError === 'HZN: insufficient shares out' ||
+    contractError === 'HZN: insufficient token out'
+  );
 }
 
 /**
  * Check if error is a pause-related error
+ * Includes both HZN pause and OpenZeppelin Pausable
  */
 export function isPauseError(error: unknown): boolean {
-  return isContractError(error, 'HZN: paused');
+  const contractError = extractContractError(error);
+  return contractError === 'HZN: paused' || contractError === 'Pausable: paused';
 }
 
 /**
@@ -319,7 +352,7 @@ const errorMessageMap: Record<string, string> = {
 export function getSimpleErrorMessage(error: string | Error | null | undefined): string {
   if (error === null || error === undefined) return 'An error occurred';
 
-  // First, check for contract errors (HZN: and ERC20:)
+  // First, check for contract errors (HZN:, ERC20:, and Pausable:)
   const contractError = extractContractError(error);
   if (contractError) {
     if (contractError.startsWith('HZN:')) {
@@ -328,6 +361,10 @@ export function getSimpleErrorMessage(error: string | Error | null | undefined):
     }
     if (contractError.startsWith('ERC20:')) {
       const message = ERC20_ERROR_SIMPLE[contractError];
+      if (message) return message;
+    }
+    if (contractError.startsWith('Pausable:')) {
+      const message = CONTRACT_ERROR_SIMPLE[contractError];
       if (message) return message;
     }
   }
@@ -372,6 +409,11 @@ export function getModeAwareErrorMessage(
     }
     if (contractError.startsWith('ERC20:')) {
       const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
+      const message = messageMap[contractError];
+      if (message) return message;
+    }
+    if (contractError.startsWith('Pausable:')) {
+      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
       const message = messageMap[contractError];
       if (message) return message;
     }
@@ -427,6 +469,20 @@ const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> 
   'HZN: slippage exceeded': {
     simple: 'Market conditions changed. Please try again.',
     advanced: 'Increase slippage tolerance or reduce trade size.',
+  },
+  'HZN: insufficient shares out': {
+    simple: 'Price changed during the wrap. Please try again.',
+    advanced:
+      'Increase slippage tolerance in settings. The SY exchange rate moved during the transaction.',
+  },
+  'HZN: insufficient token out': {
+    simple: 'Price changed during the unwrap. Please try again.',
+    advanced:
+      'Increase slippage tolerance in settings. The SY exchange rate moved during the transaction.',
+  },
+  'Pausable: paused': {
+    simple: 'This token is temporarily paused for maintenance.',
+    advanced: 'The SY contract is paused. Deposits are disabled but withdrawals remain available.',
   },
   'HZN: deadline exceeded': {
     simple: 'The transaction took too long to process.',
