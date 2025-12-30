@@ -896,7 +896,7 @@ snforge test test_reward_manager::test_user_accrual
 
 ---
 
-### Gap 3.3: Create SYWithRewards Contract
+### Gap 3.3: Create SYWithRewards Contract **COMPLETE**
 
 **Current State:** No reward-enabled SY variant
 
@@ -1114,7 +1114,7 @@ snforge test test_factory::test_set_sy_with_rewards_class_hash
 |-----|-------------|-----------|----------------|--------|
 | 3.1 | SYComponent extraction | `src/components/sy_component.cairo` | `src/tokens/sy.cairo` | ✓ COMPLETE |
 | 3.2 | RewardManagerComponent | `src/components/reward_manager_component.cairo` | - | ✓ COMPLETE |
-| 3.3 | SYWithRewards contract | `src/tokens/sy_with_rewards.cairo`, `src/interfaces/i_sy_with_rewards.cairo` | - | Pending |
+| 3.3 | SYWithRewards contract | `src/tokens/sy_with_rewards.cairo`, `src/interfaces/i_sy_with_rewards.cairo` | - | ✓ COMPLETE |
 | 3.4 | Factory updates | - | `src/factory.cairo`, `src/interfaces/i_factory.cairo` | Pending |
 
 **Key Benefits of Component Architecture:**
@@ -1249,9 +1249,9 @@ Phase 3 (Rewards) ─────┬─► Gap 3.1 (SYComponent extraction) ✓ 
                        ├─► Gap 3.2 (RewardManagerComponent) ✓ COMPLETE
                        │       └─► Create src/components/reward_manager_component.cairo
                        │
-                       ├─► Gap 3.3 (SYWithRewards contract) ◄─ depends on 3.1, 3.2
-                       │       ├─► Create src/interfaces/i_sy_with_rewards.cairo
-                       │       └─► Create src/tokens/sy_with_rewards.cairo
+                       ├─► Gap 3.3 (SYWithRewards contract) ✓ COMPLETE
+                       │       ├─► Create src/interfaces/i_sy_with_rewards.cairo ✓
+                       │       └─► Create src/tokens/sy_with_rewards.cairo ✓
                        │
                        └─► Gap 3.4 (Factory updates) ◄─ depends on 3.3
                                └─► Update src/factory.cairo
@@ -1315,10 +1315,10 @@ Each phase must have:
 
 ### Test Files to Create/Modify
 
-- `tests/test_sy.cairo` - **Keep unchanged** (validates component refactor is backward compatible)
+- `tests/test_sy.cairo` - **Keep unchanged** (validates component refactor is backward compatible) ✓
 - `tests/test_sy_component.cairo` - NEW: Component-level unit tests
-- `tests/test_reward_manager.cairo` - NEW: RewardManager component tests
-- `tests/test_sy_with_rewards.cairo` - NEW: Integration tests for SYWithRewards
+- `tests/test_reward_manager.cairo` - NEW: RewardManager component tests ✓ (21 tests)
+- `tests/test_sy_with_rewards.cairo` - NEW: Integration tests for SYWithRewards ✓ (24 tests)
 - `tests/test_factory.cairo` - Extend with `test_deploy_sy_with_rewards`
 
 ---
