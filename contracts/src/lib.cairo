@@ -1,4 +1,5 @@
 pub mod components {
+    pub mod reward_manager_component;
     pub mod sy_component;
 }
 pub mod factory;

@@ -72,4 +72,9 @@ pub mod Errors {
     pub const PIO_STALENESS_INVALID: felt252 = 'HZN: staleness < window';
     pub const PIO_ZERO_DENOM_PRICE: felt252 = 'HZN: zero denom price';
     pub const PIO_INDEX_BELOW_WAD: felt252 = 'HZN: index below WAD';
+
+    // RewardManager errors
+    pub const REWARD_EMPTY_TOKENS: felt252 = 'HZN: empty reward tokens';
+    pub const REWARD_TOKEN_EXISTS: felt252 = 'HZN: reward token exists';
+    pub const REWARD_TRANSFER_FAILED: felt252 = 'HZN: reward transfer failed';
 }
