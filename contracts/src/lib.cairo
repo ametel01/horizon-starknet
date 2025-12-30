@@ -13,6 +13,7 @@ pub mod interfaces {
     pub mod i_pt;
     pub mod i_router;
     pub mod i_sy;
+    pub mod i_sy_with_rewards;
     pub mod i_yield_token;
     pub mod i_yt;
 }
@@ -42,5 +43,6 @@ pub mod router;
 pub mod tokens {
     pub mod pt;
     pub mod sy;
+    pub mod sy_with_rewards;
     pub mod yt;
 }
