@@ -129,6 +129,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   // Estimate gas fee
   const {
     formattedFee,
+    formattedFeeUsd,
     isLoading: isEstimatingFee,
     error: feeError,
   } = useEstimateFee(removeLiquidityCalls);
@@ -292,6 +293,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
               value={
                 <GasEstimate
                   formattedFee={formattedFee}
+                  formattedFeeUsd={formattedFeeUsd}
                   isLoading={isEstimatingFee}
                   error={feeError}
                 />
@@ -331,6 +333,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
             error={error}
             gasEstimate={{
               formattedFee,
+              formattedFeeUsd,
               isLoading: isEstimatingFee,
               error: feeError,
             }}

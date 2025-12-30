@@ -29,6 +29,7 @@ interface TxStatusProps {
   /** Optional: Gas estimate to display during signing state (Jakob's Law) */
   gasEstimate?: {
     formattedFee: string;
+    formattedFeeUsd?: string;
     isLoading?: boolean;
     error?: Error | null;
   };
@@ -198,6 +199,7 @@ export function TxStatus({
               <div className="mt-2">
                 <GasEstimate
                   formattedFee={gasEstimate.formattedFee}
+                  formattedFeeUsd={gasEstimate.formattedFeeUsd}
                   {...(gasEstimate.isLoading !== undefined && { isLoading: gasEstimate.isLoading })}
                   {...(gasEstimate.error !== undefined && { error: gasEstimate.error })}
                 />

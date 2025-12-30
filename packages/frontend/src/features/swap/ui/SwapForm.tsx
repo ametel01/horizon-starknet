@@ -17,7 +17,6 @@ import {
 } from '@features/price';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@features/swap';
 import { PriceImpactMeter } from '@features/swap/ui/PriceImpactMeter';
-import { TransactionSettingsPanel, useTransactionSettings } from '@features/tx-settings';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses, getMarketParams } from '@shared/config/addresses';
 import { useEstimateFee } from '@shared/hooks';
@@ -57,6 +56,12 @@ interface SwapFormProps {
 
 type TokenType = 'PT' | 'YT';
 
+const SLIPPAGE_OPTIONS = [
+  { label: '0.1%', value: 10 },
+  { label: '0.5%', value: 50 },
+  { label: '1%', value: 100 },
+];
+
 /**
  * SwapForm - Enhanced with visual hierarchy and micro-interactions
  *
@@ -70,12 +75,12 @@ type TokenType = 'PT' | 'YT';
 export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
   const { address } = useAccount();
-  const { slippageBps, slippagePercent } = useTransactionSettings();
   const addresses = getAddresses(network);
   const [tokenType, setTokenType] = useState<TokenType>('PT');
   const [isBuying, setIsBuying] = useState(true);
   const [inputAmount, setInputAmount] = useState('');
   const [isFlipping, setIsFlipping] = useState(false);
+  const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
 
   // Derive swap direction from token type and buy/sell
   const direction: SwapDirection = isBuying
@@ -342,7 +347,12 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   }, [address, parsedInputAmount, minOutput, direction, market, addresses.router]);
 
   // Estimate gas fee for the swap
-  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(swapCalls);
+  const {
+    formattedFee,
+    formattedFeeUsd,
+    isLoading: isEstimatingFee,
+    error: feeError,
+  } = useEstimateFee(swapCalls);
 
   // Validation
   const hasInsufficientBalance = inputBalance !== undefined && parsedInputAmount > inputBalance;
@@ -646,7 +656,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
             label="Slippage Tolerance"
             labelClassName="text-sm"
             valueClassName="text-sm"
-            value={slippagePercent}
+            value={`${(slippageBps / 100).toString()}%`}
           />
 
           <FormRow
@@ -671,6 +681,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
             value={
               <GasEstimate
                 formattedFee={formattedFee}
+                formattedFeeUsd={formattedFeeUsd}
                 isLoading={isEstimatingFee}
                 error={feeError}
               />
@@ -688,8 +699,25 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
         />
       )}
 
-      {/* Transaction Settings */}
-      <TransactionSettingsPanel />
+      {/* Slippage Settings */}
+      <div>
+        <div className="text-muted-foreground mb-2 text-sm">Slippage Tolerance</div>
+        <ToggleGroup className="flex gap-1">
+          {SLIPPAGE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              pressed={slippageBps === option.value}
+              onPressedChange={() => {
+                setSlippageBps(option.value);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
 
       {/* YT Sell Collateral Warning */}
       {direction === 'sell_yt' && isValidAmount && (
@@ -734,6 +762,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
             error={error}
             gasEstimate={{
               formattedFee,
+              formattedFeeUsd,
               isLoading: isEstimatingFee,
               error: feeError,
             }}

@@ -6,7 +6,7 @@ use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
     start_cheat_caller_address, stop_cheat_caller_address,
 };
-use starknet::ContractAddress;
+use starknet::{ContractAddress, SyscallResultTrait};
 
 fn ADMIN() -> ContractAddress {
     'ADMIN'.try_into().unwrap()
@@ -14,7 +14,7 @@ fn ADMIN() -> ContractAddress {
 
 /// Deploy the mock pragma contract with default test values
 fn deploy_mock_pragma() -> IMockPragmaSummaryStatsDispatcher {
-    let contract = declare("MockPragmaSummaryStats").unwrap().contract_class();
+    let contract = declare("MockPragmaSummaryStats").unwrap_syscall().contract_class();
 
     // Default test values:
     // WSTETH: $4000 base price, 4% APR
@@ -34,7 +34,7 @@ fn deploy_mock_pragma() -> IMockPragmaSummaryStatsDispatcher {
     wsteth_yield_bps.serialize(ref calldata);
     sstrk_yield_bps.serialize(ref calldata);
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockPragmaSummaryStatsDispatcher { contract_address }
 }
 

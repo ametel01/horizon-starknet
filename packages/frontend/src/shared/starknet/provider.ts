@@ -77,7 +77,15 @@ class DevnetRpcProvider extends RpcProvider {
   private defaultBlockTag: BlockTag;
 
   constructor(nodeUrl: string, defaultBlock: BlockTag) {
-    super({ nodeUrl, batch: 0 });
+    super({
+      nodeUrl,
+      batch: 0,
+      // Disable fee overhead for display purposes.
+      // starknet.js default applies 50% overhead to BOTH gas units AND price,
+      // resulting in 1.5 * 1.5 = 2.25x the actual estimated fee.
+      // Wallets calculate their own overhead when executing transactions.
+      resourceBoundsOverhead: false,
+    });
     this.defaultBlockTag = defaultBlock;
   }
 

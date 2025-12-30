@@ -824,3 +824,57 @@ fn test_multiple_claims() {
     assert(total_claimed >= min_expected, 'Total claimed too low');
     assert(total_claimed <= max_expected, 'Total claimed too high');
 }
+
+// ============ Overflow Safety Tests ============
+
+/// Test that interest calculation doesn't overflow with large balances
+/// Uses 1 billion tokens to stress-test WAD arithmetic
+#[test]
+fn test_interest_calculation_large_balance_no_overflow() {
+    let (yield_token, sy, yt) = setup();
+    let user = alice();
+
+    // Mint large amount (but not u256::MAX to avoid overflow in setup)
+    let large_amount = 1_000_000_000 * WAD; // 1 billion tokens
+    setup_user_with_yt(yield_token, sy, yt, user, large_amount);
+
+    // Small yield increase (1%)
+    set_yield_index(yield_token, WAD + WAD / 100);
+
+    // Should not overflow
+    let interest = yt.get_user_interest(user);
+
+    // Expected: 1% of 1 billion = 10 million
+    let expected = 10_000_000 * WAD;
+    let tolerance = expected / 100; // 1% tolerance
+
+    assert(interest >= expected - tolerance, 'Interest too low');
+    assert(interest <= expected + tolerance, 'Interest too high');
+}
+
+// ============ Zero Interest Edge Cases ============
+
+/// Test claiming interest when exactly zero has accrued
+/// This edge case ensures the contract handles zero claims gracefully
+#[test]
+fn test_claim_zero_interest() {
+    let (yield_token, sy, yt) = setup();
+    let user = alice();
+
+    setup_user_with_yt(yield_token, sy, yt, user, 100 * WAD);
+
+    // No index change - zero interest
+    let interest_before = yt.get_user_interest(user);
+    assert(interest_before == 0, 'Should have zero interest');
+
+    // Claim should succeed with zero
+    start_cheat_caller_address(yt.contract_address, user);
+    let claimed = yt.redeem_due_interest(user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(claimed == 0, 'Should claim zero');
+
+    // User state should still be valid
+    let interest_after = yt.get_user_interest(user);
+    assert(interest_after == 0, 'Still zero after claim');
+}

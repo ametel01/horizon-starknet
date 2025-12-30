@@ -143,6 +143,7 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
   // Estimate gas fee
   const {
     formattedFee,
+    formattedFeeUsd,
     isLoading: isEstimatingFee,
     error: feeError,
   } = useEstimateFee(withdrawCalls);
@@ -343,7 +344,12 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
       {amountWad > BigInt(0) && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Estimated Gas</span>
-          <GasEstimate formattedFee={formattedFee} isLoading={isEstimatingFee} error={feeError} />
+          <GasEstimate
+            formattedFee={formattedFee}
+            formattedFeeUsd={formattedFeeUsd}
+            isLoading={isEstimatingFee}
+            error={feeError}
+          />
         </div>
       )}
 
@@ -355,6 +361,7 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
           error={error}
           gasEstimate={{
             formattedFee,
+            formattedFeeUsd,
             isLoading: isEstimatingFee,
             error: feeError,
           }}

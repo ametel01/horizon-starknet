@@ -92,7 +92,12 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
   }, [amountSy, validationError, buildMintCalls]);
 
   // Estimate gas fee
-  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(mintCalls);
+  const {
+    formattedFee,
+    formattedFeeUsd,
+    isLoading: isEstimatingFee,
+    error: feeError,
+  } = useEstimateFee(mintCalls);
 
   // Handle mint
   const handleMint = useCallback(async () => {
@@ -213,7 +218,12 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
         <FormRow
           label="Estimated Gas"
           value={
-            <GasEstimate formattedFee={formattedFee} isLoading={isEstimatingFee} error={feeError} />
+            <GasEstimate
+              formattedFee={formattedFee}
+              formattedFeeUsd={formattedFeeUsd}
+              isLoading={isEstimatingFee}
+              error={feeError}
+            />
           }
         />
       </FormInfoSection>
@@ -228,6 +238,7 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
             error={error}
             gasEstimate={{
               formattedFee,
+              formattedFeeUsd,
               isLoading: isEstimatingFee,
               error: feeError,
             }}

@@ -12,7 +12,7 @@ use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,
 };
-use starknet::ContractAddress;
+use starknet::{ContractAddress, SyscallResultTrait};
 
 // ============ Test Addresses ============
 
@@ -37,7 +37,7 @@ const DIRECT_INDEX_PRICE: u128 = 115000000; // 1.15 with 8 decimals
 
 /// Deploy the mock pragma contract with custom values for oracle testing
 fn deploy_mock_pragma() -> IMockPragmaSummaryStatsDispatcher {
-    let contract = declare("MockPragmaSummaryStats").unwrap().contract_class();
+    let contract = declare("MockPragmaSummaryStats").unwrap_syscall().contract_class();
 
     // Set up prices for wstETH and a custom pair for stETH
     // WSTETH: $4000, 4% APR
@@ -51,7 +51,7 @@ fn deploy_mock_pragma() -> IMockPragmaSummaryStatsDispatcher {
     400_u32.serialize(ref calldata); // wsteth yield
     400_u32.serialize(ref calldata); // sstrk yield
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMockPragmaSummaryStatsDispatcher { contract_address }
 }
 
@@ -59,7 +59,7 @@ fn deploy_mock_pragma() -> IMockPragmaSummaryStatsDispatcher {
 fn deploy_pragma_index_oracle_dual(
     pragma_oracle: ContractAddress, numerator_pair_id: felt252, denominator_pair_id: felt252,
 ) -> (IIndexOracleDispatcher, IPragmaIndexOracleAdminDispatcher) {
-    let contract = declare("PragmaIndexOracle").unwrap().contract_class();
+    let contract = declare("PragmaIndexOracle").unwrap_syscall().contract_class();
 
     let mut calldata: Array<felt252> = array![];
     ADMIN().serialize(ref calldata);
@@ -68,7 +68,7 @@ fn deploy_pragma_index_oracle_dual(
     denominator_pair_id.serialize(ref calldata);
     WAD.serialize(ref calldata); // initial_index = 1.0 WAD
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     (
         IIndexOracleDispatcher { contract_address },
         IPragmaIndexOracleAdminDispatcher { contract_address },
@@ -79,7 +79,7 @@ fn deploy_pragma_index_oracle_dual(
 fn deploy_pragma_index_oracle_single(
     pragma_oracle: ContractAddress, pair_id: felt252,
 ) -> (IIndexOracleDispatcher, IPragmaIndexOracleAdminDispatcher) {
-    let contract = declare("PragmaIndexOracle").unwrap().contract_class();
+    let contract = declare("PragmaIndexOracle").unwrap_syscall().contract_class();
 
     let mut calldata: Array<felt252> = array![];
     ADMIN().serialize(ref calldata);
@@ -88,7 +88,7 @@ fn deploy_pragma_index_oracle_single(
     0_felt252.serialize(ref calldata); // denominator = 0 for single-feed
     WAD.serialize(ref calldata); // initial_index
 
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     (
         IIndexOracleDispatcher { contract_address },
         IPragmaIndexOracleAdminDispatcher { contract_address },

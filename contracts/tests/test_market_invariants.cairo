@@ -467,16 +467,38 @@ fn test_invariant_proportion_after_sy_heavy_swap() {
     assert(proportion <= MAX_PROPORTION, 'INV3: SY heavy > MAX_PROP');
 }
 
+/// Test asymmetric liquidity: user2 provides more PT than SY
+/// Market should normalize to the limiting factor (min ratio)
 #[test]
 fn test_invariant_proportion_after_asymmetric_liquidity() {
     let (underlying, sy, yt, pt, market) = setup();
-    let user = user1();
+    let user1_addr = user1();
+    let user2_addr = user2();
 
-    setup_user_with_tokens(underlying, sy, yt, user, 400 * WAD);
+    setup_user_with_tokens(underlying, sy, yt, user1_addr, 400 * WAD);
+    setup_user_with_tokens(underlying, sy, yt, user2_addr, 400 * WAD);
 
-    // Add asymmetric liquidity (more PT than SY)
-    // Note: calc_mint_lp will use the min ratio, so we need initial balanced liquidity first
-    add_liquidity(market, sy, pt, user, 100 * WAD, 100 * WAD);
+    // First deposit must be balanced (contract requires it)
+    add_liquidity(market, sy, pt, user1_addr, 100 * WAD, 100 * WAD);
+
+    // Second deposit: attempt asymmetric (more PT than SY)
+    // Note: calc_mint_lp uses min ratio, so excess is refunded
+    start_cheat_caller_address(sy.contract_address, user2_addr);
+    sy.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user2_addr);
+    pt.approve(market.contract_address, 100 * WAD); // Approve more PT
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user2_addr);
+    let (sy_used, pt_used, _lp) = market.mint(user2_addr, 50 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify the contract normalizes to the limiting factor
+    // sy_used should equal pt_used (min ratio applied)
+    assert(sy_used == pt_used, 'Should use equal amounts');
+    assert(sy_used == 50 * WAD, 'Should use SY amount as limit');
 
     let state = get_market_state(market);
     let proportion = get_proportion(@state);
@@ -748,8 +770,9 @@ fn test_invariant_no_free_value_sy_for_pt() {
     // The invariant here is that the trade respects the exchange rate
     // For this test we verify pt_out > 0 and is bounded
     assert(pt_out > 0, 'INV6: got zero PT');
-    // pt_out should be less than some reasonable multiple of sy_in
-    assert(pt_out < sy_in * 10, 'INV6: PT output too large');
+    // PT trades at discount, so pt_out should be roughly proportional
+    // Max 2x is reasonable (with fees, time value, slippage)
+    assert(pt_out < sy_in * 2, 'INV6: PT output too large');
 }
 
 #[test]
@@ -799,6 +822,80 @@ fn test_invariant_no_free_value_pt_for_exact_sy() {
     assert(pt_spent > 0, 'INV6: got free SY');
     // Since PT is at discount, you should spend more PT than the SY you get
     assert(pt_spent >= exact_sy_out, 'INV6: PT spent < SY received');
+}
+
+// ============================================================================
+// SLIPPAGE PROTECTION TESTS
+// Verify that slippage parameters are actually enforced
+// ============================================================================
+
+/// Test that slippage protection rejects swaps with unreasonable min_sy_out
+#[test]
+#[should_panic(expected: 'HZN: slippage exceeded')]
+fn test_slippage_protection_pt_for_sy() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
+    add_liquidity(market, sy, pt, user, 100 * WAD, 100 * WAD);
+
+    let pt_in = 10 * WAD;
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, pt_in);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    // Request unreasonably high min_sy_out (should fail)
+    // Swapping 10 WAD PT cannot yield 100 WAD SY
+    market.swap_exact_pt_for_sy(user, pt_in, 100 * WAD);
+    // Should not reach here
+}
+
+/// Test that slippage protection rejects swaps with unreasonable min_pt_out
+#[test]
+#[should_panic(expected: 'HZN: slippage exceeded')]
+fn test_slippage_protection_sy_for_pt() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
+    add_liquidity(market, sy, pt, user, 100 * WAD, 100 * WAD);
+
+    let sy_in = 10 * WAD;
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, sy_in);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    // Request unreasonably high min_pt_out (should fail)
+    // Swapping 10 WAD SY cannot yield 100 WAD PT
+    market.swap_exact_sy_for_pt(user, sy_in, 100 * WAD);
+    // Should not reach here
+}
+
+/// Test that slippage protection accepts reasonable min_out
+#[test]
+fn test_slippage_protection_accepts_reasonable_min() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
+    add_liquidity(market, sy, pt, user, 100 * WAD, 100 * WAD);
+
+    let pt_in = 10 * WAD;
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, pt_in);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    // 1 WAD is reasonable since PT trades at discount to SY
+    let sy_out = market.swap_exact_pt_for_sy(user, pt_in, WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    assert(sy_out >= WAD, 'Should meet min_sy_out');
 }
 
 // ============================================================================

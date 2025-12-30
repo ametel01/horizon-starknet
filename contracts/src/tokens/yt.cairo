@@ -73,6 +73,10 @@ pub mod YT {
         expiry: u64,
         // Global PY index (tracks SY exchange rate for yield calculation)
         py_index_stored: u256,
+        // PY index captured at expiry (0 means not yet captured)
+        // After expiry, this caps the yield calculation so YT holders don't benefit from
+        // post-expiry yield
+        py_index_at_expiry: u256,
         // User's last recorded PY index (for interest calculation)
         user_py_index: Map<ContractAddress, u256>,
         // User's accrued but unclaimed interest (in SY)
@@ -544,9 +548,31 @@ pub mod YT {
         }
 
         /// Get current PY index (fetched from SY exchange rate)
+        /// After expiry, returns the captured expiry index to prevent post-expiry yield accrual
         fn py_index_current(self: @ContractState) -> u256 {
             let sy = ISYDispatcher { contract_address: self.sy.read() };
-            sy.exchange_rate()
+            let current_rate = sy.exchange_rate();
+            let stored_index = self.py_index_stored.read();
+
+            // Always use max of current and stored (watermark pattern)
+            let effective_index = if current_rate > stored_index {
+                current_rate
+            } else {
+                stored_index
+            };
+
+            // After expiry, cap at the captured expiry index if it exists
+            if self.is_expired() {
+                let expiry_index = self.py_index_at_expiry.read();
+                if expiry_index > 0 {
+                    // Return the frozen expiry index
+                    return expiry_index;
+                }
+                // Expiry index not yet captured - return current effective index
+            // This will be captured on the next state-changing call
+            }
+
+            effective_index
         }
 
         /// Get stored PY index
@@ -643,11 +669,24 @@ pub mod YT {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         /// Update the global PY index from SY's exchange rate
+        /// If expired, captures the expiry index on first call to prevent post-expiry yield accrual
         fn _update_py_index(ref self: ContractState) {
+            // Get current effective index (max of oracle rate and stored)
             let current_index = self.py_index_current();
-            let stored_index = self.py_index_stored.read();
 
-            // Index should only increase (watermark pattern)
+            // If expired, capture the expiry index on first call
+            if self.is_expired() {
+                if self.py_index_at_expiry.read() == 0 {
+                    // First call after expiry - capture current index as the expiry cap
+                    // This becomes the permanent cap for YT yield calculation
+                    self.py_index_at_expiry.write(current_index);
+                    self.py_index_stored.write(current_index);
+                }
+                return;
+            }
+
+            // Not expired - update stored index if current is higher
+            let stored_index = self.py_index_stored.read();
             if current_index > stored_index {
                 self.py_index_stored.write(current_index);
             }

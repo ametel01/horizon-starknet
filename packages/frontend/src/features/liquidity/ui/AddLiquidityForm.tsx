@@ -158,6 +158,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
   // Estimate gas fee
   const {
     formattedFee,
+    formattedFeeUsd,
     isLoading: isEstimatingFee,
     error: feeError,
   } = useEstimateFee(addLiquidityCalls);
@@ -317,6 +318,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
               value={
                 <GasEstimate
                   formattedFee={formattedFee}
+                  formattedFeeUsd={formattedFeeUsd}
                   isLoading={isEstimatingFee}
                   error={feeError}
                 />
@@ -356,6 +358,7 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
             error={error}
             gasEstimate={{
               formattedFee,
+              formattedFeeUsd,
               isLoading: isEstimatingFee,
               error: feeError,
             }}
