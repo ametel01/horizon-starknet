@@ -420,10 +420,107 @@ fn test_first_deposit_attack_mitigated() {
     stop_cheat_caller_address(market.contract_address);
 
     // Victim should get back approximately what they put in (minus some dust)
-    // Allow 1% tolerance for rounding
-    let tolerance = victim_sy / 100;
+    // Allow 0.1% tolerance for rounding
+    let tolerance = victim_sy / 1000;
     assert(victim_sy_out >= victim_sy - tolerance, 'Victim lost too much SY');
     assert(victim_pt_out >= victim_pt - tolerance, 'Victim lost too much PT');
+}
+
+/// Helper function to approve tokens and mint LP in one call
+fn approve_and_mint_lp(
+    market: IMarketDispatcher,
+    sy: ISYDispatcher,
+    pt: IPTDispatcher,
+    user: ContractAddress,
+    sy_amount: u256,
+    pt_amount: u256,
+) -> (u256, u256, u256) {
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, sy_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, pt_amount);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let result = market.mint(user, sy_amount, pt_amount);
+    stop_cheat_caller_address(market.contract_address);
+
+    result
+}
+
+/// Test economic attack via strategic LP minting sequence
+///
+/// This tests the TRUE first-depositor attack vector for storage-based AMMs:
+/// - Attack: first mint minimal amount, subsequent depositors get diluted LP
+/// - Defense: MINIMUM_LIQUIDITY ensures attacker cannot capture full value
+///
+/// Unlike donation-based attacks (which don't work here due to storage-based reserves),
+/// this tests whether an attacker making the minimum viable first deposit can
+/// economically harm subsequent depositors.
+#[test]
+fn test_first_depositor_attack_via_minting_ratio() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let attacker_addr = attacker();
+    let victim_addr = victim();
+
+    setup_user_with_tokens(underlying, sy, yt, attacker_addr, 10000 * WAD);
+    setup_user_with_tokens(underlying, sy, yt, victim_addr, 1000 * WAD);
+
+    // Attacker makes minimum viable first deposit
+    // The minimum deposit must result in sqrt_wad(wad_mul(sy, pt)) > MINIMUM_LIQUIDITY
+    // With WAD-normalized math, we need a WAD-scale deposit.
+    // Using 1 WAD (smallest practical WAD-scale amount) as "small" deposit
+    let min_deposit = WAD; // 1 token - smallest practical deposit
+    approve_and_mint_lp(market, sy, pt, attacker_addr, min_deposit, min_deposit);
+
+    let attacker_lp_after_first = get_lp_balance(market, attacker_addr);
+    let dead_lp = get_lp_balance(market, dead_address());
+
+    // Key assertion: dead address should own MINIMUM_LIQUIDITY
+    // This is the defense mechanism - attacker doesn't own these locked tokens
+    assert(dead_lp == MINIMUM_LIQUIDITY, 'Dead addr should have MIN_LIQ');
+
+    // Verify attacker got minimal LP (total - MINIMUM_LIQUIDITY)
+    // With such a small deposit, attacker's share is tiny
+    let total_lp_after_first = market.total_lp_supply();
+    assert(
+        attacker_lp_after_first == total_lp_after_first - MINIMUM_LIQUIDITY,
+        'Attacker LP miscalculated',
+    );
+
+    // Victim deposits normally with substantial amount
+    let victim_deposit = 100 * WAD;
+    approve_and_mint_lp(market, sy, pt, victim_addr, victim_deposit, victim_deposit);
+    let victim_lp = get_lp_balance(market, victim_addr);
+
+    // Critical check: victim should get proportional LP tokens
+    // The victim's LP share should reflect their deposit relative to total reserves
+    //
+    // With MINIMUM_LIQUIDITY defense:
+    // - Total LP before victim = attacker_lp + MINIMUM_LIQUIDITY (very small)
+    // - Victim deposits 100 WAD each, which vastly exceeds existing reserves
+    // - Victim should get ~proportional share of the new LP minted
+    //
+    // The key protection: even though attacker was first, the locked MINIMUM_LIQUIDITY
+    // prevents them from capturing disproportionate value
+
+    // Victim should get significant LP - at least 50% of what they'd expect
+    // in a fair system (accounting for the tiny existing reserves)
+    let victim_expected_min = 50 * WAD; // Conservative lower bound
+    assert(victim_lp > victim_expected_min, 'Victim should get fair LP');
+
+    // Verify victim can withdraw approximately what they deposited
+    start_cheat_caller_address(market.contract_address, victim_addr);
+    let (victim_sy_out, victim_pt_out) = market.burn(victim_addr, victim_lp);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Victim's withdrawal should be close to their deposit
+    // Loss should be negligible (< 1%) due to MINIMUM_LIQUIDITY protection
+    let max_loss = victim_deposit / 100; // 1% max acceptable loss
+    assert(victim_sy_out >= victim_deposit - max_loss, 'Victim SY loss too high');
+    assert(victim_pt_out >= victim_deposit - max_loss, 'Victim PT loss too high');
 }
 
 /// Test attack scenario with very small first deposit (edge case)

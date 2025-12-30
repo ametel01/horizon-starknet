@@ -9,8 +9,8 @@ use snforge_std::{
 };
 use starknet::ContractAddress;
 use super::utils::{
-    CURRENT_TIME, ONE_YEAR, mint_and_deposit_sy, mint_yield_token_to_user, setup_full, user1, user2,
-    zero_address,
+    CURRENT_TIME, ONE_YEAR, alice, bob, mint_and_deposit_sy, mint_and_mint_py,
+    mint_yield_token_to_user, set_yield_index, setup_full, user1, user2, zero_address,
 };
 
 // ============ Setup Functions ============
@@ -571,4 +571,101 @@ fn test_yt_py_index_stored() {
 
     let stored = yt.py_index_stored();
     assert(stored == WAD, 'Stored should be WAD');
+}
+
+// ============ Invariant Tests ============
+
+/// CRITICAL INVARIANT: PT supply must ALWAYS equal YT supply
+/// This is fundamental to the tokenomics model - PT and YT are always minted/burned in pairs
+#[test]
+fn test_invariant_pt_yt_supply_equality() {
+    let (yield_token, sy, yt) = setup();
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Initially both zero
+    assert(pt.total_supply() == yt.total_supply(), 'Initial supplies equal');
+    assert(pt.total_supply() == 0, 'Initial supply is zero');
+
+    // After mint
+    let user = alice();
+    mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
+    assert(pt.total_supply() == yt.total_supply(), 'After mint equal');
+
+    // After partial redeem (before expiry)
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.redeem_py(user, 30 * WAD);
+    stop_cheat_caller_address(yt.contract_address);
+    assert(pt.total_supply() == yt.total_supply(), 'After redeem equal');
+
+    // After interest claim (should not affect supply)
+    set_yield_index(yield_token, WAD + WAD / 10);
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.redeem_due_interest(user);
+    stop_cheat_caller_address(yt.contract_address);
+    assert(pt.total_supply() == yt.total_supply(), 'After interest equal');
+}
+
+// ============ Expiry Behavior Tests ============
+
+/// Test that YT can still be transferred after expiry
+/// (even though it's worthless, transfers should work)
+#[test]
+fn test_yt_transfer_after_expiry() {
+    let (yield_token, sy, yt) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    let user_a = alice();
+    let user_b = bob();
+
+    mint_and_mint_py(yield_token, sy, yt, user_a, 100 * WAD);
+
+    // Move past expiry
+    start_cheat_block_timestamp_global(expiry + 1);
+
+    // Transfer should still work
+    start_cheat_caller_address(yt.contract_address, user_a);
+    yt.transfer(user_b, 50 * WAD);
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(yt.balance_of(user_a) == 50 * WAD, 'A balance correct');
+    assert(yt.balance_of(user_b) == 50 * WAD, 'B balance correct');
+}
+
+/// Test that YT yield is capped at expiry - post-expiry index changes don't affect YT holders
+/// The expiry index is captured on first call after expiry, and subsequent changes are ignored
+#[test]
+fn test_yt_interest_claim_after_expiry() {
+    let (yield_token, sy, yt) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    let user = alice();
+    mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
+
+    // Accrue some interest before expiry (10% yield from set_index)
+    // Note: Mock also has 5% APR time-based yield, so total is ~15% after 1 year
+    set_yield_index(yield_token, WAD + WAD / 10);
+
+    // Move past expiry
+    start_cheat_block_timestamp_global(expiry + 1);
+
+    // First call after expiry captures the expiry index
+    start_cheat_caller_address(yt.contract_address, user);
+    let claimed = yt.redeem_due_interest(user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Should get yield (10% from index + ~5% from time-based APR)
+    // With 100 WAD position, expect roughly 15 WAD (10% + 5%)
+    assert(claimed >= 10 * WAD, 'Should get yield');
+    assert(claimed <= 20 * WAD, 'Yield should be capped');
+
+    // Now index increases after expiry (but expiry index already captured)
+    set_yield_index(yield_token, WAD + WAD / 5);
+
+    // Second claim after expiry - should get nothing (expiry index already captured)
+    start_cheat_caller_address(yt.contract_address, user);
+    let post_capture_claimed = yt.redeem_due_interest(user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // No additional interest after expiry index is captured
+    assert(post_capture_claimed == 0, 'No post-capture interest');
 }
