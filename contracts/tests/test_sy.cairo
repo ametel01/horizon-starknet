@@ -861,3 +861,90 @@ fn test_redeem_to_different_receiver_from_internal_balance() {
     assert(yield_token.balance_of(user) == 0, 'User got nothing');
     assert(yield_token.balance_of(receiver) == amount, 'Receiver got tokens');
 }
+
+// ============ Preview Function Tests ============
+
+#[test]
+fn test_preview_deposit_matches_deposit() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let deposit_amount = 100 * WAD;
+
+    // Preview should return expected SY output (1:1)
+    let preview = sy.preview_deposit(deposit_amount);
+    assert(preview == deposit_amount, 'Preview should equal input');
+
+    // Now actually deposit and verify it matches
+    mint_yield_token_to_user(yield_token, user, deposit_amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, deposit_amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    let actual_sy_minted = sy.deposit(user, deposit_amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(actual_sy_minted == preview, 'Actual should match preview');
+}
+
+#[test]
+fn test_preview_redeem_matches_redeem() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit first to get SY
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Preview should return expected underlying output (1:1)
+    let preview = sy.preview_redeem(amount);
+    assert(preview == amount, 'Preview should equal input');
+
+    // Now actually redeem and verify it matches
+    start_cheat_caller_address(sy.contract_address, user);
+    let actual_shares_received = sy.redeem(user, amount, 0, false);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(actual_shares_received == preview, 'Actual should match preview');
+}
+
+#[test]
+fn test_preview_deposit_zero() {
+    let (_, _, sy) = setup();
+
+    // Preview of zero should return zero
+    let preview = sy.preview_deposit(0);
+    assert(preview == 0, 'Preview of 0 should be 0');
+}
+
+#[test]
+fn test_preview_redeem_zero() {
+    let (_, _, sy) = setup();
+
+    // Preview of zero should return zero
+    let preview = sy.preview_redeem(0);
+    assert(preview == 0, 'Preview of 0 should be 0');
+}
+
+#[test]
+fn test_preview_large_amounts() {
+    let (_, _, sy) = setup();
+
+    // Preview should handle large amounts (close to u256 max)
+    let large_amount = 1_000_000_000 * WAD; // 1 billion tokens
+
+    let deposit_preview = sy.preview_deposit(large_amount);
+    let redeem_preview = sy.preview_redeem(large_amount);
+
+    assert(deposit_preview == large_amount, 'Large deposit preview wrong');
+    assert(redeem_preview == large_amount, 'Large redeem preview wrong');
+}

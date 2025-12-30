@@ -488,6 +488,16 @@ pub mod SY {
         fn asset_info(self: @ContractState) -> (AssetType, ContractAddress, u8) {
             (self.asset_type.read(), self.underlying.read(), self.decimals())
         }
+
+        /// Preview how much SY would be minted for a deposit (1:1)
+        fn preview_deposit(self: @ContractState, amount_to_deposit: u256) -> u256 {
+            amount_to_deposit
+        }
+
+        /// Preview how much underlying would be returned for a redemption (1:1)
+        fn preview_redeem(self: @ContractState, amount_sy: u256) -> u256 {
+            amount_sy
+        }
     }
 
     #[abi(embed_v0)]
@@ -516,16 +526,6 @@ pub mod SY {
     // Internal functions
     #[generate_trait]
     pub impl InternalImpl of InternalTrait {
-        /// Preview how much SY would be minted for a deposit (1:1)
-        fn preview_deposit(self: @ContractState, amount_to_deposit: u256) -> u256 {
-            amount_to_deposit
-        }
-
-        /// Preview how much underlying would be returned for a redemption (1:1)
-        fn preview_redeem(self: @ContractState, amount_sy: u256) -> u256 {
-            amount_sy
-        }
-
         /// Get the index oracle address
         fn get_index_oracle(self: @ContractState) -> ContractAddress {
             self.index_oracle.read()

@@ -69,6 +69,16 @@ pub trait ISY<TContractState> {
     /// Returns asset classification, underlying address, and decimals
     /// Matches Pendle V2's assetInfo() for compatibility
     fn asset_info(self: @TContractState) -> (AssetType, ContractAddress, u8);
+
+    // Preview functions
+    /// Preview how much SY would be minted for a given deposit amount
+    /// @param amount_to_deposit Amount of underlying shares to deposit
+    /// @return Amount of SY that would be minted (1:1 with underlying shares)
+    fn preview_deposit(self: @TContractState, amount_to_deposit: u256) -> u256;
+    /// Preview how much underlying would be returned for a given redemption
+    /// @param amount_sy Amount of SY to redeem
+    /// @return Amount of underlying shares that would be returned (1:1 with SY)
+    fn preview_redeem(self: @TContractState, amount_sy: u256) -> u256;
 }
 
 /// Admin interface for SY pausability

@@ -372,7 +372,7 @@ snforge test test_sy::test_reentrancy_blocked
 
 ---
 
-### Gap 2.4: Preview Functions (External)
+### Gap 2.4: Preview Functions (External) **COMPLETE**
 
 **Current State:** `preview_deposit/redeem` are internal only
 
