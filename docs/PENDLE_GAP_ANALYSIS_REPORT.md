@@ -1,20 +1,23 @@
 # Horizon Protocol vs Pendle V2: Comprehensive Gap Analysis Report
 
-> **Date:** 2025-12-30
+> **Date:** 2025-12-31 (Updated)
 > **Scope:** Deep code analysis of Horizon Protocol implementation against Pendle V2 specifications
 > **Status:** Horizon Alpha on Starknet Mainnet
+>
+> **Change Log:**
+> - 2025-12-31: ✅ **Section 1.1 SY (Standardized Yield) Wrapper marked COMPLETE (95%)** - All major gaps implemented: slippage protection, burnFromInternalBalance, reentrancy guard, multi-token support (getTokensIn/Out, isValidToken), assetInfo, previewDeposit/Redeem, pausable transfers, negative yield watermark, SYWithRewards with RewardManagerComponent
 
 ---
 
 ## Executive Summary
 
-Horizon Protocol implements **~60% of Pendle V2's core functionality**, focusing on yield tokenization primitives while omitting advanced governance and composability features. The protocol is production-ready for its stated alpha scope but requires significant work for full Pendle V2 feature parity.
+Horizon Protocol implements **~65% of Pendle V2's core functionality**, focusing on yield tokenization primitives while omitting advanced governance and composability features. The protocol is production-ready for its stated alpha scope. **The SY (Standardized Yield) wrapper is now at 95% parity** with Pendle's SYBase, including full reward distribution via SYWithRewards.
 
 ### Key Findings
 
 | Category | Parity Level | Critical Gaps |
 |----------|--------------|---------------|
-| **Core Tokenization (SY/PT/YT)** | 75% | Multi-token SY, SY rewards, multi-reward YT, asset classification |
+| **Core Tokenization (SY/PT/YT)** | 85% | ✅ SY: 95% complete (multi-token, rewards, slippage, assetInfo all implemented); Remaining: multi-reward YT |
 | **AMM/Market** | 60% | PYIndex integration, reserve fee system, TWAP oracle (6 gaps), RewardManager/PendleGauge, flash callbacks |
 | **Router** | 55% | Single-sided liquidity (7 functions), token aggregation (8 functions), batch operations |
 | **Factory** | 70% | Protocol fee infrastructure (interestFeeRate, rewardFeeRate, treasury), expiryDivisor |
@@ -43,7 +46,7 @@ Horizon Protocol implements **~60% of Pendle V2's core functionality**, focusing
 
 ### 1.1 SY (Standardized Yield) Wrapper
 
-**Implementation Status: 70%** (Core deposit/redeem works; missing slippage, rewards, multi-token, permit)
+**Implementation Status: 95%** ✅ COMPLETE (Core features + slippage, rewards, multi-token all implemented)
 
 **Reference:** Pendle's `SYBase.sol` from [Pendle-SY-Public](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol)
 
@@ -56,122 +59,127 @@ Horizon Protocol implements **~60% of Pendle V2's core functionality**, focusing
 | Dual oracle source | N/A | ERC-4626 OR custom oracle | ✅ **Horizon exceeds** |
 | OracleRateUpdated event | ❌ None | ✅ Emits on rate change | ✅ **Horizon exceeds** |
 | Built-in upgradeability | Separate `SYBaseUpg` variant | ✅ Via UpgradeableComponent | ✅ **Horizon exceeds** |
-| Slippage protection | `minSharesOut`, `minTokenOut` | ❌ Relies on Router | 🟡 MEDIUM |
-| burnFromInternalBalance | ✅ For Router patterns | ❌ Only burns msg.sender | 🟡 MEDIUM |
-| Reentrancy guard | `nonReentrant` modifier | ❌ CEI pattern only | 🟡 MEDIUM |
-| `getTokensIn()` / `getTokensOut()` | Returns supported tokens | ❌ Missing | 🔴 HIGH |
-| `isValidTokenIn/Out()` | Token validation | ❌ Missing | 🔴 HIGH |
-| `assetInfo()` | Returns (AssetType, address, decimals) | ❌ Missing | 🔴 HIGH |
-| `previewDeposit/Redeem()` | External view functions | ❌ Internal only | 🟢 LOW |
-| EIP-2612 Permit | `PendleERC20Permit` | ❌ No permit support | 🟡 MEDIUM |
-| Native ETH support | `receive() external payable` | ❌ No ETH | 🟢 LOW |
-| `getRewardTokens()` | Lists claimable rewards | ❌ Missing | 🟡 MEDIUM |
-| `claimRewards()` | Claims external rewards | ❌ Missing | 🟡 MEDIUM |
-| `SYBaseWithRewards` | Full reward distribution | ❌ No reward system | 🟡 MEDIUM |
-| Pausable transfers | `_beforeTokenTransfer` pauses all | ❌ Only deposit paused | 🟢 LOW |
-| Negative yield watermark | In SY contract | Only in YT | 🟡 MEDIUM |
+| Slippage protection | `minSharesOut`, `minTokenOut` | ✅ `min_shares_out`, `min_token_out` params | ✅ |
+| burnFromInternalBalance | ✅ For Router patterns | ✅ `burn_from_internal_balance` param | ✅ |
+| Reentrancy guard | `nonReentrant` modifier | ✅ ReentrancyGuardComponent | ✅ |
+| `getTokensIn()` / `getTokensOut()` | Returns supported tokens | ✅ `get_tokens_in()`, `get_tokens_out()` | ✅ |
+| `isValidTokenIn/Out()` | Token validation | ✅ O(1) lookup via maps | ✅ |
+| `assetInfo()` | Returns (AssetType, address, decimals) | ✅ Matches Pendle interface | ✅ |
+| `previewDeposit/Redeem()` | External view functions | ✅ External view functions | ✅ |
+| EIP-2612 Permit | `PendleERC20Permit` | ❌ No permit support | 🟡 MEDIUM (N/A for Starknet) |
+| Native ETH support | `receive() external payable` | ❌ No ETH | 🟢 LOW (Starknet-specific) |
+| `getRewardTokens()` | Lists claimable rewards | ✅ Via SYWithRewards | ✅ |
+| `claimRewards()` | Claims external rewards | ✅ Via SYWithRewards | ✅ |
+| `SYBaseWithRewards` | Full reward distribution | ✅ SYWithRewards contract + RewardManagerComponent | ✅ |
+| Pausable transfers | `_beforeTokenTransfer` pauses all | ✅ Blocks mints AND transfers (allows redemptions) | ✅ **Horizon exceeds** |
+| Negative yield watermark | In SY contract | ✅ `get_exchange_rate_watermark()` + NegativeYieldDetected event | ✅ |
 
-**Gap Detail - Slippage Protection:**
+**~~Gap Detail - Slippage Protection:~~** ✅ IMPLEMENTED
 
-Pendle's `SYBase.sol` has built-in slippage protection on deposit/redeem:
-```solidity
-// Pendle - slippage protection at SY level
-function deposit(
-    address receiver,
-    address tokenIn,
-    uint256 amountTokenToDeposit,
-    uint256 minSharesOut  // ← Reverts if output < minimum
-) external returns (uint256 amountSharesOut) {
-    // ...
-    if (amountSharesOut < minSharesOut)
-        revert Errors.SYInsufficientSharesOut(amountSharesOut, minSharesOut);
-}
-```
-
-Horizon's SY has no slippage protection:
+Horizon now matches Pendle's slippage protection:
 ```cairo
-// Horizon - no slippage protection at SY level
+// Horizon - slippage protection implemented (sy.cairo:285-294)
 fn deposit(
     ref self: ContractState,
     receiver: ContractAddress,
-    amount_shares_to_deposit: u256  // No min_out parameter
+    amount_shares_to_deposit: u256,
+    min_shares_out: u256,  // ← Reverts if output < minimum
+) -> u256
+
+fn redeem(
+    ref self: ContractState,
+    receiver: ContractAddress,
+    amount_sy_to_redeem: u256,
+    min_token_out: u256,  // ← Slippage protection for redemptions
+    burn_from_internal_balance: bool,
 ) -> u256
 ```
 
-**Impact:** Direct SY calls have no protection; users must use Router for slippage. Lower-level integrators may be caught off-guard.
+**Tests:** `test_deposit_slippage_reverts`, `test_redeem_slippage_reverts`, `test_deposit_with_slippage_protection`, `test_redeem_with_slippage_protection`
 
 ---
 
-**Gap Detail - burnFromInternalBalance:**
+**~~Gap Detail - burnFromInternalBalance:~~** ✅ IMPLEMENTED
 
-Pendle allows burning from the contract's own balance (useful for Router patterns):
-```solidity
-// Pendle - burn from contract balance or sender
-function redeem(..., bool burnFromInternalBalance) external {
-    if (burnFromInternalBalance) {
-        _burn(address(this), amountSharesToRedeem);  // From contract
+Horizon now matches Pendle's pattern:
+```cairo
+// Horizon - burn from internal balance implemented (sy_component.cairo:357-364)
+fn redeem(
+    ref self: ComponentState<TContractState>,
+    receiver: ContractAddress,
+    amount_sy_to_redeem: u256,
+    min_token_out: u256,
+    burn_from_internal_balance: bool,  // ← Router pattern supported
+) -> u256 {
+    let burn_from = if burn_from_internal_balance {
+        get_contract_address()  // Burn from contract's own balance
     } else {
-        _burn(msg.sender, amountSharesToRedeem);      // From sender
-    }
+        caller  // Standard pattern: burn from caller
+    };
+    // ...
 }
 ```
 
-Horizon only burns from msg.sender:
-```cairo
-// Horizon - only burns from caller
-self.erc20.burn(caller, amount_sy_to_redeem);
-```
-
-**Impact:** Router/aggregator patterns that transfer tokens to SY before redeem require extra steps. Pendle's pattern is more gas-efficient for integrations.
+**Tests:** `test_redeem_from_internal_balance`, `test_redeem_from_internal_balance_insufficient`, `test_redeem_to_different_receiver_from_internal_balance`
 
 ---
 
-**Gap Detail - Multi-Token Support:**
+**~~Gap Detail - Multi-Token Support:~~** ✅ IMPLEMENTED
 
-Pendle's SY interface supports wrapping assets that accept multiple deposit tokens:
-```solidity
-// Pendle - supports multiple input/output tokens
-function getTokensIn() external view returns (address[] memory);
-function getTokensOut() external view returns (address[] memory);
-function isValidTokenIn(address token) public view returns (bool);
-function isValidTokenOut(address token) public view returns (bool);
-```
-
-Horizon assumes single underlying:
+Horizon now fully supports multi-token SY wrappers:
 ```cairo
-// Horizon - single token only
-underlying: ContractAddress  // One asset per SY
-```
-
-**Impact:** Cannot create SY wrappers for Curve LP tokens, Yearn vaults with multiple deposit routes, or aggregated yield sources.
-
----
-
-**Gap Detail - Reward System (SYBaseWithRewards):**
-
-Pendle's `SYBaseWithRewards.sol` extends the base with full reward distribution:
-```solidity
-// Pendle - inherits from SYBase + RewardManager
-abstract contract SYBaseWithRewards is SYBase, RewardManager {
-    function claimRewards(address user) external returns (uint256[] memory rewardAmounts) {
-        _updateAndDistributeRewards(user);
-        rewardAmounts = _doTransferOutRewards(user, user);
-        emit ClaimRewards(user, _getRewardTokens(), rewardAmounts);
-    }
-
-    function _beforeTokenTransfer(address from, address to, uint256) internal {
-        _updateAndDistributeRewardsForTwo(from, to);  // Update on transfer
-    }
+// Horizon - multi-token support implemented (sy_component.cairo:75-82, 506-541)
+#[storage]
+pub struct Storage {
+    // Multi-token support: valid tokens for deposit
+    pub tokens_in: Map<u32, ContractAddress>,
+    pub tokens_in_count: u32,
+    // Multi-token support: valid tokens for redemption
+    pub tokens_out: Map<u32, ContractAddress>,
+    pub tokens_out_count: u32,
+    // O(1) token validation maps
+    pub valid_tokens_in: Map<ContractAddress, bool>,
+    pub valid_tokens_out: Map<ContractAddress, bool>,
 }
+
+// View functions matching Pendle interface
+fn get_tokens_in(self: @ComponentState<TContractState>) -> Span<ContractAddress>
+fn get_tokens_out(self: @ComponentState<TContractState>) -> Span<ContractAddress>
+fn is_valid_token_in(self: @ComponentState<TContractState>, token: ContractAddress) -> bool
+fn is_valid_token_out(self: @ComponentState<TContractState>, token: ContractAddress) -> bool
 ```
 
-Horizon has no reward system:
+**Tests:** `test_sy_get_tokens_in_out_single`, `test_sy_get_tokens_in_out_multiple`, `test_sy_is_valid_token_in_single`, `test_sy_is_valid_token_out_single`, `test_sy_is_valid_token_multiple`
+
+---
+
+**~~Gap Detail - Reward System (SYBaseWithRewards):~~** ✅ IMPLEMENTED
+
+Horizon now has a complete reward system via `SYWithRewards` contract + `RewardManagerComponent`:
 ```cairo
-// Horizon - no reward tracking in SY
-// Rewards are only handled at YT level via interest
+// Horizon - SYWithRewards contract (sy_with_rewards.cairo:47-77)
+// Composes: SYComponent + RewardManagerComponent
+component!(path: SYComponent, storage: sy, event: SYEvent);
+component!(path: RewardManagerComponent, storage: rewards, event: RewardsEvent);
+
+// Reward hooks triggered on every ERC20 transfer (sy_with_rewards.cairo:175-178)
+fn before_update(ref self: ..., from: ContractAddress, recipient: ContractAddress, amount: u256) {
+    // Update rewards for both parties BEFORE balance changes
+    let mut contract = self.get_contract_mut();
+    contract.rewards.update_rewards_for_two(from, recipient);
+}
+
+// ISYWithRewards interface (i_sy_with_rewards.cairo:93-128)
+fn get_reward_tokens(self: @TContractState) -> Span<ContractAddress>;
+fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
+fn accrued_rewards(self: @TContractState, user: ContractAddress) -> Span<u256>;
+fn reward_index(self: @TContractState, token: ContractAddress) -> u256;
+fn user_reward_index(self: @TContractState, user: ContractAddress, token: ContractAddress) -> u256;
+fn is_reward_token(self: @TContractState, token: ContractAddress) -> bool;
+fn reward_tokens_count(self: @TContractState) -> u32;
 ```
 
-**Impact:** Cannot wrap GLP-style tokens (ETH + esGMX rewards), staked tokens with native emissions, or any asset with multiple reward streams.
+**Tests:** (in `test_sy_with_rewards.cairo`) `test_preview_functions`, `test_user_reward_index_tracks_global`, `test_claim_twice_returns_zero`, `test_no_retroactive_rewards_for_new_depositor`, `test_tokens_in_out` (82 total SY tests passing)
 
 ---
 
@@ -1913,19 +1921,20 @@ CORE TOKENS
   SY dual oracle support                ✗            ✓         None (EXCEEDS)
   SY OracleRateUpdated event            ✗            ✓         None (EXCEEDS)
   SY built-in upgradeability            ✗            ✓         None (EXCEEDS)
-  SY slippage protection                ✓            ✗         MEDIUM
-  SY burnFromInternalBalance            ✓            ✗         MEDIUM
-  SY reentrancy guard                   ✓            ✗         MEDIUM
-  SY getTokensIn/Out()                  ✓            ✗         HIGH
-  SY isValidTokenIn/Out()               ✓            ✗         HIGH
-  SY assetInfo()                        ✓            ✗         HIGH
-  SY previewDeposit/Redeem()            ✓            ✗         LOW
-  SY EIP-2612 Permit                    ✓            ✗         MEDIUM
-  SY native ETH support                 ✓            ✗         LOW
-  SY getRewardTokens()                  ✓            ✗         MEDIUM
-  SY claimRewards()                     ✓            ✗         MEDIUM
-  SY SYBaseWithRewards                  ✓            ✗         MEDIUM
-  SY pausable transfers                 ✓            ✗         LOW
+  SY slippage protection                ✓            ✓         None ✅ IMPLEMENTED
+  SY burnFromInternalBalance            ✓            ✓         None ✅ IMPLEMENTED
+  SY reentrancy guard                   ✓            ✓         None ✅ IMPLEMENTED
+  SY getTokensIn/Out()                  ✓            ✓         None ✅ IMPLEMENTED
+  SY isValidTokenIn/Out()               ✓            ✓         None ✅ IMPLEMENTED
+  SY assetInfo()                        ✓            ✓         None ✅ IMPLEMENTED
+  SY previewDeposit/Redeem()            ✓            ✓         None ✅ IMPLEMENTED
+  SY EIP-2612 Permit                    ✓            ✗         N/A (Starknet)
+  SY native ETH support                 ✓            ✗         N/A (Starknet)
+  SY getRewardTokens()                  ✓            ✓         None ✅ (SYWithRewards)
+  SY claimRewards()                     ✓            ✓         None ✅ (SYWithRewards)
+  SY SYBaseWithRewards                  ✓            ✓         None ✅ IMPLEMENTED
+  SY pausable transfers                 ✓            ✓         None (EXCEEDS) ✅
+  SY negative yield watermark           ✓            ✓         None ✅ IMPLEMENTED
   PT 1:1 redemption                     ✓            ✓         None
   PT only-YT-mints                      ✓            ✓         None
   PT emergency pause                    ✗            ✓         None (EXCEEDS)
@@ -2127,7 +2136,7 @@ GOVERNANCE
 
 | Category | Implementation | Gap Count | Critical Gaps | Notes |
 |----------|---------------|-----------|---------------|-------|
-| Core Tokens | 75% | 28 | 5 (multi-token SY, asset info, multi-reward YT) | SY: 13 gaps (3 HIGH, 7 MEDIUM); YT: 12 gaps; PT: 2 gaps; Horizon exceeds in 4 areas |
+| Core Tokens | 85% | 17 | 2 (multi-reward YT) | ✅ **SY: 95% complete** (2 gaps: EIP-2612 Permit N/A, native ETH N/A); YT: 12 gaps; PT: 2 gaps; Horizon exceeds in 7 areas |
 | AMM/Market | 60% | 24 | 8 (PYIndex, reserve fees, TWAP×6) | MarketMath: 9 gaps; Market contract: 11 gaps (6 CRITICAL/HIGH, 5 MEDIUM); Horizon exceeds in 5 areas |
 | Router | 55% | 29 | 14 (single-sided×7, token aggregation×8) | Core ops: 85%; Missing: single-sided liquidity, token aggregation, batch ops; Horizon exceeds in 3 areas (pause, RBAC, wrappers) |
 | Factory | 70% | 10 | 6 (interestFeeRate, rewardFeeRate, treasury, setters) | Core deployment: 100%; Missing: protocol fee infrastructure; Horizon exceeds in 3 areas (enriched events, RBAC, class hash updates) |
@@ -2143,7 +2152,12 @@ GOVERNANCE
 
 | Contract | Location | Lines |
 |----------|----------|-------|
-| SY Token | `contracts/src/tokens/sy.cairo` | ~472 |
+| SY Token | `contracts/src/tokens/sy.cairo` | ~407 |
+| SY Component | `contracts/src/components/sy_component.cairo` | ~577 |
+| SYWithRewards | `contracts/src/tokens/sy_with_rewards.cairo` | ~300+ |
+| RewardManager Component | `contracts/src/components/reward_manager_component.cairo` | ~400+ |
+| ISY Interface | `contracts/src/interfaces/i_sy.cairo` | ~99 |
+| ISYWithRewards Interface | `contracts/src/interfaces/i_sy_with_rewards.cairo` | ~140 |
 | PT Token | `contracts/src/tokens/pt.cairo` | ~246 |
 | YT Token | `contracts/src/tokens/yt.cairo` | ~722 |
 | Market AMM | `contracts/src/market/amm.cairo` | ~900 |
@@ -2216,11 +2230,13 @@ GOVERNANCE
 | `test_market_first_depositor.cairo` | 10 | First depositor attack |
 | `test_yt_interest.cairo` | 20 | Interest calculation |
 | `test_router_yt_swaps.cairo` | 18 | Flash swap pattern |
-| `test_sy.cairo` | ~30 | SY wrapper |
+| `test_sy.cairo` | 54 | SY wrapper (deposit, redeem, slippage, multi-token, pausable, watermark) |
+| `test_sy_with_rewards.cairo` | 28 | SY reward distribution |
+| `test_reward_manager.cairo` | ~20 | RewardManagerComponent |
 | `test_pragma_index_oracle.cairo` | ~20 | Oracle adapter |
 | `fuzz/fuzz_market_math.cairo` | 20 (256 runs each) | AMM math |
 
-**Total: ~514 passing tests**
+**Total: ~600+ passing tests** (82 SY-related tests alone)
 
 ---
 
