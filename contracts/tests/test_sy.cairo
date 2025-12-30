@@ -1,4 +1,6 @@
-use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy::{
+    AssetType, ISYAdminDispatcher, ISYAdminDispatcherTrait, ISYDispatcher, ISYDispatcherTrait,
+};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
@@ -947,4 +949,174 @@ fn test_preview_large_amounts() {
 
     assert(deposit_preview == large_amount, 'Large deposit preview wrong');
     assert(redeem_preview == large_amount, 'Large redeem preview wrong');
+}
+
+// ============ Pausable Transfer Tests (Gap 4.1) ============
+
+/// Helper to get admin dispatcher for pause/unpause operations
+fn get_admin(sy: ISYDispatcher) -> ISYAdminDispatcher {
+    ISYAdminDispatcher { contract_address: sy.contract_address }
+}
+
+#[test]
+#[should_panic(expected: 'Pausable: paused')]
+fn test_sy_transfer_blocked_when_paused() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let recipient = user2();
+    let amount = 100 * WAD;
+
+    // Mint yield token and deposit to get SY
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Verify user has SY
+    assert(sy.balance_of(user) == amount, 'User should have SY');
+
+    // Pause the contract (admin has PAUSER_ROLE)
+    let admin_dispatcher = get_admin(sy);
+    start_cheat_caller_address(sy.contract_address, admin());
+    admin_dispatcher.pause();
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Try to transfer - should fail because paused
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(recipient, amount);
+}
+
+#[test]
+#[should_panic(expected: 'Pausable: paused')]
+fn test_sy_transfer_from_blocked_when_paused() {
+    let (_, yield_token, sy) = setup();
+    let owner = user1();
+    let spender = user2();
+    let amount = 100 * WAD;
+
+    // Setup: mint, deposit, approve
+    mint_yield_token_to_user(yield_token, owner, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, owner);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, owner);
+    sy.deposit(owner, amount, 0);
+    sy.approve(spender, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Pause the contract
+    let admin_dispatcher = get_admin(sy);
+    start_cheat_caller_address(sy.contract_address, admin());
+    admin_dispatcher.pause();
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Try to transfer_from - should fail because paused
+    start_cheat_caller_address(sy.contract_address, spender);
+    sy.transfer_from(owner, spender, amount);
+}
+
+#[test]
+#[should_panic(expected: 'Pausable: paused')]
+fn test_sy_deposit_blocked_when_paused() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Mint yield token to user
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    // Approve SY contract
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Pause the contract
+    let admin_dispatcher = get_admin(sy);
+    start_cheat_caller_address(sy.contract_address, admin());
+    admin_dispatcher.pause();
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Try to deposit - should fail because paused
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+}
+
+#[test]
+fn test_sy_transfer_works_after_unpause() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let recipient = user2();
+    let amount = 100 * WAD;
+
+    // Mint yield token and deposit to get SY
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Pause the contract
+    let admin_dispatcher = get_admin(sy);
+    start_cheat_caller_address(sy.contract_address, admin());
+    admin_dispatcher.pause();
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Unpause the contract
+    start_cheat_caller_address(sy.contract_address, admin());
+    admin_dispatcher.unpause();
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Now transfer should work
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(recipient, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(sy.balance_of(user) == 0, 'User should have 0');
+    assert(sy.balance_of(recipient) == amount, 'Recipient should have SY');
+}
+
+#[test]
+fn test_sy_redeem_works_when_paused() {
+    // Redemptions are ALWAYS allowed, even when paused.
+    // This ensures users can always exit their positions during emergencies.
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit first to get SY
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Pause the contract
+    let admin_dispatcher = get_admin(sy);
+    start_cheat_caller_address(sy.contract_address, admin());
+    admin_dispatcher.pause();
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Redeem should work even when paused - users must be able to exit
+    start_cheat_caller_address(sy.contract_address, user);
+    let shares_received = sy.redeem(user, amount, 0, false);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(shares_received == amount, 'Redeem should work when paused');
+    assert(sy.balance_of(user) == 0, 'SY should be burned');
+    assert(yield_token.balance_of(user) == amount, 'User should have yield token');
 }
