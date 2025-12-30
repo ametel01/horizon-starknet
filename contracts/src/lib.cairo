@@ -1,8 +1,45 @@
+pub mod components {
+    pub mod sy_component;
+}
 pub mod factory;
-pub mod interfaces;
-pub mod libraries;
-pub mod market;
-pub mod mocks;
-pub mod oracles;
+pub mod interfaces {
+    pub mod i_erc4626;
+    pub mod i_factory;
+    pub mod i_index_oracle;
+    pub mod i_market;
+    pub mod i_market_factory;
+    pub mod i_pragma_summary_stats;
+    pub mod i_pt;
+    pub mod i_router;
+    pub mod i_sy;
+    pub mod i_yield_token;
+    pub mod i_yt;
+}
+pub mod libraries {
+    pub mod errors;
+    pub mod math;
+    pub mod math_fp;
+    pub mod roles;
+}
+pub mod market {
+    pub mod amm;
+    pub mod market_factory;
+    pub mod market_math;
+    pub mod market_math_fp;
+}
+pub mod mocks {
+    pub mod faucet;
+    pub mod mock_erc20;
+    pub mod mock_pragma;
+    pub mod mock_reentrant_token;
+    pub mod mock_yield_token;
+}
+pub mod oracles {
+    pub mod pragma_index_oracle;
+}
 pub mod router;
-pub mod tokens;
+pub mod tokens {
+    pub mod pt;
+    pub mod sy;
+    pub mod yt;
+}
