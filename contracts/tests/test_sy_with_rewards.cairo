@@ -63,7 +63,7 @@ fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
 
 /// Deploy a mock ERC20 token (for reward tokens or underlying)
 fn deploy_mock_erc20(name: felt252, symbol: felt252) -> IMockERC20Dispatcher {
-    let contract = declare("MockERC20").unwrap().contract_class();
+    let contract = declare("MockERC20").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, name, 4);
     append_bytearray(ref calldata, symbol, 4);
@@ -76,7 +76,7 @@ fn deploy_mock_erc20(name: felt252, symbol: felt252) -> IMockERC20Dispatcher {
 fn deploy_mock_yield_token(
     underlying: ContractAddress, admin_addr: ContractAddress,
 ) -> IMockYieldTokenDispatcher {
-    let contract = declare("MockYieldToken").unwrap().contract_class();
+    let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'MockYieldToken', 14);
     append_bytearray(ref calldata, 'MYT', 3);
@@ -94,7 +94,7 @@ fn deploy_sy_with_rewards(
     is_erc4626: bool,
     reward_tokens: Array<ContractAddress>,
 ) -> ISYWithRewardsDispatcher {
-    let contract = declare("SYWithRewards").unwrap().contract_class();
+    let contract = declare("SYWithRewards").unwrap_syscall().contract_class();
     let mut calldata = array![];
 
     // Name and symbol

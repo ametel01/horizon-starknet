@@ -35,7 +35,7 @@ fn zero_address() -> ContractAddress {
 
 /// Deploy a mock ERC20 token (for reward tokens)
 fn deploy_mock_erc20(name: felt252, symbol: felt252) -> IMockERC20Dispatcher {
-    let contract = declare("MockERC20").unwrap().contract_class();
+    let contract = declare("MockERC20").unwrap_syscall().contract_class();
     let mut calldata = array![];
 
     // ByteArray serialization for name
@@ -54,7 +54,7 @@ fn deploy_mock_erc20(name: felt252, symbol: felt252) -> IMockERC20Dispatcher {
 
 /// Deploy the RewardManagerTestContract
 fn deploy_test_contract(reward_tokens: Array<ContractAddress>) -> IRewardManagerTestDispatcher {
-    let contract = declare("RewardManagerTestContract").unwrap().contract_class();
+    let contract = declare("RewardManagerTestContract").unwrap_syscall().contract_class();
     let mut calldata = array![];
 
     // Serialize reward_tokens span

@@ -1120,3 +1120,184 @@ fn test_sy_redeem_works_when_paused() {
     assert(sy.balance_of(user) == 0, 'SY should be burned');
     assert(yield_token.balance_of(user) == amount, 'User should have yield token');
 }
+
+// ============ Negative Yield Watermark Tests ============
+
+#[test]
+fn test_sy_initial_watermark_equals_exchange_rate() {
+    let (_, _, sy) = setup();
+
+    // Initial watermark should equal the initial exchange rate (WAD)
+    let initial_rate = sy.exchange_rate();
+    let watermark = sy.get_exchange_rate_watermark();
+
+    assert(initial_rate == WAD, 'Initial rate should be WAD');
+    assert(watermark == WAD, 'Initial watermark should be WAD');
+    assert(watermark == initial_rate, 'Watermark should equal rate');
+}
+
+#[test]
+fn test_sy_watermark_updates_when_rate_increases() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit to have some SY in the system
+    mint_yield_token_to_user(yield_token, user, amount);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Initial watermark is WAD
+    let initial_watermark = sy.get_exchange_rate_watermark();
+    assert(initial_watermark == WAD, 'Initial watermark should be WAD');
+
+    // Increase the exchange rate (simulate yield accrual)
+    let new_rate = 2 * WAD; // 100% yield
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_index(new_rate);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Trigger a state-changing operation to update watermark
+    // Deposit more to trigger the rate check
+    mint_yield_token_to_user(yield_token, user, amount);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Watermark should now equal the new higher rate
+    let updated_watermark = sy.get_exchange_rate_watermark();
+    assert(updated_watermark == new_rate, 'Watermark should update to 2WAD');
+}
+
+#[test]
+fn test_sy_watermark_stays_at_high_water_mark_when_rate_drops() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit to have some SY in the system
+    mint_yield_token_to_user(yield_token, user, amount * 3);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount * 3);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // First, increase the rate to establish a high water mark
+    let high_rate = 2 * WAD;
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_index(high_rate);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Trigger watermark update
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Verify watermark is at high water mark
+    let watermark_after_increase = sy.get_exchange_rate_watermark();
+    assert(watermark_after_increase == high_rate, 'Watermark should be 2WAD');
+
+    // Now decrease the rate (negative yield)
+    let low_rate = WAD + (WAD / 2); // 1.5 WAD
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.force_set_index(low_rate);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Trigger another operation
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Watermark should STILL be at high water mark (not decreased)
+    let watermark_after_decrease = sy.get_exchange_rate_watermark();
+    assert(watermark_after_decrease == high_rate, 'Watermark should stay at 2WAD');
+
+    // But current exchange rate should be lower
+    let current_rate = sy.exchange_rate();
+    assert(current_rate == low_rate, 'Rate should be 1.5WAD');
+    assert(current_rate < watermark_after_decrease, 'Rate below watermark');
+}
+
+#[test]
+fn test_sy_watermark_unchanged_when_rate_same() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit
+    mint_yield_token_to_user(yield_token, user, amount * 2);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount * 2);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    let initial_watermark = sy.get_exchange_rate_watermark();
+
+    // Do another deposit without changing the rate
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Watermark should remain the same
+    let final_watermark = sy.get_exchange_rate_watermark();
+    assert(final_watermark == initial_watermark, 'Watermark unchanged');
+}
+
+#[test]
+fn test_sy_watermark_tracks_successive_increases() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 10 * WAD;
+
+    // Setup: deposit
+    mint_yield_token_to_user(yield_token, user, amount * 5);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount * 5);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Increase rate multiple times
+    let rates: Array<u256> = array![
+        WAD + (WAD / 10), // 1.1 WAD
+        WAD + (WAD / 5), // 1.2 WAD
+        WAD + (WAD / 2), // 1.5 WAD
+        2 * WAD // 2.0 WAD
+    ];
+
+    let mut expected_watermark: u256 = WAD;
+
+    for rate in rates.span() {
+        // Set new rate
+        start_cheat_caller_address(yield_token.contract_address, admin());
+        yield_token.set_index(*rate);
+        stop_cheat_caller_address(yield_token.contract_address);
+
+        // Trigger update
+        start_cheat_caller_address(sy.contract_address, user);
+        sy.deposit(user, amount, 0);
+        stop_cheat_caller_address(sy.contract_address);
+
+        // Watermark should track the highest rate
+        expected_watermark = *rate;
+        let current_watermark = sy.get_exchange_rate_watermark();
+        assert(current_watermark == expected_watermark, 'Watermark should track highest');
+    }
+}
