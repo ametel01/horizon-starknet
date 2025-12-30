@@ -1047,7 +1047,7 @@ snforge test test_sy_with_rewards::test_multi_reward_tokens
 
 ---
 
-### Gap 3.4: Update Factory for SY Variants
+### Gap 3.4: Update Factory for SY Variants **COMPLETE**
 
 **Current State:** Factory only deploys standard SY
 
@@ -1059,6 +1059,7 @@ snforge test test_sy_with_rewards::test_multi_reward_tokens
    ```cairo
    // In Factory storage
    sy_with_rewards_class_hash: ClassHash,
+   valid_sys: Map<ContractAddress, bool>,
    ```
 
 2. **Add setter for SYWithRewards class hash**:
@@ -1093,10 +1094,12 @@ snforge test test_sy_with_rewards::test_multi_reward_tokens
 4. **Update IFactory interface**:
    ```cairo
    fn set_sy_with_rewards_class_hash(ref self: TContractState, class_hash: ClassHash);
+   fn sy_with_rewards_class_hash(self: @TContractState) -> ClassHash;
    fn deploy_sy_with_rewards(
        ref self: TContractState,
        // ... params including reward_tokens ...
    ) -> ContractAddress;
+   fn is_valid_sy(self: @TContractState, sy: ContractAddress) -> bool;
    ```
    - File: `src/interfaces/i_factory.cairo`
 
@@ -1105,6 +1108,18 @@ snforge test test_sy_with_rewards::test_multi_reward_tokens
 snforge test test_factory::test_deploy_sy_with_rewards
 snforge test test_factory::test_set_sy_with_rewards_class_hash
 ```
+
+**Tests Added (10 tests):**
+- `test_factory_set_sy_with_rewards_class_hash`
+- `test_factory_set_sy_with_rewards_class_hash_not_owner`
+- `test_factory_set_sy_with_rewards_class_hash_zero`
+- `test_factory_deploy_sy_with_rewards`
+- `test_factory_deploy_sy_with_rewards_multiple_reward_tokens`
+- `test_factory_deploy_sy_with_rewards_is_functional`
+- `test_factory_deploy_sy_with_rewards_no_class_hash`
+- `test_factory_deploy_sy_with_rewards_zero_underlying`
+- `test_factory_is_valid_sy_returns_false_for_undeployed`
+- `test_factory_deploy_multiple_sy_with_rewards`
 
 ---
 
@@ -1115,7 +1130,7 @@ snforge test test_factory::test_set_sy_with_rewards_class_hash
 | 3.1 | SYComponent extraction | `src/components/sy_component.cairo` | `src/tokens/sy.cairo` | ✓ COMPLETE |
 | 3.2 | RewardManagerComponent | `src/components/reward_manager_component.cairo` | - | ✓ COMPLETE |
 | 3.3 | SYWithRewards contract | `src/tokens/sy_with_rewards.cairo`, `src/interfaces/i_sy_with_rewards.cairo` | - | ✓ COMPLETE |
-| 3.4 | Factory updates | - | `src/factory.cairo`, `src/interfaces/i_factory.cairo` | Pending |
+| 3.4 | Factory updates | - | `src/factory.cairo`, `src/interfaces/i_factory.cairo` | ✓ COMPLETE |
 
 **Key Benefits of Component Architecture:**
 
@@ -1253,8 +1268,9 @@ Phase 3 (Rewards) ─────┬─► Gap 3.1 (SYComponent extraction) ✓ 
                        │       ├─► Create src/interfaces/i_sy_with_rewards.cairo ✓
                        │       └─► Create src/tokens/sy_with_rewards.cairo ✓
                        │
-                       └─► Gap 3.4 (Factory updates) ◄─ depends on 3.3
-                               └─► Update src/factory.cairo
+                       └─► Gap 3.4 (Factory updates) ✓ COMPLETE
+                               ├─► Update src/factory.cairo ✓
+                               └─► Update src/interfaces/i_factory.cairo ✓
 
 Phase 4 (Polish) ──────┬─► Gap 4.1 (Pausable transfers)
                        └─► Gap 4.2 (Negative yield watermark)
@@ -1319,7 +1335,7 @@ Each phase must have:
 - `tests/test_sy_component.cairo` - NEW: Component-level unit tests
 - `tests/test_reward_manager.cairo` - NEW: RewardManager component tests ✓ (21 tests)
 - `tests/test_sy_with_rewards.cairo` - NEW: Integration tests for SYWithRewards ✓ (24 tests)
-- `tests/test_factory.cairo` - Extend with `test_deploy_sy_with_rewards`
+- `tests/test_factory.cairo` - Extended with SYWithRewards deployment tests ✓ (10 new tests, 22 total)
 
 ---
 
