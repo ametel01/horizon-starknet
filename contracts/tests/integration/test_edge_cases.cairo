@@ -234,7 +234,7 @@ fn test_zero_sy_redeem() {
 
     // Try to redeem zero
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.redeem(alice(), 0, 0); // Should panic
+    sy.redeem(alice(), 0, 0, false); // Should panic
 }
 
 #[test]

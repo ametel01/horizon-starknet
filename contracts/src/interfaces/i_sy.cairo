@@ -42,12 +42,15 @@ pub trait ISY<TContractState> {
     /// @param receiver Address to receive the underlying tokens
     /// @param amount_sy_to_redeem Amount of SY to burn
     /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
+    /// @param burn_from_internal_balance If true, burn from contract's own balance (Router pattern)
+    ///        If false, burn from caller's balance (standard pattern)
     /// @return Amount of underlying shares redeemed
     fn redeem(
         ref self: TContractState,
         receiver: ContractAddress,
         amount_sy_to_redeem: u256,
         min_token_out: u256,
+        burn_from_internal_balance: bool,
     ) -> u256;
     fn exchange_rate(self: @TContractState) -> u256;
     fn underlying_asset(self: @TContractState) -> ContractAddress;

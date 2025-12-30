@@ -273,7 +273,7 @@ snforge test test_sy::test_redeem_slippage_reverts
 
 ---
 
-### Gap 2.2: `burnFromInternalBalance`
+### Gap 2.2: `burnFromInternalBalance` **COMPLETE**
 
 **Current State:**
 ```cairo

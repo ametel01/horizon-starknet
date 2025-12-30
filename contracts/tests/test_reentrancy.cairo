@@ -232,7 +232,7 @@ fn test_sy_redeem_reentrancy_safe() {
 
     // Redeem
     start_cheat_caller_address(sy.contract_address, user1());
-    let redeemed = sy.redeem(user1(), amount, 0);
+    let redeemed = sy.redeem(user1(), amount, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     // Redeem completed correctly
@@ -251,7 +251,7 @@ fn test_sy_redeem_insufficient_balance() {
 
     // Try to redeem without any SY
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.redeem(user1(), amount, 0);
+    sy.redeem(user1(), amount, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 }
 
@@ -682,7 +682,7 @@ fn test_sy_redeem_zero_reverts() {
     let (_reentrant, sy) = setup_sy_with_reentrant();
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.redeem(user1(), 0, 0);
+    sy.redeem(user1(), 0, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 }
 

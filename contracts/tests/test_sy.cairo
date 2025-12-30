@@ -316,7 +316,7 @@ fn test_sy_redeem_1_to_1() {
     sy.deposit(user, amount, 0);
 
     // Redeem SY for yield token
-    let shares_received = sy.redeem(user, amount, 0);
+    let shares_received = sy.redeem(user, amount, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY is 1:1 with underlying shares
@@ -344,7 +344,7 @@ fn test_sy_redeem_to_different_receiver() {
     sy.deposit(redeemer, amount, 0);
 
     // Redeem but send yield token to different receiver
-    sy.redeem(receiver, amount, 0);
+    sy.redeem(receiver, amount, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(yield_token.balance_of(redeemer) == 0, 'Redeemer should have 0');
@@ -366,7 +366,7 @@ fn test_sy_redeem_zero() {
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, WAD, 0);
-    sy.redeem(user, 0, 0);
+    sy.redeem(user, 0, 0, false);
 }
 
 #[test]
@@ -383,7 +383,7 @@ fn test_sy_redeem_zero_receiver() {
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, WAD, 0);
-    sy.redeem(zero_address(), WAD, 0);
+    sy.redeem(zero_address(), WAD, 0, false);
 }
 
 #[test]
@@ -401,7 +401,7 @@ fn test_sy_redeem_insufficient_balance() {
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, WAD, 0);
     // Try to redeem more than balance
-    sy.redeem(user, 2 * WAD, 0);
+    sy.redeem(user, 2 * WAD, 0, false);
 }
 
 // ============ Partial Deposit/Redeem Tests ============
@@ -423,7 +423,7 @@ fn test_sy_partial_redeem() {
     sy.deposit(user, amount, 0);
 
     // Redeem only half
-    sy.redeem(user, amount / 2, 0);
+    sy.redeem(user, amount / 2, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount / 2, 'Wrong remaining SY');
@@ -508,7 +508,7 @@ fn test_sy_yield_accrual_with_deposit() {
     // When user redeems, they get back same number of shares (yield token)
     // but those shares are now worth more in terms of the base asset
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(user, amount, 0);
+    let shares_received = sy.redeem(user, amount, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Should get back same shares');
@@ -717,7 +717,7 @@ fn test_redeem_slippage_reverts() {
 
     // Redeem with min_token_out higher than possible output (SY is 1:1)
     // Requesting 200 WAD when redeeming 100 WAD should fail
-    sy.redeem(user, amount, 200 * WAD);
+    sy.redeem(user, amount, 200 * WAD, false);
 }
 
 #[test]
@@ -760,10 +760,104 @@ fn test_redeem_with_slippage_protection() {
     sy.deposit(user, amount, 0);
 
     // Redeem with exact min_token_out (SY is 1:1)
-    let shares_received = sy.redeem(user, amount, amount);
+    let shares_received = sy.redeem(user, amount, amount, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Shares received matches');
     assert(sy.balance_of(user) == 0, 'SY burned');
     assert(yield_token.balance_of(user) == amount, 'Got tokens back');
+}
+
+// ============ Internal Balance Redemption Tests ============
+
+#[test]
+fn test_redeem_from_internal_balance() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Mint and deposit to get SY
+    mint_yield_token_to_user(yield_token, user, amount);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(sy.balance_of(user) == amount, 'SY minted');
+
+    // Transfer SY to the SY contract (simulating Router pattern)
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(sy.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(sy.balance_of(user) == 0, 'User has no SY');
+    assert(sy.balance_of(sy.contract_address) == amount, 'Contract has SY');
+
+    // Now redeem with burn_from_internal_balance=true
+    // Any caller can trigger the redeem since we burn from contract's balance
+    start_cheat_caller_address(sy.contract_address, user);
+    let shares_received = sy.redeem(user, amount, 0, true);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(shares_received == amount, 'Shares received');
+    assert(sy.balance_of(sy.contract_address) == 0, 'Contract SY burned');
+    assert(yield_token.balance_of(user) == amount, 'User got tokens');
+}
+
+#[test]
+#[should_panic(expected: 'ERC20: insufficient balance')]
+fn test_redeem_from_internal_balance_insufficient() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Mint and deposit to get SY (to user, not contract)
+    mint_yield_token_to_user(yield_token, user, amount);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Try to redeem from internal balance without transferring to contract first
+    // Contract has 0 SY balance, so this should fail
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.redeem(user, amount, 0, true); // Should panic
+}
+
+#[test]
+fn test_redeem_to_different_receiver_from_internal_balance() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let receiver = user2();
+    let amount = 100 * WAD;
+
+    // Setup: mint, deposit, get SY
+    mint_yield_token_to_user(yield_token, user, amount);
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Transfer SY to contract
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(sy.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Redeem to different receiver from internal balance
+    start_cheat_caller_address(sy.contract_address, user);
+    let shares_received = sy.redeem(receiver, amount, 0, true);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(shares_received == amount, 'Shares received');
+    assert(yield_token.balance_of(user) == 0, 'User got nothing');
+    assert(yield_token.balance_of(receiver) == amount, 'Receiver got tokens');
 }

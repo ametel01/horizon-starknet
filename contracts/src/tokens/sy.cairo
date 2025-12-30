@@ -350,12 +350,15 @@ pub mod SY {
         /// @param receiver Address to receive the underlying tokens
         /// @param amount_sy_to_redeem Amount of SY to burn
         /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
+        /// @param burn_from_internal_balance If true, burn from contract's own balance (Router
+        /// pattern)
         /// @return Amount of underlying shares redeemed (equal to SY burned)
         fn redeem(
             ref self: ContractState,
             receiver: ContractAddress,
             amount_sy_to_redeem: u256,
             min_token_out: u256,
+            burn_from_internal_balance: bool,
         ) -> u256 {
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_redeem > 0, Errors::SY_ZERO_REDEEM);
@@ -365,8 +368,15 @@ pub mod SY {
 
             let caller = get_caller_address();
 
-            // Burn SY from caller
-            self.erc20.burn(caller, amount_sy_to_redeem);
+            // Burn SY from either internal balance or caller
+            if burn_from_internal_balance {
+                // Router pattern: burn from contract's own balance
+                // Caller must have transferred SY to this contract first
+                self.erc20.burn(get_contract_address(), amount_sy_to_redeem);
+            } else {
+                // Standard pattern: burn from caller
+                self.erc20.burn(caller, amount_sy_to_redeem);
+            }
 
             // SY is 1:1 with underlying shares
             let shares_to_return = amount_sy_to_redeem;
