@@ -1,11 +1,12 @@
 /// Factory Contract
 /// Deploys and tracks PT/YT pairs for different SY tokens and expiries.
 /// Each (SY, expiry) combination can only have one PT/YT pair.
+/// Also deploys SYWithRewards contracts for reward-enabled SY tokens.
 #[starknet::contract]
 pub mod Factory {
     use core::num::traits::Zero;
     use horizon::interfaces::i_factory::IFactory;
-    use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+    use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::roles::DEFAULT_ADMIN_ROLE;
@@ -67,6 +68,10 @@ pub mod Factory {
         access_control: AccessControlComponent::Storage,
         // Flag to prevent RBAC re-initialization
         rbac_initialized: bool,
+        // Class hash for SYWithRewards contract deployment
+        sy_with_rewards_class_hash: ClassHash,
+        // Set of valid SY addresses deployed by this factory
+        valid_sys: Map<ContractAddress, bool>,
     }
 
     #[event]
@@ -74,6 +79,8 @@ pub mod Factory {
     pub enum Event {
         YieldContractsCreated: YieldContractsCreated,
         ClassHashesUpdated: ClassHashesUpdated,
+        SYWithRewardsDeployed: SYWithRewardsDeployed,
+        SYWithRewardsClassHashUpdated: SYWithRewardsClassHashUpdated,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -105,6 +112,23 @@ pub mod Factory {
     pub struct ClassHashesUpdated {
         pub yt_class_hash: ClassHash,
         pub pt_class_hash: ClassHash,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct SYWithRewardsDeployed {
+        #[key]
+        pub sy: ContractAddress,
+        pub name: ByteArray,
+        pub symbol: ByteArray,
+        pub underlying: ContractAddress,
+        pub deployer: ContractAddress,
+        pub timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct SYWithRewardsClassHashUpdated {
+        pub old_class_hash: ClassHash,
+        pub new_class_hash: ClassHash,
     }
 
     #[constructor]
@@ -296,6 +320,116 @@ pub mod Factory {
 
             // Mark as initialized to prevent re-calling
             self.rbac_initialized.write(true);
+        }
+
+        // ============ SYWithRewards Support ============
+
+        /// Get the SYWithRewards class hash used for deployments
+        fn sy_with_rewards_class_hash(self: @ContractState) -> ClassHash {
+            self.sy_with_rewards_class_hash.read()
+        }
+
+        /// Set the SYWithRewards class hash (owner only)
+        fn set_sy_with_rewards_class_hash(ref self: ContractState, class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            assert(!class_hash.is_zero(), Errors::ZERO_ADDRESS);
+
+            let old_class_hash = self.sy_with_rewards_class_hash.read();
+            self.sy_with_rewards_class_hash.write(class_hash);
+
+            self.emit(SYWithRewardsClassHashUpdated { old_class_hash, new_class_hash: class_hash });
+        }
+
+        /// Deploy a new SYWithRewards contract
+        fn deploy_sy_with_rewards(
+            ref self: ContractState,
+            name: ByteArray,
+            symbol: ByteArray,
+            underlying: ContractAddress,
+            index_oracle: ContractAddress,
+            is_erc4626: bool,
+            asset_type: AssetType,
+            pauser: ContractAddress,
+            tokens_in: Span<ContractAddress>,
+            tokens_out: Span<ContractAddress>,
+            reward_tokens: Span<ContractAddress>,
+            salt: felt252,
+        ) -> ContractAddress {
+            // Validate inputs
+            assert(!underlying.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!index_oracle.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!pauser.is_zero(), Errors::ZERO_ADDRESS);
+
+            let class_hash = self.sy_with_rewards_class_hash.read();
+            assert(!class_hash.is_zero(), Errors::ZERO_ADDRESS);
+
+            // Build constructor calldata for SYWithRewards
+            // Constructor: name, symbol, underlying, index_oracle, is_erc4626, asset_type, pauser,
+            // tokens_in, tokens_out, reward_tokens
+            let mut calldata: Array<felt252> = array![];
+
+            // Serialize name (ByteArray)
+            Serde::serialize(@name, ref calldata);
+
+            // Serialize symbol (ByteArray)
+            Serde::serialize(@symbol, ref calldata);
+
+            // Underlying address
+            calldata.append(underlying.into());
+
+            // Index oracle address
+            calldata.append(index_oracle.into());
+
+            // is_erc4626 (bool)
+            calldata.append(if is_erc4626 {
+                1
+            } else {
+                0
+            });
+
+            // Asset type (enum)
+            Serde::serialize(@asset_type, ref calldata);
+
+            // Pauser address
+            calldata.append(pauser.into());
+
+            // Serialize tokens_in (Span<ContractAddress>)
+            Serde::serialize(@tokens_in, ref calldata);
+
+            // Serialize tokens_out (Span<ContractAddress>)
+            Serde::serialize(@tokens_out, ref calldata);
+
+            // Serialize reward_tokens (Span<ContractAddress>)
+            Serde::serialize(@reward_tokens, ref calldata);
+
+            // Deploy SYWithRewards contract
+            let (sy_address, _) = match deploy_syscall(class_hash, salt, calldata.span(), false) {
+                Result::Ok(result) => result,
+                Result::Err(_) => panic!("{}", Errors::FACTORY_DEPLOY_FAILED),
+            };
+
+            // Register the new SY contract
+            self.valid_sys.write(sy_address, true);
+
+            // Emit deployment event
+            self
+                .emit(
+                    SYWithRewardsDeployed {
+                        sy: sy_address,
+                        name,
+                        symbol,
+                        underlying,
+                        deployer: get_caller_address(),
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            sy_address
+        }
+
+        /// Check if an SY address was deployed by this factory
+        fn is_valid_sy(self: @ContractState, sy: ContractAddress) -> bool {
+            self.valid_sys.read(sy)
         }
     }
 }

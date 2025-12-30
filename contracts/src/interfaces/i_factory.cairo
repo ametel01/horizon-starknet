@@ -1,3 +1,4 @@
+use horizon::interfaces::i_sy::AssetType;
 use starknet::{ClassHash, ContractAddress};
 
 #[starknet::interface]
@@ -24,4 +25,43 @@ pub trait IFactory<TContractState> {
 
     /// Initialize RBAC after upgrade (one-time setup)
     fn initialize_rbac(ref self: TContractState);
+
+    // ============ SYWithRewards Support ============
+
+    /// Get the SYWithRewards class hash used for deployments
+    fn sy_with_rewards_class_hash(self: @TContractState) -> ClassHash;
+
+    /// Set the SYWithRewards class hash (owner only)
+    fn set_sy_with_rewards_class_hash(ref self: TContractState, class_hash: ClassHash);
+
+    /// Deploy a new SYWithRewards contract
+    /// @param name Token name
+    /// @param symbol Token symbol
+    /// @param underlying The underlying yield-bearing token
+    /// @param index_oracle The index source (same as underlying for ERC-4626, or oracle)
+    /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+    /// @param asset_type Asset classification (Token or Liquidity)
+    /// @param pauser Address with PAUSER_ROLE for emergency pause
+    /// @param tokens_in Valid tokens for deposit
+    /// @param tokens_out Valid tokens for redemption
+    /// @param reward_tokens Reward tokens to track
+    /// @param salt Unique salt for deterministic deployment
+    /// @return The deployed SYWithRewards contract address
+    fn deploy_sy_with_rewards(
+        ref self: TContractState,
+        name: ByteArray,
+        symbol: ByteArray,
+        underlying: ContractAddress,
+        index_oracle: ContractAddress,
+        is_erc4626: bool,
+        asset_type: AssetType,
+        pauser: ContractAddress,
+        tokens_in: Span<ContractAddress>,
+        tokens_out: Span<ContractAddress>,
+        reward_tokens: Span<ContractAddress>,
+        salt: felt252,
+    ) -> ContractAddress;
+
+    /// Check if an SY address was deployed by this factory
+    fn is_valid_sy(self: @TContractState, sy: ContractAddress) -> bool;
 }
