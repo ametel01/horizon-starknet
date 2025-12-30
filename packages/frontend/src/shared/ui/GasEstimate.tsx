@@ -9,6 +9,8 @@ import { Skeleton } from './Skeleton';
 interface GasEstimateProps {
   /** Formatted fee string (e.g., "~0.0001 STRK") */
   formattedFee: string;
+  /** Formatted fee in USD (e.g., "$0.02") */
+  formattedFeeUsd?: string | undefined;
   /** Whether the estimate is loading */
   isLoading?: boolean;
   /** Error if estimation failed */
@@ -30,6 +32,7 @@ interface GasEstimateProps {
  */
 export function GasEstimate({
   formattedFee,
+  formattedFeeUsd,
   isLoading = false,
   error,
   className,
@@ -63,7 +66,12 @@ export function GasEstimate({
       {isLoading ? (
         <Skeleton className="h-3 w-16" aria-label="Estimating gas" />
       ) : (
-        <span className="text-muted-foreground">{formattedFee}</span>
+        <span className="text-muted-foreground">
+          {formattedFee}
+          {formattedFeeUsd && (
+            <span className="text-muted-foreground/70"> ({formattedFeeUsd})</span>
+          )}
+        </span>
       )}
     </div>
   );

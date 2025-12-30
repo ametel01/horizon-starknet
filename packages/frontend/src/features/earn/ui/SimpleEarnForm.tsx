@@ -121,6 +121,7 @@ export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): Reac
   // Estimate gas fee
   const {
     formattedFee,
+    formattedFeeUsd,
     isLoading: isEstimatingFee,
     error: feeError,
   } = useEstimateFee(depositCalls);
@@ -256,7 +257,12 @@ export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): Reac
       {outputAmount > BigInt(0) && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Estimated Gas</span>
-          <GasEstimate formattedFee={formattedFee} isLoading={isEstimatingFee} error={feeError} />
+          <GasEstimate
+            formattedFee={formattedFee}
+            formattedFeeUsd={formattedFeeUsd}
+            isLoading={isEstimatingFee}
+            error={feeError}
+          />
         </div>
       )}
 
@@ -268,6 +274,7 @@ export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): Reac
           error={error}
           gasEstimate={{
             formattedFee,
+            formattedFeeUsd,
             isLoading: isEstimatingFee,
             error: feeError,
           }}

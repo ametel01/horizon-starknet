@@ -96,7 +96,12 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
   }, [amount, validationError, buildUnwrapCalls]);
 
   // Estimate gas fee
-  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(unwrapCalls);
+  const {
+    formattedFee,
+    formattedFeeUsd,
+    isLoading: isEstimatingFee,
+    error: feeError,
+  } = useEstimateFee(unwrapCalls);
 
   // Handle unwrap
   const handleUnwrap = useCallback(async () => {
@@ -212,6 +217,7 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
             value={
               <GasEstimate
                 formattedFee={formattedFee}
+                formattedFeeUsd={formattedFeeUsd}
                 isLoading={isEstimatingFee}
                 error={feeError}
               />
@@ -230,6 +236,7 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
             error={error}
             gasEstimate={{
               formattedFee,
+              formattedFeeUsd,
               isLoading: isEstimatingFee,
               error: feeError,
             }}

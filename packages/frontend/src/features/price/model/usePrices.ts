@@ -51,12 +51,14 @@ interface AvnuTokenPrice {
 }
 
 /**
- * Normalize Starknet address to lowercase with 0x prefix
+ * Normalize Starknet address to lowercase with 0x prefix and no leading zeros.
+ * AVNU API returns addresses without leading zeros, so we need to strip them
+ * for consistent lookups.
  */
 function normalizeAddress(address: string): string {
-  // Remove 0x prefix, lowercase, then re-add prefix
-  const hex = address.toLowerCase().replace(/^0x/, '');
-  return '0x' + hex;
+  // Remove 0x prefix, lowercase, strip leading zeros, then re-add prefix
+  const hex = address.toLowerCase().replace(/^0x/, '').replace(/^0+/, '');
+  return '0x' + (hex || '0'); // Ensure at least '0x0' for zero address
 }
 
 /**

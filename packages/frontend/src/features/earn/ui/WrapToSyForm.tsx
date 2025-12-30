@@ -96,7 +96,12 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
   }, [amount, validationError, underlyingAddress, buildWrapCalls]);
 
   // Estimate gas fee
-  const { formattedFee, isLoading: isEstimatingFee, error: feeError } = useEstimateFee(wrapCalls);
+  const {
+    formattedFee,
+    formattedFeeUsd,
+    isLoading: isEstimatingFee,
+    error: feeError,
+  } = useEstimateFee(wrapCalls);
 
   // Handle wrap
   const handleWrap = useCallback(async () => {
@@ -215,6 +220,7 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
             value={
               <GasEstimate
                 formattedFee={formattedFee}
+                formattedFeeUsd={formattedFeeUsd}
                 isLoading={isEstimatingFee}
                 error={feeError}
               />
@@ -233,6 +239,7 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
             error={error}
             gasEstimate={{
               formattedFee,
+              formattedFeeUsd,
               isLoading: isEstimatingFee,
               error: feeError,
             }}
