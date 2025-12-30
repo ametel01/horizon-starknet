@@ -87,12 +87,25 @@ pub fn deploy_mock_yield_token_default() -> (IMockERC20Dispatcher, IMockYieldTok
     (base_asset, yield_token)
 }
 
-/// Deploy SY token
+/// Deploy SY token with default single-token support (underlying for both in/out)
 /// For native yield tokens, underlying == index_oracle (same address)
 /// For bridged tokens, index_oracle would be a separate oracle contract
 /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
 pub fn deploy_sy(
     underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
+    deploy_sy_with_tokens(
+        underlying, index_oracle, is_erc4626, array![underlying], array![underlying],
+    )
+}
+
+/// Deploy SY token with explicit tokens_in and tokens_out
+pub fn deploy_sy_with_tokens(
+    underlying: ContractAddress,
+    index_oracle: ContractAddress,
+    is_erc4626: bool,
+    tokens_in: Array<ContractAddress>,
+    tokens_out: Array<ContractAddress>,
 ) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
@@ -106,6 +119,18 @@ pub fn deploy_sy(
         0
     });
     calldata.append(admin().into()); // pauser
+
+    // Serialize tokens_in span
+    calldata.append(tokens_in.len().into());
+    for token in tokens_in {
+        calldata.append(token.into());
+    }
+
+    // Serialize tokens_out span
+    calldata.append(tokens_out.len().into());
+    for token in tokens_out {
+        calldata.append(token.into());
+    }
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }

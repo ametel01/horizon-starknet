@@ -8,6 +8,8 @@ pub mod Errors {
     pub const SY_ZERO_DEPOSIT: felt252 = 'HZN: zero deposit';
     pub const SY_ZERO_REDEEM: felt252 = 'HZN: zero redeem';
     pub const SY_INSUFFICIENT_BALANCE: felt252 = 'HZN: insufficient balance';
+    pub const SY_EMPTY_TOKENS_IN: felt252 = 'HZN: empty tokens_in';
+    pub const SY_EMPTY_TOKENS_OUT: felt252 = 'HZN: empty tokens_out';
 
     // PT errors
     pub const PT_ONLY_YT: felt252 = 'HZN: only YT';

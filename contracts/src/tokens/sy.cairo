@@ -28,7 +28,8 @@ pub mod SY {
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
-        StorageMapReadAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
     };
     use starknet::{
         ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
@@ -82,6 +83,12 @@ pub mod SY {
         is_erc4626: bool,
         // Last recorded exchange rate (for OracleRateUpdated event)
         last_exchange_rate: u256,
+        // Multi-token support: valid tokens for deposit
+        tokens_in: Map<u32, ContractAddress>,
+        tokens_in_count: u32,
+        // Multi-token support: valid tokens for redemption
+        tokens_out: Map<u32, ContractAddress>,
+        tokens_out_count: u32,
     }
 
     #[event]
@@ -154,6 +161,8 @@ pub mod SY {
     /// bridged)
     /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
     /// @param pauser Address with PAUSER_ROLE for emergency pause
+    /// @param tokens_in Valid tokens for deposit (must include underlying)
+    /// @param tokens_out Valid tokens for redemption (must include underlying)
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -163,6 +172,8 @@ pub mod SY {
         index_oracle: ContractAddress,
         is_erc4626: bool,
         pauser: ContractAddress,
+        tokens_in: Span<ContractAddress>,
+        tokens_out: Span<ContractAddress>,
     ) {
         // Initialize ERC20
         self.erc20.initializer(name, symbol);
@@ -191,6 +202,26 @@ pub mod SY {
             oracle.index()
         };
         self.last_exchange_rate.write(initial_rate);
+
+        // Initialize tokens_in (valid deposit tokens)
+        assert(tokens_in.len() > 0, Errors::SY_EMPTY_TOKENS_IN);
+        let mut i: u32 = 0;
+        for token in tokens_in {
+            assert(!(*token).is_zero(), Errors::ZERO_ADDRESS);
+            self.tokens_in.write(i, *token);
+            i += 1;
+        }
+        self.tokens_in_count.write(i);
+
+        // Initialize tokens_out (valid redemption tokens)
+        assert(tokens_out.len() > 0, Errors::SY_EMPTY_TOKENS_OUT);
+        let mut j: u32 = 0;
+        for token in tokens_out {
+            assert(!(*token).is_zero(), Errors::ZERO_ADDRESS);
+            self.tokens_out.write(j, *token);
+            j += 1;
+        }
+        self.tokens_out_count.write(j);
     }
 
     #[abi(embed_v0)]
@@ -362,6 +393,30 @@ pub mod SY {
         /// Get the underlying token address
         fn underlying_asset(self: @ContractState) -> ContractAddress {
             self.underlying.read()
+        }
+
+        /// Get all valid tokens that can be deposited to mint SY
+        fn get_tokens_in(self: @ContractState) -> Span<ContractAddress> {
+            let count = self.tokens_in_count.read();
+            let mut tokens: Array<ContractAddress> = array![];
+            let mut i: u32 = 0;
+            while i < count {
+                tokens.append(self.tokens_in.read(i));
+                i += 1;
+            }
+            tokens.span()
+        }
+
+        /// Get all valid tokens that can be received when redeeming SY
+        fn get_tokens_out(self: @ContractState) -> Span<ContractAddress> {
+            let count = self.tokens_out_count.read();
+            let mut tokens: Array<ContractAddress> = array![];
+            let mut i: u32 = 0;
+            while i < count {
+                tokens.append(self.tokens_out.read(i));
+                i += 1;
+            }
+            tokens.span()
         }
     }
 

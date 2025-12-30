@@ -24,6 +24,12 @@ pub trait ISY<TContractState> {
     ) -> u256;
     fn exchange_rate(self: @TContractState) -> u256;
     fn underlying_asset(self: @TContractState) -> ContractAddress;
+
+    // Multi-token support
+    /// Returns all valid tokens that can be deposited to mint SY
+    fn get_tokens_in(self: @TContractState) -> Span<ContractAddress>;
+    /// Returns all valid tokens that can be received when redeeming SY
+    fn get_tokens_out(self: @TContractState) -> Span<ContractAddress>;
 }
 
 /// Admin interface for SY pausability

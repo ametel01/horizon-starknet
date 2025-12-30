@@ -69,6 +69,14 @@ fn deploy_sy_with_reentrant_underlying(underlying: ContractAddress) -> ISYDispat
     calldata.append(1); // is_erc4626 = true
     calldata.append(admin().into()); // pauser
 
+    // tokens_in: single token (underlying)
+    calldata.append(1); // length
+    calldata.append(underlying.into());
+
+    // tokens_out: single token (underlying)
+    calldata.append(1); // length
+    calldata.append(underlying.into());
+
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }

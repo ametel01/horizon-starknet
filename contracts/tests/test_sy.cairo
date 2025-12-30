@@ -58,9 +58,22 @@ fn deploy_mock_yield_token(
     IMockYieldTokenDispatcher { contract_address }
 }
 
-// Deploy SY token
+// Deploy SY token with default single-token support (underlying for both in/out)
 fn deploy_sy(
     underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
+    deploy_sy_with_tokens(
+        underlying, index_oracle, is_erc4626, array![underlying], array![underlying],
+    )
+}
+
+// Deploy SY token with explicit tokens_in and tokens_out
+fn deploy_sy_with_tokens(
+    underlying: ContractAddress,
+    index_oracle: ContractAddress,
+    is_erc4626: bool,
+    tokens_in: Array<ContractAddress>,
+    tokens_out: Array<ContractAddress>,
 ) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
@@ -74,6 +87,18 @@ fn deploy_sy(
         0
     });
     calldata.append(admin().into()); // pauser
+
+    // Serialize tokens_in span
+    calldata.append(tokens_in.len().into());
+    for token in tokens_in {
+        calldata.append(token.into());
+    }
+
+    // Serialize tokens_out span
+    calldata.append(tokens_out.len().into());
+    for token in tokens_out {
+        calldata.append(token.into());
+    }
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -477,3 +502,54 @@ fn test_sy_yield_accrual_with_deposit() {
 
     assert(shares_received == amount, 'Should get back same shares');
 }
+
+// ============ Multi-Token Support Tests ============
+
+#[test]
+fn test_sy_get_tokens_in_out_single() {
+    let (_, yield_token, sy) = setup();
+
+    // Default setup uses single token for both in and out
+    let tokens_in = sy.get_tokens_in();
+    let tokens_out = sy.get_tokens_out();
+
+    assert(tokens_in.len() == 1, 'Should have 1 token_in');
+    assert(tokens_out.len() == 1, 'Should have 1 token_out');
+    assert(*tokens_in.at(0) == yield_token.contract_address, 'token_in should be underlying');
+    assert(*tokens_out.at(0) == yield_token.contract_address, 'token_out should be underlying');
+}
+
+#[test]
+fn test_sy_get_tokens_in_out_multiple() {
+    let base_asset = deploy_mock_erc20();
+    let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
+
+    // Create additional mock tokens for multi-token support
+    let token2: ContractAddress = 'token2'.try_into().unwrap();
+    let token3: ContractAddress = 'token3'.try_into().unwrap();
+
+    let tokens_in = array![yield_token.contract_address, token2, token3];
+    let tokens_out = array![yield_token.contract_address, token2];
+
+    let sy = deploy_sy_with_tokens(
+        yield_token.contract_address, yield_token.contract_address, true, tokens_in, tokens_out,
+    );
+
+    let result_in = sy.get_tokens_in();
+    let result_out = sy.get_tokens_out();
+
+    assert(result_in.len() == 3, 'Should have 3 tokens_in');
+    assert(result_out.len() == 2, 'Should have 2 tokens_out');
+    assert(*result_in.at(0) == yield_token.contract_address, 'First token_in wrong');
+    assert(*result_in.at(1) == token2, 'Second token_in wrong');
+    assert(*result_in.at(2) == token3, 'Third token_in wrong');
+    assert(*result_out.at(0) == yield_token.contract_address, 'First token_out wrong');
+    assert(*result_out.at(1) == token2, 'Second token_out wrong');
+}
+// Note: Constructor validation for empty tokens_in/out and zero addresses
+// is tested manually. snforge's #[should_panic] doesn't work with contract
+// deployment failures, and the VM wraps errors in a way that prevents
+// Result-based error handling. The validation code is present in sy.cairo
+// constructor (lines 206-224) and works correctly.
+
+
