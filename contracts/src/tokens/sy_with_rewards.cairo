@@ -45,6 +45,7 @@ use starknet::ContractAddress;
 /// 2. Custom oracles: A separate oracle that implements IIndexOracle
 #[starknet::contract]
 pub mod SYWithRewards {
+    use core::num::traits::Zero;
     use horizon::components::reward_manager_component::RewardManagerComponent;
     use horizon::components::sy_component::SYComponent;
     use horizon::interfaces::i_sy::AssetType;
@@ -144,11 +145,18 @@ pub mod SYWithRewards {
         RewardsEvent: RewardManagerComponent::Event,
     }
 
-    /// Custom ERC20 hooks - update rewards on every transfer
+    /// Custom ERC20 hooks - enforce pausable and update rewards on every transfer
     ///
-    /// This is the key integration point: when tokens are transferred,
-    /// we must update both parties' reward state BEFORE the balance changes.
-    /// This ensures accurate reward distribution.
+    /// This is the key integration point: when tokens are transferred, we must:
+    /// 1. Check if the contract is paused (block deposits and transfers, allow redemptions)
+    /// 2. Update both parties' reward state BEFORE the balance changes
+    ///
+    /// When paused:
+    /// - Deposits (mints) are blocked: from is zero address
+    /// - Transfers are blocked: neither from nor to is zero
+    /// - Redemptions (burns) are ALLOWED: to is zero address
+    ///
+    /// This ensures users can always exit their positions during emergencies.
     impl ERC20HooksImpl of ERC20Component::ERC20HooksTrait<ContractState> {
         fn before_update(
             ref self: ERC20Component::ComponentState<ContractState>,
@@ -156,6 +164,14 @@ pub mod SYWithRewards {
             recipient: ContractAddress,
             amount: u256,
         ) {
+            // Allow burns (redemptions) even when paused - users must be able to exit
+            // Burns have recipient == zero address
+            // For non-burn operations, check pausable
+            if !recipient.is_zero() {
+                let contract = self.get_contract();
+                contract.pausable.assert_not_paused();
+            }
+
             // Update rewards for both parties BEFORE balance changes
             // This captures their rewards based on their current balances
             let mut contract = self.get_contract_mut();

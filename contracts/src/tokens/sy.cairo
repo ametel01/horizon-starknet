@@ -17,6 +17,7 @@ use starknet::ContractAddress;
 /// and implements SYHooksTrait to bridge the component with ERC20 and other components.
 #[starknet::contract]
 pub mod SY {
+    use core::num::traits::Zero;
     use horizon::components::sy_component::SYComponent;
     use horizon::interfaces::i_sy::{AssetType, ISY, ISYAdmin};
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
@@ -26,7 +27,7 @@ pub mod SY {
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
-    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component};
     use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{StorageMapReadAccess, StoragePointerReadAccess};
     use starknet::{ClassHash, ContractAddress, get_caller_address};
@@ -56,6 +57,41 @@ pub mod SY {
     // Note: SYHooksImpl is resolved by the compiler since it's in the same scope
     impl SYInternalImpl = SYComponent::InternalImpl<ContractState>;
     impl SYViewImpl = SYComponent::ViewImpl<ContractState>;
+
+    /// Custom ERC20 hooks - enforce pausable on deposits and transfers
+    ///
+    /// When the contract is paused:
+    /// - Deposits (mints) are blocked: from is zero address
+    /// - Transfers are blocked: neither from nor to is zero
+    /// - Redemptions (burns) are ALLOWED: to is zero address
+    ///
+    /// This ensures users can always exit their positions during emergencies.
+    impl ERC20HooksImpl of ERC20Component::ERC20HooksTrait<ContractState> {
+        fn before_update(
+            ref self: ERC20Component::ComponentState<ContractState>,
+            from: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) {
+            // Allow burns (redemptions) even when paused - users must be able to exit
+            // Burns have recipient == zero address
+            if recipient.is_zero() {
+                return;
+            }
+
+            // Block mints (deposits) and transfers when paused
+            let contract = self.get_contract();
+            contract.pausable.assert_not_paused();
+        }
+
+        fn after_update(
+            ref self: ERC20Component::ComponentState<ContractState>,
+            from: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) { // No additional logic needed after update
+        }
+    }
 
     #[abi(embed_v0)]
     impl AccessControlImpl =
