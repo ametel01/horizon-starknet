@@ -1,10 +1,13 @@
 use core::num::traits::Zero;
 use horizon::interfaces::i_factory::{IFactoryDispatcher, IFactoryDispatcherTrait};
 use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy_with_rewards::{
+    ISYWithRewardsDispatcher, ISYWithRewardsDispatcherTrait,
+};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
-use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
+use horizon::mocks::mock_erc20::{IMockERC20Dispatcher, IMockERC20DispatcherTrait};
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
@@ -108,6 +111,12 @@ fn get_class_hashes() -> (ClassHash, ClassHash) {
     let yt_contract = declare("YT").unwrap_syscall().contract_class();
     let pt_contract = declare("PT").unwrap_syscall().contract_class();
     (*yt_contract.class_hash, *pt_contract.class_hash)
+}
+
+// Get class hash for SYWithRewards
+fn get_sy_with_rewards_class_hash() -> ClassHash {
+    let contract = declare("SYWithRewards").unwrap_syscall().contract_class();
+    *contract.class_hash
 }
 
 // Deploy Factory
@@ -381,4 +390,327 @@ fn test_factory_post_expiry_redemption() {
     assert(pt.balance_of(user) == 0, 'PT should be burned');
     // YT remains but is worthless
     assert(yt.balance_of(user) == amount, 'YT should remain');
+}
+
+// ============ SYWithRewards Deployment Tests ============
+
+#[test]
+fn test_factory_set_sy_with_rewards_class_hash() {
+    let (_, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Initially should be zero
+    assert(factory.sy_with_rewards_class_hash().is_zero(), 'Should be zero initially');
+
+    // Set class hash as owner
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(
+        factory.sy_with_rewards_class_hash() == sy_with_rewards_class_hash, 'Class hash not set',
+    );
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_set_sy_with_rewards_class_hash_not_owner() {
+    let (_, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Try to set class hash as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_factory_set_sy_with_rewards_class_hash_zero() {
+    let (_, _, factory) = setup();
+
+    // Try to set zero class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(zero_class_hash());
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_deploy_sy_with_rewards() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Deploy a mock reward token
+    let reward_token = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Build parameters
+    let name: ByteArray = "SY Reward Token";
+    let symbol: ByteArray = "SY-RWD";
+    let tokens_in = array![underlying.contract_address].span();
+    let tokens_out = array![underlying.contract_address].span();
+    let reward_tokens = array![reward_token.contract_address].span();
+
+    // Deploy SYWithRewards
+    let sy_address = factory
+        .deploy_sy_with_rewards(
+            name,
+            symbol,
+            underlying.contract_address, // underlying
+            underlying.contract_address, // index_oracle (same as underlying for ERC-4626)
+            true, // is_erc4626
+            AssetType::Token,
+            admin(), // pauser
+            tokens_in,
+            tokens_out,
+            reward_tokens,
+            'salt1' // salt
+        );
+
+    // Verify deployment
+    assert(!sy_address.is_zero(), 'SY should be deployed');
+    assert(factory.is_valid_sy(sy_address), 'SY should be valid');
+
+    // Verify SYWithRewards contract is functional
+    let sy = ISYWithRewardsDispatcher { contract_address: sy_address };
+    assert(sy.name() == "SY Reward Token", 'Wrong name');
+    assert(sy.symbol() == "SY-RWD", 'Wrong symbol');
+    assert(sy.underlying_asset() == underlying.contract_address, 'Wrong underlying');
+    assert(sy.reward_tokens_count() == 1, 'Wrong reward count');
+
+    // Verify reward token is registered
+    let registered_reward_tokens = sy.get_reward_tokens();
+    assert(registered_reward_tokens.len() == 1, 'Should have 1 reward token');
+    assert(*registered_reward_tokens[0] == reward_token.contract_address, 'Wrong reward token');
+}
+
+#[test]
+fn test_factory_deploy_sy_with_rewards_multiple_reward_tokens() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Deploy multiple mock reward tokens
+    let reward_token1 = deploy_mock_erc20();
+    let reward_token2 = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Build parameters with multiple reward tokens
+    let name: ByteArray = "Multi Reward SY";
+    let symbol: ByteArray = "MR-SY";
+    let tokens_in = array![underlying.contract_address].span();
+    let tokens_out = array![underlying.contract_address].span();
+    let reward_tokens = array![reward_token1.contract_address, reward_token2.contract_address]
+        .span();
+
+    // Deploy SYWithRewards
+    let sy_address = factory
+        .deploy_sy_with_rewards(
+            name,
+            symbol,
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            tokens_in,
+            tokens_out,
+            reward_tokens,
+            'salt2',
+        );
+
+    // Verify multiple reward tokens
+    let sy = ISYWithRewardsDispatcher { contract_address: sy_address };
+    assert(sy.reward_tokens_count() == 2, 'Should have 2 reward tokens');
+
+    let registered_reward_tokens = sy.get_reward_tokens();
+    assert(registered_reward_tokens.len() == 2, 'Should have 2 reward tokens');
+    assert(*registered_reward_tokens[0] == reward_token1.contract_address, 'Wrong reward token 1');
+    assert(*registered_reward_tokens[1] == reward_token2.contract_address, 'Wrong reward token 2');
+}
+
+#[test]
+fn test_factory_deploy_sy_with_rewards_is_functional() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+    let reward_token = deploy_mock_erc20();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Deploy SYWithRewards
+    let sy_address = factory
+        .deploy_sy_with_rewards(
+            "Functional SY",
+            "F-SY",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt3',
+        );
+
+    let sy = ISYWithRewardsDispatcher { contract_address: sy_address };
+
+    // Mint underlying to user
+    mint_yield_token_to_user(underlying, user, amount);
+
+    // Approve and deposit
+    start_cheat_caller_address(underlying.contract_address, user);
+    underlying.approve(sy_address, amount);
+    stop_cheat_caller_address(underlying.contract_address);
+
+    start_cheat_caller_address(sy_address, user);
+    let sy_minted = sy.deposit(user, amount, 0);
+    stop_cheat_caller_address(sy_address);
+
+    // Verify deposit worked
+    assert(sy_minted == amount, 'Wrong SY minted');
+    assert(sy.balance_of(user) == amount, 'Wrong SY balance');
+
+    // Send rewards to SY contract
+    start_cheat_caller_address(reward_token.contract_address, admin());
+    reward_token.mint(sy_address, 10 * WAD);
+    stop_cheat_caller_address(reward_token.contract_address);
+
+    // Claim rewards
+    start_cheat_caller_address(sy_address, user);
+    let claimed = sy.claim_rewards(user);
+    stop_cheat_caller_address(sy_address);
+
+    // User should receive all rewards (they have 100% of supply)
+    assert(claimed.len() == 1, 'Should have 1 claimed amount');
+    assert(*claimed[0] == 10 * WAD, 'Wrong claimed amount');
+    assert(reward_token.balance_of(user) == 10 * WAD, 'Wrong reward balance');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_factory_deploy_sy_with_rewards_no_class_hash() {
+    let (underlying, _, factory) = setup();
+    let reward_token = deploy_mock_erc20();
+
+    // Try to deploy without setting class hash
+    factory
+        .deploy_sy_with_rewards(
+            "Test",
+            "TST",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt',
+        );
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_factory_deploy_sy_with_rewards_zero_underlying() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+    let reward_token = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Try to deploy with zero underlying
+    factory
+        .deploy_sy_with_rewards(
+            "Test",
+            "TST",
+            zero_address(), // zero underlying
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt',
+        );
+}
+
+#[test]
+fn test_factory_is_valid_sy_returns_false_for_undeployed() {
+    let (_, _, factory) = setup();
+
+    // Random address should not be valid
+    let random_addr: ContractAddress = 'random_sy'.try_into().unwrap();
+    assert(!factory.is_valid_sy(random_addr), 'Random SY should be invalid');
+}
+
+#[test]
+fn test_factory_deploy_multiple_sy_with_rewards() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+    let reward_token = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Deploy two SYWithRewards contracts
+    let sy1 = factory
+        .deploy_sy_with_rewards(
+            "SY One",
+            "SY1",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt_a',
+        );
+
+    let sy2 = factory
+        .deploy_sy_with_rewards(
+            "SY Two",
+            "SY2",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt_b',
+        );
+
+    // Both should be valid and different
+    assert(sy1 != sy2, 'SY addresses should differ');
+    assert(factory.is_valid_sy(sy1), 'SY1 should be valid');
+    assert(factory.is_valid_sy(sy2), 'SY2 should be valid');
+
+    // Verify they have correct names
+    let sy1_dispatcher = ISYWithRewardsDispatcher { contract_address: sy1 };
+    let sy2_dispatcher = ISYWithRewardsDispatcher { contract_address: sy2 };
+    assert(sy1_dispatcher.name() == "SY One", 'Wrong name for SY1');
+    assert(sy2_dispatcher.name() == "SY Two", 'Wrong name for SY2');
 }
