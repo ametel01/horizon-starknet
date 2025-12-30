@@ -1163,7 +1163,7 @@ snforge test test_factory::test_deploy_sy_with_rewards
 **Impact:** UX improvements, edge case handling
 **Effort:** 1-2 days
 
-### Gap 4.1: Pausable Transfers
+### Gap 4.1: Pausable Transfers **COMPLETE**
 
 **Current State:** Only deposit is pausable
 
@@ -1175,16 +1175,17 @@ snforge test test_factory::test_deploy_sy_with_rewards
    ```cairo
    impl ERC20HooksImpl of ERC20Component::ERC20HooksTrait<ContractState> {
        fn before_update(
-           ref self: ContractState,
+           ref self: ERC20Component::ComponentState<ContractState>,
            from: ContractAddress,
            recipient: ContractAddress,
            amount: u256,
        ) {
-           self.pausable.assert_not_paused();
+           let contract = self.get_contract();
+           contract.pausable.assert_not_paused();
        }
 
        fn after_update(
-           ref self: ContractState,
+           ref self: ERC20Component::ComponentState<ContractState>,
            from: ContractAddress,
            recipient: ContractAddress,
            amount: u256,
@@ -1192,12 +1193,33 @@ snforge test test_factory::test_deploy_sy_with_rewards
    }
    ```
    - File: `src/tokens/sy.cairo`
+   - File: `src/tokens/sy_with_rewards.cairo`
 
 2. **Replace ERC20HooksEmptyImpl** with custom implementation
+
+**Tests Added (10 tests):**
+- `test_sy_transfer_blocked_when_paused`
+- `test_sy_transfer_from_blocked_when_paused`
+- `test_sy_deposit_blocked_when_paused`
+- `test_sy_redeem_works_when_paused`
+- `test_sy_transfer_works_after_unpause`
+- `test_sy_with_rewards_transfer_blocked_when_paused`
+- `test_sy_with_rewards_transfer_from_blocked_when_paused`
+- `test_sy_with_rewards_deposit_blocked_when_paused`
+- `test_sy_with_rewards_redeem_works_when_paused`
+- `test_sy_with_rewards_transfer_works_after_unpause`
+
+**Behavior:** When paused:
+- Deposits (mints) are BLOCKED
+- Transfers are BLOCKED
+- Redemptions (burns) are ALLOWED - users must always be able to exit their positions
+
+This matches Pendle's behavior: users can always withdraw, but new activity is blocked during emergencies.
 
 **Validation:**
 ```bash
 snforge test test_sy::test_transfer_blocked_when_paused
+snforge test paused  # Runs all 9 pausable tests
 ```
 
 ---
@@ -1272,7 +1294,10 @@ Phase 3 (Rewards) ─────┬─► Gap 3.1 (SYComponent extraction) ✓ 
                                ├─► Update src/factory.cairo ✓
                                └─► Update src/interfaces/i_factory.cairo ✓
 
-Phase 4 (Polish) ──────┬─► Gap 4.1 (Pausable transfers)
+Phase 4 (Polish) ──────┬─► Gap 4.1 (Pausable transfers) ✓ COMPLETE
+                       │       ├─► Update src/tokens/sy.cairo (add ERC20 hooks)
+                       │       └─► Update src/tokens/sy_with_rewards.cairo (add pausable check)
+                       │
                        └─► Gap 4.2 (Negative yield watermark)
 ```
 
