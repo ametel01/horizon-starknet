@@ -234,6 +234,10 @@ export const SY_ABI = [
             name: 'amount_shares_to_deposit',
             type: 'core::integer::u256',
           },
+          {
+            name: 'min_shares_out',
+            type: 'core::integer::u256',
+          },
         ],
         outputs: [
           {
@@ -253,6 +257,14 @@ export const SY_ABI = [
           {
             name: 'amount_sy_to_redeem',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'min_token_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'burn_from_internal_balance',
+            type: 'core::bool',
           },
         ],
         outputs: [
@@ -345,6 +357,38 @@ export const SY_ABI = [
         outputs: [
           {
             type: '(horizon::interfaces::i_sy::AssetType, core::starknet::contract_address::ContractAddress, core::integer::u8)',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_deposit',
+        inputs: [
+          {
+            name: 'amount_to_deposit',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_redeem',
+        inputs: [
+          {
+            name: 'amount_sy',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
           },
         ],
         state_mutability: 'view',
@@ -904,6 +948,12 @@ export const SY_ABI = [
   },
   {
     type: 'event',
+    name: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
+    kind: 'enum',
+    variants: [],
+  },
+  {
+    type: 'event',
     name: 'horizon::tokens::sy::SY::Deposit',
     kind: 'struct',
     members: [
@@ -1066,6 +1116,11 @@ export const SY_ABI = [
       {
         name: 'UpgradeableEvent',
         type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
+        kind: 'flat',
+      },
+      {
+        name: 'ReentrancyGuardEvent',
+        type: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
         kind: 'flat',
       },
       {
