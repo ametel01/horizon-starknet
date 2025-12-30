@@ -27,7 +27,7 @@ Horizon's SY implementation is at **70% parity** with Pendle's SYBase. The core 
 **Effort:** 3-4 days
 **Files:** `src/tokens/sy.cairo`, `src/interfaces/i_sy.cairo`
 
-### Gap 1.1: `getTokensIn()` / `getTokensOut()`
+### Gap 1.1: `getTokensIn()` / `getTokensOut()` **COMPLETE**
 
 **Current State:**
 ```cairo

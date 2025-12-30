@@ -552,4 +552,69 @@ fn test_sy_get_tokens_in_out_multiple() {
 // Result-based error handling. The validation code is present in sy.cairo
 // constructor (lines 206-224) and works correctly.
 
+// ============ Token Validation Tests ============
+
+#[test]
+fn test_sy_is_valid_token_in_single() {
+    let (_, yield_token, sy) = setup();
+
+    // Underlying token should be valid
+    assert(sy.is_valid_token_in(yield_token.contract_address), 'underlying should be valid in');
+
+    // Random address should not be valid
+    let random_addr: ContractAddress = 'random'.try_into().unwrap();
+    assert(!sy.is_valid_token_in(random_addr), 'random should be invalid in');
+
+    // Zero address should not be valid
+    assert(!sy.is_valid_token_in(zero_address()), 'zero should be invalid in');
+}
+
+#[test]
+fn test_sy_is_valid_token_out_single() {
+    let (_, yield_token, sy) = setup();
+
+    // Underlying token should be valid
+    assert(sy.is_valid_token_out(yield_token.contract_address), 'underlying should be valid out');
+
+    // Random address should not be valid
+    let random_addr: ContractAddress = 'random'.try_into().unwrap();
+    assert(!sy.is_valid_token_out(random_addr), 'random should be invalid out');
+
+    // Zero address should not be valid
+    assert(!sy.is_valid_token_out(zero_address()), 'zero should be invalid out');
+}
+
+#[test]
+fn test_sy_is_valid_token_multiple() {
+    let base_asset = deploy_mock_erc20();
+    let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
+
+    // Create additional tokens for multi-token support
+    let token2: ContractAddress = 'token2'.try_into().unwrap();
+    let token3: ContractAddress = 'token3'.try_into().unwrap();
+
+    // tokens_in: underlying, token2, token3
+    // tokens_out: underlying, token2 (token3 NOT in tokens_out)
+    let tokens_in = array![yield_token.contract_address, token2, token3];
+    let tokens_out = array![yield_token.contract_address, token2];
+
+    let sy = deploy_sy_with_tokens(
+        yield_token.contract_address, yield_token.contract_address, true, tokens_in, tokens_out,
+    );
+
+    // Verify tokens_in
+    assert(sy.is_valid_token_in(yield_token.contract_address), 'underlying valid in');
+    assert(sy.is_valid_token_in(token2), 'token2 valid in');
+    assert(sy.is_valid_token_in(token3), 'token3 valid in');
+
+    // Verify tokens_out
+    assert(sy.is_valid_token_out(yield_token.contract_address), 'underlying valid out');
+    assert(sy.is_valid_token_out(token2), 'token2 valid out');
+    assert(!sy.is_valid_token_out(token3), 'token3 NOT valid out');
+
+    // Random address should be invalid for both
+    let random_addr: ContractAddress = 'random'.try_into().unwrap();
+    assert(!sy.is_valid_token_in(random_addr), 'random invalid in');
+    assert(!sy.is_valid_token_out(random_addr), 'random invalid out');
+}
 

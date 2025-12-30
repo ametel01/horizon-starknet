@@ -30,6 +30,10 @@ pub trait ISY<TContractState> {
     fn get_tokens_in(self: @TContractState) -> Span<ContractAddress>;
     /// Returns all valid tokens that can be received when redeeming SY
     fn get_tokens_out(self: @TContractState) -> Span<ContractAddress>;
+    /// Check if a token can be deposited to mint SY (O(1) lookup)
+    fn is_valid_token_in(self: @TContractState, token: ContractAddress) -> bool;
+    /// Check if a token can be received when redeeming SY (O(1) lookup)
+    fn is_valid_token_out(self: @TContractState, token: ContractAddress) -> bool;
 }
 
 /// Admin interface for SY pausability

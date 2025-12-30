@@ -89,6 +89,9 @@ pub mod SY {
         // Multi-token support: valid tokens for redemption
         tokens_out: Map<u32, ContractAddress>,
         tokens_out_count: u32,
+        // O(1) token validation maps
+        valid_tokens_in: Map<ContractAddress, bool>,
+        valid_tokens_out: Map<ContractAddress, bool>,
     }
 
     #[event]
@@ -203,22 +206,24 @@ pub mod SY {
         };
         self.last_exchange_rate.write(initial_rate);
 
-        // Initialize tokens_in (valid deposit tokens)
+        // Initialize tokens_in (valid deposit tokens) with O(1) lookup map
         assert(tokens_in.len() > 0, Errors::SY_EMPTY_TOKENS_IN);
         let mut i: u32 = 0;
         for token in tokens_in {
             assert(!(*token).is_zero(), Errors::ZERO_ADDRESS);
             self.tokens_in.write(i, *token);
+            self.valid_tokens_in.write(*token, true);
             i += 1;
         }
         self.tokens_in_count.write(i);
 
-        // Initialize tokens_out (valid redemption tokens)
+        // Initialize tokens_out (valid redemption tokens) with O(1) lookup map
         assert(tokens_out.len() > 0, Errors::SY_EMPTY_TOKENS_OUT);
         let mut j: u32 = 0;
         for token in tokens_out {
             assert(!(*token).is_zero(), Errors::ZERO_ADDRESS);
             self.tokens_out.write(j, *token);
+            self.valid_tokens_out.write(*token, true);
             j += 1;
         }
         self.tokens_out_count.write(j);
@@ -417,6 +422,16 @@ pub mod SY {
                 i += 1;
             }
             tokens.span()
+        }
+
+        /// Check if a token can be deposited to mint SY (O(1) lookup)
+        fn is_valid_token_in(self: @ContractState, token: ContractAddress) -> bool {
+            self.valid_tokens_in.read(token)
+        }
+
+        /// Check if a token can be received when redeeming SY (O(1) lookup)
+        fn is_valid_token_out(self: @ContractState, token: ContractAddress) -> bool {
+            self.valid_tokens_out.read(token)
         }
     }
 
