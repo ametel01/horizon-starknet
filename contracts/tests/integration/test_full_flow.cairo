@@ -94,6 +94,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
 
     // tokens_in: single token (underlying)
@@ -189,7 +190,7 @@ fn test_full_yield_tokenization_flow() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), alice_deposit);
+    let sy_received = sy.deposit(alice(), alice_deposit, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify Alice got SY tokens
@@ -293,7 +294,7 @@ fn test_multiple_users_yield_flow() {
     underlying.approve(sy.contract_address, alice_amount);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), alice_amount);
+    sy.deposit(alice(), alice_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Setup Bob
@@ -302,7 +303,7 @@ fn test_multiple_users_yield_flow() {
     underlying.approve(sy.contract_address, bob_amount);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.deposit(bob(), bob_amount);
+    sy.deposit(bob(), bob_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Alice mints PT + YT
@@ -387,7 +388,7 @@ fn test_router_full_flow() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount);
+    sy.deposit(alice(), amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Alice mints PT + YT through router
@@ -449,7 +450,7 @@ fn test_yield_accrual_over_time() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount);
+    sy.deposit(alice(), amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
@@ -506,7 +507,7 @@ fn test_partial_redemptions() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount);
+    sy.deposit(alice(), amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());

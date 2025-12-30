@@ -16,7 +16,7 @@ pub mod SY {
     use core::num::traits::Zero;
     use horizon::interfaces::i_erc4626::{IERC4626MinimalDispatcher, IERC4626MinimalDispatcherTrait};
     use horizon::interfaces::i_index_oracle::{IIndexOracleDispatcher, IIndexOracleDispatcherTrait};
-    use horizon::interfaces::i_sy::{ISY, ISYAdmin};
+    use horizon::interfaces::i_sy::{AssetType, ISY, ISYAdmin};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::math_fp::WAD;
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
@@ -92,6 +92,8 @@ pub mod SY {
         // O(1) token validation maps
         valid_tokens_in: Map<ContractAddress, bool>,
         valid_tokens_out: Map<ContractAddress, bool>,
+        // Asset classification (Token or Liquidity)
+        asset_type: AssetType,
     }
 
     #[event]
@@ -163,6 +165,7 @@ pub mod SY {
     /// @param index_oracle The index source (same as underlying for ERC-4626, or oracle for
     /// bridged)
     /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+    /// @param asset_type Asset classification (Token or Liquidity)
     /// @param pauser Address with PAUSER_ROLE for emergency pause
     /// @param tokens_in Valid tokens for deposit (must include underlying)
     /// @param tokens_out Valid tokens for redemption (must include underlying)
@@ -174,6 +177,7 @@ pub mod SY {
         underlying: ContractAddress,
         index_oracle: ContractAddress,
         is_erc4626: bool,
+        asset_type: AssetType,
         pauser: ContractAddress,
         tokens_in: Span<ContractAddress>,
         tokens_out: Span<ContractAddress>,
@@ -195,6 +199,7 @@ pub mod SY {
         self.underlying.write(underlying);
         self.index_oracle.write(index_oracle);
         self.is_erc4626.write(is_erc4626);
+        self.asset_type.write(asset_type);
 
         // Initialize last exchange rate from oracle
         let initial_rate = if is_erc4626 {
@@ -287,9 +292,13 @@ pub mod SY {
         /// SY is 1:1 with the underlying shares (not assets).
         /// @param receiver Address to receive the minted SY
         /// @param amount_shares_to_deposit Amount of underlying shares to deposit
+        /// @param min_shares_out Minimum SY shares to receive (slippage protection)
         /// @return Amount of SY minted (equal to shares deposited)
         fn deposit(
-            ref self: ContractState, receiver: ContractAddress, amount_shares_to_deposit: u256,
+            ref self: ContractState,
+            receiver: ContractAddress,
+            amount_shares_to_deposit: u256,
+            min_shares_out: u256,
         ) -> u256 {
             // Check not paused - deposit operations can be paused in emergency
             self.pausable.assert_not_paused();
@@ -314,6 +323,9 @@ pub mod SY {
             // SY is 1:1 with underlying shares
             let sy_to_mint = amount_shares_to_deposit;
 
+            // Slippage protection: ensure minimum shares out
+            assert(sy_to_mint >= min_shares_out, Errors::SY_INSUFFICIENT_SHARES_OUT);
+
             // Mint SY to receiver
             self.erc20.mint(receiver, sy_to_mint);
 
@@ -337,9 +349,13 @@ pub mod SY {
         /// Redeem SY for underlying yield-bearing tokens
         /// @param receiver Address to receive the underlying tokens
         /// @param amount_sy_to_redeem Amount of SY to burn
+        /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
         /// @return Amount of underlying shares redeemed (equal to SY burned)
         fn redeem(
-            ref self: ContractState, receiver: ContractAddress, amount_sy_to_redeem: u256,
+            ref self: ContractState,
+            receiver: ContractAddress,
+            amount_sy_to_redeem: u256,
+            min_token_out: u256,
         ) -> u256 {
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_redeem > 0, Errors::SY_ZERO_REDEEM);
@@ -354,6 +370,9 @@ pub mod SY {
 
             // SY is 1:1 with underlying shares
             let shares_to_return = amount_sy_to_redeem;
+
+            // Slippage protection: ensure minimum token out
+            assert(shares_to_return >= min_token_out, Errors::SY_INSUFFICIENT_TOKEN_OUT);
 
             // Transfer underlying to receiver
             let underlying_addr = self.underlying.read();
@@ -432,6 +451,11 @@ pub mod SY {
         /// Check if a token can be received when redeeming SY (O(1) lookup)
         fn is_valid_token_out(self: @ContractState, token: ContractAddress) -> bool {
             self.valid_tokens_out.read(token)
+        }
+
+        /// Returns asset classification, underlying address, and decimals
+        fn asset_info(self: @ContractState) -> (AssetType, ContractAddress, u8) {
+            (self.asset_type.read(), self.underlying.read(), self.decimals())
         }
     }
 

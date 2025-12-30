@@ -98,6 +98,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
 
     // tokens_in: single token (underlying)
@@ -186,7 +187,7 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2);
+    sy.deposit(user, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
@@ -210,7 +211,7 @@ fn test_zero_sy_deposit() {
     let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 0); // Should panic
+    sy.deposit(alice(), 0, 0); // Should panic
 }
 
 #[test]
@@ -228,12 +229,12 @@ fn test_zero_sy_redeem() {
     underlying.approve(sy.contract_address, 100 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 100 * WAD);
+    sy.deposit(alice(), 100 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Try to redeem zero
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.redeem(alice(), 0); // Should panic
+    sy.redeem(alice(), 0, 0); // Should panic
 }
 
 #[test]
@@ -308,7 +309,7 @@ fn test_large_amounts() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), large_amount);
+    let sy_received = sy.deposit(alice(), large_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy_received == large_amount, 'Large SY deposit');
@@ -494,7 +495,7 @@ fn test_minimum_amounts() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), dust_amount);
+    let sy_received = sy.deposit(alice(), dust_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Even 1 wei should work
@@ -615,7 +616,7 @@ fn test_operations_across_time() {
     underlying.approve(sy.contract_address, 500 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.deposit(bob(), 500 * WAD);
+    sy.deposit(bob(), 500 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, bob());

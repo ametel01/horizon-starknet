@@ -1,4 +1,4 @@
-use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
@@ -91,11 +91,17 @@ pub fn deploy_mock_yield_token_default() -> (IMockERC20Dispatcher, IMockYieldTok
 /// For native yield tokens, underlying == index_oracle (same address)
 /// For bridged tokens, index_oracle would be a separate oracle contract
 /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+/// Defaults to AssetType::Token
 pub fn deploy_sy(
     underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
 ) -> ISYDispatcher {
     deploy_sy_with_tokens(
-        underlying, index_oracle, is_erc4626, array![underlying], array![underlying],
+        underlying,
+        index_oracle,
+        is_erc4626,
+        AssetType::Token,
+        array![underlying],
+        array![underlying],
     )
 }
 
@@ -104,6 +110,7 @@ pub fn deploy_sy_with_tokens(
     underlying: ContractAddress,
     index_oracle: ContractAddress,
     is_erc4626: bool,
+    asset_type: AssetType,
     tokens_in: Array<ContractAddress>,
     tokens_out: Array<ContractAddress>,
 ) -> ISYDispatcher {
@@ -117,6 +124,11 @@ pub fn deploy_sy_with_tokens(
         1
     } else {
         0
+    });
+    // Serialize AssetType enum (0 = Token, 1 = Liquidity)
+    calldata.append(match asset_type {
+        AssetType::Token => 0,
+        AssetType::Liquidity => 1,
     });
     calldata.append(admin().into()); // pauser
 
@@ -227,7 +239,7 @@ pub fn mint_and_deposit_sy(
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, amount);
+    let sy_minted = sy.deposit(user, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     sy_minted

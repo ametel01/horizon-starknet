@@ -10,6 +10,8 @@ pub mod Errors {
     pub const SY_INSUFFICIENT_BALANCE: felt252 = 'HZN: insufficient balance';
     pub const SY_EMPTY_TOKENS_IN: felt252 = 'HZN: empty tokens_in';
     pub const SY_EMPTY_TOKENS_OUT: felt252 = 'HZN: empty tokens_out';
+    pub const SY_INSUFFICIENT_SHARES_OUT: felt252 = 'HZN: insufficient shares out';
+    pub const SY_INSUFFICIENT_TOKEN_OUT: felt252 = 'HZN: insufficient token out';
 
     // PT errors
     pub const PT_ONLY_YT: felt252 = 'HZN: only YT';

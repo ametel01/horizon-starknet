@@ -1,5 +1,16 @@
 use starknet::ContractAddress;
 
+/// Asset type classification for SY tokens
+/// Matches Pendle V2's AssetType enum for compatibility
+#[derive(Drop, Serde, Copy, starknet::Store, PartialEq, Default)]
+pub enum AssetType {
+    /// Regular ERC20 token (e.g., stETH, wstETH, aUSDC)
+    #[default]
+    Token,
+    /// Liquidity pool token (e.g., Curve LP, Uniswap LP)
+    Liquidity,
+}
+
 #[starknet::interface]
 pub trait ISY<TContractState> {
     // ERC20 standard
@@ -16,11 +27,27 @@ pub trait ISY<TContractState> {
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
 
     // SY-specific
+    /// Deposit underlying yield-bearing tokens to mint SY
+    /// @param receiver Address to receive the minted SY
+    /// @param amount_shares_to_deposit Amount of underlying shares to deposit
+    /// @param min_shares_out Minimum SY shares to receive (slippage protection)
+    /// @return Amount of SY minted
     fn deposit(
-        ref self: TContractState, receiver: ContractAddress, amount_shares_to_deposit: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_shares_to_deposit: u256,
+        min_shares_out: u256,
     ) -> u256;
+    /// Redeem SY for underlying yield-bearing tokens
+    /// @param receiver Address to receive the underlying tokens
+    /// @param amount_sy_to_redeem Amount of SY to burn
+    /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
+    /// @return Amount of underlying shares redeemed
     fn redeem(
-        ref self: TContractState, receiver: ContractAddress, amount_sy_to_redeem: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_sy_to_redeem: u256,
+        min_token_out: u256,
     ) -> u256;
     fn exchange_rate(self: @TContractState) -> u256;
     fn underlying_asset(self: @TContractState) -> ContractAddress;
@@ -34,6 +61,11 @@ pub trait ISY<TContractState> {
     fn is_valid_token_in(self: @TContractState, token: ContractAddress) -> bool;
     /// Check if a token can be received when redeeming SY (O(1) lookup)
     fn is_valid_token_out(self: @TContractState, token: ContractAddress) -> bool;
+
+    // Asset metadata
+    /// Returns asset classification, underlying address, and decimals
+    /// Matches Pendle V2's assetInfo() for compatibility
+    fn asset_info(self: @TContractState) -> (AssetType, ContractAddress, u8);
 }
 
 /// Admin interface for SY pausability

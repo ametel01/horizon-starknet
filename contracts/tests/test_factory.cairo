@@ -88,6 +88,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
 
     // tokens_in: single token (underlying)
@@ -316,7 +317,7 @@ fn test_factory_created_contracts_are_functional() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
+    sy.deposit(user, amount, 0);
     sy.approve(yt_addr, amount);
     stop_cheat_caller_address(sy.contract_address);
 
@@ -360,7 +361,7 @@ fn test_factory_post_expiry_redemption() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
+    sy.deposit(user, amount, 0);
     sy.approve(yt_addr, amount);
     stop_cheat_caller_address(sy.contract_address);
 

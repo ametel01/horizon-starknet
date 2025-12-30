@@ -1,4 +1,4 @@
-use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
@@ -63,7 +63,12 @@ fn deploy_sy(
     underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
 ) -> ISYDispatcher {
     deploy_sy_with_tokens(
-        underlying, index_oracle, is_erc4626, array![underlying], array![underlying],
+        underlying,
+        index_oracle,
+        is_erc4626,
+        AssetType::Token,
+        array![underlying],
+        array![underlying],
     )
 }
 
@@ -72,6 +77,7 @@ fn deploy_sy_with_tokens(
     underlying: ContractAddress,
     index_oracle: ContractAddress,
     is_erc4626: bool,
+    asset_type: AssetType,
     tokens_in: Array<ContractAddress>,
     tokens_out: Array<ContractAddress>,
 ) -> ISYDispatcher {
@@ -85,6 +91,11 @@ fn deploy_sy_with_tokens(
         1
     } else {
         0
+    });
+    // Serialize AssetType enum (0 = Token, 1 = Liquidity)
+    calldata.append(match asset_type {
+        AssetType::Token => 0,
+        AssetType::Liquidity => 1,
     });
     calldata.append(admin().into()); // pauser
 
@@ -171,7 +182,7 @@ fn test_sy_transfer() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_amount = sy.deposit(user, amount);
+    let sy_amount = sy.deposit(user, amount, 0);
 
     // Transfer SY to recipient
     sy.transfer(recipient, sy_amount / 2);
@@ -196,7 +207,7 @@ fn test_sy_approve_and_transfer_from() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, owner);
-    let sy_amount = sy.deposit(owner, amount);
+    let sy_amount = sy.deposit(owner, amount, 0);
     sy.approve(spender, sy_amount);
     stop_cheat_caller_address(sy.contract_address);
 
@@ -228,7 +239,7 @@ fn test_sy_deposit_1_to_1() {
 
     // Deposit yield token to get SY
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, deposit_amount);
+    let sy_minted = sy.deposit(user, deposit_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY is 1:1 with underlying shares
@@ -253,7 +264,7 @@ fn test_sy_deposit_to_different_receiver() {
 
     // Deposit but send SY to different receiver
     start_cheat_caller_address(sy.contract_address, depositor);
-    let sy_minted = sy.deposit(receiver, deposit_amount);
+    let sy_minted = sy.deposit(receiver, deposit_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(depositor) == 0, 'Depositor should have 0');
@@ -267,7 +278,7 @@ fn test_sy_deposit_zero() {
     let user = user1();
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, 0);
+    sy.deposit(user, 0, 0);
 }
 
 #[test]
@@ -283,7 +294,7 @@ fn test_sy_deposit_zero_receiver() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(zero_address(), WAD);
+    sy.deposit(zero_address(), WAD, 0);
 }
 
 // ============ Redeem Tests ============
@@ -302,10 +313,10 @@ fn test_sy_redeem_1_to_1() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
+    sy.deposit(user, amount, 0);
 
     // Redeem SY for yield token
-    let shares_received = sy.redeem(user, amount);
+    let shares_received = sy.redeem(user, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY is 1:1 with underlying shares
@@ -330,10 +341,10 @@ fn test_sy_redeem_to_different_receiver() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, redeemer);
-    sy.deposit(redeemer, amount);
+    sy.deposit(redeemer, amount, 0);
 
     // Redeem but send yield token to different receiver
-    sy.redeem(receiver, amount);
+    sy.redeem(receiver, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(yield_token.balance_of(redeemer) == 0, 'Redeemer should have 0');
@@ -354,8 +365,8 @@ fn test_sy_redeem_zero() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, WAD);
-    sy.redeem(user, 0);
+    sy.deposit(user, WAD, 0);
+    sy.redeem(user, 0, 0);
 }
 
 #[test]
@@ -371,8 +382,8 @@ fn test_sy_redeem_zero_receiver() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, WAD);
-    sy.redeem(zero_address(), WAD);
+    sy.deposit(user, WAD, 0);
+    sy.redeem(zero_address(), WAD, 0);
 }
 
 #[test]
@@ -388,9 +399,9 @@ fn test_sy_redeem_insufficient_balance() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, WAD);
+    sy.deposit(user, WAD, 0);
     // Try to redeem more than balance
-    sy.redeem(user, 2 * WAD);
+    sy.redeem(user, 2 * WAD, 0);
 }
 
 // ============ Partial Deposit/Redeem Tests ============
@@ -409,10 +420,10 @@ fn test_sy_partial_redeem() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
+    sy.deposit(user, amount, 0);
 
     // Redeem only half
-    sy.redeem(user, amount / 2);
+    sy.redeem(user, amount / 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount / 2, 'Wrong remaining SY');
@@ -434,11 +445,11 @@ fn test_sy_multiple_deposits() {
 
     start_cheat_caller_address(sy.contract_address, user);
     // First deposit
-    sy.deposit(user, amount / 2);
+    sy.deposit(user, amount / 2, 0);
     assert(sy.balance_of(user) == amount / 2, 'Wrong balance after 1st');
 
     // Second deposit
-    sy.deposit(user, amount / 2);
+    sy.deposit(user, amount / 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount, 'Wrong balance after 2nd');
@@ -479,7 +490,7 @@ fn test_sy_yield_accrual_with_deposit() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
+    sy.deposit(user, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY balance is 1:1 with deposited shares
@@ -497,7 +508,7 @@ fn test_sy_yield_accrual_with_deposit() {
     // When user redeems, they get back same number of shares (yield token)
     // but those shares are now worth more in terms of the base asset
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(user, amount);
+    let shares_received = sy.redeem(user, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Should get back same shares');
@@ -532,7 +543,12 @@ fn test_sy_get_tokens_in_out_multiple() {
     let tokens_out = array![yield_token.contract_address, token2];
 
     let sy = deploy_sy_with_tokens(
-        yield_token.contract_address, yield_token.contract_address, true, tokens_in, tokens_out,
+        yield_token.contract_address,
+        yield_token.contract_address,
+        true,
+        AssetType::Token,
+        tokens_in,
+        tokens_out,
     );
 
     let result_in = sy.get_tokens_in();
@@ -599,7 +615,12 @@ fn test_sy_is_valid_token_multiple() {
     let tokens_out = array![yield_token.contract_address, token2];
 
     let sy = deploy_sy_with_tokens(
-        yield_token.contract_address, yield_token.contract_address, true, tokens_in, tokens_out,
+        yield_token.contract_address,
+        yield_token.contract_address,
+        true,
+        AssetType::Token,
+        tokens_in,
+        tokens_out,
     );
 
     // Verify tokens_in
@@ -618,3 +639,131 @@ fn test_sy_is_valid_token_multiple() {
     assert(!sy.is_valid_token_out(random_addr), 'random invalid out');
 }
 
+// ============ Asset Info Tests ============
+
+#[test]
+fn test_sy_asset_info_token() {
+    let (_, yield_token, sy) = setup();
+
+    let (asset_type, underlying, decimals) = sy.asset_info();
+
+    // Default setup uses AssetType::Token
+    assert(asset_type == AssetType::Token, 'should be Token type');
+    assert(underlying == yield_token.contract_address, 'wrong underlying');
+    assert(decimals == 18, 'wrong decimals');
+}
+
+#[test]
+fn test_sy_asset_info_liquidity() {
+    let base_asset = deploy_mock_erc20();
+    let yield_token = deploy_mock_yield_token(base_asset.contract_address, admin());
+
+    // Deploy SY with AssetType::Liquidity (simulating an LP token)
+    let sy = deploy_sy_with_tokens(
+        yield_token.contract_address,
+        yield_token.contract_address,
+        true,
+        AssetType::Liquidity,
+        array![yield_token.contract_address],
+        array![yield_token.contract_address],
+    );
+
+    let (asset_type, underlying, decimals) = sy.asset_info();
+
+    assert(asset_type == AssetType::Liquidity, 'should be Liquidity type');
+    assert(underlying == yield_token.contract_address, 'wrong underlying');
+    assert(decimals == 18, 'wrong decimals');
+}
+
+// ============ Slippage Protection Tests ============
+
+#[test]
+#[should_panic(expected: 'HZN: insufficient shares out')]
+fn test_deposit_slippage_reverts() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let deposit_amount = 100 * WAD;
+
+    // Mint yield token to user
+    mint_yield_token_to_user(yield_token, user, deposit_amount);
+
+    // Approve SY contract
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, deposit_amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Deposit with min_shares_out higher than possible output (SY is 1:1)
+    // Requesting 200 WAD when depositing 100 WAD should fail
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, deposit_amount, 200 * WAD);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: insufficient token out')]
+fn test_redeem_slippage_reverts() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit first
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+
+    // Redeem with min_token_out higher than possible output (SY is 1:1)
+    // Requesting 200 WAD when redeeming 100 WAD should fail
+    sy.redeem(user, amount, 200 * WAD);
+}
+
+#[test]
+fn test_deposit_with_slippage_protection() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let deposit_amount = 100 * WAD;
+
+    // Mint yield token to user
+    mint_yield_token_to_user(yield_token, user, deposit_amount);
+
+    // Approve SY contract
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, deposit_amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Deposit with exact min_shares_out (SY is 1:1)
+    start_cheat_caller_address(sy.contract_address, user);
+    let sy_minted = sy.deposit(user, deposit_amount, deposit_amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(sy_minted == deposit_amount, 'SY minted matches');
+    assert(sy.balance_of(user) == deposit_amount, 'Balance correct');
+}
+
+#[test]
+fn test_redeem_with_slippage_protection() {
+    let (_, yield_token, sy) = setup();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Setup: deposit first
+    mint_yield_token_to_user(yield_token, user, amount);
+
+    start_cheat_caller_address(yield_token.contract_address, user);
+    yield_token.approve(sy.contract_address, amount);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.deposit(user, amount, 0);
+
+    // Redeem with exact min_token_out (SY is 1:1)
+    let shares_received = sy.redeem(user, amount, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    assert(shares_received == amount, 'Shares received matches');
+    assert(sy.balance_of(user) == 0, 'SY burned');
+    assert(yield_token.balance_of(user) == amount, 'Got tokens back');
+}

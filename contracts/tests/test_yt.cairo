@@ -155,7 +155,7 @@ fn test_yt_mint_py_multiple_times() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
+    sy.deposit(user, amount, 0);
     sy.approve(yt.contract_address, 2 * amount);
     stop_cheat_caller_address(sy.contract_address);
 

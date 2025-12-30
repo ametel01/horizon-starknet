@@ -94,6 +94,7 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
 
     // tokens_in: single token (underlying)
@@ -355,7 +356,7 @@ fn test_created_market_is_functional() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2);
+    sy.deposit(user, amount * 2, 0);
     sy.approve(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
