@@ -1,8 +1,8 @@
-export const SY_ABI = [
+export const SYWITHREWARDS_ABI = [
   {
     type: 'impl',
-    name: 'SYImpl',
-    interface_name: 'horizon::interfaces::i_sy::ISY',
+    name: 'SYWithRewardsImpl',
+    interface_name: 'horizon::interfaces::i_sy_with_rewards::ISYWithRewards',
   },
   {
     type: 'struct',
@@ -75,8 +75,18 @@ export const SY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::integer::u256>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::integer::u256>',
+      },
+    ],
+  },
+  {
     type: 'interface',
-    name: 'horizon::interfaces::i_sy::ISY',
+    name: 'horizon::interfaces::i_sy_with_rewards::ISYWithRewards',
     items: [
       {
         type: 'function',
@@ -393,16 +403,122 @@ export const SY_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'get_reward_tokens',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'claim_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'accrued_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'reward_index',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'user_reward_index',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'is_reward_token',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'reward_tokens_count',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u32',
+          },
+        ],
+        state_mutability: 'view',
+      },
     ],
   },
   {
     type: 'impl',
-    name: 'SYAdminImpl',
-    interface_name: 'horizon::interfaces::i_sy::ISYAdmin',
+    name: 'SYWithRewardsAdminImpl',
+    interface_name: 'horizon::interfaces::i_sy_with_rewards::ISYWithRewardsAdmin',
   },
   {
     type: 'interface',
-    name: 'horizon::interfaces::i_sy::ISYAdmin',
+    name: 'horizon::interfaces::i_sy_with_rewards::ISYWithRewardsAdmin',
     items: [
       {
         type: 'function',
@@ -639,6 +755,10 @@ export const SY_ABI = [
       },
       {
         name: 'tokens_out',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+      },
+      {
+        name: 'reward_tokens',
         type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
       },
     ],
@@ -1107,7 +1227,115 @@ export const SY_ABI = [
   },
   {
     type: 'event',
-    name: 'horizon::tokens::sy::SY::Event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
+    kind: 'struct',
+    members: [
+      {
+        name: 'user',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'old_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'rewards_added',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_supply',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded',
+    kind: 'struct',
+    members: [
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'index',
+        type: 'core::integer::u32',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'RewardsClaimed',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardIndexUpdated',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardTokenAdded',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded',
+        kind: 'nested',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::tokens::sy_with_rewards::SYWithRewards::Event',
     kind: 'enum',
     variants: [
       {
@@ -1148,6 +1376,11 @@ export const SY_ABI = [
       {
         name: 'SYEvent',
         type: 'horizon::components::sy_component::SYComponent::Event',
+        kind: 'flat',
+      },
+      {
+        name: 'RewardsEvent',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::Event',
         kind: 'flat',
       },
     ],

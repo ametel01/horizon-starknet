@@ -42,6 +42,48 @@ export const FACTORY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::byte_array::ByteArray',
+    members: [
+      {
+        name: 'data',
+        type: 'core::array::Array::<core::bytes_31::bytes31>',
+      },
+      {
+        name: 'pending_word',
+        type: 'core::felt252',
+      },
+      {
+        name: 'pending_word_len',
+        type: 'core::internal::bounded_int::BoundedInt::<0, 30>',
+      },
+    ],
+  },
+  {
+    type: 'enum',
+    name: 'horizon::interfaces::i_sy::AssetType',
+    variants: [
+      {
+        name: 'Token',
+        type: '()',
+      },
+      {
+        name: 'Liquidity',
+        type: '()',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_factory::IFactory',
     items: [
@@ -181,6 +223,101 @@ export const FACTORY_ABI = [
         inputs: [],
         outputs: [],
         state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'sy_with_rewards_class_hash',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::class_hash::ClassHash',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_sy_with_rewards_class_hash',
+        inputs: [
+          {
+            name: 'class_hash',
+            type: 'core::starknet::class_hash::ClassHash',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'deploy_sy_with_rewards',
+        inputs: [
+          {
+            name: 'name',
+            type: 'core::byte_array::ByteArray',
+          },
+          {
+            name: 'symbol',
+            type: 'core::byte_array::ByteArray',
+          },
+          {
+            name: 'underlying',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'index_oracle',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'is_erc4626',
+            type: 'core::bool',
+          },
+          {
+            name: 'asset_type',
+            type: 'horizon::interfaces::i_sy::AssetType',
+          },
+          {
+            name: 'pauser',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'tokens_in',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+          {
+            name: 'tokens_out',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+          {
+            name: 'reward_tokens',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+          {
+            name: 'salt',
+            type: 'core::felt252',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'is_valid_sy',
+        inputs: [
+          {
+            name: 'sy',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
       },
     ],
   },
@@ -340,24 +477,6 @@ export const FACTORY_ABI = [
   },
   {
     type: 'struct',
-    name: 'core::byte_array::ByteArray',
-    members: [
-      {
-        name: 'data',
-        type: 'core::array::Array::<core::bytes_31::bytes31>',
-      },
-      {
-        name: 'pending_word',
-        type: 'core::felt252',
-      },
-      {
-        name: 'pending_word_len',
-        type: 'core::internal::bounded_int::BoundedInt::<0, 30>',
-      },
-    ],
-  },
-  {
-    type: 'struct',
     name: 'core::integer::u256',
     members: [
       {
@@ -439,6 +558,60 @@ export const FACTORY_ABI = [
       },
       {
         name: 'pt_class_hash',
+        type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::factory::Factory::SYWithRewardsDeployed',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'name',
+        type: 'core::byte_array::ByteArray',
+        kind: 'data',
+      },
+      {
+        name: 'symbol',
+        type: 'core::byte_array::ByteArray',
+        kind: 'data',
+      },
+      {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'deployer',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::factory::Factory::SYWithRewardsClassHashUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_class_hash',
+        type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+      {
+        name: 'new_class_hash',
         type: 'core::starknet::class_hash::ClassHash',
         kind: 'data',
       },
@@ -658,6 +831,16 @@ export const FACTORY_ABI = [
       {
         name: 'ClassHashesUpdated',
         type: 'horizon::factory::Factory::ClassHashesUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'SYWithRewardsDeployed',
+        type: 'horizon::factory::Factory::SYWithRewardsDeployed',
+        kind: 'nested',
+      },
+      {
+        name: 'SYWithRewardsClassHashUpdated',
+        type: 'horizon::factory::Factory::SYWithRewardsClassHashUpdated',
         kind: 'nested',
       },
       {

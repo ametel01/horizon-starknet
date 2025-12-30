@@ -25,6 +25,7 @@ const CONTRACTS = [
   { file: 'horizon_Router.contract_class.json', name: 'Router' },
   { file: 'horizon_Market.contract_class.json', name: 'Market' },
   { file: 'horizon_SY.contract_class.json', name: 'SY' },
+  { file: 'horizon_SYWithRewards.contract_class.json', name: 'SYWithRewards' },
   { file: 'horizon_PT.contract_class.json', name: 'PT' },
   { file: 'horizon_YT.contract_class.json', name: 'YT' },
   { file: 'horizon_MockYieldToken.contract_class.json', name: 'MockYieldToken' },
