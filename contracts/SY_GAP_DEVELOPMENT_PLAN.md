@@ -89,7 +89,7 @@ snforge test test_sy::test_get_tokens_in_out
 
 ---
 
-### Gap 1.2: `isValidTokenIn()` / `isValidTokenOut()`
+### Gap 1.2: `isValidTokenIn()` / `isValidTokenOut()` **COMPLETE**
 
 **Current State:** No token validation
 
@@ -143,7 +143,7 @@ snforge test test_sy::test_deposit_invalid_token_reverts
 
 ---
 
-### Gap 1.3: `assetInfo()`
+### Gap 1.3: `assetInfo()` **COMPLETE**
 
 **Current State:** No asset classification
 
@@ -207,7 +207,7 @@ snforge test test_sy::test_asset_info_liquidity
 **Effort:** 2-3 days
 **Files:** `src/tokens/sy.cairo`, `src/interfaces/i_sy.cairo`
 
-### Gap 2.1: Slippage Protection
+### Gap 2.1: Slippage Protection **COMPLETE**
 
 **Current State:**
 ```cairo
