@@ -403,100 +403,516 @@ snforge test test_sy::test_preview_redeem_matches_redeem
 
 **Impact:** Cannot wrap GLP-style tokens, staked tokens with emissions
 **Effort:** 5-7 days
-**Files:** New `src/tokens/sy_with_rewards.cairo`, `src/libraries/reward_manager.cairo`
 
-### Gap 3.1: SYBaseWithRewards Foundation
+### Architecture: Component-Based Composition
 
-**Current State:** No reward system
+Cairo doesn't have inheritance like Solidity. Instead, we use **composition via components** - a more flexible pattern that avoids code duplication and the diamond problem.
 
-**Target State:**
-```cairo
-#[starknet::contract]
-pub mod SYWithRewards {
-    // Inherits all SY functionality
-    // Adds RewardManager integration
-}
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Solidity (Pendle)           │  Cairo (Horizon)                │
+│  ─────────────────           │  ──────────────────             │
+│  SYBaseWithRewards           │  SYWithRewards contract         │
+│    is SYBase                 │    component!(SYComponent)      │
+│    is RewardManager          │    component!(RewardManager)    │
+│                              │    component!(ERC20Component)   │
+│  (tight coupling)            │  (loose coupling via hooks)     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**New File Structure:**
+```
+src/
+├── components/
+│   ├── sy_component.cairo              # Core SY logic (extracted from sy.cairo)
+│   └── reward_manager_component.cairo  # Reward tracking component
+├── tokens/
+│   ├── sy.cairo                   # Refactored to use SYComponent
+│   └── sy_with_rewards.cairo      # SYComponent + RewardManager
+└── interfaces/
+    ├── i_sy.cairo                 # Unchanged
+    └── i_sy_with_rewards.cairo    # Extended interface
+```
+
+---
+
+### Gap 3.1: Extract SYComponent
+
+**Current State:** Monolithic `sy.cairo` with all logic inline
+
+**Target State:** Reusable `SYComponent` with hooks for extensibility
+
+**Component Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SY Contract                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ ERC20Comp    │  │ SYComponent  │  │ Pausable/Ownable/etc │  │
+│  │              │  │              │  │                      │  │
+│  │ - balances   │  │ - underlying │  │ - paused             │  │
+│  │ - supply     │  │ - oracle     │  │ - owner              │  │
+│  │ - mint()     │◄─┤ - tokens_in  │  │                      │  │
+│  │ - burn()     │  │ - deposit()  │  │                      │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│         ▲                  │                                     │
+│         │    SYHooksTrait  │                                     │
+│         └──────────────────┘                                     │
+│                                                                  │
+│  impl SYHooksImpl: mint_sy() → self.erc20.mint()                │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 **Implementation Steps:**
 
-1. **Create RewardManager library**:
+1. **Create SYComponent** with hooks pattern:
    ```cairo
-   // src/libraries/reward_manager.cairo
-   pub mod RewardManager {
-       struct UserReward {
-           index: u256,           // User's last claimed index
-           accrued: u256,         // Unclaimed rewards
+   // src/components/sy_component.cairo
+   #[starknet::component]
+   pub mod SYComponent {
+       #[storage]
+       pub struct Storage {
+           // Core SY state (NOT ERC20 - that's a separate component)
+           pub underlying: ContractAddress,
+           pub index_oracle: ContractAddress,
+           pub is_erc4626: bool,
+           pub last_exchange_rate: u256,
+           pub asset_type: AssetType,
+           // Multi-token support
+           pub tokens_in: Map<u32, ContractAddress>,
+           pub tokens_in_count: u32,
+           pub tokens_out: Map<u32, ContractAddress>,
+           pub tokens_out_count: u32,
+           pub valid_tokens_in: Map<ContractAddress, bool>,
+           pub valid_tokens_out: Map<ContractAddress, bool>,
        }
 
-       struct RewardState {
-           index: u256,           // Global reward index
-           last_balance: u256,    // Last known reward token balance
+       #[event]
+       #[derive(Drop, starknet::Event)]
+       pub enum Event {
+           Deposit: Deposit,
+           Redeem: Redeem,
+           OracleRateUpdated: OracleRateUpdated,
        }
 
-       fn _update_reward_index(reward_token: ContractAddress) -> u256;
-       fn _distribute_rewards(user: ContractAddress);
-       fn _claim_rewards(user: ContractAddress) -> Span<u256>;
+       /// Hooks trait - contracts MUST implement to bridge with ERC20
+       pub trait SYHooksTrait<TContractState> {
+           /// Mint SY tokens (contract calls erc20.mint internally)
+           fn mint_sy(ref self: TContractState, to: ContractAddress, amount: u256);
+           /// Burn SY tokens (contract calls erc20.burn internally)
+           fn burn_sy(ref self: TContractState, from: ContractAddress, amount: u256);
+           /// Get total SY supply (contract reads from erc20)
+           fn total_sy_supply(self: @TContractState) -> u256;
+           /// Called before deposit - for pausable, reentrancy guard
+           fn before_deposit(ref self: TContractState, receiver: ContractAddress, amount: u256);
+           /// Called after deposit - for rewards tracking
+           fn after_deposit(ref self: TContractState, receiver: ContractAddress, amount: u256);
+           /// Called before redeem
+           fn before_redeem(ref self: TContractState, receiver: ContractAddress, amount: u256);
+           /// Called after redeem
+           fn after_redeem(ref self: TContractState, receiver: ContractAddress, amount: u256);
+       }
    }
    ```
-   - File: NEW `src/libraries/reward_manager.cairo`
+   - File: NEW `src/components/sy_component.cairo`
 
-2. **Create SYWithRewards contract**:
-   - Copy SY base implementation
-   - Add RewardManager integration
-   - Override `_beforeTokenTransfer` equivalent
-   - File: NEW `src/tokens/sy_with_rewards.cairo`
-
-3. **Add storage for rewards**:
+2. **Add embeddable view implementation**:
    ```cairo
-   reward_tokens: Map<u32, ContractAddress>
-   reward_tokens_count: u32
-   reward_state: Map<ContractAddress, RewardState>
-   user_reward: Map<(ContractAddress, ContractAddress), UserReward>  // (user, reward_token)
-   ```
-
-4. **Implement getRewardTokens()**:
-   ```cairo
-   fn get_reward_tokens(self: @ContractState) -> Span<ContractAddress> {
-       let mut tokens = ArrayTrait::new();
-       let count = self.reward_tokens_count.read();
-       let mut i: u32 = 0;
-       loop {
-           if i >= count { break; }
-           tokens.append(self.reward_tokens.read(i));
-           i += 1;
-       };
-       tokens.span()
-   }
-   ```
-
-5. **Implement claimRewards()**:
-   ```cairo
-   fn claim_rewards(ref self: ContractState, user: ContractAddress) -> Span<u256> {
-       self._update_and_distribute_rewards(user);
-       self._do_transfer_out_rewards(user, user)
+   /// Embeddable external implementation for ISY view functions
+   #[embeddable_as(SYViewImpl)]
+   pub impl SYView<
+       TContractState, +HasComponent<TContractState>
+   > of ISYView<ComponentState<TContractState>> {
+       fn exchange_rate(self: @ComponentState<TContractState>) -> u256 { ... }
+       fn underlying_asset(self: @ComponentState<TContractState>) -> ContractAddress { ... }
+       fn get_tokens_in(self: @ComponentState<TContractState>) -> Span<ContractAddress> { ... }
+       fn get_tokens_out(self: @ComponentState<TContractState>) -> Span<ContractAddress> { ... }
+       fn is_valid_token_in(self: @ComponentState<TContractState>, token: ContractAddress) -> bool { ... }
+       fn is_valid_token_out(self: @ComponentState<TContractState>, token: ContractAddress) -> bool { ... }
+       fn asset_info(self: @ComponentState<TContractState>) -> (AssetType, ContractAddress, u8) { ... }
+       fn preview_deposit(self: @ComponentState<TContractState>, amount: u256) -> u256 { amount }
+       fn preview_redeem(self: @ComponentState<TContractState>, amount: u256) -> u256 { amount }
    }
    ```
 
-6. **Hook into transfer**:
+3. **Add internal implementation with hooks**:
    ```cairo
-   // Override in ERC20 hooks
-   fn before_update(
-       ref self: ContractState,
-       from: ContractAddress,
-       to: ContractAddress,
-       amount: u256,
-   ) {
-       self._update_and_distribute_rewards_for_two(from, to);
+   #[generate_trait]
+   pub impl InternalImpl<
+       TContractState,
+       +HasComponent<TContractState>,
+       +Drop<TContractState>,
+       impl Hooks: SYHooksTrait<TContractState>,
+   > of InternalTrait<TContractState> {
+
+       fn deposit(
+           ref self: ComponentState<TContractState>,
+           receiver: ContractAddress,
+           amount: u256,
+           min_shares_out: u256,
+       ) -> u256 {
+           let mut contract = self.get_contract_mut();
+
+           // Hook: before_deposit (pausable check, reentrancy start)
+           Hooks::before_deposit(ref contract, receiver, amount);
+
+           // Check oracle rate update
+           self._check_and_emit_rate_update();
+
+           // Transfer underlying from caller
+           let underlying_token = IERC20Dispatcher { contract_address: self.underlying.read() };
+           underlying_token.transfer_from(get_caller_address(), get_contract_address(), amount);
+
+           // 1:1 SY minting
+           let sy_to_mint = amount;
+           assert(sy_to_mint >= min_shares_out, Errors::SY_INSUFFICIENT_SHARES_OUT);
+
+           // Hook: mint SY tokens (delegates to contract's ERC20)
+           Hooks::mint_sy(ref contract, receiver, sy_to_mint);
+
+           // Emit SY event
+           self.emit(Deposit { ... });
+
+           // Hook: after_deposit (rewards update, reentrancy end)
+           Hooks::after_deposit(ref contract, receiver, sy_to_mint);
+
+           sy_to_mint
+       }
+
+       fn redeem(...) -> u256 { /* Similar pattern with hooks */ }
    }
    ```
 
-7. **Add interface**:
+4. **Refactor sy.cairo to use SYComponent**:
+   ```cairo
+   // src/tokens/sy.cairo
+   #[starknet::contract]
+   pub mod SY {
+       use horizon::components::sy_component::SYComponent;
+
+       component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+       component!(path: SYComponent, storage: sy, event: SYEvent);
+       component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+       component!(path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent);
+
+       // Use empty ERC20 hooks (no special transfer behavior for base SY)
+       impl ERC20HooksImpl = ERC20Component::ERC20HooksEmptyImpl<ContractState>;
+
+       #[storage]
+       struct Storage {
+           #[substorage(v0)]
+           erc20: ERC20Component::Storage,
+           #[substorage(v0)]
+           sy: SYComponent::Storage,
+           #[substorage(v0)]
+           pausable: PausableComponent::Storage,
+           #[substorage(v0)]
+           reentrancy_guard: ReentrancyGuardComponent::Storage,
+       }
+
+       /// Implement SY hooks - bridge to ERC20 and other components
+       impl SYHooksImpl of SYComponent::SYHooksTrait<ContractState> {
+           fn mint_sy(ref self: ContractState, to: ContractAddress, amount: u256) {
+               self.erc20.mint(to, amount);
+           }
+
+           fn burn_sy(ref self: ContractState, from: ContractAddress, amount: u256) {
+               self.erc20.burn(from, amount);
+           }
+
+           fn total_sy_supply(self: @ContractState) -> u256 {
+               self.erc20.ERC20_total_supply.read()
+           }
+
+           fn before_deposit(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.pausable.assert_not_paused();
+               self.reentrancy_guard.start();
+           }
+
+           fn after_deposit(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.reentrancy_guard.end();
+               // Base SY: no additional logic
+           }
+
+           fn before_redeem(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.reentrancy_guard.start();
+           }
+
+           fn after_redeem(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.reentrancy_guard.end();
+           }
+       }
+
+       #[abi(embed_v0)]
+       impl SYImpl of ISY<ContractState> {
+           // ERC20 methods delegate to erc20 component
+           fn name(self: @ContractState) -> ByteArray { self.erc20.ERC20_name.read() }
+           // ...
+
+           // SY-specific methods delegate to SY component
+           fn deposit(ref self: ContractState, receiver: ContractAddress, amount: u256, min_out: u256) -> u256 {
+               self.sy.deposit(receiver, amount, min_out)
+           }
+
+           fn exchange_rate(self: @ContractState) -> u256 { self.sy.exchange_rate() }
+           // ...
+       }
+   }
+   ```
+
+**Validation:**
+```bash
+# All existing SY tests must pass unchanged
+snforge test test_sy
+```
+
+---
+
+### Gap 3.2: Create RewardManagerComponent
+
+**Current State:** No reward tracking
+
+**Target State:** Reusable component for reward index accounting
+
+**Implementation Steps:**
+
+1. **Create RewardManagerComponent**:
+   ```cairo
+   // src/components/reward_manager.cairo
+   #[starknet::component]
+   pub mod RewardManagerComponent {
+       #[storage]
+       pub struct Storage {
+           // Reward tokens list
+           pub reward_tokens: Map<u32, ContractAddress>,
+           pub reward_tokens_count: u32,
+           // Global reward state per token: token -> RewardState
+           pub reward_index: Map<ContractAddress, u256>,
+           pub reward_last_balance: Map<ContractAddress, u256>,
+           // User reward state: (user, token) -> UserReward
+           pub user_reward_index: Map<(ContractAddress, ContractAddress), u256>,
+           pub user_accrued: Map<(ContractAddress, ContractAddress), u256>,
+       }
+
+       #[event]
+       #[derive(Drop, starknet::Event)]
+       pub enum Event {
+           RewardsClaimed: RewardsClaimed,
+           RewardIndexUpdated: RewardIndexUpdated,
+       }
+
+       #[derive(Drop, starknet::Event)]
+       pub struct RewardsClaimed {
+           #[key]
+           pub user: ContractAddress,
+           #[key]
+           pub reward_token: ContractAddress,
+           pub amount: u256,
+       }
+
+       #[derive(Drop, starknet::Event)]
+       pub struct RewardIndexUpdated {
+           #[key]
+           pub reward_token: ContractAddress,
+           pub old_index: u256,
+           pub new_index: u256,
+           pub rewards_added: u256,
+       }
+
+       /// Hooks for reward calculations - contract provides balance info
+       pub trait RewardHooksTrait<TContractState> {
+           /// Get user's SY balance (for reward calculation)
+           fn user_sy_balance(self: @TContractState, user: ContractAddress) -> u256;
+           /// Get total SY supply
+           fn total_sy_supply(self: @TContractState) -> u256;
+       }
+   }
+   ```
+   - File: NEW `src/components/reward_manager.cairo`
+
+2. **Add internal implementation**:
+   ```cairo
+   #[generate_trait]
+   pub impl InternalImpl<
+       TContractState,
+       +HasComponent<TContractState>,
+       impl Hooks: RewardHooksTrait<TContractState>,
+   > of InternalTrait<TContractState> {
+
+       /// Update rewards for two users (called on transfer)
+       fn _update_rewards_for_two(
+           ref self: ComponentState<TContractState>,
+           user1: ContractAddress,
+           user2: ContractAddress,
+       ) {
+           self._update_global_reward_index();
+           if !user1.is_zero() {
+               self._update_user_rewards(user1);
+           }
+           if !user2.is_zero() && user1 != user2 {
+               self._update_user_rewards(user2);
+           }
+       }
+
+       /// Check for new rewards and update global index
+       fn _update_global_reward_index(ref self: ComponentState<TContractState>) {
+           let contract = self.get_contract();
+           let total_supply = Hooks::total_sy_supply(@contract);
+           if total_supply == 0 { return; }
+
+           let count = self.reward_tokens_count.read();
+           let mut i: u32 = 0;
+           while i < count {
+               let token = self.reward_tokens.read(i);
+               let token_dispatcher = IERC20Dispatcher { contract_address: token };
+               let current_balance = token_dispatcher.balance_of(get_contract_address());
+               let last_balance = self.reward_last_balance.read(token);
+
+               if current_balance > last_balance {
+                   let new_rewards = current_balance - last_balance;
+                   let old_index = self.reward_index.read(token);
+                   // index += new_rewards * WAD / total_supply
+                   let index_delta = (new_rewards * WAD) / total_supply;
+                   let new_index = old_index + index_delta;
+
+                   self.reward_index.write(token, new_index);
+                   self.reward_last_balance.write(token, current_balance);
+
+                   self.emit(RewardIndexUpdated {
+                       reward_token: token,
+                       old_index,
+                       new_index,
+                       rewards_added: new_rewards,
+                   });
+               }
+               i += 1;
+           }
+       }
+
+       /// Update user's accrued rewards based on current index
+       fn _update_user_rewards(
+           ref self: ComponentState<TContractState>,
+           user: ContractAddress,
+       ) {
+           let contract = self.get_contract();
+           let user_balance = Hooks::user_sy_balance(@contract, user);
+
+           let count = self.reward_tokens_count.read();
+           let mut i: u32 = 0;
+           while i < count {
+               let token = self.reward_tokens.read(i);
+               let global_index = self.reward_index.read(token);
+               let user_index = self.user_reward_index.read((user, token));
+
+               if global_index > user_index {
+                   // accrued += user_balance * (global_index - user_index) / WAD
+                   let index_delta = global_index - user_index;
+                   let new_accrued = (user_balance * index_delta) / WAD;
+                   let current_accrued = self.user_accrued.read((user, token));
+                   self.user_accrued.write((user, token), current_accrued + new_accrued);
+               }
+               self.user_reward_index.write((user, token), global_index);
+               i += 1;
+           }
+       }
+
+       /// Claim all accrued rewards for user
+       fn claim_rewards(
+           ref self: ComponentState<TContractState>,
+           user: ContractAddress,
+       ) -> Span<u256> {
+           self._update_global_reward_index();
+           self._update_user_rewards(user);
+
+           let count = self.reward_tokens_count.read();
+           let mut amounts: Array<u256> = array![];
+           let mut i: u32 = 0;
+           while i < count {
+               let token = self.reward_tokens.read(i);
+               let accrued = self.user_accrued.read((user, token));
+
+               if accrued > 0 {
+                   self.user_accrued.write((user, token), 0);
+                   // Update last_balance to reflect outgoing transfer
+                   let last_balance = self.reward_last_balance.read(token);
+                   self.reward_last_balance.write(token, last_balance - accrued);
+                   // Transfer rewards to user
+                   let token_dispatcher = IERC20Dispatcher { contract_address: token };
+                   token_dispatcher.transfer(user, accrued);
+
+                   self.emit(RewardsClaimed {
+                       user,
+                       reward_token: token,
+                       amount: accrued,
+                   });
+               }
+               amounts.append(accrued);
+               i += 1;
+           }
+           amounts.span()
+       }
+   }
+   ```
+
+3. **Add embeddable view implementation**:
+   ```cairo
+   #[embeddable_as(RewardViewImpl)]
+   pub impl RewardView<
+       TContractState, +HasComponent<TContractState>
+   > of IRewardView<ComponentState<TContractState>> {
+       fn get_reward_tokens(self: @ComponentState<TContractState>) -> Span<ContractAddress> {
+           let count = self.reward_tokens_count.read();
+           let mut tokens: Array<ContractAddress> = array![];
+           let mut i: u32 = 0;
+           while i < count {
+               tokens.append(self.reward_tokens.read(i));
+               i += 1;
+           }
+           tokens.span()
+       }
+
+       fn accrued_rewards(
+           self: @ComponentState<TContractState>,
+           user: ContractAddress,
+       ) -> Span<u256> {
+           let count = self.reward_tokens_count.read();
+           let mut amounts: Array<u256> = array![];
+           let mut i: u32 = 0;
+           while i < count {
+               let token = self.reward_tokens.read(i);
+               amounts.append(self.user_accrued.read((user, token)));
+               i += 1;
+           }
+           amounts.span()
+       }
+   }
+   ```
+
+**Validation:**
+```bash
+snforge test test_reward_manager::test_index_calculation
+snforge test test_reward_manager::test_user_accrual
+```
+
+---
+
+### Gap 3.3: Create SYWithRewards Contract
+
+**Current State:** No reward-enabled SY variant
+
+**Target State:** SYWithRewards that composes SYComponent + RewardManagerComponent
+
+**Implementation Steps:**
+
+1. **Create ISYWithRewards interface**:
    ```cairo
    // src/interfaces/i_sy_with_rewards.cairo
    #[starknet::interface]
    pub trait ISYWithRewards<TContractState> {
-       // All ISY methods
+       // All ISY methods (deposit, redeem, exchange_rate, etc.)
+       // ... same as ISY ...
+
+       // Reward-specific methods
        fn get_reward_tokens(self: @TContractState) -> Span<ContractAddress>;
        fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
        fn accrued_rewards(self: @TContractState, user: ContractAddress) -> Span<u256>;
@@ -504,15 +920,225 @@ pub mod SYWithRewards {
    ```
    - File: NEW `src/interfaces/i_sy_with_rewards.cairo`
 
-8. **Update Factory** to deploy either SY or SYWithRewards:
-   - Add parameter to choose variant
-   - File: `src/factory.cairo`
+2. **Create SYWithRewards contract**:
+   ```cairo
+   // src/tokens/sy_with_rewards.cairo
+   #[starknet::contract]
+   pub mod SYWithRewards {
+       use horizon::components::sy_component::SYComponent;
+       use horizon::components::reward_manager::RewardManagerComponent;
+
+       component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+       component!(path: SYComponent, storage: sy, event: SYEvent);
+       component!(path: RewardManagerComponent, storage: rewards, event: RewardsEvent);
+       component!(path: PausableComponent, storage: pausable, event: PausableEvent);
+       component!(path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent);
+
+       #[storage]
+       struct Storage {
+           #[substorage(v0)]
+           erc20: ERC20Component::Storage,
+           #[substorage(v0)]
+           sy: SYComponent::Storage,
+           #[substorage(v0)]
+           rewards: RewardManagerComponent::Storage,
+           #[substorage(v0)]
+           pausable: PausableComponent::Storage,
+           #[substorage(v0)]
+           reentrancy_guard: ReentrancyGuardComponent::Storage,
+       }
+
+       // Custom ERC20 hooks - update rewards on every transfer
+       impl ERC20HooksImpl of ERC20Component::ERC20HooksTrait<ContractState> {
+           fn before_update(
+               ref self: ContractState,
+               from: ContractAddress,
+               to: ContractAddress,
+               amount: u256,
+           ) {
+               // Update rewards for both parties BEFORE balance changes
+               self.rewards._update_rewards_for_two(from, to);
+           }
+
+           fn after_update(
+               ref self: ContractState,
+               from: ContractAddress,
+               to: ContractAddress,
+               amount: u256,
+           ) {
+               // No-op
+           }
+       }
+
+       /// SY hooks with reward tracking
+       impl SYHooksImpl of SYComponent::SYHooksTrait<ContractState> {
+           fn mint_sy(ref self: ContractState, to: ContractAddress, amount: u256) {
+               self.erc20.mint(to, amount);
+           }
+
+           fn burn_sy(ref self: ContractState, from: ContractAddress, amount: u256) {
+               self.erc20.burn(from, amount);
+           }
+
+           fn total_sy_supply(self: @ContractState) -> u256 {
+               self.erc20.ERC20_total_supply.read()
+           }
+
+           fn before_deposit(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.pausable.assert_not_paused();
+               self.reentrancy_guard.start();
+           }
+
+           fn after_deposit(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.reentrancy_guard.end();
+               // ★ Update rewards after deposit (balance changed)
+               self.rewards._update_user_rewards(receiver);
+           }
+
+           fn before_redeem(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.reentrancy_guard.start();
+           }
+
+           fn after_redeem(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+               self.reentrancy_guard.end();
+               // ★ Update rewards after redeem (balance changed)
+               self.rewards._update_user_rewards(receiver);
+           }
+       }
+
+       /// Reward hooks - provide balance info to RewardManager
+       impl RewardHooksImpl of RewardManagerComponent::RewardHooksTrait<ContractState> {
+           fn user_sy_balance(self: @ContractState, user: ContractAddress) -> u256 {
+               self.erc20.ERC20_balances.read(user)
+           }
+
+           fn total_sy_supply(self: @ContractState) -> u256 {
+               self.erc20.ERC20_total_supply.read()
+           }
+       }
+
+       #[abi(embed_v0)]
+       impl SYWithRewardsImpl of ISYWithRewards<ContractState> {
+           // ... all ISY methods delegating to sy component ...
+
+           fn get_reward_tokens(self: @ContractState) -> Span<ContractAddress> {
+               self.rewards.get_reward_tokens()
+           }
+
+           fn claim_rewards(ref self: ContractState, user: ContractAddress) -> Span<u256> {
+               self.rewards.claim_rewards(user)
+           }
+
+           fn accrued_rewards(self: @ContractState, user: ContractAddress) -> Span<u256> {
+               self.rewards.accrued_rewards(user)
+           }
+       }
+   }
+   ```
+   - File: NEW `src/tokens/sy_with_rewards.cairo`
 
 **Validation:**
 ```bash
 snforge test test_sy_with_rewards::test_claim_rewards
 snforge test test_sy_with_rewards::test_rewards_update_on_transfer
+snforge test test_sy_with_rewards::test_rewards_update_on_deposit
 snforge test test_sy_with_rewards::test_multi_reward_tokens
+```
+
+---
+
+### Gap 3.4: Update Factory for SY Variants
+
+**Current State:** Factory only deploys standard SY
+
+**Target State:** Factory can deploy SY or SYWithRewards
+
+**Implementation Steps:**
+
+1. **Add SYWithRewards class hash storage**:
+   ```cairo
+   // In Factory storage
+   sy_with_rewards_class_hash: ClassHash,
+   ```
+
+2. **Add setter for SYWithRewards class hash**:
+   ```cairo
+   fn set_sy_with_rewards_class_hash(ref self: ContractState, class_hash: ClassHash) {
+       self.ownable.assert_only_owner();
+       self.sy_with_rewards_class_hash.write(class_hash);
+   }
+   ```
+
+3. **Add deploy function for SYWithRewards**:
+   ```cairo
+   fn deploy_sy_with_rewards(
+       ref self: ContractState,
+       name: ByteArray,
+       symbol: ByteArray,
+       underlying: ContractAddress,
+       index_oracle: ContractAddress,
+       is_erc4626: bool,
+       asset_type: AssetType,
+       pauser: ContractAddress,
+       tokens_in: Span<ContractAddress>,
+       tokens_out: Span<ContractAddress>,
+       reward_tokens: Span<ContractAddress>,  // NEW: initial reward tokens
+       salt: felt252,
+   ) -> ContractAddress {
+       // Similar to deploy_sy but uses sy_with_rewards_class_hash
+       // and passes reward_tokens to constructor
+   }
+   ```
+
+4. **Update IFactory interface**:
+   ```cairo
+   fn set_sy_with_rewards_class_hash(ref self: TContractState, class_hash: ClassHash);
+   fn deploy_sy_with_rewards(
+       ref self: TContractState,
+       // ... params including reward_tokens ...
+   ) -> ContractAddress;
+   ```
+   - File: `src/interfaces/i_factory.cairo`
+
+**Validation:**
+```bash
+snforge test test_factory::test_deploy_sy_with_rewards
+snforge test test_factory::test_set_sy_with_rewards_class_hash
+```
+
+---
+
+### Phase 3 Summary
+
+| Gap | Description | New Files | Modified Files |
+|-----|-------------|-----------|----------------|
+| 3.1 | SYComponent extraction | `src/components/sy_component.cairo` | `src/tokens/sy.cairo` |
+| 3.2 | RewardManagerComponent | `src/components/reward_manager.cairo` | - |
+| 3.3 | SYWithRewards contract | `src/tokens/sy_with_rewards.cairo`, `src/interfaces/i_sy_with_rewards.cairo` | - |
+| 3.4 | Factory updates | - | `src/factory.cairo`, `src/interfaces/i_factory.cairo` |
+
+**Key Benefits of Component Architecture:**
+
+| Aspect | Before (Copy-paste) | After (Components) |
+|--------|---------------------|-------------------|
+| Code Reuse | Duplicate all SY logic | Compose SYComponent |
+| Bug Fixes | Fix in multiple places | Fix once in component |
+| Testing | Test entire contracts | Test components in isolation |
+| Extensibility | Modify base code | Implement hooks |
+| New Variants | Copy + modify | Compose + customize hooks |
+
+**Validation (All Phase 3):**
+```bash
+# Existing tests must pass unchanged
+snforge test test_sy
+
+# New component tests
+snforge test test_sy_component
+snforge test test_reward_manager
+
+# Integration tests
+snforge test test_sy_with_rewards
+snforge test test_factory::test_deploy_sy_with_rewards
 ```
 
 ---
@@ -607,18 +1233,28 @@ snforge test test_sy::test_negative_yield_watermark
 ## Implementation Order & Dependencies
 
 ```
-Phase 1 (Multi-Token) ─┬─► Gap 1.1 (getTokensIn/Out)
-                       ├─► Gap 1.2 (isValidToken) ◄─ depends on 1.1
-                       └─► Gap 1.3 (assetInfo)
+Phase 1 (Multi-Token) ─┬─► Gap 1.1 (getTokensIn/Out) ✓ COMPLETE
+                       ├─► Gap 1.2 (isValidToken) ✓ COMPLETE
+                       └─► Gap 1.3 (assetInfo) ✓ COMPLETE
 
-Phase 2 (Security) ────┬─► Gap 2.1 (Slippage) ◄─ can modify signature from Phase 1
-                       ├─► Gap 2.2 (burnFromInternalBalance)
-                       ├─► Gap 2.3 (Reentrancy)
-                       └─► Gap 2.4 (Preview external)
+Phase 2 (Security) ────┬─► Gap 2.1 (Slippage) ✓ COMPLETE
+                       ├─► Gap 2.2 (burnFromInternalBalance) ✓ COMPLETE
+                       ├─► Gap 2.3 (Reentrancy) ✓ COMPLETE
+                       └─► Gap 2.4 (Preview external) ✓ COMPLETE
 
-Phase 3 (Rewards) ─────┬─► RewardManager library (new file)
-                       ├─► SYWithRewards contract (new file)
-                       └─► Factory updates
+Phase 3 (Rewards) ─────┬─► Gap 3.1 (SYComponent extraction)
+                       │       ├─► Create src/components/sy_component.cairo
+                       │       └─► Refactor src/tokens/sy.cairo to use component
+                       │
+                       ├─► Gap 3.2 (RewardManagerComponent)
+                       │       └─► Create src/components/reward_manager.cairo
+                       │
+                       ├─► Gap 3.3 (SYWithRewards contract) ◄─ depends on 3.1, 3.2
+                       │       ├─► Create src/interfaces/i_sy_with_rewards.cairo
+                       │       └─► Create src/tokens/sy_with_rewards.cairo
+                       │
+                       └─► Gap 3.4 (Factory updates) ◄─ depends on 3.3
+                               └─► Update src/factory.cairo
 
 Phase 4 (Polish) ──────┬─► Gap 4.1 (Pausable transfers)
                        └─► Gap 4.2 (Negative yield watermark)
@@ -679,10 +1315,11 @@ Each phase must have:
 
 ### Test Files to Create/Modify
 
-- `tests/test_sy.cairo` - Extend existing tests
-- `tests/test_sy_multi_token.cairo` - NEW: Multi-token scenarios
-- `tests/test_sy_with_rewards.cairo` - NEW: Reward system tests
-- `tests/test_sy_slippage.cairo` - NEW: Slippage edge cases
+- `tests/test_sy.cairo` - **Keep unchanged** (validates component refactor is backward compatible)
+- `tests/test_sy_component.cairo` - NEW: Component-level unit tests
+- `tests/test_reward_manager.cairo` - NEW: RewardManager component tests
+- `tests/test_sy_with_rewards.cairo` - NEW: Integration tests for SYWithRewards
+- `tests/test_factory.cairo` - Extend with `test_deploy_sy_with_rewards`
 
 ---
 
