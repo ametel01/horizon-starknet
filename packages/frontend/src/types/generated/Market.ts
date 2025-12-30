@@ -365,29 +365,6 @@ export const MARKET_ABI = [
   },
   {
     type: 'impl',
-    name: 'UpgradeableImpl',
-    interface_name: 'openzeppelin_interfaces::upgrades::IUpgradeable',
-  },
-  {
-    type: 'interface',
-    name: 'openzeppelin_interfaces::upgrades::IUpgradeable',
-    items: [
-      {
-        type: 'function',
-        name: 'upgrade',
-        inputs: [
-          {
-            name: 'new_class_hash',
-            type: 'core::starknet::class_hash::ClassHash',
-          },
-        ],
-        outputs: [],
-        state_mutability: 'external',
-      },
-    ],
-  },
-  {
-    type: 'impl',
     name: 'ERC20Impl',
     interface_name: 'openzeppelin_interfaces::token::erc20::IERC20',
   },
@@ -1043,30 +1020,6 @@ export const MARKET_ABI = [
   },
   {
     type: 'event',
-    name: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded',
-    kind: 'struct',
-    members: [
-      {
-        name: 'class_hash',
-        type: 'core::starknet::class_hash::ClassHash',
-        kind: 'data',
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
-    kind: 'enum',
-    variants: [
-      {
-        name: 'Upgraded',
-        type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded',
-        kind: 'nested',
-      },
-    ],
-  },
-  {
-    type: 'event',
     name: 'horizon::market::amm::Market::Mint',
     kind: 'struct',
     members: [
@@ -1460,11 +1413,6 @@ export const MARKET_ABI = [
       {
         name: 'OwnableEvent',
         type: 'openzeppelin_access::ownable::ownable::OwnableComponent::Event',
-        kind: 'flat',
-      },
-      {
-        name: 'UpgradeableEvent',
-        type: 'openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event',
         kind: 'flat',
       },
       {
