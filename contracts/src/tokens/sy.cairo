@@ -347,6 +347,12 @@ pub mod SY {
         fn preview_redeem(self: @ContractState, amount_sy: u256) -> u256 {
             self.sy.preview_redeem(amount_sy)
         }
+
+        /// Get the exchange rate watermark (highest rate ever seen)
+        /// Used for negative yield detection
+        fn get_exchange_rate_watermark(self: @ContractState) -> u256 {
+            self.sy.get_exchange_rate_watermark()
+        }
     }
 
     #[abi(embed_v0)]

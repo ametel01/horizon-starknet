@@ -410,6 +410,10 @@ pub mod SYWithRewards {
             self.sy.preview_redeem(amount_sy)
         }
 
+        fn get_exchange_rate_watermark(self: @ContractState) -> u256 {
+            self.sy.get_exchange_rate_watermark()
+        }
+
         // ============ Reward Methods (delegating to RewardManagerComponent) ============
 
         fn get_reward_tokens(self: @ContractState) -> Span<ContractAddress> {

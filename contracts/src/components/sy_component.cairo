@@ -82,6 +82,9 @@ pub mod SYComponent {
         pub valid_tokens_out: Map<ContractAddress, bool>,
         /// Asset classification (Token or Liquidity)
         pub asset_type: AssetType,
+        /// Minimum exchange rate watermark (for negative yield detection)
+        /// Tracks the highest exchange rate seen, detects when rate drops below
+        pub min_exchange_rate: u256,
     }
 
     /// Component events
@@ -91,6 +94,7 @@ pub mod SYComponent {
         Deposit: Deposit,
         Redeem: Redeem,
         OracleRateUpdated: OracleRateUpdated,
+        NegativeYieldDetected: NegativeYieldDetected,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -133,6 +137,23 @@ pub mod SYComponent {
         pub old_rate: u256,
         pub new_rate: u256,
         pub rate_change_bps: u256,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when exchange rate drops below the watermark (negative yield detected)
+    /// This signals that the underlying yield-bearing asset has decreased in value
+    #[derive(Drop, starknet::Event)]
+    pub struct NegativeYieldDetected {
+        #[key]
+        pub sy: ContractAddress,
+        #[key]
+        pub underlying: ContractAddress,
+        /// The previous watermark (highest rate seen)
+        pub watermark_rate: u256,
+        /// The current (lower) exchange rate
+        pub current_rate: u256,
+        /// Rate drop in basis points (10000 = 100%)
+        pub rate_drop_bps: u256,
         pub timestamp: u64,
     }
 
@@ -201,6 +222,9 @@ pub mod SYComponent {
                 oracle.index()
             };
             self.last_exchange_rate.write(initial_rate);
+
+            // Initialize watermark to initial rate (for negative yield detection)
+            self.min_exchange_rate.write(initial_rate);
 
             // Initialize tokens_in (valid deposit tokens) with O(1) lookup map
             assert(tokens_in.len() > 0, Errors::SY_EMPTY_TOKENS_IN);
@@ -397,6 +421,7 @@ pub mod SYComponent {
         }
 
         /// Check if exchange rate changed and emit OracleRateUpdated event if so
+        /// Also checks for negative yield (rate dropping below watermark)
         /// Called during state-changing operations (deposit, redeem)
         fn _check_and_emit_rate_update(ref self: ComponentState<TContractState>) {
             let new_rate = self._exchange_rate();
@@ -429,6 +454,29 @@ pub mod SYComponent {
             // Update stored rate
             if new_rate != old_rate {
                 self.last_exchange_rate.write(new_rate);
+            }
+
+            // Negative yield watermark tracking
+            // The watermark (min_exchange_rate) tracks the highest rate seen
+            // If current rate drops below watermark, emit NegativeYieldDetected
+            let watermark = self.min_exchange_rate.read();
+            if new_rate < watermark {
+                // Negative yield detected - rate dropped below watermark
+                let rate_drop_bps = ((watermark - new_rate) * 10000) / watermark;
+                self
+                    .emit(
+                        NegativeYieldDetected {
+                            sy: get_contract_address(),
+                            underlying: self.underlying.read(),
+                            watermark_rate: watermark,
+                            current_rate: new_rate,
+                            rate_drop_bps,
+                            timestamp: get_block_timestamp(),
+                        },
+                    );
+            } else if new_rate > watermark {
+                // New high - update watermark
+                self.min_exchange_rate.write(new_rate);
             }
         }
     }
@@ -517,6 +565,13 @@ pub mod SYComponent {
         /// Check if this SY uses an ERC-4626 vault for exchange rate
         fn get_is_erc4626(self: @ComponentState<TContractState>) -> bool {
             self.is_erc4626.read()
+        }
+
+        /// Get the exchange rate watermark (highest rate seen)
+        /// Used for negative yield detection - if current rate drops below this,
+        /// it indicates the underlying asset has lost value
+        fn get_exchange_rate_watermark(self: @ComponentState<TContractState>) -> u256 {
+            self.min_exchange_rate.read()
         }
     }
 }

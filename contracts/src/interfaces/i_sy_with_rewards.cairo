@@ -84,6 +84,12 @@ pub trait ISYWithRewards<TContractState> {
     /// Preview how much underlying would be returned for a given redemption
     fn preview_redeem(self: @TContractState, amount_sy: u256) -> u256;
 
+    // ============ Negative Yield Detection ============
+    /// Get the exchange rate watermark (highest rate ever seen)
+    /// If current exchange_rate() drops below this, negative yield has occurred
+    /// @return The watermark exchange rate in WAD (10^18) precision
+    fn get_exchange_rate_watermark(self: @TContractState) -> u256;
+
     // ============ Reward Functions (additional to ISY) ============
     /// Get all registered reward tokens
     /// @return Array of reward token addresses

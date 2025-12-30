@@ -79,6 +79,12 @@ pub trait ISY<TContractState> {
     /// @param amount_sy Amount of SY to redeem
     /// @return Amount of underlying shares that would be returned (1:1 with SY)
     fn preview_redeem(self: @TContractState, amount_sy: u256) -> u256;
+
+    // Negative yield detection
+    /// Get the exchange rate watermark (highest rate ever seen)
+    /// If current exchange_rate() drops below this, negative yield has occurred
+    /// @return The watermark exchange rate in WAD (10^18) precision
+    fn get_exchange_rate_watermark(self: @TContractState) -> u256;
 }
 
 /// Admin interface for SY pausability
