@@ -1,19 +1,20 @@
 # SY Frontend Impact Analysis
 
 > **Date:** 2025-12-31
-> **Status:** Updated for Phase 3 Completion
-> **Scope:** Frontend changes required after Phase 1, 2 & 3 SY Contract Updates
+> **Status:** Updated for Phase 4 Completion (ALL PHASES COMPLETE)
+> **Scope:** Frontend changes required after Phase 1, 2, 3 & 4 SY Contract Updates
 > **Related:** `/contracts/SY_GAP_DEVELOPMENT_PLAN.md`
 
 ---
 
 ## Executive Summary
 
-Phase 3 contract work is **COMPLETE**. The SY contracts now support:
+**All 4 phases of contract work are COMPLETE.** The SY contracts now support:
 - Multi-token deposit/redeem with slippage protection
 - SYWithRewards for reward-bearing tokens (GLP-style)
 - Factory deployment of both SY and SYWithRewards
-- Pausable transfers across all operations
+- Pausable transfers (deposits/transfers blocked, redemptions always allowed)
+- Negative yield detection with watermark tracking
 
 **Frontend Status:** The TypeScript ABIs are regenerated and correct. The frontend code is **out of sync** with the contract ABIs.
 
@@ -32,7 +33,70 @@ Phase 3 contract work is **COMPLETE**. The SY contracts now support:
 | `asset_info()` added | New capability | Optional for UI | ⏳ Optional |
 | `SYWithRewards` contract | **NEW** | **REQUIRED** - new contract helpers | ❌ Needs Implementation |
 | Factory `deploy_sy_with_rewards()` | **NEW** | Optional (admin only) | ⏳ Optional |
-| Pausable transfers | Enhanced security | No frontend changes needed | ✅ Transparent |
+| `get_exchange_rate_watermark()` | **NEW** (Phase 4) | **Recommended** for monitoring | ⏳ Optional |
+| `NegativeYieldDetected` event | **NEW** (Phase 4) | **Recommended** for indexer | ⏳ Optional |
+| `is_paused()` + Pausable errors | **NEW** (Phase 4) | **REQUIRED** - error handling | ❌ Needs Update |
+| Pausable transfers | Enhanced security | Transparent (see error handling) | ⏳ Partial |
+
+---
+
+## Phase 4 Changes Summary (NEW)
+
+### Gap 4.1: Pausable Transfers
+
+When an SY contract is paused:
+- **Deposits (mints) are BLOCKED** - transaction will revert
+- **Transfers are BLOCKED** - transaction will revert
+- **Redemptions (burns) are ALLOWED** - users can always exit their positions
+
+**New Functions:**
+```typescript
+// Check pause state (both SY and SYWithRewards)
+is_paused(): bool
+
+// Admin functions (PAUSER_ROLE required)
+pause(): void
+unpause(): void
+```
+
+**New Events:**
+```typescript
+// Emitted when contract is paused
+Paused { account: ContractAddress }
+
+// Emitted when contract is unpaused
+Unpaused { account: ContractAddress }
+```
+
+**Frontend Impact:** Transactions will fail with `Pausable: paused` error when contract is paused. Must add error handling.
+
+### Gap 4.2: Negative Yield Watermark
+
+The SY contract now tracks a "watermark" - the highest exchange rate ever seen. When the current rate drops below this watermark, it indicates negative yield (the underlying asset lost value).
+
+**New View Function:**
+```typescript
+// Get the watermark (highest rate ever seen)
+get_exchange_rate_watermark(): u256
+```
+
+**New Event:**
+```typescript
+// Emitted when rate drops below watermark
+NegativeYieldDetected {
+  sy: ContractAddress,           // key - SY contract address
+  underlying: ContractAddress,   // key - underlying asset address
+  watermark_rate: u256,          // The previous high water mark
+  current_rate: u256,            // The current (lower) rate
+  rate_drop_bps: u256,           // Rate drop in basis points
+  timestamp: u64,
+}
+```
+
+**Use Cases:**
+- Display warning in UI when SY is experiencing negative yield
+- Indexer can track and alert on `NegativeYieldDetected` events
+- PT holders may want to monitor positions with negative yield exposure
 
 ---
 
@@ -545,20 +609,79 @@ export function useSyAssetInfo(syAddress: string | undefined) {
 }
 ```
 
+### `src/features/yield/model/useSyWatermark.ts` (Phase 4)
+
+Monitor negative yield and watermark status:
+
+```typescript
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getSYContract } from '@shared/starknet/contracts';
+import { useStarknet } from '@features/wallet';
+import { WAD } from '@shared/math';
+
+interface SyWatermarkInfo {
+  watermark: bigint;           // Highest rate ever seen
+  currentRate: bigint;         // Current exchange rate
+  hasNegativeYield: boolean;   // Is current rate below watermark?
+  rateDropBps: bigint;         // Drop in basis points (0 if no drop)
+}
+
+/**
+ * Hook to monitor SY exchange rate watermark for negative yield detection
+ */
+export function useSyWatermark(syAddress: string | undefined) {
+  const { provider } = useStarknet();
+
+  return useQuery({
+    queryKey: ['sy', 'watermark', syAddress],
+    queryFn: async (): Promise<SyWatermarkInfo> => {
+      if (!syAddress) throw new Error('SY address required');
+
+      const sy = getSYContract(syAddress, provider);
+      const [watermark, currentRate] = await Promise.all([
+        sy.get_exchange_rate_watermark(),
+        sy.exchange_rate(),
+      ]);
+
+      const hasNegativeYield = currentRate < watermark;
+      let rateDropBps = 0n;
+
+      if (hasNegativeYield && watermark > 0n) {
+        // Calculate drop in basis points: (watermark - current) * 10000 / watermark
+        rateDropBps = ((watermark - currentRate) * 10000n) / watermark;
+      }
+
+      return {
+        watermark,
+        currentRate,
+        hasNegativeYield,
+        rateDropBps,
+      };
+    },
+    enabled: !!syAddress,
+    staleTime: 60_000, // 1 minute - rates change slowly
+  });
+}
+```
+
 ---
 
 ## Error Handling Updates
 
-### `src/shared/lib/errors.ts` - Add SY Slippage Errors
+### `src/shared/lib/errors.ts` - Add SY Errors
 
 ```typescript
 // Add to CONTRACT_ERROR_MESSAGES:
 'HZN: insufficient shares out': 'Slippage exceeded on wrap. Try increasing slippage tolerance.',
 'HZN: insufficient token out': 'Slippage exceeded on unwrap. Try increasing slippage tolerance.',
+'Pausable: paused': 'This token is temporarily paused. Withdrawals are still available.',
 
 // Add to CONTRACT_ERROR_SIMPLE:
 'HZN: insufficient shares out': 'Price changed too much during wrap. Please try again.',
 'HZN: insufficient token out': 'Price changed too much during unwrap. Please try again.',
+'Pausable: paused': 'This token is temporarily paused.',
 
 // Add to CONTRACT_ERROR_HELP:
 'HZN: insufficient shares out': {
@@ -569,6 +692,43 @@ export function useSyAssetInfo(syAddress: string | undefined) {
   simple: 'The exchange rate changed while unwrapping. Try again.',
   advanced: 'Increase slippage tolerance in settings or try a smaller amount.',
 },
+'Pausable: paused': {
+  simple: 'This token is temporarily paused for safety. You can still withdraw.',
+  advanced: 'Deposits and transfers are blocked. Redemptions remain available.',
+},
+```
+
+### Pause State Checking (Optional but Recommended)
+
+To provide a better UX, check pause state before allowing deposits/transfers:
+
+```typescript
+// src/features/yield/model/useSyPauseState.ts
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getSYContract } from '@shared/starknet/contracts';
+import { useStarknet } from '@features/wallet';
+
+/**
+ * Hook to check if an SY contract is paused
+ */
+export function useSyPauseState(syAddress: string | undefined) {
+  const { provider } = useStarknet();
+
+  return useQuery({
+    queryKey: ['sy', 'paused', syAddress],
+    queryFn: async (): Promise<boolean> => {
+      if (!syAddress) return false;
+
+      const sy = getSYContract(syAddress, provider);
+      return await sy.is_paused();
+    },
+    enabled: !!syAddress,
+    staleTime: 30_000, // 30 seconds
+    refetchOnWindowFocus: true, // Important for pause state
+  });
+}
 ```
 
 ---
@@ -583,6 +743,7 @@ export function useSyAssetInfo(syAddress: string | undefined) {
 - [ ] Update `buildWithdrawCalls()` to pass slippage to SY redeem
 - [ ] Update `useWrapToSy` to use `useTransactionSettings` for slippage
 - [ ] Update `useUnwrapSy` to use `useTransactionSettings` for slippage
+- [ ] Add `Pausable: paused` error handling to `errors.ts` **(Phase 4)**
 
 ### P1: SYWithRewards Support
 
@@ -596,6 +757,8 @@ export function useSyAssetInfo(syAddress: string | undefined) {
 - [ ] Add `useSyPreview` hook for accurate slippage
 - [ ] Add `useSyTokenValidation` hook for input validation
 - [ ] Add `useSyAssetInfo` hook for asset metadata
+- [ ] Add `useSyPauseState` hook for pause state checking **(Phase 4)**
+- [ ] Add `useSyWatermark` hook for negative yield monitoring **(Phase 4)**
 
 ### P3: UI Features (Future)
 
@@ -603,6 +766,15 @@ export function useSyAssetInfo(syAddress: string | undefined) {
 - [ ] Accrued rewards display in portfolio
 - [ ] Asset type badge (Token vs Liquidity) in market cards
 - [ ] "Min received" display in wrap/unwrap forms
+- [ ] Paused state warning banner **(Phase 4)**
+- [ ] Negative yield warning indicator **(Phase 4)**
+
+### P4: Indexer Updates (Phase 4)
+
+- [ ] Index `NegativeYieldDetected` events for monitoring
+- [ ] Index `Paused`/`Unpaused` events for pause state tracking
+- [ ] Index `RewardsClaimed` events for reward history
+- [ ] Index `RewardIndexUpdated` events for APY calculation
 
 ---
 
@@ -636,25 +808,37 @@ export function useSyAssetInfo(syAddress: string | undefined) {
 The following methods now exist in generated types:
 
 **SY_ABI (`src/types/generated/SY.ts`):**
-- Line ~227: `deposit(receiver, amount_shares_to_deposit, min_shares_out)` ✓
-- Line ~249: `redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance)` ✓
-- Line ~301: `get_tokens_in()` ✓
-- Line ~311: `get_tokens_out()` ✓
-- Line ~322: `is_valid_token_in(token)` ✓
-- Line ~337: `is_valid_token_out(token)` ✓
-- Line ~353: `asset_info()` ✓
-- Line ~366: `preview_deposit(amount_to_deposit)` ✓
-- Line ~380: `preview_redeem(amount_sy)` ✓
+- Line ~237: `deposit(receiver, amount_shares_to_deposit, min_shares_out)` ✓
+- Line ~261: `redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance)` ✓
+- Line ~311: `get_tokens_in()` ✓
+- Line ~321: `get_tokens_out()` ✓
+- Line ~333: `is_valid_token_in(token)` ✓
+- Line ~348: `is_valid_token_out(token)` ✓
+- Line ~363: `asset_info()` ✓
+- Line ~374: `preview_deposit(amount_to_deposit)` ✓
+- Line ~388: `preview_redeem(amount_sy)` ✓
+- Line ~398: `get_exchange_rate_watermark()` ✓ **(Phase 4)**
 - Line ~64: `AssetType` enum (Token, Liquidity) ✓
+- Line ~1099: `NegativeYieldDetected` event ✓ **(Phase 4)**
 
 **SYWITHREWARDS_ABI (`src/types/generated/SYWithRewards.ts`):**
-- Line ~408: `get_reward_tokens()` ✓
-- Line ~419: `claim_rewards(user)` ✓
-- Line ~435: `accrued_rewards(user)` ✓
-- Line ~451: `reward_index(token)` ✓
-- Line ~466: `user_reward_index(user, token)` ✓
-- Line ~487: `is_reward_token(token)` ✓
-- Line ~502: `reward_tokens_count()` ✓
+- Line ~237: `deposit(receiver, amount_shares_to_deposit, min_shares_out)` ✓
+- Line ~261: `redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance)` ✓
+- Line ~408: `get_exchange_rate_watermark()` ✓ **(Phase 4)**
+- Line ~419: `get_reward_tokens()` ✓
+- Line ~430: `claim_rewards(user)` ✓
+- Line ~446: `accrued_rewards(user)` ✓
+- Line ~462: `reward_index(token)` ✓
+- Line ~478: `user_reward_index(user, token)` ✓
+- Line ~498: `is_reward_token(token)` ✓
+- Line ~514: `reward_tokens_count()` ✓
+- Line ~679: `is_paused()` ✓ **(Phase 4)**
+- Line ~536: `pause()` / `unpause()` (admin) ✓ **(Phase 4)**
+- Line ~1219: `NegativeYieldDetected` event ✓ **(Phase 4)**
+- Line ~1283: `RewardsClaimed` event ✓
+- Line ~1310: `RewardIndexUpdated` event ✓
+- Line ~1347: `RewardTokenAdded` event ✓
+- Line ~966: `Paused` / `Unpaused` events ✓ **(Phase 4)**
 
 **FACTORY_ABI (`src/types/generated/Factory.ts`):**
 - Line ~229: `sy_with_rewards_class_hash()` ✓
@@ -673,7 +857,11 @@ The following methods now exist in generated types:
 | 2025-12-30 | `burn_from_internal_balance = false` for direct calls | Only Router uses internal balance pattern |
 | 2025-12-31 | Phase 3 complete | SYWithRewards, RewardManager, Factory updates all done |
 | 2025-12-31 | Create `features/rewards/` module | Follows FSD architecture for new functionality |
-| 2025-12-31 | Pausable transfers are transparent | No frontend changes needed - contract handles it |
+| 2025-12-31 | Phase 4 complete | Pausable transfers and negative yield watermark |
+| 2025-12-31 | Add `Pausable: paused` error handling | Required for graceful UX when SY is paused |
+| 2025-12-31 | Watermark hook is optional | Useful for monitoring but not critical path |
+| 2025-12-31 | Redemptions always work when paused | Critical safety feature - users can always exit |
+| 2025-12-31 | NegativeYieldDetected for indexer | Off-chain monitoring capability for unhealthy assets |
 
 ---
 
@@ -709,6 +897,12 @@ is_valid_token_out(token: ContractAddress) → bool
 
 // Asset info
 asset_info() → (AssetType, ContractAddress, u8)
+
+// Phase 4: Watermark & Pausable
+get_exchange_rate_watermark() → u256  // Highest rate ever seen
+is_paused() → bool                     // Check if contract is paused
+pause()                                // Admin: pause deposits/transfers
+unpause()                              // Admin: unpause contract
 ```
 
 ### SYWithRewards Contract
@@ -724,4 +918,61 @@ reward_index(token: ContractAddress) → u256
 user_reward_index(user: ContractAddress, token: ContractAddress) → u256
 is_reward_token(token: ContractAddress) → bool
 reward_tokens_count() → u32
+```
+
+---
+
+## Appendix B: Phase 4 Events
+
+### NegativeYieldDetected Event
+
+Emitted when the exchange rate drops below the watermark (highest rate ever seen):
+
+```typescript
+interface NegativeYieldDetected {
+  sy: ContractAddress;         // SY contract address (indexed)
+  underlying: ContractAddress; // Underlying asset address (indexed)
+  watermark_rate: u256;        // Previous high water mark
+  current_rate: u256;          // Current (lower) rate
+  rate_drop_bps: u256;         // Drop in basis points
+  timestamp: u64;
+}
+```
+
+### Pause Events
+
+```typescript
+interface Paused {
+  account: ContractAddress;    // Who paused the contract
+}
+
+interface Unpaused {
+  account: ContractAddress;    // Who unpaused the contract
+}
+```
+
+### Reward Events (SYWithRewards only)
+
+```typescript
+interface RewardsClaimed {
+  user: ContractAddress;       // User who claimed (indexed)
+  reward_token: ContractAddress; // Reward token (indexed)
+  amount: u256;
+  timestamp: u64;
+}
+
+interface RewardIndexUpdated {
+  reward_token: ContractAddress; // Reward token (indexed)
+  old_index: u256;
+  new_index: u256;
+  rewards_added: u256;
+  total_supply: u256;
+  timestamp: u64;
+}
+
+interface RewardTokenAdded {
+  reward_token: ContractAddress; // Reward token (indexed)
+  index: u32;
+  timestamp: u64;
+}
 ```
