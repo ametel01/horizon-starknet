@@ -405,6 +405,17 @@ export const SYWITHREWARDS_ABI = [
       },
       {
         type: 'function',
+        name: 'get_exchange_rate_watermark',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
         name: 'get_reward_tokens',
         inputs: [],
         outputs: [
@@ -1205,6 +1216,43 @@ export const SYWITHREWARDS_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::components::sy_component::SYComponent::NegativeYieldDetected',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'watermark_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'current_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'rate_drop_bps',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::components::sy_component::SYComponent::Event',
     kind: 'enum',
     variants: [
@@ -1221,6 +1269,11 @@ export const SYWITHREWARDS_ABI = [
       {
         name: 'OracleRateUpdated',
         type: 'horizon::components::sy_component::SYComponent::OracleRateUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'NegativeYieldDetected',
+        type: 'horizon::components::sy_component::SYComponent::NegativeYieldDetected',
         kind: 'nested',
       },
     ],
