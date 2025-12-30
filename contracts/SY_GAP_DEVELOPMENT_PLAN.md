@@ -1224,45 +1224,62 @@ snforge test paused  # Runs all 9 pausable tests
 
 ---
 
-### Gap 4.2: Negative Yield Watermark
+### Gap 4.2: Negative Yield Watermark **COMPLETE**
 
 **Current State:** Watermark only in YT
 
-**Target State:** SY tracks minimum exchange rate
+**Target State:** SY tracks minimum exchange rate (watermark)
 
-**Implementation Steps:**
+**Implementation Details:**
 
-1. **Add storage**:
+1. **Added storage field** in SYComponent:
    ```cairo
-   min_exchange_rate: u256  // Watermark for negative yield detection
+   min_exchange_rate: u256  // Watermark for negative yield detection (highest rate seen)
    ```
 
-2. **Update in deposit/redeem**:
-   ```cairo
-   let current_rate = self.exchange_rate();
-   let min_rate = self.min_exchange_rate.read();
-   if current_rate < min_rate {
-       // Negative yield detected
-       self.emit(NegativeYieldDetected { ... });
-   } else if current_rate > min_rate {
-       self.min_exchange_rate.write(current_rate);
-   }
-   ```
-
-3. **Add event**:
+2. **Added NegativeYieldDetected event** in SYComponent:
    ```cairo
    #[derive(Drop, starknet::Event)]
    pub struct NegativeYieldDetected {
+       #[key]
        pub sy: ContractAddress,
-       pub previous_rate: u256,
-       pub current_rate: u256,
+       #[key]
+       pub underlying: ContractAddress,
+       pub watermark_rate: u256,  // The previous high water mark
+       pub current_rate: u256,    // The current (lower) rate
+       pub rate_drop_bps: u256,   // Rate drop in basis points
        pub timestamp: u64,
    }
    ```
 
+3. **Updated `_check_and_emit_rate_update`** in SYComponent:
+   - If `current_rate < watermark`: emit `NegativeYieldDetected` event
+   - If `current_rate > watermark`: update `min_exchange_rate` to `current_rate`
+   - Watermark stays at high water mark when rate drops (never decreases)
+
+4. **Added view function** to ISY and ISYWithRewards:
+   ```cairo
+   fn get_exchange_rate_watermark(self: @TContractState) -> u256;
+   ```
+
+5. **Added `force_set_index`** to MockYieldToken for testing negative yield scenarios
+
+**Tests Added (5 tests):**
+- `test_sy_initial_watermark_equals_exchange_rate`
+- `test_sy_watermark_updates_when_rate_increases`
+- `test_sy_watermark_stays_at_high_water_mark_when_rate_drops`
+- `test_sy_watermark_unchanged_when_rate_same`
+- `test_sy_watermark_tracks_successive_increases`
+
+**Behavior:**
+- The watermark tracks the highest exchange rate ever seen
+- When the current rate drops below the watermark, `NegativeYieldDetected` is emitted
+- This provides off-chain monitoring capability for detecting unhealthy underlying assets
+- Critical for PT holders who expect at least their principal back at expiry
+
 **Validation:**
 ```bash
-snforge test test_sy::test_negative_yield_watermark
+snforge test watermark  # Runs all 5 watermark tests
 ```
 
 ---
@@ -1298,7 +1315,11 @@ Phase 4 (Polish) ──────┬─► Gap 4.1 (Pausable transfers) ✓ CO
                        │       ├─► Update src/tokens/sy.cairo (add ERC20 hooks)
                        │       └─► Update src/tokens/sy_with_rewards.cairo (add pausable check)
                        │
-                       └─► Gap 4.2 (Negative yield watermark)
+                       └─► Gap 4.2 (Negative yield watermark) ✓ COMPLETE
+                               ├─► Add min_exchange_rate storage to SYComponent
+                               ├─► Add NegativeYieldDetected event
+                               ├─► Update _check_and_emit_rate_update for watermark tracking
+                               └─► Add get_exchange_rate_watermark() view function
 ```
 
 ---
