@@ -51,6 +51,30 @@ export const SY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
+    type: 'enum',
+    name: 'horizon::interfaces::i_sy::AssetType',
+    variants: [
+      {
+        name: 'Token',
+        type: '()',
+      },
+      {
+        name: 'Liquidity',
+        type: '()',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_sy::ISY',
     items: [
@@ -256,6 +280,71 @@ export const SY_ABI = [
         outputs: [
           {
             type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_tokens_in',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_tokens_out',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'is_valid_token_in',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'is_valid_token_out',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'asset_info',
+        inputs: [],
+        outputs: [
+          {
+            type: '(horizon::interfaces::i_sy::AssetType, core::starknet::contract_address::ContractAddress, core::integer::u8)',
           },
         ],
         state_mutability: 'view',
@@ -493,8 +582,20 @@ export const SY_ABI = [
         type: 'core::bool',
       },
       {
+        name: 'asset_type',
+        type: 'horizon::interfaces::i_sy::AssetType',
+      },
+      {
         name: 'pauser',
         type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'tokens_in',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+      },
+      {
+        name: 'tokens_out',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
       },
     ],
   },
