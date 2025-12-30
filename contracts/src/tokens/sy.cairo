@@ -11,14 +11,14 @@ use starknet::ContractAddress;
 /// Constructor takes an `index_oracle` parameter and `is_erc4626` flag:
 /// - For ERC-4626 tokens: pass underlying address as oracle, set is_erc4626=true
 /// - For custom oracles: pass oracle address, set is_erc4626=false
+///
+/// Architecture:
+/// This contract uses the SYComponent for core SY logic (deposit, redeem, exchange rate)
+/// and implements SYHooksTrait to bridge the component with ERC20 and other components.
 #[starknet::contract]
 pub mod SY {
-    use core::num::traits::Zero;
-    use horizon::interfaces::i_erc4626::{IERC4626MinimalDispatcher, IERC4626MinimalDispatcherTrait};
-    use horizon::interfaces::i_index_oracle::{IIndexOracleDispatcher, IIndexOracleDispatcherTrait};
+    use horizon::components::sy_component::SYComponent;
     use horizon::interfaces::i_sy::{AssetType, ISY, ISYAdmin};
-    use horizon::libraries::errors::Errors;
-    use horizon::libraries::math_fp::WAD;
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
@@ -28,15 +28,11 @@ pub mod SY {
     use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use openzeppelin_upgrades::UpgradeableComponent;
-    use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
-        StoragePointerWriteAccess,
-    };
-    use starknet::{
-        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
-    };
+    use starknet::storage::{StorageMapReadAccess, StoragePointerReadAccess};
+    use starknet::{ClassHash, ContractAddress, get_caller_address};
     use super::{IERC20Dispatcher, IERC20DispatcherTrait};
 
+    // Declare all components
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
@@ -46,6 +42,7 @@ pub mod SY {
     component!(
         path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent,
     );
+    component!(path: SYComponent, storage: sy, event: SYEvent);
 
     // Only use internal impl - do NOT embed ERC20MixinImpl to avoid duplicate entry points
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
@@ -54,6 +51,11 @@ pub mod SY {
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
     impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
+
+    // SY component internal impl with hooks
+    // Note: SYHooksImpl is resolved by the compiler since it's in the same scope
+    impl SYInternalImpl = SYComponent::InternalImpl<ContractState>;
+    impl SYViewImpl = SYComponent::ViewImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl AccessControlImpl =
@@ -79,28 +81,8 @@ pub mod SY {
         upgradeable: UpgradeableComponent::Storage,
         #[substorage(v0)]
         reentrancy_guard: ReentrancyGuardComponent::Storage,
-        // The underlying yield-bearing token address (ERC20)
-        underlying: ContractAddress,
-        // The index oracle address (implements IIndexOracle or IERC4626)
-        // Can be same as underlying for native yield tokens,
-        // or a separate oracle for bridged tokens
-        index_oracle: ContractAddress,
-        // Whether the index_oracle is an ERC-4626 vault
-        // If true, call convert_to_assets(WAD) instead of index()
-        is_erc4626: bool,
-        // Last recorded exchange rate (for OracleRateUpdated event)
-        last_exchange_rate: u256,
-        // Multi-token support: valid tokens for deposit
-        tokens_in: Map<u32, ContractAddress>,
-        tokens_in_count: u32,
-        // Multi-token support: valid tokens for redemption
-        tokens_out: Map<u32, ContractAddress>,
-        tokens_out_count: u32,
-        // O(1) token validation maps
-        valid_tokens_in: Map<ContractAddress, bool>,
-        valid_tokens_out: Map<ContractAddress, bool>,
-        // Asset classification (Token or Liquidity)
-        asset_type: AssetType,
+        #[substorage(v0)]
+        sy: SYComponent::Storage,
     }
 
     #[event]
@@ -120,52 +102,52 @@ pub mod SY {
         UpgradeableEvent: UpgradeableComponent::Event,
         #[flat]
         ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
-        Deposit: Deposit,
-        Redeem: Redeem,
-        OracleRateUpdated: OracleRateUpdated,
+        #[flat]
+        SYEvent: SYComponent::Event,
     }
 
-    #[derive(Drop, starknet::Event)]
-    pub struct Deposit {
-        #[key]
-        pub caller: ContractAddress,
-        #[key]
-        pub receiver: ContractAddress,
-        #[key]
-        pub underlying: ContractAddress,
-        pub amount_deposited: u256,
-        pub amount_sy_minted: u256,
-        pub exchange_rate: u256,
-        pub total_supply_after: u256,
-        pub timestamp: u64,
-    }
+    /// Implement SYHooksTrait - bridge SYComponent to ERC20 and other components
+    ///
+    /// This is where the composition magic happens: the SY component calls these hooks
+    /// and we delegate to the appropriate components (ERC20 for minting, pausable for checks, etc.)
+    impl SYHooksImpl of SYComponent::SYHooksTrait<ContractState> {
+        /// Mint SY tokens via ERC20 component
+        fn mint_sy(ref self: ContractState, to: ContractAddress, amount: u256) {
+            self.erc20.mint(to, amount);
+        }
 
-    #[derive(Drop, starknet::Event)]
-    pub struct Redeem {
-        #[key]
-        pub caller: ContractAddress,
-        #[key]
-        pub receiver: ContractAddress,
-        #[key]
-        pub underlying: ContractAddress,
-        pub amount_sy_burned: u256,
-        pub amount_redeemed: u256,
-        pub exchange_rate: u256,
-        pub total_supply_after: u256,
-        pub timestamp: u64,
-    }
+        /// Burn SY tokens via ERC20 component
+        fn burn_sy(ref self: ContractState, from: ContractAddress, amount: u256) {
+            self.erc20.burn(from, amount);
+        }
 
-    /// Emitted when the oracle exchange rate changes during a state-changing operation
-    #[derive(Drop, starknet::Event)]
-    pub struct OracleRateUpdated {
-        #[key]
-        pub sy: ContractAddress,
-        #[key]
-        pub underlying: ContractAddress,
-        pub old_rate: u256,
-        pub new_rate: u256,
-        pub rate_change_bps: u256,
-        pub timestamp: u64,
+        /// Get total SY supply from ERC20 component
+        fn total_sy_supply(self: @ContractState) -> u256 {
+            self.erc20.ERC20_total_supply.read()
+        }
+
+        /// Before deposit: check pausable state and start reentrancy guard
+        fn before_deposit(ref self: ContractState, receiver: ContractAddress, amount: u256) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+        }
+
+        /// After deposit: end reentrancy guard
+        /// In SYWithRewards, this would also update reward state
+        fn after_deposit(ref self: ContractState, receiver: ContractAddress, sy_minted: u256) {
+            self.reentrancy_guard.end();
+        }
+
+        /// Before redeem: start reentrancy guard (no pause check for redemptions)
+        fn before_redeem(ref self: ContractState, receiver: ContractAddress, amount_sy: u256) {
+            self.reentrancy_guard.start();
+        }
+
+        /// After redeem: end reentrancy guard
+        /// In SYWithRewards, this would also update reward state
+        fn after_redeem(ref self: ContractState, receiver: ContractAddress, amount_redeemed: u256) {
+            self.reentrancy_guard.end();
+        }
     }
 
     /// @param name SY token name
@@ -202,45 +184,10 @@ pub mod SY {
         // Initialize ownable for upgrade control
         self.ownable.initializer(pauser);
 
-        // Initialize SY state
-        assert(!underlying.is_zero(), Errors::ZERO_ADDRESS);
-        assert(!index_oracle.is_zero(), Errors::ZERO_ADDRESS);
-        self.underlying.write(underlying);
-        self.index_oracle.write(index_oracle);
-        self.is_erc4626.write(is_erc4626);
-        self.asset_type.write(asset_type);
-
-        // Initialize last exchange rate from oracle
-        let initial_rate = if is_erc4626 {
-            let vault = IERC4626MinimalDispatcher { contract_address: index_oracle };
-            vault.convert_to_assets(WAD)
-        } else {
-            let oracle = IIndexOracleDispatcher { contract_address: index_oracle };
-            oracle.index()
-        };
-        self.last_exchange_rate.write(initial_rate);
-
-        // Initialize tokens_in (valid deposit tokens) with O(1) lookup map
-        assert(tokens_in.len() > 0, Errors::SY_EMPTY_TOKENS_IN);
-        let mut i: u32 = 0;
-        for token in tokens_in {
-            assert(!(*token).is_zero(), Errors::ZERO_ADDRESS);
-            self.tokens_in.write(i, *token);
-            self.valid_tokens_in.write(*token, true);
-            i += 1;
-        }
-        self.tokens_in_count.write(i);
-
-        // Initialize tokens_out (valid redemption tokens) with O(1) lookup map
-        assert(tokens_out.len() > 0, Errors::SY_EMPTY_TOKENS_OUT);
-        let mut j: u32 = 0;
-        for token in tokens_out {
-            assert(!(*token).is_zero(), Errors::ZERO_ADDRESS);
-            self.tokens_out.write(j, *token);
-            self.valid_tokens_out.write(*token, true);
-            j += 1;
-        }
-        self.tokens_out_count.write(j);
+        // Initialize SY component
+        self
+            .sy
+            .initializer(underlying, index_oracle, is_erc4626, asset_type, tokens_in, tokens_out);
     }
 
     #[abi(embed_v0)]
@@ -254,7 +201,7 @@ pub mod SY {
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            let underlying_addr = self.underlying.read();
+            let underlying_addr = self.sy.underlying.read();
             let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
             underlying_token.decimals()
         }
@@ -298,76 +245,18 @@ pub mod SY {
         }
 
         /// Deposit underlying yield-bearing tokens to mint SY
-        /// SY is 1:1 with the underlying shares (not assets).
-        /// @param receiver Address to receive the minted SY
-        /// @param amount_shares_to_deposit Amount of underlying shares to deposit
-        /// @param min_shares_out Minimum SY shares to receive (slippage protection)
-        /// @return Amount of SY minted (equal to shares deposited)
+        /// Delegates to SYComponent
         fn deposit(
             ref self: ContractState,
             receiver: ContractAddress,
             amount_shares_to_deposit: u256,
             min_shares_out: u256,
         ) -> u256 {
-            // Reentrancy protection
-            self.reentrancy_guard.start();
-
-            // Check not paused - deposit operations can be paused in emergency
-            self.pausable.assert_not_paused();
-            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_shares_to_deposit > 0, Errors::SY_ZERO_DEPOSIT);
-
-            // Check and emit oracle rate update if rate changed
-            self._check_and_emit_rate_update();
-
-            let caller = get_caller_address();
-
-            // Transfer underlying shares from caller to this contract
-            // SECURITY: This external call happens before mint (CEI violation).
-            // We trust underlying to be a standard ERC20 without transfer hooks.
-            // Underlying tokens are vetted yield-bearing assets (stETH, nstSTRK, etc).
-            let underlying_addr = self.underlying.read();
-            let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
-            let success = underlying_token
-                .transfer_from(caller, get_contract_address(), amount_shares_to_deposit);
-            assert(success, Errors::SY_INSUFFICIENT_BALANCE);
-
-            // SY is 1:1 with underlying shares
-            let sy_to_mint = amount_shares_to_deposit;
-
-            // Slippage protection: ensure minimum shares out
-            assert(sy_to_mint >= min_shares_out, Errors::SY_INSUFFICIENT_SHARES_OUT);
-
-            // Mint SY to receiver
-            self.erc20.mint(receiver, sy_to_mint);
-
-            self
-                .emit(
-                    Deposit {
-                        caller,
-                        receiver,
-                        underlying: underlying_addr,
-                        amount_deposited: amount_shares_to_deposit,
-                        amount_sy_minted: sy_to_mint,
-                        exchange_rate: self.exchange_rate(),
-                        total_supply_after: self.erc20.ERC20_total_supply.read(),
-                        timestamp: get_block_timestamp(),
-                    },
-                );
-
-            // Release reentrancy guard
-            self.reentrancy_guard.end();
-
-            sy_to_mint
+            self.sy.deposit(receiver, amount_shares_to_deposit, min_shares_out)
         }
 
         /// Redeem SY for underlying yield-bearing tokens
-        /// @param receiver Address to receive the underlying tokens
-        /// @param amount_sy_to_redeem Amount of SY to burn
-        /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
-        /// @param burn_from_internal_balance If true, burn from contract's own balance (Router
-        /// pattern)
-        /// @return Amount of underlying shares redeemed (equal to SY burned)
+        /// Delegates to SYComponent
         fn redeem(
             ref self: ContractState,
             receiver: ContractAddress,
@@ -375,128 +264,52 @@ pub mod SY {
             min_token_out: u256,
             burn_from_internal_balance: bool,
         ) -> u256 {
-            // Reentrancy protection
-            self.reentrancy_guard.start();
-
-            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_sy_to_redeem > 0, Errors::SY_ZERO_REDEEM);
-
-            // Check and emit oracle rate update if rate changed
-            self._check_and_emit_rate_update();
-
-            let caller = get_caller_address();
-
-            // Burn SY from either internal balance or caller
-            if burn_from_internal_balance {
-                // Router pattern: burn from contract's own balance
-                // Caller must have transferred SY to this contract first
-                self.erc20.burn(get_contract_address(), amount_sy_to_redeem);
-            } else {
-                // Standard pattern: burn from caller
-                self.erc20.burn(caller, amount_sy_to_redeem);
-            }
-
-            // SY is 1:1 with underlying shares
-            let shares_to_return = amount_sy_to_redeem;
-
-            // Slippage protection: ensure minimum token out
-            assert(shares_to_return >= min_token_out, Errors::SY_INSUFFICIENT_TOKEN_OUT);
-
-            // Transfer underlying to receiver
-            let underlying_addr = self.underlying.read();
-            let underlying_token = IERC20Dispatcher { contract_address: underlying_addr };
-            let success = underlying_token.transfer(receiver, shares_to_return);
-            assert(success, Errors::SY_INSUFFICIENT_BALANCE);
-
-            self
-                .emit(
-                    Redeem {
-                        caller,
-                        receiver,
-                        underlying: underlying_addr,
-                        amount_sy_burned: amount_sy_to_redeem,
-                        amount_redeemed: shares_to_return,
-                        exchange_rate: self.exchange_rate(),
-                        total_supply_after: self.erc20.ERC20_total_supply.read(),
-                        timestamp: get_block_timestamp(),
-                    },
-                );
-
-            // Release reentrancy guard
-            self.reentrancy_guard.end();
-
-            shares_to_return
+            self.sy.redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance)
         }
 
         /// Get the current exchange rate (assets per share in WAD)
-        /// For ERC-4626 vaults: calls convert_to_assets(WAD)
-        /// For custom oracles: calls index()
         fn exchange_rate(self: @ContractState) -> u256 {
-            let oracle_addr = self.index_oracle.read();
-
-            if self.is_erc4626.read() {
-                // ERC-4626: convert_to_assets(1 share) = exchange rate
-                let vault = IERC4626MinimalDispatcher { contract_address: oracle_addr };
-                vault.convert_to_assets(WAD)
-            } else {
-                // Custom oracle: call index()
-                let oracle = IIndexOracleDispatcher { contract_address: oracle_addr };
-                oracle.index()
-            }
+            self.sy.exchange_rate()
         }
 
         /// Get the underlying token address
         fn underlying_asset(self: @ContractState) -> ContractAddress {
-            self.underlying.read()
+            self.sy.underlying_asset()
         }
 
         /// Get all valid tokens that can be deposited to mint SY
         fn get_tokens_in(self: @ContractState) -> Span<ContractAddress> {
-            let count = self.tokens_in_count.read();
-            let mut tokens: Array<ContractAddress> = array![];
-            let mut i: u32 = 0;
-            while i < count {
-                tokens.append(self.tokens_in.read(i));
-                i += 1;
-            }
-            tokens.span()
+            self.sy.get_tokens_in()
         }
 
         /// Get all valid tokens that can be received when redeeming SY
         fn get_tokens_out(self: @ContractState) -> Span<ContractAddress> {
-            let count = self.tokens_out_count.read();
-            let mut tokens: Array<ContractAddress> = array![];
-            let mut i: u32 = 0;
-            while i < count {
-                tokens.append(self.tokens_out.read(i));
-                i += 1;
-            }
-            tokens.span()
+            self.sy.get_tokens_out()
         }
 
         /// Check if a token can be deposited to mint SY (O(1) lookup)
         fn is_valid_token_in(self: @ContractState, token: ContractAddress) -> bool {
-            self.valid_tokens_in.read(token)
+            self.sy.is_valid_token_in(token)
         }
 
         /// Check if a token can be received when redeeming SY (O(1) lookup)
         fn is_valid_token_out(self: @ContractState, token: ContractAddress) -> bool {
-            self.valid_tokens_out.read(token)
+            self.sy.is_valid_token_out(token)
         }
 
         /// Returns asset classification, underlying address, and decimals
         fn asset_info(self: @ContractState) -> (AssetType, ContractAddress, u8) {
-            (self.asset_type.read(), self.underlying.read(), self.decimals())
+            self.sy.asset_info()
         }
 
         /// Preview how much SY would be minted for a deposit (1:1)
         fn preview_deposit(self: @ContractState, amount_to_deposit: u256) -> u256 {
-            amount_to_deposit
+            self.sy.preview_deposit(amount_to_deposit)
         }
 
         /// Preview how much underlying would be returned for a redemption (1:1)
         fn preview_redeem(self: @ContractState, amount_sy: u256) -> u256 {
-            amount_sy
+            self.sy.preview_redeem(amount_sy)
         }
     }
 
@@ -523,62 +336,17 @@ pub mod SY {
         }
     }
 
-    // Internal functions
+    // Internal functions - expose component internals for tests and other contracts
     #[generate_trait]
     pub impl InternalImpl of InternalTrait {
         /// Get the index oracle address
         fn get_index_oracle(self: @ContractState) -> ContractAddress {
-            self.index_oracle.read()
+            self.sy.get_index_oracle()
         }
 
         /// Check if this SY uses an ERC-4626 vault for exchange rate
         fn get_is_erc4626(self: @ContractState) -> bool {
-            self.is_erc4626.read()
-        }
-
-        /// Check if exchange rate changed and emit OracleRateUpdated event if so
-        /// Called during state-changing operations (deposit, redeem)
-        fn _check_and_emit_rate_update(ref self: ContractState) {
-            let oracle_addr = self.index_oracle.read();
-
-            let new_rate = if self.is_erc4626.read() {
-                let vault = IERC4626MinimalDispatcher { contract_address: oracle_addr };
-                vault.convert_to_assets(WAD)
-            } else {
-                let oracle = IIndexOracleDispatcher { contract_address: oracle_addr };
-                oracle.index()
-            };
-
-            let old_rate = self.last_exchange_rate.read();
-
-            // Only emit if rates differ and we have a previous rate (skip on first call)
-            if old_rate > 0 && new_rate != old_rate {
-                // Calculate rate change in basis points (10000 = 100%)
-                // rate_change_bps = |new_rate - old_rate| * 10000 / old_rate
-                let rate_diff = if new_rate > old_rate {
-                    new_rate - old_rate
-                } else {
-                    old_rate - new_rate
-                };
-                let rate_change_bps = (rate_diff * 10000) / old_rate;
-
-                self
-                    .emit(
-                        OracleRateUpdated {
-                            sy: get_contract_address(),
-                            underlying: self.underlying.read(),
-                            old_rate,
-                            new_rate,
-                            rate_change_bps,
-                            timestamp: get_block_timestamp(),
-                        },
-                    );
-            }
-
-            // Update stored rate
-            if new_rate != old_rate {
-                self.last_exchange_rate.write(new_rate);
-            }
+            self.sy.get_is_erc4626()
         }
     }
 }
