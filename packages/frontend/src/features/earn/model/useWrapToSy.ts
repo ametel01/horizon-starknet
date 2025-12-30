@@ -4,9 +4,11 @@ import { useCallback, useMemo } from 'react';
 import { type Call, uint256 } from 'starknet';
 
 import { useTokenAllowance, useTokenBalance } from '@features/portfolio';
+import { useTransactionSettings } from '@features/tx-settings';
 import { useAccount } from '@features/wallet';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { toWad } from '@shared/math/wad';
+import { calculateMinOutput } from '@shared/starknet/transaction-builder';
 
 interface UseWrapToSyParams {
   underlyingAddress: string;
@@ -40,6 +42,7 @@ export function useWrapToSy({
   syAddress,
 }: UseWrapToSyParams): UseWrapToSyReturn {
   const { address: userAddress } = useAccount();
+  const { slippageBps } = useTransactionSettings();
 
   // Fetch underlying balance
   const {
@@ -89,21 +92,25 @@ export function useWrapToSy({
       }
 
       // Add deposit call to SY contract
-      // SY.deposit(receiver, amount_shares_to_deposit) -> amount_sy_minted
+      // SY.deposit(receiver, amount, min_shares_out) -> amount_sy_minted
       const u256Amount = uint256.bnToUint256(amountWad);
+      const minSharesOut = calculateMinOutput(amountWad, slippageBps);
+      const u256MinSharesOut = uint256.bnToUint256(minSharesOut);
       calls.push({
         contractAddress: syAddress,
         entrypoint: 'deposit',
         calldata: [
           userAddress, // receiver
           u256Amount.low,
-          u256Amount.high, // amount_shares_to_deposit
+          u256Amount.high, // amount
+          u256MinSharesOut.low,
+          u256MinSharesOut.high, // min_shares_out
         ],
       });
 
       return calls;
     },
-    [userAddress, underlyingAddress, syAddress, needsApproval]
+    [userAddress, underlyingAddress, syAddress, needsApproval, slippageBps]
   );
 
   // Execute wrap
