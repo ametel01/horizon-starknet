@@ -25,6 +25,7 @@ pub mod SY {
     use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
+    use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
     use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{
@@ -42,6 +43,9 @@ pub mod SY {
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(
+        path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent,
+    );
 
     // Only use internal impl - do NOT embed ERC20MixinImpl to avoid duplicate entry points
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
@@ -49,6 +53,7 @@ pub mod SY {
     impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+    impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl AccessControlImpl =
@@ -72,6 +77,8 @@ pub mod SY {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: ReentrancyGuardComponent::Storage,
         // The underlying yield-bearing token address (ERC20)
         underlying: ContractAddress,
         // The index oracle address (implements IIndexOracle or IERC4626)
@@ -111,6 +118,8 @@ pub mod SY {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        #[flat]
+        ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
         Deposit: Deposit,
         Redeem: Redeem,
         OracleRateUpdated: OracleRateUpdated,
@@ -300,6 +309,9 @@ pub mod SY {
             amount_shares_to_deposit: u256,
             min_shares_out: u256,
         ) -> u256 {
+            // Reentrancy protection
+            self.reentrancy_guard.start();
+
             // Check not paused - deposit operations can be paused in emergency
             self.pausable.assert_not_paused();
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -343,6 +355,9 @@ pub mod SY {
                     },
                 );
 
+            // Release reentrancy guard
+            self.reentrancy_guard.end();
+
             sy_to_mint
         }
 
@@ -360,6 +375,9 @@ pub mod SY {
             min_token_out: u256,
             burn_from_internal_balance: bool,
         ) -> u256 {
+            // Reentrancy protection
+            self.reentrancy_guard.start();
+
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_redeem > 0, Errors::SY_ZERO_REDEEM);
 
@@ -403,6 +421,9 @@ pub mod SY {
                         timestamp: get_block_timestamp(),
                     },
                 );
+
+            // Release reentrancy guard
+            self.reentrancy_guard.end();
 
             shares_to_return
         }
