@@ -90,7 +90,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
         type="button"
         onClick={handleToggle}
         className={cn(
-          'relative flex h-8 items-center rounded-full border p-0.5 transition-colors',
+          'relative flex h-8 items-center overflow-hidden rounded-full border p-0.5 transition-colors',
           'border-border bg-muted',
           showTooltip && 'ring-primary/50 ring-2'
         )}
@@ -100,7 +100,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
         <span
           className={cn(
             'bg-primary absolute h-7 rounded-full transition-all duration-200 ease-in-out',
-            mode === 'simple' ? 'left-0.5 w-[4.25rem]' : 'left-[4.5rem] w-[5.5rem]'
+            mode === 'simple' ? 'left-0.5 w-[4rem]' : 'left-[4.125rem] w-[5.25rem]'
           )}
         />
 
