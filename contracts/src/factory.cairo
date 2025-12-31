@@ -72,6 +72,8 @@ pub mod Factory {
         sy_with_rewards_class_hash: ClassHash,
         // Set of valid SY addresses deployed by this factory
         valid_sys: Map<ContractAddress, bool>,
+        // Treasury address for protocol fee collection and post-expiry yield
+        treasury: ContractAddress,
     }
 
     #[event]
@@ -137,13 +139,16 @@ pub mod Factory {
         owner: ContractAddress,
         yt_class_hash: ClassHash,
         pt_class_hash: ClassHash,
+        treasury: ContractAddress,
     ) {
         assert(!yt_class_hash.is_zero(), Errors::ZERO_ADDRESS);
         assert(!pt_class_hash.is_zero(), Errors::ZERO_ADDRESS);
+        assert(!treasury.is_zero(), Errors::ZERO_ADDRESS);
 
         self.ownable.initializer(owner);
         self.yt_class_hash.write(yt_class_hash);
         self.pt_class_hash.write(pt_class_hash);
+        self.treasury.write(treasury);
         self.deploy_count.write(0);
 
         // Initialize AccessControl and grant admin role to owner
@@ -195,7 +200,7 @@ pub mod Factory {
             yt_symbol.append(@sy_symbol);
 
             // Build YT constructor calldata
-            // YT constructor: name, symbol, sy, pt_class_hash, expiry
+            // YT constructor: name, symbol, sy, pt_class_hash, expiry, pauser, treasury
             let mut yt_calldata: Array<felt252> = array![];
 
             // Serialize YT name (ByteArray)
@@ -215,6 +220,9 @@ pub mod Factory {
 
             // Pauser address (factory owner gets PAUSER_ROLE on created YT)
             yt_calldata.append(self.ownable.owner().into());
+
+            // Treasury address for post-expiry yield and protocol fees
+            yt_calldata.append(self.treasury.read().into());
 
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();
@@ -430,6 +438,20 @@ pub mod Factory {
         /// Check if an SY address was deployed by this factory
         fn is_valid_sy(self: @ContractState, sy: ContractAddress) -> bool {
             self.valid_sys.read(sy)
+        }
+
+        // ============ Treasury Support ============
+
+        /// Get the treasury address for protocol fee collection and post-expiry yield
+        fn treasury(self: @ContractState) -> ContractAddress {
+            self.treasury.read()
+        }
+
+        /// Set the treasury address (owner only)
+        fn set_treasury(ref self: ContractState, treasury: ContractAddress) {
+            self.ownable.assert_only_owner();
+            assert(!treasury.is_zero(), Errors::ZERO_ADDRESS);
+            self.treasury.write(treasury);
         }
     }
 }

@@ -43,9 +43,13 @@ pub trait IYT<TContractState> {
     // Yield claiming
     fn redeem_due_interest(ref self: TContractState, user: ContractAddress) -> u256;
     fn get_user_interest(self: @TContractState, user: ContractAddress) -> u256;
+
+    // Treasury
+    fn treasury(self: @TContractState) -> ContractAddress;
+    fn get_post_expiry_treasury_interest(self: @TContractState) -> u256;
 }
 
-/// Admin interface for YT pausability
+/// Admin interface for YT pausability and treasury management
 #[starknet::interface]
 pub trait IYTAdmin<TContractState> {
     /// Pause all YT operations (PAUSER_ROLE only)
@@ -53,4 +57,9 @@ pub trait IYTAdmin<TContractState> {
 
     /// Unpause all YT operations (PAUSER_ROLE only)
     fn unpause(ref self: TContractState);
+
+    /// Claim post-expiry yield for treasury (DEFAULT_ADMIN_ROLE only)
+    /// After expiry, any yield that accrues is redirected to treasury.
+    /// @return Amount of SY transferred to treasury
+    fn redeem_post_expiry_interest_for_treasury(ref self: TContractState) -> u256;
 }

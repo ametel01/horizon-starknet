@@ -64,4 +64,12 @@ pub trait IFactory<TContractState> {
 
     /// Check if an SY address was deployed by this factory
     fn is_valid_sy(self: @TContractState, sy: ContractAddress) -> bool;
+
+    // ============ Treasury Support ============
+
+    /// Get the treasury address for protocol fee collection and post-expiry yield
+    fn treasury(self: @TContractState) -> ContractAddress;
+
+    /// Set the treasury address (owner only)
+    fn set_treasury(ref self: TContractState, treasury: ContractAddress);
 }

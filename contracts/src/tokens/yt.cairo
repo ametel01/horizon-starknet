@@ -86,6 +86,11 @@ pub mod YT {
         // Expected SY balance held by contract (tracks deposits/withdrawals)
         // Used to detect "floating" SY from direct transfers
         sy_reserve: u256,
+        // Treasury address for protocol fee collection and post-expiry yield
+        treasury: ContractAddress,
+        // Accumulated post-expiry yield for treasury redemption
+        // After expiry, yield that would have gone to YT holders is captured here
+        post_expiry_sy_for_treasury: u256,
     }
 
     #[event]
@@ -108,6 +113,7 @@ pub mod YT {
         RedeemPYPostExpiry: RedeemPYPostExpiry,
         InterestClaimed: InterestClaimed,
         ExpiryReached: ExpiryReached,
+        TreasuryInterestRedeemed: TreasuryInterestRedeemed,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -200,6 +206,21 @@ pub mod YT {
         pub timestamp: u64,
     }
 
+    /// Emitted when post-expiry yield is claimed for treasury
+    #[derive(Drop, starknet::Event)]
+    pub struct TreasuryInterestRedeemed {
+        #[key]
+        pub yt: ContractAddress,
+        #[key]
+        pub treasury: ContractAddress,
+        pub amount_sy: u256,
+        pub sy: ContractAddress,
+        pub expiry_index: u256,
+        pub current_index: u256,
+        pub total_yt_supply: u256,
+        pub timestamp: u64,
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -209,6 +230,7 @@ pub mod YT {
         pt_class_hash: ClassHash,
         expiry: u64,
         pauser: ContractAddress,
+        treasury: ContractAddress,
     ) {
         // Initialize ERC20 for YT
         self.erc20.initializer(name.clone(), symbol.clone());
@@ -224,9 +246,11 @@ pub mod YT {
         // Validate inputs
         assert(!sy.is_zero(), Errors::ZERO_ADDRESS);
         assert(expiry > get_block_timestamp(), Errors::YT_INVALID_EXPIRY);
+        assert(!treasury.is_zero(), Errors::ZERO_ADDRESS);
 
         self.sy.write(sy);
         self.expiry.write(expiry);
+        self.treasury.write(treasury);
 
         // Initialize PY index from SY's current exchange rate
         let sy_dispatcher = ISYDispatcher { contract_address: sy };
@@ -684,6 +708,51 @@ pub mod YT {
                 accrued
             }
         }
+
+        /// Get the treasury address for protocol fee collection
+        fn treasury(self: @ContractState) -> ContractAddress {
+            self.treasury.read()
+        }
+
+        /// Get pending post-expiry yield for treasury
+        /// This is yield that accrued after expiry, which would have gone to YT holders
+        /// but is now redirected to treasury since YT becomes worthless at expiry.
+        /// Returns the amount of SY available for treasury redemption.
+        fn get_post_expiry_treasury_interest(self: @ContractState) -> u256 {
+            // Only applicable after expiry
+            if !self.is_expired() {
+                return 0;
+            }
+
+            let expiry_index = self.py_index_at_expiry.read();
+            // If expiry index not yet captured, no post-expiry interest
+            if expiry_index == 0 {
+                return 0;
+            }
+
+            // Get actual current exchange rate (not the frozen expiry index)
+            let sy = ISYDispatcher { contract_address: self.sy.read() };
+            let current_index = sy.exchange_rate();
+
+            // If index hasn't increased since expiry, no post-expiry yield
+            if current_index <= expiry_index {
+                return 0;
+            }
+
+            // Calculate total post-expiry interest for all YT
+            // Formula: total_yt × (current - expiry) / expiry
+            let total_yt = self.erc20.ERC20_total_supply.read();
+            let index_diff = current_index - expiry_index;
+            let total_owed = wad_div(wad_mul(total_yt, index_diff), expiry_index);
+
+            // Subtract what has already been claimed by treasury
+            let claimed = self.post_expiry_sy_for_treasury.read();
+            if total_owed > claimed {
+                total_owed - claimed
+            } else {
+                0
+            }
+        }
     }
 
     #[abi(embed_v0)]
@@ -696,6 +765,75 @@ pub mod YT {
         fn unpause(ref self: ContractState) {
             self.access_control.assert_only_role(PAUSER_ROLE);
             self.pausable.unpause();
+        }
+
+        /// Claim post-expiry yield for treasury
+        /// After expiry, any yield that accrues on the underlying SY is captured for treasury.
+        /// This redirects "orphaned" yield that would otherwise be locked forever.
+        /// Only callable by admin after expiry.
+        /// @return Amount of SY transferred to treasury
+        fn redeem_post_expiry_interest_for_treasury(ref self: ContractState) -> u256 {
+            self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert(self.is_expired(), Errors::YT_NOT_EXPIRED);
+
+            // Ensure expiry index is captured
+            self._update_py_index();
+
+            let expiry_index = self.py_index_at_expiry.read();
+            if expiry_index == 0 {
+                return 0;
+            }
+
+            // Get actual current exchange rate
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+            let current_index = sy.exchange_rate();
+
+            // If index hasn't increased since expiry, no post-expiry yield
+            if current_index <= expiry_index {
+                return 0;
+            }
+
+            // Calculate total post-expiry interest for all YT
+            // Formula: total_yt × (current - expiry) / expiry
+            let total_yt = self.erc20.ERC20_total_supply.read();
+            let index_diff = current_index - expiry_index;
+            let total_owed = wad_div(wad_mul(total_yt, index_diff), expiry_index);
+
+            // Calculate amount available (total - already claimed)
+            let already_claimed = self.post_expiry_sy_for_treasury.read();
+            if total_owed <= already_claimed {
+                return 0;
+            }
+            let amount = total_owed - already_claimed;
+
+            // Update claimed amount
+            self.post_expiry_sy_for_treasury.write(total_owed);
+
+            // Transfer SY to treasury
+            let treasury_addr = self.treasury.read();
+            let success = sy.transfer(treasury_addr, amount);
+            assert(success, Errors::YT_INSUFFICIENT_SY);
+
+            // Update sy_reserve to reflect outflow
+            self.sy_reserve.write(self.sy_reserve.read() - amount);
+
+            // Emit event
+            self
+                .emit(
+                    TreasuryInterestRedeemed {
+                        yt: get_contract_address(),
+                        treasury: treasury_addr,
+                        amount_sy: amount,
+                        sy: sy_addr,
+                        expiry_index,
+                        current_index,
+                        total_yt_supply: total_yt,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            amount
         }
     }
 
