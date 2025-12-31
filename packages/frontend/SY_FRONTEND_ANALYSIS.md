@@ -594,11 +594,11 @@ export function useSyPauseState(syAddress: string | undefined) {
 
 ### P2: Enhanced Features
 
-- [ ] Add `useSyPreview` hook for accurate slippage
-- [ ] Add `useSyTokenValidation` hook for input validation
-- [ ] Add `useSyAssetInfo` hook for asset metadata
-- [ ] Add `useSyPauseState` hook for pause state checking **(Phase 4)**
-- [ ] Add `useSyWatermark` hook for negative yield monitoring **(Phase 4)**
+- [x] Add `useSyPreview` hook for accurate slippage
+- [x] Add `useSyTokenValidation` hook for input validation
+- [x] Add `useSyAssetInfo` hook for asset metadata
+- [x] Add `useSyPauseState` hook for pause state checking **(Phase 4)**
+- [x] Add `useSyWatermark` hook for negative yield monitoring **(Phase 4)**
 
 ### P3: UI Features (Future)
 
