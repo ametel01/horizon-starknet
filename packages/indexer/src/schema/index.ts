@@ -6,7 +6,7 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 24 event tables across 6 contracts
+ * Total: 29 event tables across 6 contracts (Phase 4 adds 5 SY tables)
  */
 
 import {
@@ -153,7 +153,8 @@ export const marketFactoryClassHashUpdated = pgTable(
 );
 
 // ============================================================
-// SY (STANDARDIZED YIELD) EVENTS (3 tables)
+// SY (STANDARDIZED YIELD) EVENTS (8 tables)
+// 3 core tables + 5 Phase 4 monitoring tables
 // ============================================================
 
 export const syDeposit = pgTable(
@@ -268,6 +269,173 @@ export const syOracleRateUpdated = pgTable(
     index("sy_oru_sy_idx").on(table.sy),
     index("sy_oru_underlying_idx").on(table.underlying),
     uniqueIndex("sy_oru_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// Phase 4: Negative Yield Detection (monitoring)
+// Source: contracts/src/components/sy_component.cairo:143-158
+export const syNegativeYieldDetected = pgTable(
+  "sy_negative_yield_detected",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    sy: text("sy").notNull(),
+    underlying: text("underlying").notNull(),
+    // Event data
+    watermark_rate: numeric("watermark_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    current_rate: numeric("current_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    rate_drop_bps: numeric("rate_drop_bps", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_nyd_sy_idx").on(table.sy),
+    index("sy_nyd_underlying_idx").on(table.underlying),
+    index("sy_nyd_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_nyd_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// Phase 4: Pause State Tracking
+// Source: OpenZeppelin PausableComponent (Paused/Unpaused events)
+export const syPauseState = pgTable(
+  "sy_pause_state",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Contract address (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    account: text("account").notNull(), // Who triggered pause/unpause
+    is_paused: boolean("is_paused").notNull(), // true = Paused, false = Unpaused
+  },
+  (table) => [
+    index("sy_ps_sy_idx").on(table.sy),
+    index("sy_ps_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_ps_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// Phase 4: Rewards Claimed (SYWithRewards)
+// Source: contracts/src/components/reward_manager_component.cairo:85-94
+export const syRewardsClaimed = pgTable(
+  "sy_rewards_claimed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    user: text("user").notNull(),
+    reward_token: text("reward_token").notNull(),
+    // SYWithRewards contract (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_rc_user_idx").on(table.user),
+    index("sy_rc_sy_idx").on(table.sy),
+    index("sy_rc_token_idx").on(table.reward_token),
+    index("sy_rc_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_rc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// Phase 4: Reward Index Updated (for APY calculation)
+// Source: contracts/src/components/reward_manager_component.cairo:96-106
+export const syRewardIndexUpdated = pgTable(
+  "sy_reward_index_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // SYWithRewards contract (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    old_index: numeric("old_index", { precision: 78, scale: 0 }).notNull(),
+    new_index: numeric("new_index", { precision: 78, scale: 0 }).notNull(),
+    rewards_added: numeric("rewards_added", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_supply: numeric("total_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_riu_sy_idx").on(table.sy),
+    index("sy_riu_token_idx").on(table.reward_token),
+    index("sy_riu_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_riu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// Phase 4: Reward Token Added (registry)
+// Source: contracts/src/components/reward_manager_component.cairo:108-115
+export const syRewardTokenAdded = pgTable(
+  "sy_reward_token_added",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // SYWithRewards contract (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    token_index: integer("token_index").notNull(), // Index in reward tokens array
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_rta_sy_idx").on(table.sy),
+    index("sy_rta_token_idx").on(table.reward_token),
+    uniqueIndex("sy_rta_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index,
@@ -1388,4 +1556,64 @@ export const exchangeRateHistory = pgView("exchange_rate_history", {
   old_rate: numeric("old_rate", { precision: 78, scale: 0 }),
   new_rate: numeric("new_rate", { precision: 78, scale: 0 }),
   rate_change_bps: numeric("rate_change_bps", { precision: 78, scale: 0 }),
+}).existing();
+
+// ============================================================
+// PHASE 4: SY MONITORING VIEWS (4 views)
+// Views for negative yield alerts, pause state, and rewards
+// ============================================================
+
+/**
+ * User Reward History View
+ * Aggregates reward claims per user per SY per reward token
+ * Use for: Portfolio page, reward claim history
+ */
+export const userRewardHistory = pgView("user_reward_history", {
+  user: text("user"),
+  sy: text("sy"),
+  reward_token: text("reward_token"),
+  total_claimed: numeric("total_claimed", { precision: 78, scale: 0 }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+  last_claim_timestamp: timestamp("last_claim_timestamp"),
+}).existing();
+
+/**
+ * SY Current Pause State View
+ * Latest pause state for each SY contract
+ * Use for: Market cards, warning banners
+ */
+export const syCurrentPauseState = pgView("sy_current_pause_state", {
+  sy: text("sy"),
+  is_paused: boolean("is_paused"),
+  last_updated_at: timestamp("last_updated_at"),
+  last_updated_by: text("last_updated_by"),
+}).existing();
+
+/**
+ * Negative Yield Alerts View
+ * Aggregated negative yield events per SY
+ * Use for: Monitoring dashboard, alert banners
+ */
+export const negativeYieldAlerts = pgView("negative_yield_alerts", {
+  sy: text("sy"),
+  underlying: text("underlying"),
+  event_count: bigint("event_count", { mode: "number" }),
+  max_drop_bps: numeric("max_drop_bps", { precision: 78, scale: 0 }),
+  last_detected_at: timestamp("last_detected_at"),
+}).existing();
+
+/**
+ * SY Reward APY View
+ * Rolling 7-day reward APY calculation per SY per reward token
+ * Use for: APY display on market cards
+ */
+export const syRewardApy = pgView("sy_reward_apy", {
+  sy: text("sy"),
+  reward_token: text("reward_token"),
+  rewards_last_7_days: numeric("rewards_last_7_days", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_total_supply: numeric("avg_total_supply", { precision: 78, scale: 0 }),
+  update_count: bigint("update_count", { mode: "number" }),
 }).existing();

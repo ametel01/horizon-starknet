@@ -96,7 +96,7 @@ export const marketFactoryClassHashUpdatedSchema = baseEventSchema.extend({
 });
 
 // ============================================================
-// SY EVENTS (3 schemas)
+// SY EVENTS (3 core + 6 Phase 4 monitoring schemas)
 // ============================================================
 
 /**
@@ -131,6 +131,82 @@ export const syOracleRateUpdatedSchema = baseEventSchema.extend({
   data: z
     .array(z.string())
     .min(6, "OracleRateUpdated requires at least 6 data elements"),
+});
+
+// ============================================================
+// PHASE 4: SY MONITORING EVENTS (6 schemas)
+// ============================================================
+
+/**
+ * SYComponent.NegativeYieldDetected event
+ * keys: [selector, sy, underlying]
+ * data: [watermark_rate(u256), current_rate(u256), rate_drop_bps(u256), timestamp]
+ */
+export const syNegativeYieldDetectedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "NegativeYieldDetected requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(7, "NegativeYieldDetected requires at least 7 data elements"),
+});
+
+/**
+ * OpenZeppelin Pausable.Paused event
+ * keys: [selector]
+ * data: [account]
+ */
+export const syPausedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1, "Paused requires at least 1 key"),
+  data: z.array(z.string()).min(1, "Paused requires at least 1 data element"),
+});
+
+/**
+ * OpenZeppelin Pausable.Unpaused event
+ * keys: [selector]
+ * data: [account]
+ */
+export const syUnpausedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1, "Unpaused requires at least 1 key"),
+  data: z.array(z.string()).min(1, "Unpaused requires at least 1 data element"),
+});
+
+/**
+ * RewardManager.RewardsClaimed event
+ * keys: [selector, user, reward_token]
+ * data: [amount(u256), timestamp]
+ */
+export const syRewardsClaimedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "RewardsClaimed requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(3, "RewardsClaimed requires at least 3 data elements"),
+});
+
+/**
+ * RewardManager.RewardIndexUpdated event
+ * keys: [selector, reward_token]
+ * data: [old_index(u256), new_index(u256), rewards_added(u256), total_supply(u256), timestamp]
+ */
+export const syRewardIndexUpdatedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(2, "RewardIndexUpdated requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(9, "RewardIndexUpdated requires at least 9 data elements"),
+});
+
+/**
+ * RewardManager.RewardTokenAdded event
+ * keys: [selector, reward_token]
+ * data: [index, timestamp]
+ */
+export const syRewardTokenAddedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(2, "RewardTokenAdded requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(2, "RewardTokenAdded requires at least 2 data elements"),
 });
 
 // ============================================================
@@ -474,10 +550,18 @@ export const eventSchemas = {
   MarketCreated: marketFactoryMarketCreatedSchema,
   MarketClassHashUpdated: marketFactoryClassHashUpdatedSchema,
 
-  // SY
+  // SY (core)
   Deposit: syDepositSchema,
   Redeem: syRedeemSchema,
   OracleRateUpdated: syOracleRateUpdatedSchema,
+
+  // SY (Phase 4 monitoring)
+  NegativeYieldDetected: syNegativeYieldDetectedSchema,
+  Paused: syPausedSchema,
+  Unpaused: syUnpausedSchema,
+  RewardsClaimed: syRewardsClaimedSchema,
+  RewardIndexUpdated: syRewardIndexUpdatedSchema,
+  RewardTokenAdded: syRewardTokenAddedSchema,
 
   // YT
   "YT.MintPY": ytMintPYSchema,
