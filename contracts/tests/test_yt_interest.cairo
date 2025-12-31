@@ -24,7 +24,7 @@ use snforge_std::{
 use starknet::ContractAddress;
 use super::utils::{
     CURRENT_TIME, ONE_MONTH, alice, bob, mint_and_mint_py, set_yield_index, setup_full,
-    setup_full_with_expiry, user1,
+    setup_full_with_expiry, transfer_py_and_redeem, user1,
 };
 
 // ============ Setup Helpers ============
@@ -556,11 +556,9 @@ fn test_interest_and_partial_redeem() {
     // After claim: ~90 WAD SY in YT contract
     // Redeem 90 PT+YT using assetToSy: sy_returned = 90 * WAD / 1.1 ≈ 81.8 SY
 
-    // Redeem 90% of PT+YT (should succeed since YT contract has ~90 WAD SY)
+    // Redeem 90% of PT+YT using floating token pattern
     let redeem_amount = 90 * WAD;
-    start_cheat_caller_address(yt.contract_address, user);
-    let sy_returned = yt.redeem_py(user, redeem_amount);
-    stop_cheat_caller_address(yt.contract_address);
+    let sy_returned = transfer_py_and_redeem(yt, user, user, redeem_amount);
 
     // With assetToSy formula: sy_returned = redeem_amount * WAD / index
     let expected_sy = wad_div(redeem_amount, new_index);
@@ -592,12 +590,10 @@ fn test_redeem_captures_interest() {
     let interest = yt.get_user_interest(user);
     assert(interest > 0, 'Should have interest');
 
-    // Redeem PARTIAL PT+YT to leave room for interest claim
+    // Redeem PARTIAL PT+YT to leave room for interest claim using floating token pattern
     // Redeem 80%, leaving ~20 WAD PT+YT (and ~10 WAD interest accrued)
     let redeem_amount = 80 * WAD;
-    start_cheat_caller_address(yt.contract_address, user);
-    let sy_returned = yt.redeem_py(user, redeem_amount);
-    stop_cheat_caller_address(yt.contract_address);
+    let sy_returned = transfer_py_and_redeem(yt, user, user, redeem_amount);
 
     // With assetToSy formula: sy_returned = redeem_amount * WAD / index
     let expected_sy = wad_div(redeem_amount, new_index);
@@ -908,4 +904,80 @@ fn test_claim_zero_interest() {
     // User state should still be valid
     let interest_after = yt.get_user_interest(user);
     assert(interest_after == 0, 'Still zero after claim');
+}
+
+// ============ Section 8: Interest Exclusion Tests (Pendle-style) ============
+// Tests that verify the YT contract excludes itself from interest tracking,
+// matching Pendle's behavior of excluding address(0) and address(this).
+
+/// Test that zero address is excluded from interest tracking
+/// This ensures the contract doesn't waste gas or corrupt state tracking zero address
+#[test]
+fn test_zero_address_excluded_from_interest_tracking() {
+    let (yield_token, _, yt) = setup();
+
+    // Get interest for zero address - should always be zero
+    let zero_addr: ContractAddress = 0.try_into().unwrap();
+    let interest = yt.get_user_interest(zero_addr);
+    assert(interest == 0, 'Zero addr has no interest');
+
+    // Increase index
+    set_yield_index(yield_token, WAD + WAD / 10);
+
+    // Zero address still has no interest after index change
+    let interest_after = yt.get_user_interest(zero_addr);
+    assert(interest_after == 0, 'Zero addr still no interest');
+}
+
+/// Test that the YT contract address itself is excluded from interest tracking
+/// This is a Pendle-style exclusion to prevent the contract from accruing interest to itself
+/// when YT tokens pass through the contract during redemption flows
+#[test]
+fn test_yt_contract_excluded_from_interest_tracking() {
+    let (yield_token, sy, yt) = setup();
+    let yt_addr = yt.contract_address;
+
+    // Get interest for YT contract address - should always be zero
+    let interest_before = yt.get_user_interest(yt_addr);
+    assert(interest_before == 0, 'YT contract has no interest');
+
+    // Mint some YT to a user first
+    let user = alice();
+    setup_user_with_yt(yield_token, sy, yt, user, 100 * WAD);
+
+    // Increase index significantly
+    set_yield_index(yield_token, WAD + WAD / 5); // 1.2 WAD (20% increase)
+
+    // YT contract still has no interest after index change
+    let interest_after = yt.get_user_interest(yt_addr);
+    assert(interest_after == 0, 'YT contract still no interest');
+}
+
+/// Test that interest exclusion doesn't affect normal user interest tracking
+/// Users should still accrue interest normally while the contract itself doesn't
+#[test]
+fn test_interest_exclusion_does_not_affect_normal_users() {
+    let (yield_token, sy, yt) = setup();
+    let yt_addr = yt.contract_address;
+    let user = alice();
+
+    // Setup user with YT
+    let amount = 100 * WAD;
+    setup_user_with_yt(yield_token, sy, yt, user, amount);
+
+    // Increase index by 10%
+    set_yield_index(yield_token, WAD + WAD / 10); // 1.1 WAD
+
+    // User should have accrued interest
+    let user_interest = yt.get_user_interest(user);
+    assert(user_interest > 0, 'User has interest');
+
+    // YT contract should have no interest
+    let contract_interest = yt.get_user_interest(yt_addr);
+    assert(contract_interest == 0, 'YT contract has no interest');
+
+    // Zero address should have no interest
+    let zero_addr: ContractAddress = 0.try_into().unwrap();
+    let zero_interest = yt.get_user_interest(zero_addr);
+    assert(zero_interest == 0, 'Zero addr has no interest');
 }

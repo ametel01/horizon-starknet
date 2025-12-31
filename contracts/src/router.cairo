@@ -295,17 +295,14 @@ pub mod Router {
             let yt_contract = IYTDispatcher { contract_address: yt };
             let pt = yt_contract.pt();
 
-            // Transfer PT and YT from caller to this contract
+            // Transfer PT and YT from caller to YT contract (pre-transfer for floating token
+            // pattern)
             let pt_contract = IPTDispatcher { contract_address: pt };
-            pt_contract.transfer_from(caller, get_contract_address(), amount_py_in);
-            yt_contract.transfer_from(caller, get_contract_address(), amount_py_in);
+            pt_contract.transfer_from(caller, yt, amount_py_in);
+            yt_contract.transfer_from(caller, yt, amount_py_in);
 
-            // Approve YT contract to spend PT (YT contract burns both)
-            pt_contract.approve(yt, amount_py_in);
-            yt_contract.approve(yt, amount_py_in);
-
-            // Redeem PT+YT for SY
-            let sy_out = yt_contract.redeem_py(receiver, amount_py_in);
+            // Redeem floating PT+YT for SY
+            let sy_out = yt_contract.redeem_py(receiver);
 
             // Slippage check
             assert(sy_out >= min_sy_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
@@ -336,15 +333,12 @@ pub mod Router {
             let yt_contract = IYTDispatcher { contract_address: yt };
             let pt = yt_contract.pt();
 
-            // Transfer PT from caller to this contract
+            // Transfer PT from caller to YT contract (pre-transfer for floating token pattern)
             let pt_contract = IPTDispatcher { contract_address: pt };
-            pt_contract.transfer_from(caller, get_contract_address(), amount_pt_in);
+            pt_contract.transfer_from(caller, yt, amount_pt_in);
 
-            // Approve YT contract to spend PT
-            pt_contract.approve(yt, amount_pt_in);
-
-            // Redeem PT for SY (post expiry, no YT needed)
-            let sy_out = yt_contract.redeem_py_post_expiry(receiver, amount_pt_in);
+            // Redeem floating PT for SY (post expiry, no YT needed)
+            let sy_out = yt_contract.redeem_py_post_expiry(receiver);
 
             // Slippage check
             assert(sy_out >= min_sy_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
@@ -858,10 +852,10 @@ pub mod Router {
             let sy_spent_on_pt = market_contract
                 .swap_sy_for_exact_pt(this, exact_yt_in, max_sy_collateral);
 
-            // 3. Now we have PT and YT - redeem for SY
-            pt_contract.approve(yt, exact_yt_in);
-            yt_contract.approve(yt, exact_yt_in);
-            let sy_from_redemption = yt_contract.redeem_py(this, exact_yt_in);
+            // 3. Now we have PT and YT - pre-transfer to YT contract, then redeem for SY
+            pt_contract.transfer(yt, exact_yt_in);
+            yt_contract.transfer(yt, exact_yt_in);
+            let sy_from_redemption = yt_contract.redeem_py(this);
 
             // 4. Calculate net SY out
             let effective_sy_from_yt = if sy_from_redemption >= sy_spent_on_pt {

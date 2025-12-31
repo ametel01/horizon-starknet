@@ -145,6 +145,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
     calldata.append(treasury().into()); // treasury
+    calldata.append(18); // decimals
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }

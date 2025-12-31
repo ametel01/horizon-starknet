@@ -14,6 +14,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
+use super::utils::{transfer_pt_and_redeem_post_expiry, transfer_py_and_redeem};
 
 // Test addresses
 fn user1() -> ContractAddress {
@@ -351,10 +352,8 @@ fn test_factory_created_contracts_are_functional() {
     assert(pt.balance_of(user) == amount, 'Wrong PT balance');
     assert(yt.balance_of(user) == amount, 'Wrong YT balance');
 
-    // Redeem PY using actual PT minted amount
-    start_cheat_caller_address(yt_addr, user);
-    let sy_returned = yt.redeem_py(user, pt_minted);
-    stop_cheat_caller_address(yt_addr);
+    // Redeem PY using floating token pattern
+    let sy_returned = transfer_py_and_redeem(yt, user, user, pt_minted);
 
     assert(sy_returned == amount, 'Wrong SY returned');
     assert(pt.balance_of(user) == 0, 'PT should be 0');
@@ -396,10 +395,8 @@ fn test_factory_post_expiry_redemption() {
     // Fast forward past expiry
     start_cheat_block_timestamp_global(expiry + 1);
 
-    // Redeem PT post-expiry using actual PT minted amount (YT is worthless)
-    start_cheat_caller_address(yt_addr, user);
-    let sy_returned = yt.redeem_py_post_expiry(user, pt_minted);
-    stop_cheat_caller_address(yt_addr);
+    // Redeem PT post-expiry using floating token pattern (YT is worthless)
+    let sy_returned = transfer_pt_and_redeem_post_expiry(yt, user, user, pt_minted);
 
     assert(sy_returned == amount, 'Wrong SY post-expiry');
     assert(pt.balance_of(user) == 0, 'PT should be burned');
@@ -728,4 +725,67 @@ fn test_factory_deploy_multiple_sy_with_rewards() {
     let sy2_dispatcher = ISYWithRewardsDispatcher { contract_address: sy2 };
     assert(sy1_dispatcher.name() == "SY One", 'Wrong name for SY1');
     assert(sy2_dispatcher.name() == "SY Two", 'Wrong name for SY2');
+}
+
+// ============ Decimals Consistency Tests ============
+// Tests that verify decimals are correctly propagated from SY to PT and YT
+
+/// Test that PT and YT decimals match SY decimals
+/// When the factory creates yield contracts, decimals should be consistent across all tokens
+#[test]
+fn test_decimals_consistency_sy_pt_yt() {
+    let (_, sy, factory) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    // Get SY decimals
+    let sy_decimals = sy.decimals();
+
+    // Create yield contracts
+    let (pt_address, yt_address) = factory.create_yield_contracts(sy.contract_address, expiry);
+
+    // Verify PT and YT have the same decimals as SY
+    let pt = IPTDispatcher { contract_address: pt_address };
+    let yt = IYTDispatcher { contract_address: yt_address };
+
+    assert(pt.decimals() == sy_decimals, 'PT decimals != SY decimals');
+    assert(yt.decimals() == sy_decimals, 'YT decimals != SY decimals');
+}
+
+/// Test that PT and YT have matching decimals
+/// PT and YT represent equal amounts of principal/yield, so decimals must match
+#[test]
+fn test_pt_yt_decimals_match() {
+    let (_, sy, factory) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    // Create yield contracts
+    let (pt_address, yt_address) = factory.create_yield_contracts(sy.contract_address, expiry);
+
+    let pt = IPTDispatcher { contract_address: pt_address };
+    let yt = IYTDispatcher { contract_address: yt_address };
+
+    // PT and YT decimals must match
+    assert(pt.decimals() == yt.decimals(), 'PT YT decimals mismatch');
+}
+
+/// Test that standard 18 decimals works correctly
+/// Most yield-bearing tokens use 18 decimals (standard for Ethereum/Starknet)
+#[test]
+fn test_standard_18_decimals() {
+    let (_, sy, factory) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    // MockYieldToken uses 18 decimals by default
+    let sy_decimals = sy.decimals();
+    assert(sy_decimals == 18, 'SY should have 18 decimals');
+
+    // Create yield contracts
+    let (pt_address, yt_address) = factory.create_yield_contracts(sy.contract_address, expiry);
+
+    let pt = IPTDispatcher { contract_address: pt_address };
+    let yt = IYTDispatcher { contract_address: yt_address };
+
+    // All should have 18 decimals
+    assert(pt.decimals() == 18, 'PT should have 18 decimals');
+    assert(yt.decimals() == 18, 'YT should have 18 decimals');
 }

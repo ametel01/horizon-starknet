@@ -199,8 +199,11 @@ pub mod Factory {
             let mut yt_symbol: ByteArray = "YT-";
             yt_symbol.append(@sy_symbol);
 
+            // Get decimals from SY to ensure consistency across SY/PT/YT
+            let sy_decimals = sy_dispatcher.decimals();
+
             // Build YT constructor calldata
-            // YT constructor: name, symbol, sy, pt_class_hash, expiry, pauser, treasury
+            // YT constructor: name, symbol, sy, pt_class_hash, expiry, pauser, treasury, decimals
             let mut yt_calldata: Array<felt252> = array![];
 
             // Serialize YT name (ByteArray)
@@ -223,6 +226,9 @@ pub mod Factory {
 
             // Treasury address for post-expiry yield and protocol fees
             yt_calldata.append(self.treasury.read().into());
+
+            // Decimals (matches SY for consistency)
+            yt_calldata.append(sy_decimals.into());
 
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();

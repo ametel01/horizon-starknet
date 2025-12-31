@@ -19,6 +19,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
+use super::utils::transfer_py_and_redeem;
 
 // ============ Test Addresses ============
 
@@ -105,6 +106,7 @@ fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTD
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
     calldata.append(treasury().into()); // treasury for post-expiry yield
+    calldata.append(18); // decimals (matching SY standard)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -392,10 +394,8 @@ fn test_yt_redeem_py_reentrancy_protected() {
     // Enable attack mode for redeem
     reentrant.set_attack_mode(AttackMode::ReenterYTRedeemPY, yt.contract_address);
 
-    // Redeem PT+YT
-    start_cheat_caller_address(yt.contract_address, user1());
-    let sy_returned = yt.redeem_py(user1(), amount);
-    stop_cheat_caller_address(yt.contract_address);
+    // Redeem PT+YT using floating token pattern
+    let sy_returned = transfer_py_and_redeem(yt, user1(), user1(), amount);
 
     // Redeem completed correctly
     assert(sy_returned == amount, 'got SY back');
@@ -581,10 +581,8 @@ fn test_pt_burn_no_external_calls() {
     yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Redeem triggers PT.burn internally
-    start_cheat_caller_address(yt.contract_address, user1());
-    yt.redeem_py(user1(), amount);
-    stop_cheat_caller_address(yt.contract_address);
+    // Redeem triggers PT.burn internally using floating token pattern
+    transfer_py_and_redeem(yt, user1(), user1(), amount);
 
     // PT was burned
     assert(pt.balance_of(user1()) == 0, 'PT burned');

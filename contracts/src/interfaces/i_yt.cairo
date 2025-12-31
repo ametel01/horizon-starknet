@@ -31,17 +31,18 @@ pub trait IYT<TContractState> {
     fn mint_py(
         ref self: TContractState, receiver_pt: ContractAddress, receiver_yt: ContractAddress,
     ) -> (u256, u256);
-    /// Redeem PT + YT for SY (before expiry)
+    /// Redeem PT + YT for SY (before expiry) using floating tokens
+    /// Caller must transfer PT and YT to YT contract before calling.
     /// SY returned = assetToSy(index, pyAmount) = pyAmount * WAD / index
     /// @param receiver Address to receive SY
-    /// @param amount_py Amount of PT and YT to burn (in asset terms)
     /// @return Amount of SY returned
-    fn redeem_py(
-        ref self: TContractState, receiver: ContractAddress, amount_py_to_redeem: u256,
-    ) -> u256;
-    fn redeem_py_post_expiry(
-        ref self: TContractState, receiver: ContractAddress, amount_pt: u256,
-    ) -> u256;
+    fn redeem_py(ref self: TContractState, receiver: ContractAddress) -> u256;
+    /// Redeem PT for SY after expiry using floating PT
+    /// Caller must transfer PT to YT contract before calling.
+    /// Post-expiry interest is carved out per-redemption and sent to treasury.
+    /// @param receiver Address to receive SY
+    /// @return Amount of SY returned to user
+    fn redeem_py_post_expiry(ref self: TContractState, receiver: ContractAddress) -> u256;
 
     // Batch operations
     /// Batch mint PT + YT for multiple receivers using floating SY
@@ -60,17 +61,30 @@ pub trait IYT<TContractState> {
     ) -> Array<u256>;
 
     // Convenience operations
+    /// Redeem PT + YT for SY with optional interest claim using floating tokens
+    /// Caller must transfer PT and YT to YT contract before calling.
     fn redeem_py_with_interest(
-        ref self: TContractState, receiver: ContractAddress, amount_py: u256, redeem_interest: bool,
+        ref self: TContractState, receiver: ContractAddress, redeem_interest: bool,
     ) -> (u256, u256);
 
     // Index tracking
     fn py_index_current(self: @TContractState) -> u256;
     fn py_index_stored(self: @TContractState) -> u256;
+    /// Update and return the current PY index (Pendle-style pyIndexCurrent)
+    /// Unlike py_index_current() which is view-only, this function:
+    /// - Fetches the current exchange rate from SY
+    /// - Updates py_index_stored if the rate is higher (watermark pattern)
+    /// - Emits PyIndexUpdated event when index changes
+    /// - Updates same-block cache
+    /// After expiry, captures and freezes the expiry index on first call.
+    /// @return The current PY index
+    fn update_py_index(ref self: TContractState) -> u256;
 
     // Reserve tracking
     fn sy_reserve(self: @TContractState) -> u256;
     fn get_floating_sy(self: @TContractState) -> u256;
+    fn get_floating_pt(self: @TContractState) -> u256;
+    fn get_floating_yt(self: @TContractState) -> u256;
 
     // Yield claiming
     fn redeem_due_interest(ref self: TContractState, user: ContractAddress) -> u256;
@@ -82,6 +96,18 @@ pub trait IYT<TContractState> {
 
     // Protocol fee
     fn interest_fee_rate(self: @TContractState) -> u256;
+
+    // Post-expiry tracking (Pendle-style)
+    /// Get the PY index captured at first post-expiry action (Pendle: firstPYIndex)
+    /// Returns 0 if expiry hasn't been reached or first post-expiry action hasn't occurred
+    fn first_py_index(self: @TContractState) -> u256;
+    /// Get total SY interest accumulated for treasury since expiry (Pendle:
+    /// totalSyInterestForTreasury)
+    /// This is post-expiry yield carved out from redemptions and redirected to treasury
+    fn total_sy_interest_for_treasury(self: @TContractState) -> u256;
+    /// Get complete post-expiry data in one call
+    /// Returns (first_py_index, total_sy_interest_for_treasury, is_post_expiry_initialized)
+    fn get_post_expiry_data(self: @TContractState) -> (u256, u256, bool);
 }
 
 /// Admin interface for YT pausability and treasury management

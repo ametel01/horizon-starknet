@@ -78,6 +78,7 @@ fn test_pt_initialize_yt_only_deployer() {
     calldata.append(sy.contract_address.into()); // sy
     calldata.append(expiry.into()); // expiry
     calldata.append(admin().into()); // pauser
+    calldata.append(18); // decimals
 
     let (pt_address, _) = contract.deploy(@calldata).unwrap_syscall();
 

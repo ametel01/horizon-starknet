@@ -59,6 +59,8 @@ fn deploy_pt(sy: ContractAddress, expiry: u64) -> ContractAddress {
     calldata.append(expiry.into());
     // pauser address
     calldata.append(admin().into());
+    // decimals (default 18, matching SY standard)
+    calldata.append(18);
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     contract_address

@@ -10,7 +10,8 @@ use snforge_std::{
 use starknet::ContractAddress;
 use super::utils::{
     CURRENT_TIME, ONE_YEAR, admin, alice, bob, mint_and_deposit_sy, mint_and_mint_py,
-    mint_yield_token_to_user, set_yield_index, setup_full, user1, user2, zero_address,
+    mint_yield_token_to_user, set_yield_index, setup_full, transfer_pt_and_redeem_post_expiry,
+    transfer_py_and_redeem, user1, user2, zero_address,
 };
 
 // ============ Setup Functions ============
@@ -282,10 +283,10 @@ fn test_yt_redeem_py() {
 
     start_cheat_caller_address(yt.contract_address, user);
     yt.mint_py(user, user);
-
-    // Redeem PY
-    let sy_returned = yt.redeem_py(user, amount);
     stop_cheat_caller_address(yt.contract_address);
+
+    // Redeem PY using floating token pattern
+    let sy_returned = transfer_py_and_redeem(yt, user, user, amount);
 
     assert(sy_returned == amount, 'Wrong SY returned');
 
@@ -308,10 +309,10 @@ fn test_yt_redeem_py_partial() {
 
     start_cheat_caller_address(yt.contract_address, user);
     yt.mint_py(user, user);
-
-    // Partial redeem
-    yt.redeem_py(user, redeem_amount);
     stop_cheat_caller_address(yt.contract_address);
+
+    // Partial redeem using floating token pattern
+    transfer_py_and_redeem(yt, user, user, redeem_amount);
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
     assert(pt.balance_of(user) == amount - redeem_amount, 'Wrong remaining PT');
@@ -332,8 +333,10 @@ fn test_yt_redeem_py_to_different_receiver() {
 
     start_cheat_caller_address(yt.contract_address, user);
     yt.mint_py(user, user);
-    yt.redeem_py(receiver, amount);
     stop_cheat_caller_address(yt.contract_address);
+
+    // Redeem to different receiver using floating token pattern
+    transfer_py_and_redeem(yt, user, receiver, amount);
 
     assert(sy.balance_of(user) == 0, 'User should have 0 SY');
     assert(sy.balance_of(receiver) == amount, 'Receiver should have SY');
@@ -357,13 +360,13 @@ fn test_yt_redeem_py_after_expiry() {
     // Fast forward past expiry
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
-    start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py(user, amount);
+    // Try to redeem after expiry - should fail
+    transfer_py_and_redeem(yt, user, user, amount);
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
-fn test_yt_redeem_py_zero_amount() {
+#[should_panic(expected: 'HZN: no floating PT/YT')]
+fn test_yt_redeem_py_no_floating() {
     let user = user1();
     let amount = 100 * WAD;
     let (_, sy, yt) = setup_with_sy(user, amount);
@@ -374,7 +377,9 @@ fn test_yt_redeem_py_zero_amount() {
 
     start_cheat_caller_address(yt.contract_address, user);
     yt.mint_py(user, user);
-    yt.redeem_py(user, 0);
+
+    // Try to redeem without pre-transferring PT/YT - should fail
+    yt.redeem_py(user);
 }
 
 // ============ Redeem PY Post Expiry Tests ============
@@ -401,10 +406,8 @@ fn test_yt_redeem_py_post_expiry() {
     // Fast forward past expiry
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
-    // Redeem all PT (YT is worthless post-expiry)
-    start_cheat_caller_address(yt.contract_address, user);
-    let sy_returned = yt.redeem_py_post_expiry(user, pt_minted);
-    stop_cheat_caller_address(yt.contract_address);
+    // Redeem all PT using floating token pattern (YT is worthless post-expiry)
+    let sy_returned = transfer_pt_and_redeem_post_expiry(yt, user, user, pt_minted);
 
     // With index=1.0 WAD, assetToSy gives back the same SY amount
     assert(sy_returned == amount, 'Wrong SY returned');
@@ -437,11 +440,9 @@ fn test_yt_redeem_py_post_expiry_partial() {
 
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
-    // Redeem 60% of PT
+    // Redeem 60% of PT using floating token pattern
     let redeem_amount = pt_minted * 60 / 100;
-    start_cheat_caller_address(yt.contract_address, user);
-    let sy_returned = yt.redeem_py_post_expiry(user, redeem_amount);
-    stop_cheat_caller_address(yt.contract_address);
+    let sy_returned = transfer_pt_and_redeem_post_expiry(yt, user, user, redeem_amount);
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
     assert(pt.balance_of(user) == pt_minted - redeem_amount, 'Wrong remaining PT');
@@ -461,15 +462,16 @@ fn test_yt_redeem_py_post_expiry_before_expiry() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, user);
+    let (pt_minted, _) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
 
-    // Try to redeem post-expiry before actual expiry
-    yt.redeem_py_post_expiry(user, amount);
+    // Try to redeem post-expiry before actual expiry - should fail
+    transfer_pt_and_redeem_post_expiry(yt, user, user, pt_minted);
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
-fn test_yt_redeem_py_post_expiry_zero_amount() {
+#[should_panic(expected: 'HZN: no floating PT')]
+fn test_yt_redeem_py_post_expiry_no_floating() {
     let user = user1();
     let amount = 100 * WAD;
     let (_, sy, yt) = setup_with_sy(user, amount);
@@ -484,8 +486,9 @@ fn test_yt_redeem_py_post_expiry_zero_amount() {
 
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
+    // Try to redeem without pre-transferring PT - should fail
     start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py_post_expiry(user, 0);
+    yt.redeem_py_post_expiry(user);
 }
 
 // ============ Interest/Yield Tests ============
@@ -656,10 +659,8 @@ fn test_invariant_pt_yt_supply_equality() {
     mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
     assert(pt.total_supply() == yt.total_supply(), 'After mint equal');
 
-    // After partial redeem (before expiry)
-    start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py(user, 30 * WAD);
-    stop_cheat_caller_address(yt.contract_address);
+    // After partial redeem (before expiry) using floating token pattern
+    transfer_py_and_redeem(yt, user, user, 30 * WAD);
     assert(pt.total_supply() == yt.total_supply(), 'After redeem equal');
 
     // After interest claim (should not affect supply)
@@ -733,4 +734,162 @@ fn test_yt_interest_claim_after_expiry() {
 
     // No additional interest after expiry index is captured
     assert(post_capture_claimed == 0, 'No post-capture interest');
+}
+
+// ============ Section: update_py_index() Tests (Item 4 from discrepancies) ============
+// Tests for the Pendle-style state-modifying index update function
+
+/// Test that update_py_index() returns the current index
+#[test]
+fn test_update_py_index_returns_current_index() {
+    let (yield_token, sy, yt) = setup();
+    let user = user1();
+
+    // Set initial index and mint some PY
+    set_yield_index(yield_token, WAD);
+    mint_and_deposit_sy(yield_token, sy, user, 100 * WAD);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Check initial stored index
+    let stored = yt.py_index_stored();
+    assert(stored == WAD, 'Initial stored index');
+
+    // Call update_py_index (should return same value since index hasn't changed)
+    start_cheat_caller_address(yt.contract_address, user);
+    let updated = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(updated == WAD, 'update returns current index');
+}
+
+/// Test that update_py_index() updates stored index when rate increases
+#[test]
+fn test_update_py_index_updates_stored_on_increase() {
+    let (yield_token, sy, yt) = setup();
+    let user = user1();
+
+    // Initial setup
+    mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
+
+    let initial_stored = yt.py_index_stored();
+
+    // Increase yield index by 10%
+    let new_rate = WAD + WAD / 10;
+    set_yield_index(yield_token, new_rate);
+
+    // Call update_py_index to trigger state update
+    start_cheat_caller_address(yt.contract_address, user);
+    let updated = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Stored index should be updated
+    let after_stored = yt.py_index_stored();
+    assert(updated == new_rate, 'update returns new index');
+    assert(after_stored == new_rate, 'stored index updated');
+    assert(after_stored > initial_stored, 'index increased');
+}
+
+/// Test that update_py_index() maintains watermark pattern (never decreases)
+/// Verifies stored index only increases with successive calls
+#[test]
+fn test_update_py_index_watermark_pattern() {
+    let (yield_token, sy, yt) = setup();
+    let user = user1();
+
+    // Initial setup
+    mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
+
+    let initial_index = yt.py_index_stored();
+
+    // First increase
+    set_yield_index(yield_token, WAD + WAD / 10); // 1.1 WAD
+
+    start_cheat_caller_address(yt.contract_address, user);
+    let first_update = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(first_update > initial_index, 'first update increases');
+
+    // Second increase
+    set_yield_index(yield_token, WAD + WAD / 5); // 1.2 WAD
+
+    start_cheat_caller_address(yt.contract_address, user);
+    let second_update = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(second_update > first_update, 'second update increases');
+
+    // Multiple calls with same rate should maintain watermark
+    start_cheat_caller_address(yt.contract_address, user);
+    let third_update = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(third_update == second_update, 'watermark maintained');
+
+    // Stored index should be the highest seen
+    let final_stored = yt.py_index_stored();
+    assert(final_stored == second_update, 'stored equals highest');
+}
+
+/// Test that update_py_index() captures expiry index on first call after expiry
+#[test]
+fn test_update_py_index_captures_expiry() {
+    let (yield_token, sy, yt) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+    let user = user1();
+
+    // Initial setup
+    mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
+
+    // Move past expiry
+    start_cheat_block_timestamp_global(expiry + 1);
+
+    // First call should capture expiry index
+    start_cheat_caller_address(yt.contract_address, user);
+    let captured = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    let first_py_index = yt.first_py_index();
+    assert(first_py_index > 0, 'Expiry index captured');
+    assert(first_py_index == captured, 'Captured matches returned');
+
+    // Increase index after expiry
+    set_yield_index(yield_token, WAD * 2);
+
+    // Second call should return frozen expiry index
+    start_cheat_caller_address(yt.contract_address, user);
+    let second = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(second == first_py_index, 'Returns frozen index post exp');
+}
+
+/// Test that py_index_current() (view) and update_py_index() (mut) return same value
+#[test]
+fn test_view_and_update_index_consistency() {
+    let (yield_token, sy, yt) = setup();
+    let user = user1();
+
+    // Initial setup
+    mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
+
+    // Increase index
+    set_yield_index(yield_token, WAD + WAD / 10);
+
+    // View function should return the expected index
+    let view_index = yt.py_index_current();
+
+    // Mutating function should return the same
+    start_cheat_caller_address(yt.contract_address, user);
+    let update_index = yt.update_py_index();
+    stop_cheat_caller_address(yt.contract_address);
+
+    assert(view_index == update_index, 'View and update consistent');
 }

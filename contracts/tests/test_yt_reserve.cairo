@@ -6,7 +6,10 @@ use snforge_std::{
     start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use super::utils::{alice, bob, mint_and_deposit_sy, set_yield_index, setup_full, user1};
+use super::utils::{
+    alice, bob, mint_and_deposit_sy, set_yield_index, setup_full,
+    transfer_pt_and_redeem_post_expiry, transfer_py_and_redeem, user1,
+};
 
 // ============ Setup Functions ============
 
@@ -100,10 +103,8 @@ fn test_sy_reserve_after_redeem_py() {
 
     assert(yt.sy_reserve() == amount, 'Reserve after mint');
 
-    // Redeem half (using PT amount, not SY amount)
-    start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py(user, pt_minted / 2);
-    stop_cheat_caller_address(yt.contract_address);
+    // Redeem half (using PT amount, not SY amount) - using floating token pattern
+    transfer_py_and_redeem(yt, user, user, pt_minted / 2);
 
     // Reserve should be approximately half (assetToSy conversion)
     let reserve = yt.sy_reserve();
@@ -123,8 +124,10 @@ fn test_sy_reserve_after_full_redeem() {
 
     start_cheat_caller_address(yt.contract_address, user);
     let (pt_minted, _) = yt.mint_py(user, user);
-    yt.redeem_py(user, pt_minted);
     stop_cheat_caller_address(yt.contract_address);
+
+    // Redeem all using floating token pattern
+    transfer_py_and_redeem(yt, user, user, pt_minted);
 
     assert(yt.sy_reserve() == 0, 'Reserve should be 0 after full');
 }
@@ -148,11 +151,9 @@ fn test_sy_reserve_after_redeem_py_post_expiry() {
     // Move past expiry
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
-    // Redeem 60% of PT post expiry
+    // Redeem 60% of PT post expiry using floating token pattern
     let redeem_amount = pt_minted * 60 / 100;
-    start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py_post_expiry(user, redeem_amount);
-    stop_cheat_caller_address(yt.contract_address);
+    transfer_pt_and_redeem_post_expiry(yt, user, user, redeem_amount);
 
     // Reserve should be approximately 40% (assetToSy conversion)
     let reserve = yt.sy_reserve();
@@ -308,10 +309,8 @@ fn test_sy_reserve_invariant_actual_ge_reserve() {
     let reserved = yt.sy_reserve();
     assert(actual >= reserved, 'Invariant: actual >= reserve');
 
-    // Partial redeem
-    start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py(user, pt_minted / 3);
-    stop_cheat_caller_address(yt.contract_address);
+    // Partial redeem using floating token pattern
+    transfer_py_and_redeem(yt, user, user, pt_minted / 3);
 
     let actual2 = sy.balance_of(yt.contract_address);
     let reserved2 = yt.sy_reserve();
@@ -348,4 +347,170 @@ fn test_sy_reserve_equals_balance_no_donations() {
     let reserved = yt.sy_reserve();
     assert(actual == reserved, 'No donations: actual == reserve');
     assert(yt.get_floating_sy() == 0, 'No floating without donations');
+}
+
+// ============ Section 5.5: Pendle-style sy_reserve Reset Tests ============
+// These tests verify that sy_reserve is reset to actual balance after operations,
+// preventing drift from rounding errors in assetToSy conversion (Item 4 from discrepancies)
+
+#[test]
+fn test_sy_reserve_resets_to_actual_after_redeem() {
+    // Test: Reserve equals actual balance after redemption (Pendle-style)
+    let user = user1();
+    let amount = 100 * WAD;
+    let (_, sy, yt) = setup_with_sy(user, amount);
+
+    // Mint PY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    let (pt_minted, _) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Redeem half using floating token pattern
+    transfer_py_and_redeem(yt, user, user, pt_minted / 2);
+
+    // After redemption, reserve should exactly equal actual balance
+    let actual = sy.balance_of(yt.contract_address);
+    let reserved = yt.sy_reserve();
+    assert(actual == reserved, 'Reserve equals actual after red');
+}
+
+#[test]
+fn test_sy_reserve_resets_to_actual_after_full_redeem() {
+    // Test: Reserve resets to 0 after full redemption
+    let user = user1();
+    let amount = 100 * WAD;
+    let (_, sy, yt) = setup_with_sy(user, amount);
+
+    // Mint PY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    let (pt_minted, _) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Redeem all
+    transfer_py_and_redeem(yt, user, user, pt_minted);
+
+    // After full redemption, both actual and reserve should be 0
+    let actual = sy.balance_of(yt.contract_address);
+    let reserved = yt.sy_reserve();
+    assert(actual == 0, 'Actual should be 0');
+    assert(reserved == 0, 'Reserve should be 0');
+    assert(actual == reserved, 'Reserve equals actual');
+}
+
+#[test]
+fn test_sy_reserve_resets_after_interest_claim() {
+    // Test: Reserve resets to actual balance after interest claim (Pendle-style)
+    let user = user1();
+    let amount = 100 * WAD;
+    let (yield_token, sy, yt) = setup_with_sy(user, amount);
+
+    // Mint PY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Increase yield index by 10%
+    set_yield_index(yield_token, WAD + WAD / 10);
+
+    // Claim interest
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.redeem_due_interest(user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // After interest claim, reserve should exactly equal actual balance
+    let actual = sy.balance_of(yt.contract_address);
+    let reserved = yt.sy_reserve();
+    assert(actual == reserved, 'Reserve equals actual after int');
+}
+
+#[test]
+fn test_sy_reserve_resets_after_post_expiry_redeem() {
+    // Test: Reserve resets to actual balance after post-expiry redemption
+    let user = user1();
+    let amount = 100 * WAD;
+    let (_, sy, yt) = setup_with_sy(user, amount);
+
+    // Mint PY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    let (pt_minted, _) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Move past expiry
+    start_cheat_block_timestamp_global(yt.expiry() + 1);
+
+    // Redeem some PT post-expiry
+    transfer_pt_and_redeem_post_expiry(yt, user, user, pt_minted / 2);
+
+    // After post-expiry redemption, reserve should exactly equal actual balance
+    let actual = sy.balance_of(yt.contract_address);
+    let reserved = yt.sy_reserve();
+    assert(actual == reserved, 'Reserve equals actual post exp');
+}
+
+#[test]
+fn test_sy_reserve_no_drift_multiple_operations() {
+    // Test: Reserve never drifts from actual balance across multiple operations
+    let user = user1();
+    let amount = 200 * WAD;
+    let (yield_token, sy, yt) = setup_with_sy(user, amount);
+
+    // Operation 1: Mint PY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    let (pt_minted1, _) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    let actual1 = sy.balance_of(yt.contract_address);
+    let reserved1 = yt.sy_reserve();
+    assert(actual1 == reserved1, 'No drift after mint 1');
+
+    // Operation 2: Second mint
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, 50 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    let actual2 = sy.balance_of(yt.contract_address);
+    let reserved2 = yt.sy_reserve();
+    assert(actual2 == reserved2, 'No drift after mint 2');
+
+    // Operation 3: Yield accrual and interest claim
+    set_yield_index(yield_token, WAD + WAD / 20); // 5% yield
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.redeem_due_interest(user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    let actual3 = sy.balance_of(yt.contract_address);
+    let reserved3 = yt.sy_reserve();
+    assert(actual3 == reserved3, 'No drift after interest');
+
+    // Operation 4: Partial redemption
+    transfer_py_and_redeem(yt, user, user, pt_minted1 / 4);
+
+    let actual4 = sy.balance_of(yt.contract_address);
+    let reserved4 = yt.sy_reserve();
+    assert(actual4 == reserved4, 'No drift after redeem');
 }

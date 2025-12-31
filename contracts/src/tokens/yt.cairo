@@ -99,6 +99,8 @@ pub mod YT {
         last_index_block: u64,
         // Same-block index caching: cached index value from last fetch
         cached_index: u256,
+        // Token decimals (factory-provided, matches SY)
+        decimals: u8,
     }
 
     #[event]
@@ -126,6 +128,8 @@ pub mod YT {
         MintPYMulti: MintPYMulti,
         RedeemPYMulti: RedeemPYMulti,
         RedeemPYWithInterest: RedeemPYWithInterest,
+        PostExpiryDataSet: PostExpiryDataSet,
+        PyIndexUpdated: PyIndexUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -285,6 +289,36 @@ pub mod YT {
         pub timestamp: u64,
     }
 
+    /// Emitted once when post-expiry data is first initialized (Pendle-style)
+    /// This marks the transition to post-expiry accounting
+    #[derive(Drop, starknet::Event)]
+    pub struct PostExpiryDataSet {
+        #[key]
+        pub yt: ContractAddress,
+        #[key]
+        pub pt: ContractAddress,
+        pub sy: ContractAddress,
+        pub expiry: u64,
+        pub first_py_index: u256,
+        pub exchange_rate_at_init: u256,
+        pub total_pt_supply: u256,
+        pub total_yt_supply: u256,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when the PY index is updated (Pendle-style pyIndexCurrent behavior)
+    /// This event tracks index changes for off-chain monitoring and indexing
+    #[derive(Drop, starknet::Event)]
+    pub struct PyIndexUpdated {
+        #[key]
+        pub yt: ContractAddress,
+        pub old_index: u256,
+        pub new_index: u256,
+        pub exchange_rate: u256,
+        pub block_number: u64,
+        pub timestamp: u64,
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -295,6 +329,7 @@ pub mod YT {
         expiry: u64,
         pauser: ContractAddress,
         treasury: ContractAddress,
+        decimals: u8,
     ) {
         // Initialize ERC20 for YT
         self.erc20.initializer(name.clone(), symbol.clone());
@@ -315,6 +350,7 @@ pub mod YT {
         self.sy.write(sy);
         self.expiry.write(expiry);
         self.treasury.write(treasury);
+        self.decimals.write(decimals);
 
         // Initialize PY index from SY's current exchange rate
         let sy_dispatcher = ISYDispatcher { contract_address: sy };
@@ -331,7 +367,7 @@ pub mod YT {
         pt_symbol.append(@sy_symbol);
 
         // Deploy PT contract
-        // PT constructor args: name, symbol, sy, expiry, pauser
+        // PT constructor args: name, symbol, sy, expiry, pauser, decimals
         let mut pt_calldata: Array<felt252> = array![];
         // Serialize PT name (ByteArray)
         Serde::serialize(@pt_name, ref pt_calldata);
@@ -343,6 +379,8 @@ pub mod YT {
         pt_calldata.append(expiry.into());
         // Pauser address
         pt_calldata.append(pauser.into());
+        // Decimals (factory-provided, matches SY)
+        pt_calldata.append(decimals.into());
 
         let (pt_address, _) = deploy_syscall(pt_class_hash, 0, pt_calldata.span(), false)
             .unwrap_syscall();
@@ -364,7 +402,7 @@ pub mod YT {
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            18
+            self.decimals.read()
         }
 
         fn total_supply(self: @ContractState) -> u256 {
@@ -382,6 +420,9 @@ pub mod YT {
         }
 
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
+            // Update global PY index first to ensure accurate interest calculation
+            self._update_py_index();
+
             // Update interest before transfer to ensure accurate accounting
             let sender = get_caller_address();
             self._update_user_interest(sender);
@@ -397,6 +438,9 @@ pub mod YT {
             recipient: ContractAddress,
             amount: u256,
         ) -> bool {
+            // Update global PY index first to ensure accurate interest calculation
+            self._update_py_index();
+
             // Update interest before transfer
             self._update_user_interest(sender);
             self._update_user_interest(recipient);
@@ -503,42 +547,49 @@ pub mod YT {
             (amount_py, amount_py)
         }
 
-        /// Redeem PT + YT for SY (before expiry)
+        /// Redeem PT + YT for SY (before expiry) using floating tokens
+        /// Caller must transfer PT and YT to this contract before calling.
         /// SY returned = assetToSy(index, pyAmount) = pyAmount * WAD / index
         /// @param receiver Address to receive the SY
-        /// @param amount_py_to_redeem Amount of PT and YT to burn (in asset terms)
         /// @return Amount of SY returned
-        fn redeem_py(
-            ref self: ContractState, receiver: ContractAddress, amount_py_to_redeem: u256,
-        ) -> u256 {
+        fn redeem_py(ref self: ContractState, receiver: ContractAddress) -> u256 {
             // Defense-in-depth: prevent reentrancy during external calls
             self.reentrancy_guard.start();
 
             assert(!self.is_expired(), Errors::YT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_py_to_redeem > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let this = get_contract_address();
 
             // Update global PY index
             self._update_py_index();
 
-            // Update caller's interest before burning
-            self._update_user_interest(caller);
-
-            // Burn PT from caller
+            // Get floating PT and YT (pre-transferred by caller)
             let pt_addr = self.pt.read();
             let pt = IPTDispatcher { contract_address: pt_addr };
-            pt.burn(caller, amount_py_to_redeem);
+            let amount_pt = pt.balance_of(this);
+            let amount_yt = self.erc20.ERC20_balances.read(this);
 
-            // Burn YT from caller
-            self.erc20.burn(caller, amount_py_to_redeem);
+            // PT and YT amounts must match (they're minted 1:1)
+            assert(amount_pt > 0, Errors::YT_NO_FLOATING_PY);
+            assert(amount_pt == amount_yt, Errors::YT_PT_YT_MISMATCH);
+
+            // Update the contract's own interest (for YT it holds temporarily)
+            // This ensures any accrued interest during transfer is accounted for
+            self._update_user_interest(this);
+
+            // Burn floating PT (from this contract)
+            pt.burn(this, amount_pt);
+
+            // Burn floating YT (from this contract)
+            self.erc20.burn(this, amount_yt);
 
             // Calculate SY to return using Pendle's assetToSy formula:
             // amount_sy = pyAmount * WAD / pyIndex
             // This converts "asset" (underlying) terms back to SY terms
             let py_index = self.py_index_stored.read();
-            let amount_sy = wad_div(amount_py_to_redeem, py_index);
+            let amount_sy = wad_div(amount_pt, py_index);
 
             // Transfer SY to receiver
             let sy_addr = self.sy.read();
@@ -546,8 +597,9 @@ pub mod YT {
             let success = sy.transfer(receiver, amount_sy);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
-            // Update sy_reserve to reflect SY outflow
-            self.sy_reserve.write(self.sy_reserve.read() - amount_sy);
+            // Reset sy_reserve to actual balance (Pendle-style)
+            // This prevents reserve drift from rounding errors in assetToSy conversion
+            self.sy_reserve.write(sy.balance_of(this));
 
             self
                 .emit(
@@ -557,7 +609,7 @@ pub mod YT {
                         expiry: self.expiry.read(),
                         sy: sy_addr,
                         pt: pt_addr,
-                        amount_py_redeemed: amount_py_to_redeem,
+                        amount_py_redeemed: amount_pt,
                         amount_sy_returned: amount_sy,
                         py_index,
                         exchange_rate: sy.exchange_rate(),
@@ -569,26 +621,32 @@ pub mod YT {
             amount_sy
         }
 
-        /// Redeem PT for SY after expiry (YT is worthless)
+        /// Redeem PT for SY after expiry using floating PT (YT is worthless)
+        /// Caller must transfer PT to this contract before calling.
         /// SY returned = assetToSy(expiryIndex, ptAmount) = ptAmount * WAD / expiryIndex
-        /// Uses the frozen expiry index to ensure consistent redemption value
+        /// Uses the frozen expiry index to ensure consistent redemption value.
+        /// Post-expiry interest (yield accrued after expiry) is carved out per-redemption
+        /// and redirected to treasury.
         /// @param receiver Address to receive the SY
-        /// @param amount_pt Amount of PT to burn (in asset terms)
-        /// @return Amount of SY returned
-        fn redeem_py_post_expiry(
-            ref self: ContractState, receiver: ContractAddress, amount_pt: u256,
-        ) -> u256 {
+        /// @return Amount of SY returned to user
+        fn redeem_py_post_expiry(ref self: ContractState, receiver: ContractAddress) -> u256 {
             // Defense-in-depth: prevent reentrancy during external calls
             self.reentrancy_guard.start();
 
             assert(self.is_expired(), Errors::YT_NOT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_pt > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let this = get_contract_address();
 
             // Update global PY index one last time (captures expiry index if not yet done)
             self._update_py_index();
+
+            // Get floating PT (pre-transferred by caller)
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
+            let amount_pt = pt.balance_of(this);
+            assert(amount_pt > 0, Errors::YT_NO_FLOATING_PT);
 
             // Get the frozen expiry index for consistent redemption
             let expiry_index = self.py_index_at_expiry.read();
@@ -597,9 +655,7 @@ pub mod YT {
             if !self.expiry_event_emitted.read() {
                 self.expiry_event_emitted.write(true);
                 let sy_addr = self.sy.read();
-                let pt_addr = self.pt.read();
                 let sy = ISYDispatcher { contract_address: sy_addr };
-                let pt = IPTDispatcher { contract_address: pt_addr };
                 // Note: market, sy_reserve, pt_reserve are set to 0 as YT doesn't have market
                 // reference
                 let zero_address: ContractAddress = 0.try_into().unwrap();
@@ -607,7 +663,7 @@ pub mod YT {
                     .emit(
                         ExpiryReached {
                             market: zero_address,
-                            yt: get_contract_address(),
+                            yt: this,
                             pt: pt_addr,
                             sy: sy_addr,
                             expiry: self.expiry.read(),
@@ -622,23 +678,50 @@ pub mod YT {
                     );
             }
 
-            // Burn PT from caller (no YT needed post-expiry)
-            let pt_addr = self.pt.read();
-            let pt = IPTDispatcher { contract_address: pt_addr };
-            pt.burn(caller, amount_pt);
+            // Burn floating PT (from this contract)
+            pt.burn(this, amount_pt);
 
             // Calculate SY to return using assetToSy with frozen expiry index:
-            // amount_sy = ptAmount * WAD / expiryIndex
-            let amount_sy = wad_div(amount_pt, expiry_index);
+            // user_sy = ptAmount * WAD / expiryIndex
+            let user_sy = wad_div(amount_pt, expiry_index);
 
-            // Transfer SY to receiver
+            // Calculate per-redemption treasury carve-out for post-expiry interest
+            // If current index > expiry index, the delta is post-expiry yield that goes to treasury
             let sy_addr = self.sy.read();
             let sy = ISYDispatcher { contract_address: sy_addr };
-            let success = sy.transfer(receiver, amount_sy);
+            let current_index = sy.exchange_rate();
+
+            let mut treasury_sy: u256 = 0;
+            if current_index > expiry_index {
+                // Treasury gets: assetToSy(current) - assetToSy(expiry)
+                // = ptAmount/current - ptAmount/expiry (in WAD terms)
+                // = ptAmount * (expiry - current) / (expiry * current) [negative, but we swap]
+                // Actually: current > expiry means more SY per PT at current vs expiry
+                // Treasury carve-out = ptAmount * (current - expiry) / (expiry * current)
+                let index_diff = current_index - expiry_index;
+                let denominator = wad_mul(expiry_index, current_index);
+                treasury_sy = wad_div(wad_mul(amount_pt, index_diff), denominator);
+
+                // Transfer treasury portion if applicable
+                if treasury_sy > 0 {
+                    let treasury_addr = self.treasury.read();
+                    if !treasury_addr.is_zero() {
+                        let success = sy.transfer(treasury_addr, treasury_sy);
+                        assert(success, Errors::YT_INSUFFICIENT_SY);
+                    }
+                    // Track accumulated treasury interest
+                    let current_treasury = self.post_expiry_sy_for_treasury.read();
+                    self.post_expiry_sy_for_treasury.write(current_treasury + treasury_sy);
+                }
+            }
+
+            // Transfer user's SY
+            let success = sy.transfer(receiver, user_sy);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
-            // Update sy_reserve to reflect SY outflow
-            self.sy_reserve.write(self.sy_reserve.read() - amount_sy);
+            // Reset sy_reserve to actual balance (Pendle-style)
+            // This prevents reserve drift from rounding errors in assetToSy conversion
+            self.sy_reserve.write(sy.balance_of(this));
 
             self
                 .emit(
@@ -647,17 +730,17 @@ pub mod YT {
                         receiver,
                         expiry: self.expiry.read(),
                         amount_pt_redeemed: amount_pt,
-                        amount_sy_returned: amount_sy,
+                        amount_sy_returned: user_sy,
                         pt: pt_addr,
                         sy: sy_addr,
                         final_py_index: expiry_index,
-                        final_exchange_rate: sy.exchange_rate(),
+                        final_exchange_rate: current_index,
                         timestamp: get_block_timestamp(),
                     },
                 );
 
             self.reentrancy_guard.end();
-            amount_sy
+            user_sy
         }
 
         /// Batch mint PT + YT for multiple receivers using floating SY
@@ -757,8 +840,10 @@ pub mod YT {
             (pt_amounts, yt_amounts)
         }
 
-        /// Batch redeem PT + YT for multiple receivers (before expiry)
-        /// Uses assetToSy formula for each amount
+        /// Batch redeem PT + YT for multiple receivers using floating tokens (before expiry)
+        /// Caller must transfer PT and YT to this contract before calling.
+        /// Amounts must sum to the floating PT/YT balance.
+        /// Uses assetToSy formula for each amount.
         /// @param receivers Array of addresses to receive SY
         /// @param amounts Array of PY amounts to redeem for each receiver (in asset terms)
         /// @return Array of SY amounts returned
@@ -772,15 +857,22 @@ pub mod YT {
             assert(receivers.len() > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let this = get_contract_address();
 
             // Update global PY index once
             self._update_py_index();
             let py_index = self.py_index_stored.read();
 
-            // Update caller's interest before burning
-            self._update_user_interest(caller);
+            // Get floating PT and YT (pre-transferred by caller)
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
+            let floating_pt = pt.balance_of(this);
+            let floating_yt = self.erc20.ERC20_balances.read(this);
 
-            // Calculate totals
+            assert(floating_pt > 0, Errors::YT_NO_FLOATING_PY);
+            assert(floating_pt == floating_yt, Errors::YT_PT_YT_MISMATCH);
+
+            // Calculate total from amounts and verify it matches floating tokens
             let mut total_py: u256 = 0;
             let mut i: u32 = 0;
             let len = amounts.len();
@@ -788,12 +880,14 @@ pub mod YT {
                 total_py += *amounts.at(i);
                 i += 1;
             }
+            assert(total_py == floating_pt, Errors::YT_ARRAY_LENGTH_MISMATCH);
 
-            // Burn PT and YT from caller
-            let pt_addr = self.pt.read();
-            let pt = IPTDispatcher { contract_address: pt_addr };
-            pt.burn(caller, total_py);
-            self.erc20.burn(caller, total_py);
+            // Update the contract's own interest (for YT it holds temporarily)
+            self._update_user_interest(this);
+
+            // Burn all floating PT and YT
+            pt.burn(this, floating_pt);
+            self.erc20.burn(this, floating_yt);
 
             // Transfer SY to each receiver using assetToSy formula
             let sy_addr = self.sy.read();
@@ -820,8 +914,8 @@ pub mod YT {
                 i += 1;
             }
 
-            // Update sy_reserve
-            self.sy_reserve.write(self.sy_reserve.read() - total_sy);
+            // Reset sy_reserve to actual balance (Pendle-style)
+            self.sy_reserve.write(sy.balance_of(this));
 
             // Emit batch event
             self
@@ -840,45 +934,47 @@ pub mod YT {
             sy_amounts
         }
 
-        /// Redeem PT + YT for SY with optional interest claim
-        /// Convenience function that combines redeem_py and redeem_due_interest
-        /// Uses assetToSy formula for principal redemption
+        /// Redeem PT + YT for SY with optional interest claim using floating tokens
+        /// Caller must transfer PT and YT to this contract before calling.
+        /// Convenience function that combines redeem_py and redeem_due_interest.
+        /// Uses assetToSy formula for principal redemption.
         /// @param receiver Address to receive the SY (both from redeem and interest)
-        /// @param amount_py Amount of PT and YT to burn (in asset terms)
-        /// @param redeem_interest If true, also claims accrued interest
+        /// @param redeem_interest If true, also claims caller's accrued interest
         /// @return (sy_from_redeem, interest_claimed)
         fn redeem_py_with_interest(
-            ref self: ContractState,
-            receiver: ContractAddress,
-            amount_py: u256,
-            redeem_interest: bool,
+            ref self: ContractState, receiver: ContractAddress, redeem_interest: bool,
         ) -> (u256, u256) {
             self.reentrancy_guard.start();
 
             assert(!self.is_expired(), Errors::YT_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_py > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let this = get_contract_address();
 
             // Update global PY index
             self._update_py_index();
             let py_index = self.py_index_stored.read();
 
-            // Update caller's interest before burning
-            self._update_user_interest(caller);
-
-            // Burn PT from caller
+            // Get floating PT and YT (pre-transferred by caller)
             let pt_addr = self.pt.read();
             let pt = IPTDispatcher { contract_address: pt_addr };
-            pt.burn(caller, amount_py);
+            let amount_pt = pt.balance_of(this);
+            let amount_yt = self.erc20.ERC20_balances.read(this);
 
-            // Burn YT from caller
-            self.erc20.burn(caller, amount_py);
+            assert(amount_pt > 0, Errors::YT_NO_FLOATING_PY);
+            assert(amount_pt == amount_yt, Errors::YT_PT_YT_MISMATCH);
+
+            // Update the contract's own interest (for YT it holds temporarily)
+            self._update_user_interest(this);
+
+            // Burn floating PT and YT
+            pt.burn(this, amount_pt);
+            self.erc20.burn(this, amount_yt);
 
             // Calculate SY to return using assetToSy formula:
             // sy_from_redeem = pyAmount * WAD / pyIndex
-            let sy_from_redeem = wad_div(amount_py, py_index);
+            let sy_from_redeem = wad_div(amount_pt, py_index);
 
             let sy_addr = self.sy.read();
             let sy = ISYDispatcher { contract_address: sy_addr };
@@ -887,12 +983,12 @@ pub mod YT {
             let success = sy.transfer(receiver, sy_from_redeem);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
-            // Update sy_reserve for redemption
-            self.sy_reserve.write(self.sy_reserve.read() - sy_from_redeem);
-
-            // Handle interest claim if requested
+            // Handle interest claim if requested (caller's accumulated interest)
             let mut interest_claimed: u256 = 0;
             if redeem_interest {
+                // Update caller's interest first to ensure it's current
+                self._update_user_interest(caller);
+
                 let interest = self.user_interest.read(caller);
                 if interest > 0 {
                     self.user_interest.write(caller, 0);
@@ -917,11 +1013,12 @@ pub mod YT {
                         }
                     }
 
-                    // Update sy_reserve for interest outflow (includes fee)
-                    self.sy_reserve.write(self.sy_reserve.read() - interest);
                     interest_claimed = user_interest;
                 }
             }
+
+            // Reset sy_reserve to actual balance (Pendle-style)
+            self.sy_reserve.write(sy.balance_of(this));
 
             self
                 .emit(
@@ -929,7 +1026,7 @@ pub mod YT {
                         caller,
                         receiver,
                         expiry: self.expiry.read(),
-                        amount_py_redeemed: amount_py,
+                        amount_py_redeemed: amount_pt,
                         amount_sy_from_redeem: sy_from_redeem,
                         amount_interest_claimed: interest_claimed,
                         timestamp: get_block_timestamp(),
@@ -976,6 +1073,19 @@ pub mod YT {
             self.py_index_stored.read()
         }
 
+        /// Update and return the current PY index (Pendle-style pyIndexCurrent)
+        /// Unlike py_index_current() which is view-only, this function:
+        /// - Fetches the current exchange rate from SY
+        /// - Updates py_index_stored if the rate is higher (watermark pattern)
+        /// - Emits PyIndexUpdated event when index changes
+        /// - Updates same-block cache
+        /// After expiry, captures and freezes the expiry index on first call.
+        /// @return The current PY index
+        fn update_py_index(ref self: ContractState) -> u256 {
+            self._update_py_index_with_event();
+            self.py_index_stored.read()
+        }
+
         /// Get expected SY balance held by this contract
         /// Tracks deposits minus withdrawals, not actual balance
         fn sy_reserve(self: @ContractState) -> u256 {
@@ -993,6 +1103,21 @@ pub mod YT {
             } else {
                 0
             }
+        }
+
+        /// Get "floating" PT - PT tokens pre-transferred to this contract for redemption
+        /// Returns PT balance held by this contract (normally 0, positive when tokens staged for
+        /// redeem)
+        fn get_floating_pt(self: @ContractState) -> u256 {
+            let pt = IPTDispatcher { contract_address: self.pt.read() };
+            pt.balance_of(get_contract_address())
+        }
+
+        /// Get "floating" YT - YT tokens pre-transferred to this contract for redemption
+        /// Returns YT balance held by this contract (normally 0, positive when tokens staged for
+        /// redeem)
+        fn get_floating_yt(self: @ContractState) -> u256 {
+            self.erc20.ERC20_balances.read(get_contract_address())
         }
 
         /// Claim accrued interest for a user
@@ -1040,8 +1165,8 @@ pub mod YT {
                 }
             }
 
-            // Update sy_reserve to reflect total interest outflow (user + fee)
-            self.sy_reserve.write(self.sy_reserve.read() - interest);
+            // Reset sy_reserve to actual balance (Pendle-style)
+            self.sy_reserve.write(sy.balance_of(get_contract_address()));
 
             self
                 .emit(
@@ -1134,6 +1259,28 @@ pub mod YT {
         fn interest_fee_rate(self: @ContractState) -> u256 {
             self.interest_fee_rate.read()
         }
+
+        /// Get the PY index captured at first post-expiry action (Pendle: firstPYIndex)
+        /// Returns 0 if expiry hasn't been reached or first post-expiry action hasn't occurred
+        fn first_py_index(self: @ContractState) -> u256 {
+            self.py_index_at_expiry.read()
+        }
+
+        /// Get total SY interest accumulated for treasury since expiry
+        /// (Pendle: totalSyInterestForTreasury)
+        /// This is post-expiry yield carved out from redemptions and redirected to treasury
+        fn total_sy_interest_for_treasury(self: @ContractState) -> u256 {
+            self.post_expiry_sy_for_treasury.read()
+        }
+
+        /// Get complete post-expiry data in one call
+        /// Returns (first_py_index, total_sy_interest_for_treasury, is_post_expiry_initialized)
+        fn get_post_expiry_data(self: @ContractState) -> (u256, u256, bool) {
+            let first_index = self.py_index_at_expiry.read();
+            let treasury_interest = self.post_expiry_sy_for_treasury.read();
+            let is_initialized = first_index > 0;
+            (first_index, treasury_interest, is_initialized)
+        }
     }
 
     #[abi(embed_v0)]
@@ -1196,8 +1343,8 @@ pub mod YT {
             let success = sy.transfer(treasury_addr, amount);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
-            // Update sy_reserve to reflect outflow
-            self.sy_reserve.write(self.sy_reserve.read() - amount);
+            // Reset sy_reserve to actual balance (Pendle-style)
+            self.sy_reserve.write(sy.balance_of(get_contract_address()));
 
             // Emit event
             self
@@ -1249,10 +1396,31 @@ pub mod YT {
             // If expired, handle expiry index capture
             if self.is_expired() {
                 if self.py_index_at_expiry.read() == 0 {
-                    // First call after expiry - compute and capture current index
+                    // First call after expiry - compute and capture current index (Pendle-style)
                     let current_index = self._fetch_current_index();
                     self.py_index_at_expiry.write(current_index);
                     self.py_index_stored.write(current_index);
+
+                    // Emit PostExpiryDataSet event (equivalent to Pendle's _setPostExpiryData)
+                    let this = get_contract_address();
+                    let sy_addr = self.sy.read();
+                    let pt_addr = self.pt.read();
+                    let sy = ISYDispatcher { contract_address: sy_addr };
+                    let pt = IPTDispatcher { contract_address: pt_addr };
+                    self
+                        .emit(
+                            PostExpiryDataSet {
+                                yt: this,
+                                pt: pt_addr,
+                                sy: sy_addr,
+                                expiry: self.expiry.read(),
+                                first_py_index: current_index,
+                                exchange_rate_at_init: sy.exchange_rate(),
+                                total_pt_supply: pt.total_supply(),
+                                total_yt_supply: self.erc20.ERC20_total_supply.read(),
+                                timestamp: get_block_timestamp(),
+                            },
+                        );
                 }
                 return;
             }
@@ -1279,6 +1447,95 @@ pub mod YT {
             self.cached_index.write(current_index);
         }
 
+        /// Update the global PY index with PyIndexUpdated event emission (Pendle-style)
+        /// Similar to _update_py_index but emits PyIndexUpdated when index changes
+        /// Used by the external update_py_index() function
+        fn _update_py_index_with_event(ref self: ContractState) {
+            let old_index = self.py_index_stored.read();
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+
+            // If expired, handle expiry index capture
+            if self.is_expired() {
+                if self.py_index_at_expiry.read() == 0 {
+                    // First call after expiry - compute and capture current index (Pendle-style)
+                    let current_index = self._fetch_current_index();
+                    self.py_index_at_expiry.write(current_index);
+                    self.py_index_stored.write(current_index);
+
+                    // Emit PyIndexUpdated event for the expiry capture
+                    if current_index != old_index {
+                        let current_block = get_block_info().unbox().block_number;
+                        self
+                            .emit(
+                                PyIndexUpdated {
+                                    yt: get_contract_address(),
+                                    old_index,
+                                    new_index: current_index,
+                                    exchange_rate: sy.exchange_rate(),
+                                    block_number: current_block,
+                                    timestamp: get_block_timestamp(),
+                                },
+                            );
+                    }
+
+                    // Emit PostExpiryDataSet event (equivalent to Pendle's _setPostExpiryData)
+                    let this = get_contract_address();
+                    let pt_addr = self.pt.read();
+                    let pt = IPTDispatcher { contract_address: pt_addr };
+                    self
+                        .emit(
+                            PostExpiryDataSet {
+                                yt: this,
+                                pt: pt_addr,
+                                sy: sy_addr,
+                                expiry: self.expiry.read(),
+                                first_py_index: current_index,
+                                exchange_rate_at_init: sy.exchange_rate(),
+                                total_pt_supply: pt.total_supply(),
+                                total_yt_supply: self.erc20.ERC20_total_supply.read(),
+                                timestamp: get_block_timestamp(),
+                            },
+                        );
+                }
+                return;
+            }
+
+            // Check same-block cache to avoid redundant oracle calls
+            let current_block = get_block_info().unbox().block_number;
+            let cached_block = self.last_index_block.read();
+            if current_block == cached_block && self.cached_index.read() > 0 {
+                // Cache hit - no update needed, no event
+                return;
+            }
+
+            // Cache miss or stale - fetch from oracle and update cache
+            let current_index = self._fetch_current_index();
+            let exchange_rate = sy.exchange_rate();
+
+            // Update stored index if current is higher (watermark pattern)
+            if current_index > old_index {
+                self.py_index_stored.write(current_index);
+
+                // Emit PyIndexUpdated event for index change
+                self
+                    .emit(
+                        PyIndexUpdated {
+                            yt: get_contract_address(),
+                            old_index,
+                            new_index: current_index,
+                            exchange_rate,
+                            block_number: current_block,
+                            timestamp: get_block_timestamp(),
+                        },
+                    );
+            }
+
+            // Update cache for current block
+            self.last_index_block.write(current_block);
+            self.cached_index.write(current_index);
+        }
+
         /// Fetch current index from SY oracle (internal helper)
         /// Returns max of oracle rate and stored index (watermark pattern)
         fn _fetch_current_index(ref self: ContractState) -> u256 {
@@ -1295,8 +1552,15 @@ pub mod YT {
         }
 
         /// Update a user's accrued interest based on their YT balance
+        /// Pendle-style: excludes address(0) and address(this) from interest tracking
         fn _update_user_interest(ref self: ContractState, user: ContractAddress) {
+            // Skip zero address
             if user.is_zero() {
+                return;
+            }
+            // Skip the YT contract itself (Pendle excludes address(this))
+            // This prevents the contract from accruing interest to itself
+            if user == get_contract_address() {
                 return;
             }
 
