@@ -226,7 +226,7 @@ snforge test test_post_expiry_treasury
 
 ---
 
-## Phase 4: Protocol Fee on Interest (MEDIUM)
+## Phase 4: Protocol Fee on Interest (MEDIUM) **COMPLETE**
 
 **Goal:** Deduct protocol fee from interest claims.
 
