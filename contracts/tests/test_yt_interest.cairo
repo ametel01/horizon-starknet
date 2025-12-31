@@ -1,19 +1,18 @@
 /// YT Interest Calculation Tests
 ///
-/// Comprehensive tests for the YT interest accrual mechanism as specified in SPEC.md Section 10.4.
+/// Comprehensive tests for the YT interest accrual mechanism.
 ///
-/// Interest Formula: interest = yt_balance * (current_index - user_index) / user_index
+/// Pendle-compatible Interest Formula:
+///   interest = yt_balance * (current_index - user_index) / (user_index * current_index)
+///
+/// This normalized formula accounts for SY's increased value - users get fewer SY tokens,
+/// but each SY is worth more. The invariant: totalSyRedeemable remains unchanged.
 ///
 /// Key Properties:
-/// 1. Earlier YT holders earn more interest (intentional design per SPEC 10.4)
+/// 1. Earlier YT holders earn more interest
 /// 2. Interest is preserved on transfer (accrued interest belongs to original holder)
 /// 3. User index follows watermark pattern (never decreases)
-/// 4. Interest can only be claimed before expiry (YT becomes worthless at expiry)
-///
-/// Per SPEC.md Section 10.4:
-/// "The YT interest formula is **intentionally** designed so earlier YT holders earn more:
-/// - Users who mint/receive YT at lower index earn proportionally more interest
-/// - This creates natural trading dynamics and rewards early participants"
+/// 4. Interest can be claimed before or after expiry (but no new interest accrues after expiry)
 
 use horizon::interfaces::i_sy::ISYDispatcher;
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
@@ -56,7 +55,8 @@ fn setup_user_with_yt(
 // ============ Single User Interest Tests ============
 
 /// Test basic interest accrual for a single user
-/// User mints YT at index 1.0, index increases to 1.1, user should earn 10% interest
+/// User mints YT at index 1.0, index increases to 1.1
+/// Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_interest_accrual_single_user() {
     let (yield_token, sy, yt) = setup();
@@ -73,21 +73,23 @@ fn test_interest_accrual_single_user() {
     // Increase index by 10% (1.0 -> 1.1)
     set_yield_index(yield_token, WAD + WAD / 10); // 1.1 WAD
 
-    // Calculate expected interest:
-    // interest = yt_balance * (current_index - user_index) / user_index
-    // interest = 100 WAD * (1.1 WAD - 1.0 WAD) / 1.0 WAD
-    // interest = 100 WAD * 0.1 = 10 WAD
+    // Calculate expected interest with Pendle formula:
+    // interest = yt_balance × (curr - prev) / (prev × curr)
+    // interest = 100 WAD × 0.1 WAD / (1.0 × 1.1) = 100 × 0.1 / 1.1 ≈ 9.09 WAD
     let interest_after = yt.get_user_interest(user);
 
-    // Allow small tolerance for fixed-point math
-    let expected_interest = 10 * WAD;
-    let tolerance = WAD / 1000; // 0.1% tolerance
+    // Expected: 100 × 0.1 / 1.1 = 9.0909... WAD
+    let index_diff = WAD / 10; // 0.1 WAD
+    let denominator = wad_mul(WAD, WAD + WAD / 10); // 1.0 × 1.1
+    let expected_interest = wad_div(wad_mul(amount, index_diff), denominator);
+    let tolerance = WAD / 100; // 1% tolerance
 
     assert(interest_after >= expected_interest - tolerance, 'Interest too low');
     assert(interest_after <= expected_interest + tolerance, 'Interest too high');
 }
 
 /// Test interest compounds correctly with multiple index increases
+/// With Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_interest_accrual_multiple_increases() {
     let (yield_token, sy, yt) = setup();
@@ -112,18 +114,22 @@ fn test_interest_accrual_multiple_increases() {
     assert(interest_2 > interest_1, 'Interest should increase');
     assert(interest_3 > interest_2, 'Interest should keep increasing');
 
-    // Total interest for 20% index increase should be ~20 WAD
-    let expected_total = 20 * WAD;
-    let tolerance = WAD / 100; // 1% tolerance
+    // Total interest for 20% index increase with Pendle formula:
+    // interest = 100 × (1.2 - 1.0) / (1.0 × 1.2) = 100 × 0.2 / 1.2 ≈ 16.67 WAD
+    let index_diff = WAD / 5; // 0.2 WAD
+    let denominator = wad_mul(WAD, WAD + WAD / 5); // 1.0 × 1.2
+    let expected_total = wad_div(wad_mul(amount, index_diff), denominator);
+    let tolerance = WAD / 10; // 0.1 WAD tolerance
     assert(interest_3 >= expected_total - tolerance, 'Total interest too low');
     assert(interest_3 <= expected_total + tolerance, 'Total interest too high');
 }
 
 // ============ Multi-User Interest Tests ============
 
-/// Test that earlier YT holders earn more interest (core SPEC.md Section 10.4 behavior)
+/// Test that earlier YT holders earn more interest
 /// User A mints at index 1.0, User B mints at index 1.1, both see index 1.2
 /// User A should earn more than User B
+/// Using Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_interest_accrual_multiple_users_earlier_earns_more() {
     let (yield_token, sy, yt) = setup();
@@ -148,19 +154,25 @@ fn test_interest_accrual_multiple_users_earlier_earns_more() {
     let interest_b = yt.get_user_interest(user_b);
 
     // User A: minted at 1.0, now 1.2
-    // interest_a = 100 WAD * (1.2 - 1.0) / 1.0 = 20 WAD
+    // Pendle formula: 100 × (1.2 - 1.0) / (1.0 × 1.2) = 100 × 0.2 / 1.2 ≈ 16.67 WAD
 
     // User B: minted at 1.1, now 1.2
-    // interest_b = 100 WAD * (1.2 - 1.1) / 1.1 ≈ 9.09 WAD
+    // Pendle formula: 100 × (1.2 - 1.1) / (1.1 × 1.2) = 100 × 0.1 / 1.32 ≈ 7.58 WAD
 
     // User A should earn more than User B
     assert(interest_a > interest_b, 'Earlier holder earns more');
 
-    // Verify approximate values
-    let expected_a = 20 * WAD;
-    let expected_b = wad_div(wad_mul(amount, WAD / 10), WAD + WAD / 10); // ~9.09 WAD
+    // Verify approximate values with Pendle formula
+    let index_1_0 = WAD;
+    let index_1_1 = WAD + WAD / 10;
+    let index_1_2 = WAD + WAD / 5;
 
-    let tolerance = WAD / 100; // 1% tolerance
+    // User A: 100 × (1.2 - 1.0) / (1.0 × 1.2) ≈ 16.67 WAD
+    let expected_a = wad_div(wad_mul(amount, index_1_2 - index_1_0), wad_mul(index_1_0, index_1_2));
+    // User B: 100 × (1.2 - 1.1) / (1.1 × 1.2) ≈ 7.58 WAD
+    let expected_b = wad_div(wad_mul(amount, index_1_2 - index_1_1), wad_mul(index_1_1, index_1_2));
+
+    let tolerance = WAD / 10; // 0.1 WAD tolerance
     assert(interest_a >= expected_a - tolerance, 'User A interest too low');
     assert(interest_b >= expected_b - tolerance, 'User B interest too low');
 }
@@ -262,8 +274,9 @@ fn test_interest_preserved_on_transfer() {
 }
 
 /// Test interest after partial transfer
-/// User has 100 YT, accrues 10 SY interest, claims it, transfers 50 YT
+/// User has 100 YT, accrues interest, claims it, transfers 50 YT
 /// After more yield, both users accrue based on their current balances
+/// Using Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_interest_after_partial_transfer() {
     let (yield_token, sy, yt) = setup();
@@ -277,18 +290,21 @@ fn test_interest_after_partial_transfer() {
     // Index increases by 10%
     set_yield_index(yield_token, WAD + WAD / 10);
 
-    // User A has ~10 WAD interest (view function)
+    // User A has interest (view function)
+    // Pendle formula: 100 × 0.1 / 1.1 ≈ 9.09 WAD
     let interest_before = yt.get_user_interest(user_a);
-    let expected_interest = 10 * WAD;
-    let tolerance = WAD / 100;
-    assert(interest_before >= expected_interest - tolerance, 'Should have ~10 WAD interest');
+    let index_diff = WAD / 10;
+    let denominator = wad_mul(WAD, WAD + WAD / 10);
+    let expected_interest = wad_div(wad_mul(amount, index_diff), denominator);
+    let tolerance = WAD / 10; // 0.1 WAD tolerance
+    assert(interest_before >= expected_interest - tolerance, 'Should have ~9 WAD interest');
 
     // User A claims interest first (triggers _update_py_index)
     start_cheat_caller_address(yt.contract_address, user_a);
     let claimed = yt.redeem_due_interest(user_a);
     stop_cheat_caller_address(yt.contract_address);
 
-    assert(claimed >= expected_interest - tolerance, 'Should claim ~10 WAD');
+    assert(claimed >= expected_interest - tolerance, 'Should claim ~9 WAD');
 
     // User A transfers HALF their YT
     start_cheat_caller_address(yt.contract_address, user_a);
@@ -304,12 +320,12 @@ fn test_interest_after_partial_transfer() {
 
     // User A (with 50 YT remaining) accrues new interest
     // A's index was updated to 1.1 after claim
-    // New interest = 50 WAD * (1.2 - 1.1) / 1.1 ≈ 4.545 WAD
+    // Pendle: 50 × (1.2 - 1.1) / (1.1 × 1.2) = 50 × 0.1 / 1.32 ≈ 3.79 WAD
     let new_interest_a = yt.get_user_interest(user_a);
     assert(new_interest_a > 0, 'A accrues new interest');
 
     // User B (with 50 YT, index 1.1) also accrues interest
-    // B's interest = 50 WAD * (1.2 - 1.1) / 1.1 ≈ 4.545 WAD
+    // Pendle: 50 × (1.2 - 1.1) / (1.1 × 1.2) = 50 × 0.1 / 1.32 ≈ 3.79 WAD
     let new_interest_b = yt.get_user_interest(user_b);
     assert(new_interest_b > 0, 'B accrues interest');
 
@@ -667,6 +683,7 @@ fn test_user_index_updated_after_claim() {
 // ============ Interest Calculation Precision Tests ============
 
 /// Test interest calculation with large amounts
+/// Using Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_interest_large_amounts() {
     let (yield_token, sy, yt) = setup();
@@ -679,8 +696,11 @@ fn test_interest_large_amounts() {
     set_yield_index(yield_token, WAD + WAD / 10);
 
     let interest = yt.get_user_interest(user);
-    let expected = 100_000 * WAD; // 10% of 1 million
-    let tolerance = WAD; // 1 token tolerance
+    // Pendle formula: 1,000,000 × 0.1 / 1.1 ≈ 90,909 WAD
+    let index_diff = WAD / 10;
+    let denominator = wad_mul(WAD, WAD + WAD / 10);
+    let expected = wad_div(wad_mul(amount, index_diff), denominator);
+    let tolerance = WAD * 10; // 10 token tolerance
 
     assert(interest >= expected - tolerance, 'Large amount interest low');
     assert(interest <= expected + tolerance, 'Large amount interest high');
@@ -708,6 +728,7 @@ fn test_interest_small_amounts() {
 }
 
 /// Test interest with high yield rate
+/// Using Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_interest_high_yield() {
     let (yield_token, sy, yt) = setup();
@@ -720,7 +741,8 @@ fn test_interest_high_yield() {
     set_yield_index(yield_token, 2 * WAD);
 
     let interest = yt.get_user_interest(user);
-    let expected = 100 * WAD; // 100% of 100 tokens
+    // Pendle formula: 100 × (2.0 - 1.0) / (1.0 × 2.0) = 100 × 1.0 / 2.0 = 50 WAD
+    let expected = 50 * WAD;
     let tolerance = WAD / 10; // 0.1 token tolerance
 
     assert(interest >= expected - tolerance, 'High yield interest low');
@@ -764,6 +786,7 @@ fn test_mint_more_yt_updates_index() {
 
 /// Test claiming multiple times
 /// Each claim captures interest from the previous index to current
+/// Using Pendle formula: interest = balance × (curr - prev) / (prev × curr)
 #[test]
 fn test_multiple_claims() {
     let (yield_token, sy, yt) = setup();
@@ -774,28 +797,32 @@ fn test_multiple_claims() {
 
     let mut total_claimed = 0_u256;
 
-    // Claim 1: Index 1.0 -> 1.05 (5% yield = 5 WAD)
+    // Claim 1: Index 1.0 -> 1.05
+    // Pendle: 100 × 0.05 / 1.05 ≈ 4.76 WAD
     set_yield_index(yield_token, WAD + WAD / 20);
     start_cheat_caller_address(yt.contract_address, user);
     let claim1 = yt.redeem_due_interest(user);
     total_claimed += claim1;
     stop_cheat_caller_address(yt.contract_address);
 
-    // Claim 2: Index 1.05 -> 1.10 (~4.76% yield on 100 WAD ≈ 4.76 WAD)
+    // Claim 2: Index 1.05 -> 1.10
+    // Pendle: 100 × 0.05 / 1.155 ≈ 4.33 WAD
     set_yield_index(yield_token, WAD + WAD / 10);
     start_cheat_caller_address(yt.contract_address, user);
     let claim2 = yt.redeem_due_interest(user);
     total_claimed += claim2;
     stop_cheat_caller_address(yt.contract_address);
 
-    // Claim 3: Index 1.10 -> 1.15 (~4.55% yield ≈ 4.55 WAD)
+    // Claim 3: Index 1.10 -> 1.15
+    // Pendle: 100 × 0.05 / 1.265 ≈ 3.95 WAD
     set_yield_index(yield_token, WAD + 3 * WAD / 20);
     start_cheat_caller_address(yt.contract_address, user);
     let claim3 = yt.redeem_due_interest(user);
     total_claimed += claim3;
     stop_cheat_caller_address(yt.contract_address);
 
-    // Claim 4: Index 1.15 -> 1.20 (~4.35% yield ≈ 4.35 WAD)
+    // Claim 4: Index 1.15 -> 1.20
+    // Pendle: 100 × 0.05 / 1.38 ≈ 3.62 WAD
     set_yield_index(yield_token, WAD + WAD / 5);
     start_cheat_caller_address(yt.contract_address, user);
     let claim4 = yt.redeem_due_interest(user);
@@ -808,18 +835,16 @@ fn test_multiple_claims() {
     assert(claim3 > 0, 'Claim 3 should be > 0');
     assert(claim4 > 0, 'Claim 4 should be > 0');
 
-    // Later claims should be smaller (same index delta but higher base index)
-    // This is because interest = balance * delta / base_index
+    // Later claims should be smaller (same index delta but higher denominator)
+    // Pendle formula: interest = balance × delta / (prev × curr)
     assert(claim1 > claim2, 'Earlier claims larger');
     assert(claim2 > claim3, 'Claim 2 > Claim 3');
     assert(claim3 > claim4, 'Claim 3 > Claim 4');
 
-    // Total interest for 20% index increase starting at 1.0:
-    // = 100 * (1.2 - 1.0) / 1.0 = 20 WAD (if claimed all at once)
-    // But with incremental claims, total is slightly less due to compounding denominator
-    // Approximate: 5 + 4.76 + 4.55 + 4.35 ≈ 18.66 WAD
-    let min_expected = 18 * WAD;
-    let max_expected = 21 * WAD;
+    // Total interest with Pendle formula for incremental claims:
+    // ≈ 4.76 + 4.33 + 3.95 + 3.62 ≈ 16.66 WAD
+    let min_expected = 15 * WAD;
+    let max_expected = 18 * WAD;
 
     assert(total_claimed >= min_expected, 'Total claimed too low');
     assert(total_claimed <= max_expected, 'Total claimed too high');

@@ -640,11 +640,11 @@ pub mod YT {
             }
 
             // Calculate new interest since last update
-            // interest = yt_balance * (current_index - user_index) / user_index
-            // Reordered to maximize precision: (yt_balance * index_diff) / user_index
+            // Pendle formula: interest = balance × (curr - prev) / (prev × curr)
             if current_index > user_index {
                 let index_diff = current_index - user_index;
-                let new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index);
+                let denominator = wad_mul(user_index, current_index);
+                let new_interest = wad_div(wad_mul(yt_balance, index_diff), denominator);
                 accrued + new_interest
             } else {
                 accrued
@@ -704,10 +704,12 @@ pub mod YT {
 
             // If user has a previous index and YT balance, calculate interest
             if user_index > 0 && yt_balance > 0 && current_index > user_index {
-                // interest = yt_balance * (current_index - user_index) / user_index
-                // Reordered to maximize precision: (yt_balance * index_diff) / user_index
+                // Pendle formula: interest = balance × (curr - prev) / (prev × curr)
+                // This normalization accounts for SY's increased value - users get fewer SY
+                // tokens, but each is worth more. Invariant: totalSyRedeemable unchanged.
                 let index_diff = current_index - user_index;
-                let new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index);
+                let denominator = wad_mul(user_index, current_index);
+                let new_interest = wad_div(wad_mul(yt_balance, index_diff), denominator);
 
                 let accrued = self.user_interest.read(user);
                 self.user_interest.write(user, accrued + new_interest);
