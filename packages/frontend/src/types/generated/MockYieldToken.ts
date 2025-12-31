@@ -549,6 +549,18 @@ export const MOCKYIELDTOKEN_ABI = [
       },
       {
         type: 'function',
+        name: 'force_set_index',
+        inputs: [
+          {
+            name: 'new_index_wad',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'increase_index_bps',
         inputs: [
           {
