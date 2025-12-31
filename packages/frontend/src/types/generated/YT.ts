@@ -326,6 +326,28 @@ export const YT_ABI = [
       },
       {
         type: 'function',
+        name: 'sy_reserve',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_floating_sy',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
         name: 'redeem_due_interest',
         inputs: [
           {
@@ -356,6 +378,28 @@ export const YT_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'treasury',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_post_expiry_treasury_interest',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
     ],
   },
   {
@@ -379,6 +423,17 @@ export const YT_ABI = [
         name: 'unpause',
         inputs: [],
         outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'redeem_post_expiry_interest_for_treasury',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
         state_mutability: 'external',
       },
     ],
@@ -567,6 +622,10 @@ export const YT_ABI = [
       },
       {
         name: 'pauser',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'treasury',
         type: 'core::starknet::contract_address::ContractAddress',
       },
     ],
@@ -1158,6 +1217,53 @@ export const YT_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::tokens::yt::YT::TreasuryInterestRedeemed',
+    kind: 'struct',
+    members: [
+      {
+        name: 'yt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'treasury',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'amount_sy',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'expiry_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'current_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_yt_supply',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::tokens::yt::YT::Event',
     kind: 'enum',
     variants: [
@@ -1214,6 +1320,11 @@ export const YT_ABI = [
       {
         name: 'ExpiryReached',
         type: 'horizon::tokens::yt::YT::ExpiryReached',
+        kind: 'nested',
+      },
+      {
+        name: 'TreasuryInterestRedeemed',
+        type: 'horizon::tokens::yt::YT::TreasuryInterestRedeemed',
         kind: 'nested',
       },
     ],

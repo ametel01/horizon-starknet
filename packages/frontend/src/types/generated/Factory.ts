@@ -319,6 +319,29 @@ export const FACTORY_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'treasury',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_treasury',
+        inputs: [
+          {
+            name: 'treasury',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
     ],
   },
   {
@@ -472,6 +495,10 @@ export const FACTORY_ABI = [
       {
         name: 'pt_class_hash',
         type: 'core::starknet::class_hash::ClassHash',
+      },
+      {
+        name: 'treasury',
+        type: 'core::starknet::contract_address::ContractAddress',
       },
     ],
   },
