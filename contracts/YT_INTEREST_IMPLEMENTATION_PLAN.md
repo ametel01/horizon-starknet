@@ -156,7 +156,7 @@ Existing users with accrued interest calculated under old formula retain that ba
 
 ---
 
-## Phase 3: Post-Expiry Treasury (MEDIUM)
+## Phase 3: Post-Expiry Treasury (MEDIUM) **COMPLETE**
 
 **Goal:** Redirect post-expiry yield to protocol treasury instead of locking it.
 
