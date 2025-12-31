@@ -460,3 +460,112 @@ export const oracleRateHistory = pgView('oracle_rate_history', {
   new_rate: numeric('new_rate', { precision: 78, scale: 0 }),
   rate_change_bps: numeric('rate_change_bps', { precision: 78, scale: 0 }),
 }).existing();
+
+// ============================================================
+// PHASE 4: SY MONITORING TABLES (5 tables)
+// ============================================================
+
+// Negative Yield Detection (monitoring)
+export const syNegativeYieldDetected = pgTable('sy_negative_yield_detected', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  sy: text('sy').notNull(),
+  underlying: text('underlying').notNull(),
+  watermark_rate: numeric('watermark_rate', { precision: 78, scale: 0 }).notNull(),
+  current_rate: numeric('current_rate', { precision: 78, scale: 0 }).notNull(),
+  rate_drop_bps: numeric('rate_drop_bps', { precision: 78, scale: 0 }).notNull(),
+  event_timestamp: bigint('event_timestamp', { mode: 'number' }).notNull(),
+});
+
+// Pause State Tracking
+export const syPauseState = pgTable('sy_pause_state', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  sy: text('sy').notNull(),
+  account: text('account').notNull(),
+  is_paused: boolean('is_paused').notNull(),
+});
+
+// Rewards Claimed (SYWithRewards)
+export const syRewardsClaimed = pgTable('sy_rewards_claimed', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  user: text('user').notNull(),
+  reward_token: text('reward_token').notNull(),
+  sy: text('sy').notNull(),
+  amount: numeric('amount', { precision: 78, scale: 0 }).notNull(),
+  event_timestamp: bigint('event_timestamp', { mode: 'number' }).notNull(),
+});
+
+// Reward Index Updated (for APY calculation)
+export const syRewardIndexUpdated = pgTable('sy_reward_index_updated', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  reward_token: text('reward_token').notNull(),
+  sy: text('sy').notNull(),
+  old_index: numeric('old_index', { precision: 78, scale: 0 }).notNull(),
+  new_index: numeric('new_index', { precision: 78, scale: 0 }).notNull(),
+  rewards_added: numeric('rewards_added', { precision: 78, scale: 0 }).notNull(),
+  total_supply: numeric('total_supply', { precision: 78, scale: 0 }).notNull(),
+  event_timestamp: bigint('event_timestamp', { mode: 'number' }).notNull(),
+});
+
+// Reward Token Added (registry)
+export const syRewardTokenAdded = pgTable('sy_reward_token_added', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  reward_token: text('reward_token').notNull(),
+  sy: text('sy').notNull(),
+  token_index: bigint('token_index', { mode: 'number' }).notNull(),
+  event_timestamp: bigint('event_timestamp', { mode: 'number' }).notNull(),
+});
+
+// ============================================================
+// PHASE 4: SY MONITORING VIEWS (4 views)
+// ============================================================
+
+// User Reward History View
+export const userRewardHistory = pgView('user_reward_history', {
+  user: text('user'),
+  sy: text('sy'),
+  reward_token: text('reward_token'),
+  total_claimed: numeric('total_claimed', { precision: 78, scale: 0 }),
+  claim_count: bigint('claim_count', { mode: 'number' }),
+  last_claim_timestamp: timestamp('last_claim_timestamp'),
+}).existing();
+
+// SY Current Pause State View
+export const syCurrentPauseState = pgView('sy_current_pause_state', {
+  sy: text('sy'),
+  is_paused: boolean('is_paused'),
+  last_updated_at: timestamp('last_updated_at'),
+  last_updated_by: text('last_updated_by'),
+}).existing();
+
+// Negative Yield Alerts View
+export const negativeYieldAlerts = pgView('negative_yield_alerts', {
+  sy: text('sy'),
+  underlying: text('underlying'),
+  event_count: bigint('event_count', { mode: 'number' }),
+  max_drop_bps: numeric('max_drop_bps', { precision: 78, scale: 0 }),
+  last_detected_at: timestamp('last_detected_at'),
+}).existing();
+
+// SY Reward APY View
+export const syRewardApy = pgView('sy_reward_apy', {
+  sy: text('sy'),
+  reward_token: text('reward_token'),
+  rewards_last_7_days: numeric('rewards_last_7_days', { precision: 78, scale: 0 }),
+  avg_total_supply: numeric('avg_total_supply', { precision: 78, scale: 0 }),
+  update_count: bigint('update_count', { mode: 'number' }),
+}).existing();

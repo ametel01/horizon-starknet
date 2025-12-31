@@ -611,10 +611,80 @@ export function useSyPauseState(syAddress: string | undefined) {
 
 ### P4: Indexer Updates (Phase 4)
 
-- [ ] Index `NegativeYieldDetected` events for monitoring
-- [ ] Index `Paused`/`Unpaused` events for pause state tracking
-- [ ] Index `RewardsClaimed` events for reward history
-- [ ] Index `RewardIndexUpdated` events for APY calculation
+**Implementation Plan:** See `packages/indexer/P4_INDEXER_IMPLEMENTATION_PLAN.md`
+
+#### New Database Tables
+
+| Table | Event Source | Purpose |
+|-------|--------------|---------|
+| `sy_negative_yield_detected` | SYComponent | Monitor assets with negative yield |
+| `sy_pause_state` | PausableComponent | Track pause/unpause history |
+| `sy_rewards_claimed` | RewardManagerComponent | User reward claim history |
+| `sy_reward_index_updated` | RewardManagerComponent | APY calculation data |
+| `sy_reward_token_added` | RewardManagerComponent | Reward token registry |
+
+#### New Views for Frontend
+
+| View | Purpose |
+|------|---------|
+| `user_reward_history` | Aggregated reward claims per user |
+| `sy_current_pause_state` | Latest pause state per SY |
+| `negative_yield_alerts` | Aggregated negative yield events |
+| `sy_reward_apy` | Rolling 7-day reward APY |
+
+#### Event Structures (from contracts)
+
+**NegativeYieldDetected** (`sy_component.cairo:143-158`):
+```typescript
+{
+  sy: ContractAddress,           // key
+  underlying: ContractAddress,   // key
+  watermark_rate: u256,          // data
+  current_rate: u256,            // data
+  rate_drop_bps: u256,           // data
+  timestamp: u64,                // data
+}
+```
+
+**Paused/Unpaused** (OpenZeppelin PausableComponent):
+```typescript
+{
+  account: ContractAddress,      // data - who triggered
+}
+```
+
+**RewardsClaimed** (`reward_manager_component.cairo:85-94`):
+```typescript
+{
+  user: ContractAddress,         // key
+  reward_token: ContractAddress, // key
+  amount: u256,                  // data
+  timestamp: u64,                // data
+}
+```
+
+**RewardIndexUpdated** (`reward_manager_component.cairo:96-106`):
+```typescript
+{
+  reward_token: ContractAddress, // key
+  old_index: u256,               // data
+  new_index: u256,               // data
+  rewards_added: u256,           // data
+  total_supply: u256,            // data
+  timestamp: u64,                // data
+}
+```
+
+#### Checklist
+
+- [ ] Add 5 new tables to indexer schema
+- [ ] Add 4 new views for aggregations
+- [ ] Add event selectors to constants
+- [ ] Add Zod validation schemas
+- [ ] Update `sy.indexer.ts` with new handlers
+- [ ] Create frontend API routes (`/api/sy/[address]/pause-state`, etc.)
+- [ ] Create React Query hooks (`useRewardHistory`, `useRewardApy`, etc.)
+- [ ] Test with devnet and verify data flow
 
 ---
 

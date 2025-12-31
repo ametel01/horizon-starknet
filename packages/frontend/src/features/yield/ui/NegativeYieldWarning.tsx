@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 import { Badge } from '@shared/ui/badge';
 import { Skeleton } from '@shared/ui/Skeleton';
 
+import { useNegativeYieldAlerts } from '../model/useNegativeYieldAlerts';
 import { useSyWatermark } from '../model/useSyWatermark';
 
 interface NegativeYieldWarningProps {
@@ -19,6 +20,12 @@ interface NegativeYieldWarningProps {
    * - 'badge': Compact badge for market cards
    */
   variant?: 'banner' | 'badge';
+  /**
+   * Use indexed data from API instead of contract RPC call.
+   * Faster but shows historical max drop instead of current drop.
+   * Default: false (use contract call for real-time accuracy)
+   */
+  useIndexed?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -47,8 +54,11 @@ function formatBpsAsPercent(bps: number): string {
  *
  * @example
  * ```tsx
- * // In a form (full banner)
+ * // In a form (full banner, real-time from contract)
  * <NegativeYieldWarning syAddress={syAddress} variant="banner" />
+ *
+ * // Using indexed data (faster, for market lists)
+ * <NegativeYieldWarning syAddress={syAddress} variant="badge" useIndexed />
  *
  * // In a market card (compact badge)
  * <NegativeYieldWarning syAddress={syAddress} variant="badge" />
@@ -57,9 +67,24 @@ function formatBpsAsPercent(bps: number): string {
 export function NegativeYieldWarning({
   syAddress,
   variant = 'banner',
+  useIndexed = false,
   className,
 }: NegativeYieldWarningProps): ReactNode {
-  const { data: watermarkInfo, isLoading } = useSyWatermark(syAddress);
+  // Use either contract call or indexed API based on prop
+  const contractQuery = useSyWatermark(useIndexed ? undefined : syAddress);
+  const indexedQuery = useNegativeYieldAlerts(useIndexed ? syAddress : undefined);
+
+  const isLoading = useIndexed ? indexedQuery.isLoading : contractQuery.isLoading;
+
+  // Determine if there's negative yield and the drop amount
+  const hasNegativeYield = useIndexed
+    ? (indexedQuery.data?.summary?.eventCount ?? 0) > 0
+    : (contractQuery.data?.hasNegativeYield ?? false);
+
+  // For indexed data, use max historical drop; for contract, use current drop
+  const rateDropBps = useIndexed
+    ? Number(indexedQuery.data?.summary?.maxDropBps ?? '0')
+    : (contractQuery.data?.rateDropBps ?? 0);
 
   // Show skeleton only for badge variant while loading
   if (isLoading && variant === 'badge') {
@@ -72,11 +97,11 @@ export function NegativeYieldWarning({
   }
 
   // Don't render if no negative yield or data not available
-  if (!watermarkInfo?.hasNegativeYield) {
+  if (!hasNegativeYield) {
     return null;
   }
 
-  const dropPercent = formatBpsAsPercent(watermarkInfo.rateDropBps);
+  const dropPercent = formatBpsAsPercent(rateDropBps);
 
   // Compact badge variant for market cards
   if (variant === 'badge') {

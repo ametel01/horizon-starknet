@@ -7,6 +7,7 @@ import { cn } from '@shared/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 
 import { useIsSyPaused, useSyPauseState } from '../model/useSyPauseState';
+import { useIsSyPausedIndexed, useSyPauseStateIndexed } from '../model/useSyPauseStateIndexed';
 
 interface PausedWarningBannerProps {
   /** SY contract address to check pause state */
@@ -17,6 +18,12 @@ interface PausedWarningBannerProps {
    * - 'withdraw': Shown in unwrap/redeem forms (redemptions still allowed)
    */
   context: 'deposit' | 'withdraw';
+  /**
+   * Use indexed data from API instead of contract RPC call.
+   * Faster but may have slight delay in reflecting state changes.
+   * Default: false (use contract call for real-time accuracy)
+   */
+  useIndexed?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -35,8 +42,11 @@ interface PausedWarningBannerProps {
  *
  * @example
  * ```tsx
- * // In deposit/wrap form
+ * // In deposit/wrap form (real-time from contract)
  * <PausedWarningBanner syAddress={syAddress} context="deposit" />
+ *
+ * // Using indexed data (faster, for market lists)
+ * <PausedWarningBanner syAddress={syAddress} context="deposit" useIndexed />
  *
  * // In redeem/unwrap form
  * <PausedWarningBanner syAddress={syAddress} context="withdraw" />
@@ -45,10 +55,17 @@ interface PausedWarningBannerProps {
 export function PausedWarningBanner({
   syAddress,
   context,
+  useIndexed = false,
   className,
 }: PausedWarningBannerProps): ReactNode {
-  const { isLoading } = useSyPauseState(syAddress);
-  const isPaused = useIsSyPaused(syAddress);
+  // Use either contract call or indexed API based on prop
+  const contractQuery = useSyPauseState(useIndexed ? undefined : syAddress);
+  const indexedQuery = useSyPauseStateIndexed(useIndexed ? syAddress : undefined);
+
+  const isLoading = useIndexed ? indexedQuery.isLoading : contractQuery.isLoading;
+  const isPausedContract = useIsSyPaused(useIndexed ? undefined : syAddress);
+  const isPausedIndexed = useIsSyPausedIndexed(useIndexed ? syAddress : undefined);
+  const isPaused = useIndexed ? isPausedIndexed : isPausedContract;
 
   // Don't render while loading or if not paused
   if (isLoading || !isPaused) {
