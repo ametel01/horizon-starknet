@@ -44,6 +44,7 @@ import { TxStatus } from '@widgets/display/TxStatus';
 import {
   BeatImpliedScore,
   LpApyBreakdown,
+  PortfolioRewardsCard,
   PositionPnlTimeline,
   YtCashflowChart,
 } from '@widgets/portfolio';
@@ -774,6 +775,11 @@ function PortfolioContent(): ReactNode {
     });
   }, [lpPositions]);
 
+  // Collect SY addresses from positions for external rewards lookup
+  const syAddresses = useMemo(() => {
+    return markets.map((m) => m.syAddress);
+  }, [markets]);
+
   // Simple mode renders SimplePortfolio
   if (isSimple) {
     return <SimplePortfolio markets={markets} />;
@@ -1008,6 +1014,8 @@ function PortfolioContent(): ReactNode {
           <YieldEarnedCard />
           <YieldByPosition />
         </div>
+        {/* External rewards from SYWithRewards contracts */}
+        <PortfolioRewardsCard syAddresses={syAddresses} />
         <YtCashflowChart />
         <YieldHistory limit={10} />
       </section>

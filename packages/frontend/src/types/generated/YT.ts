@@ -304,6 +304,70 @@ export const YT_ABI = [
       },
       {
         type: 'function',
+        name: 'mint_py_multi',
+        inputs: [
+          {
+            name: 'receivers',
+            type: 'core::array::Array::<core::starknet::contract_address::ContractAddress>',
+          },
+          {
+            name: 'amounts',
+            type: 'core::array::Array::<core::integer::u256>',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::array::Array::<core::integer::u256>, core::array::Array::<core::integer::u256>)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'redeem_py_multi',
+        inputs: [
+          {
+            name: 'receivers',
+            type: 'core::array::Array::<core::starknet::contract_address::ContractAddress>',
+          },
+          {
+            name: 'amounts',
+            type: 'core::array::Array::<core::integer::u256>',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Array::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'redeem_py_with_interest',
+        inputs: [
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'amount_py',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'redeem_interest',
+            type: 'core::bool',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'py_index_current',
         inputs: [],
         outputs: [
@@ -400,6 +464,17 @@ export const YT_ABI = [
         ],
         state_mutability: 'view',
       },
+      {
+        type: 'function',
+        name: 'interest_fee_rate',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
     ],
   },
   {
@@ -434,6 +509,18 @@ export const YT_ABI = [
             type: 'core::integer::u256',
           },
         ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'set_interest_fee_rate',
+        inputs: [
+          {
+            name: 'rate',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
         state_mutability: 'external',
       },
     ],
@@ -1264,6 +1351,149 @@ export const YT_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::tokens::yt::YT::InterestFeeRateSet',
+    kind: 'struct',
+    members: [
+      {
+        name: 'yt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'old_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::tokens::yt::YT::MintPYMulti',
+    kind: 'struct',
+    members: [
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'total_sy_deposited',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_py_minted',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'receiver_count',
+        type: 'core::integer::u32',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::tokens::yt::YT::RedeemPYMulti',
+    kind: 'struct',
+    members: [
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'total_py_redeemed',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_sy_returned',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'receiver_count',
+        type: 'core::integer::u32',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::tokens::yt::YT::RedeemPYWithInterest',
+    kind: 'struct',
+    members: [
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'key',
+      },
+      {
+        name: 'amount_py_redeemed',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'amount_sy_from_redeem',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'amount_interest_claimed',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::tokens::yt::YT::Event',
     kind: 'enum',
     variants: [
@@ -1325,6 +1555,26 @@ export const YT_ABI = [
       {
         name: 'TreasuryInterestRedeemed',
         type: 'horizon::tokens::yt::YT::TreasuryInterestRedeemed',
+        kind: 'nested',
+      },
+      {
+        name: 'InterestFeeRateSet',
+        type: 'horizon::tokens::yt::YT::InterestFeeRateSet',
+        kind: 'nested',
+      },
+      {
+        name: 'MintPYMulti',
+        type: 'horizon::tokens::yt::YT::MintPYMulti',
+        kind: 'nested',
+      },
+      {
+        name: 'RedeemPYMulti',
+        type: 'horizon::tokens::yt::YT::RedeemPYMulti',
+        kind: 'nested',
+      },
+      {
+        name: 'RedeemPYWithInterest',
+        type: 'horizon::tokens::yt::YT::RedeemPYWithInterest',
         kind: 'nested',
       },
     ],

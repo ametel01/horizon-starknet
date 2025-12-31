@@ -602,12 +602,12 @@ export function useSyPauseState(syAddress: string | undefined) {
 
 ### P3: UI Features (Future)
 
-- [ ] Rewards claiming UI component
-- [ ] Accrued rewards display in portfolio
-- [ ] Asset type badge (Token vs Liquidity) in market cards
-- [ ] "Min received" display in wrap/unwrap forms
-- [ ] Paused state warning banner **(Phase 4)**
-- [ ] Negative yield warning indicator **(Phase 4)**
+- [x] Rewards claiming UI component
+- [x] Accrued rewards display in portfolio
+- [x] Asset type badge (Token vs Liquidity) in market cards
+- [x] "Min received" display in wrap/unwrap forms
+- [x] Paused state warning banner **(Phase 4)**
+- [x] Negative yield warning indicator **(Phase 4)**
 
 ### P4: Indexer Updates (Phase 4)
 

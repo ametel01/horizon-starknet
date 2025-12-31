@@ -5,10 +5,17 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import type { MarketData } from '@entities/market';
 import { TokenInput, TokenOutput } from '@features/mint';
 import { useUnwrapSy } from '@features/redeem';
+import { useTransactionSettings } from '@features/tx-settings';
 import { useAccount } from '@features/wallet';
-import { useUnderlyingAddress } from '@features/yield';
+import {
+  calculateMinOutputWithSlippage,
+  NegativeYieldWarning,
+  PausedWarningBanner,
+  useSyRedeemPreview,
+  useUnderlyingAddress,
+} from '@features/yield';
 import { useEstimateFee } from '@shared/hooks';
-import { toWad } from '@shared/math/wad';
+import { formatWad, toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import {
   FormActions,
@@ -31,6 +38,7 @@ interface UnwrapSyFormProps {
 
 export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNode {
   const { isConnected } = useAccount();
+  const { slippageBps, slippagePercent } = useTransactionSettings();
   const [amount, setAmount] = useState('');
 
   // Fetch underlying address from SY contract
@@ -53,17 +61,37 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
     syAddress: market.syAddress,
   });
 
-  // Calculate output amount (1:1 ratio for SY)
-  const outputAmount = useMemo(() => {
+  // Parse input amount to WAD
+  const inputAmountWad = useMemo(() => {
     if (!amount || amount === '0') {
-      return BigInt(0);
+      return 0n;
     }
     try {
       return toWad(amount);
     } catch {
-      return BigInt(0);
+      return 0n;
     }
   }, [amount]);
+
+  // Preview redeem output from SY contract
+  const { data: redeemPreview, isLoading: previewLoading } = useSyRedeemPreview(
+    market.syAddress,
+    inputAmountWad > 0n ? inputAmountWad : undefined
+  );
+
+  // Calculate output amount (from preview or fallback to 1:1)
+  const outputAmount = useMemo(() => {
+    if (redeemPreview?.expectedOutput !== undefined && redeemPreview.expectedOutput > 0n) {
+      return redeemPreview.expectedOutput;
+    }
+    // Fallback to 1:1 ratio when preview not available
+    return inputAmountWad;
+  }, [redeemPreview?.expectedOutput, inputAmountWad]);
+
+  // Calculate minimum received with slippage protection
+  const minReceived = useMemo(() => {
+    return calculateMinOutputWithSlippage(outputAmount, slippageBps);
+  }, [outputAmount, slippageBps]);
 
   // Validate input
   const validationError = useMemo(() => {
@@ -71,29 +99,22 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
       return null;
     }
 
-    try {
-      const amountWad = toWad(amount);
-
-      if (syBalance !== undefined && amountWad > syBalance) {
-        return 'Insufficient balance';
-      }
-    } catch {
+    if (inputAmountWad === 0n) {
       return 'Invalid amount';
     }
 
+    if (syBalance !== undefined && inputAmountWad > syBalance) {
+      return 'Insufficient balance';
+    }
+
     return null;
-  }, [amount, syBalance]);
+  }, [amount, inputAmountWad, syBalance]);
 
   // Build calls for gas estimation
   const unwrapCalls = useMemo(() => {
-    if (!amount || amount === '0' || validationError) return null;
-    try {
-      const amountWad = toWad(amount);
-      return buildUnwrapCalls(amountWad);
-    } catch {
-      return null;
-    }
-  }, [amount, validationError, buildUnwrapCalls]);
+    if (inputAmountWad === 0n || validationError) return null;
+    return buildUnwrapCalls(inputAmountWad);
+  }, [inputAmountWad, validationError, buildUnwrapCalls]);
 
   // Estimate gas fee
   const {
@@ -168,6 +189,12 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
         action={<ExpiryBadge expiryTimestamp={market.expiry} />}
       />
 
+      {/* Paused Info */}
+      <PausedWarningBanner syAddress={market.syAddress} context="withdraw" />
+
+      {/* Negative Yield Warning */}
+      <NegativeYieldWarning syAddress={market.syAddress} variant="banner" />
+
       {/* Input Section */}
       <FormInputSection>
         <TokenInput
@@ -211,7 +238,21 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
       {/* Info Section */}
       <FormInfoSection>
         <FormRow label="Exchange Rate" value="1:1" />
-        {outputAmount > BigInt(0) && (
+        {outputAmount > 0n && (
+          <FormRow
+            label={`Min Received (${slippagePercent} slippage)`}
+            value={
+              previewLoading ? (
+                <span className="text-muted-foreground">Loading...</span>
+              ) : (
+                <span className="font-mono">
+                  {formatWad(minReceived, 4)} {underlyingSymbol}
+                </span>
+              )
+            }
+          />
+        )}
+        {outputAmount > 0n && (
           <FormRow
             label="Estimated Gas"
             value={

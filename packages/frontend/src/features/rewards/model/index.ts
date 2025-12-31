@@ -7,3 +7,4 @@ export {
   type AccruedReward,
 } from './useAccruedRewards';
 export { useClaimRewards, useClaimAllRewards } from './useClaimRewards';
+export { usePortfolioRewards, type SyRewards, type PortfolioRewards } from './usePortfolioRewards';

@@ -9,6 +9,7 @@ export { LpApyBreakdown, LpApyCompact } from './LpApyBreakdown';
 export { LpEntryExitTable, LpRecentActivity } from './LpEntryExitTable';
 export { LpPnlCard, LpPnlInline, LpPnlCardSkeleton } from './LpPnlCard';
 export { PnlBreakdown, PnlSummaryCompact } from './PnlBreakdown';
+export { PortfolioRewardsCard, PortfolioRewardsBento } from './PortfolioRewardsCard';
 export { PortfolioValueChart, PortfolioSparkline } from './PortfolioValueChart';
 export { PositionPnlTimeline } from './PositionPnlTimeline';
 export { PositionValueHistory, PositionValueInline } from './PositionValueHistory';

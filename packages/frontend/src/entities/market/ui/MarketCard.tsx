@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { memo, type ReactNode, useMemo } from 'react';
 
 import { TokenAmount } from '@entities/token';
-import { useApyBreakdown, ApyBreakdown } from '@features/yield';
+import { ApyBreakdown, NegativeYieldWarning, useApyBreakdown } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Badge } from '@shared/ui/badge';
@@ -16,6 +16,8 @@ import { RateSparkline } from '@widgets/analytics/RateSparkline';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 
 import type { MarketData } from '../model/types';
+
+import { AssetTypeBadge } from './AssetTypeBadge';
 
 interface MarketCardProps {
   market: MarketData;
@@ -133,6 +135,8 @@ export const MarketCard = memo(function MarketCard({
                       <span>Top</span>
                     </Badge>
                   )}
+                  <AssetTypeBadge syAddress={market.syAddress} />
+                  <NegativeYieldWarning syAddress={market.syAddress} variant="badge" />
                   <ExpiryBadge expiryTimestamp={market.expiry} />
                 </div>
                 <p className="text-muted-foreground mt-0.5 truncate text-xs">{tokenName}</p>

@@ -231,6 +231,10 @@ export const SY_ABI = [
             type: 'core::starknet::contract_address::ContractAddress',
           },
           {
+            name: 'token_in',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
             name: 'amount_shares_to_deposit',
             type: 'core::integer::u256',
           },
@@ -257,6 +261,10 @@ export const SY_ABI = [
           {
             name: 'amount_sy_to_redeem',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'token_out',
+            type: 'core::starknet::contract_address::ContractAddress',
           },
           {
             name: 'min_token_out',
