@@ -1,9 +1,21 @@
 # SY Frontend Impact Analysis
 
 > **Date:** 2025-12-31
-> **Status:** Updated for Phase 4 Completion (ALL PHASES COMPLETE)
+> **Status:** P0 COMPLETE | P1-P4 Optional features pending
 > **Scope:** Frontend changes required after Phase 1, 2, 3 & 4 SY Contract Updates
 > **Related:** `/contracts/SY_GAP_DEVELOPMENT_PLAN.md`
+
+---
+
+## Completion Summary
+
+| Priority | Category | Status | Notes |
+|----------|----------|--------|-------|
+| **P0** | Breaking Changes | ✅ **COMPLETE** | All slippage protection and error handling implemented |
+| **P1** | SYWithRewards Support | ✅ **COMPLETE** | ABI, contract helper, and hooks implemented |
+| **P2** | Enhanced Features | ⏳ Pending | Optional preview/validation hooks |
+| **P3** | UI Features | ⏳ Pending | Rewards UI, warnings, badges |
+| **P4** | Indexer Updates | ⏳ Pending | Event indexing for monitoring |
 
 ---
 
@@ -16,14 +28,14 @@
 - Pausable transfers (deposits/transfers blocked, redemptions always allowed)
 - Negative yield detection with watermark tracking
 
-**Frontend Status:** The TypeScript ABIs are regenerated and correct. The frontend code is **out of sync** with the contract ABIs.
+**Frontend Status:** The TypeScript ABIs are regenerated and correct. The frontend code is **in sync** with contract ABIs for P0 critical items.
 
 ### Impact Matrix
 
 | Contract Change | Frontend Impact | Action Required | Status |
 |-----------------|-----------------|-----------------|--------|
-| `deposit()` signature (3 params) | **BREAKING** | **REQUIRED** - add `min_shares_out` | ❌ Needs Update |
-| `redeem()` signature (4 params) | **BREAKING** | **REQUIRED** - add `min_token_out`, `burn_from_internal_balance` | ❌ Needs Update |
+| `deposit()` signature (3 params) | **BREAKING** | **REQUIRED** - add `min_shares_out` | ✅ Done |
+| `redeem()` signature (4 params) | **BREAKING** | **REQUIRED** - add `min_token_out`, `burn_from_internal_balance` | ✅ Done |
 | `preview_deposit()` added | New capability | **Recommended** for accurate slippage | ⏳ Optional |
 | `preview_redeem()` added | New capability | **Recommended** for accurate slippage | ⏳ Optional |
 | `get_tokens_in()` added | New capability | Optional enhancement | ⏳ Optional |
@@ -31,12 +43,12 @@
 | `is_valid_token_in(token)` added | New capability | **Recommended** for validation | ⏳ Optional |
 | `is_valid_token_out(token)` added | New capability | **Recommended** for validation | ⏳ Optional |
 | `asset_info()` added | New capability | Optional for UI | ⏳ Optional |
-| `SYWithRewards` contract | **NEW** | **REQUIRED** - new contract helpers | ❌ Needs Implementation |
+| `SYWithRewards` contract | **NEW** | **REQUIRED** - new contract helpers | ✅ **COMPLETE** |
 | Factory `deploy_sy_with_rewards()` | **NEW** | Optional (admin only) | ⏳ Optional |
 | `get_exchange_rate_watermark()` | **NEW** (Phase 4) | **Recommended** for monitoring | ⏳ Optional |
 | `NegativeYieldDetected` event | **NEW** (Phase 4) | **Recommended** for indexer | ⏳ Optional |
-| `is_paused()` + Pausable errors | **NEW** (Phase 4) | **REQUIRED** - error handling | ❌ Needs Update |
-| Pausable transfers | Enhanced security | Transparent (see error handling) | ⏳ Partial |
+| `is_paused()` + Pausable errors | **NEW** (Phase 4) | **REQUIRED** - error handling | ✅ Done |
+| Pausable transfers | Enhanced security | Transparent (see error handling) | ✅ Done |
 
 ---
 
@@ -133,204 +145,43 @@ is_valid_sy(sy: ContractAddress): bool
 
 ## Breaking Changes: Required Updates
 
-### 1. `transaction-builder.ts` - `buildDepositToSyCall()`
+> ✅ **All P0 Breaking Changes have been implemented** (as of 2025-12-31)
 
-**Location:** `src/shared/starknet/transaction-builder.ts:86-93`
+### 1. `transaction-builder.ts` - `buildDepositToSyCall()` ✅
 
-**Current (BROKEN):**
-```typescript
-export function buildDepositToSyCall(syAddress: string, receiver: string, amount: bigint): Call {
-  const u256Amount = uint256.bnToUint256(amount);
-  return {
-    contractAddress: syAddress,
-    entrypoint: 'deposit',
-    calldata: [receiver, u256Amount.low, u256Amount.high],  // ❌ Missing min_shares_out
-  };
-}
-```
+**Location:** `src/shared/starknet/transaction-builder.ts:86-105`
 
-**Required:**
-```typescript
-export function buildDepositToSyCall(
-  syAddress: string,
-  receiver: string,
-  amount: bigint,
-  minSharesOut: bigint  // NEW: slippage protection
-): Call {
-  const u256Amount = uint256.bnToUint256(amount);
-  const u256MinOut = uint256.bnToUint256(minSharesOut);
-  return {
-    contractAddress: syAddress,
-    entrypoint: 'deposit',
-    calldata: [
-      receiver,
-      u256Amount.low,
-      u256Amount.high,
-      u256MinOut.low,
-      u256MinOut.high,
-    ],
-  };
-}
-```
+**Status:** ✅ IMPLEMENTED - Now accepts `minSharesOut` parameter for slippage protection.
 
-### 2. `transaction-builder.ts` - `buildUnwrapSyCall()`
+### 2. `transaction-builder.ts` - `buildUnwrapSyCall()` ✅
 
-**Location:** `src/shared/starknet/transaction-builder.ts:189-196`
+**Location:** `src/shared/starknet/transaction-builder.ts:201-222`
 
-**Current (BROKEN):**
-```typescript
-export function buildUnwrapSyCall(syAddress: string, receiver: string, amount: bigint): Call {
-  const u256Amount = uint256.bnToUint256(amount);
-  return {
-    contractAddress: syAddress,
-    entrypoint: 'redeem',
-    calldata: [receiver, u256Amount.low, u256Amount.high],  // ❌ Missing min_token_out, burn_from_internal_balance
-  };
-}
-```
+**Status:** ✅ IMPLEMENTED - Now accepts `minTokenOut` and `burnFromInternalBalance` parameters.
 
-**Required:**
-```typescript
-export function buildUnwrapSyCall(
-  syAddress: string,
-  receiver: string,
-  amount: bigint,
-  minTokenOut: bigint,              // NEW: slippage protection
-  burnFromInternalBalance = false   // NEW: Router pattern support
-): Call {
-  const u256Amount = uint256.bnToUint256(amount);
-  const u256MinOut = uint256.bnToUint256(minTokenOut);
-  return {
-    contractAddress: syAddress,
-    entrypoint: 'redeem',
-    calldata: [
-      receiver,
-      u256Amount.low,
-      u256Amount.high,
-      u256MinOut.low,
-      u256MinOut.high,
-      burnFromInternalBalance ? '0x1' : '0x0',  // bool as felt
-    ],
-  };
-}
-```
+### 3. `useWrapToSy.ts` - Add Slippage ✅
 
-### 3. `useWrapToSy.ts` - Add Slippage
+**Location:** `src/features/earn/model/useWrapToSy.ts`
 
-**Location:** `src/features/earn/model/useWrapToSy.ts:91-102`
+**Status:** ✅ IMPLEMENTED - Uses `useTransactionSettings` for slippage and `calculateMinOutput` for min shares.
 
-**Current (BROKEN):**
-```typescript
-const u256Amount = uint256.bnToUint256(amountWad);
-calls.push({
-  contractAddress: syAddress,
-  entrypoint: 'deposit',
-  calldata: [
-    userAddress,
-    u256Amount.low,
-    u256Amount.high,  // ❌ Missing min_shares_out
-  ],
-});
-```
+### 4. `useUnwrapSy.ts` - Add Slippage + Internal Balance ✅
 
-**Required:**
-```typescript
-import { useTransactionSettings } from '@features/tx-settings';
-import { calculateMinOutput } from '@shared/starknet/transaction-builder';
+**Location:** `src/features/redeem/model/useUnwrapSy.ts`
 
-// In hook:
-const { slippageBps } = useTransactionSettings();
+**Status:** ✅ IMPLEMENTED - Uses `useTransactionSettings` for slippage with `burn_from_internal_balance = false`.
 
-// In buildWrapCalls:
-const minSharesOut = calculateMinOutput(amountWad, slippageBps);
-const u256Amount = uint256.bnToUint256(amountWad);
-const u256MinOut = uint256.bnToUint256(minSharesOut);
-calls.push({
-  contractAddress: syAddress,
-  entrypoint: 'deposit',
-  calldata: [
-    userAddress,
-    u256Amount.low,
-    u256Amount.high,
-    u256MinOut.low,
-    u256MinOut.high,
-  ],
-});
-```
+### 5. `buildDepositAndEarnCalls()` - Fix SY Deposit ✅
 
-### 4. `useUnwrapSy.ts` - Add Slippage + Internal Balance
+**Location:** `src/shared/starknet/transaction-builder.ts:233-268`
 
-**Location:** `src/features/redeem/model/useUnwrapSy.ts:63-73`
+**Status:** ✅ IMPLEMENTED - Passes slippage-protected min output to `buildDepositToSyCall`.
 
-**Current (BROKEN):**
-```typescript
-const u256Amount = uint256.bnToUint256(amountWad);
-calls.push({
-  contractAddress: syAddress,
-  entrypoint: 'redeem',
-  calldata: [
-    userAddress,
-    u256Amount.low,
-    u256Amount.high,  // ❌ Missing min_token_out, burn_from_internal_balance
-  ],
-});
-```
+### 6. `buildWithdrawCalls()` - Fix SY Redeem ✅
 
-**Required:**
-```typescript
-import { useTransactionSettings } from '@features/tx-settings';
-import { calculateMinOutput } from '@shared/starknet/transaction-builder';
+**Location:** `src/shared/starknet/transaction-builder.ts:284-335`
 
-// In hook:
-const { slippageBps } = useTransactionSettings();
-
-// In buildUnwrapCalls:
-const minTokenOut = calculateMinOutput(amountWad, slippageBps);
-const u256Amount = uint256.bnToUint256(amountWad);
-const u256MinOut = uint256.bnToUint256(minTokenOut);
-calls.push({
-  contractAddress: syAddress,
-  entrypoint: 'redeem',
-  calldata: [
-    userAddress,
-    u256Amount.low,
-    u256Amount.high,
-    u256MinOut.low,
-    u256MinOut.high,
-    '0x0',  // burn_from_internal_balance = false (direct user call)
-  ],
-});
-```
-
-### 5. `buildDepositAndEarnCalls()` - Fix SY Deposit
-
-**Location:** `src/shared/starknet/transaction-builder.ts:228-229`
-
-**Current (BROKEN):**
-```typescript
-calls.push(buildDepositToSyCall(syAddress, userAddress, amount));
-```
-
-**Required:**
-```typescript
-const minSyOut = calculateMinOutput(amount, slippageBps);
-calls.push(buildDepositToSyCall(syAddress, userAddress, amount, minSyOut));
-```
-
-### 6. `buildWithdrawCalls()` - Fix SY Redeem
-
-**Location:** `src/shared/starknet/transaction-builder.ts:303-304`
-
-**Current (BROKEN):**
-```typescript
-calls.push(buildUnwrapSyCall(syAddress, userAddress, minSyOut));
-```
-
-**Required:**
-```typescript
-const minUnderlyingOut = calculateMinOutput(minSyOut, slippageBps);
-calls.push(buildUnwrapSyCall(syAddress, userAddress, minSyOut, minUnderlyingOut, false));
-```
+**Status:** ✅ IMPLEMENTED - Calculates `minUnderlyingOut` with slippage and passes to `buildUnwrapSyCall`.
 
 ---
 
@@ -670,33 +521,16 @@ export function useSyWatermark(syAddress: string | undefined) {
 
 ## Error Handling Updates
 
-### `src/shared/lib/errors.ts` - Add SY Errors
+> ✅ **All error handling has been implemented** (as of 2025-12-31)
 
-```typescript
-// Add to CONTRACT_ERROR_MESSAGES:
-'HZN: insufficient shares out': 'Slippage exceeded on wrap. Try increasing slippage tolerance.',
-'HZN: insufficient token out': 'Slippage exceeded on unwrap. Try increasing slippage tolerance.',
-'Pausable: paused': 'This token is temporarily paused. Withdrawals are still available.',
+### `src/shared/lib/errors.ts` - SY Errors ✅
 
-// Add to CONTRACT_ERROR_SIMPLE:
-'HZN: insufficient shares out': 'Price changed too much during wrap. Please try again.',
-'HZN: insufficient token out': 'Price changed too much during unwrap. Please try again.',
-'Pausable: paused': 'This token is temporarily paused.',
+**Status:** ✅ IMPLEMENTED - All SY slippage and pausable errors are handled:
 
-// Add to CONTRACT_ERROR_HELP:
-'HZN: insufficient shares out': {
-  simple: 'The exchange rate changed while wrapping. Try again.',
-  advanced: 'Increase slippage tolerance in settings or try a smaller amount.',
-},
-'HZN: insufficient token out': {
-  simple: 'The exchange rate changed while unwrapping. Try again.',
-  advanced: 'Increase slippage tolerance in settings or try a smaller amount.',
-},
-'Pausable: paused': {
-  simple: 'This token is temporarily paused for safety. You can still withdraw.',
-  advanced: 'Deposits and transfers are blocked. Redemptions remain available.',
-},
-```
+- `HZN: insufficient shares out` - Slippage on wrap (lines 29, 107, 473-477)
+- `HZN: insufficient token out` - Slippage on unwrap (lines 30, 108, 478-482)
+- `Pausable: paused` - Pause state (lines 33, 109, 188-195, 483-486)
+- Helper functions: `isSlippageError()`, `isPauseError()` (lines 266-282)
 
 ### Pause State Checking (Optional but Recommended)
 
@@ -737,20 +571,26 @@ export function useSyPauseState(syAddress: string | undefined) {
 
 ### P0: Breaking Changes (Required for Contract Compatibility)
 
-- [ ] Update `buildDepositToSyCall()` to accept `minSharesOut` parameter
-- [ ] Update `buildUnwrapSyCall()` to accept `minTokenOut` and `burnFromInternalBalance` parameters
-- [ ] Update `buildDepositAndEarnCalls()` to pass slippage to SY deposit
-- [ ] Update `buildWithdrawCalls()` to pass slippage to SY redeem
-- [ ] Update `useWrapToSy` to use `useTransactionSettings` for slippage
-- [ ] Update `useUnwrapSy` to use `useTransactionSettings` for slippage
-- [ ] Add `Pausable: paused` error handling to `errors.ts` **(Phase 4)**
+- [x] Update `buildDepositToSyCall()` to accept `minSharesOut` parameter
+- [x] Update `buildUnwrapSyCall()` to accept `minTokenOut` and `burnFromInternalBalance` parameters
+- [x] Update `buildDepositAndEarnCalls()` to pass slippage to SY deposit
+- [x] Update `buildWithdrawCalls()` to pass slippage to SY redeem
+- [x] Update `useWrapToSy` to use `useTransactionSettings` for slippage
+- [x] Update `useUnwrapSy` to use `useTransactionSettings` for slippage
+- [x] Add `Pausable: paused` error handling to `errors.ts` **(Phase 4)**
 
 ### P1: SYWithRewards Support
 
-- [ ] Add `getSYWithRewardsContract()` to `contracts.ts`
-- [ ] Export `SYWITHREWARDS_ABI` from generated types (already done)
-- [ ] Create `features/rewards/` module with hooks
-- [ ] Add rewards error messages to `errors.ts`
+- [x] Add `getSYWithRewardsContract()` to `contracts.ts`
+- [x] Export `SYWITHREWARDS_ABI` from generated types
+- [x] Create `features/rewards/` module with hooks
+  - [x] `useRewardTokens` - fetch reward token addresses
+  - [x] `useAccruedRewards` - fetch pending rewards for user
+  - [x] `useHasClaimableRewards` - check if user has claimable rewards
+  - [x] `useTotalAccruedRewards` - sum all accrued rewards
+  - [x] `useClaimRewards` - claim rewards mutation
+  - [x] `useClaimAllRewards` - multicall claim from multiple SY contracts
+- [x] Add rewards error messages to `errors.ts` (added `isRewardError()` helper + 3 error mappings)
 
 ### P2: Enhanced Features
 
