@@ -256,8 +256,17 @@ fn test_full_yield_tokenization_flow() {
 
     let sy_before_redeem = sy.balance_of(alice());
 
+    // Transfer PT and YT to YT contract (pre-transfer pattern)
+    start_cheat_caller_address(pt.contract_address, alice());
+    pt.transfer(yt.contract_address, redeem_amount);
+    stop_cheat_caller_address(pt.contract_address);
+
     start_cheat_caller_address(yt.contract_address, alice());
-    let sy_redeemed = yt.redeem_py(alice(), redeem_amount);
+    yt.transfer(yt.contract_address, redeem_amount);
+    stop_cheat_caller_address(yt.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, alice());
+    let sy_redeemed = yt.redeem_py(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify SY was received
@@ -535,16 +544,17 @@ fn test_partial_redemptions() {
         let pt_before = pt.balance_of(alice());
         let yt_before = yt.balance_of(alice());
 
+        // Transfer PT and YT to YT contract (pre-transfer pattern)
         start_cheat_caller_address(pt.contract_address, alice());
-        pt.approve(yt.contract_address, redeem_portion);
+        pt.transfer(yt.contract_address, redeem_portion);
         stop_cheat_caller_address(pt.contract_address);
 
         start_cheat_caller_address(yt.contract_address, alice());
-        yt.approve(yt.contract_address, redeem_portion);
+        yt.transfer(yt.contract_address, redeem_portion);
         stop_cheat_caller_address(yt.contract_address);
 
         start_cheat_caller_address(yt.contract_address, alice());
-        let sy_out = yt.redeem_py(alice(), redeem_portion);
+        let sy_out = yt.redeem_py(alice());
         stop_cheat_caller_address(yt.contract_address);
 
         assert(sy_out > 0, 'Should receive SY each time');

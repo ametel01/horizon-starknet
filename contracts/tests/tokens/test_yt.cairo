@@ -8,7 +8,7 @@ use snforge_std::{
     start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use super::utils::{
+use crate::utils::{
     CURRENT_TIME, ONE_YEAR, admin, alice, bob, mint_and_deposit_sy, mint_and_mint_py,
     mint_yield_token_to_user, set_yield_index, setup_full, transfer_pt_and_redeem_post_expiry,
     transfer_py_and_redeem, user1, user2, zero_address,

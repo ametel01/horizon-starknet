@@ -11,7 +11,7 @@ use horizon::libraries::math::WAD;
 use snforge_std::{start_cheat_caller_address, stop_cheat_caller_address};
 
 // Import test utilities
-use super::utils::{
+use crate::utils::{
     CURRENT_TIME, ONE_YEAR, admin, mint_and_mint_py, set_yield_index, setup_full_with_expiry,
     treasury, user1,
 };

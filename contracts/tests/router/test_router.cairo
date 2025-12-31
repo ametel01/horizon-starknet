@@ -11,7 +11,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
-use super::utils::DEFAULT_DEADLINE;
+use crate::utils::DEFAULT_DEADLINE;
 
 // Test addresses
 fn user1() -> ContractAddress {

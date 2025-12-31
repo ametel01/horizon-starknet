@@ -14,7 +14,7 @@ use snforge_std::{
 };
 
 // Import test utilities
-use super::utils::{
+use crate::utils::{
     CURRENT_TIME, ONE_MONTH, ONE_YEAR, admin, mint_and_mint_py, set_yield_index,
     setup_full_with_expiry, treasury, user1,
 };

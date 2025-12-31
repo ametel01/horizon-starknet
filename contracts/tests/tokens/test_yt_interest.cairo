@@ -22,7 +22,7 @@ use snforge_std::{
     start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use super::utils::{
+use crate::utils::{
     CURRENT_TIME, ONE_MONTH, alice, bob, mint_and_mint_py, set_yield_index, setup_full,
     setup_full_with_expiry, transfer_py_and_redeem, user1,
 };

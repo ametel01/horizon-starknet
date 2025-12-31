@@ -246,7 +246,7 @@ fn test_zero_sy_redeem() {
 
     // Try to redeem zero
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.redeem(alice(), underlying.contract_address, 0, 0, false); // Should panic
+    sy.redeem(alice(), 0, underlying.contract_address, 0, false); // Should panic
 }
 
 #[test]
@@ -266,7 +266,7 @@ fn test_zero_py_mint() {
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
+#[should_panic(expected: 'HZN: no floating PT/YT')]
 fn test_zero_py_redeem() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -276,8 +276,9 @@ fn test_zero_py_redeem() {
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
+    // No PT/YT transferred = no floating tokens = should panic
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.redeem_py(alice(), 0); // Should panic
+    yt.redeem_py(alice()); // Should panic - no floating PT/YT
 }
 
 #[test]
@@ -339,17 +340,17 @@ fn test_large_amounts() {
     assert(pt_out == large_amount, 'Large PT mint');
     assert(yt_out == large_amount, 'Large YT mint');
 
-    // Redeem
+    // Redeem - transfer PT and YT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, large_amount);
+    pt.transfer(yt.contract_address, large_amount);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.approve(yt.contract_address, large_amount);
+    yt.transfer(yt.contract_address, large_amount);
     stop_cheat_caller_address(yt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let sy_back = yt.redeem_py(alice(), large_amount);
+    let sy_back = yt.redeem_py(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(sy_back > 0, 'Large redemption works');
@@ -498,23 +499,25 @@ fn test_minimum_amounts() {
     let yt = deploy_yt(sy.contract_address, expiry);
     let _pt = IPTDispatcher { contract_address: yt.pt() };
 
-    // Minimum amount: 1 wei
-    let dust_amount: u256 = 1;
+    // Realistic minimum amount: 1000 wei (avoids rounding issues in WAD-based math)
+    // With Pendle-aligned syToAsset math: py = sy * index / WAD
+    // Very small amounts can round to zero after division
+    let min_amount: u256 = 1000;
 
-    mint_yield_token_to_user(underlying, alice(), dust_amount);
+    mint_yield_token_to_user(underlying, alice(), min_amount);
 
     start_cheat_caller_address(underlying.contract_address, alice());
-    underlying.approve(sy.contract_address, dust_amount);
+    underlying.approve(sy.contract_address, min_amount);
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), underlying.contract_address, dust_amount, 0);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, min_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Even 1 wei should work
-    assert(sy_received > 0, 'Dust deposit works');
+    // Deposit should work
+    assert(sy_received > 0, 'Min deposit works');
 
-    // Mint PT + YT from dust (floating SY pattern)
+    // Mint PT + YT from minimum amount (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
     sy.transfer(yt.contract_address, sy_received);
     stop_cheat_caller_address(sy.contract_address);
@@ -524,8 +527,8 @@ fn test_minimum_amounts() {
     stop_cheat_caller_address(yt.contract_address);
 
     // At least some tokens minted
-    assert(pt_out > 0, 'Dust PT mint');
-    assert(yt_out > 0, 'Dust YT mint');
+    assert(pt_out > 0, 'Min PT mint');
+    assert(yt_out > 0, 'Min YT mint');
 }
 
 #[test]

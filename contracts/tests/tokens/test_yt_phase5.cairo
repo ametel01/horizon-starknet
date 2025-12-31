@@ -10,7 +10,7 @@ use snforge_std::{
     stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use super::utils::{
+use crate::utils::{
     alice, bob, mint_and_deposit_sy, mint_and_mint_py, set_yield_index, setup_full,
     transfer_py_and_redeem_multi, transfer_py_and_redeem_with_interest, user1, zero_address,
 };

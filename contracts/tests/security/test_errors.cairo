@@ -27,7 +27,7 @@ use snforge_std::{
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
 
 // Import test utilities
-use super::utils::{
+use crate::utils::{
     CURRENT_TIME, ONE_YEAR, admin, alice, get_pt_class_hash, mint_and_deposit_sy, setup_full,
     setup_sy, treasury,
 };

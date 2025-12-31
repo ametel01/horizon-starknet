@@ -242,12 +242,13 @@ fn test_expiry_pt_only_redemption() {
     let pt_balance = pt.balance_of(alice());
     let sy_before = sy.balance_of(alice());
 
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, pt_balance);
+    pt.transfer(yt.contract_address, pt_balance);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let sy_received = yt.redeem_py_post_expiry(alice(), pt_balance);
+    let sy_received = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify SY received
@@ -289,12 +290,13 @@ fn test_yt_worthless_after_expiry() {
     start_cheat_block_timestamp_global(expiry + 1);
 
     // Alice can redeem PT without needing YT
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, amount);
+    pt.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let alice_sy = yt.redeem_py_post_expiry(alice(), amount);
+    let alice_sy = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(alice_sy > 0, 'Alice redeemed PT');
@@ -390,12 +392,13 @@ fn test_cannot_redeem_post_expiry_before_expiry() {
     assert(!yt.is_expired(), 'Not expired');
 
     // Try to redeem post-expiry function before expiry - should fail
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, amount);
+    pt.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.redeem_py_post_expiry(alice(), amount); // Should panic
+    yt.redeem_py_post_expiry(alice()); // Should panic
 }
 
 #[test]
@@ -585,12 +588,14 @@ fn test_yield_accumulation_until_expiry() {
     start_cheat_block_timestamp_global(expiry + 1);
 
     let pt_balance = pt.balance_of(alice());
+
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, pt_balance);
+    pt.transfer(yt.contract_address, pt_balance);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let final_sy = yt.redeem_py_post_expiry(alice(), pt_balance);
+    let final_sy = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(final_sy > 0, 'Final PT redemption');
@@ -626,28 +631,28 @@ fn test_multiple_users_expiry_redemption() {
     let bob_pt = pt.balance_of(bob());
     let charlie_pt = pt.balance_of(charlie());
 
-    // Alice redeems
+    // Alice redeems - transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, alice_pt);
+    pt.transfer(yt.contract_address, alice_pt);
     stop_cheat_caller_address(pt.contract_address);
     start_cheat_caller_address(yt.contract_address, alice());
-    let alice_sy = yt.redeem_py_post_expiry(alice(), alice_pt);
+    let alice_sy = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Bob redeems
+    // Bob redeems - transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, bob());
-    pt.approve(yt.contract_address, bob_pt);
+    pt.transfer(yt.contract_address, bob_pt);
     stop_cheat_caller_address(pt.contract_address);
     start_cheat_caller_address(yt.contract_address, bob());
-    let bob_sy = yt.redeem_py_post_expiry(bob(), bob_pt);
+    let bob_sy = yt.redeem_py_post_expiry(bob());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Charlie redeems
+    // Charlie redeems - transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, charlie());
-    pt.approve(yt.contract_address, charlie_pt);
+    pt.transfer(yt.contract_address, charlie_pt);
     stop_cheat_caller_address(pt.contract_address);
     start_cheat_caller_address(yt.contract_address, charlie());
-    let charlie_sy = yt.redeem_py_post_expiry(charlie(), charlie_pt);
+    let charlie_sy = yt.redeem_py_post_expiry(charlie());
     stop_cheat_caller_address(yt.contract_address);
 
     // All received SY

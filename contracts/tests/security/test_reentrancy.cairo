@@ -19,7 +19,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
-use super::utils::transfer_py_and_redeem;
+use crate::utils::transfer_py_and_redeem;
 
 // ============ Test Addresses ============
 

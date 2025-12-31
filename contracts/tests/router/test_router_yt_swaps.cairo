@@ -25,7 +25,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
-use super::utils::{ONE_DAY, admin, alice, bob, setup_full};
+use crate::utils::{ONE_DAY, admin, alice, bob, setup_full};
 
 // ============ Market Default Parameters ============
 
