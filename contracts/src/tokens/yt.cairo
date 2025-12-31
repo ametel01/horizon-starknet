@@ -91,6 +91,9 @@ pub mod YT {
         // Accumulated post-expiry yield for treasury redemption
         // After expiry, yield that would have gone to YT holders is captured here
         post_expiry_sy_for_treasury: u256,
+        // Protocol fee rate on interest claims (WAD-scaled, e.g., 0.03e18 = 3%)
+        // Fee is deducted from interest and sent to treasury
+        interest_fee_rate: u256,
     }
 
     #[event]
@@ -114,6 +117,7 @@ pub mod YT {
         InterestClaimed: InterestClaimed,
         ExpiryReached: ExpiryReached,
         TreasuryInterestRedeemed: TreasuryInterestRedeemed,
+        InterestFeeRateSet: InterestFeeRateSet,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -218,6 +222,16 @@ pub mod YT {
         pub expiry_index: u256,
         pub current_index: u256,
         pub total_yt_supply: u256,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when the interest fee rate is updated
+    #[derive(Drop, starknet::Event)]
+    pub struct InterestFeeRateSet {
+        #[key]
+        pub yt: ContractAddress,
+        pub old_rate: u256,
+        pub new_rate: u256,
         pub timestamp: u64,
     }
 
@@ -658,13 +672,29 @@ pub mod YT {
 
             self.user_interest.write(user, 0);
 
-            // Transfer interest as SY to user
+            // Apply protocol fee
+            let fee_rate = self.interest_fee_rate.read();
+            let fee = wad_mul(interest, fee_rate);
+            let user_interest = interest - fee;
+
+            // Transfer net interest to user
             let sy_addr = self.sy.read();
             let sy = ISYDispatcher { contract_address: sy_addr };
-            let success = sy.transfer(user, interest);
-            assert(success, Errors::YT_INSUFFICIENT_SY);
+            if user_interest > 0 {
+                let success = sy.transfer(user, user_interest);
+                assert(success, Errors::YT_INSUFFICIENT_SY);
+            }
 
-            // Update sy_reserve to reflect interest outflow
+            // Transfer fee to treasury if applicable
+            if fee > 0 {
+                let treasury = self.treasury.read();
+                if !treasury.is_zero() {
+                    let success = sy.transfer(treasury, fee);
+                    assert(success, Errors::YT_INSUFFICIENT_SY);
+                }
+            }
+
+            // Update sy_reserve to reflect total interest outflow (user + fee)
             self.sy_reserve.write(self.sy_reserve.read() - interest);
 
             self
@@ -673,7 +703,7 @@ pub mod YT {
                         user,
                         yt: get_contract_address(),
                         expiry: self.expiry.read(),
-                        amount_sy: interest,
+                        amount_sy: user_interest,
                         sy: sy_addr,
                         yt_balance,
                         py_index_at_claim: self.py_index_stored.read(),
@@ -683,7 +713,7 @@ pub mod YT {
                 );
 
             self.reentrancy_guard.end();
-            interest
+            user_interest
         }
 
         /// Get user's pending interest (view only)
@@ -752,6 +782,11 @@ pub mod YT {
             } else {
                 0
             }
+        }
+
+        /// Get the current interest fee rate (WAD-scaled)
+        fn interest_fee_rate(self: @ContractState) -> u256 {
+            self.interest_fee_rate.read()
         }
     }
 
@@ -834,6 +869,27 @@ pub mod YT {
                 );
 
             amount
+        }
+
+        /// Set the protocol fee rate on interest claims (admin only)
+        /// @param rate Fee rate in WAD (e.g., 0.03e18 = 3%), max 50% (0.5e18)
+        fn set_interest_fee_rate(ref self: ContractState, rate: u256) {
+            self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
+            // Max 50% fee (0.5e18 = 500000000000000000)
+            assert(rate <= 500000000000000000, Errors::YT_INVALID_FEE_RATE);
+
+            let old_rate = self.interest_fee_rate.read();
+            self.interest_fee_rate.write(rate);
+
+            self
+                .emit(
+                    InterestFeeRateSet {
+                        yt: get_contract_address(),
+                        old_rate,
+                        new_rate: rate,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
         }
     }
 

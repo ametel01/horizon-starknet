@@ -27,6 +27,7 @@ pub mod Errors {
     pub const YT_INSUFFICIENT_PT: felt252 = 'HZN: insufficient PT';
     pub const YT_INSUFFICIENT_YT: felt252 = 'HZN: insufficient YT';
     pub const YT_INSUFFICIENT_SY: felt252 = 'HZN: insufficient SY';
+    pub const YT_INVALID_FEE_RATE: felt252 = 'HZN: invalid fee rate';
 
     // Market errors
     pub const MARKET_EXPIRED: felt252 = 'HZN: market expired';

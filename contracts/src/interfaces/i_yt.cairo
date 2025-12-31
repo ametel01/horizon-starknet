@@ -47,6 +47,9 @@ pub trait IYT<TContractState> {
     // Treasury
     fn treasury(self: @TContractState) -> ContractAddress;
     fn get_post_expiry_treasury_interest(self: @TContractState) -> u256;
+
+    // Protocol fee
+    fn interest_fee_rate(self: @TContractState) -> u256;
 }
 
 /// Admin interface for YT pausability and treasury management
@@ -62,4 +65,8 @@ pub trait IYTAdmin<TContractState> {
     /// After expiry, any yield that accrues is redirected to treasury.
     /// @return Amount of SY transferred to treasury
     fn redeem_post_expiry_interest_for_treasury(ref self: TContractState) -> u256;
+
+    /// Set the protocol fee rate on interest claims (DEFAULT_ADMIN_ROLE only)
+    /// Rate is WAD-scaled (e.g., 0.03e18 = 3%), max 50% (0.5e18)
+    fn set_interest_fee_rate(ref self: TContractState, rate: u256);
 }
