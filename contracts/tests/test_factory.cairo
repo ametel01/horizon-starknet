@@ -319,6 +319,11 @@ fn test_factory_created_contracts_are_functional() {
     let amount = 100 * WAD;
     let expiry = CURRENT_TIME + ONE_YEAR;
 
+    // Disable time-based yield for precise 1:1 math at index 1.0 WAD
+    start_cheat_caller_address(underlying.contract_address, admin());
+    underlying.set_yield_rate_bps(0);
+    stop_cheat_caller_address(underlying.contract_address);
+
     // Create yield contracts
     let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, expiry);
     let yt = IYTDispatcher { contract_address: yt_addr };
@@ -332,23 +337,23 @@ fn test_factory_created_contracts_are_functional() {
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, underlying.contract_address, amount, 0);
-    sy.approve(yt_addr, amount);
+    sy.transfer(yt_addr, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     // Mint PY using factory-created YT
     start_cheat_caller_address(yt_addr, user);
-    let (pt_minted, yt_minted) = yt.mint_py(user, amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt_addr);
 
-    // Verify minting worked
+    // Verify minting worked (1:1 at index 1.0)
     assert(pt_minted == amount, 'Wrong PT minted');
     assert(yt_minted == amount, 'Wrong YT minted');
     assert(pt.balance_of(user) == amount, 'Wrong PT balance');
     assert(yt.balance_of(user) == amount, 'Wrong YT balance');
 
-    // Redeem PY
+    // Redeem PY using actual PT minted amount
     start_cheat_caller_address(yt_addr, user);
-    let sy_returned = yt.redeem_py(user, amount);
+    let sy_returned = yt.redeem_py(user, pt_minted);
     stop_cheat_caller_address(yt_addr);
 
     assert(sy_returned == amount, 'Wrong SY returned');
@@ -364,6 +369,11 @@ fn test_factory_post_expiry_redemption() {
     let amount = 100 * WAD;
     let expiry = CURRENT_TIME + ONE_YEAR;
 
+    // Disable time-based yield for precise 1:1 math at index 1.0 WAD
+    start_cheat_caller_address(underlying.contract_address, admin());
+    underlying.set_yield_rate_bps(0);
+    stop_cheat_caller_address(underlying.contract_address);
+
     // Create and setup
     let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, expiry);
     let yt = IYTDispatcher { contract_address: yt_addr };
@@ -376,25 +386,25 @@ fn test_factory_post_expiry_redemption() {
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, underlying.contract_address, amount, 0);
-    sy.approve(yt_addr, amount);
+    sy.transfer(yt_addr, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt_addr, user);
-    yt.mint_py(user, amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt_addr);
 
     // Fast forward past expiry
     start_cheat_block_timestamp_global(expiry + 1);
 
-    // Redeem PT post-expiry (YT is worthless)
+    // Redeem PT post-expiry using actual PT minted amount (YT is worthless)
     start_cheat_caller_address(yt_addr, user);
-    let sy_returned = yt.redeem_py_post_expiry(user, amount);
+    let sy_returned = yt.redeem_py_post_expiry(user, pt_minted);
     stop_cheat_caller_address(yt_addr);
 
     assert(sy_returned == amount, 'Wrong SY post-expiry');
     assert(pt.balance_of(user) == 0, 'PT should be burned');
     // YT remains but is worthless
-    assert(yt.balance_of(user) == amount, 'YT should remain');
+    assert(yt.balance_of(user) == yt_minted, 'YT should remain');
 }
 
 // ============ SYWithRewards Deployment Tests ============

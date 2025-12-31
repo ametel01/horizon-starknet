@@ -22,9 +22,20 @@ pub trait IYT<TContractState> {
     fn is_expired(self: @TContractState) -> bool;
 
     // Core operations
+    /// Mint PT + YT by consuming floating SY (pre-transferred to this contract)
+    /// Caller must transfer SY to YT contract before calling this function.
+    /// PY amount = syToAsset(index, floatingSyAmount) = floatingSyAmount * index / WAD
+    /// @param receiver_pt Address to receive minted PT
+    /// @param receiver_yt Address to receive minted YT
+    /// @return (amount_pt, amount_yt) in asset terms (not SY terms)
     fn mint_py(
-        ref self: TContractState, receiver: ContractAddress, amount_sy_to_mint: u256,
+        ref self: TContractState, receiver_pt: ContractAddress, receiver_yt: ContractAddress,
     ) -> (u256, u256);
+    /// Redeem PT + YT for SY (before expiry)
+    /// SY returned = assetToSy(index, pyAmount) = pyAmount * WAD / index
+    /// @param receiver Address to receive SY
+    /// @param amount_py Amount of PT and YT to burn (in asset terms)
+    /// @return Amount of SY returned
     fn redeem_py(
         ref self: TContractState, receiver: ContractAddress, amount_py_to_redeem: u256,
     ) -> u256;
@@ -33,8 +44,16 @@ pub trait IYT<TContractState> {
     ) -> u256;
 
     // Batch operations
+    /// Batch mint PT + YT for multiple receivers using floating SY
+    /// Total floating SY is split according to the amounts array
+    /// @param receivers_pt Addresses to receive PT
+    /// @param receivers_yt Addresses to receive YT
+    /// @param amounts SY amounts for each entry (must sum to floating SY)
     fn mint_py_multi(
-        ref self: TContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
+        ref self: TContractState,
+        receivers_pt: Array<ContractAddress>,
+        receivers_yt: Array<ContractAddress>,
+        amounts: Array<u256>,
     ) -> (Array<u256>, Array<u256>);
     fn redeem_py_multi(
         ref self: TContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,

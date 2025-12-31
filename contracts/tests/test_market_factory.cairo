@@ -362,11 +362,11 @@ fn test_created_market_is_functional() {
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, underlying.contract_address, amount * 2, 0);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Approve market to spend tokens

@@ -202,11 +202,11 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 }
 
@@ -249,7 +249,7 @@ fn test_zero_sy_redeem() {
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
+#[should_panic(expected: 'HZN: no floating SY')]
 fn test_zero_py_mint() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -259,8 +259,9 @@ fn test_zero_py_mint() {
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
+    // No SY transferred to YT contract = no floating SY = should panic
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), 0); // Should panic
+    yt.mint_py(alice(), alice()); // Should panic - no floating SY
 }
 
 #[test]
@@ -325,13 +326,13 @@ fn test_large_amounts() {
 
     assert(sy_received == large_amount, 'Large SY deposit');
 
-    // Mint PT + YT
+    // Mint PT + YT (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, large_amount);
+    sy.transfer(yt.contract_address, large_amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let (pt_out, yt_out) = yt.mint_py(alice(), large_amount);
+    let (pt_out, yt_out) = yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(pt_out == large_amount, 'Large PT mint');
@@ -512,13 +513,13 @@ fn test_minimum_amounts() {
     // Even 1 wei should work
     assert(sy_received > 0, 'Dust deposit works');
 
-    // Mint PT + YT from dust
+    // Mint PT + YT from dust (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, sy_received);
+    sy.transfer(yt.contract_address, sy_received);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let (pt_out, yt_out) = yt.mint_py(alice(), sy_received);
+    let (pt_out, yt_out) = yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // At least some tokens minted
@@ -631,11 +632,11 @@ fn test_operations_across_time() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.approve(yt.contract_address, 500 * WAD);
+    sy.transfer(yt.contract_address, 500 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, bob());
-    let (pt_out, yt_out) = yt.mint_py(bob(), 500 * WAD);
+    let (pt_out, yt_out) = yt.mint_py(bob(), bob());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(pt_out > 0, 'Late mint works');

@@ -198,11 +198,11 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 }
 
@@ -362,11 +362,11 @@ fn test_cannot_mint_after_expiry() {
 
     // Try to mint - should fail
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, 100 * WAD);
+    sy.transfer(yt.contract_address, 100 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), 100 * WAD); // Should panic
+    yt.mint_py(alice(), alice()); // Should panic
 }
 
 #[test]

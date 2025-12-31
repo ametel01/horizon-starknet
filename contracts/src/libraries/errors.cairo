@@ -31,6 +31,7 @@ pub mod Errors {
     pub const YT_INSUFFICIENT_SY: felt252 = 'HZN: insufficient SY';
     pub const YT_INVALID_FEE_RATE: felt252 = 'HZN: invalid fee rate';
     pub const YT_ARRAY_LENGTH_MISMATCH: felt252 = 'HZN: array length mismatch';
+    pub const YT_NO_FLOATING_SY: felt252 = 'HZN: no floating SY';
 
     // Market errors
     pub const MARKET_EXPIRED: felt252 = 'HZN: market expired';

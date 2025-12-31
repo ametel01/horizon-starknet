@@ -235,11 +235,11 @@ fn test_market_burn_zero_lp() {
     mint_and_deposit_sy(yield_token, sy, admin(), initial_amount * 2);
 
     start_cheat_caller_address(sy.contract_address, admin());
-    sy.approve(yt.contract_address, initial_amount);
+    sy.transfer(yt.contract_address, initial_amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, admin());
-    let (pt_amount, _) = yt.mint_py(admin(), initial_amount);
+    let (pt_amount, _) = yt.mint_py(admin(), admin());
     stop_cheat_caller_address(yt.contract_address);
 
     // Approve market

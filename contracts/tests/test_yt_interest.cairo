@@ -537,7 +537,8 @@ fn test_interest_and_partial_redeem() {
     setup_user_with_yt(yield_token, sy, yt, user, amount);
 
     // Index increases by 10%
-    set_yield_index(yield_token, WAD + WAD / 10);
+    let new_index = WAD + WAD / 10;
+    set_yield_index(yield_token, new_index);
 
     // User has interest (view) - approximately 10 WAD
     let interest_before = yt.get_user_interest(user);
@@ -553,7 +554,7 @@ fn test_interest_and_partial_redeem() {
     // After claiming interest, the YT contract has less SY
     // Original: 100 WAD SY in YT contract
     // After claim: ~90 WAD SY in YT contract
-    // So we can only redeem ~90 WAD worth of PT+YT
+    // Redeem 90 PT+YT using assetToSy: sy_returned = 90 * WAD / 1.1 ≈ 81.8 SY
 
     // Redeem 90% of PT+YT (should succeed since YT contract has ~90 WAD SY)
     let redeem_amount = 90 * WAD;
@@ -561,7 +562,9 @@ fn test_interest_and_partial_redeem() {
     let sy_returned = yt.redeem_py(user, redeem_amount);
     stop_cheat_caller_address(yt.contract_address);
 
-    assert(sy_returned == redeem_amount, 'Should return 90 WAD SY');
+    // With assetToSy formula: sy_returned = redeem_amount * WAD / index
+    let expected_sy = wad_div(redeem_amount, new_index);
+    assert(sy_returned == expected_sy, 'Should return expected SY');
     assert(yt.balance_of(user) == amount - redeem_amount, 'Remaining YT');
 
     // No more interest to claim (already claimed)
@@ -582,7 +585,8 @@ fn test_redeem_captures_interest() {
     setup_user_with_yt(yield_token, sy, yt, user, amount);
 
     // Index increases
-    set_yield_index(yield_token, WAD + WAD / 10);
+    let new_index = WAD + WAD / 10;
+    set_yield_index(yield_token, new_index);
 
     // User has pending interest but doesn't claim it
     let interest = yt.get_user_interest(user);
@@ -595,7 +599,9 @@ fn test_redeem_captures_interest() {
     let sy_returned = yt.redeem_py(user, redeem_amount);
     stop_cheat_caller_address(yt.contract_address);
 
-    assert(sy_returned == redeem_amount, 'SY returned');
+    // With assetToSy formula: sy_returned = redeem_amount * WAD / index
+    let expected_sy = wad_div(redeem_amount, new_index);
+    assert(sy_returned == expected_sy, 'SY returned');
     assert(yt.balance_of(user) == amount - redeem_amount, 'Remaining YT');
 
     // Interest was captured during _update_user_interest in redeem_py

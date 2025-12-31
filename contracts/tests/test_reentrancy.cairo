@@ -281,14 +281,14 @@ fn test_yt_mint_py_normal_operation() {
     sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Approve YT to spend SY
+    // Transfer SY to YT contract (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     // Mint PT+YT
     start_cheat_caller_address(yt.contract_address, user1());
-    let (pt_minted, yt_minted) = yt.mint_py(user1(), amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify
@@ -334,14 +334,14 @@ fn test_yt_mint_py_reentrancy_protected() {
     // transfers SY tokens (ERC20), not the underlying reentrant token
     reentrant.set_attack_mode(AttackMode::ReenterYTMintPY, yt.contract_address);
 
-    // Approve YT
+    // Transfer SY to YT contract (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount * 2);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     // Mint PT+YT - completes successfully with ReentrancyGuard active
     start_cheat_caller_address(yt.contract_address, user1());
-    let (pt_minted, yt_minted) = yt.mint_py(user1(), amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify correct minting
@@ -378,11 +378,11 @@ fn test_yt_redeem_py_reentrancy_protected() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user1());
-    yt.mint_py(user1(), amount);
+    yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify setup
@@ -430,11 +430,11 @@ fn test_yt_redeem_due_interest_reentrancy_protected() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user1());
-    yt.mint_py(user1(), amount);
+    yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // No interest accrued yet (index hasn't increased)
@@ -483,11 +483,11 @@ fn test_yt_transfer_interest_update_order() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user1());
-    yt.mint_py(user1(), amount);
+    yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // Record the global index before transfer
@@ -542,12 +542,12 @@ fn test_pt_mint_no_external_calls() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     // Mint triggers PT.mint internally
     start_cheat_caller_address(yt.contract_address, user1());
-    let (pt_minted, _) = yt.mint_py(user1(), amount);
+    let (pt_minted, _) = yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // PT was minted correctly
@@ -574,11 +574,11 @@ fn test_pt_burn_no_external_calls() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user1());
-    yt.mint_py(user1(), amount);
+    yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // Redeem triggers PT.burn internally
@@ -609,11 +609,11 @@ fn test_pt_transfer_no_external_calls() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user1());
-    yt.mint_py(user1(), amount);
+    yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 
     // Transfer PT
@@ -692,11 +692,12 @@ fn test_sy_redeem_zero_reverts() {
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
+#[should_panic(expected: 'HZN: no floating SY')]
 fn test_yt_mint_py_zero_reverts() {
     let (_reentrant, _sy, yt, _pt) = setup_full_with_reentrant();
 
+    // No SY transferred = no floating SY
     start_cheat_caller_address(yt.contract_address, user1());
-    yt.mint_py(user1(), 0);
+    yt.mint_py(user1(), user1());
     stop_cheat_caller_address(yt.contract_address);
 }

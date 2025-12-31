@@ -9,7 +9,7 @@ use snforge_std::{
 };
 use starknet::ContractAddress;
 use super::utils::{
-    CURRENT_TIME, ONE_YEAR, alice, bob, mint_and_deposit_sy, mint_and_mint_py,
+    CURRENT_TIME, ONE_YEAR, admin, alice, bob, mint_and_deposit_sy, mint_and_mint_py,
     mint_yield_token_to_user, set_yield_index, setup_full, user1, user2, zero_address,
 };
 
@@ -95,14 +95,14 @@ fn test_yt_mint_py() {
     let amount = 100 * WAD;
     let (_, sy, yt) = setup_with_sy(user, amount);
 
-    // Approve YT to spend SY
+    // Transfer SY to YT contract (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Mint PY
+    // Mint PY using floating SY (same receiver for both PT and YT)
     start_cheat_caller_address(yt.contract_address, user);
-    let (pt_minted, yt_minted) = yt.mint_py(user, amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify equal amounts of PT and YT
@@ -127,11 +127,12 @@ fn test_yt_mint_py_to_different_receiver() {
     let (_, sy, yt) = setup_with_sy(depositor, amount);
 
     start_cheat_caller_address(sy.contract_address, depositor);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
+    // Mint with same receiver for both PT and YT (standard use case)
     start_cheat_caller_address(yt.contract_address, depositor);
-    yt.mint_py(receiver, amount);
+    yt.mint_py(receiver, receiver);
     stop_cheat_caller_address(yt.contract_address);
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -139,6 +140,32 @@ fn test_yt_mint_py_to_different_receiver() {
     assert(pt.balance_of(receiver) == amount, 'Receiver should have PT');
     assert(yt.balance_of(depositor) == 0, 'Depositor should have 0 YT');
     assert(yt.balance_of(receiver) == amount, 'Receiver should have YT');
+}
+
+#[test]
+fn test_yt_mint_py_split_receivers() {
+    let depositor = user1();
+    let pt_receiver = user2();
+    let yt_receiver = admin();
+    let amount = 100 * WAD;
+    let (_, sy, yt) = setup_with_sy(depositor, amount);
+
+    start_cheat_caller_address(sy.contract_address, depositor);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT to pt_receiver, YT to yt_receiver (Pendle-style split receivers)
+    start_cheat_caller_address(yt.contract_address, depositor);
+    yt.mint_py(pt_receiver, yt_receiver);
+    stop_cheat_caller_address(yt.contract_address);
+
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+    assert(pt.balance_of(depositor) == 0, 'Depositor should have 0 PT');
+    assert(pt.balance_of(pt_receiver) == amount, 'PT receiver should have PT');
+    assert(pt.balance_of(yt_receiver) == 0, 'YT receiver should have 0 PT');
+    assert(yt.balance_of(depositor) == 0, 'Depositor should have 0 YT');
+    assert(yt.balance_of(pt_receiver) == 0, 'PT receiver should have 0 YT');
+    assert(yt.balance_of(yt_receiver) == amount, 'YT receiver should have YT');
 }
 
 #[test]
@@ -156,15 +183,24 @@ fn test_yt_mint_py_multiple_times() {
 
     start_cheat_caller_address(sy.contract_address, user);
     sy.deposit(user, yield_token.contract_address, amount, 0);
-    sy.approve(yt.contract_address, 2 * amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // First mint
-    start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    // First mint (transfer and mint)
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
 
-    // Second mint
-    yt.mint_py(user, amount);
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    // Second mint (transfer and mint)
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -180,39 +216,55 @@ fn test_yt_mint_py_after_expiry() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     // Fast forward past expiry
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
+#[should_panic(expected: 'HZN: no floating SY')]
 fn test_yt_mint_py_zero_amount() {
     let user = user1();
     let (_, _, yt) = setup();
 
+    // No SY transferred = no floating SY
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, 0);
+    yt.mint_py(user, user);
 }
 
 #[test]
 #[should_panic(expected: 'HZN: zero address')]
-fn test_yt_mint_py_zero_receiver() {
+fn test_yt_mint_py_zero_pt_receiver() {
     let user = user1();
     let amount = 100 * WAD;
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(zero_address(), amount);
+    yt.mint_py(zero_address(), user);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_yt_mint_py_zero_yt_receiver() {
+    let user = user1();
+    let amount = 100 * WAD;
+    let (_, sy, yt) = setup_with_sy(user, amount);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, zero_address());
 }
 
 // ============ Redeem PY Tests ============
@@ -225,11 +277,11 @@ fn test_yt_redeem_py() {
 
     // Mint PY first
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
 
     // Redeem PY
     let sy_returned = yt.redeem_py(user, amount);
@@ -251,11 +303,11 @@ fn test_yt_redeem_py_partial() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
 
     // Partial redeem
     yt.redeem_py(user, redeem_amount);
@@ -275,11 +327,11 @@ fn test_yt_redeem_py_to_different_receiver() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     yt.redeem_py(receiver, amount);
     stop_cheat_caller_address(yt.contract_address);
 
@@ -295,11 +347,11 @@ fn test_yt_redeem_py_after_expiry() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Fast forward past expiry
@@ -317,11 +369,11 @@ fn test_yt_redeem_py_zero_amount() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     yt.redeem_py(user, 0);
 }
 
@@ -331,30 +383,36 @@ fn test_yt_redeem_py_zero_amount() {
 fn test_yt_redeem_py_post_expiry() {
     let user = user1();
     let amount = 100 * WAD;
-    let (_, sy, yt) = setup_with_sy(user, amount);
+    let (yield_token, sy, yt) = setup_with_sy(user, amount);
+
+    // Disable time-based yield for precise 1:1 math at index 1.0 WAD
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_yield_rate_bps(0);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    let (pt_minted, _) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Fast forward past expiry
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
-    // Redeem PT only (YT is worthless)
+    // Redeem all PT (YT is worthless post-expiry)
     start_cheat_caller_address(yt.contract_address, user);
-    let sy_returned = yt.redeem_py_post_expiry(user, amount);
+    let sy_returned = yt.redeem_py_post_expiry(user, pt_minted);
     stop_cheat_caller_address(yt.contract_address);
 
+    // With index=1.0 WAD, assetToSy gives back the same SY amount
     assert(sy_returned == amount, 'Wrong SY returned');
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
     assert(pt.balance_of(user) == 0, 'PT should be burned');
     // YT remains (worthless but not burned)
-    assert(yt.balance_of(user) == amount, 'YT should remain');
+    assert(yt.balance_of(user) == pt_minted, 'YT should remain');
     assert(sy.balance_of(user) == amount, 'User should have SY');
 }
 
@@ -362,26 +420,33 @@ fn test_yt_redeem_py_post_expiry() {
 fn test_yt_redeem_py_post_expiry_partial() {
     let user = user1();
     let amount = 100 * WAD;
-    let redeem_amount = 60 * WAD;
-    let (_, sy, yt) = setup_with_sy(user, amount);
+    let (yield_token, sy, yt) = setup_with_sy(user, amount);
+
+    // Disable time-based yield for precise math
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_yield_rate_bps(0);
+    stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    let (pt_minted, _) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     start_cheat_block_timestamp_global(yt.expiry() + 1);
 
+    // Redeem 60% of PT
+    let redeem_amount = pt_minted * 60 / 100;
     start_cheat_caller_address(yt.contract_address, user);
-    yt.redeem_py_post_expiry(user, redeem_amount);
+    let sy_returned = yt.redeem_py_post_expiry(user, redeem_amount);
     stop_cheat_caller_address(yt.contract_address);
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
-    assert(pt.balance_of(user) == amount - redeem_amount, 'Wrong remaining PT');
-    assert(sy.balance_of(user) == redeem_amount, 'Wrong SY balance');
+    assert(pt.balance_of(user) == pt_minted - redeem_amount, 'Wrong remaining PT');
+    // With index=1.0 WAD, SY returned should equal the PT redeemed
+    assert(sy.balance_of(user) == sy_returned, 'Wrong SY balance');
 }
 
 #[test]
@@ -392,11 +457,11 @@ fn test_yt_redeem_py_post_expiry_before_expiry() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
 
     // Try to redeem post-expiry before actual expiry
     yt.redeem_py_post_expiry(user, amount);
@@ -410,11 +475,11 @@ fn test_yt_redeem_py_post_expiry_zero_amount() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     start_cheat_block_timestamp_global(yt.expiry() + 1);
@@ -432,11 +497,11 @@ fn test_yt_get_user_interest_no_yield() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // No exchange rate change = no interest
@@ -451,11 +516,11 @@ fn test_yt_redeem_due_interest_zero() {
     let (_, sy, yt) = setup_with_sy(user, amount);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
 
     // Claim with no yield accrued
     let claimed = yt.redeem_due_interest(user);
@@ -475,11 +540,11 @@ fn test_yt_transfer() {
     let (_, sy, yt) = setup_with_sy(sender, amount);
 
     start_cheat_caller_address(sy.contract_address, sender);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, sender);
-    yt.mint_py(sender, amount);
+    yt.mint_py(sender, sender);
 
     // Transfer YT
     let result = yt.transfer(recipient, transfer_amount);
@@ -513,11 +578,11 @@ fn test_yt_transfer_from() {
     let (_, sy, yt) = setup_with_sy(owner, amount);
 
     start_cheat_caller_address(sy.contract_address, owner);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, owner);
-    yt.mint_py(owner, amount);
+    yt.mint_py(owner, owner);
     yt.approve(spender, 50 * WAD);
     stop_cheat_caller_address(yt.contract_address);
 
@@ -541,11 +606,11 @@ fn test_yt_transfer_from_insufficient_allowance() {
     let (_, sy, yt) = setup_with_sy(owner, amount);
 
     start_cheat_caller_address(sy.contract_address, owner);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, owner);
-    yt.mint_py(owner, amount);
+    yt.mint_py(owner, owner);
     yt.approve(spender, 10 * WAD);
     stop_cheat_caller_address(yt.contract_address);
 

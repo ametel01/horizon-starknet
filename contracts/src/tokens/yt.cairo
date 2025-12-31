@@ -133,8 +133,9 @@ pub mod YT {
         #[key]
         pub caller: ContractAddress,
         #[key]
-        pub receiver: ContractAddress,
+        pub receiver_pt: ContractAddress,
         #[key]
+        pub receiver_yt: ContractAddress,
         pub expiry: u64,
         pub amount_sy_deposited: u256,
         pub amount_py_minted: u256,
@@ -428,12 +429,14 @@ pub mod YT {
             get_block_timestamp() >= self.expiry.read()
         }
 
-        /// Mint PT + YT by depositing SY
-        /// @param receiver Address to receive the minted PT and YT
-        /// @param amount_sy_to_mint Amount of SY to deposit
-        /// @return (amount_pt_minted, amount_yt_minted)
+        /// Mint PT + YT by consuming floating SY (Pendle-style)
+        /// Caller must transfer SY to this contract before calling.
+        /// PY amount = syToAsset(index, floatingSy) = floatingSy * index / WAD
+        /// @param receiver_pt Address to receive minted PT
+        /// @param receiver_yt Address to receive minted YT
+        /// @return (amount_pt_minted, amount_yt_minted) in asset terms
         fn mint_py(
-            ref self: ContractState, receiver: ContractAddress, amount_sy_to_mint: u256,
+            ref self: ContractState, receiver_pt: ContractAddress, receiver_yt: ContractAddress,
         ) -> (u256, u256) {
             // Check not paused - mint operations can be paused in emergency
             self.pausable.assert_not_paused();
@@ -441,54 +444,55 @@ pub mod YT {
             self.reentrancy_guard.start();
 
             assert(!self.is_expired(), Errors::YT_EXPIRED);
-            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-            assert(amount_sy_to_mint > 0, Errors::ZERO_AMOUNT);
+            assert(!receiver_pt.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver_yt.is_zero(), Errors::ZERO_ADDRESS);
 
             let caller = get_caller_address();
 
             // Update global PY index first
             self._update_py_index();
 
-            // Update receiver's interest before minting
-            self._update_user_interest(receiver);
+            // Update YT receiver's interest before minting (PT receiver doesn't accrue YT interest)
+            self._update_user_interest(receiver_yt);
 
-            // Transfer SY from caller to this contract
+            // Get floating SY (pre-transferred by caller)
             let sy_addr = self.sy.read();
             let sy = ISYDispatcher { contract_address: sy_addr };
-            let success = sy.transfer_from(caller, get_contract_address(), amount_sy_to_mint);
-            assert(success, Errors::YT_INSUFFICIENT_SY);
+            let actual_balance = sy.balance_of(get_contract_address());
+            let sy_reserve = self.sy_reserve.read();
+            assert(actual_balance > sy_reserve, Errors::YT_NO_FLOATING_SY);
+            let amount_sy = actual_balance - sy_reserve;
 
             // Update sy_reserve to track expected SY balance
-            self.sy_reserve.write(self.sy_reserve.read() + amount_sy_to_mint);
+            self.sy_reserve.write(actual_balance);
 
-            // Calculate PY amount: for simplicity, 1 SY = 1 PT + 1 YT
-            // In production, this might account for the current index
-            let amount_py = amount_sy_to_mint;
+            // Calculate PY amount using Pendle's syToAsset formula:
+            // amount_py = syAmount * pyIndex / WAD
+            // This converts SY amount to "asset" (underlying) terms
+            let py_index = self.py_index_stored.read();
+            let amount_py = wad_mul(amount_sy, py_index);
 
-            // Mint PT to receiver
+            // Mint PT to PT receiver
             let pt_addr = self.pt.read();
             let pt = IPTDispatcher { contract_address: pt_addr };
-            pt.mint(receiver, amount_py);
+            pt.mint(receiver_pt, amount_py);
 
-            // Mint YT to receiver
-            self.erc20.mint(receiver, amount_py);
-
-            // Get current state for event
-            let sy_addr = self.sy.read();
-            let sy_contract = ISYDispatcher { contract_address: sy_addr };
+            // Mint YT to YT receiver
+            self.erc20.mint(receiver_yt, amount_py);
 
             self
                 .emit(
                     MintPY {
                         caller,
-                        receiver,
+                        receiver_pt,
+                        receiver_yt,
                         expiry: self.expiry.read(),
-                        amount_sy_deposited: amount_sy_to_mint,
+                        amount_sy_deposited: amount_sy,
                         amount_py_minted: amount_py,
                         pt: pt_addr,
                         sy: sy_addr,
-                        py_index: self.py_index_stored.read(),
-                        exchange_rate: sy_contract.exchange_rate(),
+                        py_index,
+                        exchange_rate: sy.exchange_rate(),
                         total_pt_supply_after: pt.total_supply(),
                         total_yt_supply_after: self.erc20.ERC20_total_supply.read(),
                         timestamp: get_block_timestamp(),
@@ -500,8 +504,9 @@ pub mod YT {
         }
 
         /// Redeem PT + YT for SY (before expiry)
+        /// SY returned = assetToSy(index, pyAmount) = pyAmount * WAD / index
         /// @param receiver Address to receive the SY
-        /// @param amount_py_to_redeem Amount of PT and YT to burn
+        /// @param amount_py_to_redeem Amount of PT and YT to burn (in asset terms)
         /// @return Amount of SY returned
         fn redeem_py(
             ref self: ContractState, receiver: ContractAddress, amount_py_to_redeem: u256,
@@ -529,8 +534,11 @@ pub mod YT {
             // Burn YT from caller
             self.erc20.burn(caller, amount_py_to_redeem);
 
-            // Calculate SY to return: for simplicity, 1 PT + 1 YT = 1 SY
-            let amount_sy = amount_py_to_redeem;
+            // Calculate SY to return using Pendle's assetToSy formula:
+            // amount_sy = pyAmount * WAD / pyIndex
+            // This converts "asset" (underlying) terms back to SY terms
+            let py_index = self.py_index_stored.read();
+            let amount_sy = wad_div(amount_py_to_redeem, py_index);
 
             // Transfer SY to receiver
             let sy_addr = self.sy.read();
@@ -551,7 +559,7 @@ pub mod YT {
                         pt: pt_addr,
                         amount_py_redeemed: amount_py_to_redeem,
                         amount_sy_returned: amount_sy,
-                        py_index: self.py_index_stored.read(),
+                        py_index,
                         exchange_rate: sy.exchange_rate(),
                         timestamp: get_block_timestamp(),
                     },
@@ -562,8 +570,10 @@ pub mod YT {
         }
 
         /// Redeem PT for SY after expiry (YT is worthless)
+        /// SY returned = assetToSy(expiryIndex, ptAmount) = ptAmount * WAD / expiryIndex
+        /// Uses the frozen expiry index to ensure consistent redemption value
         /// @param receiver Address to receive the SY
-        /// @param amount_pt Amount of PT to burn
+        /// @param amount_pt Amount of PT to burn (in asset terms)
         /// @return Amount of SY returned
         fn redeem_py_post_expiry(
             ref self: ContractState, receiver: ContractAddress, amount_pt: u256,
@@ -577,8 +587,11 @@ pub mod YT {
 
             let caller = get_caller_address();
 
-            // Update global PY index one last time
+            // Update global PY index one last time (captures expiry index if not yet done)
             self._update_py_index();
+
+            // Get the frozen expiry index for consistent redemption
+            let expiry_index = self.py_index_at_expiry.read();
 
             // Emit ExpiryReached event on first post-expiry redemption
             if !self.expiry_event_emitted.read() {
@@ -599,7 +612,7 @@ pub mod YT {
                             sy: sy_addr,
                             expiry: self.expiry.read(),
                             final_exchange_rate: sy.exchange_rate(),
-                            final_py_index: self.py_index_stored.read(),
+                            final_py_index: expiry_index,
                             total_pt_supply: pt.total_supply(),
                             total_yt_supply: self.erc20.ERC20_total_supply.read(),
                             sy_reserve: 0, // YT doesn't have market reserve info
@@ -614,8 +627,9 @@ pub mod YT {
             let pt = IPTDispatcher { contract_address: pt_addr };
             pt.burn(caller, amount_pt);
 
-            // Calculate SY to return: 1 PT = 1 SY post-expiry
-            let amount_sy = amount_pt;
+            // Calculate SY to return using assetToSy with frozen expiry index:
+            // amount_sy = ptAmount * WAD / expiryIndex
+            let amount_sy = wad_div(amount_pt, expiry_index);
 
             // Transfer SY to receiver
             let sy_addr = self.sy.read();
@@ -636,7 +650,7 @@ pub mod YT {
                         amount_sy_returned: amount_sy,
                         pt: pt_addr,
                         sy: sy_addr,
-                        final_py_index: self.py_index_stored.read(),
+                        final_py_index: expiry_index,
                         final_exchange_rate: sy.exchange_rate(),
                         timestamp: get_block_timestamp(),
                     },
@@ -646,27 +660,41 @@ pub mod YT {
             amount_sy
         }
 
-        /// Batch mint PT + YT for multiple receivers
-        /// More gas efficient than calling mint_py multiple times
-        /// @param receivers Array of addresses to receive PT/YT
-        /// @param amounts Array of SY amounts to deposit for each receiver
-        /// @return (pt_amounts, yt_amounts) Arrays of minted amounts
+        /// Batch mint PT + YT for multiple receivers using floating SY
+        /// Total floating SY is split according to the amounts array
+        /// @param receivers_pt Array of addresses to receive PT
+        /// @param receivers_yt Array of addresses to receive YT
+        /// @param amounts Array of SY amounts for each entry (must sum to floating SY)
+        /// @return (pt_amounts, yt_amounts) Arrays of minted amounts in asset terms
         fn mint_py_multi(
-            ref self: ContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
+            ref self: ContractState,
+            receivers_pt: Array<ContractAddress>,
+            receivers_yt: Array<ContractAddress>,
+            amounts: Array<u256>,
         ) -> (Array<u256>, Array<u256>) {
             self.pausable.assert_not_paused();
             self.reentrancy_guard.start();
 
             assert(!self.is_expired(), Errors::YT_EXPIRED);
-            assert(receivers.len() == amounts.len(), Errors::YT_ARRAY_LENGTH_MISMATCH);
-            assert(receivers.len() > 0, Errors::ZERO_AMOUNT);
+            assert(receivers_pt.len() == amounts.len(), Errors::YT_ARRAY_LENGTH_MISMATCH);
+            assert(receivers_yt.len() == amounts.len(), Errors::YT_ARRAY_LENGTH_MISMATCH);
+            assert(receivers_pt.len() > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
 
             // Update global PY index once for all operations
             self._update_py_index();
+            let py_index = self.py_index_stored.read();
 
-            // Calculate total SY needed
+            // Get floating SY (pre-transferred by caller)
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+            let actual_balance = sy.balance_of(get_contract_address());
+            let sy_reserve = self.sy_reserve.read();
+            assert(actual_balance > sy_reserve, Errors::YT_NO_FLOATING_SY);
+            let floating_sy = actual_balance - sy_reserve;
+
+            // Calculate total SY from amounts and verify it matches floating SY
             let mut total_sy: u256 = 0;
             let mut i: u32 = 0;
             let len = amounts.len();
@@ -674,15 +702,10 @@ pub mod YT {
                 total_sy += *amounts.at(i);
                 i += 1;
             }
-
-            // Transfer total SY from caller
-            let sy_addr = self.sy.read();
-            let sy = ISYDispatcher { contract_address: sy_addr };
-            let success = sy.transfer_from(caller, get_contract_address(), total_sy);
-            assert(success, Errors::YT_INSUFFICIENT_SY);
+            assert(total_sy == floating_sy, Errors::YT_ARRAY_LENGTH_MISMATCH);
 
             // Update sy_reserve
-            self.sy_reserve.write(self.sy_reserve.read() + total_sy);
+            self.sy_reserve.write(actual_balance);
 
             // Mint PT/YT to each receiver
             let pt_addr = self.pt.read();
@@ -690,23 +713,30 @@ pub mod YT {
 
             let mut pt_amounts: Array<u256> = array![];
             let mut yt_amounts: Array<u256> = array![];
+            let mut total_py: u256 = 0;
             i = 0;
             while i < len {
-                let receiver = *receivers.at(i);
-                let amount = *amounts.at(i);
+                let receiver_pt = *receivers_pt.at(i);
+                let receiver_yt = *receivers_yt.at(i);
+                let amount_sy = *amounts.at(i);
 
-                assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-                assert(amount > 0, Errors::ZERO_AMOUNT);
+                assert(!receiver_pt.is_zero(), Errors::ZERO_ADDRESS);
+                assert(!receiver_yt.is_zero(), Errors::ZERO_ADDRESS);
+                assert(amount_sy > 0, Errors::ZERO_AMOUNT);
 
-                // Update receiver's interest before minting
-                self._update_user_interest(receiver);
+                // Update YT receiver's interest before minting
+                self._update_user_interest(receiver_yt);
 
-                // Mint PT and YT (1:1 ratio)
-                pt.mint(receiver, amount);
-                self.erc20.mint(receiver, amount);
+                // Calculate PY amount using syToAsset formula
+                let amount_py = wad_mul(amount_sy, py_index);
+                total_py += amount_py;
 
-                pt_amounts.append(amount);
-                yt_amounts.append(amount);
+                // Mint PT to PT receiver, YT to YT receiver
+                pt.mint(receiver_pt, amount_py);
+                self.erc20.mint(receiver_yt, amount_py);
+
+                pt_amounts.append(amount_py);
+                yt_amounts.append(amount_py);
                 i += 1;
             }
 
@@ -717,7 +747,7 @@ pub mod YT {
                         caller,
                         expiry: self.expiry.read(),
                         total_sy_deposited: total_sy,
-                        total_py_minted: total_sy,
+                        total_py_minted: total_py,
                         receiver_count: len,
                         timestamp: get_block_timestamp(),
                     },
@@ -728,9 +758,9 @@ pub mod YT {
         }
 
         /// Batch redeem PT + YT for multiple receivers (before expiry)
-        /// Caller must have sufficient PT and YT balances
+        /// Uses assetToSy formula for each amount
         /// @param receivers Array of addresses to receive SY
-        /// @param amounts Array of PY amounts to redeem for each receiver
+        /// @param amounts Array of PY amounts to redeem for each receiver (in asset terms)
         /// @return Array of SY amounts returned
         fn redeem_py_multi(
             ref self: ContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
@@ -745,6 +775,7 @@ pub mod YT {
 
             // Update global PY index once
             self._update_py_index();
+            let py_index = self.py_index_stored.read();
 
             // Update caller's interest before burning
             self._update_user_interest(caller);
@@ -764,28 +795,33 @@ pub mod YT {
             pt.burn(caller, total_py);
             self.erc20.burn(caller, total_py);
 
-            // Transfer SY to each receiver
+            // Transfer SY to each receiver using assetToSy formula
             let sy_addr = self.sy.read();
             let sy = ISYDispatcher { contract_address: sy_addr };
 
             let mut sy_amounts: Array<u256> = array![];
+            let mut total_sy: u256 = 0;
             i = 0;
             while i < len {
                 let receiver = *receivers.at(i);
-                let amount = *amounts.at(i);
+                let amount_py = *amounts.at(i);
 
                 assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
-                assert(amount > 0, Errors::ZERO_AMOUNT);
+                assert(amount_py > 0, Errors::ZERO_AMOUNT);
 
-                let success = sy.transfer(receiver, amount);
+                // Calculate SY amount using assetToSy formula
+                let amount_sy = wad_div(amount_py, py_index);
+                total_sy += amount_sy;
+
+                let success = sy.transfer(receiver, amount_sy);
                 assert(success, Errors::YT_INSUFFICIENT_SY);
 
-                sy_amounts.append(amount);
+                sy_amounts.append(amount_sy);
                 i += 1;
             }
 
             // Update sy_reserve
-            self.sy_reserve.write(self.sy_reserve.read() - total_py);
+            self.sy_reserve.write(self.sy_reserve.read() - total_sy);
 
             // Emit batch event
             self
@@ -794,7 +830,7 @@ pub mod YT {
                         caller,
                         expiry: self.expiry.read(),
                         total_py_redeemed: total_py,
-                        total_sy_returned: total_py,
+                        total_sy_returned: total_sy,
                         receiver_count: len,
                         timestamp: get_block_timestamp(),
                     },
@@ -806,8 +842,9 @@ pub mod YT {
 
         /// Redeem PT + YT for SY with optional interest claim
         /// Convenience function that combines redeem_py and redeem_due_interest
+        /// Uses assetToSy formula for principal redemption
         /// @param receiver Address to receive the SY (both from redeem and interest)
-        /// @param amount_py Amount of PT and YT to burn
+        /// @param amount_py Amount of PT and YT to burn (in asset terms)
         /// @param redeem_interest If true, also claims accrued interest
         /// @return (sy_from_redeem, interest_claimed)
         fn redeem_py_with_interest(
@@ -826,6 +863,7 @@ pub mod YT {
 
             // Update global PY index
             self._update_py_index();
+            let py_index = self.py_index_stored.read();
 
             // Update caller's interest before burning
             self._update_user_interest(caller);
@@ -838,8 +876,9 @@ pub mod YT {
             // Burn YT from caller
             self.erc20.burn(caller, amount_py);
 
-            // Calculate SY to return: 1 PT + 1 YT = 1 SY
-            let sy_from_redeem = amount_py;
+            // Calculate SY to return using assetToSy formula:
+            // sy_from_redeem = pyAmount * WAD / pyIndex
+            let sy_from_redeem = wad_div(amount_py, py_index);
 
             let sy_addr = self.sy.read();
             let sy = ISYDispatcher { contract_address: sy_addr };

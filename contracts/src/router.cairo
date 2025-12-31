@@ -245,15 +245,15 @@ pub mod Router {
             let yt_contract = IYTDispatcher { contract_address: yt };
             let sy = yt_contract.sy();
 
-            // Transfer SY from caller to this contract
+            // Transfer SY from caller to router
             let sy_contract = ISYDispatcher { contract_address: sy };
             sy_contract.transfer_from(caller, get_contract_address(), amount_sy_in);
 
-            // Approve YT contract to spend SY
-            sy_contract.approve(yt, amount_sy_in);
+            // Transfer SY from router to YT contract (floating SY pattern)
+            sy_contract.transfer(yt, amount_sy_in);
 
-            // Mint PT+YT
-            let (pt_minted, yt_minted) = yt_contract.mint_py(receiver, amount_sy_in);
+            // Mint PT+YT using floating SY (same receiver for both)
+            let (pt_minted, yt_minted) = yt_contract.mint_py(receiver, receiver);
 
             // Slippage check
             assert(pt_minted >= min_py_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
@@ -683,15 +683,15 @@ pub mod Router {
             let yt_contract = IYTDispatcher { contract_address: yt };
             let sy = yt_contract.sy();
 
-            // Transfer SY from caller to this contract
+            // Transfer SY from caller to router
             let sy_contract = ISYDispatcher { contract_address: sy };
             sy_contract.transfer_from(caller, get_contract_address(), amount_sy_in);
 
-            // Approve YT contract to spend SY
-            sy_contract.approve(yt, amount_sy_in);
+            // Transfer SY from router to YT contract (floating SY pattern)
+            sy_contract.transfer(yt, amount_sy_in);
 
-            // Mint PT+YT to receiver
-            let (pt_minted, yt_minted) = yt_contract.mint_py(receiver, amount_sy_in);
+            // Mint PT+YT to receiver using floating SY (same receiver for both)
+            let (pt_minted, yt_minted) = yt_contract.mint_py(receiver, receiver);
 
             // Slippage check
             assert(pt_minted >= min_pt_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
@@ -766,12 +766,12 @@ pub mod Router {
             let sy_contract = ISYDispatcher { contract_address: sy };
             let pt_contract = IPTDispatcher { contract_address: pt };
 
-            // 1. Transfer SY from caller to this contract
+            // 1. Transfer SY from caller to router
             sy_contract.transfer_from(caller, this, exact_sy_in);
 
-            // 2. Mint PT+YT from all SY
-            sy_contract.approve(yt, exact_sy_in);
-            let (pt_minted, yt_minted) = yt_contract.mint_py(this, exact_sy_in);
+            // 2. Mint PT+YT from all SY using floating SY pattern (both to router)
+            sy_contract.transfer(yt, exact_sy_in);
+            let (pt_minted, yt_minted) = yt_contract.mint_py(this, this);
 
             // 3. Sell all PT back to market for SY
             pt_contract.approve(market, pt_minted);

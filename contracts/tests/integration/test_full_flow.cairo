@@ -210,11 +210,11 @@ fn test_full_yield_tokenization_flow() {
     let mint_amount = 500 * WAD;
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, mint_amount);
+    sy.transfer(yt.contract_address, mint_amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let (pt_minted, yt_minted) = yt.mint_py(alice(), mint_amount);
+    let (pt_minted, yt_minted) = yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify equal amounts of PT and YT were minted
@@ -315,20 +315,20 @@ fn test_multiple_users_yield_flow() {
     sy.deposit(bob(), underlying.contract_address, bob_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Alice mints PT + YT
+    // Alice mints PT + YT (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, alice_amount);
+    sy.transfer(yt.contract_address, alice_amount);
     stop_cheat_caller_address(sy.contract_address);
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), alice_amount);
+    yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Bob mints PT + YT
+    // Bob mints PT + YT (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.approve(yt.contract_address, bob_amount);
+    sy.transfer(yt.contract_address, bob_amount);
     stop_cheat_caller_address(sy.contract_address);
     start_cheat_caller_address(yt.contract_address, bob());
-    yt.mint_py(bob(), bob_amount);
+    yt.mint_py(bob(), bob());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify balances
@@ -463,11 +463,11 @@ fn test_yield_accrual_over_time() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), amount);
+    yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Record initial PY index
@@ -520,11 +520,11 @@ fn test_partial_redemptions() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), amount);
+    yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Redeem 25% at a time

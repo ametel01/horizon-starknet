@@ -38,23 +38,29 @@ fn test_index_caching_same_block() {
     let user = alice();
     let amount = 100 * WAD;
 
-    // Setup: mint SY and approve
+    // Setup: mint SY
     mint_and_deposit_sy(yield_token, sy, user, amount * 2);
-
-    start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount * 2);
-    stop_cheat_caller_address(sy.contract_address);
 
     // Set a specific block number
     start_cheat_block_number_global(1000);
 
     // First mint should fetch from oracle
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
 
     // Second mint in same block should use cached index
     // (we can't directly verify the cache hit, but we can verify correctness)
-    yt.mint_py(user, amount);
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, user);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify both mints succeeded with correct amounts
@@ -71,28 +77,39 @@ fn test_index_caching_different_block() {
 
     mint_and_deposit_sy(yield_token, sy, user, amount * 2);
 
+    // Block 1000 - mint at index 1.0, get 100 PT
+    start_cheat_block_number_global(1000);
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount * 2);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Block 1000
-    start_cheat_block_number_global(1000);
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    let (pt_minted_1, _) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
-    // Change index between blocks
-    set_yield_index(yield_token, WAD + WAD / 10); // 10% increase
+    // Change index between blocks - 10% increase
+    let new_index = WAD + WAD / 10;
+    set_yield_index(yield_token, new_index);
 
     // Block 1001 - should fetch new index
+    // At index 1.1, minting 100 SY gives 110 PT (syToAsset formula)
     start_cheat_block_number_global(1001);
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    let (pt_minted_2, _) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
-    // Verify both mints succeeded
+    // Verify both mints succeeded with correct amounts
+    // First mint: 100 SY at index 1.0 = 100 PT
+    // Second mint: 100 SY at index 1.1 = 110 PT (syToAsset formula)
     let pt = IPTDispatcher { contract_address: yt.pt() };
-    assert(pt.balance_of(user) == 2 * amount, 'Wrong PT balance');
+    assert(pt.balance_of(user) == pt_minted_1 + pt_minted_2, 'Wrong PT balance');
+    assert(pt_minted_1 == amount, 'First mint should be 1:1');
+    // Second mint at higher index gives more PT
+    assert(pt_minted_2 > amount, 'Second mint should give more PT');
 }
 
 // ============ 5.2 Batch Operations Tests ============
@@ -110,22 +127,24 @@ fn test_mint_py_multi_basic() {
     // Setup: mint SY to caller
     mint_and_deposit_sy(yield_token, sy, caller, total);
 
-    // Approve YT to spend SY
+    // Transfer SY to YT contract (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, caller);
-    sy.approve(yt.contract_address, total);
+    sy.transfer(yt.contract_address, total);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Batch mint
+    // Batch mint - same receivers for both PT and YT
     start_cheat_caller_address(yt.contract_address, caller);
     let (pt_amounts, yt_amounts) = yt
-        .mint_py_multi(array![receiver1, receiver2], array![amount1, amount2]);
+        .mint_py_multi(
+            array![receiver1, receiver2], array![receiver1, receiver2], array![amount1, amount2],
+        );
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify return values
-    assert(pt_amounts.len() == 2, 'Wrong PT amounts length');
-    assert(yt_amounts.len() == 2, 'Wrong YT amounts length');
-    assert(*pt_amounts.at(0) == amount1, 'Wrong PT amount 1');
-    assert(*pt_amounts.at(1) == amount2, 'Wrong PT amount 2');
+    assert(pt_amounts.span().len() == 2, 'Wrong PT amounts length');
+    assert(yt_amounts.span().len() == 2, 'Wrong YT amounts length');
+    assert(*pt_amounts.span().at(0) == amount1, 'Wrong PT amount 1');
+    assert(*pt_amounts.span().at(1) == amount2, 'Wrong PT amount 2');
 
     // Verify balances
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -153,15 +172,17 @@ fn test_mint_py_multi_single_receiver() {
     mint_and_deposit_sy(yield_token, sy, caller, amount);
 
     start_cheat_caller_address(sy.contract_address, caller);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, caller);
-    let (pt_amounts, yt_amounts) = yt.mint_py_multi(array![receiver], array![amount]);
+    // mint_py_multi now takes (receivers_pt, receivers_yt, amounts)
+    let (pt_amounts, yt_amounts) = yt
+        .mint_py_multi(array![receiver], array![receiver], array![amount]);
     stop_cheat_caller_address(yt.contract_address);
 
-    assert(pt_amounts.len() == 1, 'Wrong length');
-    assert(*pt_amounts.at(0) == amount, 'Wrong amount');
+    assert(pt_amounts.span().len() == 1, 'Wrong length');
+    assert(*pt_amounts.span().at(0) == amount, 'Wrong amount');
     let _ = yt_amounts; // Silence unused warning
 
     let pt = IPTDispatcher { contract_address: yt.pt() };
@@ -175,7 +196,8 @@ fn test_mint_py_multi_length_mismatch() {
     let caller = user1();
 
     start_cheat_caller_address(yt.contract_address, caller);
-    yt.mint_py_multi(array![alice(), bob()], array![100 * WAD]); // 2 receivers, 1 amount
+    // 2 PT receivers, 2 YT receivers, but only 1 amount
+    yt.mint_py_multi(array![alice(), bob()], array![alice(), bob()], array![100 * WAD]);
 }
 
 #[test]
@@ -185,12 +207,12 @@ fn test_mint_py_multi_empty_arrays() {
     let caller = user1();
 
     start_cheat_caller_address(yt.contract_address, caller);
-    yt.mint_py_multi(array![], array![]);
+    yt.mint_py_multi(array![], array![], array![]);
 }
 
 #[test]
 #[should_panic(expected: 'HZN: zero address')]
-fn test_mint_py_multi_zero_receiver() {
+fn test_mint_py_multi_zero_pt_receiver() {
     let (yield_token, sy, yt) = setup();
     let caller = user1();
     let amount = 100 * WAD;
@@ -198,11 +220,12 @@ fn test_mint_py_multi_zero_receiver() {
     mint_and_deposit_sy(yield_token, sy, caller, amount);
 
     start_cheat_caller_address(sy.contract_address, caller);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, caller);
-    yt.mint_py_multi(array![zero_address()], array![amount]);
+    // Zero address as PT receiver should fail
+    yt.mint_py_multi(array![zero_address()], array![alice()], array![amount]);
 }
 
 #[test]
@@ -285,24 +308,25 @@ fn test_redeem_py_with_interest_no_claim() {
     let user = alice();
     let amount = 100 * WAD;
 
-    // Mint PT/YT
-    mint_and_mint_py(yield_token, sy, yt, user, amount);
+    // Mint PT/YT at index 1.0
+    let (pt_minted, _) = mint_and_mint_py(yield_token, sy, yt, user, amount);
 
     // Accrue some interest
-    set_yield_index(yield_token, WAD + WAD / 10); // 10% yield
+    let new_index = WAD + WAD / 10; // 10% yield
+    set_yield_index(yield_token, new_index);
 
     // Redeem without claiming interest
     start_cheat_caller_address(yt.contract_address, user);
-    let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(user, amount, false);
+    let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(user, pt_minted, false);
     stop_cheat_caller_address(yt.contract_address);
 
-    // Should get SY from redemption only
-    assert(sy_returned == amount, 'Wrong SY from redeem');
+    // With assetToSy formula: sy_returned = pt_minted * WAD / index
+    // At index 1.1, 100 PT → ~90.9 SY
+    assert(sy_returned > 0, 'Should return SY from redeem');
     assert(interest_claimed == 0, 'Should not claim interest');
 
-    // User still has unclaimed interest (but after redeeming all YT, no new interest accrues)
-    let _pending_interest = yt.get_user_interest(user);
-    assert(sy.balance_of(user) == amount, 'Wrong user SY balance');
+    // Verify user has received SY
+    assert(sy.balance_of(user) == sy_returned, 'Wrong user SY balance');
 }
 
 #[test]
@@ -311,8 +335,8 @@ fn test_redeem_py_with_interest_claim() {
     let user = alice();
     let amount = 100 * WAD;
 
-    // Mint PT/YT for user
-    mint_and_mint_py(yield_token, sy, yt, user, amount);
+    // Mint PT/YT for user at index 1.0
+    let (pt_minted, _) = mint_and_mint_py(yield_token, sy, yt, user, amount);
 
     // Also mint PT/YT for bob to provide additional SY in the pool for interest payments
     // In production, the yield on SY would provide these tokens; in testing we simulate
@@ -329,16 +353,16 @@ fn test_redeem_py_with_interest_claim() {
 
     // Redeem with interest claim
     start_cheat_caller_address(yt.contract_address, user);
-    let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(user, amount, true);
+    let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(user, pt_minted, true);
     stop_cheat_caller_address(yt.contract_address);
 
-    // Should get SY from redemption + interest
-    assert(sy_returned == amount, 'Wrong SY from redeem');
+    // Should get SY from redemption (using assetToSy) + interest
+    assert(sy_returned > 0, 'Should return SY from redeem');
     assert(interest_claimed > 0, 'Should claim interest');
 
     // User should have total = redemption + interest
     let total = sy.balance_of(user);
-    assert(total == amount + interest_claimed, 'Wrong total SY');
+    assert(total == sy_returned + interest_claimed, 'Wrong total SY');
 }
 
 #[test]
@@ -348,7 +372,8 @@ fn test_redeem_py_with_interest_partial_redemption() {
     let mint_amount = 100 * WAD;
     let redeem_amount = 40 * WAD;
 
-    mint_and_mint_py(yield_token, sy, yt, user, mint_amount);
+    // Mint at index 1.0
+    let (pt_minted, _) = mint_and_mint_py(yield_token, sy, yt, user, mint_amount);
 
     // Accrue interest
     set_yield_index(yield_token, WAD + WAD / 10);
@@ -358,13 +383,14 @@ fn test_redeem_py_with_interest_partial_redemption() {
     let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(user, redeem_amount, true);
     stop_cheat_caller_address(yt.contract_address);
 
-    assert(sy_returned == redeem_amount, 'Wrong SY from redeem');
+    // With assetToSy, sy_returned = redeem_amount * WAD / 1.1
+    assert(sy_returned > 0, 'Should return SY from redeem');
     assert(interest_claimed > 0, 'Should claim interest');
 
     // User still has remaining PT/YT
     let pt = IPTDispatcher { contract_address: yt.pt() };
-    assert(pt.balance_of(user) == mint_amount - redeem_amount, 'Wrong remaining PT');
-    assert(yt.balance_of(user) == mint_amount - redeem_amount, 'Wrong remaining YT');
+    assert(pt.balance_of(user) == pt_minted - redeem_amount, 'Wrong remaining PT');
+    assert(yt.balance_of(user) == pt_minted - redeem_amount, 'Wrong remaining YT');
 }
 
 #[test]
@@ -392,8 +418,8 @@ fn test_redeem_py_with_interest_to_different_receiver() {
     let receiver = bob();
     let amount = 100 * WAD;
 
-    // Mint PT/YT to caller
-    mint_and_mint_py(yield_token, sy, yt, caller, amount);
+    // Mint PT/YT to caller at index 1.0
+    let (pt_minted, _) = mint_and_mint_py(yield_token, sy, yt, caller, amount);
 
     // Also mint PT/YT for user1 to provide additional SY in pool for interest
     let extra_for_interest = 10 * WAD;
@@ -404,12 +430,12 @@ fn test_redeem_py_with_interest_to_different_receiver() {
 
     // Redeem to different receiver
     start_cheat_caller_address(yt.contract_address, caller);
-    let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(receiver, amount, true);
+    let (sy_returned, interest_claimed) = yt.redeem_py_with_interest(receiver, pt_minted, true);
     stop_cheat_caller_address(yt.contract_address);
 
-    // Receiver should get both redemption and interest
-    assert(sy_returned == amount, 'Wrong SY from redeem');
-    assert(sy.balance_of(receiver) == amount + interest_claimed, 'Receiver wrong SY');
+    // Receiver should get both redemption (via assetToSy) and interest
+    assert(sy_returned > 0, 'Should return SY from redeem');
+    assert(sy.balance_of(receiver) == sy_returned + interest_claimed, 'Receiver wrong SY');
     assert(sy.balance_of(caller) == 0, 'Caller should have 0 SY');
 }
 

@@ -261,6 +261,7 @@ pub fn mint_and_deposit_sy(
 }
 
 /// Mint yield token, deposit to SY, and mint PT/YT for a user
+/// Uses floating SY pattern: transfer SY to YT contract, then call mint_py
 pub fn mint_and_mint_py(
     yield_token: IMockYieldTokenDispatcher,
     sy: ISYDispatcher,
@@ -271,14 +272,75 @@ pub fn mint_and_mint_py(
     // Get SY first
     let sy_amount = mint_and_deposit_sy(yield_token, sy, user, amount);
 
-    // Approve YT to spend SY
+    // Transfer SY to YT contract (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, sy_amount);
+    sy.transfer(yt.contract_address, sy_amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Mint PT/YT
+    // Mint PT/YT using floating SY (same receiver for both)
     start_cheat_caller_address(yt.contract_address, user);
-    let (pt_minted, yt_minted) = yt.mint_py(user, sy_amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer SY from user to YT contract and mint PT/YT
+/// This wraps the floating SY pattern for tests that already have SY balance
+pub fn transfer_sy_and_mint_py(
+    sy: ISYDispatcher, yt: IYTDispatcher, user: ContractAddress, amount: u256,
+) -> (u256, u256) {
+    // Transfer SY to YT contract (floating SY pattern)
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT/YT using floating SY (same receiver for both)
+    start_cheat_caller_address(yt.contract_address, user);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer SY from user to YT contract and mint PT/YT to a different receiver
+pub fn transfer_sy_and_mint_py_to(
+    sy: ISYDispatcher,
+    yt: IYTDispatcher,
+    caller: ContractAddress,
+    receiver: ContractAddress,
+    amount: u256,
+) -> (u256, u256) {
+    // Transfer SY to YT contract (floating SY pattern)
+    start_cheat_caller_address(sy.contract_address, caller);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT/YT using floating SY (same receiver for both)
+    start_cheat_caller_address(yt.contract_address, caller);
+    let (pt_minted, yt_minted) = yt.mint_py(receiver, receiver);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer SY and mint PT/YT to distinct receivers (Pendle-style)
+pub fn transfer_sy_and_mint_py_split(
+    sy: ISYDispatcher,
+    yt: IYTDispatcher,
+    caller: ContractAddress,
+    receiver_pt: ContractAddress,
+    receiver_yt: ContractAddress,
+    amount: u256,
+) -> (u256, u256) {
+    // Transfer SY to YT contract (floating SY pattern)
+    start_cheat_caller_address(sy.contract_address, caller);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT to receiver_pt, YT to receiver_yt
+    start_cheat_caller_address(yt.contract_address, caller);
+    let (pt_minted, yt_minted) = yt.mint_py(receiver_pt, receiver_yt);
     stop_cheat_caller_address(yt.contract_address);
 
     (pt_minted, yt_minted)

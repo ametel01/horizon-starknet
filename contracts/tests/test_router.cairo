@@ -215,13 +215,13 @@ fn setup_user_with_tokens(
     // Get double amount of SY so we can mint PT+YT and have SY left
     setup_user_with_sy(underlying, sy, user, amount * 2);
 
-    // Mint PT+YT from half the SY
+    // Mint PT+YT from half the SY (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 }
 
@@ -526,11 +526,11 @@ fn test_router_swap_exact_pt_for_sy() {
     // Mint more PT for swapping
     setup_user_with_sy(underlying, sy, user, 50 * WAD);
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, 50 * WAD);
+    sy.transfer(yt.contract_address, 50 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, 50 * WAD);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Swap PT for SY through router
@@ -619,11 +619,11 @@ fn test_router_swap_pt_for_exact_sy() {
     // Mint more PT
     setup_user_with_sy(underlying, sy, user, 50 * WAD);
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, 50 * WAD);
+    sy.transfer(yt.contract_address, 50 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, 50 * WAD);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Swap PT for exact SY
@@ -713,11 +713,11 @@ fn test_router_sell_pt_for_sy() {
     // Mint more PT
     setup_user_with_sy(underlying, sy, user, 50 * WAD);
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, 50 * WAD);
+    sy.transfer(yt.contract_address, 50 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, 50 * WAD);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Sell PT for SY
@@ -937,11 +937,14 @@ fn test_router_swap_exact_yt_for_sy() {
     // Get more SY and mint more YT for selling
     setup_user_with_sy(underlying, sy, user, 50 * WAD);
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, 30 * WAD); // Only mint 30 WAD worth, keep 20 WAD for collateral
+    sy
+        .transfer(
+            yt.contract_address, 30 * WAD,
+        ); // Only mint 30 WAD worth, keep 20 WAD for collateral
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, 30 * WAD);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     // Swap YT for SY through router
@@ -1012,11 +1015,11 @@ fn test_router_swap_exact_yt_for_sy_to_receiver() {
     // Get more SY and mint more YT, keeping some SY for collateral
     setup_user_with_sy(underlying, sy, sender, 50 * WAD);
     start_cheat_caller_address(sy.contract_address, sender);
-    sy.approve(yt.contract_address, 30 * WAD);
+    sy.transfer(yt.contract_address, 30 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, sender);
-    yt.mint_py(sender, 30 * WAD);
+    yt.mint_py(sender, sender);
     stop_cheat_caller_address(yt.contract_address);
 
     let yt_to_sell = 5 * WAD;
@@ -1074,11 +1077,11 @@ fn test_router_swap_exact_yt_for_sy_slippage() {
     // Get more SY and mint more YT, keeping some for collateral
     setup_user_with_sy(underlying, sy, user, 50 * WAD);
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, 30 * WAD);
+    sy.transfer(yt.contract_address, 30 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, 30 * WAD);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     let yt_to_sell = 5 * WAD;
