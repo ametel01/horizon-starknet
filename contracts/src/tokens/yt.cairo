@@ -83,6 +83,9 @@ pub mod YT {
         user_interest: Map<ContractAddress, u256>,
         // Flag to emit ExpiryReached event only once
         expiry_event_emitted: bool,
+        // Expected SY balance held by contract (tracks deposits/withdrawals)
+        // Used to detect "floating" SY from direct transfers
+        sy_reserve: u256,
     }
 
     #[event]
@@ -368,6 +371,9 @@ pub mod YT {
             let success = sy.transfer_from(caller, get_contract_address(), amount_sy_to_mint);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
+            // Update sy_reserve to track expected SY balance
+            self.sy_reserve.write(self.sy_reserve.read() + amount_sy_to_mint);
+
             // Calculate PY amount: for simplicity, 1 SY = 1 PT + 1 YT
             // In production, this might account for the current index
             let amount_py = amount_sy_to_mint;
@@ -444,6 +450,9 @@ pub mod YT {
             let sy = ISYDispatcher { contract_address: sy_addr };
             let success = sy.transfer(receiver, amount_sy);
             assert(success, Errors::YT_INSUFFICIENT_SY);
+
+            // Update sy_reserve to reflect SY outflow
+            self.sy_reserve.write(self.sy_reserve.read() - amount_sy);
 
             self
                 .emit(
@@ -527,6 +536,9 @@ pub mod YT {
             let success = sy.transfer(receiver, amount_sy);
             assert(success, Errors::YT_INSUFFICIENT_SY);
 
+            // Update sy_reserve to reflect SY outflow
+            self.sy_reserve.write(self.sy_reserve.read() - amount_sy);
+
             self
                 .emit(
                     RedeemPYPostExpiry {
@@ -580,6 +592,25 @@ pub mod YT {
             self.py_index_stored.read()
         }
 
+        /// Get expected SY balance held by this contract
+        /// Tracks deposits minus withdrawals, not actual balance
+        fn sy_reserve(self: @ContractState) -> u256 {
+            self.sy_reserve.read()
+        }
+
+        /// Get "floating" SY - tokens sent directly to contract outside normal operations
+        /// Returns difference between actual balance and expected reserve
+        fn get_floating_sy(self: @ContractState) -> u256 {
+            let sy = ISYDispatcher { contract_address: self.sy.read() };
+            let actual = sy.balance_of(get_contract_address());
+            let reserved = self.sy_reserve.read();
+            if actual > reserved {
+                actual - reserved
+            } else {
+                0
+            }
+        }
+
         /// Claim accrued interest for a user
         /// @param user Address to claim interest for
         /// @return Amount of SY claimed
@@ -608,6 +639,9 @@ pub mod YT {
             let sy = ISYDispatcher { contract_address: sy_addr };
             let success = sy.transfer(user, interest);
             assert(success, Errors::YT_INSUFFICIENT_SY);
+
+            // Update sy_reserve to reflect interest outflow
+            self.sy_reserve.write(self.sy_reserve.read() - interest);
 
             self
                 .emit(

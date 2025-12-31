@@ -36,6 +36,10 @@ pub trait IYT<TContractState> {
     fn py_index_current(self: @TContractState) -> u256;
     fn py_index_stored(self: @TContractState) -> u256;
 
+    // Reserve tracking
+    fn sy_reserve(self: @TContractState) -> u256;
+    fn get_floating_sy(self: @TContractState) -> u256;
+
     // Yield claiming
     fn redeem_due_interest(ref self: TContractState, user: ContractAddress) -> u256;
     fn get_user_interest(self: @TContractState, user: ContractAddress) -> u256;

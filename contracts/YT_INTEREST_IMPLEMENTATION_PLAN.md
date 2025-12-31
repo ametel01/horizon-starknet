@@ -18,7 +18,7 @@
 
 ---
 
-## Phase 1: syReserve Tracking (MEDIUM)
+## Phase 1: syReserve Tracking (MEDIUM) **COMPLETE**
 
 **Goal:** Track expected SY balance for accurate accounting, detect floating SY.
 
