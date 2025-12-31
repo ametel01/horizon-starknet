@@ -24,8 +24,8 @@ pub mod YT {
     };
     use starknet::syscalls::deploy_syscall;
     use starknet::{
-        ClassHash, ContractAddress, SyscallResultTrait, get_block_timestamp, get_caller_address,
-        get_contract_address,
+        ClassHash, ContractAddress, SyscallResultTrait, get_block_info, get_block_timestamp,
+        get_caller_address, get_contract_address,
     };
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
@@ -94,6 +94,11 @@ pub mod YT {
         // Protocol fee rate on interest claims (WAD-scaled, e.g., 0.03e18 = 3%)
         // Fee is deducted from interest and sent to treasury
         interest_fee_rate: u256,
+        // Same-block index caching: block number of last index fetch
+        // Avoids redundant oracle calls within the same block
+        last_index_block: u64,
+        // Same-block index caching: cached index value from last fetch
+        cached_index: u256,
     }
 
     #[event]
@@ -118,6 +123,9 @@ pub mod YT {
         ExpiryReached: ExpiryReached,
         TreasuryInterestRedeemed: TreasuryInterestRedeemed,
         InterestFeeRateSet: InterestFeeRateSet,
+        MintPYMulti: MintPYMulti,
+        RedeemPYMulti: RedeemPYMulti,
+        RedeemPYWithInterest: RedeemPYWithInterest,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -232,6 +240,47 @@ pub mod YT {
         pub yt: ContractAddress,
         pub old_rate: u256,
         pub new_rate: u256,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when batch minting PT/YT for multiple receivers
+    #[derive(Drop, starknet::Event)]
+    pub struct MintPYMulti {
+        #[key]
+        pub caller: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub total_sy_deposited: u256,
+        pub total_py_minted: u256,
+        pub receiver_count: u32,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when batch redeeming PT/YT for multiple receivers
+    #[derive(Drop, starknet::Event)]
+    pub struct RedeemPYMulti {
+        #[key]
+        pub caller: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub total_py_redeemed: u256,
+        pub total_sy_returned: u256,
+        pub receiver_count: u32,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when redeeming PT/YT with optional interest claim
+    #[derive(Drop, starknet::Event)]
+    pub struct RedeemPYWithInterest {
+        #[key]
+        pub caller: ContractAddress,
+        #[key]
+        pub receiver: ContractAddress,
+        #[key]
+        pub expiry: u64,
+        pub amount_py_redeemed: u256,
+        pub amount_sy_from_redeem: u256,
+        pub amount_interest_claimed: u256,
         pub timestamp: u64,
     }
 
@@ -597,32 +646,290 @@ pub mod YT {
             amount_sy
         }
 
+        /// Batch mint PT + YT for multiple receivers
+        /// More gas efficient than calling mint_py multiple times
+        /// @param receivers Array of addresses to receive PT/YT
+        /// @param amounts Array of SY amounts to deposit for each receiver
+        /// @return (pt_amounts, yt_amounts) Arrays of minted amounts
+        fn mint_py_multi(
+            ref self: ContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
+        ) -> (Array<u256>, Array<u256>) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+
+            assert(!self.is_expired(), Errors::YT_EXPIRED);
+            assert(receivers.len() == amounts.len(), Errors::YT_ARRAY_LENGTH_MISMATCH);
+            assert(receivers.len() > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+
+            // Update global PY index once for all operations
+            self._update_py_index();
+
+            // Calculate total SY needed
+            let mut total_sy: u256 = 0;
+            let mut i: u32 = 0;
+            let len = amounts.len();
+            while i < len {
+                total_sy += *amounts.at(i);
+                i += 1;
+            }
+
+            // Transfer total SY from caller
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+            let success = sy.transfer_from(caller, get_contract_address(), total_sy);
+            assert(success, Errors::YT_INSUFFICIENT_SY);
+
+            // Update sy_reserve
+            self.sy_reserve.write(self.sy_reserve.read() + total_sy);
+
+            // Mint PT/YT to each receiver
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
+
+            let mut pt_amounts: Array<u256> = array![];
+            let mut yt_amounts: Array<u256> = array![];
+            i = 0;
+            while i < len {
+                let receiver = *receivers.at(i);
+                let amount = *amounts.at(i);
+
+                assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+                assert(amount > 0, Errors::ZERO_AMOUNT);
+
+                // Update receiver's interest before minting
+                self._update_user_interest(receiver);
+
+                // Mint PT and YT (1:1 ratio)
+                pt.mint(receiver, amount);
+                self.erc20.mint(receiver, amount);
+
+                pt_amounts.append(amount);
+                yt_amounts.append(amount);
+                i += 1;
+            }
+
+            // Emit batch event
+            self
+                .emit(
+                    MintPYMulti {
+                        caller,
+                        expiry: self.expiry.read(),
+                        total_sy_deposited: total_sy,
+                        total_py_minted: total_sy,
+                        receiver_count: len,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (pt_amounts, yt_amounts)
+        }
+
+        /// Batch redeem PT + YT for multiple receivers (before expiry)
+        /// Caller must have sufficient PT and YT balances
+        /// @param receivers Array of addresses to receive SY
+        /// @param amounts Array of PY amounts to redeem for each receiver
+        /// @return Array of SY amounts returned
+        fn redeem_py_multi(
+            ref self: ContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
+        ) -> Array<u256> {
+            self.reentrancy_guard.start();
+
+            assert(!self.is_expired(), Errors::YT_EXPIRED);
+            assert(receivers.len() == amounts.len(), Errors::YT_ARRAY_LENGTH_MISMATCH);
+            assert(receivers.len() > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+
+            // Update global PY index once
+            self._update_py_index();
+
+            // Update caller's interest before burning
+            self._update_user_interest(caller);
+
+            // Calculate totals
+            let mut total_py: u256 = 0;
+            let mut i: u32 = 0;
+            let len = amounts.len();
+            while i < len {
+                total_py += *amounts.at(i);
+                i += 1;
+            }
+
+            // Burn PT and YT from caller
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
+            pt.burn(caller, total_py);
+            self.erc20.burn(caller, total_py);
+
+            // Transfer SY to each receiver
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+
+            let mut sy_amounts: Array<u256> = array![];
+            i = 0;
+            while i < len {
+                let receiver = *receivers.at(i);
+                let amount = *amounts.at(i);
+
+                assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+                assert(amount > 0, Errors::ZERO_AMOUNT);
+
+                let success = sy.transfer(receiver, amount);
+                assert(success, Errors::YT_INSUFFICIENT_SY);
+
+                sy_amounts.append(amount);
+                i += 1;
+            }
+
+            // Update sy_reserve
+            self.sy_reserve.write(self.sy_reserve.read() - total_py);
+
+            // Emit batch event
+            self
+                .emit(
+                    RedeemPYMulti {
+                        caller,
+                        expiry: self.expiry.read(),
+                        total_py_redeemed: total_py,
+                        total_sy_returned: total_py,
+                        receiver_count: len,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            sy_amounts
+        }
+
+        /// Redeem PT + YT for SY with optional interest claim
+        /// Convenience function that combines redeem_py and redeem_due_interest
+        /// @param receiver Address to receive the SY (both from redeem and interest)
+        /// @param amount_py Amount of PT and YT to burn
+        /// @param redeem_interest If true, also claims accrued interest
+        /// @return (sy_from_redeem, interest_claimed)
+        fn redeem_py_with_interest(
+            ref self: ContractState,
+            receiver: ContractAddress,
+            amount_py: u256,
+            redeem_interest: bool,
+        ) -> (u256, u256) {
+            self.reentrancy_guard.start();
+
+            assert(!self.is_expired(), Errors::YT_EXPIRED);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(amount_py > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+
+            // Update global PY index
+            self._update_py_index();
+
+            // Update caller's interest before burning
+            self._update_user_interest(caller);
+
+            // Burn PT from caller
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
+            pt.burn(caller, amount_py);
+
+            // Burn YT from caller
+            self.erc20.burn(caller, amount_py);
+
+            // Calculate SY to return: 1 PT + 1 YT = 1 SY
+            let sy_from_redeem = amount_py;
+
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+
+            // Transfer SY from redemption to receiver
+            let success = sy.transfer(receiver, sy_from_redeem);
+            assert(success, Errors::YT_INSUFFICIENT_SY);
+
+            // Update sy_reserve for redemption
+            self.sy_reserve.write(self.sy_reserve.read() - sy_from_redeem);
+
+            // Handle interest claim if requested
+            let mut interest_claimed: u256 = 0;
+            if redeem_interest {
+                let interest = self.user_interest.read(caller);
+                if interest > 0 {
+                    self.user_interest.write(caller, 0);
+
+                    // Apply protocol fee
+                    let fee_rate = self.interest_fee_rate.read();
+                    let fee = wad_mul(interest, fee_rate);
+                    let user_interest = interest - fee;
+
+                    // Transfer net interest to receiver
+                    if user_interest > 0 {
+                        let success = sy.transfer(receiver, user_interest);
+                        assert(success, Errors::YT_INSUFFICIENT_SY);
+                    }
+
+                    // Transfer fee to treasury if applicable
+                    if fee > 0 {
+                        let treasury = self.treasury.read();
+                        if !treasury.is_zero() {
+                            let success = sy.transfer(treasury, fee);
+                            assert(success, Errors::YT_INSUFFICIENT_SY);
+                        }
+                    }
+
+                    // Update sy_reserve for interest outflow (includes fee)
+                    self.sy_reserve.write(self.sy_reserve.read() - interest);
+                    interest_claimed = user_interest;
+                }
+            }
+
+            self
+                .emit(
+                    RedeemPYWithInterest {
+                        caller,
+                        receiver,
+                        expiry: self.expiry.read(),
+                        amount_py_redeemed: amount_py,
+                        amount_sy_from_redeem: sy_from_redeem,
+                        amount_interest_claimed: interest_claimed,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (sy_from_redeem, interest_claimed)
+        }
+
         /// Get current PY index (fetched from SY exchange rate)
         /// After expiry, returns the captured expiry index to prevent post-expiry yield accrual
+        /// Uses same-block caching to avoid redundant oracle calls
         fn py_index_current(self: @ContractState) -> u256 {
+            // After expiry, always return the frozen expiry index if captured
+            if self.is_expired() {
+                let expiry_index = self.py_index_at_expiry.read();
+                if expiry_index > 0 {
+                    return expiry_index;
+                }
+            }
+
+            // Check same-block cache to avoid redundant oracle calls
+            let current_block = get_block_info().unbox().block_number;
+            if current_block == self.last_index_block.read() && self.cached_index.read() > 0 {
+                return self.cached_index.read();
+            }
+
+            // Cache miss or stale - fetch from SY
             let sy = ISYDispatcher { contract_address: self.sy.read() };
             let current_rate = sy.exchange_rate();
             let stored_index = self.py_index_stored.read();
 
             // Always use max of current and stored (watermark pattern)
-            let effective_index = if current_rate > stored_index {
+            if current_rate > stored_index {
                 current_rate
             } else {
                 stored_index
-            };
-
-            // After expiry, cap at the captured expiry index if it exists
-            if self.is_expired() {
-                let expiry_index = self.py_index_at_expiry.read();
-                if expiry_index > 0 {
-                    // Return the frozen expiry index
-                    return expiry_index;
-                }
-                // Expiry index not yet captured - return current effective index
-            // This will be captured on the next state-changing call
             }
-
-            effective_index
         }
 
         /// Get stored PY index
@@ -898,25 +1205,53 @@ pub mod YT {
     impl InternalImpl of InternalTrait {
         /// Update the global PY index from SY's exchange rate
         /// If expired, captures the expiry index on first call to prevent post-expiry yield accrual
+        /// Uses same-block caching to avoid redundant oracle calls
         fn _update_py_index(ref self: ContractState) {
-            // Get current effective index (max of oracle rate and stored)
-            let current_index = self.py_index_current();
-
-            // If expired, capture the expiry index on first call
+            // If expired, handle expiry index capture
             if self.is_expired() {
                 if self.py_index_at_expiry.read() == 0 {
-                    // First call after expiry - capture current index as the expiry cap
-                    // This becomes the permanent cap for YT yield calculation
+                    // First call after expiry - compute and capture current index
+                    let current_index = self._fetch_current_index();
                     self.py_index_at_expiry.write(current_index);
                     self.py_index_stored.write(current_index);
                 }
                 return;
             }
 
-            // Not expired - update stored index if current is higher
+            // Check same-block cache to avoid redundant oracle calls
+            let current_block = get_block_info().unbox().block_number;
+            let cached_block = self.last_index_block.read();
+            if current_block == cached_block && self.cached_index.read() > 0 {
+                // Cache hit - use cached index (already stored)
+                return;
+            }
+
+            // Cache miss or stale - fetch from oracle and update cache
+            let current_index = self._fetch_current_index();
+
+            // Update stored index if current is higher (watermark pattern)
             let stored_index = self.py_index_stored.read();
             if current_index > stored_index {
                 self.py_index_stored.write(current_index);
+            }
+
+            // Update cache for current block
+            self.last_index_block.write(current_block);
+            self.cached_index.write(current_index);
+        }
+
+        /// Fetch current index from SY oracle (internal helper)
+        /// Returns max of oracle rate and stored index (watermark pattern)
+        fn _fetch_current_index(ref self: ContractState) -> u256 {
+            let sy = ISYDispatcher { contract_address: self.sy.read() };
+            let current_rate = sy.exchange_rate();
+            let stored_index = self.py_index_stored.read();
+
+            // Watermark pattern - never decrease
+            if current_rate > stored_index {
+                current_rate
+            } else {
+                stored_index
             }
         }
 

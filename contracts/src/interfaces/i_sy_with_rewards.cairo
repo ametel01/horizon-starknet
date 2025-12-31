@@ -28,28 +28,32 @@ pub trait ISYWithRewards<TContractState> {
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
 
     // ============ SY Core Functions ============
-    /// Deposit underlying yield-bearing tokens to mint SY
+    /// Deposit a valid token to mint SY
     /// @param receiver Address to receive the minted SY
-    /// @param amount_shares_to_deposit Amount of underlying shares to deposit
+    /// @param token_in Token used for deposit (must be a valid token_in)
+    /// @param amount_shares_to_deposit Amount of shares to deposit
     /// @param min_shares_out Minimum SY shares to receive (slippage protection)
     /// @return Amount of SY minted
     fn deposit(
         ref self: TContractState,
         receiver: ContractAddress,
+        token_in: ContractAddress,
         amount_shares_to_deposit: u256,
         min_shares_out: u256,
     ) -> u256;
 
-    /// Redeem SY for underlying yield-bearing tokens
-    /// @param receiver Address to receive the underlying tokens
+    /// Redeem SY for a valid token
+    /// @param receiver Address to receive the tokens
     /// @param amount_sy_to_redeem Amount of SY to burn
-    /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
+    /// @param token_out Token used for redemption (must be a valid token_out)
+    /// @param min_token_out Minimum tokens to receive (slippage protection)
     /// @param burn_from_internal_balance If true, burn from contract's own balance (Router pattern)
-    /// @return Amount of underlying shares redeemed
+    /// @return Amount of shares redeemed
     fn redeem(
         ref self: TContractState,
         receiver: ContractAddress,
         amount_sy_to_redeem: u256,
+        token_out: ContractAddress,
         min_token_out: u256,
         burn_from_internal_balance: bool,
     ) -> u256;

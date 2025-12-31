@@ -210,7 +210,7 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2, 0);
+    sy.deposit(user, underlying.contract_address, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Approve SY for YT contract and mint PT+YT

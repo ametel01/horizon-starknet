@@ -32,6 +32,19 @@ pub trait IYT<TContractState> {
         ref self: TContractState, receiver: ContractAddress, amount_pt: u256,
     ) -> u256;
 
+    // Batch operations
+    fn mint_py_multi(
+        ref self: TContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
+    ) -> (Array<u256>, Array<u256>);
+    fn redeem_py_multi(
+        ref self: TContractState, receivers: Array<ContractAddress>, amounts: Array<u256>,
+    ) -> Array<u256>;
+
+    // Convenience operations
+    fn redeem_py_with_interest(
+        ref self: TContractState, receiver: ContractAddress, amount_py: u256, redeem_interest: bool,
+    ) -> (u256, u256);
+
     // Index tracking
     fn py_index_current(self: @TContractState) -> u256;
     fn py_index_stored(self: @TContractState) -> u256;

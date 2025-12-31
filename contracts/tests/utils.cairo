@@ -3,8 +3,8 @@ use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
 
@@ -225,10 +225,19 @@ pub fn mint_yield_token_to_user(
 }
 
 /// Set yield token index (simulate yield accrual)
+/// Disables time-based yield for precise control when manually setting index
+/// Also advances block number to invalidate YT's same-block cache
 pub fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    // Derive unique block number from index value (1e18 -> block 1001, 1.1e18 -> block 1101, etc.)
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 /// Mint yield token and deposit to SY for a user
@@ -244,7 +253,8 @@ pub fn mint_and_deposit_sy(
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, amount, 0);
+    // deposit(receiver, token_in, amount_shares_to_deposit, min_shares_out)
+    let sy_minted = sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     sy_minted

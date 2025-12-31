@@ -17,8 +17,8 @@ use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldToke
 /// 6. Redeem PT + YT back to SY
 
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 
@@ -155,6 +155,10 @@ fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 // ============ Full Flow Test ============
@@ -195,7 +199,7 @@ fn test_full_yield_tokenization_flow() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), alice_deposit, 0);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, alice_deposit, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify Alice got SY tokens
@@ -299,7 +303,7 @@ fn test_multiple_users_yield_flow() {
     underlying.approve(sy.contract_address, alice_amount);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), alice_amount, 0);
+    sy.deposit(alice(), underlying.contract_address, alice_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Setup Bob
@@ -308,7 +312,7 @@ fn test_multiple_users_yield_flow() {
     underlying.approve(sy.contract_address, bob_amount);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.deposit(bob(), bob_amount, 0);
+    sy.deposit(bob(), underlying.contract_address, bob_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Alice mints PT + YT
@@ -393,7 +397,7 @@ fn test_router_full_flow() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount, 0);
+    sy.deposit(alice(), underlying.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Alice mints PT + YT through router
@@ -455,7 +459,7 @@ fn test_yield_accrual_over_time() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount, 0);
+    sy.deposit(alice(), underlying.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
@@ -512,7 +516,7 @@ fn test_partial_redemptions() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount, 0);
+    sy.deposit(alice(), underlying.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());

@@ -211,7 +211,7 @@ fn mint_and_deposit_sy(
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, amount, 0);
+    let sy_minted = sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     sy_minted
@@ -271,7 +271,7 @@ fn test_sy_core_redeem() {
     // Redeem half
     let redeem_amount = 500 * WAD;
     start_cheat_caller_address(sy.contract_address, user1());
-    let redeemed = sy.redeem(user1(), redeem_amount, 0, false);
+    let redeemed = sy.redeem(user1(), redeem_amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(redeemed == redeem_amount, 'wrong redeem amount');
@@ -421,7 +421,7 @@ fn test_rewards_accrue_after_redeem() {
 
     // User1 redeems all - should update their rewards first
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.redeem(user1(), 500 * WAD, 0, false);
+    sy.redeem(user1(), 500 * WAD, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     // Send second batch
@@ -545,7 +545,7 @@ fn test_rewards_during_zero_supply_go_to_first_depositor() {
     // User1 deposits and redeems all - supply goes to 0
     mint_and_deposit_sy(yield_token, sy, user1(), 1000 * WAD);
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.redeem(user1(), 1000 * WAD, 0, false);
+    sy.redeem(user1(), 1000 * WAD, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.total_supply() == 0, 'supply should be zero');
@@ -793,7 +793,7 @@ fn test_sy_with_rewards_deposit_blocked_when_paused() {
 
     // Try to deposit - should fail because paused
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
 }
 
 #[test]
@@ -848,7 +848,7 @@ fn test_sy_with_rewards_redeem_works_when_paused() {
 
     // Redeem should work even when paused - users must be able to exit
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(user, amount, 0, false);
+    let shares_received = sy.redeem(user, amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Redeem should work when paused');

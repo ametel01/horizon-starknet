@@ -280,27 +280,37 @@ pub mod SY {
             true
         }
 
-        /// Deposit underlying yield-bearing tokens to mint SY
+        /// Deposit a valid token to mint SY
         /// Delegates to SYComponent
         fn deposit(
             ref self: ContractState,
             receiver: ContractAddress,
+            token_in: ContractAddress,
             amount_shares_to_deposit: u256,
             min_shares_out: u256,
         ) -> u256 {
-            self.sy.deposit(receiver, amount_shares_to_deposit, min_shares_out)
+            self.sy.deposit(receiver, token_in, amount_shares_to_deposit, min_shares_out)
         }
 
-        /// Redeem SY for underlying yield-bearing tokens
+        /// Redeem SY for a valid token
         /// Delegates to SYComponent
         fn redeem(
             ref self: ContractState,
             receiver: ContractAddress,
             amount_sy_to_redeem: u256,
+            token_out: ContractAddress,
             min_token_out: u256,
             burn_from_internal_balance: bool,
         ) -> u256 {
-            self.sy.redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance)
+            self
+                .sy
+                .redeem(
+                    receiver,
+                    amount_sy_to_redeem,
+                    token_out,
+                    min_token_out,
+                    burn_from_internal_balance,
+                )
         }
 
         /// Get the current exchange rate (assets per share in WAD)

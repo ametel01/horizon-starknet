@@ -10,6 +10,8 @@ pub mod Errors {
     pub const SY_INSUFFICIENT_BALANCE: felt252 = 'HZN: insufficient balance';
     pub const SY_EMPTY_TOKENS_IN: felt252 = 'HZN: empty tokens_in';
     pub const SY_EMPTY_TOKENS_OUT: felt252 = 'HZN: empty tokens_out';
+    pub const SY_INVALID_TOKEN_IN: felt252 = 'HZN: invalid token_in';
+    pub const SY_INVALID_TOKEN_OUT: felt252 = 'HZN: invalid token_out';
     pub const SY_INSUFFICIENT_SHARES_OUT: felt252 = 'HZN: insufficient shares out';
     pub const SY_INSUFFICIENT_TOKEN_OUT: felt252 = 'HZN: insufficient token out';
 
@@ -28,6 +30,7 @@ pub mod Errors {
     pub const YT_INSUFFICIENT_YT: felt252 = 'HZN: insufficient YT';
     pub const YT_INSUFFICIENT_SY: felt252 = 'HZN: insufficient SY';
     pub const YT_INVALID_FEE_RATE: felt252 = 'HZN: invalid fee rate';
+    pub const YT_ARRAY_LENGTH_MISMATCH: felt252 = 'HZN: array length mismatch';
 
     // Market errors
     pub const MARKET_EXPIRED: felt252 = 'HZN: market expired';

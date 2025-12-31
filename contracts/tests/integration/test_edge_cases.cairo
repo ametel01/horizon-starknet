@@ -17,8 +17,8 @@ use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldToke
 /// 5. Dust amounts
 
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 
@@ -173,8 +173,14 @@ fn mint_yield_token_to_user(
 
 fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 // Helper: Setup user with SY and PT tokens
@@ -192,7 +198,7 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2, 0);
+    sy.deposit(user, underlying.contract_address, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
@@ -216,7 +222,7 @@ fn test_zero_sy_deposit() {
     let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 0, 0); // Should panic
+    sy.deposit(alice(), underlying.contract_address, 0, 0); // Should panic
 }
 
 #[test]
@@ -234,12 +240,12 @@ fn test_zero_sy_redeem() {
     underlying.approve(sy.contract_address, 100 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 100 * WAD, 0);
+    sy.deposit(alice(), underlying.contract_address, 100 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Try to redeem zero
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.redeem(alice(), 0, 0, false); // Should panic
+    sy.redeem(alice(), underlying.contract_address, 0, 0, false); // Should panic
 }
 
 #[test]
@@ -314,7 +320,7 @@ fn test_large_amounts() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), large_amount, 0);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, large_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy_received == large_amount, 'Large SY deposit');
@@ -500,7 +506,7 @@ fn test_minimum_amounts() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), dust_amount, 0);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, dust_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Even 1 wei should work
@@ -621,7 +627,7 @@ fn test_operations_across_time() {
     underlying.approve(sy.contract_address, 500 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.deposit(bob(), 500 * WAD, 0);
+    sy.deposit(bob(), underlying.contract_address, 500 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, bob());

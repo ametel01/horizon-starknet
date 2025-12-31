@@ -361,7 +361,7 @@ fn test_created_market_is_functional() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2, 0);
+    sy.deposit(user, underlying.contract_address, amount * 2, 0);
     sy.approve(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 

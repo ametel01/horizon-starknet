@@ -249,16 +249,18 @@ pub mod SYComponent {
             self.tokens_out_count.write(j);
         }
 
-        /// Deposit underlying yield-bearing tokens to mint SY
-        /// SY is 1:1 with the underlying shares (not assets).
+        /// Deposit a valid token to mint SY
+        /// SY is 1:1 with deposited shares (not assets).
         ///
         /// @param receiver Address to receive the minted SY
-        /// @param amount_shares_to_deposit Amount of underlying shares to deposit
+        /// @param token_in Token used for deposit (must be a valid token_in)
+        /// @param amount_shares_to_deposit Amount of shares to deposit
         /// @param min_shares_out Minimum SY shares to receive (slippage protection)
         /// @return Amount of SY minted (equal to shares deposited)
         fn deposit(
             ref self: ComponentState<TContractState>,
             receiver: ContractAddress,
+            token_in: ContractAddress,
             amount_shares_to_deposit: u256,
             min_shares_out: u256,
         ) -> u256 {
@@ -271,23 +273,23 @@ pub mod SYComponent {
             // Validate inputs
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_shares_to_deposit > 0, Errors::SY_ZERO_DEPOSIT);
+            assert(self.valid_tokens_in.read(token_in), Errors::SY_INVALID_TOKEN_IN);
 
             // Check and emit oracle rate update if rate changed
             self._check_and_emit_rate_update();
 
             let caller = get_caller_address();
 
-            // Transfer underlying shares from caller to this contract
+            // Transfer tokens from caller to this contract
             // SECURITY: This external call happens before mint (CEI violation).
-            // We trust underlying to be a standard ERC20 without transfer hooks.
-            // Underlying tokens are vetted yield-bearing assets (stETH, nstSTRK, etc).
-            let underlying_addr = self.underlying.read();
-            let underlying_token = IERC20ExternalDispatcher { contract_address: underlying_addr };
-            let success = underlying_token
+            // We trust the token to be a standard ERC20 without transfer hooks.
+            // Tokens are vetted yield-bearing assets (stETH, nstSTRK, etc).
+            let token_in_token = IERC20ExternalDispatcher { contract_address: token_in };
+            let success = token_in_token
                 .transfer_from(caller, get_contract_address(), amount_shares_to_deposit);
             assert(success, Errors::SY_INSUFFICIENT_BALANCE);
 
-            // SY is 1:1 with underlying shares
+            // SY is 1:1 with deposited shares
             let sy_to_mint = amount_shares_to_deposit;
 
             // Slippage protection: ensure minimum shares out
@@ -307,7 +309,7 @@ pub mod SYComponent {
                     Deposit {
                         caller,
                         receiver,
-                        underlying: underlying_addr,
+                        underlying: token_in,
                         amount_deposited: amount_shares_to_deposit,
                         amount_sy_minted: sy_to_mint,
                         exchange_rate: self._exchange_rate(),
@@ -323,18 +325,20 @@ pub mod SYComponent {
             sy_to_mint
         }
 
-        /// Redeem SY for underlying yield-bearing tokens
+        /// Redeem SY for a valid token
         ///
-        /// @param receiver Address to receive the underlying tokens
+        /// @param receiver Address to receive the tokens
         /// @param amount_sy_to_redeem Amount of SY to burn
-        /// @param min_token_out Minimum underlying tokens to receive (slippage protection)
+        /// @param token_out Token used for redemption (must be a valid token_out)
+        /// @param min_token_out Minimum tokens to receive (slippage protection)
         /// @param burn_from_internal_balance If true, burn from contract's own balance (Router
         /// pattern)
-        /// @return Amount of underlying shares redeemed (equal to SY burned)
+        /// @return Amount of shares redeemed (equal to SY burned)
         fn redeem(
             ref self: ComponentState<TContractState>,
             receiver: ContractAddress,
             amount_sy_to_redeem: u256,
+            token_out: ContractAddress,
             min_token_out: u256,
             burn_from_internal_balance: bool,
         ) -> u256 {
@@ -347,6 +351,7 @@ pub mod SYComponent {
             // Validate inputs
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
             assert(amount_sy_to_redeem > 0, Errors::SY_ZERO_REDEEM);
+            assert(self.valid_tokens_out.read(token_out), Errors::SY_INVALID_TOKEN_OUT);
 
             // Check and emit oracle rate update if rate changed
             self._check_and_emit_rate_update();
@@ -366,16 +371,15 @@ pub mod SYComponent {
             let mut contract = self.get_contract_mut();
             Hooks::burn_sy(ref contract, burn_from, amount_sy_to_redeem);
 
-            // SY is 1:1 with underlying shares
+            // SY is 1:1 with redeemed shares
             let shares_to_return = amount_sy_to_redeem;
 
             // Slippage protection: ensure minimum token out
             assert(shares_to_return >= min_token_out, Errors::SY_INSUFFICIENT_TOKEN_OUT);
 
-            // Transfer underlying to receiver
-            let underlying_addr = self.underlying.read();
-            let underlying_token = IERC20ExternalDispatcher { contract_address: underlying_addr };
-            let success = underlying_token.transfer(receiver, shares_to_return);
+            // Transfer tokens to receiver
+            let token_out_token = IERC20ExternalDispatcher { contract_address: token_out };
+            let success = token_out_token.transfer(receiver, shares_to_return);
             assert(success, Errors::SY_INSUFFICIENT_BALANCE);
 
             // Get total supply after burn for event
@@ -387,7 +391,7 @@ pub mod SYComponent {
                     Redeem {
                         caller,
                         receiver,
-                        underlying: underlying_addr,
+                        underlying: token_out,
                         amount_sy_burned: amount_sy_to_redeem,
                         amount_redeemed: shares_to_return,
                         exchange_rate: self._exchange_rate(),

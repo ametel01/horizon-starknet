@@ -155,7 +155,7 @@ fn test_yt_mint_py_multiple_times() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     sy.approve(yt.contract_address, 2 * amount);
     stop_cheat_caller_address(sy.contract_address);
 
@@ -642,7 +642,7 @@ fn test_yt_interest_claim_after_expiry() {
     mint_and_mint_py(yield_token, sy, yt, user, 100 * WAD);
 
     // Accrue some interest before expiry (10% yield from set_index)
-    // Note: Mock also has 5% APR time-based yield, so total is ~15% after 1 year
+    // Note: set_yield_index disables time-based yield for precise control
     set_yield_index(yield_token, WAD + WAD / 10);
 
     // Move past expiry
@@ -653,10 +653,10 @@ fn test_yt_interest_claim_after_expiry() {
     let claimed = yt.redeem_due_interest(user);
     stop_cheat_caller_address(yt.contract_address);
 
-    // Should get yield (10% from index + ~5% from time-based APR)
-    // With 100 WAD position, expect roughly 15 WAD (10% + 5%)
-    assert(claimed >= 10 * WAD, 'Should get yield');
-    assert(claimed <= 20 * WAD, 'Yield should be capped');
+    // With 10% yield, Pendle interest formula gives: balance × (curr - prev) / (prev × curr)
+    // = 100 WAD × 0.1 / 1.1 ≈ 9.09 WAD (slightly less than 10% due to the formula)
+    assert(claimed >= 9 * WAD, 'Should get yield');
+    assert(claimed <= 10 * WAD, 'Yield should be capped');
 
     // Now index increases after expiry (but expiry index already captured)
     set_yield_index(yield_token, WAD + WAD / 5);

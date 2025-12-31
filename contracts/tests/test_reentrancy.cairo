@@ -153,7 +153,7 @@ fn test_sy_deposit_normal_operation() {
 
     // Deposit
     start_cheat_caller_address(sy.contract_address, user1());
-    let sy_received = sy.deposit(user1(), amount, 0);
+    let sy_received = sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify deposit worked
@@ -190,7 +190,7 @@ fn test_sy_deposit_reentrancy_safe() {
 
     // Perform deposit - attack callback will be triggered during transfer_from
     start_cheat_caller_address(sy.contract_address, attacker());
-    let sy_received = sy.deposit(attacker(), amount, 0);
+    let sy_received = sy.deposit(attacker(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Attack was triggered (callback happened)
@@ -226,7 +226,7 @@ fn test_sy_redeem_reentrancy_safe() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify user has SY
@@ -237,7 +237,7 @@ fn test_sy_redeem_reentrancy_safe() {
 
     // Redeem
     start_cheat_caller_address(sy.contract_address, user1());
-    let redeemed = sy.redeem(user1(), amount, 0, false);
+    let redeemed = sy.redeem(user1(), amount, reentrant.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     // Redeem completed correctly
@@ -251,12 +251,12 @@ fn test_sy_redeem_reentrancy_safe() {
 #[test]
 #[should_panic(expected: 'ERC20: insufficient balance')]
 fn test_sy_redeem_insufficient_balance() {
-    let (_reentrant, sy) = setup_sy_with_reentrant();
+    let (reentrant, sy) = setup_sy_with_reentrant();
     let amount = 1000 * WAD;
 
     // Try to redeem without any SY
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.redeem(user1(), amount, 0, false);
+    sy.redeem(user1(), amount, reentrant.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 }
 
@@ -278,7 +278,7 @@ fn test_yt_mint_py_normal_operation() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Approve YT to spend SY
@@ -327,7 +327,7 @@ fn test_yt_mint_py_reentrancy_protected() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount * 2, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Note: Attack mode is set but won't trigger because mint_py
@@ -374,7 +374,7 @@ fn test_yt_redeem_py_reentrancy_protected() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
@@ -426,7 +426,7 @@ fn test_yt_redeem_due_interest_reentrancy_protected() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
@@ -479,7 +479,7 @@ fn test_yt_transfer_interest_update_order() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
@@ -538,7 +538,7 @@ fn test_pt_mint_no_external_calls() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
@@ -570,7 +570,7 @@ fn test_pt_burn_no_external_calls() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
@@ -605,7 +605,7 @@ fn test_pt_transfer_no_external_calls() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
@@ -653,7 +653,7 @@ fn test_sy_multiple_deposits_no_gaming() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, attacker());
-    sy.deposit(attacker(), attacker_amount, 0);
+    sy.deposit(attacker(), reentrant.contract_address, attacker_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // User deposits (not affected by attack)
@@ -662,7 +662,7 @@ fn test_sy_multiple_deposits_no_gaming() {
     stop_cheat_caller_address(reentrant.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), user_amount, 0);
+    sy.deposit(user1(), reentrant.contract_address, user_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Both have correct balances - attack didn't affect user
@@ -674,20 +674,20 @@ fn test_sy_multiple_deposits_no_gaming() {
 #[test]
 #[should_panic(expected: 'HZN: zero deposit')]
 fn test_sy_deposit_zero_reverts() {
-    let (_reentrant, sy) = setup_sy_with_reentrant();
+    let (reentrant, sy) = setup_sy_with_reentrant();
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.deposit(user1(), 0, 0);
+    sy.deposit(user1(), reentrant.contract_address, 0, 0);
     stop_cheat_caller_address(sy.contract_address);
 }
 
 #[test]
 #[should_panic(expected: 'HZN: zero redeem')]
 fn test_sy_redeem_zero_reverts() {
-    let (_reentrant, sy) = setup_sy_with_reentrant();
+    let (reentrant, sy) = setup_sy_with_reentrant();
 
     start_cheat_caller_address(sy.contract_address, user1());
-    sy.redeem(user1(), 0, 0, false);
+    sy.redeem(user1(), 0, reentrant.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 }
 

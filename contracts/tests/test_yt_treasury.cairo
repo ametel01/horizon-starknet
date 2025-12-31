@@ -8,6 +8,7 @@
 use horizon::interfaces::i_sy::ISYDispatcherTrait;
 use horizon::interfaces::i_yt::{IYTAdminDispatcher, IYTAdminDispatcherTrait, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
+use horizon::mocks::mock_yield_token::IMockYieldTokenDispatcherTrait;
 use snforge_std::{
     start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
@@ -69,7 +70,13 @@ fn test_get_post_expiry_treasury_interest_calculates_correctly() {
     let expiry = CURRENT_TIME + ONE_MONTH;
     let (_, yield_token, sy, yt) = setup_full_with_expiry(expiry);
 
-    // Mint 100 YT
+    // Disable time-based yield first to ensure expiry index is exactly 1.0 WAD
+    // (MockYieldToken has 5% APR default which would add ~0.4% over 30 days)
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_yield_rate_bps(0);
+    stop_cheat_caller_address(yield_token.contract_address);
+
+    // Mint 100 YT at 1.0 index
     let (_, yt_amount) = mint_and_mint_py(yield_token, sy, yt, user1(), 100 * WAD);
     assert(yt_amount == 100 * WAD, 'Wrong YT amount');
 
@@ -77,6 +84,7 @@ fn test_get_post_expiry_treasury_interest_calculates_correctly() {
     start_cheat_block_timestamp_global(expiry + 1);
 
     // Trigger expiry index capture by calling a state-changing function
+    // With time-based yield disabled, expiry index should be exactly 1.0 WAD
     start_cheat_caller_address(yt.contract_address, user1());
     yt.redeem_due_interest(user1());
     stop_cheat_caller_address(yt.contract_address);
@@ -111,6 +119,11 @@ fn test_redeem_post_expiry_interest_for_treasury_success() {
     let expiry = CURRENT_TIME + ONE_MONTH;
     let (_, yield_token, sy, yt) = setup_full_with_expiry(expiry);
 
+    // Disable time-based yield first to ensure expiry index is exactly 1.0 WAD
+    start_cheat_caller_address(yield_token.contract_address, admin());
+    yield_token.set_yield_rate_bps(0);
+    stop_cheat_caller_address(yield_token.contract_address);
+
     // Mint 100 YT at 1.0 index
     mint_and_mint_py(yield_token, sy, yt, user1(), 100 * WAD);
 
@@ -118,6 +131,7 @@ fn test_redeem_post_expiry_interest_for_treasury_success() {
     start_cheat_block_timestamp_global(expiry + 1);
 
     // Trigger expiry index capture by claiming interest (calls _update_py_index)
+    // With time-based yield disabled, expiry index should be exactly 1.0 WAD
     start_cheat_caller_address(yt.contract_address, user1());
     yt.redeem_due_interest(user1());
     stop_cheat_caller_address(yt.contract_address);

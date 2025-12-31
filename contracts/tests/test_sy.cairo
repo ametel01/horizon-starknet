@@ -184,7 +184,7 @@ fn test_sy_transfer() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_amount = sy.deposit(user, amount, 0);
+    let sy_amount = sy.deposit(user, yield_token.contract_address, amount, 0);
 
     // Transfer SY to recipient
     sy.transfer(recipient, sy_amount / 2);
@@ -209,7 +209,7 @@ fn test_sy_approve_and_transfer_from() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, owner);
-    let sy_amount = sy.deposit(owner, amount, 0);
+    let sy_amount = sy.deposit(owner, yield_token.contract_address, amount, 0);
     sy.approve(spender, sy_amount);
     stop_cheat_caller_address(sy.contract_address);
 
@@ -241,7 +241,7 @@ fn test_sy_deposit_1_to_1() {
 
     // Deposit yield token to get SY
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, deposit_amount, 0);
+    let sy_minted = sy.deposit(user, yield_token.contract_address, deposit_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY is 1:1 with underlying shares
@@ -266,7 +266,7 @@ fn test_sy_deposit_to_different_receiver() {
 
     // Deposit but send SY to different receiver
     start_cheat_caller_address(sy.contract_address, depositor);
-    let sy_minted = sy.deposit(receiver, deposit_amount, 0);
+    let sy_minted = sy.deposit(receiver, yield_token.contract_address, deposit_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(depositor) == 0, 'Depositor should have 0');
@@ -276,11 +276,11 @@ fn test_sy_deposit_to_different_receiver() {
 #[test]
 #[should_panic(expected: 'HZN: zero deposit')]
 fn test_sy_deposit_zero() {
-    let (_, _, sy) = setup();
+    let (_, yield_token, sy) = setup();
     let user = user1();
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, 0, 0);
+    sy.deposit(user, yield_token.contract_address, 0, 0);
 }
 
 #[test]
@@ -296,7 +296,7 @@ fn test_sy_deposit_zero_receiver() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(zero_address(), WAD, 0);
+    sy.deposit(zero_address(), yield_token.contract_address, WAD, 0);
 }
 
 // ============ Redeem Tests ============
@@ -315,10 +315,10 @@ fn test_sy_redeem_1_to_1() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
 
     // Redeem SY for yield token
-    let shares_received = sy.redeem(user, amount, 0, false);
+    let shares_received = sy.redeem(user, amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY is 1:1 with underlying shares
@@ -343,10 +343,10 @@ fn test_sy_redeem_to_different_receiver() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, redeemer);
-    sy.deposit(redeemer, amount, 0);
+    sy.deposit(redeemer, yield_token.contract_address, amount, 0);
 
     // Redeem but send yield token to different receiver
-    sy.redeem(receiver, amount, 0, false);
+    sy.redeem(receiver, amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(yield_token.balance_of(redeemer) == 0, 'Redeemer should have 0');
@@ -367,8 +367,8 @@ fn test_sy_redeem_zero() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, WAD, 0);
-    sy.redeem(user, 0, 0, false);
+    sy.deposit(user, yield_token.contract_address, WAD, 0);
+    sy.redeem(user, 0, yield_token.contract_address, 0, false);
 }
 
 #[test]
@@ -384,8 +384,8 @@ fn test_sy_redeem_zero_receiver() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, WAD, 0);
-    sy.redeem(zero_address(), WAD, 0, false);
+    sy.deposit(user, yield_token.contract_address, WAD, 0);
+    sy.redeem(zero_address(), WAD, yield_token.contract_address, 0, false);
 }
 
 #[test]
@@ -401,9 +401,9 @@ fn test_sy_redeem_insufficient_balance() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, WAD, 0);
+    sy.deposit(user, yield_token.contract_address, WAD, 0);
     // Try to redeem more than balance
-    sy.redeem(user, 2 * WAD, 0, false);
+    sy.redeem(user, 2 * WAD, yield_token.contract_address, 0, false);
 }
 
 // ============ Partial Deposit/Redeem Tests ============
@@ -422,10 +422,10 @@ fn test_sy_partial_redeem() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
 
     // Redeem only half
-    sy.redeem(user, amount / 2, 0, false);
+    sy.redeem(user, amount / 2, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount / 2, 'Wrong remaining SY');
@@ -447,11 +447,11 @@ fn test_sy_multiple_deposits() {
 
     start_cheat_caller_address(sy.contract_address, user);
     // First deposit
-    sy.deposit(user, amount / 2, 0);
+    sy.deposit(user, yield_token.contract_address, amount / 2, 0);
     assert(sy.balance_of(user) == amount / 2, 'Wrong balance after 1st');
 
     // Second deposit
-    sy.deposit(user, amount / 2, 0);
+    sy.deposit(user, yield_token.contract_address, amount / 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount, 'Wrong balance after 2nd');
@@ -492,7 +492,7 @@ fn test_sy_yield_accrual_with_deposit() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // SY balance is 1:1 with deposited shares
@@ -510,7 +510,7 @@ fn test_sy_yield_accrual_with_deposit() {
     // When user redeems, they get back same number of shares (yield token)
     // but those shares are now worth more in terms of the base asset
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(user, amount, 0, false);
+    let shares_received = sy.redeem(user, amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Should get back same shares');
@@ -697,7 +697,7 @@ fn test_deposit_slippage_reverts() {
     // Deposit with min_shares_out higher than possible output (SY is 1:1)
     // Requesting 200 WAD when depositing 100 WAD should fail
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, deposit_amount, 200 * WAD);
+    sy.deposit(user, yield_token.contract_address, deposit_amount, 200 * WAD);
 }
 
 #[test]
@@ -715,11 +715,11 @@ fn test_redeem_slippage_reverts() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
 
     // Redeem with min_token_out higher than possible output (SY is 1:1)
     // Requesting 200 WAD when redeeming 100 WAD should fail
-    sy.redeem(user, amount, 200 * WAD, false);
+    sy.redeem(user, amount, yield_token.contract_address, 200 * WAD, false);
 }
 
 #[test]
@@ -738,7 +738,7 @@ fn test_deposit_with_slippage_protection() {
 
     // Deposit with exact min_shares_out (SY is 1:1)
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, deposit_amount, deposit_amount);
+    let sy_minted = sy.deposit(user, yield_token.contract_address, deposit_amount, deposit_amount);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy_minted == deposit_amount, 'SY minted matches');
@@ -759,10 +759,10 @@ fn test_redeem_with_slippage_protection() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
 
     // Redeem with exact min_token_out (SY is 1:1)
-    let shares_received = sy.redeem(user, amount, amount, false);
+    let shares_received = sy.redeem(user, amount, yield_token.contract_address, amount, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Shares received matches');
@@ -785,7 +785,7 @@ fn test_redeem_from_internal_balance() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy.balance_of(user) == amount, 'SY minted');
@@ -801,7 +801,7 @@ fn test_redeem_from_internal_balance() {
     // Now redeem with burn_from_internal_balance=true
     // Any caller can trigger the redeem since we burn from contract's balance
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(user, amount, 0, true);
+    let shares_received = sy.redeem(user, amount, yield_token.contract_address, 0, true);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Shares received');
@@ -823,13 +823,13 @@ fn test_redeem_from_internal_balance_insufficient() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Try to redeem from internal balance without transferring to contract first
     // Contract has 0 SY balance, so this should fail
     start_cheat_caller_address(sy.contract_address, user);
-    sy.redeem(user, amount, 0, true); // Should panic
+    sy.redeem(user, amount, yield_token.contract_address, 0, true); // Should panic
 }
 
 #[test]
@@ -846,7 +846,7 @@ fn test_redeem_to_different_receiver_from_internal_balance() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Transfer SY to contract
@@ -856,7 +856,7 @@ fn test_redeem_to_different_receiver_from_internal_balance() {
 
     // Redeem to different receiver from internal balance
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(receiver, amount, 0, true);
+    let shares_received = sy.redeem(receiver, amount, yield_token.contract_address, 0, true);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Shares received');
@@ -884,7 +884,7 @@ fn test_preview_deposit_matches_deposit() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let actual_sy_minted = sy.deposit(user, deposit_amount, 0);
+    let actual_sy_minted = sy.deposit(user, yield_token.contract_address, deposit_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(actual_sy_minted == preview, 'Actual should match preview');
@@ -904,7 +904,7 @@ fn test_preview_redeem_matches_redeem() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Preview should return expected underlying output (1:1)
@@ -913,7 +913,7 @@ fn test_preview_redeem_matches_redeem() {
 
     // Now actually redeem and verify it matches
     start_cheat_caller_address(sy.contract_address, user);
-    let actual_shares_received = sy.redeem(user, amount, 0, false);
+    let actual_shares_received = sy.redeem(user, amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(actual_shares_received == preview, 'Actual should match preview');
@@ -974,7 +974,7 @@ fn test_sy_transfer_blocked_when_paused() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify user has SY
@@ -1007,7 +1007,7 @@ fn test_sy_transfer_from_blocked_when_paused() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, owner);
-    sy.deposit(owner, amount, 0);
+    sy.deposit(owner, yield_token.contract_address, amount, 0);
     sy.approve(spender, amount);
     stop_cheat_caller_address(sy.contract_address);
 
@@ -1045,7 +1045,7 @@ fn test_sy_deposit_blocked_when_paused() {
 
     // Try to deposit - should fail because paused
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
 }
 
 #[test]
@@ -1063,7 +1063,7 @@ fn test_sy_transfer_works_after_unpause() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Pause the contract
@@ -1102,7 +1102,7 @@ fn test_sy_redeem_works_when_paused() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Pause the contract
@@ -1113,7 +1113,7 @@ fn test_sy_redeem_works_when_paused() {
 
     // Redeem should work even when paused - users must be able to exit
     start_cheat_caller_address(sy.contract_address, user);
-    let shares_received = sy.redeem(user, amount, 0, false);
+    let shares_received = sy.redeem(user, amount, yield_token.contract_address, 0, false);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(shares_received == amount, 'Redeem should work when paused');
@@ -1149,7 +1149,7 @@ fn test_sy_watermark_updates_when_rate_increases() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Initial watermark is WAD
@@ -1170,7 +1170,7 @@ fn test_sy_watermark_updates_when_rate_increases() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Watermark should now equal the new higher rate
@@ -1191,7 +1191,7 @@ fn test_sy_watermark_stays_at_high_water_mark_when_rate_drops() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // First, increase the rate to establish a high water mark
@@ -1202,7 +1202,7 @@ fn test_sy_watermark_stays_at_high_water_mark_when_rate_drops() {
 
     // Trigger watermark update
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify watermark is at high water mark
@@ -1217,7 +1217,7 @@ fn test_sy_watermark_stays_at_high_water_mark_when_rate_drops() {
 
     // Trigger another operation
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Watermark should STILL be at high water mark (not decreased)
@@ -1243,14 +1243,14 @@ fn test_sy_watermark_unchanged_when_rate_same() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     let initial_watermark = sy.get_exchange_rate_watermark();
 
     // Do another deposit without changing the rate
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Watermark should remain the same
@@ -1271,7 +1271,7 @@ fn test_sy_watermark_tracks_successive_increases() {
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount, 0);
+    sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Increase rate multiple times
@@ -1292,7 +1292,7 @@ fn test_sy_watermark_tracks_successive_increases() {
 
         // Trigger update
         start_cheat_caller_address(sy.contract_address, user);
-        sy.deposit(user, amount, 0);
+        sy.deposit(user, yield_token.contract_address, amount, 0);
         stop_cheat_caller_address(sy.contract_address);
 
         // Watermark should track the highest rate
