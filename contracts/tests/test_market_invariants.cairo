@@ -46,6 +46,10 @@ fn zero_address() -> ContractAddress {
     0.try_into().unwrap()
 }
 
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
+}
+
 // ============ Time Constants ============
 
 const CURRENT_TIME: u64 = 1000000;
@@ -141,6 +145,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
     calldata.append(admin().into());
+    calldata.append(treasury().into()); // treasury
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }

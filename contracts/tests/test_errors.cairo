@@ -29,7 +29,7 @@ use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
 // Import test utilities
 use super::utils::{
     CURRENT_TIME, ONE_YEAR, admin, alice, get_pt_class_hash, mint_and_deposit_sy, setup_full,
-    setup_sy,
+    setup_sy, treasury,
 };
 
 // =============================================================================
@@ -347,6 +347,7 @@ fn deploy_factory_raw() -> ContractAddress {
     calldata.append(admin().into()); // owner
     calldata.append(yt_class_hash.into()); // yt_class_hash
     calldata.append(pt_class_hash.into()); // pt_class_hash
+    calldata.append(treasury().into()); // treasury
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     contract_address

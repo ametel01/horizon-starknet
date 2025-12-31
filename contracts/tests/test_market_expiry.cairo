@@ -42,6 +42,10 @@ fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
 }
 
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
+}
+
 // ============ Helper Functions ============
 
 fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
@@ -132,6 +136,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }

@@ -32,6 +32,10 @@ fn zero_class_hash() -> ClassHash {
     0.try_into().unwrap()
 }
 
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
+}
+
 // Helper to serialize ByteArray for calldata
 fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
     calldata.append(0); // data array length
@@ -128,6 +132,7 @@ fn deploy_factory(yt_class_hash: ClassHash, pt_class_hash: ClassHash) -> IFactor
     calldata.append(admin().into()); // owner
     calldata.append(yt_class_hash.into());
     calldata.append(pt_class_hash.into());
+    calldata.append(treasury().into()); // treasury
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IFactoryDispatcher { contract_address }

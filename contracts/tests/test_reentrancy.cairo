@@ -34,6 +34,10 @@ fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
 }
 
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
+}
+
 // ============ Time Constants ============
 
 const CURRENT_TIME: u64 = 1000000;
@@ -100,6 +104,7 @@ fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTD
     calldata.append(pt_class_hash.into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury for post-expiry yield
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }

@@ -30,6 +30,10 @@ pub fn bob() -> ContractAddress {
     'bob'.try_into().unwrap()
 }
 
+pub fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
+}
+
 pub fn zero_address() -> ContractAddress {
     0.try_into().unwrap()
 }
@@ -166,6 +170,7 @@ pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> 
     calldata.append(pt_class_hash.into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury for post-expiry yield
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
