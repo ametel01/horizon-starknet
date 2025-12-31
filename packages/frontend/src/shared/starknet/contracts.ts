@@ -10,6 +10,7 @@ import {
   PT_ABI,
   ROUTER_ABI,
   SY_ABI,
+  SYWITHREWARDS_ABI,
   YT_ABI,
 } from '@/types/generated';
 import { getAddresses } from '@shared/config/addresses';
@@ -24,6 +25,7 @@ export type TypedMarketFactory = TypedContractV2<typeof MARKETFACTORY_ABI>;
 export type TypedRouter = TypedContractV2<typeof ROUTER_ABI>;
 export type TypedMarket = TypedContractV2<typeof MARKET_ABI>;
 export type TypedSY = TypedContractV2<typeof SY_ABI>;
+export type TypedSYWithRewards = TypedContractV2<typeof SYWITHREWARDS_ABI>;
 export type TypedPT = TypedContractV2<typeof PT_ABI>;
 export type TypedYT = TypedContractV2<typeof YT_ABI>;
 export type TypedMockYieldToken = TypedContractV2<typeof MOCKYIELDTOKEN_ABI>;
@@ -87,6 +89,26 @@ export function getMarketContract(
 
 export function getSYContract(address: string, providerOrAccount: ProviderOrAccount): TypedSY {
   return new Contract({ abi: SY_ABI, address, providerOrAccount }).typedv2(SY_ABI);
+}
+
+/**
+ * Creates a typed SYWithRewards contract instance.
+ * Use this for SY tokens that support reward distribution (e.g., staking rewards).
+ *
+ * Additional methods available:
+ * - get_reward_tokens() - Get list of reward token addresses
+ * - accrued_rewards(user) - Get pending rewards for user
+ * - claim_rewards(user) - Claim rewards for user
+ * - is_paused() - Check if contract is paused
+ * - get_exchange_rate_watermark() - Get the exchange rate high-water mark
+ */
+export function getSYWithRewardsContract(
+  address: string,
+  providerOrAccount: ProviderOrAccount
+): TypedSYWithRewards {
+  return new Contract({ abi: SYWITHREWARDS_ABI, address, providerOrAccount }).typedv2(
+    SYWITHREWARDS_ABI
+  );
 }
 
 export function getPTContract(address: string, providerOrAccount: ProviderOrAccount): TypedPT {

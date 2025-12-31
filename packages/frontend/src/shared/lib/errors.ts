@@ -88,6 +88,11 @@ const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   'HZN: staleness < window': 'Invalid staleness configuration.',
   'HZN: zero denom price': 'Invalid denominator price.',
   'HZN: index below WAD': 'Index value is too low.',
+
+  // Reward errors (SYWithRewards)
+  'HZN: empty reward tokens': 'No reward tokens configured for this contract.',
+  'HZN: reward token exists': 'This reward token is already registered.',
+  'HZN: reward transfer failed': 'Failed to transfer reward tokens.',
 };
 
 /**
@@ -119,6 +124,11 @@ const CONTRACT_ERROR_SIMPLE: Record<string, string> = {
   'HZN: underflow': 'Amount is too small.',
   'HZN: division by zero': 'Invalid calculation. Please try again.',
   'HZN: paused': 'Temporarily unavailable for maintenance.',
+
+  // Reward errors (SYWithRewards)
+  'HZN: empty reward tokens': 'No rewards available to claim.',
+  'HZN: reward token exists': 'Something went wrong. Please try again.',
+  'HZN: reward transfer failed': 'Failed to claim rewards. Please try again.',
 };
 
 /**
@@ -294,6 +304,19 @@ export function isInsufficientBalanceError(error: unknown): boolean {
     contractError === 'HZN: insufficient SY' ||
     contractError === 'ERC20: insufficient balance' ||
     contractError === 'ERC20: transfer amount exceeds balance'
+  );
+}
+
+/**
+ * Check if error is a reward-related error
+ */
+export function isRewardError(error: unknown): boolean {
+  const contractError = extractContractError(error);
+  if (!contractError) return false;
+  return (
+    contractError === 'HZN: empty reward tokens' ||
+    contractError === 'HZN: reward token exists' ||
+    contractError === 'HZN: reward transfer failed'
   );
 }
 
@@ -534,6 +557,16 @@ const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> 
     simple: 'You need more tokens in your wallet to complete this action.',
     advanced:
       'Transfer amount exceeds your wallet balance. Reduce the amount or acquire more tokens.',
+  },
+
+  // Reward errors (SYWithRewards)
+  'HZN: empty reward tokens': {
+    simple: 'This position does not have any rewards to claim.',
+    advanced: 'No reward tokens are configured for this SYWithRewards contract.',
+  },
+  'HZN: reward transfer failed': {
+    simple: 'Could not transfer your rewards. Please try again.',
+    advanced: 'ERC20 transfer of reward tokens failed. Check contract balances and allowances.',
   },
 };
 
