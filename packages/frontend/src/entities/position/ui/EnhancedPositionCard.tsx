@@ -20,6 +20,26 @@ export interface YieldEarnedData {
   claimCount: number;
 }
 
+/**
+ * Fee information for yield claims
+ */
+export interface YieldFeeInfo {
+  /** Fee rate as percentage string (e.g., "3.00%") */
+  feeRatePercent: string;
+  /** Whether a fee is being charged */
+  hasFee: boolean;
+}
+
+/**
+ * Post-expiry status information
+ */
+export interface PostExpiryInfo {
+  /** Whether post-expiry has been initialized */
+  isInitialized: boolean;
+  /** Formatted treasury interest */
+  totalTreasuryInterestFormatted?: string;
+}
+
 interface EnhancedPositionCardProps {
   position: EnhancedPosition;
   yieldEarned?: YieldEarnedData | undefined;
@@ -34,6 +54,10 @@ interface EnhancedPositionCardProps {
   unwrapTxStatus?: TxStatusType | undefined;
   unwrapTxHash?: string | null | undefined;
   unwrapError?: Error | null | undefined;
+  // Interest fee information (Step 5.2)
+  yieldFeeInfo?: YieldFeeInfo | undefined;
+  // Post-expiry status (Step 5.2)
+  postExpiryInfo?: PostExpiryInfo | undefined;
 }
 
 export function EnhancedPositionCard({
@@ -49,6 +73,8 @@ export function EnhancedPositionCard({
   unwrapTxStatus,
   unwrapTxHash,
   unwrapError,
+  yieldFeeInfo,
+  postExpiryInfo,
 }: EnhancedPositionCardProps): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -100,14 +126,26 @@ export function EnhancedPositionCard({
                   </span>
                 </div>
               )}
-              <div className="mt-1 flex items-center justify-end gap-2">
+              <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
                 {market.isExpired ? (
-                  <span className="bg-destructive/20 text-destructive rounded px-2 py-0.5 text-xs">
-                    Expired
-                  </span>
+                  <>
+                    <span className="bg-destructive/20 text-destructive rounded px-2 py-0.5 text-xs">
+                      Expired
+                    </span>
+                    {postExpiryInfo?.isInitialized && (
+                      <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
+                        Post-expiry active
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <span className="bg-primary/20 text-primary rounded px-2 py-0.5 text-xs">
                     {Math.max(0, market.daysToExpiry).toFixed(0)} days left
+                  </span>
+                )}
+                {yieldFeeInfo?.hasFee && (
+                  <span className="bg-warning/20 text-warning rounded px-2 py-0.5 text-xs">
+                    {yieldFeeInfo.feeRatePercent} fee
                   </span>
                 )}
                 <svg
@@ -174,24 +212,38 @@ export function EnhancedPositionCard({
 
         {/* Claimable Yield */}
         {yt.amount > 0n && yieldData.claimable > 0n && (
-          <div className="border-primary/30 bg-primary/10 mb-4 flex items-center justify-between rounded border p-3">
-            <div>
-              <div className="text-primary text-sm">Claimable Yield</div>
-              <div className="text-primary font-medium">
-                {formatWadCompact(yieldData.claimable)} {sySymbol}
-                <span className="text-primary/80 ml-1 text-sm">
-                  ({formatUsd(yieldData.claimableUsd)})
-                </span>
+          <div className="border-primary/30 bg-primary/10 mb-4 rounded border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-primary flex items-center gap-2 text-sm">
+                  Claimable Yield
+                  {yieldFeeInfo?.hasFee && (
+                    <span className="bg-warning/20 text-warning rounded px-1.5 py-0.5 text-xs">
+                      {yieldFeeInfo.feeRatePercent} fee applies
+                    </span>
+                  )}
+                </div>
+                <div className="text-primary font-medium">
+                  {formatWadCompact(yieldData.claimable)} {sySymbol}
+                  <span className="text-primary/80 ml-1 text-sm">
+                    ({formatUsd(yieldData.claimableUsd)})
+                  </span>
+                </div>
+                {yieldFeeInfo?.hasFee && (
+                  <p className="text-primary/70 mt-1 text-xs">
+                    Net amount after {yieldFeeInfo.feeRatePercent} protocol fee
+                  </p>
+                )}
               </div>
+              <Button
+                nativeButton
+                size="sm"
+                onClick={onClaimYield}
+                disabled={isClaimingYield === true}
+              >
+                {isClaimingYield === true ? 'Claiming...' : 'Claim'}
+              </Button>
             </div>
-            <Button
-              nativeButton
-              size="sm"
-              onClick={onClaimYield}
-              disabled={isClaimingYield === true}
-            >
-              {isClaimingYield === true ? 'Claiming...' : 'Claim'}
-            </Button>
           </div>
         )}
 
