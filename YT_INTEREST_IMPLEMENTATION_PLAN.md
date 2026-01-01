@@ -1167,28 +1167,54 @@ cd packages/indexer && POSTGRES_CONNECTION_STRING=postgres://horizon:horizon@loc
 
 The following frontend changes are documented for future implementation:
 
-### 5.1: New Hooks (Priority: Medium)
-- `useInterestFee(ytAddress)` - Get current fee rate and treasury
-- `usePostExpiryStatus(ytAddress)` - Get post-expiry state
-- Update `useYield` and `useUserYield` to include gross/net yield + fee tracking
+### 5.1: New Hooks (Priority: Medium) ✅ **COMPLETE**
+- `useInterestFee(ytAddress)` - Get current fee rate and treasury ✅
+- `usePostExpiryStatus(ytAddress)` - Get post-expiry state ✅
+- Update `useYield` and `useUserYield` to include gross/net yield + fee tracking ✅
+  - Added `useYieldClaimPreview(ytAddress)` - Preview gross/net/fee breakdown before claiming
 
-### 5.2: Component Updates (Priority: Medium)
-- `InterestClaimPreview` - Show fee breakdown before claim
-- Position card updates for post-expiry badge + fee rate indicator
-- Add split PT/YT receiver selection for mint (if direct YT calls are exposed)
+### 5.2: Component Updates (Priority: Medium) ✅ **COMPLETE**
+- `InterestClaimPreview` - Show fee breakdown before claim ✅
+- Position card updates for post-expiry badge + fee rate indicator ✅
+- Add split PT/YT receiver selection for mint (if direct YT calls are exposed) - Not implemented (Router handles this)
 
-### 5.3: Redeem Updates (Priority: High)
-- Add `redeemWithInterest` to `useRedeem` hook
-- Support combined PT/YT redeem + interest claim
+### 5.3: Redeem Updates (Priority: High) ✅ **COMPLETE**
+- Add `useRedeemPyWithInterest` hook ✅
+  - Uses pre-transfer pattern: transfer PT+YT to YT contract, then call `redeem_py_with_interest`
+  - Supports optional interest claim via `redeemInterest` boolean flag
+  - Includes optimistic UI updates and rollback on error
+- Support combined PT/YT redeem + interest claim ✅
 
-### 5.4: Treasury Admin UI (Priority: Low, Optional)
-- Add a simple treasury dashboard using `useTreasuryYield` for pending/claimed yield
+### 5.4: Treasury Admin UI (Priority: Low, Optional) ✅ **COMPLETE**
+- Add `useTreasuryYield` hook for aggregated treasury data ✅
+  - Fetches fee info and post-expiry data for all YTs in parallel using `useQueries`
+  - Returns per-YT summaries with pending treasury interest
+  - Aggregates total pending interest across all YTs
+- Add `useIsAdmin` hook for admin access control ✅
+  - Checks if connected wallet is owner of any YT contract
+  - Uses OpenZeppelin Ownable pattern
+- Create TreasuryDashboard page composition ✅
+  - Admin-only access (redirects if not owner)
+  - Shows total pending interest, per-YT breakdown
+  - Located at `/admin/treasury` route
 
-### 5.5: API Endpoints (Priority: Low)
-- `GET /api/yt/[address]/fee-history`
-- `GET /api/yt/[address]/post-expiry`
-- `GET /api/analytics/treasury`
-- `GET /api/py-index/[yt]/history`
+### 5.5: API Endpoints (Priority: Low) ✅ **COMPLETE**
+- `GET /api/yt/[address]/fee-history` ✅
+  - Returns fee rate change history and analytics for a YT
+  - Uses `ytInterestFeeRateSet` table and `ytFeeAnalytics` materialized view
+- `GET /api/yt/[address]/post-expiry` ✅
+  - Returns post-expiry data if YT has entered post-expiry state
+  - Uses `ytPostExpiryDataSet` table
+- `GET /api/analytics/treasury` ✅
+  - Aggregates treasury claims across all YTs
+  - Uses `treasuryYieldSummary` view and `ytTreasuryInterestRedeemed` table
+- `GET /api/py-index/[yt]/history` ✅
+  - Returns PY index update history for a YT
+  - Uses `ytPyIndexUpdated` table
+
+**Schema additions:**
+- Added 7 new tables to frontend schema: `ytPostExpiryDataSet`, `ytPyIndexUpdated`, `ytTreasuryInterestRedeemed`, `ytInterestFeeRateSet`, `ytMintPYMulti`, `ytRedeemPYMulti`, `ytRedeemPYWithInterest`
+- Added 4 analytics views: `ytFeeAnalytics`, `treasuryYieldSummary`, `batchOperationsSummary`, `redeemWithInterestAnalytics`
 
 ---
 
@@ -1227,11 +1253,11 @@ The following frontend changes are documented for future implementation:
 - [x] Step 4.2: Test with devnet
 
 ### Frontend (Phase 5 - Deferred)
-- [ ] Step 5.1: New hooks
-- [ ] Step 5.2: Component updates
-- [ ] Step 5.3: Redeem updates
-- [ ] Step 5.4: Treasury admin UI
-- [ ] Step 5.5: API endpoints
+- [x] Step 5.1: New hooks
+- [x] Step 5.2: Component updates
+- [x] Step 5.3: Redeem updates
+- [x] Step 5.4: Treasury admin UI
+- [x] Step 5.5: API endpoints
 
 ---
 
