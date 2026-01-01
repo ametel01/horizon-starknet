@@ -6,7 +6,7 @@ import { type Call, uint256 } from 'starknet';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
-import { getERC20Contract, getRouterContract } from '@shared/starknet/contracts';
+import { getERC20Contract, getRouterContract, getYTContract } from '@shared/starknet/contracts';
 
 interface RedeemPyToSyParams {
   ytAddress: string;
@@ -374,4 +374,230 @@ export function calculateMinSyOut(amount: bigint, slippageBps: number): bigint {
   // Apply slippage to expected 1:1 redemption
   const slippageMultiplier = BigInt(10000 - slippageBps);
   return (amount * slippageMultiplier) / BigInt(10000);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Redeem with Interest (Direct YT call)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RedeemPyWithInterestParams {
+  /** YT contract address */
+  ytAddress: string;
+  /** PT contract address */
+  ptAddress: string;
+  /** SY contract address (for optimistic UI updates) */
+  syAddress: string;
+  /** Amount of PT/YT to redeem */
+  amount: bigint;
+  /** Whether to also claim accrued interest */
+  redeemInterest: boolean;
+}
+
+interface RedeemWithInterestResult {
+  transactionHash: string;
+}
+
+/**
+ * Context for optimistic update rollback on redeem with interest
+ */
+interface RedeemWithInterestOptimisticContext {
+  previousPtBalance: string | undefined;
+  previousYtBalance: string | undefined;
+  previousSyBalance: string | undefined;
+}
+
+interface UseRedeemPyWithInterestReturn {
+  redeemPyWithInterest: (params: RedeemPyWithInterestParams) => void;
+  redeemPyWithInterestAsync: (
+    params: RedeemPyWithInterestParams
+  ) => Promise<RedeemWithInterestResult>;
+  isRedeeming: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  error: Error | null;
+  transactionHash: string | undefined;
+  reset: () => void;
+}
+
+/**
+ * Hook to redeem PT + YT to SY with optional interest claim.
+ *
+ * This uses direct YT contract calls with pre-transfer pattern:
+ * 1. Transfer PT tokens to YT contract
+ * 2. Transfer YT tokens to YT contract
+ * 3. Call redeem_py_with_interest(receiver, redeemInterest)
+ *
+ * Use this instead of `useRedeemPy` when you want to optionally claim
+ * accrued yield interest in the same transaction.
+ *
+ * @example
+ * ```typescript
+ * const { redeemPyWithInterest, isRedeeming } = useRedeemPyWithInterest();
+ *
+ * redeemPyWithInterest({
+ *   ytAddress: market.ytAddress,
+ *   ptAddress: market.ptAddress,
+ *   syAddress: market.syAddress,
+ *   amount: parseWad('100'),
+ *   redeemInterest: true, // Also claim any pending yield
+ * });
+ * ```
+ */
+export function useRedeemPyWithInterest(): UseRedeemPyWithInterestReturn {
+  const { account, address } = useAccount();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (params: RedeemPyWithInterestParams): Promise<RedeemWithInterestResult> => {
+      if (!account || !address) {
+        throw new Error('Wallet not connected');
+      }
+
+      const calls: Call[] = [];
+
+      // Pre-transfer PT to YT contract
+      // The YT contract expects to have received PT tokens before calling redeem_py_with_interest
+      const ptContract = getERC20Contract(params.ptAddress, account);
+      const transferPtCall = ptContract.populate('transfer', [
+        params.ytAddress,
+        uint256.bnToUint256(params.amount),
+      ]);
+      calls.push(transferPtCall);
+
+      // Pre-transfer YT to YT contract (same amount as PT)
+      const ytContract = getERC20Contract(params.ytAddress, account);
+      const transferYtCall = ytContract.populate('transfer', [
+        params.ytAddress,
+        uint256.bnToUint256(params.amount),
+      ]);
+      calls.push(transferYtCall);
+
+      // Call redeem_py_with_interest on YT contract
+      // This redeems the pre-transferred PT+YT and optionally claims interest
+      const yt = getYTContract(params.ytAddress, account);
+      const redeemCall = yt.populate('redeem_py_with_interest', [
+        address, // receiver
+        params.redeemInterest, // redeem_interest flag
+      ]);
+      calls.push(redeemCall);
+
+      // Execute multicall (atomic: all succeed or all fail)
+      const result = await account.execute(calls);
+
+      return {
+        transactionHash: result.transaction_hash,
+      };
+    },
+
+    /**
+     * Optimistic UI: Update balances immediately (Doherty Threshold)
+     */
+    onMutate: async (
+      params: RedeemPyWithInterestParams
+    ): Promise<RedeemWithInterestOptimisticContext> => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ptAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.ytAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.syAddress, address],
+      });
+
+      // Snapshot previous values
+      const previousPtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ptAddress,
+        address,
+      ]);
+      const previousYtBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.ytAddress,
+        address,
+      ]);
+      const previousSyBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.syAddress,
+        address,
+      ]);
+
+      // Optimistically decrease PT balance
+      if (previousPtBalance !== undefined) {
+        const newBalance = BigInt(previousPtBalance) - params.amount;
+        queryClient.setQueryData(
+          ['token-balance', params.ptAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically decrease YT balance
+      if (previousYtBalance !== undefined) {
+        const newBalance = BigInt(previousYtBalance) - params.amount;
+        queryClient.setQueryData(
+          ['token-balance', params.ytAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically increase SY balance (approximate, actual includes interest if claimed)
+      if (previousSyBalance !== undefined) {
+        const newBalance = BigInt(previousSyBalance) + params.amount;
+        queryClient.setQueryData(
+          ['token-balance', params.syAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      return { previousPtBalance, previousYtBalance, previousSyBalance };
+    },
+
+    /**
+     * Rollback on error
+     */
+    onError: (_err, params, context) => {
+      if (context) {
+        if (context.previousPtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ptAddress, address],
+            context.previousPtBalance
+          );
+        }
+        if (context.previousYtBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.ytAddress, address],
+            context.previousYtBalance
+          );
+        }
+        if (context.previousSyBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.syAddress, address],
+            context.previousSyBalance
+          );
+        }
+      }
+    },
+
+    /**
+     * Always refetch to get actual blockchain state
+     */
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['positions'] });
+      void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
+      void queryClient.invalidateQueries({ queryKey: ['market'] });
+      void queryClient.invalidateQueries({ queryKey: ['user-yield'] });
+    },
+  });
+
+  return {
+    redeemPyWithInterest: mutation.mutate,
+    redeemPyWithInterestAsync: mutation.mutateAsync,
+    isRedeeming: mutation.isPending,
+    isSuccess: mutation.isSuccess,
+    isError: mutation.isError,
+    error: mutation.error,
+    transactionHash: mutation.data?.transactionHash,
+    reset: mutation.reset,
+  };
 }
