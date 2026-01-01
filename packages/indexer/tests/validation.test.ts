@@ -289,7 +289,7 @@ describe("ytMintPYSchema", () => {
     const event = {
       address: YT_ADDR,
       keys: [SELECTOR, "0xabc1", "0xabc2", "0xabc3"],
-      data: Array.from({ length: 14 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      data: Array.from({ length: 16 }, (_, i) => `0x${(i + 1).toString(16)}`),
       transactionHash: TX_HASH,
     };
 
