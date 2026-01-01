@@ -542,7 +542,7 @@ cd packages/indexer && bun run typecheck
 
 ## Phase 3: YT Indexer Event Handlers
 
-### Step 3.1: Add new event selectors
+### Step 3.1: Add new event selectors **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts:57-64`
 
@@ -560,7 +560,7 @@ const PY_INDEX_UPDATED = getSelector("PyIndexUpdated");
 
 ---
 
-### Step 3.2: Add new table imports and drizzle registration
+### Step 3.2: Add new table imports and drizzle registration **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts:22-28`
 
@@ -624,7 +624,7 @@ const database = drizzle(
 
 ---
 
-### Step 3.3: Update event filters for new events
+### Step 3.3: Update event filters for new events **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts:90-98`
 
@@ -670,7 +670,7 @@ return [
 
 ---
 
-### Step 3.4: Update MintPY parsing for split receivers
+### Step 3.4: Update MintPY parsing for split receivers **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts:187-231`
 
@@ -730,7 +730,7 @@ if (matchSelector(eventKey, MINT_PY)) {
 
 ---
 
-### Step 3.5: Add row type definitions and collection arrays
+### Step 3.5: Add row type definitions and collection arrays **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts:163-173`
 
@@ -771,7 +771,7 @@ const redeemPYWithInterestRows: RedeemPYWithInterestRow[] = [];
 
 ---
 
-### Step 3.6: Add event parsing for 7 new events
+### Step 3.6: Add event parsing for 7 new events **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts` (after ExpiryReached handling, before catch block ~line 396)
 
@@ -1032,7 +1032,7 @@ const redeemPYWithInterestRows: RedeemPYWithInterestRow[] = [];
 
 ---
 
-### Step 3.7: Update batch insert for new tables
+### Step 3.7: Update batch insert for new tables **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/yt.indexer.ts:430-460`
 
@@ -1101,7 +1101,7 @@ const successCount =
 
 ---
 
-### Step 3.8: Validate indexer changes
+### Step 3.8: Validate indexer changes **COMPLETE**
 
 **Commands:**
 ```bash
@@ -1211,14 +1211,14 @@ The following frontend changes are documented for future implementation:
 - [x] Step 1.10: Add analytics views (optional)
 - [x] Step 2.1: Update MintPY validation schema
 - [x] Step 2.2: Add 7 new validation schemas
-- [ ] Step 3.1: Add new event selectors
-- [ ] Step 3.2: Add table imports and drizzle registration
-- [ ] Step 3.3: Update event filters
-- [ ] Step 3.4: Update MintPY parsing
-- [ ] Step 3.5: Add row type definitions
-- [ ] Step 3.6: Add event parsing for 7 new events
-- [ ] Step 3.7: Update batch insert
-- [ ] Step 3.8: Validate indexer changes
+- [x] Step 3.1: Add new event selectors
+- [x] Step 3.2: Add table imports and drizzle registration
+- [x] Step 3.3: Update event filters
+- [x] Step 3.4: Update MintPY parsing
+- [X] Step 3.5: Add row type definitions
+- [X] Step 3.6: Add event parsing for 7 new events
+- [X] Step 3.7: Update batch insert
+- [X] Step 3.8: Validate indexer changes
 - [ ] Step 4.1: Run full indexer check
 - [ ] Step 4.2: Test with devnet
 
