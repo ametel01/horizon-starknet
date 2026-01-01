@@ -27,10 +27,18 @@ import {
   calculateMinSyOut,
   useRedeemPtPostExpiry,
   useRedeemPy,
+  useRedeemPyWithInterest,
   useUnwrapSy,
 } from '@features/redeem';
 import { useStarknet } from '@features/wallet';
-import { useClaimAllYield, useClaimYield, useUserYield } from '@features/yield';
+import {
+  InterestClaimPreview,
+  useClaimAllYield,
+  useClaimYield,
+  useInterestFee,
+  usePostExpiryStatus,
+  useUserYield,
+} from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { useUIMode } from '@shared/theme/ui-mode-context';
@@ -564,11 +572,23 @@ function EnhancedPositionCardWrapper({
   } = useRedeemPy();
 
   const {
+    redeemPyWithInterest,
+    isRedeeming: isRedeemingPyWithInterest,
+    isSuccess: redeemPyWithInterestSuccess,
+    reset: resetRedeemPyWithInterest,
+  } = useRedeemPyWithInterest();
+
+  const {
     redeemPtPostExpiry,
     isRedeeming: isRedeemingPt,
     isSuccess: redeemPtSuccess,
     reset: resetRedeemPt,
   } = useRedeemPtPostExpiry();
+
+  const { data: feeInfo } = useInterestFee(position.market.ytAddress);
+  const { data: postExpiryStatus } = usePostExpiryStatus(
+    position.market.isExpired ? position.market.ytAddress : undefined
+  );
 
   // Unwrap SY hook - only enabled if we have underlying address
   const underlyingAddress = position.market.metadata?.underlyingAddress ?? '';
@@ -598,16 +618,17 @@ function EnhancedPositionCardWrapper({
   }, [claimSuccess, resetClaim]);
 
   useEffect(() => {
-    if (redeemPySuccess) {
+    if (redeemPySuccess || redeemPyWithInterestSuccess) {
       const timer = setTimeout(() => {
         resetRedeemPy();
+        resetRedeemPyWithInterest();
       }, 5000);
       return (): void => {
         clearTimeout(timer);
       };
     }
     return undefined;
-  }, [redeemPySuccess, resetRedeemPy]);
+  }, [redeemPySuccess, redeemPyWithInterestSuccess, resetRedeemPy, resetRedeemPyWithInterest]);
 
   useEffect(() => {
     if (redeemPtSuccess) {
@@ -634,6 +655,19 @@ function EnhancedPositionCardWrapper({
       legacyPosition.ptBalance < legacyPosition.ytBalance
         ? legacyPosition.ptBalance
         : legacyPosition.ytBalance;
+    const shouldRedeemWithInterest = position.yield.claimable > 0n;
+
+    if (shouldRedeemWithInterest) {
+      redeemPyWithInterest({
+        ytAddress: position.market.ytAddress,
+        ptAddress: position.market.ptAddress,
+        syAddress: position.market.syAddress,
+        amount,
+        redeemInterest: true,
+      });
+      return;
+    }
+
     const minSyOut = calculateMinSyOut(amount, 50);
 
     redeemPy({
@@ -665,7 +699,39 @@ function EnhancedPositionCardWrapper({
     void unwrap(amountStr);
   };
 
-  const isRedeeming = isRedeemingPy || isRedeemingPt || redeemPySuccess || redeemPtSuccess;
+  const tokenSymbol = position.market.metadata?.yieldTokenSymbol ?? 'Token';
+  const sySymbol = `SY-${tokenSymbol}`;
+  const claimPreview =
+    position.yield.claimable > 0n ? (
+      <InterestClaimPreview
+        ytAddress={position.market.ytAddress}
+        sySymbol={sySymbol}
+        compact
+        className="mt-2"
+      />
+    ) : null;
+
+  const yieldFeeInfo = feeInfo
+    ? {
+        feeRatePercent: feeInfo.feeRatePercent,
+        hasFee: feeInfo.hasFee,
+      }
+    : undefined;
+
+  const postExpiryInfo = postExpiryStatus
+    ? {
+        isInitialized: postExpiryStatus.isInitialized,
+        totalTreasuryInterestFormatted: postExpiryStatus.totalTreasuryInterestFormatted,
+      }
+    : undefined;
+
+  const isRedeemingActive =
+    isRedeemingPy ||
+    isRedeemingPyWithInterest ||
+    isRedeemingPt ||
+    redeemPySuccess ||
+    redeemPyWithInterestSuccess ||
+    redeemPtSuccess;
 
   // Only show unwrap option if we have underlying address configured
   const canUnwrapSy = position.sy.amount > 0n && underlyingAddress !== '';
@@ -674,12 +740,15 @@ function EnhancedPositionCardWrapper({
     <EnhancedPositionCard
       position={position}
       yieldEarned={yieldEarned}
+      yieldFeeInfo={yieldFeeInfo}
+      postExpiryInfo={postExpiryInfo}
+      claimPreview={claimPreview ?? undefined}
       onClaimYield={handleClaimYield}
       onRedeemPtYt={handleRedeemPtYt}
       onRedeemPt={handleRedeemPt}
       onUnwrapSy={canUnwrapSy ? handleUnwrapSy : undefined}
       isClaimingYield={isClaimingYield || claimSuccess}
-      isRedeeming={isRedeeming}
+      isRedeeming={isRedeemingActive}
       isUnwrapping={isUnwrapping || unwrapSuccess}
       unwrapTxStatus={unwrapStatus}
       unwrapTxHash={unwrapTxHash}

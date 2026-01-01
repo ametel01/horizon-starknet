@@ -43,6 +43,7 @@ export interface PostExpiryInfo {
 interface EnhancedPositionCardProps {
   position: EnhancedPosition;
   yieldEarned?: YieldEarnedData | undefined;
+  claimPreview?: ReactNode | undefined;
   onClaimYield?: (() => void) | undefined;
   onRedeemPtYt?: (() => void) | undefined;
   onRedeemPt?: (() => void) | undefined;
@@ -63,6 +64,7 @@ interface EnhancedPositionCardProps {
 export function EnhancedPositionCard({
   position,
   yieldEarned,
+  claimPreview,
   onClaimYield,
   onRedeemPtYt,
   onRedeemPt,
@@ -234,6 +236,7 @@ export function EnhancedPositionCard({
                     Net amount after {yieldFeeInfo.feeRatePercent} protocol fee
                   </p>
                 )}
+                {claimPreview !== null && <div className="mt-2">{claimPreview}</div>}
               </div>
               <Button
                 nativeButton
@@ -281,7 +284,7 @@ export function EnhancedPositionCard({
                 onClick={onRedeemPtYt}
                 disabled={isRedeeming === true}
               >
-                Redeem {ptSymbol} + {ytSymbol}
+                {yieldData.claimable > 0n ? 'Redeem + Claim' : `Redeem ${ptSymbol} + ${ytSymbol}`}
               </Button>
             )}
             {redemption.canRedeemPtPostExpiry && (
