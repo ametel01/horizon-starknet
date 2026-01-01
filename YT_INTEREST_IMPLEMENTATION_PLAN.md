@@ -1120,41 +1120,45 @@ bun run test
 
 ## Phase 4: Indexer Final Validation
 
-### Step 4.1: Run full indexer check
+### Step 4.1: Run full indexer check **COMPLETE**
 
 **Commands:**
 ```bash
 cd packages/indexer
 bun run check           # typecheck + lint + format:check
-bun run db:push         # Push schema to dev database (skip migrations for dev)
 ```
 
 **Validation:**
 - All checks pass
-- Database schema updated successfully
-- No runtime errors when starting indexer
+- No type errors in new event handlers
+- No lint errors
 
 ---
 
-### Step 4.2: Test with devnet
+### Step 4.2: Test with devnet **COMPLETE**
 
 **Commands:**
 ```bash
-# Terminal 1: Start devnet
+# Start devnet with PostgreSQL and auto-migrations
 make dev-up
 
-# Terminal 2: Run indexer
-cd packages/indexer && bun run dev
+# Migrations are applied automatically via docker-compose:
+#   - postgres: PostgreSQL 16 database
+#   - indexer-migrate: Runs drizzle-kit migrate on startup
+
+# Run indexer (connects to postgres://horizon:horizon@localhost:5432/horizon_indexer)
+cd packages/indexer && POSTGRES_CONNECTION_STRING=postgres://horizon:horizon@localhost:5432/horizon_indexer bun run dev
 ```
 
 **Validation:**
+- `docker logs indexer-migrate` shows successful migration
 - Indexer starts without errors
 - Factory events are captured
 - New YT events are indexed when triggered
 
 **Failure modes:**
-- "Table not found" → Run `bun run db:push`
-- "Invalid column" → Schema mismatch, regenerate migration
+- "indexer-migrate exited with error" → Check migration SQL in `drizzle/0004_good_luminals.sql`
+- "Invalid column" → Schema mismatch, regenerate migration with `bun run db:generate`
 - Event parsing errors → Check data offsets in research doc
 
 ---
@@ -1219,8 +1223,8 @@ The following frontend changes are documented for future implementation:
 - [X] Step 3.6: Add event parsing for 7 new events
 - [X] Step 3.7: Update batch insert
 - [X] Step 3.8: Validate indexer changes
-- [ ] Step 4.1: Run full indexer check
-- [ ] Step 4.2: Test with devnet
+- [x] Step 4.1: Run full indexer check
+- [x] Step 4.2: Test with devnet
 
 ### Frontend (Phase 5 - Deferred)
 - [ ] Step 5.1: New hooks
