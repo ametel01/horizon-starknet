@@ -5,3 +5,4 @@ export { MintPage } from './mint';
 export { PoolsPage } from './pools';
 export { AnalyticsPage } from './analytics';
 export { FaucetPage } from './faucet';
+export { TreasuryDashboard } from './admin-treasury';
