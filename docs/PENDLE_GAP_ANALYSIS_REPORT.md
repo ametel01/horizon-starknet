@@ -561,12 +561,16 @@ let new_pt_reserve = if is_pt_out {
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Observation ring buffer | 32-256 slots | ❌ None | 🔴 CRITICAL |
-| `lnImpliedRateCumulative` | Accumulated for TWAP | ❌ None | 🔴 CRITICAL |
-| `observe(secondsAgos[])` | Returns historical rates | ❌ None | 🔴 CRITICAL |
-| `getPtToSyRate(duration)` | TWAP for PT price | ❌ None | 🔴 CRITICAL |
-| `getLpToSyRate(duration)` | TWAP for LP price | ❌ None | 🔴 CRITICAL |
-| Chainlink adapter | `PendleChainlinkOracleFactory` | ❌ None | 🔴 HIGH |
+| Observation ring buffer | 65,535 max slots (uint16), grow via `increaseObservationsCardinalityNext` | ❌ None | 🔴 CRITICAL |
+| `lnImpliedRateCumulative` | Per-observation cumulative (`uint216`) | ❌ None | 🔴 CRITICAL |
+| `observe(secondsAgos[])` | Market-level oracle (`uint216[]`) | ❌ None | 🔴 CRITICAL |
+| PT/YT TWAP helpers | `PendlePYOracleLib` / `PendlePYLpOracle` | ❌ None | 🔴 CRITICAL |
+| LP TWAP helpers | `PendleLpOracleLib` / `PendlePYLpOracle` | ❌ None | 🔴 CRITICAL |
+| Chainlink adapter | `PendleChainlinkOracleFactory` (+ `PendleChainlinkOracle`) | ❌ None | 🔴 HIGH |
+
+Pendle splits TWAP into **market-level observations** (`observe`, `increaseObservationsCardinalityNext`) and
+**oracle helpers** (`PendlePYOracleLib`, `PendleLpOracleLib`, `PendlePYLpOracle`) that derive PT/YT/LP rates from
+`lnImpliedRateCumulative`.
 
 **Impact:**
 - **Cannot integrate with lending protocols** (Aave, Compound forks require TWAP)
@@ -575,20 +579,84 @@ let new_pt_reserve = if is_pt_out {
 
 **Recommended Implementation:**
 ```cairo
-// Market contract additions
+// Market contract additions (Pendle-style OracleLib)
 struct Observation {
-    timestamp: u64,
+    block_timestamp: u64,
     ln_implied_rate_cumulative: u256,
+    initialized: bool,
 }
 
-observations: LegacyMap<u32, Observation>
-observations_cardinality: u32
-observations_index: u32
+observations: LegacyMap<u32, Observation>  // ring buffer (up to 65_535)
+observations_index: u16
+observations_cardinality: u16
+observations_cardinality_next: u16
 
-fn increase_observations_cardinality(cardinality: u32)
-fn observe(seconds_agos: Span<u32>) -> Span<u256>
-fn get_pt_to_sy_rate(twap_duration: u32) -> u256
-fn get_lp_to_sy_rate(twap_duration: u32) -> u256
+fn increase_observations_cardinality_next(cardinality_next: u16)
+fn observe(seconds_agos: Span<u32>) -> Span<u256>  // returns lnImpliedRateCumulative
+fn write_observation(block_timestamp: u64, ln_implied_rate: u256)
+
+// Oracle helpers (PendlePYOracleLib / PendleLpOracleLib analogs)
+fn get_pt_to_sy_rate(market: ContractAddress, duration: u32) -> u256
+fn get_yt_to_sy_rate(market: ContractAddress, duration: u32) -> u256
+fn get_lp_to_sy_rate(market: ContractAddress, duration: u32) -> u256
+```
+
+**Draft Skeleton (Cairo, OracleLib-style):**
+```cairo
+// Minimal structure only; mirrors Pendle/Uniswap V3 style APIs.
+struct Observation {
+    block_timestamp: u64,
+    ln_implied_rate_cumulative: u256,
+    initialized: bool,
+}
+
+fn oracle_initialize(time: u64) -> (u16, u16) {
+    // observations[0] = Observation { time, 0, true }
+    (1, 1)
+}
+
+fn oracle_transform(last: Observation, time: u64, ln_implied_rate: u256) -> Observation {
+    // last.cumulative + ln_implied_rate * (time - last.time)
+    Observation { block_timestamp: time, ln_implied_rate_cumulative: 0, initialized: true }
+}
+
+fn oracle_write(
+    index: u16,
+    time: u64,
+    ln_implied_rate: u256,
+    cardinality: u16,
+    cardinality_next: u16,
+) -> (u16, u16) {
+    // if same block, no-op; else write new observation and update ring index
+    (index, cardinality)
+}
+
+fn oracle_grow(current: u16, next: u16) -> u16 {
+    // pre-fill slots to avoid storage spikes
+    current
+}
+
+fn oracle_observe_single(
+    time: u64,
+    seconds_ago: u32,
+    ln_implied_rate: u256,
+    index: u16,
+    cardinality: u16,
+) -> u256 {
+    // binary search around target timestamp and interpolate cumulative
+    0
+}
+
+fn oracle_observe(
+    time: u64,
+    seconds_agos: Span<u32>,
+    ln_implied_rate: u256,
+    index: u16,
+    cardinality: u16,
+) -> Span<u256> {
+    // map over seconds_agos -> observe_single
+    Span::<u256> { span: array![] }
+}
 ```
 
 ---
