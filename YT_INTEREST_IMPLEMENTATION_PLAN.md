@@ -409,7 +409,7 @@ cd packages/indexer && bun run db:push
 
 ## Phase 2: Indexer Validation Schemas (8 schemas)
 
-### Step 2.1: Update MintPY validation schema
+### Step 2.1: Update MintPY validation schema **COMPLETE**
 
 **File:** `packages/indexer/src/lib/validation.ts:222-227`
 
@@ -440,7 +440,7 @@ cd packages/indexer && bun run typecheck
 
 ---
 
-### Step 2.2: Add 7 new YT validation schemas
+### Step 2.2: Add 7 new YT validation schemas **COMPLETE**
 
 **File:** `packages/indexer/src/lib/validation.ts` (after line 278, after `ytExpiryReachedSchema`)
 
@@ -1209,8 +1209,8 @@ The following frontend changes are documented for future implementation:
 - [x] Step 1.8: Add yt_redeem_py_with_interest table
 - [x] Step 1.9: Generate database migration
 - [x] Step 1.10: Add analytics views (optional)
-- [ ] Step 2.1: Update MintPY validation schema
-- [ ] Step 2.2: Add 7 new validation schemas
+- [x] Step 2.1: Update MintPY validation schema
+- [x] Step 2.2: Add 7 new validation schemas
 - [ ] Step 3.1: Add new event selectors
 - [ ] Step 3.2: Add table imports and drizzle registration
 - [ ] Step 3.3: Update event filters
