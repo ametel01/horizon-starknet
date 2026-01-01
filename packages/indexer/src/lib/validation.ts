@@ -214,16 +214,16 @@ export const syRewardTokenAddedSchema = baseEventSchema.extend({
 // ============================================================
 
 /**
- * YT.MintPY event
- * keys: [selector, caller, receiver, expiry]
- * data: [amount_sy_deposited(u256), amount_py_minted(u256), pt, sy, py_index(u256),
- *        exchange_rate(u256), total_pt_supply(u256), total_yt_supply(u256)]
+ * YT.MintPY event (updated for split receivers)
+ * keys: [selector, caller, receiver_pt, receiver_yt]
+ * data: [expiry, amount_sy_deposited(u256), amount_py_minted(u256), pt, sy, py_index(u256),
+ *        exchange_rate(u256), total_pt_supply(u256), total_yt_supply(u256), timestamp]
  */
 export const ytMintPYSchema = baseEventSchema.extend({
   keys: z.array(z.string()).min(4, "MintPY requires at least 4 keys"),
   data: z
     .array(z.string())
-    .min(14, "MintPY requires at least 14 data elements"),
+    .min(16, "MintPY requires at least 16 data elements"),
 });
 
 /**
@@ -275,6 +275,102 @@ export const ytExpiryReachedSchema = baseEventSchema.extend({
   data: z
     .array(z.string())
     .min(14, "ExpiryReached requires at least 14 data elements"),
+});
+
+// ============================================================
+// YT NEW EVENTS (7 schemas) - Pendle-style interest system
+// ============================================================
+
+/**
+ * YT.TreasuryInterestRedeemed event
+ * keys: [selector, yt, treasury]
+ * data: [amount_sy(u256), sy, expiry_index(u256), current_index(u256), total_yt_supply(u256), timestamp]
+ */
+export const ytTreasuryInterestRedeemedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "TreasuryInterestRedeemed requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(10, "TreasuryInterestRedeemed requires at least 10 data elements"),
+});
+
+/**
+ * YT.InterestFeeRateSet event
+ * keys: [selector, yt]
+ * data: [old_rate(u256), new_rate(u256), timestamp]
+ */
+export const ytInterestFeeRateSetSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(2, "InterestFeeRateSet requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(5, "InterestFeeRateSet requires at least 5 data elements"),
+});
+
+/**
+ * YT.MintPYMulti event
+ * keys: [selector, caller, expiry]
+ * data: [total_sy_deposited(u256), total_py_minted(u256), receiver_count, timestamp]
+ */
+export const ytMintPYMultiSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "MintPYMulti requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(6, "MintPYMulti requires at least 6 data elements"),
+});
+
+/**
+ * YT.RedeemPYMulti event
+ * keys: [selector, caller, expiry]
+ * data: [total_py_redeemed(u256), total_sy_returned(u256), receiver_count, timestamp]
+ */
+export const ytRedeemPYMultiSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "RedeemPYMulti requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(6, "RedeemPYMulti requires at least 6 data elements"),
+});
+
+/**
+ * YT.RedeemPYWithInterest event
+ * keys: [selector, caller, receiver, expiry]
+ * data: [amount_py_redeemed(u256), amount_sy_from_redeem(u256), amount_interest_claimed(u256), timestamp]
+ */
+export const ytRedeemPYWithInterestSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(4, "RedeemPYWithInterest requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(7, "RedeemPYWithInterest requires at least 7 data elements"),
+});
+
+/**
+ * YT.PostExpiryDataSet event
+ * keys: [selector, yt, pt]
+ * data: [sy, expiry, first_py_index(u256), exchange_rate_at_init(u256), total_pt_supply(u256), total_yt_supply(u256), timestamp]
+ */
+export const ytPostExpiryDataSetSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "PostExpiryDataSet requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(11, "PostExpiryDataSet requires at least 11 data elements"),
+});
+
+/**
+ * YT.PyIndexUpdated event
+ * keys: [selector, yt]
+ * data: [old_index(u256), new_index(u256), exchange_rate(u256), block_number, timestamp]
+ */
+export const ytPyIndexUpdatedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(2, "PyIndexUpdated requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(8, "PyIndexUpdated requires at least 8 data elements"),
 });
 
 // ============================================================
@@ -563,12 +659,21 @@ export const eventSchemas = {
   RewardIndexUpdated: syRewardIndexUpdatedSchema,
   RewardTokenAdded: syRewardTokenAddedSchema,
 
-  // YT
+  // YT (core)
   "YT.MintPY": ytMintPYSchema,
   "YT.RedeemPY": ytRedeemPYSchema,
   RedeemPYPostExpiry: ytRedeemPYPostExpirySchema,
   InterestClaimed: ytInterestClaimedSchema,
   ExpiryReached: ytExpiryReachedSchema,
+
+  // YT (new events - Pendle-style interest system)
+  TreasuryInterestRedeemed: ytTreasuryInterestRedeemedSchema,
+  InterestFeeRateSet: ytInterestFeeRateSetSchema,
+  MintPYMulti: ytMintPYMultiSchema,
+  RedeemPYMulti: ytRedeemPYMultiSchema,
+  RedeemPYWithInterest: ytRedeemPYWithInterestSchema,
+  PostExpiryDataSet: ytPostExpiryDataSetSchema,
+  PyIndexUpdated: ytPyIndexUpdatedSchema,
 
   // Market
   Mint: marketMintSchema,
