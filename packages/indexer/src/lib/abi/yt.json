@@ -24,14 +24,19 @@
         "kind": "key"
       },
       {
-        "name": "receiver",
+        "name": "receiver_pt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver_yt",
         "type": "core::starknet::contract_address::ContractAddress",
         "kind": "key"
       },
       {
         "name": "expiry",
         "type": "core::integer::u64",
-        "kind": "key"
+        "kind": "data"
       },
       {
         "name": "amount_sy_deposited",
@@ -494,6 +499,95 @@
       {
         "name": "amount_interest_claimed",
         "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::PostExpiryDataSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "pt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "sy",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "expiry",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "first_py_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "exchange_rate_at_init",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_pt_supply",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_yt_supply",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::PyIndexUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "old_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "exchange_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "block_number",
+        "type": "core::integer::u64",
         "kind": "data"
       },
       {
