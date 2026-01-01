@@ -312,5 +312,195 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::TreasuryInterestRedeemed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "treasury",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "amount_sy",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "expiry_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "current_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_yt_supply",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::InterestFeeRateSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "old_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::MintPYMulti",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "expiry",
+        "type": "core::integer::u64",
+        "kind": "key"
+      },
+      {
+        "name": "total_sy_deposited",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_py_minted",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "receiver_count",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::RedeemPYMulti",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "expiry",
+        "type": "core::integer::u64",
+        "kind": "key"
+      },
+      {
+        "name": "total_py_redeemed",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_sy_returned",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "receiver_count",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::RedeemPYWithInterest",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "expiry",
+        "type": "core::integer::u64",
+        "kind": "key"
+      },
+      {
+        "name": "amount_py_redeemed",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "amount_sy_from_redeem",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "amount_interest_claimed",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
   }
 ]
