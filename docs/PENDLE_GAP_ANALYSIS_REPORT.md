@@ -331,7 +331,7 @@ new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index)
 
 ### 2.1 Core AMM Curve (MarketMathCore)
 
-**Implementation Status: 75%** (Core curve math works; missing PYIndex integration, reserve fee system, signed arithmetic)
+**Implementation Status: 70%** (Core curve math works; missing PYIndex integration + Pendle fee mechanics; bounds/initialization behavior diverges)
 
 **Reference:** Pendle's `MarketMathCore.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/MarketMathCore.sol)
 
@@ -339,20 +339,22 @@ new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index)
 |---------|-----------|---------|--------|
 | Logit-based curve | `ln(p/(1-p))/scalar + anchor` | Same formula | ✅ |
 | Rate scalar time decay | `scalarRoot * 365d / timeToExpiry` | Same formula | ✅ |
-| Rate anchor continuity | Recalculated post-trade | Recalculated post-trade | ✅ |
+| Rate anchor continuity | Anchor derived from `lastLnImpliedRate` each trade | Same pattern | ✅ |
 | `MINIMUM_LIQUIDITY` | 1000 | 1000 | ✅ |
-| `MAX_MARKET_PROPORTION` | 96% | 96% (FP), 99.9% (WAD) | ⚠️ Inconsistent |
+| `MAX_MARKET_PROPORTION` | 96% | 96% (FP used by Market), 99.9% (WAD path) | ⚠️ Inconsistent |
+| Proportion bound enforcement | Revert if `proportion > MAX_MARKET_PROPORTION` | Clamp to `MAX_PROPORTION` (no revert) | 🟡 MEDIUM |
+| Exchange-rate lower bound | Revert if `exchangeRate < 1` | Floor to 1 (no revert) | 🟡 MEDIUM |
 | PT price convergence | Approaches 1 at expiry | Approaches 1 at expiry | ✅ |
 | Dual math implementations | N/A | WAD + cubit FP | ✅ **Horizon exceeds** |
-| 4 swap variants | 2 (exact PT in/out) | 4 (all combinations) | ✅ **Horizon exceeds** |
-| PYIndex integration | `syToAsset()`, `assetToSy()` | ❌ Direct SY only | 🔴 HIGH |
+| Swap variants in core math | 2 wrappers (exact PT in / exact PT out) | 4 (all combinations) | ✅ **Horizon exceeds** |
+| PYIndex integration | `syToAsset()`, `assetToSy()`, `assetToSyUp()` | ❌ Direct SY only | 🔴 HIGH |
 | Reserve fee splitting | `reserveFeePercent`, `netSyToReserve` | ❌ Single fee bucket | 🔴 HIGH |
 | Treasury address | `address treasury` in MarketState | ❌ None | 🟡 MEDIUM |
-| LP fee on add liquidity | `lpToReserve` returned | ❌ All LP to user | 🟡 MEDIUM |
+| Initial liquidity recipient | `MINIMUM_LIQUIDITY` to reserve (treasury) | Burned to zero address | 🟡 MEDIUM |
 | Signed integer arithmetic | `int256` for netPtToAccount | ❌ `u256` only | 🟡 MEDIUM |
-| Fee formula | `e^(lnFeeRateRoot * t)` | Linear decay | 🟡 MEDIUM |
-| Rounding protection | `rawDivUp()` for LP | ❌ Standard division | 🟢 LOW |
-| `setInitialLnImpliedRate()` | Explicit initialization | ❌ Via anchor | 🟢 LOW |
+| Fee formula | `exp(lnFeeRateRoot * timeToExpiry / 365d)` | Linear decay | 🟡 MEDIUM |
+| Rounding protection | `rawDivUp()` on sy/pt used; `assetToSyUp()` for negative | ❌ Standard division | 🟢 LOW |
+| `setInitialLnImpliedRate()` | Explicit init using `PYIndex` + `initialAnchor` | ❌ Direct `last_ln_implied_rate` set | 🟢 LOW |
 
 ---
 
@@ -372,8 +374,10 @@ function calcTrade(...) {
         comp.totalAsset,  // ← Asset value, not SY
         ...
     );
-    // Convert back to SY for output
-    netSyToAccount = index.assetToSy(netAssetToAccount);
+    // Convert back to SY for output (round up on negative)
+    netSyToAccount = netAssetToAccount < 0
+        ? index.assetToSyUp(netAssetToAccount)
+        : index.assetToSy(netAssetToAccount);
 }
 ```
 
@@ -428,9 +432,9 @@ fn calc_swap_exact_pt_for_sy(...) -> (u256, u256) {  // (output, fee)
 
 ---
 
-**Gap Detail - LP Fee on Liquidity Addition (MEDIUM):**
+**Gap Detail - Minimum Liquidity Recipient (MEDIUM):**
 
-Pendle takes a protocol fee when liquidity is added:
+Pendle mints `MINIMUM_LIQUIDITY` to the reserve (treasury) on first mint:
 ```solidity
 // Pendle - protocol gets LP tokens on add liquidity
 function addLiquidityCore(...) returns (
@@ -460,7 +464,28 @@ fn calc_mint_lp(...) -> (u256, u256, u256, bool) {  // (lp_to_mint, sy_used, pt_
 }
 ```
 
-**Impact:** Protocol has no mechanism to capture LP value from liquidity provision.
+**Impact:** Pendle accrues a small protocol-owned LP position at market creation; Horizon permanently burns it instead.
+
+---
+
+**Gap Detail - Proportion/Exchange-Rate Bounds (MEDIUM):**
+
+Pendle reverts when bounds are exceeded:
+```solidity
+if (proportion > MAX_MARKET_PROPORTION) {
+    revert Errors.MarketProportionTooHigh(proportion, MAX_MARKET_PROPORTION);
+}
+if (exchangeRate < PMath.IONE) revert Errors.MarketExchangeRateBelowOne(exchangeRate);
+```
+
+Horizon clamps and floors instead of reverting:
+```cairo
+let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, new_proportion));
+// ...
+let exchange_rate = max(exchange_rate, WAD);
+```
+
+**Impact:** Horizon permits trades that Pendle would reject, pricing them at boundary values. This changes tail-risk behavior and can allow deeper imbalances.
 
 ---
 
@@ -469,14 +494,15 @@ fn calc_mint_lp(...) -> (u256, u256, u256, bool) {  // (lp_to_mint, sy_used, pt_
 Pendle uses **exponential** fee decay via log-space parameters:
 ```solidity
 // Pendle - exponential decay
-// lnFeeRateRoot is stored as ln(feeRate) base
+// lnFeeRateRoot is stored in log space
 function _getExchangeRateFromImpliedRate(uint256 lnImpliedRate, uint256 timeToExpiry)
     returns (int256 exchangeRate)
 {
     uint256 rt = (lnImpliedRate * timeToExpiry) / IMPLIED_RATE_TIME;
     exchangeRate = LogExpMath.exp(rt.Int());
 }
-// Fee also uses this: feeRate = e^(lnFeeRateRoot * timeToExpiry / year)
+// Fee uses the same helper:
+// feeRate = e^(lnFeeRateRoot * timeToExpiry / IMPLIED_RATE_TIME)
 ```
 
 Horizon uses **linear** fee decay:
@@ -525,7 +551,7 @@ let new_pt_reserve = if is_pt_out {
 };
 ```
 
-**Impact:** More verbose code but functionally equivalent. Horizon's approach with 4 explicit functions is actually more complete than Pendle's 2 wrapper functions (exactPt in/out).
+**Impact:** Functionally equivalent at the core math layer. Pendle exposes only exact PT in/out in `MarketMathCore` and relies on router-level flows for other exact-output paths; Horizon implements all four variants directly.
 
 ---
 
