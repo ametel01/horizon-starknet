@@ -715,7 +715,7 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Market is LP token | ✅ (PendleERC20 + permit) | ✅ (ERC20Component) | ✅ |
+| Market is LP token | ✅ (PendleERC20, nonReentrant transfer/transferFrom) | ✅ (ERC20Component) | ✅ |
 | mint() add liquidity | ✅ | ✅ | ✅ |
 | burn() remove liquidity | ✅ | ✅ | ✅ |
 | swapExactPtForSy | ✅ | ✅ swap_exact_pt_for_sy | ✅ |
@@ -738,7 +738,7 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 | Fee config from factory | getMarketConfig() | Stored in contract | 🟡 MEDIUM |
 | notExpired modifier | ✅ Modifier pattern | assert(!is_expired()) | ✅ Equivalent |
 | nonReentrant | ✅ Modifier | ❌ No reentrancy guard | ⚠️ Different approach |
-| readState(router) | External view | _get_market_state() internal | 🟢 LOW |
+| readState(router) | External view | ❌ Not exposed (internal only) | 🟢 LOW |
 
 ---
 
@@ -910,24 +910,28 @@ fn burn(
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Architecture | Diamond/Proxy with facets | Monolithic contract | ⚠️ Different |
-| Contract count | 11+ action contracts | 1 router.cairo | ⚠️ Simpler |
-| Upgradeability | Facet-based modular | Single class upgrade | ⚠️ Less modular |
-| ReentrancyGuard | Via modifier | ReentrancyGuardComponent | ✅ |
+| Architecture | Selector-based proxy (PendleRouterV4) + action facets | Monolithic contract | ⚠️ Different |
+| Contract count | Proxy + ActionStorageV4 + ~7 action modules + helpers | 1 router.cairo | ⚠️ Simpler |
+| Upgradeability | Selector → facet mapping (ActionStorageV4) | Single class upgrade | ⚠️ Less modular |
+| ReentrancyGuard | ❌ None in router actions | ReentrancyGuardComponent | ✅ **Horizon exceeds** |
 | Emergency pause | ❌ No pause | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
-| RBAC system | ❌ Owner only | ✅ AccessControlComponent | ✅ **Horizon exceeds** |
-| Deadline enforcement | ✅ | ✅ | ✅ |
+| RBAC system | Ownable (selector admin only) | ✅ AccessControlComponent | ✅ **Horizon exceeds** |
+| Deadline enforcement | ❌ No explicit deadline params | ✅ | ✅ **Horizon exceeds** |
 | Slippage protection | ✅ min_out params | ✅ min_out params | ✅ |
 
 **Pendle Router Contracts:**
-- `PendleRouterV4.sol` - Main proxy with selector routing
+- `PendleRouterV4.sol` - Proxy that dispatches by selector → facet mapping
+- `RouterStorage.sol` - Core storage (owner + selectorToFacet)
+- `ActionStorageV4.sol` - Owner admin to set selectors for facets
 - `ActionSimple.sol` - Simplified swap/liquidity (no limit orders)
-- `ActionSwapPTV3.sol` - PT swaps with ApproxParams, LimitOrderData
+- `ActionSwapPTV3.sol` - PT swaps with ApproxParams + LimitOrderData
 - `ActionSwapYTV3.sol` - YT swaps with flash mechanics
-- `ActionAddRemoveLiqV3.sol` - Extensive liquidity operations
-- `ActionMiscV3.sol` - multicall, boostMarkets, reward redemption
+- `ActionAddRemoveLiqV3.sol` - Single-sided + multi-sided liquidity ops
+- `ActionCallbackV3.sol` - Swap/limit-order callback handling
+- `ActionMiscV3.sol` - multicall, reward redemption, misc utilities
 - `ActionCrossChain.sol` - Cross-chain messaging
-- `CallbackHelper.sol` - Flash swap callback infrastructure
+- `Reflector.sol` - helper for tokenized input scaling/dust sweep
+- `router/base/*` + `router/swap-aggregator/*` - shared helpers and aggregator interfaces
 
 ---
 
@@ -939,13 +943,13 @@ fn burn(
 |----------|-----------|---------|--------|
 | `mintPyFromSy` | ✅ | `mint_py_from_sy` | ✅ |
 | `redeemPyToSy` | ✅ | `redeem_py_to_sy` | ✅ |
-| `redeemPyPostExpiry` | ✅ | `redeem_pt_post_expiry` | ✅ |
-| `addLiquidity` | ✅ | `add_liquidity` | ✅ |
-| `removeLiquidity` | ✅ | `remove_liquidity` | ✅ |
+| PT-only redeem post-expiry | ❌ Not in router (uses `redeemPyToSy` w/ PT+YT; `exitPostExpToSy` handles PT+LP) | `redeem_pt_post_expiry` | 🟡 Horizon-only |
+| `addLiquidityDualSyAndPt` | ✅ | `add_liquidity` | ✅ |
+| `removeLiquidityDualSyAndPt` | ✅ | `remove_liquidity` | ✅ |
 | `swapExactPtForSy` | ✅ | `swap_exact_pt_for_sy` | ✅ |
-| `swapExactSyForPt` | ✅ | `swap_exact_sy_for_pt` | ✅ |
-| `swapSyForExactPt` | ✅ | `swap_sy_for_exact_pt` | ✅ |
-| `swapPtForExactSy` | ✅ | `swap_pt_for_exact_sy` | ✅ |
+| `swapExactSyForPt` | ✅ (ApproxParams + LimitOrderData) | `swap_exact_sy_for_pt` | ✅ |
+| `swapSyForExactPt` | ❌ Not exposed (router uses exact-in + ApproxParams) | `swap_sy_for_exact_pt` | 🟡 Horizon-only |
+| `swapPtForExactSy` | ❌ Not exposed (router uses exact-in) | `swap_pt_for_exact_sy` | 🟡 Horizon-only |
 | `swapExactSyForYt` | ✅ | `swap_exact_sy_for_yt` | ✅ |
 | `swapExactYtForSy` | ✅ | `swap_exact_yt_for_sy` | ✅ |
 | Convenience wrappers | N/A | `buy_pt_from_sy`, `sell_pt_for_sy`, `mint_py_and_keep` | ✅ **Horizon exceeds** |
