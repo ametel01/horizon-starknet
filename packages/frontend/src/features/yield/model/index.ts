@@ -10,6 +10,13 @@ export * from './useSyAssetInfo';
 export * from './useSyPauseState';
 export * from './useSyWatermark';
 
+// YT Interest system hooks
+export * from './useInterestFee';
+export * from './usePostExpiryStatus';
+
 // Indexed data hooks (from API/database)
 export * from './useSyPauseStateIndexed';
 export * from './useNegativeYieldAlerts';
+
+// Treasury admin hooks
+export * from './useTreasuryYield';
