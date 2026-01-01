@@ -79,6 +79,9 @@ fi
 log_info "RPC: $STARKNET_RPC_URL"
 log_info "Deployer: $DEPLOYER_ADDRESS"
 log_info "Test Recipient: $TEST_RECIPIENT"
+TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"
+update_env "TREASURY_ADDRESS" "$TREASURY_ADDRESS"
+log_info "Treasury: $TREASURY_ADDRESS"
 
 # =============================================================================
 # Step 1: Declare Classes (using declare.sh)
@@ -256,9 +259,9 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(owner, yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash, treasury)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
 # MarketFactory: constructor(owner, market_class_hash)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
@@ -328,7 +331,7 @@ fi
 
 log_info "Deploying SY-hrzSTRK..."
 
-# SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, pauser)
+# SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, asset_type, pauser, tokens_in, tokens_out)
 # "SY Horizon Mock Staked STRK" = 27 chars = 0x1b
 # "SY-hrzSTRK" = 10 chars = 0xa
 SY_HRZ_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-hrzSTRK" "SY_HRZ_STRK_ADDRESS" \
@@ -337,7 +340,10 @@ SY_HRZ_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-hrzSTRK" "SY_HRZ_STRK
     "$HRZ_STRK_ADDRESS" \
     "$HRZ_STRK_ADDRESS" \
     0x1 \
-    "$DEPLOYER_ADDRESS")
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$HRZ_STRK_ADDRESS" \
+    0x1 "$HRZ_STRK_ADDRESS")
 
 log_success "SY-hrzSTRK deployed: $SY_HRZ_STRK_ADDRESS"
 
@@ -450,15 +456,15 @@ invoke_contract "$HRZ_STRK_ADDRESS" approve "$SY_HRZ_STRK_ADDRESS" "$LIQUIDITY_H
 
 # Step 3: Deposit hrzSTRK to get SY
 log_info "Step 3: Depositing hrzSTRK to get SY..."
-invoke_contract "$SY_HRZ_STRK_ADDRESS" deposit "$DEPLOYER_ADDRESS" "$LIQUIDITY_HEX" 0x0
+invoke_contract "$SY_HRZ_STRK_ADDRESS" deposit "$DEPLOYER_ADDRESS" "$HRZ_STRK_ADDRESS" "$LIQUIDITY_HEX" 0x0
 
-# Step 4: Approve YT to spend SY (for minting PT+YT)
-log_info "Step 4: Approving YT to spend SY..."
-invoke_contract "$SY_HRZ_STRK_ADDRESS" approve "$YT_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
+# Step 4: Transfer floating SY to YT
+log_info "Step 4: Transferring SY to YT..."
+invoke_contract "$SY_HRZ_STRK_ADDRESS" transfer "$YT_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
 
-# Step 5: Mint PT+YT from SY (use half for PT+YT)
-log_info "Step 5: Minting PT+YT from SY..."
-invoke_contract "$YT_HRZ_STRK_ADDRESS" mint_py "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0
+# Step 5: Mint PT+YT from floating SY (use half for PT+YT)
+log_info "Step 5: Minting PT+YT from floating SY..."
+invoke_contract "$YT_HRZ_STRK_ADDRESS" mint_py "$DEPLOYER_ADDRESS" "$DEPLOYER_ADDRESS"
 
 # Step 6: Approve Market to spend SY
 log_info "Step 6: Approving Market to spend SY..."

@@ -138,6 +138,9 @@ fi
 
 log_info "Deployer address: $DEPLOYER_ADDRESS"
 log_info "Test recipient:   $TEST_RECIPIENT"
+TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"
+update_env "TREASURY_ADDRESS" "$TREASURY_ADDRESS"
+log_info "Treasury address: $TREASURY_ADDRESS"
 
 # Create accounts directory if not exists
 mkdir -p "$(dirname "$ACCOUNTS_FILE")"
@@ -372,9 +375,9 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(owner, yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash, treasury)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
 # MarketFactory: constructor(owner, market_class_hash)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
@@ -435,7 +438,7 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Deploy SY 1: SY-nstSTRK (wraps nstSTRK, ERC-4626 mode)
     # -------------------------------------------------------------------------
 
-    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, pauser)
+    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, asset_type, pauser, tokens_in, tokens_out)
     # "SY Nostra Staked STRK" = 21 chars
     # "SY-nstSTRK" = 10 chars
     # ERC-4626 mode: uses yield token's convertToAssets() for exchange rate
@@ -446,7 +449,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$NST_STRK_ADDRESS" \
         "$NST_STRK_ADDRESS" \
         0x1 \
-        "$DEPLOYER_ADDRESS")
+        0x0 \
+        "$DEPLOYER_ADDRESS" \
+        0x1 "$NST_STRK_ADDRESS" \
+        0x1 "$NST_STRK_ADDRESS")
 
     # -------------------------------------------------------------------------
     # Deploy SY 2: SY-sSTRK (wraps sSTRK, ERC-4626 mode)
@@ -462,7 +468,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$SSTRK_ADDRESS" \
         "$SSTRK_ADDRESS" \
         0x1 \
-        "$DEPLOYER_ADDRESS")
+        0x0 \
+        "$DEPLOYER_ADDRESS" \
+        0x1 "$SSTRK_ADDRESS" \
+        0x1 "$SSTRK_ADDRESS")
 
     # -------------------------------------------------------------------------
     # Deploy Yield Token 3: wstETH (Starknet Wrapped Staked Ether)
@@ -503,7 +512,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$WSTETH_ADDRESS" \
         "$WSTETH_ADDRESS" \
         0x1 \
-        "$DEPLOYER_ADDRESS")
+        0x0 \
+        "$DEPLOYER_ADDRESS" \
+        0x1 "$WSTETH_ADDRESS" \
+        0x1 "$WSTETH_ADDRESS")
 
     log_success "Yield tokens and SY tokens deployed"
 
@@ -765,23 +777,23 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             # Step 3: Deposit yield tokens to get SY
             log_info "  Depositing to SY..."
             if ! invoke_contract "$sy_token" deposit \
-                "$DEPLOYER_ADDRESS" "$SEED_HEX" 0x0; then
+                "$DEPLOYER_ADDRESS" "$yield_token" "$SEED_HEX" 0x0; then
                 log_error "  Failed to deposit to SY"
                 return 1
             fi
 
-            # Step 4: Approve YT to spend SY (for minting PT+YT)
-            log_info "  Approving YT to spend SY..."
-            if ! invoke_contract "$sy_token" approve \
+            # Step 4: Transfer floating SY to YT
+            log_info "  Transferring SY to YT..."
+            if ! invoke_contract "$sy_token" transfer \
                 "$yt_token" "$HALF_HEX" 0x0; then
-                log_error "  Failed to approve YT"
+                log_error "  Failed to transfer SY to YT"
                 return 1
             fi
 
-            # Step 5: Mint PT+YT from SY
+            # Step 5: Mint PT+YT from floating SY
             log_info "  Minting PT+YT..."
             if ! invoke_contract "$yt_token" mint_py \
-                "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0; then
+                "$DEPLOYER_ADDRESS" "$DEPLOYER_ADDRESS"; then
                 log_error "  Failed to mint PT+YT"
                 return 1
             fi

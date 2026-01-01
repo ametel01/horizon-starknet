@@ -99,6 +99,9 @@ if [[ -z "$DEPLOYER_ADDRESS" || "$DEPLOYER_ADDRESS" == "null" ]]; then
 fi
 
 log_info "Deployer address: $DEPLOYER_ADDRESS"
+TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"
+update_env "TREASURY_ADDRESS" "$TREASURY_ADDRESS"
+log_info "Treasury address: $TREASURY_ADDRESS"
 
 # Create accounts directory
 mkdir -p "$(dirname "$ACCOUNTS_FILE")"
@@ -295,9 +298,9 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(owner, yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash, treasury)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
 # MarketFactory: constructor(owner, market_class_hash)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
@@ -395,7 +398,11 @@ SY_SSTRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-sSTRK" "SY_SSTRK_ADDRESS
     0x0 0x53592d735354524b 0x8 \
     "$SSTRK_ADDRESS" \
     "$PRAGMA_SSTRK_ORACLE_ADDRESS" \
-    0x0)
+    0x0 \
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$SSTRK_ADDRESS" \
+    0x1 "$SSTRK_ADDRESS")
 
 # -----------------------------------------------------------------------------
 # SY-wstETH (wraps wstETH, uses PragmaIndexOracle)
@@ -407,7 +414,11 @@ SY_WSTETH_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-wstETH" "SY_WSTETH_ADDR
     0x0 0x53592d7773744554 0x9 \
     "$WSTETH_ADDRESS" \
     "$PRAGMA_WSTETH_ORACLE_ADDRESS" \
-    0x0)
+    0x0 \
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$WSTETH_ADDRESS" \
+    0x1 "$WSTETH_ADDRESS")
 
 # -----------------------------------------------------------------------------
 # SY-nstSTRK (wraps nstSTRK, may be ERC-4626 or use oracle)
@@ -419,7 +430,11 @@ SY_NST_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-nstSTRK" "SY_NST_STRK
     0x0 0x53592d6e73745354524b 0xa \
     "$NST_STRK_ADDRESS" \
     "$PRAGMA_NST_STRK_ORACLE_ADDRESS" \
-    0x0)
+    0x0 \
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$NST_STRK_ADDRESS" \
+    0x1 "$NST_STRK_ADDRESS")
 
 log_success "SY tokens deployed"
 
