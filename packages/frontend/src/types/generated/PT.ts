@@ -506,6 +506,10 @@ export const PT_ABI = [
         name: 'pauser',
         type: 'core::starknet::contract_address::ContractAddress',
       },
+      {
+        name: 'decimals',
+        type: 'core::integer::u8',
+      },
     ],
   },
   {
