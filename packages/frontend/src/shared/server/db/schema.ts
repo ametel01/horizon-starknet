@@ -11,6 +11,7 @@
 import {
   bigint,
   boolean,
+  integer,
   numeric,
   pgTable,
   pgView,
@@ -640,7 +641,7 @@ export const ytMintPYMulti = pgTable('yt_mint_py_multi', {
   yt: text('yt').notNull(),
   total_sy_deposited: numeric('total_sy_deposited', { precision: 78, scale: 0 }).notNull(),
   total_py_minted: numeric('total_py_minted', { precision: 78, scale: 0 }).notNull(),
-  receiver_count: bigint('receiver_count', { mode: 'number' }).notNull(),
+  receiver_count: integer('receiver_count').notNull(),
 });
 
 // RedeemPYMulti: batch redemption
@@ -654,7 +655,7 @@ export const ytRedeemPYMulti = pgTable('yt_redeem_py_multi', {
   yt: text('yt').notNull(),
   total_py_redeemed: numeric('total_py_redeemed', { precision: 78, scale: 0 }).notNull(),
   total_sy_returned: numeric('total_sy_returned', { precision: 78, scale: 0 }).notNull(),
-  receiver_count: bigint('receiver_count', { mode: 'number' }).notNull(),
+  receiver_count: integer('receiver_count').notNull(),
 });
 
 // RedeemPYWithInterest: combined redeem + claim
@@ -699,15 +700,25 @@ export const treasuryYieldSummary = pgView('treasury_yield_summary', {
 // Aggregates batch mint/redeem activity per caller
 export const batchOperationsSummary = pgView('batch_operations_summary', {
   caller: text('caller'),
+  yt: text('yt'),
+  expiry: bigint('expiry', { mode: 'number' }),
   total_batch_minted_sy: numeric('total_batch_minted_sy', { precision: 78, scale: 0 }),
   total_batch_minted_py: numeric('total_batch_minted_py', { precision: 78, scale: 0 }),
+  total_mint_receivers: bigint('total_mint_receivers', { mode: 'number' }),
+  batch_mint_count: bigint('batch_mint_count', { mode: 'number' }),
+  total_batch_redeemed_py: numeric('total_batch_redeemed_py', { precision: 78, scale: 0 }),
   total_batch_redeemed_sy: numeric('total_batch_redeemed_sy', { precision: 78, scale: 0 }),
-  total_receivers_served: bigint('total_receivers_served', { mode: 'number' }),
-  batch_operation_count: bigint('batch_operation_count', { mode: 'number' }),
+  total_redeem_receivers: bigint('total_redeem_receivers', { mode: 'number' }),
+  batch_redeem_count: bigint('batch_redeem_count', { mode: 'number' }),
+  total_batch_operations: bigint('total_batch_operations', { mode: 'number' }),
+  first_batch_operation: timestamp('first_batch_operation'),
+  last_batch_operation: timestamp('last_batch_operation'),
 }).existing();
 
 // Tracks redemptions that also claimed interest
 export const redeemWithInterestAnalytics = pgView('redeem_with_interest_analytics', {
+  _id: uuid('_id'),
+  block_number: bigint('block_number', { mode: 'number' }),
   yt: text('yt'),
   caller: text('caller'),
   receiver: text('receiver'),
@@ -716,5 +727,11 @@ export const redeemWithInterestAnalytics = pgView('redeem_with_interest_analytic
   amount_sy_from_redeem: numeric('amount_sy_from_redeem', { precision: 78, scale: 0 }),
   amount_interest_claimed: numeric('amount_interest_claimed', { precision: 78, scale: 0 }),
   block_timestamp: timestamp('block_timestamp'),
-  interest_percentage: numeric('interest_percentage', { precision: 78, scale: 0 }),
+  transaction_hash: text('transaction_hash'),
+  total_sy_received: numeric('total_sy_received', { precision: 78, scale: 0 }),
+  interest_percentage_bps: numeric('interest_percentage_bps', { precision: 78, scale: 0 }),
+  sy: text('sy'),
+  pt: text('pt'),
+  underlying: text('underlying'),
+  underlying_symbol: text('underlying_symbol'),
 }).existing();

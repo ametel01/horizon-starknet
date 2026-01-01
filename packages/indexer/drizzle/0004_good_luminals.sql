@@ -97,8 +97,14 @@ CREATE TABLE "yt_treasury_interest_redeemed" (
 );
 --> statement-breakpoint
 DROP INDEX "yt_mint_receiver_idx";--> statement-breakpoint
-ALTER TABLE "yt_mint_py" ADD COLUMN "receiver_pt" text NOT NULL;--> statement-breakpoint
-ALTER TABLE "yt_mint_py" ADD COLUMN "receiver_yt" text NOT NULL;--> statement-breakpoint
+ALTER TABLE "yt_mint_py" ADD COLUMN "receiver_pt" text;--> statement-breakpoint
+ALTER TABLE "yt_mint_py" ADD COLUMN "receiver_yt" text;--> statement-breakpoint
+UPDATE "yt_mint_py"
+SET
+	"receiver_pt" = COALESCE("receiver_pt", "receiver"),
+	"receiver_yt" = COALESCE("receiver_yt", "receiver");--> statement-breakpoint
+ALTER TABLE "yt_mint_py" ALTER COLUMN "receiver_pt" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "yt_mint_py" ALTER COLUMN "receiver_yt" SET NOT NULL;--> statement-breakpoint
 CREATE INDEX "yt_ifrs_yt_idx" ON "yt_interest_fee_rate_set" USING btree ("yt");--> statement-breakpoint
 CREATE UNIQUE INDEX "yt_ifrs_event_key" ON "yt_interest_fee_rate_set" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "yt_mpm_caller_idx" ON "yt_mint_py_multi" USING btree ("caller");--> statement-breakpoint
