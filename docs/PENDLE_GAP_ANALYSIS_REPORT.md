@@ -715,28 +715,29 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Market is LP token | ✅ (SRC20Permit) | ✅ (ERC20Component) | ✅ |
+| Market is LP token | ✅ (PendleERC20 + permit) | ✅ (ERC20Component) | ✅ |
 | mint() add liquidity | ✅ | ✅ | ✅ |
 | burn() remove liquidity | ✅ | ✅ | ✅ |
 | swapExactPtForSy | ✅ | ✅ swap_exact_pt_for_sy | ✅ |
 | swapSyForExactPt | ✅ | ✅ swap_sy_for_exact_pt | ✅ |
-| 4 swap function variants | 2 with callback | 4 explicit functions | ✅ **Horizon exceeds** |
+| 4 swap function variants | 2 in Market (optional callback) | 4 explicit functions | ✅ **Horizon exceeds** |
 | Emergency pause | ❌ No pause | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
 | Admin scalar adjustment | ❌ Immutable | ✅ set_scalar_root() | ✅ **Horizon exceeds** |
 | Rich swap events | Basic | Detailed (rate before/after, exchange rate) | ✅ **Horizon exceeds** |
 | TWAP observation buffer | 65,535 slots | ❌ None | 🔴 CRITICAL |
 | observe(secondsAgos[]) | ✅ | ❌ None | 🔴 CRITICAL |
-| increaseObservationsCardinality | ✅ | ❌ None | 🔴 CRITICAL |
+| increaseObservationsCardinalityNext | ✅ | ❌ None | 🔴 CRITICAL |
 | RewardManager integration | Via PendleGauge parent | ❌ None | 🔴 HIGH |
 | redeemRewards(user) | ✅ | ❌ None | 🔴 HIGH |
 | getRewardTokens() | ✅ | ❌ None | 🔴 HIGH |
-| Flash swap callback | `bytes calldata data` | ❌ Direct transfer | 🟡 MEDIUM |
+| Swap callback hook | `IPMarketSwapCallback` via `bytes data` | ❌ None (transfer_from + direct transfer) | 🟡 MEDIUM |
 | skim() balance reconciliation | ✅ | ❌ None | 🟡 MEDIUM |
+| Token transfer pattern | Pre-transfer + balance checks | Pulls via `transfer_from` | 🟡 MEDIUM |
 | Separate burn receivers | (receiverSy, receiverPt) | Single receiver | 🟡 MEDIUM |
 | Storage packing | int128/uint96/uint16 | u256 per field | 🟡 MEDIUM (gas) |
 | Fee config from factory | getMarketConfig() | Stored in contract | 🟡 MEDIUM |
 | notExpired modifier | ✅ Modifier pattern | assert(!is_expired()) | ✅ Equivalent |
-| nonReentrant | ✅ Modifier | CEI pattern | ⚠️ Different approach |
+| nonReentrant | ✅ Modifier | ❌ No reentrancy guard | ⚠️ Different approach |
 | readState(router) | External view | _get_market_state() internal | 🟢 LOW |
 
 ---
