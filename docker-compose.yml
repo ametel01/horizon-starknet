@@ -1,5 +1,44 @@
 services:
   # ===========================================================================
+  # PostgreSQL - Indexer Database
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: horizon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: horizon
+      POSTGRES_PASSWORD: horizon
+      POSTGRES_DB: horizon_indexer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U horizon -d horizon_indexer"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - yield-network
+
+  # ===========================================================================
+  # Database Migrations - Applies Drizzle migrations on startup
+  # ===========================================================================
+  indexer-migrate:
+    build:
+      context: ./packages/indexer
+      dockerfile: Dockerfile.migrate
+    container_name: indexer-migrate
+    environment:
+      POSTGRES_CONNECTION_STRING: postgres://horizon:horizon@postgres:5432/horizon_indexer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yield-network
+
+  # ===========================================================================
   # Starknet Devnet - Local Starknet Development Network
   # ===========================================================================
   devnet:
@@ -52,6 +91,9 @@ services:
         condition: service_healthy
     networks:
       - yield-network
+
+volumes:
+  postgres_data:
 
 networks:
   yield-network:
