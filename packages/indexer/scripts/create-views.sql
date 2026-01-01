@@ -12,6 +12,12 @@ DROP MATERIALIZED VIEW IF EXISTS market_hourly_stats CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS user_py_positions CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS market_lp_positions CASCADE;
 
+-- Drop YT Interest analytics views (Phase 5)
+DROP MATERIALIZED VIEW IF EXISTS yt_fee_analytics CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS treasury_yield_summary CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS batch_operations_summary CASCADE;
+DROP VIEW IF EXISTS redeem_with_interest_analytics CASCADE;
+
 -- Drop enriched router views
 DROP VIEW IF EXISTS enriched_router_swap CASCADE;
 DROP VIEW IF EXISTS enriched_router_swap_yt CASCADE;
@@ -547,6 +553,139 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_market_lp_positions_user_market
   ON market_lp_positions(user_address, market);
 
 -- ============================================================================
+-- YT INTEREST ANALYTICS VIEWS (Phase 5)
+-- Views for fee rate tracking, treasury yields, and batch operations
+-- ============================================================================
+
+-- YT Fee Analytics
+-- Tracks current fee rate per YT and rate change history
+CREATE MATERIALIZED VIEW IF NOT EXISTS yt_fee_analytics AS
+SELECT
+  yt,
+  -- Most recent rate (current fee rate)
+  (ARRAY_AGG(new_rate ORDER BY block_number DESC))[1] as current_fee_rate,
+  -- First rate (initial fee rate)
+  (ARRAY_AGG(old_rate ORDER BY block_number ASC))[1] as initial_fee_rate,
+  COUNT(*) as rate_change_count,
+  MIN(block_timestamp) as first_change,
+  MAX(block_timestamp) as last_change,
+  -- Rate change trend (positive = increases, negative = decreases)
+  SUM(CASE WHEN new_rate > old_rate THEN 1 ELSE -1 END) as net_change_direction
+FROM yt_interest_fee_rate_set
+GROUP BY yt;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_yt_fee_analytics_yt
+  ON yt_fee_analytics(yt);
+
+-- Treasury Yield Summary
+-- Aggregates total treasury claims per YT
+CREATE MATERIALIZED VIEW IF NOT EXISTS treasury_yield_summary AS
+SELECT
+  yt,
+  treasury,
+  sy,
+  SUM(amount_sy) as total_sy_claimed,
+  COUNT(*) as claim_count,
+  MIN(block_timestamp) as first_claim,
+  MAX(block_timestamp) as last_claim,
+  -- Average claim size
+  AVG(amount_sy) as avg_claim_size,
+  -- Track index progression (latest values)
+  (ARRAY_AGG(current_index ORDER BY block_number DESC))[1] as latest_index,
+  (ARRAY_AGG(total_yt_supply ORDER BY block_number DESC))[1] as latest_yt_supply
+FROM yt_treasury_interest_redeemed
+GROUP BY yt, treasury, sy;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_treasury_yield_summary_yt_treasury
+  ON treasury_yield_summary(yt, treasury);
+
+-- Batch Operations Summary
+-- Aggregates batch mint/redeem activity per caller
+CREATE MATERIALIZED VIEW IF NOT EXISTS batch_operations_summary AS
+WITH batch_mints AS (
+  SELECT
+    caller,
+    yt,
+    expiry,
+    SUM(total_sy_deposited) as total_batch_minted_sy,
+    SUM(total_py_minted) as total_batch_minted_py,
+    SUM(receiver_count) as total_mint_receivers,
+    COUNT(*) as batch_mint_count,
+    MIN(block_timestamp) as first_batch_mint,
+    MAX(block_timestamp) as last_batch_mint
+  FROM yt_mint_py_multi
+  GROUP BY caller, yt, expiry
+),
+batch_redeems AS (
+  SELECT
+    caller,
+    yt,
+    expiry,
+    SUM(total_py_redeemed) as total_batch_redeemed_py,
+    SUM(total_sy_returned) as total_batch_redeemed_sy,
+    SUM(receiver_count) as total_redeem_receivers,
+    COUNT(*) as batch_redeem_count,
+    MIN(block_timestamp) as first_batch_redeem,
+    MAX(block_timestamp) as last_batch_redeem
+  FROM yt_redeem_py_multi
+  GROUP BY caller, yt, expiry
+)
+SELECT
+  COALESCE(m.caller, r.caller) as caller,
+  COALESCE(m.yt, r.yt) as yt,
+  COALESCE(m.expiry, r.expiry) as expiry,
+  COALESCE(m.total_batch_minted_sy, 0) as total_batch_minted_sy,
+  COALESCE(m.total_batch_minted_py, 0) as total_batch_minted_py,
+  COALESCE(m.total_mint_receivers, 0) as total_mint_receivers,
+  COALESCE(m.batch_mint_count, 0) as batch_mint_count,
+  COALESCE(r.total_batch_redeemed_py, 0) as total_batch_redeemed_py,
+  COALESCE(r.total_batch_redeemed_sy, 0) as total_batch_redeemed_sy,
+  COALESCE(r.total_redeem_receivers, 0) as total_redeem_receivers,
+  COALESCE(r.batch_redeem_count, 0) as batch_redeem_count,
+  COALESCE(m.batch_mint_count, 0) + COALESCE(r.batch_redeem_count, 0) as total_batch_operations,
+  LEAST(m.first_batch_mint, r.first_batch_redeem) as first_batch_operation,
+  GREATEST(m.last_batch_mint, r.last_batch_redeem) as last_batch_operation
+FROM batch_mints m
+FULL OUTER JOIN batch_redeems r
+  ON m.caller = r.caller AND m.yt = r.yt AND m.expiry = r.expiry;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_batch_operations_summary_caller_yt_expiry
+  ON batch_operations_summary(caller, yt, expiry);
+
+-- Redeem With Interest Analytics
+-- Regular view for tracking redemptions that also claimed interest
+-- Shows interest percentage of total SY received
+CREATE OR REPLACE VIEW redeem_with_interest_analytics AS
+SELECT
+  r._id,
+  r.block_number,
+  r.block_timestamp,
+  r.transaction_hash,
+  r.yt,
+  r.caller,
+  r.receiver,
+  r.expiry,
+  r.amount_py_redeemed,
+  r.amount_sy_from_redeem,
+  r.amount_interest_claimed,
+  -- Total SY received (redeem + interest)
+  (r.amount_sy_from_redeem + r.amount_interest_claimed) as total_sy_received,
+  -- Interest as percentage of total (in basis points for precision)
+  CASE
+    WHEN (r.amount_sy_from_redeem + r.amount_interest_claimed) > 0
+    THEN (r.amount_interest_claimed * 10000 / (r.amount_sy_from_redeem + r.amount_interest_claimed))
+    ELSE 0
+  END as interest_percentage_bps,
+  -- Join with factory to get context
+  ycc.sy,
+  ycc.pt,
+  ycc.underlying,
+  ycc.underlying_symbol
+FROM yt_redeem_py_with_interest r
+LEFT JOIN factory_yield_contracts_created ycc ON r.yt = ycc.yt
+ORDER BY r.block_timestamp DESC;
+
+-- ============================================================================
 -- ENRICHED ROUTER VIEWS (6 views)
 -- Regular views that join router events with underlying contract events
 -- for transaction history display
@@ -750,6 +889,10 @@ BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY market_hourly_stats;
   REFRESH MATERIALIZED VIEW CONCURRENTLY user_py_positions;
   REFRESH MATERIALIZED VIEW CONCURRENTLY market_lp_positions;
+  -- YT Interest analytics views (Phase 5)
+  REFRESH MATERIALIZED VIEW CONCURRENTLY yt_fee_analytics;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY treasury_yield_summary;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY batch_operations_summary;
 END;
 $$ LANGUAGE plpgsql;
 

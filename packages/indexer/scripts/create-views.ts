@@ -22,6 +22,11 @@ const VIEWS = [
   "market_hourly_stats",
   "user_py_positions",
   "market_lp_positions",
+  // Phase 5: YT Interest analytics views
+  "yt_fee_analytics",
+  "treasury_yield_summary",
+  "batch_operations_summary",
+  // Note: redeem_with_interest_analytics is a regular view, not materialized
 ];
 
 async function createViews() {
@@ -60,6 +65,10 @@ async function createViews() {
     await sql`REFRESH MATERIALIZED VIEW market_hourly_stats`;
     await sql`REFRESH MATERIALIZED VIEW user_py_positions`;
     await sql`REFRESH MATERIALIZED VIEW market_lp_positions`;
+    // Phase 5: YT Interest analytics views
+    await sql`REFRESH MATERIALIZED VIEW yt_fee_analytics`;
+    await sql`REFRESH MATERIALIZED VIEW treasury_yield_summary`;
+    await sql`REFRESH MATERIALIZED VIEW batch_operations_summary`;
     log.info("Initial refresh complete");
   } catch (error) {
     // Check if error is because views already exist

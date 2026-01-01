@@ -457,7 +457,8 @@ export const ytMintPY = pgTable(
     event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
-    receiver: text("receiver").notNull(),
+    receiver_pt: text("receiver_pt").notNull(),
+    receiver_yt: text("receiver_yt").notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
     // Event data (YT contract from event source)
     yt: text("yt").notNull(),
@@ -487,7 +488,8 @@ export const ytMintPY = pgTable(
   },
   (table) => [
     index("yt_mint_caller_idx").on(table.caller),
-    index("yt_mint_receiver_idx").on(table.receiver),
+    index("yt_mint_receiver_pt_idx").on(table.receiver_pt),
+    index("yt_mint_receiver_yt_idx").on(table.receiver_yt),
     index("yt_mint_expiry_idx").on(table.expiry),
     index("yt_mint_yt_idx").on(table.yt),
     uniqueIndex("yt_mint_event_key").on(
@@ -661,6 +663,259 @@ export const ytExpiryReached = pgTable(
     index("yt_er_pt_idx").on(table.pt),
     index("yt_er_expiry_idx").on(table.expiry),
     uniqueIndex("yt_er_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// PostExpiryDataSet: emitted once when post-expiry data is initialized
+export const ytPostExpiryDataSet = pgTable(
+  "yt_post_expiry_data_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt, pt]
+    yt: text("yt").notNull(),
+    pt: text("pt").notNull(),
+    // Data fields
+    sy: text("sy").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    first_py_index: numeric("first_py_index", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    exchange_rate_at_init: numeric("exchange_rate_at_init", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_pt_supply: numeric("total_pt_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_yt_supply: numeric("total_yt_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_peds_yt_idx").on(table.yt),
+    index("yt_peds_pt_idx").on(table.pt),
+    uniqueIndex("yt_peds_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// PyIndexUpdated: emitted when PY index changes
+export const ytPyIndexUpdated = pgTable(
+  "yt_py_index_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt]
+    yt: text("yt").notNull(),
+    // Data fields
+    old_index: numeric("old_index", { precision: 78, scale: 0 }).notNull(),
+    new_index: numeric("new_index", { precision: 78, scale: 0 }).notNull(),
+    exchange_rate: numeric("exchange_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    index_block_number: bigint("index_block_number", {
+      mode: "number",
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_piu_yt_idx").on(table.yt),
+    index("yt_piu_block_idx").on(table.index_block_number),
+    uniqueIndex("yt_piu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// TreasuryInterestRedeemed: admin claims post-expiry yield
+export const ytTreasuryInterestRedeemed = pgTable(
+  "yt_treasury_interest_redeemed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt, treasury]
+    yt: text("yt").notNull(),
+    treasury: text("treasury").notNull(),
+    // Data fields
+    amount_sy: numeric("amount_sy", { precision: 78, scale: 0 }).notNull(),
+    sy: text("sy").notNull(),
+    expiry_index: numeric("expiry_index", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    current_index: numeric("current_index", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_yt_supply: numeric("total_yt_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_tir_yt_idx").on(table.yt),
+    index("yt_tir_treasury_idx").on(table.treasury),
+    uniqueIndex("yt_tir_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// InterestFeeRateSet: admin changes fee rate
+export const ytInterestFeeRateSet = pgTable(
+  "yt_interest_fee_rate_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt]
+    yt: text("yt").notNull(),
+    // Data fields
+    old_rate: numeric("old_rate", { precision: 78, scale: 0 }).notNull(),
+    new_rate: numeric("new_rate", { precision: 78, scale: 0 }).notNull(),
+  },
+  (table) => [
+    index("yt_ifrs_yt_idx").on(table.yt),
+    uniqueIndex("yt_ifrs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// MintPYMulti: batch minting
+export const ytMintPYMulti = pgTable(
+  "yt_mint_py_multi",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, expiry]
+    caller: text("caller").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    // Data fields (yt derived from event.address)
+    yt: text("yt").notNull(),
+    total_sy_deposited: numeric("total_sy_deposited", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_py_minted: numeric("total_py_minted", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    receiver_count: integer("receiver_count").notNull(),
+  },
+  (table) => [
+    index("yt_mpm_caller_idx").on(table.caller),
+    index("yt_mpm_expiry_idx").on(table.expiry),
+    index("yt_mpm_yt_idx").on(table.yt),
+    uniqueIndex("yt_mpm_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// RedeemPYMulti: batch redemption
+export const ytRedeemPYMulti = pgTable(
+  "yt_redeem_py_multi",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, expiry]
+    caller: text("caller").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    // Data fields
+    yt: text("yt").notNull(),
+    total_py_redeemed: numeric("total_py_redeemed", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_sy_returned: numeric("total_sy_returned", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    receiver_count: integer("receiver_count").notNull(),
+  },
+  (table) => [
+    index("yt_rpm_caller_idx").on(table.caller),
+    index("yt_rpm_expiry_idx").on(table.expiry),
+    index("yt_rpm_yt_idx").on(table.yt),
+    uniqueIndex("yt_rpm_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+    ),
+  ],
+);
+
+// RedeemPYWithInterest: combined redeem + claim
+export const ytRedeemPYWithInterest = pgTable(
+  "yt_redeem_py_with_interest",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, receiver, expiry]
+    caller: text("caller").notNull(),
+    receiver: text("receiver").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    // Data fields
+    yt: text("yt").notNull(),
+    amount_py_redeemed: numeric("amount_py_redeemed", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    amount_sy_from_redeem: numeric("amount_sy_from_redeem", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    amount_interest_claimed: numeric("amount_interest_claimed", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_rpwi_caller_idx").on(table.caller),
+    index("yt_rpwi_receiver_idx").on(table.receiver),
+    index("yt_rpwi_expiry_idx").on(table.expiry),
+    index("yt_rpwi_yt_idx").on(table.yt),
+    uniqueIndex("yt_rpwi_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index,
@@ -1617,3 +1872,118 @@ export const syRewardApy = pgView("sy_reward_apy", {
   avg_total_supply: numeric("avg_total_supply", { precision: 78, scale: 0 }),
   update_count: bigint("update_count", { mode: "number" }),
 }).existing();
+
+// ============================================================
+// PHASE 5: YT INTEREST ANALYTICS VIEWS (4 views)
+// Views for fee rate tracking, treasury yields, and batch operations
+// ============================================================
+
+/**
+ * YT Fee Analytics View
+ * Tracks current fee rate per YT and rate change history
+ * Use for: Fee rate display, governance monitoring
+ */
+export const ytFeeAnalytics = pgView("yt_fee_analytics", {
+  yt: text("yt"),
+  current_fee_rate: numeric("current_fee_rate", { precision: 78, scale: 0 }),
+  initial_fee_rate: numeric("initial_fee_rate", { precision: 78, scale: 0 }),
+  rate_change_count: bigint("rate_change_count", { mode: "number" }),
+  first_change: timestamp("first_change"),
+  last_change: timestamp("last_change"),
+  net_change_direction: bigint("net_change_direction", { mode: "number" }),
+}).existing();
+
+/**
+ * Treasury Yield Summary View
+ * Aggregates total treasury claims per YT
+ * Use for: Treasury analytics, protocol revenue tracking
+ */
+export const treasuryYieldSummary = pgView("treasury_yield_summary", {
+  yt: text("yt"),
+  treasury: text("treasury"),
+  sy: text("sy"),
+  total_sy_claimed: numeric("total_sy_claimed", { precision: 78, scale: 0 }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+  first_claim: timestamp("first_claim"),
+  last_claim: timestamp("last_claim"),
+  avg_claim_size: numeric("avg_claim_size", { precision: 78, scale: 0 }),
+  latest_index: numeric("latest_index", { precision: 78, scale: 0 }),
+  latest_yt_supply: numeric("latest_yt_supply", { precision: 78, scale: 0 }),
+}).existing();
+
+/**
+ * Batch Operations Summary View
+ * Aggregates batch mint/redeem activity per caller
+ * Use for: Whale tracking, batch operation analytics
+ */
+export const batchOperationsSummary = pgView("batch_operations_summary", {
+  caller: text("caller"),
+  yt: text("yt"),
+  expiry: bigint("expiry", { mode: "number" }),
+  total_batch_minted_sy: numeric("total_batch_minted_sy", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_batch_minted_py: numeric("total_batch_minted_py", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_mint_receivers: bigint("total_mint_receivers", { mode: "number" }),
+  batch_mint_count: bigint("batch_mint_count", { mode: "number" }),
+  total_batch_redeemed_py: numeric("total_batch_redeemed_py", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_batch_redeemed_sy: numeric("total_batch_redeemed_sy", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_redeem_receivers: bigint("total_redeem_receivers", { mode: "number" }),
+  batch_redeem_count: bigint("batch_redeem_count", { mode: "number" }),
+  total_batch_operations: bigint("total_batch_operations", { mode: "number" }),
+  first_batch_operation: timestamp("first_batch_operation"),
+  last_batch_operation: timestamp("last_batch_operation"),
+}).existing();
+
+/**
+ * Redeem With Interest Analytics View
+ * Tracks redemptions that also claimed interest
+ * Use for: User transaction history, interest tracking
+ */
+export const redeemWithInterestAnalytics = pgView(
+  "redeem_with_interest_analytics",
+  {
+    _id: uuid("_id"),
+    block_number: bigint("block_number", { mode: "number" }),
+    block_timestamp: timestamp("block_timestamp"),
+    transaction_hash: text("transaction_hash"),
+    yt: text("yt"),
+    caller: text("caller"),
+    receiver: text("receiver"),
+    expiry: bigint("expiry", { mode: "number" }),
+    amount_py_redeemed: numeric("amount_py_redeemed", {
+      precision: 78,
+      scale: 0,
+    }),
+    amount_sy_from_redeem: numeric("amount_sy_from_redeem", {
+      precision: 78,
+      scale: 0,
+    }),
+    amount_interest_claimed: numeric("amount_interest_claimed", {
+      precision: 78,
+      scale: 0,
+    }),
+    total_sy_received: numeric("total_sy_received", {
+      precision: 78,
+      scale: 0,
+    }),
+    interest_percentage_bps: numeric("interest_percentage_bps", {
+      precision: 78,
+      scale: 0,
+    }),
+    sy: text("sy"),
+    pt: text("pt"),
+    underlying: text("underlying"),
+    underlying_symbol: text("underlying_symbol"),
+  },
+).existing();
