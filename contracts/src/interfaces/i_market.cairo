@@ -64,9 +64,12 @@ pub trait IMarketAdmin<TContractState> {
     /// Unpause all market operations (PAUSER_ROLE only)
     fn unpause(ref self: TContractState);
 
-    /// Collect accumulated trading fees (owner only)
-    /// @param receiver Address to receive the collected SY fees
-    /// @return Amount of SY fees collected
+    /// Reset LP fee counter and emit analytics event (owner only)
+    /// Note: In Pendle-style fee model, LP fees stay in pool reserves (no transfer).
+    /// Reserve fees are sent to treasury immediately during swaps.
+    /// This function is for analytics tracking only - it resets the counter and emits an event.
+    /// @param receiver Address recorded in the event (no actual transfer occurs)
+    /// @return Amount of LP fees tracked since last reset
     fn collect_fees(ref self: TContractState, receiver: ContractAddress) -> u256;
 
     /// Set the scalar root parameter (owner only)

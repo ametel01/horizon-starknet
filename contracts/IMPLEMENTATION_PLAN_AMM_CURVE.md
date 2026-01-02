@@ -175,7 +175,7 @@ Failure modes: override fee must be strictly less than market's base fee.
 Validate: test that invalid parameters revert.
 Failure modes: wrong bounds allow unsafe fee curves.
 
-### 2.3 Pull fee config per swap and transfer reserve fees immediately
+### 2.3 Pull fee config per swap and transfer reserve fees immediately **COMPLETE**
 **Files:** `contracts/src/market/amm.cairo`
 
 - Build `MarketState` using the effective `ln_fee_rate_root` (overridden fee if present).
