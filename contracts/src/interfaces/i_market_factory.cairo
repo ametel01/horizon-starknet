@@ -1,5 +1,17 @@
 use starknet::{ClassHash, ContractAddress};
 
+/// Market configuration returned by get_market_config
+/// @param treasury Address receiving reserve fees
+/// @param ln_fee_rate_root Effective ln fee rate root (override if set, else 0 = use market
+/// default)
+/// @param reserve_fee_percent Reserve fee percentage (0-100)
+#[derive(Copy, Drop, Serde)]
+pub struct MarketConfig {
+    pub treasury: ContractAddress,
+    pub ln_fee_rate_root: u256,
+    pub reserve_fee_percent: u8,
+}
+
 #[starknet::interface]
 pub trait IMarketFactory<TContractState> {
     /// Create a new market for a PT token
@@ -59,4 +71,42 @@ pub trait IMarketFactory<TContractState> {
 
     /// Initialize RBAC after upgrade (one-time setup)
     fn initialize_rbac(ref self: TContractState);
+
+    // ============ Fee Configuration (Pendle-style) ============
+
+    /// Get market configuration for a specific router
+    /// Returns treasury, effective ln_fee_rate_root (override or 0), and reserve_fee_percent
+    /// @param market The market address
+    /// @param router The router address (for per-router overrides)
+    /// @return MarketConfig with treasury, ln_fee_rate_root override (0 if none),
+    /// reserve_fee_percent
+    fn get_market_config(
+        self: @TContractState, market: ContractAddress, router: ContractAddress,
+    ) -> MarketConfig;
+
+    /// Get the treasury address
+    fn get_treasury(self: @TContractState) -> ContractAddress;
+
+    /// Get the default reserve fee percent
+    fn get_default_reserve_fee_percent(self: @TContractState) -> u8;
+
+    /// Set the treasury address (owner only)
+    /// @param treasury New treasury address
+    fn set_treasury(ref self: TContractState, treasury: ContractAddress);
+
+    /// Set the default reserve fee percent (owner only)
+    /// @param percent New reserve fee percent (0-100)
+    fn set_default_reserve_fee_percent(ref self: TContractState, percent: u8);
+
+    /// Set fee override for a specific router/market pair (owner only)
+    /// @param router Router address
+    /// @param market Market address
+    /// @param ln_fee_rate_root Override ln fee rate root (must be < market's base rate, or 0 to
+    /// clear)
+    fn set_override_fee(
+        ref self: TContractState,
+        router: ContractAddress,
+        market: ContractAddress,
+        ln_fee_rate_root: u256,
+    );
 }

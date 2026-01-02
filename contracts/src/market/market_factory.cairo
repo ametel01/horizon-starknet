@@ -5,7 +5,7 @@
 pub mod MarketFactory {
     use core::num::traits::Zero;
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
-    use horizon::interfaces::i_market_factory::IMarketFactory;
+    use horizon::interfaces::i_market_factory::{IMarketFactory, MarketConfig};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::libraries::errors::Errors;
@@ -20,7 +20,9 @@ pub mod MarketFactory {
         StoragePointerWriteAccess,
     };
     use starknet::syscalls::deploy_syscall;
-    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
     use super::{IERC20MetadataDispatcher, IERC20MetadataDispatcherTrait};
 
     // ============ Market Parameter Bounds ============
@@ -36,8 +38,14 @@ pub mod MarketFactory {
     /// Using same value as market_math::MAX_LN_IMPLIED_RATE
     const MAX_INITIAL_ANCHOR: u256 = 4_600_000_000_000_000_000; // ~4.6 WAD
 
-    /// Maximum fee rate: 10% = 0.1 WAD (reasonable upper bound for trading fees)
-    const MAX_FEE_RATE: u256 = 100_000_000_000_000_000; // 0.1 WAD = 10%
+    /// Minimum initial_anchor: 1 WAD (Pendle requires initial_anchor >= WAD)
+    /// This ensures the starting ln(implied rate) is valid (rate >= 1)
+    const MIN_INITIAL_ANCHOR: u256 = 1_000_000_000_000_000_000; // 1 WAD
+
+    /// Maximum ln_fee_rate_root: ln(1.05) WAD ≈ 0.0488 WAD (Pendle bound)
+    /// At 1 year to expiry, this gives max 5% fee: exp(0.0488 * 1) ≈ 1.05
+    /// Using precise value: ln(1.05) = 0.04879016416943092...
+    const MAX_LN_FEE_RATE_ROOT: u256 = 48_790_164_169_432_000; // ln(1.05) WAD
 
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -82,6 +90,14 @@ pub mod MarketFactory {
         access_control: AccessControlComponent::Storage,
         // Flag to prevent RBAC re-initialization
         rbac_initialized: bool,
+        // === FEE CONFIGURATION (Pendle-style) ===
+        // Treasury address for receiving reserve fees
+        treasury: ContractAddress,
+        // Default reserve fee percent (0-100)
+        default_reserve_fee_percent: u8,
+        // Per-router per-market ln_fee_rate_root overrides
+        // Key: (router, market) -> ln_fee_rate_root (0 = no override)
+        overridden_fee: Map<(ContractAddress, ContractAddress), u256>,
     }
 
     #[event]
@@ -89,6 +105,9 @@ pub mod MarketFactory {
     pub enum Event {
         MarketCreated: MarketCreated,
         MarketClassHashUpdated: MarketClassHashUpdated,
+        TreasuryUpdated: TreasuryUpdated,
+        DefaultReserveFeeUpdated: DefaultReserveFeeUpdated,
+        OverrideFeeSet: OverrideFeeSet,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -124,6 +143,27 @@ pub mod MarketFactory {
     pub struct MarketClassHashUpdated {
         pub old_class_hash: ClassHash,
         pub new_class_hash: ClassHash,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct TreasuryUpdated {
+        pub old_treasury: ContractAddress,
+        pub new_treasury: ContractAddress,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DefaultReserveFeeUpdated {
+        pub old_percent: u8,
+        pub new_percent: u8,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct OverrideFeeSet {
+        #[key]
+        pub router: ContractAddress,
+        #[key]
+        pub market: ContractAddress,
+        pub ln_fee_rate_root: u256,
     }
 
     #[constructor]
@@ -174,12 +214,15 @@ pub mod MarketFactory {
                 Errors::MARKET_FACTORY_INVALID_SCALAR,
             );
 
-            // initial_anchor (ln implied rate) must not exceed max to prevent extreme pricing
-            assert(initial_anchor <= MAX_INITIAL_ANCHOR, Errors::MARKET_FACTORY_INVALID_ANCHOR);
+            // initial_anchor (ln implied rate) must be within [1 WAD, MAX] (Pendle bounds)
+            // Minimum ensures rate >= 1, maximum prevents extreme pricing
+            assert(
+                initial_anchor >= MIN_INITIAL_ANCHOR && initial_anchor <= MAX_INITIAL_ANCHOR,
+                Errors::MARKET_FACTORY_INVALID_ANCHOR,
+            );
 
-            // ln_fee_rate_root must not exceed max to prevent extreme fees
-            // TODO(step 2.2): Add proper bounds check for ln_fee_rate_root <= ln(1.05)
-            assert(ln_fee_rate_root <= MAX_FEE_RATE, Errors::MARKET_FACTORY_INVALID_FEE);
+            // ln_fee_rate_root must not exceed ln(1.05) to cap fees at 5% (Pendle bound)
+            assert(ln_fee_rate_root <= MAX_LN_FEE_RATE_ROOT, Errors::MARKET_FACTORY_INVALID_FEE);
 
             // reserve_fee_percent must be <= 100
             assert(reserve_fee_percent <= 100, Errors::MARKET_FACTORY_INVALID_FEE);
@@ -204,7 +247,7 @@ pub mod MarketFactory {
 
             // Build Market constructor calldata
             // Market constructor: name, symbol, pt, scalar_root, initial_anchor, ln_fee_rate_root,
-            // reserve_fee_percent, pauser
+            // reserve_fee_percent, pauser, factory
             let mut calldata: Array<felt252> = array![];
 
             // Name: "PT-SY LP" (simplified)
@@ -237,6 +280,9 @@ pub mod MarketFactory {
 
             // pauser address (factory owner gets PAUSER_ROLE on created markets)
             calldata.append(self.ownable.owner().into());
+
+            // factory address (this contract - for querying fee config and treasury)
+            calldata.append(get_contract_address().into());
 
             // Deploy Market contract
             let salt: felt252 = count.low.into();
@@ -429,6 +475,84 @@ pub mod MarketFactory {
 
             // Mark as initialized to prevent re-calling
             self.rbac_initialized.write(true);
+        }
+
+        // ============ Fee Configuration (Pendle-style) ============
+
+        /// Get market configuration for a specific router
+        /// Returns treasury, effective ln_fee_rate_root (override or 0), and reserve_fee_percent
+        fn get_market_config(
+            self: @ContractState, market: ContractAddress, router: ContractAddress,
+        ) -> MarketConfig {
+            let treasury = self.treasury.read();
+            let reserve_fee_percent = self.default_reserve_fee_percent.read();
+
+            // Get override fee for this router/market pair (0 if not set)
+            let ln_fee_rate_root = self.overridden_fee.read((router, market));
+
+            MarketConfig { treasury, ln_fee_rate_root, reserve_fee_percent }
+        }
+
+        /// Get the treasury address
+        fn get_treasury(self: @ContractState) -> ContractAddress {
+            self.treasury.read()
+        }
+
+        /// Get the default reserve fee percent
+        fn get_default_reserve_fee_percent(self: @ContractState) -> u8 {
+            self.default_reserve_fee_percent.read()
+        }
+
+        /// Set the treasury address (owner only)
+        fn set_treasury(ref self: ContractState, treasury: ContractAddress) {
+            self.ownable.assert_only_owner();
+
+            let old_treasury = self.treasury.read();
+            self.treasury.write(treasury);
+
+            self.emit(TreasuryUpdated { old_treasury, new_treasury: treasury });
+        }
+
+        /// Set the default reserve fee percent (owner only)
+        fn set_default_reserve_fee_percent(ref self: ContractState, percent: u8) {
+            self.ownable.assert_only_owner();
+            assert(percent <= 100, Errors::MARKET_FACTORY_INVALID_FEE);
+
+            let old_percent = self.default_reserve_fee_percent.read();
+            self.default_reserve_fee_percent.write(percent);
+
+            self.emit(DefaultReserveFeeUpdated { old_percent, new_percent: percent });
+        }
+
+        /// Set fee override for a specific router/market pair (owner only)
+        /// @param router Router address
+        /// @param market Market address (must be a valid market deployed by this factory)
+        /// @param ln_fee_rate_root Override ln fee rate root (0 to clear override)
+        fn set_override_fee(
+            ref self: ContractState,
+            router: ContractAddress,
+            market: ContractAddress,
+            ln_fee_rate_root: u256,
+        ) {
+            self.ownable.assert_only_owner();
+
+            // Validate market is a valid market deployed by this factory
+            assert(self.valid_markets.read(market), Errors::MARKET_FACTORY_INVALID_MARKET);
+
+            // If setting a non-zero override, validate it's less than market's base fee
+            // This prevents routers from having higher fees than the base market fee
+            if ln_fee_rate_root != 0 {
+                let market_contract = IMarketDispatcher { contract_address: market };
+                let market_ln_fee_rate_root = market_contract.get_ln_fee_rate_root();
+                assert(
+                    ln_fee_rate_root < market_ln_fee_rate_root,
+                    Errors::MARKET_FACTORY_OVERRIDE_TOO_HIGH,
+                );
+            }
+
+            self.overridden_fee.write((router, market), ln_fee_rate_root);
+
+            self.emit(OverrideFeeSet { router, market, ln_fee_rate_root });
         }
     }
 }
