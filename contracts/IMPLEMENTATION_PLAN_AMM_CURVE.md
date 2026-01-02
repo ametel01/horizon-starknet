@@ -152,7 +152,7 @@ Failure modes: keeping the old shortcut will desync from Pendle on day-0 markets
 
 ## Step 2: Fee config + treasury wiring (PendleFactory parity)
 
-### 2.1 Add market config to MarketFactory
+### 2.1 Add market config to MarketFactory **COMPLETE**
 **Files:** `contracts/src/market/market_factory.cairo`, `contracts/src/interfaces/i_market_factory.cairo`
 
 Add Pendle-style config:
@@ -165,7 +165,7 @@ Expose `get_market_config(market, router) -> (treasury, overridden_fee, reserve_
 Validate: unit test that overrides are returned and default to 0.
 Failure modes: override fee must be strictly less than market's base fee.
 
-### 2.2 Switch market constructor and state to lnFeeRateRoot
+### 2.2 Switch market constructor and state to lnFeeRateRoot **COMPLETE**
 **Files:** `contracts/src/market/amm.cairo`, `contracts/src/market/market_factory.cairo`
 
 - Replace `fee_rate` with `ln_fee_rate_root` everywhere.
