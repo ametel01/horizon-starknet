@@ -764,8 +764,9 @@ pub mod Market {
         }
 
         /// Get the current ln(implied rate)
+        /// Uses _get_market_state_view for read-only access (no side effects)
         fn get_ln_implied_rate(self: @ContractState) -> u256 {
-            let state = self._get_market_state();
+            let state = self._get_market_state_view();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             get_ln_implied_rate(@state, time_to_expiry)
         }
@@ -894,6 +895,29 @@ pub mod Market {
             // preventing interest calculation lag (Pendle-style pyIndexCurrent behavior)
             let yt_contract = IYTDispatcher { contract_address: self.yt.read() };
             let py_index = yt_contract.update_py_index();
+
+            MarketState {
+                sy_reserve: self.sy_reserve.read(),
+                pt_reserve: self.pt_reserve.read(),
+                total_lp: self.erc20.ERC20_total_supply.read(),
+                scalar_root: self.scalar_root.read(),
+                initial_anchor: self.initial_anchor.read(),
+                ln_fee_rate_root: self.ln_fee_rate_root.read(),
+                reserve_fee_percent: self.reserve_fee_percent.read(),
+                expiry: self.expiry.read(),
+                last_ln_implied_rate: self.last_ln_implied_rate.read(),
+                py_index,
+            }
+        }
+
+        /// Build current market state from storage (read-only version for view functions)
+        /// Uses py_index_current() instead of update_py_index() to avoid side effects.
+        /// This ensures view functions remain side-effect-free and don't attempt
+        /// mutating external calls.
+        fn _get_market_state_view(self: @ContractState) -> MarketState {
+            // Use py_index_current() for read-only access (no storage writes)
+            let yt_contract = IYTDispatcher { contract_address: self.yt.read() };
+            let py_index = yt_contract.py_index_current();
 
             MarketState {
                 sy_reserve: self.sy_reserve.read(),

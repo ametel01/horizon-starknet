@@ -127,16 +127,22 @@ pub fn get_time_to_expiry(expiry: u64, current_time: u64) -> u64 {
     expiry - current_time
 }
 
-/// Calculate the proportion of PT in the pool
-/// proportion = pt_reserve / (pt_reserve + sy_reserve)
-/// @param state Current market state
+/// Calculate the proportion of PT in the pool (asset-based)
+/// proportion = pt_reserve / total_asset
+/// where total_asset = pt_reserve + sy_to_asset(sy_reserve, py_index)
+///
+/// Using asset-based calculation ensures proper pricing when SY value changes
+/// (e.g., yield accrual). PT is valued at 1 asset each since it redeems 1:1 at expiry.
+///
+/// @param state Current market state with py_index populated
 /// @return Proportion in WAD format
 pub fn get_proportion(state: @MarketState) -> u256 {
-    let total = *state.pt_reserve + *state.sy_reserve;
-    if total == 0 {
+    let sy_in_assets = sy_to_asset(*state.sy_reserve, *state.py_index);
+    let total_asset = *state.pt_reserve + sy_in_assets;
+    if total_asset == 0 {
         return HALF_WAD; // 50% if pool is empty
     }
-    wad_div(*state.pt_reserve, total)
+    wad_div(*state.pt_reserve, total_asset)
 }
 
 /// Calculate the rate scalar adjusted for time to expiry
@@ -326,9 +332,10 @@ pub fn calc_trade(
     let is_buying_pt = is_positive(@net_pt_to_account);
 
     // Calculate pre-fee exchange rate at the new PT level
+    // Uses asset-based curve: pass total_asset instead of sy_reserve
     let pre_fee_exchange_rate = get_exchange_rate(
         *state.pt_reserve,
-        *state.sy_reserve,
+        *comp.total_asset, // Asset-based: pt_reserve + sy_to_asset(sy_reserve, py_index)
         net_pt_to_account.mag,
         is_buying_pt, // PT leaving pool if buying
         *comp.rate_scalar,
@@ -414,17 +421,21 @@ pub fn calc_trade(
     }
 }
 
-/// Calculate the exchange rate (PT price in SY terms) using the logit curve
-/// Pendle formula: exchangeRate = ln(newProportion / (1-newProportion)) / rateScalar + rateAnchor
+/// Calculate the exchange rate (PT price in asset terms) using the logit curve
+/// Uses asset-based formula: exchangeRate = ln(newProportion / (1-newProportion)) / rateScalar +
+/// rateAnchor
+/// where proportion = pt_reserve / total_asset (with total_asset = pt + sy_in_assets)
+///
 /// @param pt_reserve Current PT reserve
-/// @param sy_reserve Current SY reserve
+/// @param total_asset Pre-computed total assets (pt + sy_in_assets) from MarketPreCompute
 /// @param net_pt_change Amount of PT being added (negative) or removed (positive) from pool
+/// @param is_pt_out true if PT is going OUT of pool (user buying PT)
 /// @param rate_scalar Time-adjusted rate scalar
 /// @param rate_anchor Rate anchor for this trade
 /// @return Exchange rate in WAD (always >= 1)
 pub fn get_exchange_rate(
     pt_reserve: u256,
-    sy_reserve: u256,
+    total_asset: u256,
     net_pt_change: u256, // PT being removed from pool (user buying) - positive value
     is_pt_out: bool, // true if PT is going OUT of pool (user buying PT)
     rate_scalar: u256,
@@ -440,9 +451,10 @@ pub fn get_exchange_rate(
         pt_reserve + net_pt_change
     };
 
-    // Calculate new proportion
-    let total = new_pt_reserve + sy_reserve;
-    let new_proportion = wad_div(new_pt_reserve, total);
+    // Calculate new proportion using asset-based formula
+    // proportion = new_pt_reserve / total_asset
+    // Note: total_asset is pre-trade value (the invariant for rate calculation)
+    let new_proportion = wad_div(new_pt_reserve, total_asset);
 
     // Check bounds
     let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, new_proportion));
@@ -470,7 +482,8 @@ pub fn get_exchange_rate(
 }
 
 /// Calculate ln(implied_rate) from market state
-/// ln_implied_rate = rate_anchor - rate_scalar * ln(proportion / (1 - proportion))
+/// ln_implied_rate = rate_anchor - ln(proportion / (1 - proportion)) / rate_scalar
+/// (Pendle formula: lnImpliedRate = rateAnchor - lnProportion.divDown(rateScalar))
 /// @param state Current market state
 /// @param time_to_expiry Time to expiry in seconds
 /// @return ln(implied_rate) in WAD, always non-negative
@@ -487,19 +500,20 @@ pub fn get_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> u256 {
 
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
 
-    // ln_implied_rate = anchor - rate_scalar * ln_odds
+    // ln_implied_rate = anchor - ln_odds / rate_scalar
+    // (consistent with Pendle's lnProportion.divDown(rateScalar))
     // If proportion > 0.5: ln_odds > 0, so we subtract
     // If proportion < 0.5: ln_odds < 0 (is_negative=true), so we add
-    let scaled_ln_odds = wad_mul(rate_scalar, ln_odds);
+    let scaled_ln_odds = wad_div(ln_odds, rate_scalar);
 
     let result = if is_negative {
-        // ln_odds is negative, so -rate_scalar * ln_odds = +scaled_ln_odds
+        // ln_odds is negative, so -ln_odds/rate_scalar is positive → add
         *state.initial_anchor + scaled_ln_odds
     } else if scaled_ln_odds >= *state.initial_anchor {
-        // ln_odds is positive and large enough to drive rate negative - floor at 0
+        // ln_odds is positive and large enough to drive rate negative → floor at 0
         0
     } else {
-        // ln_odds is positive, so -rate_scalar * ln_odds = -scaled_ln_odds
+        // ln_odds is positive, so -ln_odds/rate_scalar is negative → subtract
         *state.initial_anchor - scaled_ln_odds
     };
 

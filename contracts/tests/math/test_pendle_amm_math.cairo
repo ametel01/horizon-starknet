@@ -112,9 +112,14 @@ fn test_exchange_rate_balanced_pool() {
     let rate_anchor = WAD + WAD / 10; // ~1.1 WAD
 
     // Balanced pool: PT = SY = 100 WAD
+    // total_asset = pt_reserve + sy_reserve (when py_index = WAD)
+    let pt_reserve = 100 * WAD;
+    let sy_reserve = 100 * WAD;
+    let total_asset = pt_reserve + sy_reserve;
+
     let exchange_rate = get_exchange_rate(
-        100 * WAD, // pt_reserve
-        100 * WAD, // sy_reserve
+        pt_reserve,
+        total_asset, // Asset-based: pass total_asset instead of sy_reserve
         0, // net_pt_change
         false, // is_pt_out
         rate_scalar,
@@ -135,7 +140,13 @@ fn test_exchange_rate_more_pt() {
     // More PT than SY: PT = 150, SY = 100
     // proportion = 150 / (150 + 100) = 0.6
     // logit(0.6) = ln(0.6/0.4) = ln(1.5) ~ 0.405
-    let exchange_rate = get_exchange_rate(150 * WAD, 100 * WAD, 0, false, rate_scalar, rate_anchor);
+    let pt_reserve = 150 * WAD;
+    let sy_reserve = 100 * WAD;
+    let total_asset = pt_reserve + sy_reserve;
+
+    let exchange_rate = get_exchange_rate(
+        pt_reserve, total_asset, 0, false, rate_scalar, rate_anchor,
+    );
 
     // Should be greater than anchor
     assert(exchange_rate > rate_anchor, 'more PT = higher rate');
@@ -150,7 +161,13 @@ fn test_exchange_rate_more_sy() {
     // More SY than PT: PT = 100, SY = 150
     // proportion = 100 / (100 + 150) = 0.4
     // logit(0.4) = ln(0.4/0.6) = ln(0.667) ~ -0.405
-    let exchange_rate = get_exchange_rate(100 * WAD, 150 * WAD, 0, false, rate_scalar, rate_anchor);
+    let pt_reserve = 100 * WAD;
+    let sy_reserve = 150 * WAD;
+    let total_asset = pt_reserve + sy_reserve;
+
+    let exchange_rate = get_exchange_rate(
+        pt_reserve, total_asset, 0, false, rate_scalar, rate_anchor,
+    );
 
     // Should be less than anchor but at least WAD
     assert(exchange_rate >= WAD, 'rate floor at 1');
@@ -164,11 +181,17 @@ fn test_exchange_rate_after_pt_out() {
     let rate_scalar = get_rate_scalar(WAD, ONE_YEAR);
     let rate_anchor = WAD + WAD / 10;
 
-    let rate_before = get_exchange_rate(100 * WAD, 100 * WAD, 0, false, rate_scalar, rate_anchor);
+    let pt_reserve = 100 * WAD;
+    let sy_reserve = 100 * WAD;
+    let total_asset = pt_reserve + sy_reserve;
+
+    let rate_before = get_exchange_rate(
+        pt_reserve, total_asset, 0, false, rate_scalar, rate_anchor,
+    );
 
     // After 10 PT leaves pool
     let rate_after = get_exchange_rate(
-        100 * WAD, 100 * WAD, 10 * WAD, true, rate_scalar, rate_anchor,
+        pt_reserve, total_asset, 10 * WAD, true, rate_scalar, rate_anchor,
     );
 
     // Rate should decrease when PT leaves
@@ -182,11 +205,17 @@ fn test_exchange_rate_after_pt_in() {
     let rate_scalar = get_rate_scalar(WAD, ONE_YEAR);
     let rate_anchor = WAD + WAD / 10;
 
-    let rate_before = get_exchange_rate(100 * WAD, 100 * WAD, 0, false, rate_scalar, rate_anchor);
+    let pt_reserve = 100 * WAD;
+    let sy_reserve = 100 * WAD;
+    let total_asset = pt_reserve + sy_reserve;
+
+    let rate_before = get_exchange_rate(
+        pt_reserve, total_asset, 0, false, rate_scalar, rate_anchor,
+    );
 
     // After 10 PT enters pool
     let rate_after = get_exchange_rate(
-        100 * WAD, 100 * WAD, 10 * WAD, false, rate_scalar, rate_anchor,
+        pt_reserve, total_asset, 10 * WAD, false, rate_scalar, rate_anchor,
     );
 
     // Rate should increase when PT enters
@@ -200,7 +229,13 @@ fn test_exchange_rate_always_ge_one() {
     let rate_anchor = WAD + WAD / 10;
 
     // Even with extreme proportion (low PT)
-    let exchange_rate = get_exchange_rate(10 * WAD, 100 * WAD, 0, false, rate_scalar, rate_anchor);
+    let pt_reserve = 10 * WAD;
+    let sy_reserve = 100 * WAD;
+    let total_asset = pt_reserve + sy_reserve;
+
+    let exchange_rate = get_exchange_rate(
+        pt_reserve, total_asset, 0, false, rate_scalar, rate_anchor,
+    );
 
     assert(exchange_rate >= WAD, 'rate always >= 1');
 }
@@ -410,7 +445,10 @@ fn test_swap_convergence_near_expiry() {
 #[test]
 fn test_swap_roundtrip_consistency() {
     // Buy PT, then sell same amount - should be roughly consistent
-    let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, WAD / 100, WAD / 10);
+    // Use realistic parameters:
+    // - scalar_root = 100 * WAD for flat curve (less price impact)
+    // - 10% implied rate gives anchor ~1.1 for 1 year
+    let state = create_market(100 * WAD, 100 * WAD, 100 * WAD, WAD, WAD / 100, WAD / 10);
 
     let sy_in = 5 * WAD;
     let (pt_out, _) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
@@ -430,7 +468,10 @@ fn test_swap_roundtrip_consistency() {
 #[test]
 fn test_swap_exact_amounts() {
     // Test that calc_swap_sy_for_exact_pt gives correct amount
-    let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, WAD / 100, WAD / 10);
+    // Use realistic parameters:
+    // - scalar_root = 100 * WAD for flat curve (less price impact)
+    // - 10% implied rate gives anchor ~1.1 for 1 year
+    let state = create_market(100 * WAD, 100 * WAD, 100 * WAD, WAD, WAD / 100, WAD / 10);
 
     let exact_pt_out = 5 * WAD;
     let (sy_in, _) = calc_swap_sy_for_exact_pt(@state, exact_pt_out, ONE_YEAR);
@@ -479,11 +520,13 @@ fn test_logit_symmetry_via_proportion() {
     let rate_scalar = get_rate_scalar(WAD, ONE_YEAR);
     let rate_anchor = WAD + WAD / 2; // Use 1.5 WAD anchor to avoid floor issues
 
-    // proportion = 0.4 (PT = 40, SY = 60)
-    let rate_low = get_exchange_rate(40 * WAD, 60 * WAD, 0, false, rate_scalar, rate_anchor);
+    // proportion = 0.4 (PT = 40, total = 100)
+    // total_asset = pt + sy (when py_index = WAD)
+    let total_asset = 100 * WAD;
+    let rate_low = get_exchange_rate(40 * WAD, total_asset, 0, false, rate_scalar, rate_anchor);
 
-    // proportion = 0.6 (PT = 60, SY = 40)
-    let rate_high = get_exchange_rate(60 * WAD, 40 * WAD, 0, false, rate_scalar, rate_anchor);
+    // proportion = 0.6 (PT = 60, total = 100)
+    let rate_high = get_exchange_rate(60 * WAD, total_asset, 0, false, rate_scalar, rate_anchor);
 
     // Both should deviate from anchor by same amount (opposite directions)
     let diff_low = abs_diff(rate_anchor, rate_low);
@@ -501,10 +544,14 @@ fn test_exchange_rate_monotonic_in_proportion() {
     let rate_scalar = get_rate_scalar(WAD, ONE_YEAR);
     let rate_anchor = WAD + WAD / 10;
 
-    let rate_20 = get_exchange_rate(20 * WAD, 80 * WAD, 0, false, rate_scalar, rate_anchor);
-    let rate_40 = get_exchange_rate(40 * WAD, 60 * WAD, 0, false, rate_scalar, rate_anchor);
-    let rate_60 = get_exchange_rate(60 * WAD, 40 * WAD, 0, false, rate_scalar, rate_anchor);
-    let rate_80 = get_exchange_rate(80 * WAD, 20 * WAD, 0, false, rate_scalar, rate_anchor);
+    // total_asset = pt + sy (when py_index = WAD)
+    // All tests use same total of 100 WAD
+    let total_asset = 100 * WAD;
+
+    let rate_20 = get_exchange_rate(20 * WAD, total_asset, 0, false, rate_scalar, rate_anchor);
+    let rate_40 = get_exchange_rate(40 * WAD, total_asset, 0, false, rate_scalar, rate_anchor);
+    let rate_60 = get_exchange_rate(60 * WAD, total_asset, 0, false, rate_scalar, rate_anchor);
+    let rate_80 = get_exchange_rate(80 * WAD, total_asset, 0, false, rate_scalar, rate_anchor);
 
     assert(rate_20 <= rate_40, 'rate monotonic 20->40');
     assert(rate_40 <= rate_60, 'rate monotonic 40->60');
