@@ -38,6 +38,7 @@ pub struct MarketPreCompute {
     pub rate_scalar: u256,
     pub total_asset: u256, // Total assets in pool: sy_to_asset(sy_reserve, py_index) + pt_reserve
     pub rate_anchor: u256,
+    pub rate_anchor_is_negative: bool, // Rate anchor can be negative at extreme proportions
     pub fee_rate: u256 // Computed from ln_fee_rate_root using Pendle's exp formula
 }
 
@@ -190,10 +191,11 @@ pub fn get_time_adjusted_fee_rate(fee_rate: u256, time_to_expiry: u64) -> u256 {
 /// Calculate the rate anchor based on the last implied rate
 /// Pendle formula: rateAnchor = newExchangeRate - ln(proportion / (1-proportion)) / rateScalar
 /// This ensures continuity of the implied rate across trades
+/// Returns (magnitude, is_negative) to handle signed arithmetic properly
 /// @param state Current market state
 /// @param time_to_expiry Time to expiry in seconds
-/// @return Adjusted anchor in WAD
-pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> u256 {
+/// @return (magnitude, is_negative) tuple for signed rate anchor
+pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> (u256, bool) {
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
 
     // Get the target exchange rate from the last implied rate
@@ -222,17 +224,19 @@ pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> u256 {
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
 
     // rateAnchor = targetExchangeRate - ln_proportion / rateScalar
+    // Handle signed arithmetic properly to preserve the invariant that
+    // exchange_rate = target_exchange_rate when querying at current proportion
     let scaled_ln = wad_div(ln_proportion, rate_scalar);
 
     if ln_is_negative {
-        // ln_proportion is negative (proportion < 0.5), so we add
-        target_exchange_rate + scaled_ln
+        // Proportion < 0.5, ln is negative, so rateAnchor = target + |scaled_ln|
+        (target_exchange_rate + scaled_ln, false)
     } else if scaled_ln >= target_exchange_rate {
-        // ln_proportion is positive and would drive rate below 1
-        WAD // Floor at 1 to prevent negative exchange rates
+        // rateAnchor is negative: target - scaled_ln < 0
+        (scaled_ln - target_exchange_rate, true)
     } else {
-        // ln_proportion is positive (proportion > 0.5), so we subtract
-        target_exchange_rate - scaled_ln
+        // rateAnchor is positive: target - scaled_ln > 0
+        (target_exchange_rate - scaled_ln, false)
     }
 }
 
@@ -290,10 +294,10 @@ pub fn get_market_pre_compute(state: @MarketState, time_to_expiry: u64) -> Marke
     assert(total_asset > 0, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
 
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
-    let rate_anchor = get_rate_anchor(state, time_to_expiry);
+    let (rate_anchor, rate_anchor_is_negative) = get_rate_anchor(state, time_to_expiry);
     let fee_rate = get_fee_rate(*state.ln_fee_rate_root, time_to_expiry);
 
-    MarketPreCompute { rate_scalar, total_asset, rate_anchor, fee_rate }
+    MarketPreCompute { rate_scalar, total_asset, rate_anchor, rate_anchor_is_negative, fee_rate }
 }
 
 // ============ Trade Result ============
@@ -343,6 +347,7 @@ pub fn calc_trade(
         is_buying_pt, // PT leaving pool if buying
         *comp.rate_scalar,
         *comp.rate_anchor,
+        *comp.rate_anchor_is_negative,
     );
 
     // Calculate pre-fee asset amount
@@ -434,7 +439,8 @@ pub fn calc_trade(
 /// @param net_pt_change Amount of PT being added (negative) or removed (positive) from pool
 /// @param is_pt_out true if PT is going OUT of pool (user buying PT)
 /// @param rate_scalar Time-adjusted rate scalar
-/// @param rate_anchor Rate anchor for this trade
+/// @param rate_anchor Rate anchor magnitude for this trade
+/// @param rate_anchor_is_negative True if rate_anchor is negative
 /// @return Exchange rate in WAD (always >= 1)
 pub fn get_exchange_rate(
     pt_reserve: u256,
@@ -443,6 +449,7 @@ pub fn get_exchange_rate(
     is_pt_out: bool, // true if PT is going OUT of pool (user buying PT)
     rate_scalar: u256,
     rate_anchor: u256,
+    rate_anchor_is_negative: bool,
 ) -> u256 {
     // Calculate new PT reserve after trade
     let new_pt_reserve = if is_pt_out {
@@ -469,18 +476,34 @@ pub fn get_exchange_rate(
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
 
     // exchangeRate = ln_proportion / rateScalar + rateAnchor
+    // Handle signed arithmetic properly:
+    // - ln_proportion can be positive (proportion > 0.5) or negative (proportion < 0.5)
+    // - rate_anchor can be positive or negative
     let scaled_ln = wad_div(ln_proportion, rate_scalar);
 
-    let exchange_rate = if ln_is_negative {
-        // ln_proportion is negative, so ln_proportion/rateScalar is negative
-        if scaled_ln >= rate_anchor {
-            0_u256 // Will trigger revert below
-        } else {
+    // Compute: scaled_ln (with sign ln_is_negative) + rate_anchor (with sign
+    // rate_anchor_is_negative)
+    let exchange_rate = if ln_is_negative && rate_anchor_is_negative {
+        // Both negative: -|scaled_ln| + (-|rate_anchor|) = -(|scaled_ln| + |rate_anchor|)
+        // Exchange rate would be negative, this is an error condition
+        0_u256 // Will trigger revert below
+    } else if ln_is_negative && !rate_anchor_is_negative {
+        // -|scaled_ln| + |rate_anchor|
+        if rate_anchor >= scaled_ln {
             rate_anchor - scaled_ln
+        } else {
+            0_u256 // Would be negative, will trigger revert below
+        }
+    } else if !ln_is_negative && rate_anchor_is_negative {
+        // |scaled_ln| + (-|rate_anchor|) = |scaled_ln| - |rate_anchor|
+        if scaled_ln >= rate_anchor {
+            scaled_ln - rate_anchor
+        } else {
+            0_u256 // Would be negative, will trigger revert below
         }
     } else {
-        // ln_proportion is positive
-        rate_anchor + scaled_ln
+        // Both positive: |scaled_ln| + |rate_anchor|
+        scaled_ln + rate_anchor
     };
 
     // Pendle reverts if exchange_rate < 1 (no flooring)
@@ -743,11 +766,20 @@ pub fn calc_swap_pt_for_exact_sy(
     } else {
         unconstrained_max
     };
+
+    // If max_pt_in is 0, the trade is infeasible (proportion limit reached)
+    assert(max_pt_in > 0, Errors::MARKET_INFEASIBLE_TRADE);
+
     let pt_in = binary_search_pt_in_with_trade(state, exact_sy_out, max_pt_in, @comp);
 
     // Calculate actual fee by calling calc_trade with the found pt_in
     let net_pt_to_account = signed_neg(pt_in);
     let result = calc_trade(state, net_pt_to_account, @comp);
+
+    // Validate that the binary search found a valid solution
+    // The trade must produce at least exact_sy_out (user receives SY, not negative)
+    assert(!result.net_sy_to_account_is_negative, Errors::MARKET_INFEASIBLE_TRADE);
+    assert(result.net_sy_to_account >= exact_sy_out, Errors::MARKET_INFEASIBLE_TRADE);
 
     (pt_in, result.net_sy_fee)
 }

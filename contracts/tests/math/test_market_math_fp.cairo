@@ -798,3 +798,32 @@ fn test_swap_amount_equals_reserve() {
     // This now returns TradeResult instead of a tuple
     let _result = calc_swap_sy_for_exact_pt(@state, exact_reserve_pt_out, time_to_expiry);
 }
+
+// ============ Infeasible Trade Tests ============
+
+/// Test that calc_swap_pt_for_exact_sy fails when max_pt_in is 0 due to proportion limit
+/// This tests the fix for the "no feasible solution" case in binary search
+#[test]
+#[should_panic(expected: 'HZN: trade infeasible')]
+fn test_calc_swap_pt_for_exact_sy_infeasible_proportion_limit() {
+    // Create a market where PT proportion is already at 96%
+    // proportion = pt / (sy + pt) = 96 / (4 + 96) = 96%
+    // At 96%, no more PT can be added without exceeding MAX_PROPORTION
+    let state = MarketState {
+        sy_reserve: 4 * WAD,
+        pt_reserve: 96 * WAD,
+        total_lp: 100 * WAD,
+        scalar_root: WAD,
+        initial_anchor: WAD / 10,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
+        expiry: 0,
+        last_ln_implied_rate: 0,
+        py_index: WAD,
+    };
+
+    // Try to get exact SY out - this requires selling PT, which would push proportion above 96%
+    // Should fail with "trade infeasible"
+    let time_to_expiry: u64 = 31_536_000;
+    let _result = calc_swap_pt_for_exact_sy(@state, WAD, time_to_expiry);
+}

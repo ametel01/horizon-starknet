@@ -762,11 +762,20 @@ pub fn calc_swap_pt_for_exact_sy(
     } else {
         unconstrained_max
     };
+
+    // If max_pt_in is 0, the trade is infeasible (proportion limit reached)
+    assert(max_pt_in > 0, Errors::MARKET_INFEASIBLE_TRADE);
+
     let pt_in = binary_search_pt_in_with_trade(state, exact_sy_out, max_pt_in, @comp);
 
     // Calculate actual fee by calling calc_trade with the found pt_in
     let net_pt_to_account = signed_neg(pt_in);
     let result = calc_trade(state, net_pt_to_account, @comp);
+
+    // Validate that the binary search found a valid solution
+    // The trade must produce at least exact_sy_out (user receives SY, not negative)
+    assert(!result.net_sy_to_account_is_negative, Errors::MARKET_INFEASIBLE_TRADE);
+    assert(result.net_sy_to_account >= exact_sy_out, Errors::MARKET_INFEASIBLE_TRADE);
 
     (pt_in, result)
 }
