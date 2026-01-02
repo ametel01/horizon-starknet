@@ -10,12 +10,13 @@ pub mod Market {
     use horizon::interfaces::i_market::{IMarket, IMarketAdmin};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+    use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use horizon::market::market_math_fp::{
         MINIMUM_LIQUIDITY, MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
         calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt,
-        check_slippage, get_ln_implied_rate, get_time_to_expiry,
+        check_slippage, get_ln_implied_rate, get_time_to_expiry, set_initial_ln_implied_rate,
     };
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
@@ -76,7 +77,8 @@ pub mod Market {
         // Market parameters
         scalar_root: u256,
         initial_anchor: u256,
-        fee_rate: u256,
+        ln_fee_rate_root: u256, // Pendle-style log fee rate root
+        reserve_fee_percent: u8, // Reserve fee in base-100 (0-100), sent to treasury
         // Expiry info
         expiry: u64,
         // Cached implied rate
@@ -197,7 +199,7 @@ pub mod Market {
         pub market: ContractAddress,
         pub amount: u256,
         pub expiry: u64,
-        pub fee_rate: u256,
+        pub ln_fee_rate_root: u256,
         pub timestamp: u64,
     }
 
@@ -218,7 +220,8 @@ pub mod Market {
         pt: ContractAddress,
         scalar_root: u256,
         initial_anchor: u256,
-        fee_rate: u256,
+        ln_fee_rate_root: u256,
+        reserve_fee_percent: u8,
         pauser: ContractAddress,
     ) {
         // Initialize LP token (ERC20)
@@ -254,12 +257,15 @@ pub mod Market {
         // Store market parameters
         self.scalar_root.write(scalar_root);
         self.initial_anchor.write(initial_anchor);
-        self.fee_rate.write(fee_rate);
+        self.ln_fee_rate_root.write(ln_fee_rate_root);
+        self.reserve_fee_percent.write(reserve_fee_percent);
 
         // Initialize reserves to 0
         self.sy_reserve.write(0);
         self.pt_reserve.write(0);
-        self.last_ln_implied_rate.write(initial_anchor);
+        // Note: last_ln_implied_rate starts at 0 and is properly calculated
+        // after first mint using set_initial_ln_implied_rate (Pendle parity)
+        self.last_ln_implied_rate.write(0);
         self.total_fees_collected.write(0);
     }
 
@@ -355,7 +361,13 @@ pub mod Market {
             self.erc20.mint(receiver, lp_to_mint);
 
             // Update implied rate cache
-            self._update_implied_rate();
+            // For first mint, use Pendle's setInitialLnImpliedRate to properly compute
+            // the initial rate based on reserves and initial_anchor
+            if is_first_mint {
+                self._set_initial_ln_implied_rate();
+            } else {
+                self._update_implied_rate();
+            }
 
             // Get current state for event
             let sy_addr = self.sy.read();
@@ -770,8 +782,12 @@ pub mod Market {
             self.initial_anchor.read()
         }
 
-        fn get_fee_rate(self: @ContractState) -> u256 {
-            self.fee_rate.read()
+        fn get_ln_fee_rate_root(self: @ContractState) -> u256 {
+            self.ln_fee_rate_root.read()
+        }
+
+        fn get_reserve_fee_percent(self: @ContractState) -> u8 {
+            self.reserve_fee_percent.read()
         }
     }
 
@@ -824,7 +840,7 @@ pub mod Market {
                         market: get_contract_address(),
                         amount: fees,
                         expiry: self.expiry.read(),
-                        fee_rate: self.fee_rate.read(),
+                        ln_fee_rate_root: self.ln_fee_rate_root.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -869,16 +885,27 @@ pub mod Market {
     #[generate_trait]
     pub impl InternalImpl of InternalTrait {
         /// Build current market state from storage
+        /// Updates and fetches py_index from YT contract per-call to ensure fresh value
+        /// Calls update_py_index() instead of py_index_current() to advance YT's stored index,
+        /// ensuring interest calculations stay accurate during swaps
         fn _get_market_state(self: @ContractState) -> MarketState {
+            // Fetch and update py_index from YT - this is the SY -> asset conversion rate
+            // Using update_py_index() ensures the YT's stored index advances during swaps,
+            // preventing interest calculation lag (Pendle-style pyIndexCurrent behavior)
+            let yt_contract = IYTDispatcher { contract_address: self.yt.read() };
+            let py_index = yt_contract.update_py_index();
+
             MarketState {
                 sy_reserve: self.sy_reserve.read(),
                 pt_reserve: self.pt_reserve.read(),
                 total_lp: self.erc20.ERC20_total_supply.read(),
                 scalar_root: self.scalar_root.read(),
                 initial_anchor: self.initial_anchor.read(),
-                fee_rate: self.fee_rate.read(),
+                ln_fee_rate_root: self.ln_fee_rate_root.read(),
+                reserve_fee_percent: self.reserve_fee_percent.read(),
                 expiry: self.expiry.read(),
                 last_ln_implied_rate: self.last_ln_implied_rate.read(),
+                py_index,
             }
         }
 
@@ -912,6 +939,40 @@ pub mod Market {
                         },
                     );
             }
+        }
+
+        /// Set the initial ln(implied rate) for first mint
+        /// Mirrors Pendle's setInitialLnImpliedRate - called AFTER first liquidity is added
+        /// Computes the initial rate based on pool proportion and initial_anchor
+        fn _set_initial_ln_implied_rate(ref self: ContractState) {
+            let state = self._get_market_state();
+            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+
+            // Use Pendle's formula to compute initial implied rate
+            let initial_rate = set_initial_ln_implied_rate(@state, time_to_expiry);
+
+            // Store the computed rate
+            self.last_ln_implied_rate.write(initial_rate);
+
+            // Get exchange rate for event
+            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+
+            // Emit event for the initial rate
+            self
+                .emit(
+                    ImpliedRateUpdated {
+                        market: get_contract_address(),
+                        expiry: self.expiry.read(),
+                        old_rate: 0, // Was 0 before first mint
+                        new_rate: initial_rate,
+                        timestamp: get_block_timestamp(),
+                        time_to_expiry,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        sy_reserve: self.sy_reserve.read(),
+                        pt_reserve: self.pt_reserve.read(),
+                        total_lp: self.erc20.ERC20_total_supply.read(),
+                    },
+                );
         }
     }
 }

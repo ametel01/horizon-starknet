@@ -109,7 +109,8 @@ pub mod MarketFactory {
         pub creator: ContractAddress,
         pub scalar_root: u256,
         pub initial_anchor: u256,
-        pub fee_rate: u256,
+        pub ln_fee_rate_root: u256,
+        pub reserve_fee_percent: u8,
         pub sy: ContractAddress,
         pub yt: ContractAddress,
         pub underlying: ContractAddress,
@@ -152,14 +153,16 @@ pub mod MarketFactory {
         /// @param pt The PT token address
         /// @param scalar_root Controls rate sensitivity (in WAD)
         /// @param initial_anchor Initial ln(implied rate) (in WAD)
-        /// @param fee_rate Fee rate in WAD (e.g., 0.01 WAD = 1%)
+        /// @param ln_fee_rate_root Log fee rate root (Pendle-style) in WAD
+        /// @param reserve_fee_percent Reserve fee in base-100 (0-100), sent to treasury
         /// @return The address of the created market
         fn create_market(
             ref self: ContractState,
             pt: ContractAddress,
             scalar_root: u256,
             initial_anchor: u256,
-            fee_rate: u256,
+            ln_fee_rate_root: u256,
+            reserve_fee_percent: u8,
         ) -> ContractAddress {
             // Validate PT address
             assert(!pt.is_zero(), Errors::ZERO_ADDRESS);
@@ -174,8 +177,12 @@ pub mod MarketFactory {
             // initial_anchor (ln implied rate) must not exceed max to prevent extreme pricing
             assert(initial_anchor <= MAX_INITIAL_ANCHOR, Errors::MARKET_FACTORY_INVALID_ANCHOR);
 
-            // fee_rate must not exceed 10% to prevent economic attacks
-            assert(fee_rate <= MAX_FEE_RATE, Errors::MARKET_FACTORY_INVALID_FEE);
+            // ln_fee_rate_root must not exceed max to prevent extreme fees
+            // TODO(step 2.2): Add proper bounds check for ln_fee_rate_root <= ln(1.05)
+            assert(ln_fee_rate_root <= MAX_FEE_RATE, Errors::MARKET_FACTORY_INVALID_FEE);
+
+            // reserve_fee_percent must be <= 100
+            assert(reserve_fee_percent <= 100, Errors::MARKET_FACTORY_INVALID_FEE);
 
             // Check PT is valid and not expired
             let pt_contract = IPTDispatcher { contract_address: pt };
@@ -196,7 +203,8 @@ pub mod MarketFactory {
             self.deploy_count.write(count + 1);
 
             // Build Market constructor calldata
-            // Market constructor: name, symbol, pt, scalar_root, initial_anchor, fee_rate
+            // Market constructor: name, symbol, pt, scalar_root, initial_anchor, ln_fee_rate_root,
+            // reserve_fee_percent, pauser
             let mut calldata: Array<felt252> = array![];
 
             // Name: "PT-SY LP" (simplified)
@@ -220,9 +228,12 @@ pub mod MarketFactory {
             calldata.append(initial_anchor.low.into());
             calldata.append(initial_anchor.high.into());
 
-            // fee_rate (u256 = 2 felts)
-            calldata.append(fee_rate.low.into());
-            calldata.append(fee_rate.high.into());
+            // ln_fee_rate_root (u256 = 2 felts)
+            calldata.append(ln_fee_rate_root.low.into());
+            calldata.append(ln_fee_rate_root.high.into());
+
+            // reserve_fee_percent (u8 = 1 felt)
+            calldata.append(reserve_fee_percent.into());
 
             // pauser address (factory owner gets PAUSER_ROLE on created markets)
             calldata.append(self.ownable.owner().into());
@@ -263,7 +274,8 @@ pub mod MarketFactory {
                         creator: get_caller_address(),
                         scalar_root,
                         initial_anchor,
-                        fee_rate,
+                        ln_fee_rate_root,
+                        reserve_fee_percent,
                         sy,
                         yt,
                         underlying,

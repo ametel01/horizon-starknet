@@ -48,7 +48,8 @@ pub trait IMarket<TContractState> {
     // Market parameters (read-only)
     fn get_scalar_root(self: @TContractState) -> u256;
     fn get_initial_anchor(self: @TContractState) -> u256;
-    fn get_fee_rate(self: @TContractState) -> u256;
+    fn get_ln_fee_rate_root(self: @TContractState) -> u256;
+    fn get_reserve_fee_percent(self: @TContractState) -> u8;
 }
 
 /// Admin interface for Market pausability, fee collection, and parameter updates

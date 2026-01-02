@@ -49,7 +49,11 @@ fn default_initial_anchor() -> u256 {
 }
 
 fn default_fee_rate() -> u256 {
-    WAD / 100 // 1% fee
+    WAD / 100 // 1% fee (now treated as ln_fee_rate_root)
+}
+
+fn default_reserve_fee_percent() -> u8 {
+    0 // No reserve fee for tests
 }
 
 // Deploy mock ERC20
@@ -201,6 +205,7 @@ fn test_market_factory_create_market() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
 
     // Verify market was created
@@ -245,6 +250,7 @@ fn test_market_factory_create_multiple_markets() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
     let market2 = factory
         .create_market(
@@ -252,6 +258,7 @@ fn test_market_factory_create_multiple_markets() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
 
     // Verify both markets were created
@@ -278,6 +285,7 @@ fn test_market_factory_create_duplicate() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
 
     // Try to create another market for same PT - should fail
@@ -287,6 +295,7 @@ fn test_market_factory_create_duplicate() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
 }
 
@@ -297,7 +306,11 @@ fn test_market_factory_create_zero_pt() {
 
     factory
         .create_market(
-            zero_address(), default_scalar_root(), default_initial_anchor(), default_fee_rate(),
+            zero_address(),
+            default_scalar_root(),
+            default_initial_anchor(),
+            default_fee_rate(),
+            default_reserve_fee_percent(),
         );
 }
 
@@ -315,6 +328,7 @@ fn test_market_factory_create_expired_pt() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
 }
 
@@ -350,6 +364,7 @@ fn test_created_market_is_functional() {
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
+            default_reserve_fee_percent(),
         );
     let market = IMarketDispatcher { contract_address: market_addr };
 
@@ -421,8 +436,8 @@ fn test_market_factory_different_parameters() {
     let anchor2 = WAD / 5; // 20% APY
     let fee2 = WAD / 50; // 2% fee
 
-    let market1 = factory.create_market(pt1.contract_address, scalar1, anchor1, fee1);
-    let market2 = factory.create_market(pt2.contract_address, scalar2, anchor2, fee2);
+    let market1 = factory.create_market(pt1.contract_address, scalar1, anchor1, fee1, 0);
+    let market2 = factory.create_market(pt2.contract_address, scalar2, anchor2, fee2, 0);
 
     // Both markets should be created and functional
     assert(!market1.is_zero(), 'Market1 should exist');
@@ -445,7 +460,7 @@ fn test_market_factory_large_parameters() {
     let large_fee = WAD / 10; // 10% fee (maximum allowed)
 
     let market_addr = factory
-        .create_market(pt.contract_address, large_scalar, large_anchor, large_fee);
+        .create_market(pt.contract_address, large_scalar, large_anchor, large_fee, 0);
 
     assert(!market_addr.is_zero(), 'Should create market');
     assert(factory.is_valid_market(market_addr), 'Should be valid');
@@ -462,7 +477,7 @@ fn test_market_factory_small_parameters() {
     let small_fee = WAD / 10000; // 0.01% fee (small but valid)
 
     let market_addr = factory
-        .create_market(pt.contract_address, small_scalar, small_anchor, small_fee);
+        .create_market(pt.contract_address, small_scalar, small_anchor, small_fee, 0);
 
     assert(!market_addr.is_zero(), 'Should create market');
     assert(factory.is_valid_market(market_addr), 'Should be valid');
@@ -474,7 +489,7 @@ fn test_market_factory_zero_fee() {
 
     // Create market with zero fee
     let market_addr = factory
-        .create_market(pt.contract_address, default_scalar_root(), default_initial_anchor(), 0);
+        .create_market(pt.contract_address, default_scalar_root(), default_initial_anchor(), 0, 0);
 
     assert(!market_addr.is_zero(), 'Should create market');
     assert(factory.is_valid_market(market_addr), 'Should be valid');
@@ -489,7 +504,8 @@ fn test_market_factory_scalar_too_small() {
 
     // scalar_root below minimum (1 WAD)
     let invalid_scalar = WAD / 2; // 0.5 WAD - below minimum
-    factory.create_market(pt.contract_address, invalid_scalar, default_initial_anchor(), WAD / 100);
+    factory
+        .create_market(pt.contract_address, invalid_scalar, default_initial_anchor(), WAD / 100, 0);
 }
 
 #[test]
@@ -499,7 +515,8 @@ fn test_market_factory_scalar_too_large() {
 
     // scalar_root above maximum (1000 WAD)
     let invalid_scalar = 1001 * WAD; // Above maximum
-    factory.create_market(pt.contract_address, invalid_scalar, default_initial_anchor(), WAD / 100);
+    factory
+        .create_market(pt.contract_address, invalid_scalar, default_initial_anchor(), WAD / 100, 0);
 }
 
 #[test]
@@ -509,7 +526,7 @@ fn test_market_factory_anchor_too_large() {
 
     // initial_anchor above maximum (~4.6 WAD)
     let invalid_anchor = 5 * WAD; // 5 WAD - above ~4.6 max
-    factory.create_market(pt.contract_address, default_scalar_root(), invalid_anchor, WAD / 100);
+    factory.create_market(pt.contract_address, default_scalar_root(), invalid_anchor, WAD / 100, 0);
 }
 
 #[test]
@@ -521,6 +538,6 @@ fn test_market_factory_fee_too_large() {
     let invalid_fee = WAD / 5; // 20% fee - above 10% max
     factory
         .create_market(
-            pt.contract_address, default_scalar_root(), default_initial_anchor(), invalid_fee,
+            pt.contract_address, default_scalar_root(), default_initial_anchor(), invalid_fee, 0,
         );
 }

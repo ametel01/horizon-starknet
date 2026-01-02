@@ -6,14 +6,16 @@ pub trait IMarketFactory<TContractState> {
     /// @param pt The PT token address
     /// @param scalar_root Controls rate sensitivity (in WAD)
     /// @param initial_anchor Initial ln(implied rate) (in WAD)
-    /// @param fee_rate Fee rate in WAD (e.g., 0.01 WAD = 1%)
+    /// @param ln_fee_rate_root Log fee rate root (Pendle-style) in WAD
+    /// @param reserve_fee_percent Reserve fee in base-100 (0-100), sent to treasury
     /// @return The address of the created market
     fn create_market(
         ref self: TContractState,
         pt: ContractAddress,
         scalar_root: u256,
         initial_anchor: u256,
-        fee_rate: u256,
+        ln_fee_rate_root: u256,
+        reserve_fee_percent: u8,
     ) -> ContractAddress;
 
     /// Get the market address for a given PT
