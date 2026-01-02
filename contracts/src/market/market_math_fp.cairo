@@ -17,8 +17,8 @@
 
 use horizon::libraries::errors::Errors;
 use horizon::libraries::math_fp::{
-    HALF_WAD, MAX_EXPONENT_WAD, WAD, abs_diff, asset_to_sy, asset_to_sy_up, exp_neg_wad, exp_wad,
-    ln_wad, max, min, sqrt_wad, sy_to_asset, wad_div, wad_mul,
+    HALF_WAD, MAX_EXPONENT_WAD, WAD, abs_diff, asset_to_sy, asset_to_sy_up, div_up, exp_neg_wad,
+    exp_wad, ln_wad, max, min, sqrt_wad, sy_to_asset, wad_div, wad_mul,
 };
 
 /// Market state containing reserves and parameters
@@ -175,9 +175,10 @@ pub fn get_time_adjusted_fee_rate(fee_rate: u256, time_to_expiry: u64) -> u256 {
 /// This is the core of Pendle's pricing curve
 /// @param proportion Proportion in WAD (0 < p < 1)
 /// @return (|ln_value|, is_negative)
+/// Note: Caller must validate proportion is within bounds before calling
 fn logit(proportion: u256) -> (u256, bool) {
-    // Clamp proportion to valid range
-    let p = max(MIN_PROPORTION, min(MAX_PROPORTION, proportion));
+    // Caller is responsible for bounds checking - we only clamp to MIN for safety
+    let p = max(MIN_PROPORTION, proportion);
 
     // Calculate odds = p / (1 - p)
     let one_minus_p = WAD - p;
@@ -214,9 +215,12 @@ pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> (u256, bool)
     let target_exchange_rate = exp_wad(safe_exponent);
     let target_exchange_rate = max(target_exchange_rate, WAD);
 
-    // Get current proportion and calculate logit
+    // Get current proportion and validate bounds (Pendle reverts on > 96%)
     let proportion = get_proportion(state);
-    let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, proportion));
+    assert(proportion <= MAX_PROPORTION, Errors::MARKET_PROPORTION_TOO_HIGH);
+
+    // Clamp to MIN for safety (MIN is soft bound, MAX is hard bound)
+    let clamped_proportion = max(MIN_PROPORTION, proportion);
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
 
     // rateAnchor = targetExchangeRate - ln_proportion / rateScalar
@@ -445,8 +449,11 @@ pub fn get_exchange_rate(
     // Note: total_asset is pre-trade value (the invariant for rate calculation)
     let new_proportion = wad_div(new_pt_reserve, total_asset);
 
-    // Clamp to valid range (Pendle uses 96% max)
-    let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, new_proportion));
+    // Pendle reverts on proportion > 96% (no clamping)
+    assert(new_proportion <= MAX_PROPORTION, Errors::MARKET_PROPORTION_TOO_HIGH);
+
+    // Clamp to MIN for safety (MIN is soft bound, MAX is hard bound)
+    let clamped_proportion = max(MIN_PROPORTION, new_proportion);
 
     // Calculate logit = ln(proportion / (1 - proportion)) using cubit
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
@@ -461,36 +468,43 @@ pub fn get_exchange_rate(
     // rate_anchor_is_negative)
     let exchange_rate = if ln_is_negative && rate_anchor_is_negative {
         // Both negative: -|scaled_ln| + (-|rate_anchor|) = -(|scaled_ln| + |rate_anchor|)
-        // Exchange rate would be negative, floor to WAD
-        WAD
+        // Exchange rate would be negative, this is an error condition
+        0_u256 // Will trigger revert below
     } else if ln_is_negative && !rate_anchor_is_negative {
         // -|scaled_ln| + |rate_anchor|
         if rate_anchor >= scaled_ln {
             rate_anchor - scaled_ln
         } else {
-            WAD // Would be negative
+            0_u256 // Would be negative, will trigger revert below
         }
     } else if !ln_is_negative && rate_anchor_is_negative {
         // |scaled_ln| + (-|rate_anchor|) = |scaled_ln| - |rate_anchor|
         if scaled_ln >= rate_anchor {
             scaled_ln - rate_anchor
         } else {
-            WAD // Would be negative
+            0_u256 // Would be negative, will trigger revert below
         }
     } else {
         // Both positive: |scaled_ln| + |rate_anchor|
         scaled_ln + rate_anchor
     };
 
-    // Exchange rate must be >= 1 (PT never worth more than SY in asset terms)
-    max(exchange_rate, WAD)
+    // Pendle reverts if exchange_rate < 1 (no flooring)
+    assert(exchange_rate >= WAD, Errors::MARKET_RATE_BELOW_ONE);
+
+    exchange_rate
 }
 
 /// Calculate ln(implied_rate) from market state
 /// ln_implied_rate = anchor - rate_scalar * ln(proportion / (1 - proportion))
 pub fn get_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> u256 {
     let proportion = get_proportion(state);
-    let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, proportion));
+
+    // Pendle reverts on proportion > 96% (no clamping)
+    assert(proportion <= MAX_PROPORTION, Errors::MARKET_PROPORTION_TOO_HIGH);
+
+    // Clamp to MIN for safety (MIN is soft bound, MAX is hard bound)
+    let clamped_proportion = max(MIN_PROPORTION, proportion);
 
     // Calculate logit using cubit's high-precision ln
     let odds = wad_div(clamped_proportion, WAD - clamped_proportion);
@@ -732,7 +746,22 @@ pub fn calc_swap_pt_for_exact_sy(
 
     // Binary search to find PT_in where calc_trade gives net_sy_to_account = exact_sy_out
     // (with user receiving SY)
-    let max_pt_in = *state.pt_reserve * MAX_PT_IN_RESERVE_MULTIPLIER;
+    // Constrain max_pt_in to respect the 96% proportion limit:
+    // proportion = new_pt / total_asset <= MAX_PROPORTION
+    // new_pt = pt_reserve + pt_in <= MAX_PROPORTION * total_asset
+    // pt_in <= MAX_PROPORTION * total_asset - pt_reserve
+    let proportion_limit_pt = wad_mul(MAX_PROPORTION, comp.total_asset);
+    let max_from_proportion = if proportion_limit_pt > *state.pt_reserve {
+        proportion_limit_pt - *state.pt_reserve
+    } else {
+        0
+    };
+    let unconstrained_max = *state.pt_reserve * MAX_PT_IN_RESERVE_MULTIPLIER;
+    let max_pt_in = if max_from_proportion < unconstrained_max {
+        max_from_proportion
+    } else {
+        unconstrained_max
+    };
     let pt_in = binary_search_pt_in_with_trade(state, exact_sy_out, max_pt_in, @comp);
 
     // Calculate actual fee by calling calc_trade with the found pt_in
@@ -805,17 +834,30 @@ pub fn calc_mint_lp(
         return (lp_to_user, sy_amount, pt_amount, true);
     }
 
-    // Calculate ratios using high-precision division
-    let sy_ratio = wad_div(sy_amount, *state.sy_reserve);
-    let pt_ratio = wad_div(pt_amount, *state.pt_reserve);
+    // Calculate LP that would be minted for each token's desired amount
+    // Using Pendle's approach: netLp = (desired * totalLp) / reserve
+    let lp_by_sy = (sy_amount * *state.total_lp) / *state.sy_reserve;
+    let lp_by_pt = (pt_amount * *state.total_lp) / *state.pt_reserve;
 
-    let ratio = min(sy_ratio, pt_ratio);
+    // Determine which token is limiting and use rawDivUp for the "other side"
+    // to protect the pool from receiving insufficient counterpart tokens
+    if lp_by_sy <= lp_by_pt {
+        // SY is limiting factor
+        let lp_to_mint = lp_by_sy;
+        let sy_used = sy_amount;
+        // Round UP for PT: pt_used = (pt_reserve * lp_to_mint) / total_lp, ceiling
+        let pt_used = div_up(*state.pt_reserve * lp_to_mint, *state.total_lp);
 
-    let sy_used = wad_mul(ratio, *state.sy_reserve);
-    let pt_used = wad_mul(ratio, *state.pt_reserve);
-    let lp_to_mint = wad_mul(ratio, *state.total_lp);
+        (lp_to_mint, sy_used, pt_used, false)
+    } else {
+        // PT is limiting factor
+        let lp_to_mint = lp_by_pt;
+        let pt_used = pt_amount;
+        // Round UP for SY: sy_used = (sy_reserve * lp_to_mint) / total_lp, ceiling
+        let sy_used = div_up(*state.sy_reserve * lp_to_mint, *state.total_lp);
 
-    (lp_to_mint, sy_used, pt_used, false)
+        (lp_to_mint, sy_used, pt_used, false)
+    }
 }
 
 /// Calculate tokens to return for LP burn
@@ -888,8 +930,12 @@ pub fn set_initial_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> 
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
 
     // Step 3: Compute proportion using py_index (via get_proportion)
+    // Pendle reverts on proportion > 96% (no clamping)
     let proportion = get_proportion(state);
-    let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, proportion));
+    assert(proportion <= MAX_PROPORTION, Errors::MARKET_PROPORTION_TOO_HIGH);
+
+    // Clamp to MIN for safety (MIN is soft bound, MAX is hard bound)
+    let clamped_proportion = max(MIN_PROPORTION, proportion);
 
     // Step 4: Compute logit and exchange_rate = logit / rate_scalar + rate_anchor
     let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
@@ -898,7 +944,7 @@ pub fn set_initial_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> 
     let exchange_rate = if ln_is_negative {
         // Proportion < 0.5, logit is negative: exchange_rate = rate_anchor - |scaled_ln|
         if scaled_ln >= rate_anchor {
-            WAD // Floor at 1.0 if would go negative
+            0_u256 // Will trigger revert below
         } else {
             rate_anchor - scaled_ln
         }
@@ -907,8 +953,8 @@ pub fn set_initial_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> 
         rate_anchor + scaled_ln
     };
 
-    // Ensure exchange rate is at least 1.0
-    let exchange_rate = max(exchange_rate, WAD);
+    // Pendle reverts if exchange_rate < 1 (no flooring)
+    assert(exchange_rate >= WAD, Errors::MARKET_RATE_BELOW_ONE);
 
     // Step 5: Compute ln_implied_rate = ln(exchange_rate) * SECONDS_PER_YEAR / time_to_expiry
     let (ln_exchange_rate, ln_is_neg) = ln_wad(exchange_rate);

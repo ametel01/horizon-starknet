@@ -45,6 +45,7 @@ pub mod Errors {
     pub const MARKET_TRANSFER_FAILED: felt252 = 'HZN: transfer failed';
     pub const MARKET_INVALID_TRADE: felt252 = 'HZN: invalid trade direction';
     pub const MARKET_RATE_BELOW_ONE: felt252 = 'HZN: rate below 1';
+    pub const MARKET_PROPORTION_TOO_HIGH: felt252 = 'HZN: proportion > 96%';
 
     // Market Factory errors
     pub const MARKET_FACTORY_ALREADY_EXISTS: felt252 = 'HZN: market already exists';
