@@ -1,6 +1,6 @@
 use horizon::libraries::math::{
-    HALF_WAD, TWO_WAD, WAD, abs_diff, exp2_wad, exp_neg_wad, exp_wad, ln_wad, log2_wad, max, min,
-    pow_u256, pow_wad, wad_div, wad_mul,
+    HALF_WAD, TWO_WAD, WAD, abs_diff, asset_to_sy, asset_to_sy_up, exp2_wad, exp_neg_wad, exp_wad,
+    ln_wad, log2_wad, max, min, pow_u256, pow_wad, sy_to_asset, wad_div, wad_div_up, wad_mul,
 };
 
 // ============ WAD Constants Tests ============
@@ -353,4 +353,140 @@ fn test_mul_div_roundtrip() {
     let error = abs_diff(result, a);
     let max_error = a / 1000; // 0.1% error margin
     assert(error <= max_error, 'mul/div roundtrip error');
+}
+
+// ============ wad_div_up Tests ============
+
+#[test]
+fn test_wad_div_up_zero_numerator() {
+    assert(wad_div_up(0, WAD) == 0, 'wad_div_up(0, x) should be 0');
+}
+
+#[test]
+fn test_wad_div_up_exact() {
+    // 6 / 2 = 3 (exact, no rounding needed)
+    let six_wad = 6 * WAD;
+    let two_wad = 2 * WAD;
+    let three_wad = 3 * WAD;
+    assert(wad_div_up(six_wad, two_wad) == three_wad, 'wad_div_up exact division');
+}
+
+#[test]
+fn test_wad_div_up_rounds_up() {
+    // 1 / 3 should round up (not exactly representable)
+    // wad_div(1 WAD, 3 WAD) = 0.333... (rounds down)
+    // wad_div_up(1 WAD, 3 WAD) should be > wad_div result
+    let one_wad = WAD;
+    let three_wad = 3 * WAD;
+
+    let div_down = wad_div(one_wad, three_wad);
+    let div_up = wad_div_up(one_wad, three_wad);
+
+    // div_up should be >= div_down
+    assert(div_up >= div_down, 'div_up >= div_down');
+    // For non-exact divisions, div_up should be strictly greater
+    assert(div_up > div_down, 'div_up > div_down for inexact');
+}
+
+#[test]
+fn test_wad_div_up_identity() {
+    // 1 / 1 = 1 (exact)
+    assert(wad_div_up(WAD, WAD) == WAD, 'wad_div_up identity');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: division by zero')]
+fn test_wad_div_up_by_zero() {
+    wad_div_up(WAD, 0);
+}
+
+// ============ Asset Conversion Tests ============
+
+#[test]
+fn test_sy_to_asset_identity() {
+    // When py_index = 1, SY = asset
+    let sy = 100 * WAD;
+    let py_index = WAD; // 1.0
+    assert(sy_to_asset(sy, py_index) == sy, 'sy_to_asset identity');
+}
+
+#[test]
+fn test_sy_to_asset_with_yield() {
+    // If py_index = 1.1, 100 SY = 110 asset
+    let sy = 100 * WAD;
+    let py_index = WAD + WAD / 10; // 1.1
+    let expected = 110 * WAD;
+    let result = sy_to_asset(sy, py_index);
+
+    let error = abs_diff(result, expected);
+    let max_error = expected / 1000; // 0.1% tolerance
+    assert(error <= max_error, 'sy_to_asset with yield');
+}
+
+#[test]
+fn test_asset_to_sy_identity() {
+    // When py_index = 1, asset = SY
+    let asset = 100 * WAD;
+    let py_index = WAD; // 1.0
+    assert(asset_to_sy(asset, py_index) == asset, 'asset_to_sy identity');
+}
+
+#[test]
+fn test_asset_to_sy_with_yield() {
+    // If py_index = 1.1, 110 asset = 100 SY
+    let asset = 110 * WAD;
+    let py_index = WAD + WAD / 10; // 1.1
+    let expected = 100 * WAD;
+    let result = asset_to_sy(asset, py_index);
+
+    let error = abs_diff(result, expected);
+    let max_error = expected / 1000; // 0.1% tolerance
+    assert(error <= max_error, 'asset_to_sy with yield');
+}
+
+#[test]
+fn test_asset_to_sy_up_rounds_correctly() {
+    // This is the critical test: asset_to_sy_up must round UP
+    // to protect the protocol from being undercharged
+    //
+    // Example: 100 asset with py_index = 1.1 should be:
+    // - asset_to_sy: floor(100 / 1.1) = floor(90.909...) = 90.909... (rounds down)
+    // - asset_to_sy_up: ceil(100 / 1.1) = ceil(90.909...) = 90.909...+epsilon
+
+    // Use a case that doesn't divide evenly
+    let asset = 100 * WAD;
+    let py_index = 3 * WAD; // 3.0 - so 100/3 = 33.333...
+
+    let sy_down = asset_to_sy(asset, py_index);
+    let sy_up = asset_to_sy_up(asset, py_index);
+
+    // sy_up should be >= sy_down
+    assert(sy_up >= sy_down, 'sy_up >= sy_down');
+
+    // For inexact division, sy_up should be strictly greater
+    // 100 / 3 is not exact, so there should be rounding
+    assert(sy_up > sy_down, 'sy_up > sy_down for inexact');
+
+    // Verify the rounded-up value: ceil(100/3) in WAD precision
+    // 100/3 = 33.333... so ceil = 33.333... + small amount
+    let expected_approx = 33 * WAD + WAD / 3; // 33.333...
+    let error = abs_diff(sy_up, expected_approx);
+    // Should be within 2 wei of the expected rounded-up value
+    assert(error <= 2, 'sy_up precision');
+}
+
+#[test]
+fn test_asset_conversion_roundtrip() {
+    // sy_to_asset(asset_to_sy(asset)) should be close to original asset
+    // (minus rounding)
+    let original_asset = 12345 * WAD;
+    let py_index = WAD + WAD / 5; // 1.2
+
+    let sy = asset_to_sy(original_asset, py_index);
+    let back_to_asset = sy_to_asset(sy, py_index);
+
+    // Should be approximately equal (rounding down loses a bit)
+    let error = abs_diff(back_to_asset, original_asset);
+    let max_error = original_asset / 1000; // 0.1% tolerance
+    assert(error <= max_error, 'asset conversion roundtrip');
 }

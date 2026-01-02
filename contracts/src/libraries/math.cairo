@@ -476,3 +476,73 @@ pub fn abs_diff(a: u256, b: u256) -> u256 {
         b - a
     }
 }
+
+/// Divides two WAD numbers, rounding up
+/// @param a Numerator in WAD
+/// @param b Denominator in WAD
+/// @return ceil(a * WAD / b)
+pub fn wad_div_up(a: u256, b: u256) -> u256 {
+    assert(b != 0, Errors::MATH_DIVISION_BY_ZERO);
+
+    if a == 0 {
+        return 0;
+    }
+
+    // (a * WAD + b - 1) / b
+    let max_u256: u256 = U128_MAX * U128_MAX;
+    if a <= max_u256 / WAD {
+        return (a * WAD + b - 1) / b;
+    }
+
+    // For larger values, compute quotient and remainder separately
+    // Then add 1 if there was any remainder
+    let q = a / b;
+    let r = a % b;
+
+    // Check if remainder multiplication is safe
+    if r <= max_u256 / WAD {
+        let remainder_div = (r * WAD) / b;
+        let has_remainder = (r * WAD) % b > 0;
+        if has_remainder {
+            return q * WAD + remainder_div + 1;
+        }
+        return q * WAD + remainder_div;
+    }
+
+    // For very large remainders, use the regular division and add 1 for ceiling
+    let r_contribution = wad_div_large_remainder(r, b);
+    q * WAD + r_contribution + 1
+}
+
+// ============ PYIndex Asset Conversion Helpers ============
+// These functions convert between SY (Standardized Yield) and asset amounts
+// using the PYIndex from the YT contract. The PYIndex represents how many
+// underlying assets one SY token is worth.
+
+/// Convert SY amount to asset amount
+/// asset = sy * py_index
+/// @param sy SY token amount in WAD
+/// @param py_index Current PY index (SY→asset rate) in WAD
+/// @return Equivalent asset amount in WAD
+pub fn sy_to_asset(sy: u256, py_index: u256) -> u256 {
+    wad_mul(sy, py_index)
+}
+
+/// Convert asset amount to SY amount (rounds down)
+/// sy = asset / py_index
+/// @param asset Asset amount in WAD
+/// @param py_index Current PY index (SY→asset rate) in WAD
+/// @return Equivalent SY amount in WAD (rounded down)
+pub fn asset_to_sy(asset: u256, py_index: u256) -> u256 {
+    wad_div(asset, py_index)
+}
+
+/// Convert asset amount to SY amount (rounds up)
+/// Used when the protocol is owed assets (e.g., user buying PT)
+/// to ensure the protocol is not undercharged
+/// @param asset Asset amount in WAD
+/// @param py_index Current PY index (SY→asset rate) in WAD
+/// @return Equivalent SY amount in WAD (rounded up)
+pub fn asset_to_sy_up(asset: u256, py_index: u256) -> u256 {
+    wad_div_up(asset, py_index)
+}
