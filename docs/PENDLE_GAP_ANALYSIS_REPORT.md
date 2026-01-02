@@ -17,10 +17,10 @@ Horizon Protocol implements **~65% of Pendle V2's core functionality**, focusing
 
 | Category | Parity Level | Critical Gaps |
 |----------|--------------|---------------|
-| **Core Tokenization (SY/PT/YT)** | 85% | ✅ SY: 95% complete (multi-token, rewards, slippage, assetInfo all implemented); Remaining: multi-reward YT |
+| **Core Tokenization (SY/PT/YT)** | 90% | ✅ SY: 95% complete (multi-token, rewards, slippage, assetInfo all implemented); Remaining: multi-reward YT + YT flash mint (minor: packing) |
 | **AMM/Market** | 60% | PYIndex integration, reserve fee system, TWAP oracle (6 gaps), RewardManager/PendleGauge, flash callbacks |
 | **Router** | 55% | Single-sided liquidity (7 functions), token aggregation (8 functions), batch operations |
-| **Factory** | 70% | Protocol fee infrastructure (interestFeeRate, rewardFeeRate, treasury), expiryDivisor |
+| **Factory** | 70% | Protocol fee infrastructure (interestFeeRate, rewardFeeRate), expiryDivisor |
 | **MarketFactory** | 65% | Protocol fee infrastructure (treasury, reserveFeePercent), router fee overrides, getMarketConfig |
 | **Oracle System** | 35% | Market TWAP (CRITICAL), PT/LP price oracles, Chainlink/Pragma wrapper |
 | **Governance/Rewards** | 0% | Complete absence |
@@ -185,7 +185,7 @@ fn reward_tokens_count(self: @TContractState) -> u32;
 
 ### 1.2 YT (Yield Token) Interest System
 
-**Implementation Status: 70%** (Core interest mechanics work; formula differs from Pendle's `InterestManagerYT`)
+**Implementation Status: 90%** (Pendle-style interest math + reserve/treasury/fee plumbing implemented; remaining: multi-reward support, flash mint, minor packing)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
@@ -194,17 +194,17 @@ fn reward_tokens_count(self: @TContractState) -> u32;
 | Transfer hooks | Update both parties | Update both parties | ✅ |
 | Post-expiry index freeze | `postExpiry.firstPYIndex` | `py_index_at_expiry` | ✅ |
 | Interest claim | `redeemDueInterest()` | `redeem_due_interest()` | ✅ |
-| Interest formula | `bal × Δidx / (prev × curr)` | `bal × Δidx / prev` | 🟡 MEDIUM (see below) |
+| Interest formula | `bal × Δidx / (prev × curr)` | `bal × Δidx / (prev × curr)` | ✅ |
 | UserInterest struct packing | `{uint128 idx, uint128 accrued}` | Two separate Maps | 🟢 LOW |
 | Two-user distribution | `_distributeInterestForTwo()` | Separate calls | ✅ Equivalent |
-| Multi-reward claiming | `redeemDueInterestAndRewards()` | ❌ Missing | 🔴 HIGH |
-| Reward token registry | `getRewardTokens()` | ❌ Missing | 🔴 HIGH |
-| syReserve tracking | Tracks SY balance for accounting | ❌ Missing | 🟡 MEDIUM |
-| Post-expiry treasury | Interest → protocol treasury | ❌ Interest locked | 🟡 MEDIUM |
-| Protocol fee on interest | Via factory `_doTransferOutInterest()` | ❌ Missing | 🟡 MEDIUM |
-| Same-block index caching | `doCacheIndexSameBlock` | ❌ Missing | 🟢 LOW |
-| Batch mint/redeem | `mintPYMulti()`, `redeemPYMulti()` | ❌ Missing | 🟢 LOW |
-| Claim interest on redeem | `redeemPY(redeemInterest=true)` | ❌ Separate call required | 🟢 LOW |
+| Multi-reward claiming | `redeemDueInterestAndRewards()` | ❌ Missing | 🔴 HIGH | **NOT PART OF THE REQUIREMENTS**
+| Reward token registry | `getRewardTokens()` | ❌ Missing | 🔴 HIGH | **NOT PART OF THE REQUIREMENTS**
+| syReserve tracking | `syReserve` + floating SY | `sy_reserve` + `get_floating_sy()` | ✅ |
+| Post-expiry treasury | `totalSyInterestForTreasury` | `post_expiry_sy_for_treasury` + treasury redeem | ✅ |
+| Protocol fee on interest | Factory-managed | Per-YT `interest_fee_rate` | ✅ (per-YT admin) |
+| Same-block index caching | `doCacheIndexSameBlock` | Always-on cache | ✅ (no toggle) |
+| Batch mint/redeem | `mintPYMulti()`, `redeemPYMulti()` | `mint_py_multi()`, `redeem_py_multi()` | ✅ |
+| Claim interest on redeem | `redeemPY(redeemInterest=true)` | `redeem_py_with_interest()` | ✅ |
 | Flash mint | Supported | ❌ Missing | 🟡 MEDIUM |
 
 **Gap Detail - Multi-Reward Support:**
@@ -219,7 +219,7 @@ function redeemDueInterestAndRewards(
 ) external returns (uint256 interestOut, uint256[] memory rewardsOut);
 ```
 
-Horizon only tracks interest from SY appreciation:
+Horizon only tracks interest from SY appreciation (no reward registry/claim path in YT):
 ```cairo
 // Horizon - interest only
 fn redeem_due_interest(user: ContractAddress) -> u256
@@ -231,99 +231,52 @@ user_interest: Map<ContractAddress, u256>
 
 ---
 
-**Gap Detail - syReserve Tracking:**
+**Resolved - syReserve Tracking:**
 
-Pendle tracks the SY reserve to detect "floating" SY (donations or accidental transfers):
-```solidity
-// Pendle - tracks reserve for accurate accounting
-uint128 public syReserve;  // Expected SY balance
-
-function _getFloatingSy() internal view returns (uint256) {
-    return IStandardizedYield(SY).balanceOf(address(this)) - syReserve;
-}
-```
-
-Horizon relies on actual SY balance without reserve tracking:
-```cairo
-// Horizon - no reserve concept
-// Direct transfer from SY balance without floating detection
-let success = sy.transfer(receiver, amount_sy);
-```
-
-**Impact:** Cannot detect and handle unexpected SY deposits. Minor accounting concern.
+Horizon now tracks expected SY balance via `sy_reserve` and exposes `get_floating_sy()` to detect
+unexpected transfers. Mint/redeem paths update the reserve to match the actual SY balance,
+mirroring Pendle's accounting model.
 
 ---
 
-**Gap Detail - Post-Expiry Treasury:**
+**Resolved - Post-Expiry Treasury:**
 
-Pendle redirects post-expiry interest to the protocol treasury:
-```solidity
-// Pendle - post-expiry interest goes to treasury
-struct PostExpiryData {
-    uint128 firstPYIndex;              // Frozen index at expiry
-    uint128 totalSyInterestForTreasury; // Accumulated post-expiry yield
-    // ...
-}
-
-function redeemInterestAndRewardsPostExpiryForTreasury() external;
-```
-
-Horizon freezes the index at expiry but doesn't capture ongoing yield:
-```cairo
-// Horizon - index frozen, but post-expiry yield is effectively locked
-if self.py_index_at_expiry.read() == 0 {
-    self.py_index_at_expiry.write(current_index);  // Freeze
-}
-// Any SY appreciation after expiry stays in the contract forever
-```
-
-**Impact:** Post-expiry yield from underlying assets (e.g., stETH continues earning) is locked in the contract rather than flowing to protocol treasury or LPs.
+Horizon implements `post_expiry_sy_for_treasury` plus `redeem_post_expiry_interest_for_treasury()`,
+and `redeem_py_post_expiry()` carves out post-expiry yield per redemption. Post-expiry interest is
+redirected to treasury rather than being locked in the contract.
 
 ---
 
-**Gap Detail - Interest Calculation Formula Difference:**
+**Resolved - Interest Calculation Formula (matches Pendle):**
 
-Pendle uses a **normalized interest formula** from `InterestManagerYT`:
-```solidity
-// Pendle - normalizes interest to current SY value
-interestFromYT = (principal × (currentIndex - prevIndex)) / (prevIndex × currentIndex)
-// Simplifies to: interest = balance × indexGrowth / currentIndex
+Horizon now uses the normalized formula from Pendle's `InterestManagerYT`:
+```text
+interest = balance × (currentIndex - prevIndex) / (prevIndex × currentIndex)
 ```
-
-Horizon uses a **simpler absolute formula**:
-```cairo
-// Horizon - absolute interest calculation
-new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index)
-// Simplifies to: interest = balance × indexGrowth
-```
-
-**Concrete Example** (100 YT, index grows from 1.0 to 1.1 = 10% yield):
-- **Pendle**: `100 × 0.1 / (1.0 × 1.1) = 100 × 0.1 / 1.1 = ~9.09 SY`
-- **Horizon**: `100 × 0.1 / 1.0 = 10.0 SY`
-
-**Why the difference?** Pendle's formula maintains the invariant that "totalSyRedeemable will not change over time" - the division by `currentIndex` accounts for SY's increased value. Horizon's simpler approach gives ~10% more interest in this example.
-
-**Impact:** Economic divergence from Pendle. Horizon users receive slightly more SY tokens as interest, but those tokens are worth more in underlying terms due to the higher index. The NET economic value is arguably the same, but accounting differs. This is a **design choice** rather than a bug, but should be documented for users.
+This preserves Pendle's invariant that total redeemable SY remains stable as the index grows.
 
 ---
 
 ### 1.3 PT (Principal Token)
 
-**Implementation Status: 95%**
+**Implementation Status: 95%** (PT contract is minimal; differences are mostly init/immutables and metadata/versioning)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| 1:1 redemption at expiry | ✅ | ✅ | ✅ |
-| Only YT can mint/burn | ✅ | `assert_only_yt()` | ✅ |
-| Circular reference init | Via factory | Via `initialize_yt()` | ✅ |
-| Standard ERC20 | ✅ | ✅ | ✅ |
+| Only YT can mint/burn | ✅ `mintByYT/burnByYT` | ✅ `mint/burn` + `assert_only_yt()` | ✅ |
+| YT set once after deploy | `initialize()` onlyYieldFactory | `initialize_yt()` only deployer (YT) | ⚠️ Different |
+| SY/expiry recorded | Immutable `SY`, `expiry` | Stored on deploy (no setters) | ⚠️ Different |
+| isExpired() | ✅ `isExpired()` | ✅ `is_expired()` | ✅ |
+| Standard ERC20 | ✅ `PendleERC20` | ✅ `ERC20Component` | ✅ |
 | Emergency pause | ❌ Not pausable | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
 | VERSION constant | `VERSION = 6` | ❌ None | 🟢 LOW |
 | Reentrancy guard exposure | `reentrancyGuardEntered()` | ❌ None | 🟢 LOW |
 
-**Horizon exceeds Pendle in emergency controls** - PT mint can be paused in emergencies via PAUSER_ROLE.
+**Note:** Pendle's PT contract is intentionally minimal; it does **not** implement redemption logic. Redemption at expiry is handled by YT/router flows, not PT itself. Horizon follows the same pattern.
 
-**Minor gaps:** VERSION constant and reentrancy guard exposure are useful for integrations and on-chain versioning but not critical for core functionality.
+**Horizon exceeds Pendle in emergency controls** - PT mint can be paused in emergencies via `PAUSER_ROLE`.
+
+**Minor gaps:** VERSION constant and reentrancy guard exposure are useful for integrations and on-chain versioning but not critical for core functionality. The `factory` immutability difference (Pendle stores `factory` immutable; Horizon uses `deployer`/storage) is a trust-boundary nuance rather than a functional gap.
 
 ---
 
@@ -1258,13 +1211,13 @@ function redeemDueInterestAndRewards(
 | Class hash updates | ❌ None | ✅ `set_class_hashes()` + event | ✅ **Horizon exceeds** |
 | `interestFeeRate` | Up to 20%, configurable | ❌ None | 🔴 HIGH |
 | `rewardFeeRate` | Up to 20%, configurable | ❌ None | 🔴 HIGH |
-| `treasury` address | Configurable fee destination | ❌ None | 🔴 HIGH |
+| `treasury` address | Configurable fee destination | ✅ `treasury` stored + passed to YT | ✅ |
 | `setInterestFeeRate()` | Owner-protected | ❌ None | 🔴 HIGH |
 | `setRewardFeeRate()` | Owner-protected | ❌ None | 🔴 HIGH |
-| `setTreasury()` | Owner-protected | ❌ None | 🔴 HIGH |
+| `setTreasury()` | Owner-protected | ✅ `set_treasury()` | ✅ |
 | `expiryDivisor` | Expiry must be divisible | ❌ Only checks future | 🟡 MEDIUM |
 | `setExpiryDivisor()` | Owner-protected | ❌ None | 🟡 MEDIUM |
-| `doCacheIndexSameBlock` | Same-block index caching | ❌ None | 🟡 MEDIUM |
+| `doCacheIndexSameBlock` | Same-block index caching | Always-on cache in YT | ⚠️ Different |
 | `VERSION` constant | `VERSION = 6` | ❌ None | 🟢 LOW |
 | Deterministic addresses | Create2 for PT | deploy_syscall with salt | ⚠️ Different |
 
@@ -1292,13 +1245,16 @@ function setRewardFeeRate(uint128 newRewardFeeRate) public onlyOwner {
 }
 ```
 
-Horizon has no protocol fee infrastructure:
+Horizon does not implement factory-level fee schedules; interest fees are configured per YT and
+reward fees are still missing:
 ```cairo
-// Horizon - no fee configuration at factory level
-// All interest goes to YT holders, no protocol cut
+// Horizon - fee config lives in YT, not the factory
+fn set_interest_fee_rate(ref self: ContractState, rate: u256)
+treasury: ContractAddress
 ```
 
-**Impact:** Protocol cannot capture revenue from interest or rewards. Essential for sustainable protocol economics.
+**Impact:** Protocol can collect interest fees on a per-YT basis, but lacks a centralized fee
+schedule and any reward fee capture.
 
 ---
 
@@ -1945,7 +1901,7 @@ Governance is explicitly **Phase 4** on the roadmap:
 | **PYIndex Integration** | AMM prices underlying, not raw SY | High | All traders, LPs |
 | **Reserve Fee System** | Protocol revenue sharing | Medium | Protocol treasury |
 | **RewardManager/PendleGauge** | LP incentive programs, yield farming | High | All LPs |
-| **Factory Protocol Fees** | interestFeeRate, rewardFeeRate, treasury | Medium | Protocol treasury |
+| **Factory Protocol Fees** | interestFeeRate, rewardFeeRate (factory-level) | Medium | Protocol treasury |
 | **MarketFactory Protocol Fees** | treasury, reserveFeePercent, setTreasuryAndFeeReserve() | Medium | Protocol treasury |
 | **MarketFactory Router Fee Overrides** | overriddenFee, setOverriddenFee(), getMarketConfig() | Medium | Aggregator partners |
 | **SY Multi-Token Support** | Curve LP, Yearn vaults | Medium | Yield seekers |
@@ -1982,12 +1938,8 @@ Governance is explicitly **Phase 4** on the roadmap:
 | Permit signatures | UX improvement | Low |
 | Batch operations (boostMarkets, etc) | Gas efficiency | Medium |
 | redeemDueInterestAndRewards | Combined redemption | Medium |
-| Post-expiry treasury | Captures ongoing yield | Low |
-| syReserve tracking | Floating SY detection | Low |
-| Protocol fee on interest | Protocol revenue | Low |
-| Interest formula alignment | Pendle parity | Low |
 | Factory expiryDivisor | Standardized expiry dates | Low |
-| Factory doCacheIndexSameBlock | Same-block optimization | Low |
+| Factory cache toggle | Optional parity vs Pendle | Low |
 | Factory VERSION constant | Contract versioning | Low |
 | MarketFactory yieldContractFactory reference | Cross-factory queries | Low |
 | MarketFactory VERSION constant | Contract versioning | Low |
@@ -2041,15 +1993,15 @@ CORE TOKENS
   PT reentrancy guard exposure          ✓            ✗         LOW
   YT interest tracking                  ✓            ✓         None
   YT post-expiry index freeze           ✓            ✓         None
-  YT interest formula                   normalized   absolute  MEDIUM (design choice)
+  YT interest formula                   normalized   normalized  None
   YT UserInterest struct packing        ✓            ✗         LOW
   YT multi-reward                       ✓            ✗         HIGH
-  YT syReserve tracking                 ✓            ✗         MEDIUM
-  YT post-expiry treasury               ✓            ✗         MEDIUM
-  YT protocol fee on interest           ✓            ✗         MEDIUM
-  YT same-block index caching           ✓            ✗         LOW
-  YT batch mint/redeem                  ✓            ✗         LOW
-  YT claim interest on redeem           ✓            ✗         LOW
+  YT syReserve tracking                 ✓            ✓         None
+  YT post-expiry treasury               ✓            ✓         None
+  YT protocol fee on interest           ✓            ✓         None
+  YT same-block index caching           ✓            ✓         None
+  YT batch mint/redeem                  ✓            ✓         None
+  YT claim interest on redeem           ✓            ✓         None
   YT flash mint                         ✓            ✗         MEDIUM
 
 AMM/MARKET (MarketMathCore)
@@ -2152,13 +2104,13 @@ FACTORY (YieldContractFactory)
   Class hash updates                    ✗            ✓         None (EXCEEDS)
   interestFeeRate                       ✓            ✗         HIGH
   rewardFeeRate                         ✓            ✗         HIGH
-  treasury address                      ✓            ✗         HIGH
+  treasury address                      ✓            ✓         None
   setInterestFeeRate()                  ✓            ✗         HIGH
   setRewardFeeRate()                    ✓            ✗         HIGH
-  setTreasury()                         ✓            ✗         HIGH
+  setTreasury()                         ✓            ✓         None
   expiryDivisor                         ✓            ✗         MEDIUM
   setExpiryDivisor()                    ✓            ✗         MEDIUM
-  doCacheIndexSameBlock                 ✓            ✗         MEDIUM
+  doCacheIndexSameBlock                 ✓            ✓         LOW (always-on)
   VERSION constant                      ✓            ✗         LOW
 
 MARKET FACTORY (PendleMarketFactoryV6Upg)
@@ -2235,10 +2187,10 @@ GOVERNANCE
 
 | Category | Implementation | Gap Count | Critical Gaps | Notes |
 |----------|---------------|-----------|---------------|-------|
-| Core Tokens | 85% | 17 | 2 (multi-reward YT) | ✅ **SY: 95% complete** (2 gaps: EIP-2612 Permit N/A, native ETH N/A); YT: 12 gaps; PT: 2 gaps; Horizon exceeds in 7 areas |
+| Core Tokens | 90% | 8 | 2 (multi-reward YT) | ✅ **SY: 95% complete** (2 gaps: EIP-2612 Permit N/A, native ETH N/A); YT: 4 gaps (multi-reward, reward registry, flash mint, packing); PT: 2 gaps; Horizon exceeds in 7 areas |
 | AMM/Market | 60% | 24 | 8 (PYIndex, reserve fees, TWAP×6) | MarketMath: 9 gaps; Market contract: 11 gaps (6 CRITICAL/HIGH, 5 MEDIUM); Horizon exceeds in 5 areas |
 | Router | 55% | 29 | 14 (single-sided×7, token aggregation×8) | Core ops: 85%; Missing: single-sided liquidity, token aggregation, batch ops; Horizon exceeds in 3 areas (pause, RBAC, wrappers) |
-| Factory | 70% | 10 | 6 (interestFeeRate, rewardFeeRate, treasury, setters) | Core deployment: 100%; Missing: protocol fee infrastructure; Horizon exceeds in 3 areas (enriched events, RBAC, class hash updates) |
+| Factory | 70% | 8 | 4 (interestFeeRate, rewardFeeRate, setters) | Core deployment: 100%; Missing: factory-level fee schedule; Horizon exceeds in 3 areas (enriched events, RBAC, class hash updates) |
 | MarketFactory | 65% | 12 | 6 (treasury, reserveFeePercent, router overrides, getMarketConfig) | Core deployment: 100%; Missing: protocol fee infrastructure, router fee overrides; Horizon exceeds in 6 areas (pagination, active filter, events, RBAC) |
 | Oracle | 35% | 18 | 8 CRITICAL (Market TWAP buffer, observe(), PT/YT/LP rate functions) | Yield Index Oracle: 75% with 5 areas Horizon EXCEEDS; Market TWAP Oracle: 0% - complete absence blocks lending integrations |
 | Governance | 0% | 7 | All (by design) | |
@@ -2300,12 +2252,12 @@ GOVERNANCE
 | Permit signatures | `router.cairo` | Add permit param to swap functions |
 | redeemDueInterestAndRewards | `router.cairo` | Combined redemption across contracts |
 | **Factory Gaps** | | |
-| Protocol fee infrastructure | `factory.cairo` | Add `interest_fee_rate`, `reward_fee_rate`, `treasury` storage |
+| Protocol fee infrastructure | `factory.cairo` | Add `interest_fee_rate`, `reward_fee_rate` storage (treasury already present) |
 | setInterestFeeRate | `factory.cairo` | New admin function with MAX_FEE_RATE validation |
 | setRewardFeeRate | `factory.cairo` | New admin function with MAX_FEE_RATE validation |
 | setTreasury | `factory.cairo` | New admin function |
 | expiryDivisor | `factory.cairo` | Add `expiry_divisor` storage + validation in `create_yield_contracts()` |
-| doCacheIndexSameBlock | `factory.cairo` + `yt.cairo` | Pass caching hint to YT constructor |
+| doCacheIndexSameBlock | `factory.cairo` + `yt.cairo` | Optional parity: add factory flag to disable cache (currently always-on) |
 | **MarketFactory Gaps** | | |
 | Protocol fee infrastructure | `market/market_factory.cairo` | Add `treasury`, `reserve_fee_percent` storage |
 | setTreasuryAndFeeReserve | `market/market_factory.cairo` | New admin function with fee validation |
@@ -2360,7 +2312,7 @@ GOVERNANCE
 1. **Single-sided liquidity operations** (addLiquiditySinglePt/Sy/Token)
 2. **Token aggregation** (TokenInput/Output + AVNU/Fibrous integration)
 3. **swapExactTokenForPt/Yt** functions
-4. **Factory protocol fees** (interestFeeRate, rewardFeeRate, treasury)
+4. **Factory protocol fees** (interestFeeRate, rewardFeeRate)
 5. **MarketFactory protocol fees** (treasury, reserveFeePercent, router fee overrides)
 6. Fee auto-compounding into LP reserves
 7. Multi-reward YT support
