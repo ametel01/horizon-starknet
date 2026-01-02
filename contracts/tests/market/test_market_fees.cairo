@@ -168,6 +168,7 @@ fn deploy_market(
     calldata.append(fee_rate.high.into());
     calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser (becomes owner)
+    calldata.append(0); // factory (zero address for tests)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -475,6 +476,10 @@ fn test_zero_fee_at_exact_expiry() {
 }
 
 // ============ Fee Collection Tests ============
+// Note: In the Pendle-style fee model:
+// - Reserve fees are transferred to treasury immediately during each swap
+// - LP fees stay in pool reserves, benefiting LPs proportionally on withdrawal
+// - collect_fees() resets the LP fee counter (for analytics), but doesn't transfer
 
 #[test]
 fn test_fee_collection_by_owner() {
@@ -486,7 +491,7 @@ fn test_fee_collection_by_owner() {
     setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
     add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
 
-    // Do some swaps to accumulate fees
+    // Do some swaps to accumulate LP fees
     let swap_amount = 20 * WAD;
     start_cheat_caller_address(pt.contract_address, user);
     pt.approve(market.contract_address, swap_amount);
@@ -497,9 +502,9 @@ fn test_fee_collection_by_owner() {
     stop_cheat_caller_address(market.contract_address);
 
     let fees_accumulated = market.get_total_fees_collected();
-    assert(fees_accumulated > 0, 'Should have fees');
+    assert(fees_accumulated > 0, 'Should have LP fees');
 
-    // Owner (admin) collects fees
+    // Owner resets LP fee counter (for analytics purposes)
     let market_admin = IMarketAdminDispatcher { contract_address: market.contract_address };
 
     let receiver_balance_before = sy.balance_of(receiver);
@@ -508,10 +513,13 @@ fn test_fee_collection_by_owner() {
     let collected = market_admin.collect_fees(receiver);
     stop_cheat_caller_address(market.contract_address);
 
-    // Verify fees were collected
-    assert(collected == fees_accumulated, 'Should collect all fees');
-    assert(market.get_total_fees_collected() == 0, 'Fees should be reset');
-    assert(sy.balance_of(receiver) == receiver_balance_before + collected, 'Receiver got fees');
+    // Verify LP fee counter was reset (collected returns the amount for analytics)
+    assert(collected == fees_accumulated, 'Should report all LP fees');
+    assert(market.get_total_fees_collected() == 0, 'LP fees counter reset');
+
+    // In Pendle model, LP fees stay in pool - receiver balance unchanged
+    // (LP fees benefit LPs through increased reserve value on withdrawal)
+    assert(sy.balance_of(receiver) == receiver_balance_before, 'LP fees stay in pool');
 }
 
 #[test]

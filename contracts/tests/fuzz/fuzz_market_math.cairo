@@ -195,18 +195,18 @@ fn test_fuzz_calc_swap_exact_pt_for_sy(
     }
 
     // Execute swap
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
 
     // Property 1: SY output should be <= PT input (exchange rate >= 1)
-    assert(sy_out <= pt_in, 'sy_out > pt_in: invalid rate');
+    assert(result.net_sy_to_account <= pt_in, 'sy_out > pt_in: invalid rate');
 
     // Property 2: Fee should be non-negative (always true for u256, but verify calculation)
     // Fee is part of the output, so sy_out + fee should approximate the raw value
-    let sy_with_fee = sy_out + fee;
+    let sy_with_fee = result.net_sy_to_account + result.net_sy_fee;
     assert(sy_with_fee <= pt_in, 'sy+fee > pt_in');
 
     // Property 3: SY output should be <= SY reserve
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }
 
 /// Property: Swapping 0 PT should return 0 SY and 0 fee
@@ -225,10 +225,10 @@ fn test_fuzz_calc_swap_exact_pt_for_sy_zero_input(
         sy_reserve, pt_reserve, total_lp, scalar_root, fee_rate, ln_implied_rate, time_to_expiry,
     );
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, 0, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, 0, tte);
 
-    assert(sy_out == 0, 'zero input should give zero out');
-    assert(fee == 0, 'zero input should give zero fee');
+    assert(result.net_sy_to_account == 0, 'zero input should give zero out');
+    assert(result.net_sy_fee == 0, 'zero input should give zero fee');
 }
 
 // ============================================
@@ -265,7 +265,7 @@ fn test_fuzz_calc_swap_exact_sy_for_pt(
     let sy_in = bound(sy_in_raw, min_sy_in, max_sy_in);
 
     // Execute swap (uses binary search internally)
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, tte);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, sy_in, tte);
 
     // Property 1: PT output should be < PT reserve
     assert(pt_out < state.pt_reserve, 'pt_out >= pt_reserve');
@@ -274,7 +274,7 @@ fn test_fuzz_calc_swap_exact_sy_for_pt(
     if state.ln_fee_rate_root > 0 && sy_in > 0 && tte > 0 {
         // Fee might be 0 for very small amounts due to rounding
         // Just verify it doesn't exceed the input
-        assert(fee <= sy_in, 'fee > sy_in');
+        assert(result.net_sy_fee <= sy_in, 'fee > sy_in');
     }
 }
 
@@ -294,10 +294,10 @@ fn test_fuzz_calc_swap_exact_sy_for_pt_zero_input(
         sy_reserve, pt_reserve, total_lp, scalar_root, fee_rate, ln_implied_rate, time_to_expiry,
     );
 
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, 0, tte);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, 0, tte);
 
     assert(pt_out == 0, 'zero input should give zero out');
-    assert(fee == 0, 'zero input should give zero fee');
+    assert(result.net_sy_fee == 0, 'zero input should give zero fee');
 }
 
 // ============================================
@@ -335,16 +335,16 @@ fn test_fuzz_calc_swap_sy_for_exact_pt(
     let pt_out = bound(pt_out_raw, min_pt_out, max_pt_out);
 
     // Execute swap
-    let (sy_in, fee) = calc_swap_sy_for_exact_pt(@state, pt_out, tte);
+    let result = calc_swap_sy_for_exact_pt(@state, pt_out, tte);
 
     // Property 1: SY input should be > 0 for non-zero PT output
-    assert(sy_in > 0, 'sy_in is zero');
+    assert(result.net_sy_to_account > 0, 'sy_in is zero');
 
     // Property 2: SY input should be bounded reasonably (not more than 10x PT out)
-    assert(sy_in <= pt_out * 10, 'sy_in unreasonably large');
+    assert(result.net_sy_to_account <= pt_out * 10, 'sy_in unreasonably large');
 
     // Property 3: Fee should be part of sy_in
-    assert(fee <= sy_in, 'fee > sy_in');
+    assert(result.net_sy_fee <= result.net_sy_to_account, 'fee > sy_in');
 }
 
 /// Property: Requesting 0 PT should require 0 SY and 0 fee
@@ -363,10 +363,10 @@ fn test_fuzz_calc_swap_sy_for_exact_pt_zero_output(
         sy_reserve, pt_reserve, total_lp, scalar_root, fee_rate, ln_implied_rate, time_to_expiry,
     );
 
-    let (sy_in, fee) = calc_swap_sy_for_exact_pt(@state, 0, tte);
+    let result = calc_swap_sy_for_exact_pt(@state, 0, tte);
 
-    assert(sy_in == 0, 'zero output should need zero in');
-    assert(fee == 0, 'zero out -> zero fee');
+    assert(result.net_sy_to_account == 0, 'zero output should need zero in');
+    assert(result.net_sy_fee == 0, 'zero out -> zero fee');
 }
 
 // ============================================
@@ -403,13 +403,13 @@ fn test_fuzz_calc_swap_pt_for_exact_sy(
     let sy_out = bound(sy_out_raw, min_sy_out, max_sy_out);
 
     // Execute swap (uses binary search internally)
-    let (pt_in, fee) = calc_swap_pt_for_exact_sy(@state, sy_out, tte);
+    let (pt_in, result) = calc_swap_pt_for_exact_sy(@state, sy_out, tte);
 
     // INVARIANT 1: PT input should be > 0 for non-zero SY output
     assert(pt_in > 0, 'pt_in is zero');
 
     // INVARIANT 2: Fee should never exceed the output value
-    assert(fee <= sy_out, 'fee > sy_out');
+    assert(result.net_sy_fee <= sy_out, 'fee > sy_out');
 }
 
 /// Property: Requesting 0 SY should require 0 PT and 0 fee
@@ -428,10 +428,10 @@ fn test_fuzz_calc_swap_pt_for_exact_sy_zero_output(
         sy_reserve, pt_reserve, total_lp, scalar_root, fee_rate, ln_implied_rate, time_to_expiry,
     );
 
-    let (pt_in, fee) = calc_swap_pt_for_exact_sy(@state, 0, tte);
+    let (pt_in, result) = calc_swap_pt_for_exact_sy(@state, 0, tte);
 
     assert(pt_in == 0, 'zero output should need zero in');
-    assert(fee == 0, 'zero out -> zero fee');
+    assert(result.net_sy_fee == 0, 'zero out -> zero fee');
 }
 
 // ============================================
@@ -657,13 +657,13 @@ fn test_fuzz_binary_search_convergence(
     let sy_in = bound(sy_in_raw, min_sy_in, max_sy_in);
 
     // Execute swap - this uses binary search internally
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, tte);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, sy_in, tte);
 
     // Property 1: Output should be valid
     assert(pt_out < state.pt_reserve, 'pt_out >= reserve');
 
     // Property 2: Fee should be reasonable
-    assert(fee <= sy_in, 'fee > sy_in');
+    assert(result.net_sy_fee <= sy_in, 'fee > sy_in');
 
     // Property 3: For non-trivial inputs, should get some output
     if sy_in >= WAD * 10 {
@@ -674,9 +674,9 @@ fn test_fuzz_binary_search_convergence(
     // Property 4: Round-trip should be approximately consistent
     // If we got PT, selling it should give us back roughly the same SY
     if pt_out > WAD {
-        let (sy_back, _) = calc_swap_exact_pt_for_sy(@state, pt_out, tte);
+        let result_back = calc_swap_exact_pt_for_sy(@state, pt_out, tte);
         // We should get back less than what we put in (due to fees and slippage)
-        assert(sy_back <= sy_in, 'roundtrip gave more SY');
+        assert(result_back.net_sy_to_account <= sy_in, 'roundtrip gave more SY');
     }
 }
 
@@ -783,10 +783,10 @@ fn test_fuzz_small_swap_no_panic(
     let small_amount: u256 = 1000;
 
     // These should not panic, even if output is 0
-    let (sy_out, _) = calc_swap_exact_pt_for_sy(@state, small_amount, tte);
-    assert(sy_out <= small_amount, 'small swap sy_out too large');
+    let result_sy = calc_swap_exact_pt_for_sy(@state, small_amount, tte);
+    assert(result_sy.net_sy_to_account <= small_amount, 'small swap sy_out too large');
 
-    let (pt_out, _) = calc_swap_exact_sy_for_pt(@state, small_amount, tte);
+    let (pt_out, _result_pt) = calc_swap_exact_sy_for_pt(@state, small_amount, tte);
     assert(pt_out < state.pt_reserve, 'small swap pt_out too large');
 }
 
@@ -814,13 +814,13 @@ fn test_fuzz_large_swap_no_panic(
 
     // Test PT -> SY swap if valid
     if would_pt_sell_be_valid(@state, pt_in) {
-        let (sy_out, _) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
-        assert(sy_out <= state.sy_reserve, 'large swap sy_out > reserve');
+        let result_sy = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+        assert(result_sy.net_sy_to_account <= state.sy_reserve, 'large swap sy_out > reserve');
     }
 
     // Test SY -> PT swap if valid
     if would_pt_buy_be_valid(@state, sy_in) {
-        let (pt_out, _) = calc_swap_exact_sy_for_pt(@state, sy_in, tte);
+        let (pt_out, _result_pt) = calc_swap_exact_sy_for_pt(@state, sy_in, tte);
         assert(pt_out < state.pt_reserve, 'large swap pt_out >= reserve');
     }
 }

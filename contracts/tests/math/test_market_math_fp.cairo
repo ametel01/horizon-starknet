@@ -382,14 +382,14 @@ fn test_calc_swap_exact_pt_for_sy() {
     let time_to_expiry: u64 = 31_536_000;
     let pt_in = 10_000 * WAD;
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, time_to_expiry);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, time_to_expiry);
 
     // SY out should be less than PT in (exchange rate >= 1)
-    assert(sy_out < pt_in, 'SY out < PT in');
+    assert(result.net_sy_to_account < pt_in, 'SY out < PT in');
     // SY out should be positive
-    assert(sy_out > 0, 'SY out positive');
+    assert(result.net_sy_to_account > 0, 'SY out positive');
     // Fee should be applied
-    assert(fee > 0, 'fee applied');
+    assert(result.net_sy_fee > 0, 'fee applied');
 }
 
 #[test]
@@ -398,12 +398,12 @@ fn test_calc_swap_exact_sy_for_pt() {
     let time_to_expiry: u64 = 31_536_000;
     let sy_in = 10_000 * WAD;
 
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, time_to_expiry);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, sy_in, time_to_expiry);
 
     // PT out should be positive
     assert(pt_out > 0, 'PT out positive');
     // Fee should be applied
-    assert(fee > 0, 'fee applied');
+    assert(result.net_sy_fee > 0, 'fee applied');
     // PT out should be reasonable (not more than reserves)
     assert(pt_out < state.pt_reserve, 'PT out < reserves');
 }
@@ -413,13 +413,13 @@ fn test_swap_zero_amount() {
     let state = create_test_market();
     let time_to_expiry: u64 = 31_536_000;
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, 0, time_to_expiry);
-    assert(sy_out == 0, 'zero in zero out SY');
-    assert(fee == 0, 'zero in zero fee SY');
+    let result = calc_swap_exact_pt_for_sy(@state, 0, time_to_expiry);
+    assert(result.net_sy_to_account == 0, 'zero in zero out SY');
+    assert(result.net_sy_fee == 0, 'zero in zero fee SY');
 
-    let (pt_out, fee2) = calc_swap_exact_sy_for_pt(@state, 0, time_to_expiry);
+    let (pt_out, result2) = calc_swap_exact_sy_for_pt(@state, 0, time_to_expiry);
     assert(pt_out == 0, 'zero in zero out PT');
-    assert(fee2 == 0, 'zero in zero fee PT');
+    assert(result2.net_sy_fee == 0, 'zero in zero fee PT');
 }
 
 // ============================================
@@ -662,12 +662,12 @@ fn test_binary_search_max_iterations() {
     // With scalar_root=1.0 and 50% implied rate, this stays within bounds
     let large_sy_in = 200_000 * WAD;
 
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, large_sy_in, time_to_expiry);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, large_sy_in, time_to_expiry);
 
     // Binary search should converge and produce valid output
     assert(pt_out > 0, 'pt_out > 0 for large trade');
     assert(pt_out < state.pt_reserve, 'pt_out < reserves');
-    assert(fee > 0, 'fee applied for large trade');
+    assert(result.net_sy_fee > 0, 'fee applied for large trade');
 
     // Verify the output is reasonable (not more than input considering exchange rate)
     // PT out should be greater than SY in (since PT trades at discount to SY)
@@ -685,7 +685,7 @@ fn test_binary_search_tolerance_edge() {
     // BINARY_SEARCH_TOLERANCE = 1000 wei
     let small_sy_in = 10_000; // 10x tolerance, but still very small
 
-    let (pt_out, _fee) = calc_swap_exact_sy_for_pt(@state, small_sy_in, time_to_expiry);
+    let (pt_out, _result) = calc_swap_exact_sy_for_pt(@state, small_sy_in, time_to_expiry);
 
     // Should produce valid (possibly zero due to rounding) output
     // The key is no panic occurs
@@ -717,7 +717,7 @@ fn test_swap_drains_entire_reserve() {
     let exact_sy_out = state.sy_reserve;
 
     // This should panic with insufficient liquidity
-    let (_, _) = calc_swap_pt_for_exact_sy(@state, exact_sy_out, time_to_expiry);
+    let (_pt_in, _result) = calc_swap_pt_for_exact_sy(@state, exact_sy_out, time_to_expiry);
 }
 
 /// Test swap where the output amount equals the reserve
@@ -733,5 +733,6 @@ fn test_swap_amount_equals_reserve() {
     let exact_reserve_pt_out = state.pt_reserve;
 
     // Use calc_swap_sy_for_exact_pt which allows specifying exact output
-    let (_, _) = calc_swap_sy_for_exact_pt(@state, exact_reserve_pt_out, time_to_expiry);
+    // This now returns TradeResult instead of a tuple
+    let _result = calc_swap_sy_for_exact_pt(@state, exact_reserve_pt_out, time_to_expiry);
 }

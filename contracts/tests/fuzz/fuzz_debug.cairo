@@ -150,7 +150,7 @@ fn test_debug_sy_out_exceeds_reserve() {
     // Execute the swap - this should panic with 'HZN: insufficient liquidity'
     // because the fix added a bounds check in calc_swap_exact_pt_for_sy.
     // The swap would produce sy_out > sy_reserve without the check.
-    let (_sy_out, _fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let _result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
 }
 
 /// Test with extreme market conditions to find edge cases
@@ -176,14 +176,14 @@ fn test_extreme_proportion_high_pt() {
     println!("=== Extreme High PT Proportion ===");
     println!("proportion: {}", get_proportion(@state));
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
-    println!("fee: {}", fee);
+    println!("sy_out: {}", result.net_sy_to_account);
+    println!("fee: {}", result.net_sy_fee);
     println!("sy_reserve: {}", state.sy_reserve);
 
     // Check invariant
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }
 
 /// Test with extreme market conditions - low PT proportion
@@ -209,14 +209,14 @@ fn test_extreme_proportion_low_pt() {
     println!("=== Extreme Low PT Proportion ===");
     println!("proportion: {}", get_proportion(@state));
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
-    println!("fee: {}", fee);
+    println!("sy_out: {}", result.net_sy_to_account);
+    println!("fee: {}", result.net_sy_fee);
     println!("sy_reserve: {}", state.sy_reserve);
 
     // Check invariant
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }
 
 /// Test near expiry conditions
@@ -244,13 +244,13 @@ fn test_near_expiry() {
     let comp = get_market_pre_compute(@state, tte);
     println!("rate_scalar: {}", comp.rate_scalar);
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
-    println!("fee: {}", fee);
+    println!("sy_out: {}", result.net_sy_to_account);
+    println!("fee: {}", result.net_sy_fee);
 
     // Near expiry, PT should be worth ~1 SY
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }
 
 /// Test with very high implied rate
@@ -278,9 +278,9 @@ fn test_high_implied_rate() {
     let comp = get_market_pre_compute(@state, tte);
     println!("rate_anchor: {}", comp.rate_anchor);
 
-    let (sy_out, _fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
+    println!("sy_out: {}", result.net_sy_to_account);
 
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }

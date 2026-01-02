@@ -150,6 +150,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(fee_rate.high.into());
     calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
+    calldata.append(0); // factory (zero address for tests)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -356,8 +357,9 @@ fn test_market_with_factory() {
     let market_factory = deploy_market_factory();
 
     // Create market via factory
+    // initial_anchor must be >= 1 WAD (Pendle bound)
     let scalar_root = 50 * WAD;
-    let initial_anchor = WAD / 10;
+    let initial_anchor = WAD; // 1 WAD (minimum allowed)
     let fee_rate = WAD / 100;
 
     let market_address = market_factory

@@ -45,7 +45,7 @@ fn default_scalar_root() -> u256 {
 }
 
 fn default_initial_anchor() -> u256 {
-    WAD / 10 // 0.1 WAD = ~10% APY
+    WAD // 1 WAD (minimum allowed - Pendle requires >= 1 WAD)
 }
 
 fn default_fee_rate() -> u256 {
@@ -428,12 +428,13 @@ fn test_market_factory_different_parameters() {
     let pt2 = IPTDispatcher { contract_address: yt2.pt() };
 
     // Create markets with different parameters
+    // anchor must be >= 1 WAD (Pendle bound)
     let scalar1 = 30 * WAD;
-    let anchor1 = WAD / 20; // 5% APY
+    let anchor1 = WAD; // 1 WAD (minimum)
     let fee1 = WAD / 200; // 0.5% fee
 
     let scalar2 = 100 * WAD;
-    let anchor2 = WAD / 5; // 20% APY
+    let anchor2 = 2 * WAD; // 2 WAD
     let fee2 = WAD / 50; // 2% fee
 
     let market1 = factory.create_market(pt1.contract_address, scalar1, anchor1, fee1, 0);
@@ -454,10 +455,10 @@ fn test_market_factory_large_parameters() {
     let (_, _, _, pt, factory) = setup();
 
     // Use large (but valid) scalar and anchor values
-    // scalar_root max: 1000 WAD, anchor max: ~4.6 WAD, fee max: 0.1 WAD (10%)
+    // scalar_root max: 1000 WAD, anchor max: ~4.6 WAD, fee max: ln(1.05) ≈ 0.0488 WAD
     let large_scalar = 1000 * WAD; // Maximum allowed scalar
     let large_anchor = 4 * WAD + (WAD / 2); // 4.5 WAD (within ~4.6 max)
-    let large_fee = WAD / 10; // 10% fee (maximum allowed)
+    let large_fee = 48_790_164_169_432_000_u256; // ln(1.05) WAD (maximum allowed)
 
     let market_addr = factory
         .create_market(pt.contract_address, large_scalar, large_anchor, large_fee, 0);
@@ -471,9 +472,9 @@ fn test_market_factory_small_parameters() {
     let (_, _, _, pt, factory) = setup();
 
     // Use small (but valid) scalar and anchor values
-    // scalar_root min: 1 WAD, anchor min: 0, fee min: 0
+    // scalar_root min: 1 WAD, anchor min: 1 WAD (Pendle bound), fee min: 0
     let small_scalar = WAD; // 1 WAD (minimum allowed)
-    let small_anchor = WAD / 1000; // 0.001 WAD (small but valid anchor)
+    let small_anchor = WAD; // 1 WAD (minimum allowed - Pendle requires >= 1 WAD)
     let small_fee = WAD / 10000; // 0.01% fee (small but valid)
 
     let market_addr = factory
@@ -530,14 +531,232 @@ fn test_market_factory_anchor_too_large() {
 }
 
 #[test]
+#[should_panic(expected: 'HZN: invalid anchor')]
+fn test_market_factory_anchor_too_small() {
+    let (_, _, _, pt, factory) = setup();
+
+    // initial_anchor below minimum (1 WAD) - Pendle requires initial_anchor >= WAD
+    let invalid_anchor = WAD / 2; // 0.5 WAD - below 1 WAD min
+    factory.create_market(pt.contract_address, default_scalar_root(), invalid_anchor, WAD / 100, 0);
+}
+
+#[test]
 #[should_panic(expected: 'HZN: invalid fee')]
 fn test_market_factory_fee_too_large() {
     let (_, _, _, pt, factory) = setup();
 
-    // fee_rate above maximum (10% = 0.1 WAD)
-    let invalid_fee = WAD / 5; // 20% fee - above 10% max
+    // ln_fee_rate_root above maximum (ln(1.05) ≈ 0.0488 WAD)
+    let invalid_fee = 50_000_000_000_000_000_u256; // 0.05 WAD - above ln(1.05) max
     factory
         .create_market(
             pt.contract_address, default_scalar_root(), default_initial_anchor(), invalid_fee, 0,
         );
+}
+
+// ============ Fee Configuration Tests (Step 2.1) ============
+
+#[test]
+fn test_market_factory_set_treasury() {
+    let factory = deploy_market_factory();
+
+    // Initial treasury should be zero
+    assert(factory.get_treasury().is_zero(), 'Treasury should be zero');
+
+    // Set treasury as admin
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_treasury(treasury());
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify treasury was set
+    assert(factory.get_treasury() == treasury(), 'Treasury should be set');
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_market_factory_set_treasury_unauthorized() {
+    let factory = deploy_market_factory();
+
+    // Try to set treasury as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_treasury(treasury());
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_market_factory_set_default_reserve_fee_percent() {
+    let factory = deploy_market_factory();
+
+    // Initial reserve fee should be zero
+    assert(factory.get_default_reserve_fee_percent() == 0, 'Reserve fee should be zero');
+
+    // Set reserve fee as admin
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_reserve_fee_percent(20); // 20%
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify reserve fee was set
+    assert(factory.get_default_reserve_fee_percent() == 20, 'Reserve fee should be 20');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee')]
+fn test_market_factory_set_reserve_fee_too_high() {
+    let factory = deploy_market_factory();
+
+    // Try to set reserve fee > 100
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_reserve_fee_percent(101);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_market_factory_set_reserve_fee_unauthorized() {
+    let factory = deploy_market_factory();
+
+    // Try to set reserve fee as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_default_reserve_fee_percent(20);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_market_factory_get_market_config_defaults() {
+    let factory = deploy_market_factory();
+    let router = user1();
+    let market = user1(); // Using user1 as a fake market address for this test
+
+    // Set up factory config
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_treasury(treasury());
+    factory.set_default_reserve_fee_percent(15);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Get market config (no override set)
+    let config = factory.get_market_config(market, router);
+
+    assert(config.treasury == treasury(), 'Wrong treasury');
+    assert(config.reserve_fee_percent == 15, 'Wrong reserve fee');
+    assert(config.ln_fee_rate_root == 0, 'Should have no override');
+}
+
+#[test]
+fn test_market_factory_set_override_fee() {
+    let (_, _, _, pt, factory) = setup();
+
+    // Create a market
+    let market_fee = default_fee_rate();
+    let market_addr = factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            market_fee,
+            default_reserve_fee_percent(),
+        );
+
+    let router = user1();
+    let override_fee = market_fee / 2; // Half the base fee
+
+    // Set override fee as admin
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_override_fee(router, market_addr, override_fee);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify override was set
+    let config = factory.get_market_config(market_addr, router);
+    assert(config.ln_fee_rate_root == override_fee, 'Override should be set');
+
+    // Different router should not have override
+    let other_router: ContractAddress = 'other_router'.try_into().unwrap();
+    let config2 = factory.get_market_config(market_addr, other_router);
+    assert(config2.ln_fee_rate_root == 0, 'Other router has no override');
+}
+
+#[test]
+fn test_market_factory_clear_override_fee() {
+    let (_, _, _, pt, factory) = setup();
+
+    // Create a market
+    let market_fee = default_fee_rate();
+    let market_addr = factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            market_fee,
+            default_reserve_fee_percent(),
+        );
+
+    let router = user1();
+    let override_fee = market_fee / 2;
+
+    // Set then clear override
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_override_fee(router, market_addr, override_fee);
+    factory.set_override_fee(router, market_addr, 0); // Clear override
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify override was cleared
+    let config = factory.get_market_config(market_addr, router);
+    assert(config.ln_fee_rate_root == 0, 'Override should be cleared');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid market')]
+fn test_market_factory_set_override_invalid_market() {
+    let factory = deploy_market_factory();
+    let fake_market: ContractAddress = 'fake_market'.try_into().unwrap();
+    let router = user1();
+
+    // Try to set override for a market not deployed by this factory
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_override_fee(router, fake_market, WAD / 200);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: override fee too high')]
+fn test_market_factory_set_override_too_high() {
+    let (_, _, _, pt, factory) = setup();
+
+    // Create a market with 1% fee
+    let market_fee = WAD / 100;
+    let market_addr = factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            market_fee,
+            default_reserve_fee_percent(),
+        );
+
+    let router = user1();
+    // Try to set override higher than or equal to market's base fee
+    let override_fee = market_fee; // Same as base fee - should fail
+
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_override_fee(router, market_addr, override_fee);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_market_factory_set_override_unauthorized() {
+    let (_, _, _, pt, factory) = setup();
+
+    // Create a market
+    let market_addr = factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            default_fee_rate(),
+            default_reserve_fee_percent(),
+        );
+
+    // Try to set override as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_override_fee(user1(), market_addr, WAD / 200);
+    stop_cheat_caller_address(factory.contract_address);
 }
