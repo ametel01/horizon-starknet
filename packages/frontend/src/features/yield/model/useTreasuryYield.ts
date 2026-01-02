@@ -1,11 +1,10 @@
 'use client';
 
-import { useQueries } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
-
 import { useStarknet } from '@features/wallet';
 import { formatWad, formatWadPercent } from '@shared/math';
 import { getYTContract } from '@shared/starknet/contracts';
+import { useQueries } from '@tanstack/react-query';
+import { uint256 } from 'starknet';
 
 import type { InterestFeeInfo } from './useInterestFee';
 import type { PostExpiryInfo } from './usePostExpiryStatus';

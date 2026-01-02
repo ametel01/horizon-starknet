@@ -1,8 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-
 import { useAccount } from '@features/wallet';
+import { useQuery } from '@tanstack/react-query';
 
 /**
  * P&L timeline data types

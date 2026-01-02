@@ -1,11 +1,10 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { uint256, type ProviderInterface } from 'starknet';
-
 import type { MarketData } from '@entities/market';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { type ProviderInterface, uint256 } from 'starknet';
 
 // Helper to convert Uint256 or bigint to bigint
 function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {

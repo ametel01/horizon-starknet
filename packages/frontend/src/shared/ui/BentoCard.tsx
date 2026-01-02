@@ -1,8 +1,7 @@
 'use client';
 
-import { type ReactNode, useEffect, useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
+import { type ReactNode, useEffect, useState } from 'react';
 
 export interface BentoCardProps {
   children: ReactNode;

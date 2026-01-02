@@ -1,10 +1,9 @@
-import { desc } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, treasuryYieldSummary, ytTreasuryInterestRedeemed } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { desc } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<TreasuryAn
   if (rateLimitResult) return rateLimitResult as NextResponse<TreasuryAnalyticsResponse>;
 
   const searchParams = request.nextUrl.searchParams;
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 200);
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '50', 10), 200);
 
   try {
     // Get summary from materialized view

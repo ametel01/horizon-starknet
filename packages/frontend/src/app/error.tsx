@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-
 import { logError } from '@shared/server/logger';
 import { Button } from '@shared/ui/Button';
 import {
@@ -12,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@shared/ui/Card';
+import { useEffect } from 'react';
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };

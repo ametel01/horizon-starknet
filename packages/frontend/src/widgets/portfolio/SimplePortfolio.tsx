@@ -1,9 +1,5 @@
 'use client';
 
-import { AlertTriangleIcon, Wallet, Zap } from 'lucide-react';
-import Link from 'next/link';
-import { type ReactNode, useCallback, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import type { EnhancedPosition } from '@entities/position';
 import { formatUsd } from '@entities/position/lib';
@@ -14,13 +10,16 @@ import { ClaimValueWarning, useClaimYield } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { daysToExpiry, formatExpiry } from '@shared/math/yield';
-import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
+import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { AlertTriangleIcon, Wallet, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { type ReactNode, useCallback, useState } from 'react';
 
 interface SimplePortfolioProps {
   markets: MarketData[];

@@ -1,16 +1,15 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-
 import { useDashboardMarkets } from '@features/markets';
-import { usePortfolioHistory, useEnhancedPositions } from '@features/portfolio';
+import { useEnhancedPositions, usePortfolioHistory } from '@features/portfolio';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation

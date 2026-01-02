@@ -65,7 +65,7 @@ async function resetCheckpoints() {
     process.env["DATABASE_URL"] ?? process.env["POSTGRES_CONNECTION_STRING"];
   if (!databaseUrl) {
     log.fatal(
-      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required",
+      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required"
     );
     process.exit(1);
   }
@@ -88,7 +88,7 @@ async function resetCheckpoints() {
 
     // Drop the refresh function
     try {
-      await sql.unsafe(`DROP FUNCTION IF EXISTS refresh_all_views()`);
+      await sql.unsafe("DROP FUNCTION IF EXISTS refresh_all_views()");
       log.debug("Dropped refresh_all_views function");
     } catch (e: unknown) {
       const error = e as Error;
@@ -124,7 +124,7 @@ async function resetCheckpoints() {
     }
 
     log.info(
-      "Reset complete. All event data and checkpoints cleared. Indexers will restart from startingBlock.",
+      "Reset complete. All event data and checkpoints cleared. Indexers will restart from startingBlock."
     );
   } catch (error) {
     log.fatal({ error }, "Failed to reset");

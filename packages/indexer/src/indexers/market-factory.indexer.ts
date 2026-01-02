@@ -13,12 +13,11 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   marketFactoryClassHashUpdated,
   marketFactoryMarketCreated,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -36,8 +35,6 @@ import {
   validateEvent,
 } from "../lib/validation";
 
-import type { ApibaraRuntimeConfig } from "apibara/types";
-
 // Event selectors using Apibara's getSelector helper
 const MARKET_CREATED = getSelector("MarketCreated");
 const MARKET_CLASS_HASH_UPDATED = getSelector("MarketClassHashUpdated");
@@ -45,7 +42,7 @@ const MARKET_CLASS_HASH_UPDATED = getSelector("MarketClassHashUpdated");
 const log = createIndexerLogger("market-factory");
 
 export default function marketFactoryIndexer(
-  runtimeConfig: ApibaraRuntimeConfig,
+  runtimeConfig: ApibaraRuntimeConfig
 ) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -55,7 +52,7 @@ export default function marketFactoryIndexer(
     getDrizzleOptions({
       marketFactoryMarketCreated,
       marketFactoryClassHashUpdated,
-    }),
+    })
   );
 
   logIndexerStart(log, { streamUrl, startingBlock: config.startingBlock });
@@ -120,7 +117,7 @@ export default function marketFactoryIndexer(
                 eventName: "MarketCreated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -143,12 +140,12 @@ export default function marketFactoryIndexer(
             const underlyingSymbol = decodeByteArray(
               data,
               11,
-              "underlying_symbol",
+              "underlying_symbol"
             );
             const initialExchangeRate = readU256(
               data,
               14,
-              "initial_exchange_rate",
+              "initial_exchange_rate"
             );
             // data[16] is timestamp (unused)
             const marketIndex = Number(data[17] ?? "0");
@@ -182,7 +179,7 @@ export default function marketFactoryIndexer(
                 eventName: "MarketClassHashUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -216,7 +213,7 @@ export default function marketFactoryIndexer(
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -230,7 +227,7 @@ export default function marketFactoryIndexer(
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 

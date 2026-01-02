@@ -1,11 +1,10 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
-
 import { useStarknet } from '@features/wallet';
 import { formatWad } from '@shared/math';
 import { getYTContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { uint256 } from 'starknet';
 
 /**
  * Post-expiry status information for a YT token

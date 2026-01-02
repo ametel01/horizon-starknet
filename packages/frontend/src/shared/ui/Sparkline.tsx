@@ -1,9 +1,8 @@
 'use client';
 
+import { cn } from '@shared/lib/utils';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import { memo, type ReactNode, useEffect, useMemo, useState } from 'react';
-
-import { cn } from '@shared/lib/utils';
 
 /**
  * Data point for sparkline charts

@@ -1,10 +1,9 @@
-import { eq, desc, and, gte } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, marketSwap } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { and, desc, eq, gte } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,8 +92,8 @@ export async function GET(
 
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  const days = parseInt(searchParams.get('days') ?? '30');
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '20'), 100);
+  const days = Number.parseInt(searchParams.get('days') ?? '30', 10);
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '20', 10), 100);
 
   try {
     // Calculate the start date

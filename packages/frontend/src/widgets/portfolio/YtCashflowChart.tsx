@@ -1,22 +1,21 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-import {
-  Bar,
-  CartesianGrid,
-  Line,
-  ComposedChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-
 import { useDashboardMarkets } from '@features/markets';
 import { usePositionPnl } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
+import { type ReactNode, useMemo } from 'react';
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 /**
  * Format date for grouping (YYYY-MM-DD)

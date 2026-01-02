@@ -1,13 +1,12 @@
 'use client';
 
-import { ExternalLinkIcon, GiftIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { useTokenInfo } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { ExternalLinkIcon, GiftIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { type RewardClaimEvent, useRewardHistory } from '../model';
 

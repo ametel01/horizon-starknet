@@ -1,5 +1,16 @@
 'use client';
 
+import type { MarketData } from '@entities/market';
+import { AddLiquidityForm, RemoveLiquidityForm } from '@features/liquidity';
+import { useDashboardMarkets } from '@features/markets';
+import { useTokenBalance } from '@features/portfolio';
+import { useStarknet } from '@features/wallet';
+import { ApyBreakdown, useApyBreakdown } from '@features/yield';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { SkeletonCard } from '@shared/ui/Skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 import BigNumber from 'bignumber.js';
 import {
   AlertTriangle,
@@ -13,18 +24,6 @@ import {
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-
-import type { MarketData } from '@entities/market';
-import { AddLiquidityForm, RemoveLiquidityForm } from '@features/liquidity';
-import { useDashboardMarkets } from '@features/markets';
-import { useTokenBalance } from '@features/portfolio';
-import { useStarknet } from '@features/wallet';
-import { ApyBreakdown, useApyBreakdown } from '@features/yield';
-import { cn } from '@shared/lib/utils';
-import { formatWadCompact } from '@shared/math/wad';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { SkeletonCard } from '@shared/ui/Skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 
 type PoolTab = 'add' | 'remove';
 

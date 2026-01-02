@@ -1,17 +1,16 @@
-import { desc, eq } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { getCacheHeaders } from '@shared/server/cache';
-import { db, marketDailyStats, marketCurrentState } from '@shared/server/db';
+import { db, marketCurrentState, marketDailyStats } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
 import {
-  validateQuery,
-  validateParam,
-  starknetAddressSchema,
   dateRangeSchema,
+  starknetAddressSchema,
+  validateParam,
+  validateQuery,
 } from '@shared/server/validations/api';
+import { desc, eq } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const WAD = BigInt(10) ** BigInt(18);
 const SECONDS_PER_YEAR = 31_536_000;

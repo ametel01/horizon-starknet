@@ -1,28 +1,28 @@
 // Rewards feature model - hooks for SYWithRewards reward distribution
-export { useRewardTokens } from './useRewardTokens';
+
 export {
+  type AccruedReward,
   useAccruedRewards,
   useHasClaimableRewards,
   useTotalAccruedRewards,
-  type AccruedReward,
 } from './useAccruedRewards';
-export { useClaimRewards, useClaimAllRewards } from './useClaimRewards';
-export { usePortfolioRewards, type SyRewards, type PortfolioRewards } from './usePortfolioRewards';
+export { useClaimAllRewards, useClaimRewards } from './useClaimRewards';
+export { type PortfolioRewards, type SyRewards, usePortfolioRewards } from './usePortfolioRewards';
+// Indexed reward APY calculation
+export {
+  type RewardApyData,
+  type RewardApyResponse,
+  useRewardApy,
+  useTotalRewardApy,
+} from './useRewardApy';
 
 // Indexed reward history (from API/database)
 export {
+  type RewardClaimEvent,
+  type RewardSummary,
+  type RewardsHistoryResponse,
+  type RewardsSummaryResponse,
   useRewardHistory,
   useRewardSummary,
-  type RewardClaimEvent,
-  type RewardsHistoryResponse,
-  type RewardSummary,
-  type RewardsSummaryResponse,
 } from './useRewardHistory';
-
-// Indexed reward APY calculation
-export {
-  useRewardApy,
-  useTotalRewardApy,
-  type RewardApyData,
-  type RewardApyResponse,
-} from './useRewardApy';
+export { useRewardTokens } from './useRewardTokens';

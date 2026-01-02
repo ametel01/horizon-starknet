@@ -5,8 +5,8 @@
  * These can be run with: bun test src/lib/math/amm.test.ts
  */
 
-import BigNumber from 'bignumber.js';
 import { describe, expect, test } from 'bun:test';
+import BigNumber from 'bignumber.js';
 
 import {
   calcSwapExactPtForSy,
@@ -22,8 +22,8 @@ import {
   getRateScalar,
   getTimeAdjustedFeeRate,
   getTimeToExpiry,
-  SECONDS_PER_YEAR,
   type MarketState,
+  SECONDS_PER_YEAR,
 } from './amm';
 import { WAD_BIGINT } from './wad';
 

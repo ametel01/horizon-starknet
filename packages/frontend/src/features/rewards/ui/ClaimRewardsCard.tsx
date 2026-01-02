@@ -1,8 +1,5 @@
 'use client';
 
-import { GiftIcon } from 'lucide-react';
-import { type ReactNode, useCallback, useMemo } from 'react';
-
 import { useTokenInfo } from '@features/portfolio';
 import { useAccount } from '@features/wallet';
 import { useEstimateFee } from '@shared/hooks';
@@ -14,6 +11,8 @@ import { FormActions, FormHeader, FormLayout } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { GiftIcon } from 'lucide-react';
+import { type ReactNode, useCallback, useMemo } from 'react';
 
 import { type AccruedReward, useAccruedRewards, useClaimRewards } from '../model';
 

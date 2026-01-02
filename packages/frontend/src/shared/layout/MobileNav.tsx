@@ -1,12 +1,11 @@
 'use client';
 
+import { cn } from '@shared/lib/utils';
+import { useUIMode } from '@shared/theme/ui-mode-context';
 import { ArrowRightLeft, Droplets, Home, PlusCircle, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-
-import { cn } from '@shared/lib/utils';
-import { useUIMode } from '@shared/theme/ui-mode-context';
 
 /**
  * Mobile Bottom Navigation
@@ -113,11 +112,7 @@ export function MobileNav(): ReactNode {
   ];
 
   return (
-    <nav
-      className="fixed right-0 bottom-0 left-0 z-50 md:hidden"
-      role="navigation"
-      aria-label="Mobile navigation"
-    >
+    <nav className="fixed right-0 bottom-0 left-0 z-50 md:hidden" aria-label="Mobile navigation">
       {/* Glassmorphism container */}
       <div className="bg-background/80 border-border supports-[backdrop-filter]:bg-background/60 border-t backdrop-blur-xl">
         {/* Navigation grid */}

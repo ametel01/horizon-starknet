@@ -195,5 +195,5 @@ export function validateParam<T extends z.ZodType>(
 export function normalizeStarknetAddress(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }

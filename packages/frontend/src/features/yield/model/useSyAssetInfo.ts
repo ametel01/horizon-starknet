@@ -1,9 +1,8 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-
 import { useStarknet } from '@features/wallet';
 import { getSYContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /** Asset type as defined in the SY contract */
 export type AssetType = 'Token' | 'Liquidity';
@@ -39,7 +38,7 @@ function toAddressString(address: unknown): string {
     return address.startsWith('0x') ? address : `0x${address}`;
   }
   if (typeof address === 'bigint') {
-    return '0x' + address.toString(16).padStart(64, '0');
+    return `0x${address.toString(16).padStart(64, '0')}`;
   }
   return '0x0';
 }
@@ -90,7 +89,7 @@ export function useSyAssetInfo(syAddress: string | undefined): UseQueryResult<Sy
       };
     },
     enabled: syAddress !== undefined,
-    staleTime: Infinity, // Asset info never changes after deployment
+    staleTime: Number.POSITIVE_INFINITY, // Asset info never changes after deployment
   });
 }
 

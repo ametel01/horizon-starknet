@@ -7,12 +7,12 @@
 import { hash } from "starknet";
 import { describe, expect, it } from "vitest";
 
-import { matchSelector, decodeByteArray, readU256 } from "../src/lib/utils";
+import { decodeByteArray, matchSelector, readU256 } from "../src/lib/utils";
 
 // Event selectors
 const MARKET_CREATED = hash.getSelectorFromName("MarketCreated");
 const MARKET_CLASS_HASH_UPDATED = hash.getSelectorFromName(
-  "MarketClassHashUpdated",
+  "MarketClassHashUpdated"
 );
 
 // Transform function (extracted from indexer logic)

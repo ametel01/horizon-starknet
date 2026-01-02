@@ -7,13 +7,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ParseError,
-  InvariantError,
-  DataError,
-  invariant,
   assertNever,
-  isProgrammerError,
+  DataError,
+  InvariantError,
+  invariant,
   isDataError,
+  isProgrammerError,
+  ParseError,
 } from "../src/lib/errors";
 
 // ============================================================
@@ -80,7 +80,7 @@ describe("InvariantError", () => {
 
     expect(error.name).toBe("InvariantError");
     expect(error.message).toBe(
-      "Invariant violation: Database connection missing",
+      "Invariant violation: Database connection missing"
     );
   });
 

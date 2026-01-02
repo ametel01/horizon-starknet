@@ -13,12 +13,11 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   factoryClassHashesUpdated,
   factoryYieldContractsCreated,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -36,8 +35,6 @@ import {
   validateEvent,
 } from "../lib/validation";
 
-import type { ApibaraRuntimeConfig } from "apibara/types";
-
 // Event selectors using Apibara's getSelector helper
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 const CLASS_HASHES_UPDATED = getSelector("ClassHashesUpdated");
@@ -53,7 +50,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     getDrizzleOptions({
       factoryYieldContractsCreated,
       factoryClassHashesUpdated,
-    }),
+    })
   );
 
   logIndexerStart(log, { streamUrl, startingBlock: config.startingBlock });
@@ -118,7 +115,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "YieldContractsCreated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -136,19 +133,19 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const underlyingSymbol = decodeByteArray(
               data,
               4,
-              "underlying_symbol",
+              "underlying_symbol"
             );
             // data[7-8] = initial_exchange_rate (u256), data[9] = timestamp, data[10] = market_index
             const initialExchangeRate = readU256(
               data,
               7,
-              "initial_exchange_rate",
+              "initial_exchange_rate"
             );
             const marketIndex = Number(data[10] ?? "0");
 
             log.info(
               { sy, pt, yt, underlying, symbol: underlyingSymbol },
-              "YieldContractsCreated",
+              "YieldContractsCreated"
             );
 
             yieldContractsRows.push({
@@ -176,7 +173,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "ClassHashesUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -212,7 +209,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -226,7 +223,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 

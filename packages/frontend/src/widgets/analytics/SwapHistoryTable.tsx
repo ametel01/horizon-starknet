@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useCallback, useRef } from 'react';
-
 import { useMarketSwaps } from '@features/markets';
 import type { SwapEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
@@ -9,6 +7,7 @@ import { formatWadCompact } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useCallback, useRef } from 'react';
 
 interface SwapHistoryTableProps {
   /** Market address to fetch swaps for */
@@ -26,9 +25,9 @@ function formatTimeAgo(timestamp: string): string {
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (seconds < 60) return 'just now';
-  if (seconds < 3600) return String(Math.floor(seconds / 60)) + 'm ago';
-  if (seconds < 86400) return String(Math.floor(seconds / 3600)) + 'h ago';
-  if (seconds < 604800) return String(Math.floor(seconds / 86400)) + 'd ago';
+  if (seconds < 3600) return `${String(Math.floor(seconds / 60))}m ago`;
+  if (seconds < 86400) return `${String(Math.floor(seconds / 3600))}h ago`;
+  if (seconds < 604800) return `${String(Math.floor(seconds / 86400))}d ago`;
   return date.toLocaleDateString();
 }
 

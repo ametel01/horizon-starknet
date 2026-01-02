@@ -1,10 +1,9 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type Call } from 'starknet';
-
 import { useAccount } from '@features/wallet';
 import { getYTContract } from '@shared/starknet/contracts';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Call } from 'starknet';
 
 interface ClaimYieldParams {
   ytAddress: string;

@@ -1,8 +1,7 @@
 'use client';
 
-import { memo, type ReactNode, useEffect, useRef, useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
+import { memo, type ReactNode, useEffect, useRef, useState } from 'react';
 
 export interface UseAnimatedNumberOptions {
   /** Duration of animation in ms */
@@ -20,9 +19,9 @@ export interface UseAnimatedNumberOptions {
  */
 export const easings = {
   linear: (t: number) => t,
-  easeOut: (t: number) => 1 - Math.pow(1 - t, 3),
-  easeInOut: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
-  spring: (t: number) => 1 - Math.pow(Math.cos(t * Math.PI * 0.5), 3),
+  easeOut: (t: number) => 1 - (1 - t) ** 3,
+  easeInOut: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2),
+  spring: (t: number) => 1 - Math.cos(t * Math.PI * 0.5) ** 3,
 } as const;
 
 /**
@@ -72,8 +71,7 @@ export function useAnimatedNumber(value: number, options: UseAnimatedNumberOptio
       const currentValue = startValue + delta * easedProgress;
 
       // Round to specified decimals during animation for smoother display
-      const roundedValue =
-        Math.round(currentValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
+      const roundedValue = Math.round(currentValue * 10 ** decimals) / 10 ** decimals;
       setDisplayValue(roundedValue);
 
       if (progress < 1) {

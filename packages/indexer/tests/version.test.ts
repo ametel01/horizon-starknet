@@ -29,9 +29,9 @@ describe("Version Module", () => {
 
   describe("getBuildInfo", () => {
     it("returns default values when env vars not set", () => {
-      delete process.env["GIT_COMMIT"];
-      delete process.env["GIT_BRANCH"];
-      delete process.env["BUILD_TIME"];
+      process.env["GIT_COMMIT"] = undefined;
+      process.env["GIT_BRANCH"] = undefined;
+      process.env["BUILD_TIME"] = undefined;
 
       const info = getBuildInfo();
 
@@ -103,7 +103,7 @@ describe("Version Module", () => {
     });
 
     it("handles unknown commit", () => {
-      delete process.env["GIT_COMMIT"];
+      process.env["GIT_COMMIT"] = undefined;
       process.env["npm_package_version"] = "2.0.0";
 
       const summary = getBuildSummary();
@@ -112,7 +112,7 @@ describe("Version Module", () => {
     });
 
     it("handles missing version", () => {
-      delete process.env["npm_package_version"];
+      process.env["npm_package_version"] = undefined;
       process.env["GIT_COMMIT"] = "abc123def";
 
       const summary = getBuildSummary();
@@ -158,7 +158,7 @@ describe("Version Module", () => {
 
   describe("isDevelopmentBuild", () => {
     it("returns true when commit is unknown", () => {
-      delete process.env["GIT_COMMIT"];
+      process.env["GIT_COMMIT"] = undefined;
 
       const isDev = isDevelopmentBuild();
 
@@ -197,7 +197,7 @@ describe("Version Module", () => {
           buildTime: "2025-12-28T10:00:00Z",
           env: "production",
         }),
-        "Build information",
+        "Build information"
       );
     });
 
@@ -213,7 +213,7 @@ describe("Version Module", () => {
           // Runtime can be Bun or Node depending on test runner
           runtime: expect.stringMatching(/^(Bun|Node)/),
         }),
-        "Build information",
+        "Build information"
       );
     });
   });
@@ -252,9 +252,9 @@ describe("Build Info Complete Flow", () => {
 
   it("simulates local development environment", () => {
     // Simulate local development (no CI vars set)
-    delete process.env["GIT_COMMIT"];
-    delete process.env["GIT_BRANCH"];
-    delete process.env["BUILD_TIME"];
+    process.env["GIT_COMMIT"] = undefined;
+    process.env["GIT_BRANCH"] = undefined;
+    process.env["BUILD_TIME"] = undefined;
     process.env.NODE_ENV = "development";
 
     const info = getBuildInfo();

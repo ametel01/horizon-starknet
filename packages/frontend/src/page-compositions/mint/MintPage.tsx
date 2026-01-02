@@ -1,10 +1,5 @@
 'use client';
 
-import { AlertCircle, BookOpen, Coins, Info, Layers } from 'lucide-react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
-
 import { SimpleEarnForm, SimpleWithdrawForm, WrapToSyForm } from '@features/earn';
 import { useDashboardMarkets } from '@features/markets';
 import { MintForm } from '@features/mint';
@@ -14,6 +9,10 @@ import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { SkeletonCard } from '@shared/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
+import { AlertCircle, BookOpen, Coins, Info, Layers } from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 
 type TabType = 'wrap' | 'split' | 'unwrap';
 type SimpleTabType = 'earn' | 'withdraw';

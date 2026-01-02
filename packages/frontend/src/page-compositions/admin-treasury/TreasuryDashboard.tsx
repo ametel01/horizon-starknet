@@ -1,15 +1,14 @@
 'use client';
 
-import { LockIcon, RefreshCwIcon, WalletIcon } from 'lucide-react';
-import Link from 'next/link';
-import type { ReactNode } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { useStarknet } from '@features/wallet';
 import { useIsAdmin, useTreasuryYield, type YTTreasurySummary } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWad } from '@shared/math';
 import { Alert, AlertDescription, AlertTitle, Card, CardContent, Skeleton } from '@shared/ui';
+import { LockIcon, RefreshCwIcon, WalletIcon } from 'lucide-react';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 /**
  * Treasury Dashboard for protocol administrators.

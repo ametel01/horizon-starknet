@@ -1,9 +1,8 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-
 import { useStarknet } from '@features/wallet';
 import { getSYWithRewardsContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
  * Hook to fetch reward tokens for an SYWithRewards contract.
@@ -32,7 +31,7 @@ export function useRewardTokens(syAddress: string | undefined): UseQueryResult<s
           return addr;
         }
         // Fallback: convert bigint to hex string
-        return '0x' + addr.toString(16).padStart(64, '0');
+        return `0x${addr.toString(16).padStart(64, '0')}`;
       });
     },
     enabled: !!syAddress,

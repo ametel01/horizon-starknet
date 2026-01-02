@@ -1,5 +1,10 @@
 'use client';
 
+import { usePtPriceHistory, useYieldCurve, type YieldCurveMarket } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { Badge } from '@shared/ui/badge';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 import { Activity, Calendar, CircleDot, Clock, Coins, Layers, TrendingUp } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
@@ -15,12 +20,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useYieldCurve, usePtPriceHistory, type YieldCurveMarket } from '@features/analytics';
-import { useDashboardMarkets } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { Badge } from '@shared/ui/badge';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Color palette for different underlying assets

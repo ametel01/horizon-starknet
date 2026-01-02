@@ -1,9 +1,8 @@
 'use client';
 
+import { cn } from '@shared/lib/utils';
 import { Check } from 'lucide-react';
 import { memo, type ReactNode } from 'react';
-
-import { cn } from '@shared/lib/utils';
 
 export interface Step {
   label: string;

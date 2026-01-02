@@ -1,9 +1,8 @@
 'use client';
 
+import { useAccount, useStarknet } from '@features/wallet';
 import { useCallback, useState } from 'react';
 import type { Call, InvokeFunctionResponse } from 'starknet';
-
-import { useAccount, useStarknet } from '@features/wallet';
 
 export type TransactionStatus = 'idle' | 'signing' | 'pending' | 'success' | 'error';
 export type TxStatus = TransactionStatus;

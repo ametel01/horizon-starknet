@@ -15,7 +15,7 @@ async function testConnection() {
 
   log.info(
     { streamUrl, tokenSet: Boolean(dnaToken) },
-    "Testing DNA connection...",
+    "Testing DNA connection..."
   );
 
   if (!dnaToken) {
@@ -31,7 +31,7 @@ async function testConnection() {
 
     log.info(
       { currentBlock: status.currentHead?.orderKey?.toString() },
-      "Connection successful",
+      "Connection successful"
     );
   } catch (error) {
     log.fatal({ error }, "Connection failed");

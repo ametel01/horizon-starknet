@@ -61,16 +61,11 @@ export function SecureScript({ src, integrity, ...props }: SecureScriptProps): R
   if (!sriHash) {
     // In development, warn but don't block
     if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        `[SecureScript] No SRI hash found for: ${src}\n` +
-          `Add it to SRI_HASHES in SecureScript.tsx or provide integrity prop.\n` +
-          `Generate hash: curl -s "${src}" | openssl dgst -sha384 -binary | openssl base64 -A`
-      );
     } else {
       // In production, throw error to prevent loading unverified scripts
       throw new Error(
         `SecureScript: No SRI hash registered for "${src}". ` +
-          `External scripts must have integrity verification.`
+          'External scripts must have integrity verification.'
       );
     }
   }

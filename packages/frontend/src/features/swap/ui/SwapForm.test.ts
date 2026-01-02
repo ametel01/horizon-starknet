@@ -8,10 +8,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-
-import { WAD } from '@/test/setup';
 import { calculateMinOutput } from '@features/swap';
 import { parseWad } from '@shared/math/wad';
+import { WAD } from '@/test/setup';
 
 type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';
 type TokenType = 'PT' | 'YT';

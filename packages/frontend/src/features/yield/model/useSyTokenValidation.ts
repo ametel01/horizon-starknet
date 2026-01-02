@@ -1,9 +1,8 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-
 import { useStarknet } from '@features/wallet';
 import { getSYContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 export interface SyTokenValidationResult {
   /** Whether the token is valid for deposit (wrapping) */

@@ -1,5 +1,11 @@
 'use client';
 
+import { usePtPriceHistory } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
@@ -11,13 +17,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { usePtPriceHistory } from '@features/analytics';
-import { useDashboardMarkets } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format PT price with appropriate precision

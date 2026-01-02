@@ -17,7 +17,7 @@ import { describe, expect, test } from 'bun:test';
 function normalizeAddressForDb(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }
 
 describe('normalizeAddressForDb', () => {
@@ -62,7 +62,7 @@ describe('normalizeAddressForDb', () => {
 describe('Query parameter parsing', () => {
   test('parses limit with max of 100', () => {
     const parseLimit = (value: string | null): number => {
-      return Math.min(parseInt(value ?? '50'), 100);
+      return Math.min(Number.parseInt(value ?? '50', 10), 100);
     };
 
     expect(parseLimit(null)).toBe(50);
@@ -74,7 +74,7 @@ describe('Query parameter parsing', () => {
 
   test('parses offset with default of 0', () => {
     const parseOffset = (value: string | null): number => {
-      return parseInt(value ?? '0');
+      return Number.parseInt(value ?? '0', 10);
     };
 
     expect(parseOffset(null)).toBe(0);

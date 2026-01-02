@@ -1,3 +1,4 @@
 // Display widgets - reusable display components
-export { TxStatus, TxLink } from './TxStatus';
-export { ExpiryCountdown, ExpiryBadge } from './ExpiryCountdown';
+
+export { ExpiryBadge, ExpiryCountdown } from './ExpiryCountdown';
+export { TxLink, TxStatus } from './TxStatus';

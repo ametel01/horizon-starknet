@@ -1,9 +1,5 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
-import { type ReactNode, useCallback, useState } from 'react';
-import { toast } from 'sonner';
-
 import {
   DEADLINE_OPTIONS,
   DEFAULT_DEADLINE_MINUTES,
@@ -23,6 +19,9 @@ import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
+import { Sparkles } from 'lucide-react';
+import { type ReactNode, useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 /**
  * Transaction Settings Panel
@@ -69,8 +68,12 @@ export function TransactionSettingsPanel({
 
   // Handle custom slippage submit with confirmation feedback
   const handleCustomSlippageSubmit = (): void => {
-    const value = parseFloat(customSlippage);
-    if (!isNaN(value) && value >= MIN_SLIPPAGE_BPS / 100 && value <= MAX_SLIPPAGE_BPS / 100) {
+    const value = Number.parseFloat(customSlippage);
+    if (
+      !Number.isNaN(value) &&
+      value >= MIN_SLIPPAGE_BPS / 100 &&
+      value <= MAX_SLIPPAGE_BPS / 100
+    ) {
       const bps = Math.round(value * 100);
       setSlippageBps(bps);
       setShowCustomSlippage(false);
@@ -84,8 +87,8 @@ export function TransactionSettingsPanel({
 
   // Handle custom deadline submit with confirmation feedback
   const handleCustomDeadlineSubmit = (): void => {
-    const value = parseInt(customDeadline, 10);
-    if (!isNaN(value) && value >= MIN_DEADLINE_MINUTES && value <= MAX_DEADLINE_MINUTES) {
+    const value = Number.parseInt(customDeadline, 10);
+    if (!Number.isNaN(value) && value >= MIN_DEADLINE_MINUTES && value <= MAX_DEADLINE_MINUTES) {
       setDeadlineMinutes(value);
       setShowCustomDeadline(false);
       setCustomDeadline('');

@@ -1,7 +1,3 @@
-import { and, desc, gte, or, sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import {
   db,
   enrichedRouterMintPY,
@@ -12,6 +8,9 @@ import {
 } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { and, desc, gte, or, sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +21,7 @@ export const dynamic = 'force-dynamic';
 function normalizeAddressForDb(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }
 
 const WAD = 10n ** 18n;
@@ -128,7 +127,7 @@ export async function GET(
 
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  const days = parseInt(searchParams.get('days') ?? '90');
+  const days = Number.parseInt(searchParams.get('days') ?? '90', 10);
   const cutoffDate = new Date(Date.now() - days * 86400000);
 
   try {
@@ -182,10 +181,15 @@ export async function GET(
         .limit(500),
 
       // Current positions
-      db.select().from(userPyPositions).where(addressMatchPositions),
+      db
+        .select()
+        .from(userPyPositions)
+        .where(addressMatchPositions),
 
       // All market states for rate lookup
-      db.select().from(marketCurrentState),
+      db
+        .select()
+        .from(marketCurrentState),
     ]);
 
     // Create market state lookup

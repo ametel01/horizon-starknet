@@ -40,4 +40,4 @@
  */
 
 export { NonceProvider, useNonce } from './NonceProvider';
-export { SecureScript, generateSRICommand } from './SecureScript';
+export { generateSRICommand, SecureScript } from './SecureScript';

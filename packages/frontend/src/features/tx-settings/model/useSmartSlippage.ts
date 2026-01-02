@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import { useMarketRates } from '@features/markets';
 import { usePriceImpact } from '@features/price';
+import { useMemo } from 'react';
 
 /**
  * Smart Slippage Calculation

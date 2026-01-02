@@ -1,12 +1,11 @@
 'use client';
 
-import { AlertCircleIcon, InfoIcon, MinusIcon, PercentIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { formatWad } from '@shared/math';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { AlertCircleIcon, InfoIcon, MinusIcon, PercentIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { useYieldClaimPreview, type YieldClaimPreview } from '../model/useUserYield';
 

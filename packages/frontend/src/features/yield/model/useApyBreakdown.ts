@@ -1,16 +1,15 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { uint256 } from 'starknet';
-
-import type { MarketApyBreakdown, SyRateData } from '@/types/apy';
 import type { MarketData } from '@entities/market';
 import { useStarknet } from '@features/wallet';
 import { ESTIMATED_YIELD_APYS } from '@shared/config/addresses';
 import { calculateApyBreakdown } from '@shared/math/apy-breakdown';
 import { WAD_BIGINT } from '@shared/math/wad';
 import { getSYContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { uint256 } from 'starknet';
+import type { MarketApyBreakdown, SyRateData } from '@/types/apy';
 
 // Helper to convert Uint256 or bigint to bigint
 function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {

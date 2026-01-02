@@ -1,11 +1,10 @@
 'use client';
 
-import { Search, FileText, X } from 'lucide-react';
+import { cn } from '@shared/lib/utils';
+import { FileText, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-import { cn } from '@shared/lib/utils';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SearchResult {
   title: string;

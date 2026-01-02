@@ -1,16 +1,15 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-
 import { ConnectButton } from '@features/wallet';
 import { ModeToggle } from '@shared/layout/mode-toggle';
 import { ThemeToggle } from '@shared/layout/theme-toggle';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Button } from '@shared/ui/Button';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 interface NavLink {
   href: string;

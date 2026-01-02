@@ -1,6 +1,27 @@
 'use client';
 
 import {
+  type DailyImpactStats,
+  type ImpactDistributionBucket,
+  useExecutionQuality,
+} from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+  StatCardSkeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@shared/ui';
+import {
   Activity,
   AlertTriangle,
   ArrowDownRight,
@@ -28,28 +49,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import {
-  useExecutionQuality,
-  type ImpactDistributionBucket,
-  type DailyImpactStats,
-} from '@features/analytics';
-import { useDashboardMarkets } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { formatWadCompact } from '@shared/math/wad';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Skeleton,
-  StatCardSkeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@shared/ui';
 
 /**
  * Format basis points with appropriate precision

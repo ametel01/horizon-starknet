@@ -1,9 +1,7 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
-import { useMint, TokenInput, TokenOutput } from '@features/mint';
+import { TokenInput, TokenOutput, useMint } from '@features/mint';
 import { useAccount } from '@features/wallet';
 import { useEstimateFee } from '@shared/hooks';
 import { toWad } from '@shared/math/wad';
@@ -22,6 +20,7 @@ import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface MintFormProps {
   market: MarketData;

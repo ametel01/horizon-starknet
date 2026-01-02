@@ -1,5 +1,11 @@
 'use client';
 
+import { useProtocolTvl } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 import { Calendar, CircleDot, DollarSign, Layers, Lock, TrendingUp } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
@@ -11,13 +17,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useProtocolTvl } from '@features/analytics';
-import { useDashboardMarkets } from '@features/markets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
-import { cn } from '@shared/lib/utils';
-import { fromWad } from '@shared/math/wad';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format USD value with compact notation for large numbers

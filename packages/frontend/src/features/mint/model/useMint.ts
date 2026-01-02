@@ -1,14 +1,13 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
-import { type Call, uint256 } from 'starknet';
-
 import { useTokenAllowance, useTokenBalance } from '@features/portfolio';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { getDeadline } from '@shared/lib/deadline';
 import { toWad } from '@shared/math/wad';
+import { useCallback, useMemo } from 'react';
+import { type Call, uint256 } from 'starknet';
 
 interface UseMintParams {
   syAddress: string;

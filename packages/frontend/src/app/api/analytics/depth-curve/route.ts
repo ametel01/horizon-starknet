@@ -1,15 +1,14 @@
-import { eq } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-
-import { calcSwapExactSyForPt, calcSwapExactPtForSy, type MarketState } from '@shared/math/amm';
+import { calcSwapExactPtForSy, calcSwapExactSyForPt, type MarketState } from '@shared/math/amm';
 import { WAD_BIGINT } from '@shared/math/wad';
 import { getCacheHeaders } from '@shared/server/cache';
 import { db, marketCurrentState, marketFactoryMarketCreated } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
-import { validateQuery, starknetAddressSchema } from '@shared/server/validations/api';
+import { starknetAddressSchema, validateQuery } from '@shared/server/validations/api';
+import { eq } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 /**
  * Depth point - price impact at a specific trade size
@@ -137,10 +136,7 @@ function calculateDepthCurve(
           outputAmount: result.amountOut.toString(),
         });
       }
-    } catch {
-      // Skip points that exceed liquidity
-      continue;
-    }
+    } catch {}
   }
 
   return points;

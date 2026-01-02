@@ -1,26 +1,25 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import {
   getFactoryContract,
   getMarketContract,
   getMarketFactoryContract,
+  getMockYieldTokenContract,
   getPTContract,
   getRouterContract,
   getSYContract,
   getYTContract,
-  getMockYieldTokenContract,
   type TypedFactory,
   type TypedMarket,
   type TypedMarketFactory,
+  type TypedMockYieldToken,
   type TypedPT,
   type TypedRouter,
   type TypedSY,
   type TypedYT,
-  type TypedMockYieldToken,
 } from '@shared/starknet/contracts';
+import { useMemo } from 'react';
 
 export interface UseContractsReturn {
   // Core protocol contracts (for writes, needs account)

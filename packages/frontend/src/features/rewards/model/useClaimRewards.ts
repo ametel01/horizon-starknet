@@ -1,11 +1,10 @@
 'use client';
 
+import { useAccount } from '@features/wallet';
+import { useTransaction } from '@shared/hooks/useTransaction';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import type { Call } from 'starknet';
-
-import { useAccount } from '@features/wallet';
-import { useTransaction } from '@shared/hooks/useTransaction';
 
 interface UseClaimRewardsReturn {
   claim: () => Promise<void>;

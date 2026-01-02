@@ -7,15 +7,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  getMetrics,
+  generateReport,
   getAllMetrics,
-  recordEvent,
-  recordEvents,
+  getMetrics,
+  measureDbLatency,
   recordBlock,
   recordDbLatency,
+  recordEvent,
+  recordEvents,
   recordReorg,
-  generateReport,
-  measureDbLatency,
   startMetricsReporter,
   stopMetricsReporter,
 } from "../src/lib/metrics";
@@ -334,7 +334,7 @@ describe("Metrics Module", () => {
       await expect(
         measureDbLatency("factory", () => {
           return Promise.reject(new Error("Test error"));
-        }),
+        })
       ).rejects.toThrow("Test error");
 
       const metrics = getMetrics("factory");

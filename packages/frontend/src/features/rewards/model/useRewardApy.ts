@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
  * APY data for a single reward token.
@@ -80,5 +80,5 @@ export function useTotalRewardApy(syAddress: string | undefined): number {
     return 0;
   }
 
-  return data.rewardTokens.reduce((sum, token) => sum + parseFloat(token.estimatedApy), 0);
+  return data.rewardTokens.reduce((sum, token) => sum + Number.parseFloat(token.estimatedApy), 0);
 }

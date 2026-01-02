@@ -5,13 +5,11 @@
  * Provides pool management with graceful shutdown support.
  */
 
+import type { PoolConfig } from "pg";
 import { Pool } from "pg";
-
+import type { Logger } from "./logger";
 import { logger } from "./logger";
 import { registerCleanup } from "./shutdown";
-
-import type { Logger } from "./logger";
-import type { PoolConfig } from "pg";
 
 const log: Logger = logger.child({ module: "database" });
 
@@ -72,7 +70,7 @@ export function getPool(): Pool {
   const connectionString = process.env["POSTGRES_CONNECTION_STRING"];
   if (!connectionString) {
     throw new Error(
-      "POSTGRES_CONNECTION_STRING environment variable is required",
+      "POSTGRES_CONNECTION_STRING environment variable is required"
     );
   }
 
@@ -92,7 +90,7 @@ export function getPool(): Pool {
       min: poolConfig.min,
       idleTimeoutMillis: poolConfig.idleTimeoutMillis,
     },
-    "Database pool created",
+    "Database pool created"
   );
 
   // Register cleanup with shutdown handler (only once)
@@ -176,7 +174,7 @@ export async function closePool(): Promise<void> {
  * Get drizzle database options with pool configuration
  */
 export function getDrizzleOptions<TSchema extends Record<string, unknown>>(
-  schema: TSchema,
+  schema: TSchema
 ): {
   type: "node-postgres";
   connectionString: string;
@@ -186,7 +184,7 @@ export function getDrizzleOptions<TSchema extends Record<string, unknown>>(
   const connectionString = process.env["POSTGRES_CONNECTION_STRING"];
   if (!connectionString) {
     throw new Error(
-      "POSTGRES_CONNECTION_STRING environment variable is required",
+      "POSTGRES_CONNECTION_STRING environment variable is required"
     );
   }
   return {

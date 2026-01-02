@@ -1,10 +1,9 @@
-import { sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, getDatabaseInfo, isDatabaseConnected, type PoolMode } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +85,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<HealthResp
 
       const row = result[0] as { max_block: string | null } | undefined;
       if (row?.max_block !== null && row?.max_block !== undefined) {
-        lastIndexedBlock = parseInt(row.max_block, 10);
+        lastIndexedBlock = Number.parseInt(row.max_block, 10);
       }
 
       // Fetch current chain block to compare

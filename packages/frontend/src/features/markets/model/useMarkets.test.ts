@@ -13,7 +13,7 @@ import { describe, expect, test } from 'bun:test';
  */
 function toHexAddress(value: unknown): string {
   if (typeof value === 'bigint') {
-    return '0x' + value.toString(16).padStart(64, '0');
+    return `0x${value.toString(16).padStart(64, '0')}`;
   }
   return String(value);
 }
@@ -61,7 +61,7 @@ function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore:
  */
 function addressToHex(addr: unknown): string {
   if (typeof addr === 'bigint') {
-    return '0x' + addr.toString(16).padStart(64, '0');
+    return `0x${addr.toString(16).padStart(64, '0')}`;
   }
   if (typeof addr === 'string') {
     return addr;

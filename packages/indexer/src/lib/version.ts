@@ -147,6 +147,6 @@ export function logBuildInfo(log: {
       runtime: info.runtime,
       env: info.env,
     },
-    "Build information",
+    "Build information"
   );
 }

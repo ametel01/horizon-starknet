@@ -1,9 +1,5 @@
 'use client';
 
-import { AlertTriangle, ExternalLink, FlaskConical } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
-
 import { Button } from '@shared/ui/Button';
 import {
   Dialog,
@@ -14,6 +10,9 @@ import {
   DialogTitle,
 } from '@shared/ui/dialog';
 import { Separator } from '@shared/ui/separator';
+import { AlertTriangle, ExternalLink, FlaskConical } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface DisclaimerDialogProps {
   open: boolean;

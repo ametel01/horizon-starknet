@@ -1,19 +1,7 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts';
-
 import { useDashboardMarkets } from '@features/markets';
-import { usePositionPnl, type PositionPnlSummary } from '@features/portfolio';
+import { type PositionPnlSummary, usePositionPnl } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import {
@@ -27,6 +15,17 @@ import {
   TabsList,
   TabsTrigger,
 } from '@shared/ui';
+import { type ReactNode, useMemo, useState } from 'react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 /**
  * Format percentage with sign

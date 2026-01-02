@@ -8,30 +8,30 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   baseEventSchema,
-  factoryYieldContractsCreatedSchema,
   factoryClassHashesUpdatedSchema,
-  marketFactoryMarketCreatedSchema,
-  syDepositSchema,
-  syRedeemSchema,
-  syOracleRateUpdatedSchema,
-  ytMintPYSchema,
-  ytRedeemPYSchema,
-  ytRedeemPYPostExpirySchema,
-  ytInterestClaimedSchema,
-  ytExpiryReachedSchema,
-  marketMintSchema,
+  factoryYieldContractsCreatedSchema,
   marketBurnSchema,
-  marketSwapSchema,
-  marketImpliedRateUpdatedSchema,
+  marketFactoryMarketCreatedSchema,
   marketFeesCollectedSchema,
+  marketImpliedRateUpdatedSchema,
+  marketMintSchema,
   marketScalarRootUpdatedSchema,
+  marketSwapSchema,
+  routerAddLiquiditySchema,
   routerMintPYSchema,
   routerRedeemPYSchema,
-  routerAddLiquiditySchema,
   routerRemoveLiquiditySchema,
   routerSwapSchema,
   routerSwapYTSchema,
+  syDepositSchema,
+  syOracleRateUpdatedSchema,
+  syRedeemSchema,
   validateEvent,
+  ytExpiryReachedSchema,
+  ytInterestClaimedSchema,
+  ytMintPYSchema,
+  ytRedeemPYPostExpirySchema,
+  ytRedeemPYSchema,
 } from "../src/lib/validation";
 
 // Mock logger to suppress output during tests
@@ -605,7 +605,7 @@ describe("validateEvent", () => {
         eventName: "ClassHashesUpdated",
         blockNumber: 123,
         transactionHash: TX_HASH,
-      },
+      }
     );
 
     expect(result).toBeNull();

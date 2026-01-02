@@ -1,14 +1,13 @@
 'use client';
 
-import { Activity, AlertTriangle, CheckCircle, TrendingDown } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import {
   formatPriceImpact,
   getPriceImpactSeverity,
   type PriceImpactSeverity,
 } from '@shared/math/amm';
+import { Activity, AlertTriangle, CheckCircle, TrendingDown } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 interface PriceImpactMeterProps {
   impact: number;

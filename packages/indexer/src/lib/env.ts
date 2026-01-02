@@ -12,10 +12,8 @@
  */
 
 import { z } from "zod";
-
-import { logger } from "./logger";
-
 import type { Logger } from "./logger";
+import { logger } from "./logger";
 
 const log: Logger = logger.child({ module: "env" });
 
@@ -142,7 +140,7 @@ export function validateEnv(): Env {
     if (process.env.NODE_ENV === "production") {
       const errorMessages = errors.map((e) => `${e.path}: ${e.message}`);
       throw new Error(
-        `Environment validation failed: ${errorMessages.join(", ")}`,
+        `Environment validation failed: ${errorMessages.join(", ")}`
       );
     }
 
@@ -184,7 +182,7 @@ export function getEnv(): Env {
 export function hasEnv(key: keyof Env): boolean {
   const env = getEnv();
   // Use Object.prototype.hasOwnProperty to safely check
-  if (!Object.prototype.hasOwnProperty.call(env, key)) {
+  if (!Object.hasOwn(env, key)) {
     return false;
   }
   const descriptor = Object.getOwnPropertyDescriptor(env, key);

@@ -1,8 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { type ReactNode, useState } from 'react';
-
 import type { TxStatus as TxStatusType } from '@shared/hooks/useTransaction';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
@@ -10,8 +7,10 @@ import { formatExpiry } from '@shared/math/yield';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader } from '@shared/ui/Card';
 import { TxStatus } from '@widgets/display/TxStatus';
+import Link from 'next/link';
+import { type ReactNode, useState } from 'react';
 
-import { formatUsd, formatPercent } from '../lib';
+import { formatPercent, formatUsd } from '../lib';
 import type { EnhancedPosition } from '../model/types';
 
 export interface YieldEarnedData {

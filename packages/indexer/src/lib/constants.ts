@@ -90,7 +90,6 @@ export function getNetworkConfig(preset?: string): NetworkConfig {
       return SEPOLIA;
     case "devnet":
       return DEVNET;
-    case undefined:
     default:
       return MAINNET;
   }

@@ -1,11 +1,10 @@
 'use client';
 
-import { useQueries, type UseQueryResult } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { uint256, type ProviderInterface } from 'starknet';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import { getSYWithRewardsContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQueries } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { type ProviderInterface, uint256 } from 'starknet';
 
 import type { AccruedReward } from './useAccruedRewards';
 
@@ -62,7 +61,7 @@ function toAddressString(address: unknown): string {
     return address.startsWith('0x') ? address : `0x${address}`;
   }
   if (typeof address === 'bigint') {
-    return '0x' + address.toString(16).padStart(64, '0');
+    return `0x${address.toString(16).padStart(64, '0')}`;
   }
   return '0x0';
 }

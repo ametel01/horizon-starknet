@@ -17,7 +17,7 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   routerAddLiquidity,
   routerMintPY,
@@ -26,7 +26,6 @@ import {
   routerSwap,
   routerSwapYT,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -48,8 +47,6 @@ import {
   routerSwapYTSchema,
   validateEvent,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 const log = createIndexerLogger("router");
 
@@ -74,7 +71,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       routerRemoveLiquidity,
       routerSwap,
       routerSwapYT,
-    }),
+    })
   );
 
   logIndexerStart(log, { streamUrl, startingBlock: config.startingBlock });
@@ -248,7 +245,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "RemoveLiquidity",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -357,7 +354,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -371,7 +368,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 

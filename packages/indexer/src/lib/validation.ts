@@ -561,7 +561,7 @@ export interface ValidationContext {
 export function validateEvent<T>(
   schema: z.ZodType<T>,
   event: unknown,
-  context: ValidationContext,
+  context: ValidationContext
 ): T | null {
   const result = schema.safeParse(event);
 
@@ -591,7 +591,7 @@ export function validateEvent<T>(
               }
             : "unknown",
       },
-      "Event validation failed",
+      "Event validation failed"
     );
     return null;
   }
@@ -613,7 +613,7 @@ export function validateEvent<T>(
 export function validateEventStrict<T>(
   schema: z.ZodType<T>,
   event: unknown,
-  context: ValidationContext,
+  context: ValidationContext
 ): T {
   try {
     return schema.parse(event);
@@ -623,7 +623,7 @@ export function validateEventStrict<T>(
         .map((i) => `${i.path.join(".")}: ${i.message}`)
         .join(", ");
       throw new Error(
-        `[${context.indexer}] ${context.eventName} validation failed: ${errorDetails}`,
+        `[${context.indexer}] ${context.eventName} validation failed: ${errorDetails}`
       );
     }
     throw err;

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type { Call } from 'starknet';
-
 import { getTokenPrice, usePrices } from '@features/price';
 import { useAccount } from '@features/wallet';
 import { fromWad } from '@shared/math/wad';
+import { useEffect, useMemo, useState } from 'react';
+import type { Call } from 'starknet';
 
 /**
  * STRK native token address for gas price conversion

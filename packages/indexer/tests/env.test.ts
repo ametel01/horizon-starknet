@@ -83,7 +83,7 @@ describe("Environment Validation", () => {
       const env = validateEnv();
 
       expect(env.POSTGRES_CONNECTION_STRING).toBe(
-        "postgresql://user:pass@localhost:5432/db",
+        "postgresql://user:pass@localhost:5432/db"
       );
       expect(env.DNA_STREAM_URL).toBe("https://mainnet.starknet.a5a.ch");
       expect(env.DNA_TOKEN).toBe("test-token");

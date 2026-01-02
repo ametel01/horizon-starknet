@@ -1,12 +1,11 @@
 'use client';
 
-import { TrendingDownIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 import { Badge } from '@shared/ui/badge';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { TrendingDownIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { useNegativeYieldAlerts } from '../model/useNegativeYieldAlerts';
 import { useSyWatermark } from '../model/useSyWatermark';

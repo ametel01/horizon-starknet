@@ -23,7 +23,7 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   syDeposit,
   syNegativeYieldDetected,
@@ -34,7 +34,6 @@ import {
   syRewardsClaimed,
   syRewardTokenAdded,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -59,8 +58,6 @@ import {
   syUnpausedSchema,
   validateEvent,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 const log = createIndexerLogger("sy");
 
@@ -100,7 +97,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       syRewardsClaimed,
       syRewardIndexUpdated,
       syRewardTokenAdded,
-    }),
+    })
   );
 
   logIndexerStart(log, {
@@ -126,7 +123,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: syAddress, keys: [REWARDS_CLAIMED] },
       { address: syAddress, keys: [REWARD_INDEX_UPDATED] },
       { address: syAddress, keys: [REWARD_TOKEN_ADDED] },
-    ],
+    ]
   );
 
   return defineIndexer(StarknetStream)({
@@ -350,7 +347,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "NegativeYieldDetected",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -546,7 +543,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -560,7 +557,7 @@ export default function syIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 

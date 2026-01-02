@@ -1,8 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { type ReactNode, useEffect, useState } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { cn } from '@shared/lib/utils';
@@ -11,6 +8,8 @@ import { useUIMode } from '@shared/theme/ui-mode-context';
 import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Button } from '@shared/ui/Button';
 import { Skeleton } from '@shared/ui/Skeleton';
+import Link from 'next/link';
+import { type ReactNode, useEffect, useState } from 'react';
 
 /**
  * HeroSection - Immersive landing hero with animated gradient horizon

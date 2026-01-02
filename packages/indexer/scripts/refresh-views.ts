@@ -14,7 +14,7 @@ async function refreshViews() {
     process.env["DATABASE_URL"] ?? process.env["POSTGRES_CONNECTION_STRING"];
   if (!databaseUrl) {
     log.fatal(
-      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required",
+      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required"
     );
     process.exit(1);
   }

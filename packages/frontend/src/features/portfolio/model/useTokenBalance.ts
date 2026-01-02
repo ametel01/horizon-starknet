@@ -1,10 +1,9 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import { getERC20Contract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { uint256 } from 'starknet';
 
 interface TokenInfo {
   name: string;
@@ -133,7 +132,7 @@ export function useTokenInfo(
       };
     },
     enabled: enabled && !!tokenAddress,
-    staleTime: Infinity, // Token info doesn't change
+    staleTime: Number.POSITIVE_INFINITY, // Token info doesn't change
   });
 }
 
@@ -141,11 +140,11 @@ export function useTokenInfo(
 function feltToString(felt: bigint): string {
   let hex = felt.toString(16);
   if (hex.length % 2 !== 0) {
-    hex = '0' + hex;
+    hex = `0${hex}`;
   }
   let str = '';
   for (let i = 0; i < hex.length; i += 2) {
-    const charCode = parseInt(hex.substring(i, i + 2), 16);
+    const charCode = Number.parseInt(hex.substring(i, i + 2), 16);
     if (charCode > 0) {
       str += String.fromCharCode(charCode);
     }

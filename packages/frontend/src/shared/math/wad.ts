@@ -51,12 +51,12 @@ export function formatWadCompact(value: bigint | string): string {
 
   // Very large numbers (millions)
   if (absNum.gte(1_000_000)) {
-    return num.dividedBy(1_000_000).toFixed(2) + 'M';
+    return `${num.dividedBy(1_000_000).toFixed(2)}M`;
   }
 
   // Large numbers (thousands)
   if (absNum.gte(1_000)) {
-    return num.dividedBy(1_000).toFixed(2) + 'K';
+    return `${num.dividedBy(1_000).toFixed(2)}K`;
   }
 
   // Medium numbers (>= 1)
@@ -77,7 +77,7 @@ export function formatWadCompact(value: bigint | string): string {
  * Format a WAD value as a percentage
  */
 export function formatWadPercent(value: bigint | string, decimals = 2): string {
-  return fromWad(value).multipliedBy(100).toFixed(decimals) + '%';
+  return `${fromWad(value).multipliedBy(100).toFixed(decimals)}%`;
 }
 
 /**

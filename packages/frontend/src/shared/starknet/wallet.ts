@@ -1,7 +1,6 @@
-import { connect, disconnect } from '@starknet-io/get-starknet';
-import type { StarknetWindowObject } from '@starknet-io/get-starknet';
-
 import { logError } from '@shared/server/logger';
+import type { StarknetWindowObject } from '@starknet-io/get-starknet';
+import { connect, disconnect } from '@starknet-io/get-starknet';
 
 export interface WalletConnection {
   wallet: StarknetWindowObject;

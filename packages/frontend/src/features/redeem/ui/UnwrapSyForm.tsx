@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import { TokenInput, TokenOutput } from '@features/mint';
 import { useUnwrapSy } from '@features/redeem';
@@ -30,6 +28,7 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface UnwrapSyFormProps {
   market: MarketData;

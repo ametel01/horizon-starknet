@@ -76,7 +76,7 @@ interface SepoliaAddresses {
 function normalizeAddress(address: string): string {
   // Remove 0x prefix, strip leading zeros, add back 0x, lowercase
   const hex = address.toLowerCase().replace(/^0x0*/, '');
-  return '0x' + hex;
+  return `0x${hex}`;
 }
 
 // Type definitions for the dual-market JSON structure

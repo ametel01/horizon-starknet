@@ -1,13 +1,12 @@
+import { getCacheHeaders } from '@shared/server/cache';
+import { db, marketCurrentState, marketSwap } from '@shared/server/db';
+import { logError } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
+import { starknetAddressSchema, validateQuery } from '@shared/server/validations/api';
 import { desc, eq } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-import { getCacheHeaders } from '@shared/server/cache';
-import { db, marketSwap, marketCurrentState } from '@shared/server/db';
-import { logError } from '@shared/server/logger';
-import { applyRateLimit } from '@shared/server/rate-limit';
-import { validateQuery, starknetAddressSchema } from '@shared/server/validations/api';
 
 const WAD = BigInt(10) ** BigInt(18);
 
@@ -255,7 +254,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { minBps: 10, maxBps: 25, count: 0, label: '10-25 bps' },
       { minBps: 25, maxBps: 50, count: 0, label: '25-50 bps' },
       { minBps: 50, maxBps: 100, count: 0, label: '50-100 bps' },
-      { minBps: 100, maxBps: Infinity, count: 0, label: '>100 bps' },
+      { minBps: 100, maxBps: Number.POSITIVE_INFINITY, count: 0, label: '>100 bps' },
     ];
 
     for (const swap of swapsWithImpact) {

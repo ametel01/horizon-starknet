@@ -1,10 +1,9 @@
-import { eq, desc, and, gte } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, marketSwap, routerSwap, routerSwapYT } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { and, desc, eq, gte } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,8 +55,8 @@ export async function GET(
 
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);
-  const offset = parseInt(searchParams.get('offset') ?? '0');
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '50', 10), 100);
+  const offset = Number.parseInt(searchParams.get('offset') ?? '0', 10);
   const since = searchParams.get('since');
 
   try {
@@ -65,7 +64,7 @@ export async function GET(
 
     // Build date condition
     const sinceDate = since ? new Date(since) : null;
-    const isValidSinceDate = sinceDate && !isNaN(sinceDate.getTime());
+    const isValidSinceDate = sinceDate && !Number.isNaN(sinceDate.getTime());
 
     // 1. Query market_swap (direct AMM swaps with full data)
     const marketConditions = [eq(marketSwap.market, address)];

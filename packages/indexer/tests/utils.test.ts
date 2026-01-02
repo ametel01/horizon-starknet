@@ -8,10 +8,10 @@ import { describe, expect, it } from "vitest";
 
 import { ParseError } from "../src/lib/errors";
 import {
-  matchSelector,
-  readU256,
-  readI256,
   decodeByteArray,
+  matchSelector,
+  readI256,
+  readU256,
 } from "../src/lib/utils";
 
 describe("matchSelector", () => {

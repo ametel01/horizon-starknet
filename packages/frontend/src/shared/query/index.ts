@@ -1,13 +1,13 @@
 // Shared query utilities
 export {
-  queryKeys,
-  marketKeys,
-  tokenKeys,
-  positionKeys,
-  userKeys,
-  protocolKeys,
-  syKeys,
   indexerKeys,
   invalidationPatterns,
   type MarketListParams,
+  marketKeys,
+  positionKeys,
+  protocolKeys,
+  queryKeys,
+  syKeys,
+  tokenKeys,
+  userKeys,
 } from './query-keys';

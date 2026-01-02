@@ -1,11 +1,10 @@
 'use client';
 
-import { GiftIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Badge } from '@shared/ui/badge';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { GiftIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { useRewardApy, useTotalRewardApy } from '../model';
 

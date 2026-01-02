@@ -1,14 +1,13 @@
 'use client';
 
-import { AlertCircle, AlertTriangle } from 'lucide-react';
-import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
-
 import { useTokenBalance } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { formatWad, fromWad, toWad, WAD_BIGINT } from '@shared/math/wad';
 import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { AlertCircle, AlertTriangle } from 'lucide-react';
+import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 
 /** Validation result with severity level */
 interface ValidationResult {

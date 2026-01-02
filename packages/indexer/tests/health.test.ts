@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getHealthStatus, isReady, type HealthConfig } from "../src/lib/health";
+import { getHealthStatus, type HealthConfig, isReady } from "../src/lib/health";
 import {
   getAllMetrics,
   getMetrics,

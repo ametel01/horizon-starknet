@@ -111,7 +111,7 @@ export function recordEvent(indexer: string, success: boolean): void {
 export function recordEvents(
   indexer: string,
   successCount: number,
-  failureCount: number,
+  failureCount: number
 ): void {
   const m = getMetrics(indexer);
   m.eventsProcessed += successCount;
@@ -194,7 +194,7 @@ function calculateAverage(values: number[]): number {
  */
 export function generateReport(
   indexer: string,
-  intervalMs: number,
+  intervalMs: number
 ): Record<string, unknown> {
   const m = getMetrics(indexer);
 
@@ -262,7 +262,7 @@ function resetIntervalCounters(indexer: string): void {
  * @returns Interval ID for cleanup
  */
 export function startMetricsReporter(
-  intervalMs = 60000,
+  intervalMs = 60000
 ): ReturnType<typeof setInterval> {
   // Stop existing reporter if running
   if (reporterIntervalId) {
@@ -309,7 +309,7 @@ export function stopMetricsReporter(): void {
  */
 export async function measureDbLatency<T>(
   indexer: string,
-  fn: () => Promise<T>,
+  fn: () => Promise<T>
 ): Promise<T> {
   const startTime = performance.now();
   try {

@@ -1,5 +1,14 @@
 'use client';
 
+import { useDashboardMarkets } from '@features/markets';
+import { usePortfolioHistory } from '@features/portfolio';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useStarknet } from '@features/wallet';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
@@ -10,16 +19,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useDashboardMarkets } from '@features/markets';
-import { usePortfolioHistory } from '@features/portfolio';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
-import { useStarknet } from '@features/wallet';
-import { cn } from '@shared/lib/utils';
-import { fromWad } from '@shared/math/wad';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 
 /**
  * Format USD value with compact notation for large numbers

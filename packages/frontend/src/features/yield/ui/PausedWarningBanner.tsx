@@ -1,10 +1,9 @@
 'use client';
 
-import { PauseCircleIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
+import { PauseCircleIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { useIsSyPaused, useSyPauseState } from '../model/useSyPauseState';
 import { useIsSyPausedIndexed, useSyPauseStateIndexed } from '../model/useSyPauseStateIndexed';

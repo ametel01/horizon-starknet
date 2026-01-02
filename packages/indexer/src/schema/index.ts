@@ -60,9 +60,9 @@ export const factoryYieldContractsCreated = pgTable(
     uniqueIndex("factory_ycc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const factoryClassHashesUpdated = pgTable(
@@ -80,9 +80,9 @@ export const factoryClassHashesUpdated = pgTable(
     uniqueIndex("factory_chu_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // ============================================================
@@ -127,9 +127,9 @@ export const marketFactoryMarketCreated = pgTable(
     uniqueIndex("mf_mc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketFactoryClassHashUpdated = pgTable(
@@ -147,9 +147,9 @@ export const marketFactoryClassHashUpdated = pgTable(
     uniqueIndex("mf_chu_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // ============================================================
@@ -197,9 +197,9 @@ export const syDeposit = pgTable(
     uniqueIndex("sy_deposit_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const syRedeem = pgTable(
@@ -241,9 +241,9 @@ export const syRedeem = pgTable(
     uniqueIndex("sy_redeem_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const syOracleRateUpdated = pgTable(
@@ -271,9 +271,9 @@ export const syOracleRateUpdated = pgTable(
     uniqueIndex("sy_oru_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // Phase 4: Negative Yield Detection (monitoring)
@@ -311,9 +311,9 @@ export const syNegativeYieldDetected = pgTable(
     uniqueIndex("sy_nyd_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // Phase 4: Pause State Tracking
@@ -338,9 +338,9 @@ export const syPauseState = pgTable(
     uniqueIndex("sy_ps_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // Phase 4: Rewards Claimed (SYWithRewards)
@@ -370,9 +370,9 @@ export const syRewardsClaimed = pgTable(
     uniqueIndex("sy_rc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // Phase 4: Reward Index Updated (for APY calculation)
@@ -409,9 +409,9 @@ export const syRewardIndexUpdated = pgTable(
     uniqueIndex("sy_riu_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // Phase 4: Reward Token Added (registry)
@@ -438,9 +438,9 @@ export const syRewardTokenAdded = pgTable(
     uniqueIndex("sy_rta_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // ============================================================
@@ -495,9 +495,9 @@ export const ytMintPY = pgTable(
     uniqueIndex("yt_mint_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytRedeemPY = pgTable(
@@ -537,9 +537,9 @@ export const ytRedeemPY = pgTable(
     uniqueIndex("yt_redeem_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytRedeemPYPostExpiry = pgTable(
@@ -582,9 +582,9 @@ export const ytRedeemPYPostExpiry = pgTable(
     uniqueIndex("yt_redeem_pe_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytInterestClaimed = pgTable(
@@ -619,9 +619,9 @@ export const ytInterestClaimed = pgTable(
     uniqueIndex("yt_ic_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytExpiryReached = pgTable(
@@ -665,9 +665,9 @@ export const ytExpiryReached = pgTable(
     uniqueIndex("yt_er_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // PostExpiryDataSet: emitted once when post-expiry data is initialized
@@ -708,9 +708,9 @@ export const ytPostExpiryDataSet = pgTable(
     uniqueIndex("yt_peds_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // PyIndexUpdated: emitted when PY index changes
@@ -741,9 +741,9 @@ export const ytPyIndexUpdated = pgTable(
     uniqueIndex("yt_piu_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // TreasuryInterestRedeemed: admin claims post-expiry yield
@@ -780,9 +780,9 @@ export const ytTreasuryInterestRedeemed = pgTable(
     uniqueIndex("yt_tir_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // InterestFeeRateSet: admin changes fee rate
@@ -805,9 +805,9 @@ export const ytInterestFeeRateSet = pgTable(
     uniqueIndex("yt_ifrs_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // MintPYMulti: batch minting
@@ -841,9 +841,9 @@ export const ytMintPYMulti = pgTable(
     uniqueIndex("yt_mpm_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // RedeemPYMulti: batch redemption
@@ -877,9 +877,9 @@ export const ytRedeemPYMulti = pgTable(
     uniqueIndex("yt_rpm_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // RedeemPYWithInterest: combined redeem + claim
@@ -918,9 +918,9 @@ export const ytRedeemPYWithInterest = pgTable(
     uniqueIndex("yt_rpwi_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // ============================================================
@@ -975,9 +975,9 @@ export const marketMint = pgTable(
     uniqueIndex("market_mint_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketBurn = pgTable(
@@ -1028,9 +1028,9 @@ export const marketBurn = pgTable(
     uniqueIndex("market_burn_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketSwap = pgTable(
@@ -1084,9 +1084,9 @@ export const marketSwap = pgTable(
     uniqueIndex("market_swap_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketImpliedRateUpdated = pgTable(
@@ -1119,9 +1119,9 @@ export const marketImpliedRateUpdated = pgTable(
     uniqueIndex("market_iru_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketFeesCollected = pgTable(
@@ -1148,9 +1148,9 @@ export const marketFeesCollected = pgTable(
     uniqueIndex("market_fc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketScalarRootUpdated = pgTable(
@@ -1173,9 +1173,9 @@ export const marketScalarRootUpdated = pgTable(
     uniqueIndex("market_sru_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // ============================================================
@@ -1207,9 +1207,9 @@ export const routerMintPY = pgTable(
     uniqueIndex("router_mint_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerRedeemPY = pgTable(
@@ -1235,9 +1235,9 @@ export const routerRedeemPY = pgTable(
     uniqueIndex("router_redeem_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerAddLiquidity = pgTable(
@@ -1265,9 +1265,9 @@ export const routerAddLiquidity = pgTable(
     uniqueIndex("router_al_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerRemoveLiquidity = pgTable(
@@ -1295,9 +1295,9 @@ export const routerRemoveLiquidity = pgTable(
     uniqueIndex("router_rl_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerSwap = pgTable(
@@ -1326,9 +1326,9 @@ export const routerSwap = pgTable(
     uniqueIndex("router_swap_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerSwapYT = pgTable(
@@ -1359,9 +1359,9 @@ export const routerSwapYT = pgTable(
     uniqueIndex("router_swap_yt_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 // ============================================================
@@ -1471,7 +1471,7 @@ export const enrichedRouterAddLiquidity = pgView(
     sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
     pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
     total_lp_after: numeric("total_lp_after", { precision: 78, scale: 0 }),
-  },
+  }
 ).existing();
 
 /**
@@ -1503,7 +1503,7 @@ export const enrichedRouterRemoveLiquidity = pgView(
     sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
     pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
     total_lp_after: numeric("total_lp_after", { precision: 78, scale: 0 }),
-  },
+  }
 ).existing();
 
 /**
@@ -1985,5 +1985,5 @@ export const redeemWithInterestAnalytics = pgView(
     pt: text("pt"),
     underlying: text("underlying"),
     underlying_symbol: text("underlying_symbol"),
-  },
+  }
 ).existing();

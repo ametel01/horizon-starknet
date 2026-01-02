@@ -1,19 +1,18 @@
-import { desc, gte } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { getCacheHeaders } from '@shared/server/cache';
 import {
   db,
-  protocolDailyStats,
-  marketDailyStats,
-  marketFeesCollected,
   enrichedRouterSwap,
   enrichedRouterSwapYT,
+  marketDailyStats,
+  marketFeesCollected,
+  protocolDailyStats,
 } from '@shared/server/db';
 import { logError, logWarn } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
-import { validateQuery, analyticsFeesQuerySchema } from '@shared/server/validations/api';
+import { analyticsFeesQuerySchema, validateQuery } from '@shared/server/validations/api';
+import { desc, gte } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 interface FeesDataPoint {
   date: string;
@@ -44,6 +43,111 @@ export interface FeesResponse {
     timestamp: string;
     transactionHash: string;
   }[];
+}
+
+// ----- Internal Types -----
+
+interface DateThresholds {
+  since: Date;
+  oneDayAgo: Date;
+  sevenDaysAgo: Date;
+  thirtyDaysAgo: Date;
+}
+
+interface PeriodTotals {
+  total24h: bigint;
+  total7d: bigint;
+  total30d: bigint;
+}
+
+interface AggregatedFees {
+  totals: PeriodTotals;
+  history: FeesDataPoint[];
+  marketFees: Map<string, { fees: bigint; swaps: number }>;
+}
+
+// ----- Pure Helper Functions -----
+
+function createDateThresholds(days: number): DateThresholds {
+  const now = new Date();
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  return {
+    since,
+    oneDayAgo: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    sevenDaysAgo: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+    thirtyDaysAgo: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+  };
+}
+
+function addToTotals(totals: PeriodTotals, fee: bigint, timestamp: Date, th: DateThresholds): void {
+  if (timestamp >= th.oneDayAgo) totals.total24h += fee;
+  if (timestamp >= th.sevenDaysAgo) totals.total7d += fee;
+  if (timestamp >= th.thirtyDaysAgo) totals.total30d += fee;
+}
+
+function addToMarketMap(
+  marketFees: Map<string, { fees: bigint; swaps: number }>,
+  market: string,
+  fee: bigint
+): void {
+  if (!market) return;
+  const entry = marketFees.get(market) ?? { fees: 0n, swaps: 0 };
+  entry.fees += fee;
+  entry.swaps++;
+  marketFees.set(market, entry);
+}
+
+function addToDailyMap(
+  dailyFees: Map<string, { fees: bigint; swaps: number }>,
+  dateKey: string,
+  fee: bigint
+): void {
+  const entry = dailyFees.get(dateKey) ?? { fees: 0n, swaps: 0 };
+  entry.fees += fee;
+  entry.swaps++;
+  dailyFees.set(dateKey, entry);
+}
+
+function dailyMapToHistory(dailyFees: Map<string, { fees: bigint; swaps: number }>): FeesDataPoint[] {
+  return Array.from(dailyFees.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, data]) => ({
+      date,
+      totalFees: data.fees.toString(),
+      swapCount: data.swaps,
+    }));
+}
+
+function marketMapToBreakdown(
+  marketFees: Map<string, { fees: bigint; swaps: number }>
+): MarketFeeBreakdown[] {
+  return Array.from(marketFees.entries())
+    .map(([market, data]) => ({
+      market,
+      underlyingSymbol: '',
+      totalFees: data.fees.toString(),
+      swapCount: data.swaps,
+      avgFeePerSwap: data.swaps > 0 ? (data.fees / BigInt(data.swaps)).toString() : '0',
+    }))
+    .sort((a, b) => {
+      const feesA = BigInt(a.totalFees);
+      const feesB = BigInt(b.totalFees);
+      return feesB > feesA ? 1 : feesB < feesA ? -1 : 0;
+    })
+    .slice(0, 10);
+}
+
+function createEmptyResponse(): FeesResponse {
+  return {
+    total24h: '0',
+    total7d: '0',
+    total30d: '0',
+    history: [],
+    byMarket: [],
+    recentCollections: [],
+  };
 }
 
 /**

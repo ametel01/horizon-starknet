@@ -1,9 +1,8 @@
 'use client';
 
+import { cn } from '@shared/lib/utils';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-
-import { cn } from '@shared/lib/utils';
 
 import { AnimatedNumber } from './AnimatedNumber';
 import { Card, CardContent } from './Card';

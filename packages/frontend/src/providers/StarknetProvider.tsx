@@ -1,9 +1,5 @@
 'use client';
 
-import type { StarknetWindowObject } from '@starknet-io/get-starknet';
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
-import type { RpcProvider } from 'starknet';
-
 import { createProvider, getNetworkId, type NetworkId } from '@shared/starknet/provider';
 import {
   connectWallet,
@@ -12,6 +8,9 @@ import {
   getChainId as getWalletChainId,
   type WalletConnection,
 } from '@shared/starknet/wallet';
+import type { StarknetWindowObject } from '@starknet-io/get-starknet';
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import type { RpcProvider } from 'starknet';
 
 export interface StarknetContextValue {
   // Provider

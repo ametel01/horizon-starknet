@@ -1,12 +1,11 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type Call, uint256 } from 'starknet';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getRouterContract } from '@shared/starknet/contracts';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type Call, uint256 } from 'starknet';
 
 export type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';
 

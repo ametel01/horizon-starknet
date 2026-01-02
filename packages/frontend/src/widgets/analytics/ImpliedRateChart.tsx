@@ -1,5 +1,11 @@
 'use client';
 
+import { type ProcessedRateDataPoint, useMarketRates } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
@@ -13,13 +19,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useMarketRates, type ProcessedRateDataPoint } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format percentage with appropriate precision

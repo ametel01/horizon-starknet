@@ -18,7 +18,7 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   ytExpiryReached,
   ytInterestClaimed,
@@ -33,7 +33,6 @@ import {
   ytRedeemPYWithInterest,
   ytTreasuryInterestRedeemed,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -62,8 +61,6 @@ import {
   ytRedeemPYWithInterestSchema,
   ytTreasuryInterestRedeemedSchema,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 const log = createIndexerLogger("yt");
 
@@ -106,7 +103,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       ytMintPYMulti,
       ytRedeemPYMulti,
       ytRedeemPYWithInterest,
-    }),
+    })
   );
 
   logIndexerStart(log, {
@@ -133,7 +130,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: ytAddress, keys: [REDEEM_PY_WITH_INTEREST] },
       { address: ytAddress, keys: [POST_EXPIRY_DATA_SET] },
       { address: ytAddress, keys: [PY_INDEX_UPDATED] },
-    ],
+    ]
   );
 
   return defineIndexer(StarknetStream)({
@@ -487,7 +484,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const exchangeRateAtInit = readU256(
               data,
               4,
-              "exchange_rate_at_init",
+              "exchange_rate_at_init"
             );
             const totalPtSupply = readU256(data, 6, "total_pt_supply");
             const totalYtSupply = readU256(data, 8, "total_yt_supply");
@@ -548,7 +545,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "TreasuryInterestRedeemed",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -686,7 +683,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "RedeemPYWithInterest",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -704,12 +701,12 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const amountSyFromRedeem = readU256(
               data,
               2,
-              "amount_sy_from_redeem",
+              "amount_sy_from_redeem"
             );
             const amountInterestClaimed = readU256(
               data,
               4,
-              "amount_interest_claimed",
+              "amount_interest_claimed"
             );
 
             redeemPYWithInterestRows.push({
@@ -741,7 +738,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -755,7 +752,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 

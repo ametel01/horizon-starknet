@@ -1,10 +1,5 @@
 'use client';
 
-import { AlertTriangle, Check, Copy, Droplets, ExternalLink, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import type { Call } from 'starknet';
-
 import { useStarknet } from '@features/wallet';
 import { getFaucetInfo } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
@@ -13,6 +8,10 @@ import { getFaucetContract } from '@shared/starknet/contracts';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Separator } from '@shared/ui/separator';
+import { AlertTriangle, Check, Copy, Droplets, ExternalLink, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import type { Call } from 'starknet';
 
 export function FaucetPage(): React.ReactNode {
   const { address, isConnected, provider, network } = useStarknet();

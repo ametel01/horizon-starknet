@@ -1,7 +1,6 @@
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Label } from '@shared/ui/label';
+import * as React from 'react';
 
 /**
  * Input component with focus micro-interactions.

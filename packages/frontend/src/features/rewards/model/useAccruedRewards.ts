@@ -1,10 +1,9 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import { getSYWithRewardsContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { uint256 } from 'starknet';
 
 export interface AccruedReward {
   tokenAddress: string;
@@ -53,7 +52,7 @@ export function useAccruedRewards(syAddress: string | undefined): UseQueryResult
         if (typeof addr === 'string') {
           return addr;
         }
-        return '0x' + addr.toString(16).padStart(64, '0');
+        return `0x${addr.toString(16).padStart(64, '0')}`;
       });
 
       // Handle both bigint and Uint256 struct returns

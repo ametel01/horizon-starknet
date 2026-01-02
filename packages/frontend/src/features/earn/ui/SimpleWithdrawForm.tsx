@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import { useSimpleWithdraw } from '@features/earn';
 import { useAccount, useStarknet } from '@features/wallet';
@@ -23,6 +21,7 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { NumberInput } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface SimpleWithdrawFormProps {
   market: MarketData;

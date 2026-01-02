@@ -13,30 +13,30 @@ import { describe, expect, it } from "vitest";
 
 // Import all event tables to verify their structure
 import {
-  factoryYieldContractsCreated,
   factoryClassHashesUpdated,
-  marketFactoryMarketCreated,
-  marketFactoryClassHashUpdated,
-  syDeposit,
-  syRedeem,
-  syOracleRateUpdated,
-  ytMintPY,
-  ytRedeemPY,
-  ytRedeemPYPostExpiry,
-  ytInterestClaimed,
-  ytExpiryReached,
-  marketMint,
+  factoryYieldContractsCreated,
   marketBurn,
-  marketSwap,
-  marketImpliedRateUpdated,
+  marketFactoryClassHashUpdated,
+  marketFactoryMarketCreated,
   marketFeesCollected,
+  marketImpliedRateUpdated,
+  marketMint,
   marketScalarRootUpdated,
+  marketSwap,
+  routerAddLiquidity,
   routerMintPY,
   routerRedeemPY,
-  routerAddLiquidity,
   routerRemoveLiquidity,
   routerSwap,
   routerSwapYT,
+  syDeposit,
+  syOracleRateUpdated,
+  syRedeem,
+  ytExpiryReached,
+  ytInterestClaimed,
+  ytMintPY,
+  ytRedeemPY,
+  ytRedeemPYPostExpiry,
 } from "../src/schema";
 
 // ============================================================
@@ -89,26 +89,24 @@ describe("Schema Idempotency Constraints", () => {
       expect(columns).toContain("block_number");
     });
 
-    it.each(ALL_EVENT_TABLES)(
-      "$name has transaction_hash column",
-      ({ table }) => {
-        const columns = Object.keys(table);
-        expect(columns).toContain("transaction_hash");
-      },
-    );
+    it.each(ALL_EVENT_TABLES)("$name has transaction_hash column", ({
+      table,
+    }) => {
+      const columns = Object.keys(table);
+      expect(columns).toContain("transaction_hash");
+    });
 
     it.each(ALL_EVENT_TABLES)("$name has event_index column", ({ table }) => {
       const columns = Object.keys(table);
       expect(columns).toContain("event_index");
     });
 
-    it.each(ALL_EVENT_TABLES)(
-      "$name has _id primary key column",
-      ({ table }) => {
-        const columns = Object.keys(table);
-        expect(columns).toContain("_id");
-      },
-    );
+    it.each(ALL_EVENT_TABLES)("$name has _id primary key column", ({
+      table,
+    }) => {
+      const columns = Object.keys(table);
+      expect(columns).toContain("_id");
+    });
   });
 
   it("verifies we have all 24 event tables", () => {
@@ -259,8 +257,8 @@ describe("Idempotent Insert Pattern", () => {
     const uniqueKeys = new Set(
       batch.map(
         (e) =>
-          `${String(e.block_number)}-${e.transaction_hash}-${String(e.event_index)}`,
-      ),
+          `${String(e.block_number)}-${e.transaction_hash}-${String(e.event_index)}`
+      )
     );
 
     // 4 events but only 3 unique
@@ -304,7 +302,7 @@ describe("Reorg Handling", () => {
 
     // These are different events (different tx hash)
     expect(originalEvent.transaction_hash).not.toBe(
-      reorgEvent.transaction_hash,
+      reorgEvent.transaction_hash
     );
   });
 
@@ -337,14 +335,14 @@ describe("Reorg Handling", () => {
 describe("Complete Table Coverage", () => {
   it("covers all Factory events (2)", () => {
     const factoryTables = ALL_EVENT_TABLES.filter((t) =>
-      t.name.startsWith("factory"),
+      t.name.startsWith("factory")
     );
     expect(factoryTables).toHaveLength(2);
   });
 
   it("covers all MarketFactory events (2)", () => {
     const marketFactoryTables = ALL_EVENT_TABLES.filter((t) =>
-      t.name.startsWith("marketFactory"),
+      t.name.startsWith("marketFactory")
     );
     expect(marketFactoryTables).toHaveLength(2);
   });
@@ -361,14 +359,14 @@ describe("Complete Table Coverage", () => {
 
   it("covers all Market events (6)", () => {
     const marketTables = ALL_EVENT_TABLES.filter(
-      (t) => t.name.startsWith("market") && !t.name.startsWith("marketFactory"),
+      (t) => t.name.startsWith("market") && !t.name.startsWith("marketFactory")
     );
     expect(marketTables).toHaveLength(6);
   });
 
   it("covers all Router events (6)", () => {
     const routerTables = ALL_EVENT_TABLES.filter((t) =>
-      t.name.startsWith("router"),
+      t.name.startsWith("router")
     );
     expect(routerTables).toHaveLength(6);
   });

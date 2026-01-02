@@ -1,13 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
-import type { Call } from 'starknet';
-
-import { usePrices, getTokenPrice } from '@features/price';
+import { getTokenPrice, usePrices } from '@features/price';
 import { useAccount } from '@features/wallet';
 import { useEstimateFee } from '@shared/hooks/useEstimateFee';
 import { fromWad } from '@shared/math/wad';
 import { getYTContract } from '@shared/starknet/contracts';
+import { useMemo } from 'react';
+import type { Call } from 'starknet';
 
 /**
  * STRK native token address for gas price conversion
@@ -109,7 +108,7 @@ export function useClaimGasCheck(
   const ratio = useMemo(() => {
     if (estimatedGasUsd === 0) {
       // If we can't estimate gas, assume it's worth claiming
-      return Infinity;
+      return Number.POSITIVE_INFINITY;
     }
     return claimableUsd / estimatedGasUsd;
   }, [claimableUsd, estimatedGasUsd]);

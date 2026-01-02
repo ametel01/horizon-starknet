@@ -1,11 +1,10 @@
 'use client';
 
-import { Coins, Droplets } from 'lucide-react';
-import { memo, type ReactNode } from 'react';
-
-import { useSyAssetType, type AssetType } from '@features/yield';
+import { type AssetType, useSyAssetType } from '@features/yield';
 import { Badge } from '@shared/ui/badge';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { Coins, Droplets } from 'lucide-react';
+import { memo, type ReactNode } from 'react';
 
 interface AssetTypeBadgeProps {
   /** SY contract address to fetch asset type from */

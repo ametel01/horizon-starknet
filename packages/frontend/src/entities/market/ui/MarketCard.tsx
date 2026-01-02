@@ -1,19 +1,18 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { memo, type ReactNode, useMemo } from 'react';
-
 import { TokenAmount } from '@entities/token';
 import { ApyBreakdown, NegativeYieldWarning, useApyBreakdown } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
-import { Badge } from '@shared/ui/badge';
 import { buttonVariants } from '@shared/ui/Button';
+import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
 import { RateSparkline } from '@widgets/analytics/RateSparkline';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { memo, type ReactNode, useMemo } from 'react';
 
 import type { MarketData } from '../model/types';
 

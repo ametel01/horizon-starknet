@@ -1,13 +1,10 @@
 'use client';
 
-import { TrendingUp, Wallet, Zap } from 'lucide-react';
-import Link from 'next/link';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-
-import { formatPercent, formatUsd } from '@entities/position';
 import {
-  EnhancedPositionCard,
   type EnhancedPosition,
+  EnhancedPositionCard,
+  formatPercent,
+  formatUsd,
   ImpermanentLossCalc,
   LpEntryExitTable,
   LpPnlCard,
@@ -15,14 +12,18 @@ import {
   PortfolioValueChart,
   PositionValueHistory,
   SimplePortfolio,
-  type YieldEarnedData,
   YieldByPosition,
   YieldEarnedCard,
+  type YieldEarnedData,
   YieldHistory,
 } from '@entities/position';
 import { useDashboardMarkets } from '@features/markets';
-import { type MarketPosition, usePositions } from '@features/portfolio';
-import { useEnhancedPositions, useUserIndexedPositions } from '@features/portfolio';
+import {
+  type MarketPosition,
+  useEnhancedPositions,
+  usePositions,
+  useUserIndexedPositions,
+} from '@features/portfolio';
 import {
   calculateMinSyOut,
   useRedeemPtPostExpiry,
@@ -56,6 +57,9 @@ import {
   PositionPnlTimeline,
   YtCashflowChart,
 } from '@widgets/portfolio';
+import { TrendingUp, Wallet, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 function PositionCard({ position }: { position: MarketPosition }): ReactNode {
   const [isExpanded, setIsExpanded] = useState(false);

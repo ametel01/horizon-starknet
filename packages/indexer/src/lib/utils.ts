@@ -37,7 +37,7 @@ export function matchSelector(a: string | undefined, b: string): boolean {
 export function readU256(
   data: string[],
   index: number,
-  field?: string,
+  field?: string
 ): string {
   if (index < 0 || index + 1 >= data.length) {
     throw new ParseError(
@@ -46,7 +46,7 @@ export function readU256(
         index,
         dataLength: data.length,
         field: field ?? "u256",
-      },
+      }
     );
   }
 
@@ -93,7 +93,7 @@ export function readU256Safe(data: string[], index: number): string {
 export function readI256(
   data: string[],
   index: number,
-  field?: string,
+  field?: string
 ): string {
   if (index < 0 || index + 1 >= data.length) {
     throw new ParseError(
@@ -102,7 +102,7 @@ export function readI256(
         index,
         dataLength: data.length,
         field: field ?? "i256",
-      },
+      }
     );
   }
 
@@ -137,7 +137,7 @@ export function readI256(
 export function readFelt(
   data: string[],
   index: number,
-  field?: string,
+  field?: string
 ): string {
   if (index < 0 || index >= data.length) {
     throw new ParseError(`Index ${String(index)} out of bounds`, {
@@ -170,7 +170,7 @@ export function readFelt(
 export function readFeltAsNumber(
   data: string[],
   index: number,
-  field?: string,
+  field?: string
 ): number {
   const value = readFelt(data, index, field);
   return Number(BigInt(value));
@@ -195,7 +195,7 @@ export function readFeltAsNumber(
 export function decodeByteArray(
   data: string[],
   startIndex: number,
-  field?: string,
+  field?: string
 ): string {
   if (startIndex < 0 || startIndex >= data.length) {
     throw new ParseError(
@@ -204,7 +204,7 @@ export function decodeByteArray(
         index: startIndex,
         dataLength: data.length,
         field: field ?? "ByteArray",
-      },
+      }
     );
   }
 
@@ -216,7 +216,7 @@ export function decodeByteArray(
         index: startIndex,
         dataLength: data.length,
         field: field ?? "ByteArray",
-      },
+      }
     );
   }
 
@@ -232,7 +232,7 @@ export function decodeByteArray(
           index: startIndex,
           dataLength: data.length,
           field: field ?? "ByteArray",
-        },
+        }
       );
     }
 
@@ -272,7 +272,7 @@ export function decodeByteArray(
         index: startIndex,
         dataLength: data.length,
         field: field ?? "ByteArray",
-      },
+      }
     );
   }
 }
@@ -284,7 +284,7 @@ export function decodeByteArray(
  */
 export function decodeByteArraySafe(
   data: string[],
-  startIndex: number,
+  startIndex: number
 ): string {
   try {
     return decodeByteArray(data, startIndex);

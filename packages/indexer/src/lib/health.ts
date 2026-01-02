@@ -22,7 +22,7 @@ import {
 } from "node:http";
 
 import { logger } from "./logger";
-import { getAllMetrics, generateReport, type IndexerMetrics } from "./metrics";
+import { generateReport, getAllMetrics, type IndexerMetrics } from "./metrics";
 
 /**
  * Health status for an individual indexer
@@ -70,13 +70,13 @@ const DEFAULT_HEALTH_CONFIG: HealthConfig = {
  */
 function calculateIndexerHealth(
   metrics: IndexerMetrics,
-  config: HealthConfig,
+  config: HealthConfig
 ): IndexerHealthStatus {
   const now = Date.now();
   const lagSeconds =
     metrics.lastBlockTimestamp > 0
       ? (now - metrics.lastBlockTimestamp) / 1000
-      : Infinity;
+      : Number.POSITIVE_INFINITY;
 
   const totalEvents = metrics.totalEventsProcessed + metrics.totalEventsFailed;
   const errorRate =
@@ -112,7 +112,7 @@ function calculateIndexerHealth(
  * @returns Aggregated health status
  */
 export function getHealthStatus(
-  config: HealthConfig = DEFAULT_HEALTH_CONFIG,
+  config: HealthConfig = DEFAULT_HEALTH_CONFIG
 ): HealthStatus {
   const allMetrics = getAllMetrics();
 
@@ -195,7 +195,7 @@ function getMetricsDump(): Record<string, unknown> {
 function handleRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  config: HealthConfig,
+  config: HealthConfig
 ): void {
   const url = req.url ?? "/";
 
@@ -219,7 +219,7 @@ function handleRequest(
       JSON.stringify({
         ready,
         timestamp: new Date().toISOString(),
-      }),
+      })
     );
     return;
   }
@@ -245,7 +245,7 @@ function handleRequest(
         "/readyz",
         "/metrics",
       ],
-    }),
+    })
   );
 }
 
@@ -263,7 +263,7 @@ let healthServer: Server | null = null;
  */
 export function startHealthServer(
   port = 8080,
-  config: HealthConfig = DEFAULT_HEALTH_CONFIG,
+  config: HealthConfig = DEFAULT_HEALTH_CONFIG
 ): Server {
   // Stop existing server if running
   if (healthServer) {
@@ -280,7 +280,7 @@ export function startHealthServer(
         port,
         endpoints: ["/health", "/ready", "/metrics"],
       },
-      "Health server started",
+      "Health server started"
     );
   });
 

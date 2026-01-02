@@ -1,13 +1,12 @@
 'use client';
 
-import { AlertTriangleIcon, ClockIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { daysToExpiry, formatExpiry, isExpired } from '@shared/math/yield';
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert';
 import { Button } from '@shared/ui/Button';
+import { AlertTriangleIcon, ClockIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface YieldExpiryAlertProps {
   /** Unix timestamp of expiry (in seconds) */

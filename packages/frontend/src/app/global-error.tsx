@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-
 import { logError } from '@shared/server/logger';
+import { useEffect } from 'react';
 
 /**
  * Global error boundary for the entire application.

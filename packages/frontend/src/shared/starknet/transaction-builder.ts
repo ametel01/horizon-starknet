@@ -6,9 +6,8 @@
  * multi-step DeFi operations and combine them into single transactions.
  */
 
-import { type Call, uint256 } from 'starknet';
-
 import { getDeadline } from '@shared/lib/deadline';
+import { type Call, uint256 } from 'starknet';
 
 /**
  * Parameters for building deposit and earn calls

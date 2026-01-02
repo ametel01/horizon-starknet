@@ -1,12 +1,11 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-
 import type { LpPosition } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
 
 const WAD = BigInt(10) ** BigInt(18);
 

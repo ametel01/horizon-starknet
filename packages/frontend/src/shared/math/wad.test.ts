@@ -5,8 +5,8 @@
  * Run with: bun test src/lib/math/wad.test.ts
  */
 
-import BigNumber from 'bignumber.js';
 import { describe, expect, test } from 'bun:test';
+import BigNumber from 'bignumber.js';
 
 import {
   formatTokenAmount,
@@ -84,7 +84,7 @@ describe('toWad', () => {
   });
 
   test('converts BigNumber input', () => {
-    const bn = new BigNumber(3.14159);
+    const bn = new BigNumber(Math.PI);
     const result = toWad(bn);
     expect(fromWad(result).toFixed(5)).toBe('3.14159');
   });

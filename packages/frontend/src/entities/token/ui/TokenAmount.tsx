@@ -1,7 +1,6 @@
-import { type ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
+import type { ReactNode } from 'react';
 
 interface TokenAmountProps {
   amount: bigint | string;

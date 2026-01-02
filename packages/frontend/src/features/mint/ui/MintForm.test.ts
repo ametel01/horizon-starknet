@@ -8,9 +8,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-
-import { WAD } from '@/test/setup';
 import { toWad } from '@shared/math/wad';
+import { WAD } from '@/test/setup';
 
 describe('MintForm validation logic', () => {
   describe('output amount calculation', () => {

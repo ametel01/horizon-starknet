@@ -1,14 +1,11 @@
 'use client';
 
-import Link from 'next/link';
-import { type ReactNode } from 'react';
-
 import type { TxStatus as TxStatusType } from '@shared/hooks/useTransaction';
 import {
-  getModeAwareErrorMessage,
   getErrorHelpText,
-  isSlippageError,
+  getModeAwareErrorMessage,
   isDeadlineError,
+  isSlippageError,
 } from '@shared/lib/errors';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
@@ -16,6 +13,8 @@ import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { Progress, ProgressIndicator, ProgressTrack } from '@shared/ui/progress';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 interface TxStatusProps {
   status: TxStatusType;

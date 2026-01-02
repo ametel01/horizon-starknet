@@ -1,11 +1,5 @@
 'use client';
 
-import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { usePositions } from '@features/portfolio';
 import { SwapForm } from '@features/swap';
@@ -15,6 +9,11 @@ import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
+import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
 // Lazy load chart components (recharts is heavy)
 const ImpliedRateChart = dynamic(

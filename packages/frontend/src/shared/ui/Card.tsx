@@ -1,6 +1,5 @@
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
+import type * as React from 'react';
 
 interface CardProps extends React.ComponentProps<'div'> {
   size?: 'default' | 'sm';

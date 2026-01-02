@@ -262,7 +262,7 @@ export function getDatabaseConfigSummary(): string {
     return 'Database not configured';
   }
 
-  const parts = ['host=' + (info.host ?? 'unknown'), info.usePooler ? 'pooler=yes' : 'pooler=no'];
+  const parts = [`host=${info.host ?? 'unknown'}`, info.usePooler ? 'pooler=yes' : 'pooler=no'];
 
   if (info.poolMode) {
     parts.push(`mode=${info.poolMode}`);

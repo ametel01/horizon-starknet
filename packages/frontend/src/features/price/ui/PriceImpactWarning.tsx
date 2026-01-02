@@ -1,8 +1,5 @@
 'use client';
 
-import { AlertTriangle, Info, ShieldAlert, TrendingDown } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import {
   formatPriceImpact,
@@ -10,6 +7,8 @@ import {
   type PriceImpactSeverity,
 } from '@shared/math/amm';
 import { Button } from '@shared/ui/Button';
+import { AlertTriangle, Info, ShieldAlert, TrendingDown } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 interface PriceImpactWarningProps {
   priceImpact: number;
@@ -167,7 +166,7 @@ export function usePriceImpactWarning(priceImpact: number): {
     if (severity === 'very-high') {
       setAcknowledged(false);
     }
-  }, [priceImpact, severity]);
+  }, [severity]);
 
   return {
     severity,

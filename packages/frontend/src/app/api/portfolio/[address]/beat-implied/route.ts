@@ -1,10 +1,9 @@
-import { or, sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, enrichedRouterMintPY, marketCurrentState, userPyPositions } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { or, sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +13,7 @@ export const dynamic = 'force-dynamic';
 function normalizeAddressForDb(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }
 
 const WAD = 10n ** 18n;

@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { usePortfolioHistory } from '@features/portfolio';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
@@ -12,6 +10,7 @@ import { fromWad } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format USD value with compact notation

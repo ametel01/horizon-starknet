@@ -1,12 +1,11 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Minus, TrendingUp } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
-
 import { useMarketRates } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Skeleton, SparklineSkeleton, StatCardSkeleton } from '@shared/ui/Skeleton';
+import { ArrowDown, ArrowUp, Minus, TrendingUp } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 /**
  * Format percentage with appropriate precision

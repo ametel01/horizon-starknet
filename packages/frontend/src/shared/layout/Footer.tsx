@@ -1,6 +1,5 @@
-import Link from 'next/link';
-
 import { Separator } from '@shared/ui/separator';
+import Link from 'next/link';
 
 interface FooterLink {
   label: string;

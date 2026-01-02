@@ -1,20 +1,19 @@
-import { desc, or, sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db } from '@shared/server/db';
 import {
-  enrichedRouterSwap,
-  enrichedRouterSwapYT,
   enrichedRouterAddLiquidity,
-  enrichedRouterRemoveLiquidity,
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
+  enrichedRouterRemoveLiquidity,
+  enrichedRouterSwap,
+  enrichedRouterSwapYT,
   syDeposit,
   syRedeem,
 } from '@shared/server/db/schema';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { desc, or, sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +23,7 @@ export const dynamic = 'force-dynamic';
 function normalizeAddressForDb(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }
 
 interface ValueEvent {
@@ -99,9 +98,9 @@ export async function GET(
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   // days parameter reserved for future date filtering
-  const _days = parseInt(searchParams.get('days') ?? '90');
+  const _days = Number.parseInt(searchParams.get('days') ?? '90', 10);
   void _days;
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '500'), 1000);
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '500', 10), 1000);
 
   try {
     const normalizedAddress = normalizeAddressForDb(address);

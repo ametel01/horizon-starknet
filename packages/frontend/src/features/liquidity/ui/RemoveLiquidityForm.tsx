@@ -1,8 +1,5 @@
 'use client';
 
-import BigNumber from 'bignumber.js';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import {
   buildRemoveLiquidityCalls,
@@ -29,6 +26,8 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
+import BigNumber from 'bignumber.js';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 interface RemoveLiquidityFormProps {
   market: MarketData;

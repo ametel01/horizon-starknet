@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useUserYield } from '@features/yield';
@@ -9,6 +7,7 @@ import { cn } from '@shared/lib/utils';
 import { formatWadCompact, fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format USD value with compact notation
@@ -28,9 +27,9 @@ function formatTimeAgo(date: Date | null): string {
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (seconds < 60) return 'just now';
-  if (seconds < 3600) return String(Math.floor(seconds / 60)) + 'm ago';
-  if (seconds < 86400) return String(Math.floor(seconds / 3600)) + 'h ago';
-  if (seconds < 604800) return String(Math.floor(seconds / 86400)) + 'd ago';
+  if (seconds < 3600) return `${String(Math.floor(seconds / 60))}m ago`;
+  if (seconds < 86400) return `${String(Math.floor(seconds / 3600))}h ago`;
+  if (seconds < 604800) return `${String(Math.floor(seconds / 86400))}d ago`;
   return date.toLocaleDateString();
 }
 

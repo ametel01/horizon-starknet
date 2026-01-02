@@ -1,9 +1,8 @@
 'use client';
 
-import { type ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Card, CardContent } from '@shared/ui/Card';
+import type { ReactNode } from 'react';
 
 interface SummaryCardProps {
   label: string;

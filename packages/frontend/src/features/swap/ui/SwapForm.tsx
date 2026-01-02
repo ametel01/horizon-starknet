@@ -1,19 +1,13 @@
 'use client';
 
-import BigNumber from 'bignumber.js';
-import { ArrowUpDown, ChevronDown } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import type { Call } from 'starknet';
-
 import type { MarketData } from '@entities/market';
 import { TokenInput } from '@features/mint';
 import { useTokenBalance } from '@features/portfolio';
 import {
-  PriceImpactWarning,
-  usePriceImpactWarning,
-  usePriceImpact,
   estimateImpact,
+  PriceImpactWarning,
+  usePriceImpact,
+  usePriceImpactWarning,
 } from '@features/price';
 import { calculateMinOutput, type SwapDirection, useSwap } from '@features/swap';
 import { PriceImpactMeter } from '@features/swap/ui/PriceImpactMeter';
@@ -23,11 +17,11 @@ import { useEstimateFee } from '@shared/hooks';
 import { getDeadline } from '@shared/lib/deadline';
 import { cn } from '@shared/lib/utils';
 import {
+  type MarketState as AmmMarketState,
   calcSwapExactPtForSy,
   calcSwapExactSyForPt,
   calcSwapSyForExactPt,
   getImpliedApy,
-  type MarketState as AmmMarketState,
   type SwapResult,
 } from '@shared/math/amm';
 import { formatWad, fromWad, parseWad, WAD_BIGINT } from '@shared/math/wad';
@@ -48,6 +42,11 @@ import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
+import BigNumber from 'bignumber.js';
+import { ArrowUpDown, ChevronDown } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import type { Call } from 'starknet';
 
 interface SwapFormProps {
   market: MarketData;
@@ -395,7 +394,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
     const approveLabel =
       direction === 'buy_pt' || direction === 'buy_yt' ? 'Approve SY' : 'Approve PT';
     return [
-      { label: approveLabel, description: `Approve token spending` },
+      { label: approveLabel, description: 'Approve token spending' },
       { label: 'Swap', description: 'Execute swap' },
     ];
   }, [direction]);

@@ -1,5 +1,10 @@
 'use client';
 
+import { useDashboardMarkets } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { calcSwapExactPtForSy, calcSwapExactSyForPt, type MarketState } from '@shared/math/amm';
+import { formatWadCompact, WAD_BIGINT } from '@shared/math/wad';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 import { Activity, Gauge, Info, Layers, TrendingUp } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
@@ -13,12 +18,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useDashboardMarkets } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { calcSwapExactPtForSy, calcSwapExactSyForPt, type MarketState } from '@shared/math/amm';
-import { formatWadCompact, WAD_BIGINT } from '@shared/math/wad';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format basis points
@@ -149,9 +148,7 @@ function calculateDepthCurve(
         const result = calcSwapExactPtForSy(state, ptAmount);
         points.push({ percent, impactBps: result.priceImpact * 10000 });
       }
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   return points;

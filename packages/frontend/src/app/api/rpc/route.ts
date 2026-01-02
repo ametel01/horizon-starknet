@@ -1,8 +1,7 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * RPC Proxy Route
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcRe
 
   // Check input size limit
   const contentLength = request.headers.get('content-length');
-  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+  if (contentLength && Number.parseInt(contentLength, 10) > MAX_BODY_SIZE) {
     return NextResponse.json(
       { jsonrpc: '2.0', error: { code: -32600, message: 'Request too large' }, id: null },
       { status: 413 }

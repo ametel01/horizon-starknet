@@ -4,7 +4,7 @@
  * Calculates position values in SY and USD terms.
  */
 
-import { WAD_BIGINT, fromWad, wadDiv, wadMul } from '@shared/math/wad';
+import { fromWad, WAD_BIGINT, wadDiv, wadMul } from '@shared/math/wad';
 
 const SECONDS_PER_YEAR = 31_536_000;
 

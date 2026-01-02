@@ -1,9 +1,8 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import { getYTContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
  * Yield claim event from the API

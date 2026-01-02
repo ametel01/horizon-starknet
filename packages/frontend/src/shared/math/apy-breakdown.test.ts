@@ -83,9 +83,9 @@ describe('formatApyPercent', () => {
   });
 
   test('handles non-finite values', () => {
-    expect(formatApyPercent(Infinity)).toBe('-.--%-');
-    expect(formatApyPercent(-Infinity)).toBe('-.--%-');
-    expect(formatApyPercent(NaN)).toBe('-.--%-');
+    expect(formatApyPercent(Number.POSITIVE_INFINITY)).toBe('-.--%-');
+    expect(formatApyPercent(Number.NEGATIVE_INFINITY)).toBe('-.--%-');
+    expect(formatApyPercent(Number.NaN)).toBe('-.--%-');
   });
 
   test('respects decimals parameter', () => {

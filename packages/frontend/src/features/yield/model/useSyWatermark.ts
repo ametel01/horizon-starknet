@@ -1,10 +1,9 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
-
 import { useStarknet } from '@features/wallet';
 import { getSYContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { uint256 } from 'starknet';
 
 export interface SyWatermarkInfo {
   /** Highest exchange rate ever seen (WAD) */

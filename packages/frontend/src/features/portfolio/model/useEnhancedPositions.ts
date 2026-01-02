@@ -1,24 +1,23 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { uint256, type ProviderInterface } from 'starknet';
-
 import type { MarketData } from '@entities/market';
+import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
 import {
-  getCostBasis,
-  calculateUnrealizedPnl,
-  calculatePtPriceInSy,
-  calculateYtPriceInSy,
   calculateLpValue,
   calculatePositionValue,
+  calculatePtPriceInSy,
+  calculateUnrealizedPnl,
+  calculateYtPriceInSy,
+  getCostBasis,
   getTimeToExpiry,
 } from '@entities/position';
-import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useAccount, useStarknet } from '@features/wallet';
-import { WAD_BIGINT, fromWad } from '@shared/math/wad';
+import { fromWad, WAD_BIGINT } from '@shared/math/wad';
 import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { type ProviderInterface, uint256 } from 'starknet';
 
 // Helper to convert Uint256 or bigint to bigint
 function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {

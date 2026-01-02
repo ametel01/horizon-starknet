@@ -1,11 +1,10 @@
 'use client';
 
-import { Layers, Percent, Vault } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { formatWadCompact, fromWad } from '@shared/math/wad';
 import { StatCard, StatCardGrid, StatCardSkeleton } from '@shared/ui/StatCard';
+import { Layers, Percent, Vault } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 export function StatsOverview(): ReactNode {
   const { markets, totalTvl, avgApy, isLoading } = useDashboardMarkets();

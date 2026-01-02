@@ -29,7 +29,7 @@ async function main() {
         ptDigits: String(s["pt_reserve_after"]).length,
         block: s["block_number"],
       },
-      "Swap reserve",
+      "Swap reserve"
     );
   }
 
@@ -41,7 +41,7 @@ async function main() {
   `;
   log.info(
     { count: rates.length },
-    "Latest market_implied_rate_updated reserves",
+    "Latest market_implied_rate_updated reserves"
   );
   for (const r of rates) {
     log.info(
@@ -52,7 +52,7 @@ async function main() {
         ptDigits: String(r["pt_reserve"]).length,
         block: r["block_number"],
       },
-      "Rate reserve",
+      "Rate reserve"
     );
   }
 
@@ -70,7 +70,7 @@ async function main() {
         ptReserve: s["pt_reserve"],
         ptDigits: String(s["pt_reserve"]).length,
       },
-      "Market state",
+      "Market state"
     );
   }
 

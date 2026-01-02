@@ -1,11 +1,10 @@
 'use client';
 
+import { api } from '@shared/api';
 import { useQuery } from '@tanstack/react-query';
-
 import type { DepthCurveResponse } from '@/app/api/analytics/depth-curve/route';
 import type { ExecutionQualityResponse } from '@/app/api/analytics/execution-quality/route';
 import type { LiquidityHealthResponse } from '@/app/api/analytics/liquidity-health/route';
-import { api } from '@shared/api';
 
 // ============================================================================
 // Execution Quality Hook

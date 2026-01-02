@@ -9,9 +9,8 @@
  * - High performance (pino is the fastest Node.js logger)
  */
 
-import pino from "pino";
-
 import type { Logger } from "pino";
+import pino from "pino";
 
 export type { Logger };
 
@@ -128,12 +127,12 @@ export function logBlockProgress(
   log: Logger,
   blockNumber: number,
   cursor: bigint | undefined,
-  throttleInterval = 1000,
+  throttleInterval = 1000
 ): void {
   if (blockNumber % throttleInterval === 0) {
     log.info(
       { block: blockNumber, cursor: cursor?.toString() },
-      "Block progress",
+      "Block progress"
     );
   }
 }
@@ -147,7 +146,7 @@ export function logIndexerStart(
     streamUrl: string;
     startingBlock: number;
     knownContracts?: number;
-  },
+  }
 ): void {
   log.info(
     {
@@ -155,7 +154,7 @@ export function logIndexerStart(
       startingBlock: config.startingBlock,
       knownContracts: config.knownContracts,
     },
-    "Indexer starting",
+    "Indexer starting"
   );
 }
 
@@ -165,7 +164,7 @@ export function logIndexerStart(
 export function logContractDiscovery(
   log: Logger,
   contractType: string,
-  address: string,
+  address: string
 ): void {
   log.info({ contractType, address }, "Discovered new contract");
 }
@@ -176,10 +175,10 @@ export function logContractDiscovery(
 export function logBatchInsert(
   log: Logger,
   blockNumber: number,
-  eventCount: number,
+  eventCount: number
 ): void {
   log.debug(
     { block: blockNumber, events: eventCount },
-    "Batch insert completed",
+    "Batch insert completed"
   );
 }

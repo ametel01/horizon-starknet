@@ -19,7 +19,7 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   marketBurn,
   marketFeesCollected,
@@ -28,7 +28,6 @@ import {
   marketScalarRootUpdated,
   marketSwap,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -50,8 +49,6 @@ import {
   marketSwapSchema,
   validateEvent,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 // MarketFactory event to discover Market contracts
 const MARKET_CREATED = getSelector("MarketCreated");
@@ -79,7 +76,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       marketImpliedRateUpdated,
       marketFeesCollected,
       marketScalarRootUpdated,
-    }),
+    })
   );
 
   logIndexerStart(log, {
@@ -99,7 +96,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
       { address: marketAddress, keys: [FEES_COLLECTED] },
       { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
-    ],
+    ]
   );
 
   return defineIndexer(StarknetStream)({
@@ -351,7 +348,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "ImpliedRateUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -439,7 +436,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "ScalarRootUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -478,7 +475,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -492,7 +489,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 

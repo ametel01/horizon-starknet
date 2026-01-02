@@ -19,7 +19,7 @@ const log = createScriptLogger("generate-events-abi");
 // Configuration
 const FRONTEND_ABI_DIR = join(
   import.meta.dir,
-  "../../frontend/src/types/generated",
+  "../../frontend/src/types/generated"
 );
 const OUTPUT_DIR = join(import.meta.dir, "../src/lib/abi");
 
@@ -97,7 +97,7 @@ function processContract(name: string): boolean {
 
   // Step 1: Find all Horizon events (struct kind only, not enum wrappers)
   const horizonEvents = fullAbi.filter(
-    (item) => isHorizonEvent(item) && isStructEvent(item),
+    (item) => isHorizonEvent(item) && isStructEvent(item)
   );
 
   if (horizonEvents.length === 0) {
@@ -125,7 +125,7 @@ function processContract(name: string): boolean {
     processedStructs.add(typeName);
 
     const struct = fullAbi.find(
-      (item) => item.type === "struct" && item.name === typeName,
+      (item) => item.type === "struct" && item.name === typeName
     );
     if (struct) {
       requiredStructs.push(struct);
@@ -152,7 +152,7 @@ function processContract(name: string): boolean {
       events: horizonEvents.length,
       structs: requiredStructs.length,
     },
-    "Processed contract",
+    "Processed contract"
   );
 
   return true;
@@ -164,7 +164,7 @@ function main(): void {
   if (!existsSync(FRONTEND_ABI_DIR)) {
     log.fatal(
       { path: FRONTEND_ABI_DIR },
-      "Frontend ABIs not found. Run 'bun run codegen' in packages/frontend first.",
+      "Frontend ABIs not found. Run 'bun run codegen' in packages/frontend first."
     );
     process.exit(1);
   }
@@ -186,7 +186,7 @@ function main(): void {
   // Generate index file only for contracts with events
   const imports = processedContracts.map(
     (c) =>
-      `import ${c.toLowerCase()}Abi from "./${c.toLowerCase()}.json" with { type: "json" };`,
+      `import ${c.toLowerCase()}Abi from "./${c.toLowerCase()}.json" with { type: "json" };`
   );
 
   const exports = processedContracts.map((c) => {

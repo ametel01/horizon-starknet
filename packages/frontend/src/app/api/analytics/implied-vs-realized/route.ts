@@ -1,16 +1,15 @@
-import { desc, eq } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { getCacheHeaders } from '@shared/server/cache';
-import { db, marketDailyStats, oracleRateHistory, marketCurrentState } from '@shared/server/db';
+import { db, marketCurrentState, marketDailyStats, oracleRateHistory } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
 import {
-  validateQuery,
   dateRangeSchema,
   starknetAddressSchema,
+  validateQuery,
 } from '@shared/server/validations/api';
+import { desc, eq } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const WAD = BigInt(10) ** BigInt(18);
 

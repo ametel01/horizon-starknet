@@ -1,12 +1,11 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type Call, uint256 } from 'starknet';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getRouterContract, getYTContract } from '@shared/starknet/contracts';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type Call, uint256 } from 'starknet';
 
 interface RedeemPyToSyParams {
   ytAddress: string;

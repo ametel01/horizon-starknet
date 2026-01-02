@@ -1,13 +1,12 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-
 import { useUserHistory } from '@features/portfolio';
 import type { HistoryEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
 
 interface LpEvent {
   id: string;

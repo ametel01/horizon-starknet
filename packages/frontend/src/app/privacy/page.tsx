@@ -1,7 +1,6 @@
+import { Separator } from '@shared/ui/separator';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-
-import { Separator } from '@shared/ui/separator';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Horizon Protocol',

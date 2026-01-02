@@ -1,8 +1,7 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-
 import type { MarketRatesResponse } from '@shared/api/types';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
  * Processed rate data point for display

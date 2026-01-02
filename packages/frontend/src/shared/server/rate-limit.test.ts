@@ -1,11 +1,11 @@
-import { describe, expect, test, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 
 import {
   checkRateLimit,
   getClientIdentifier,
   getRateLimitHeaders,
-  rateLimitResponse,
   RateLimitConfig,
+  rateLimitResponse,
 } from './rate-limit';
 
 // Mock Upstash Redis to test without actual connection
@@ -171,7 +171,7 @@ describe('rate-limit', () => {
 
       const retryAfter = response.headers.get('Retry-After');
       expect(retryAfter).not.toBeNull();
-      expect(parseInt(retryAfter ?? '0', 10)).toBeGreaterThanOrEqual(1);
+      expect(Number.parseInt(retryAfter ?? '0', 10)).toBeGreaterThanOrEqual(1);
     });
 
     test('includes rate limit headers', () => {
@@ -215,7 +215,7 @@ describe('rate-limit', () => {
       const response = rateLimitResponse(result);
 
       const retryAfter = response.headers.get('Retry-After');
-      expect(parseInt(retryAfter ?? '0', 10)).toBe(1);
+      expect(Number.parseInt(retryAfter ?? '0', 10)).toBe(1);
     });
   });
 });

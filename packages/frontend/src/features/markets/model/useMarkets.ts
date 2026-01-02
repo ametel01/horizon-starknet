@@ -1,9 +1,5 @@
 'use client';
 
-import { useQuery, useQueries } from '@tanstack/react-query';
-import BigNumber from 'bignumber.js';
-import { uint256, type ProviderInterface } from 'starknet';
-
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { useStarknet } from '@features/wallet';
 import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
@@ -11,6 +7,9 @@ import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
 import { getMarketContract, getMarketFactoryContract } from '@shared/starknet/contracts';
 import type { NetworkId } from '@shared/starknet/provider';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import BigNumber from 'bignumber.js';
+import { type ProviderInterface, uint256 } from 'starknet';
 
 /**
  * Page size for paginated market fetching
@@ -30,7 +29,7 @@ function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
 // Helper to convert address (bigint or string) to hex string
 function toHexAddress(value: unknown): string {
   if (typeof value === 'bigint') {
-    return '0x' + value.toString(16).padStart(64, '0');
+    return `0x${value.toString(16).padStart(64, '0')}`;
   }
   return String(value);
 }
@@ -229,7 +228,7 @@ function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore:
  */
 function addressToHex(addr: unknown): string {
   if (typeof addr === 'bigint') {
-    return '0x' + addr.toString(16).padStart(64, '0');
+    return `0x${addr.toString(16).padStart(64, '0')}`;
   }
   if (typeof addr === 'string') {
     return addr;

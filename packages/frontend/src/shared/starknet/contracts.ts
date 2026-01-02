@@ -1,6 +1,6 @@
+import { getAddresses } from '@shared/config/addresses';
 import type { AccountInterface, ProviderInterface, TypedContractV2 } from 'starknet';
 import { Contract } from 'starknet';
-
 import {
   FACTORY_ABI,
   FAUCET_ABI,
@@ -13,9 +13,8 @@ import {
   SYWITHREWARDS_ABI,
   YT_ABI,
 } from '@/types/generated';
-import { getAddresses } from '@shared/config/addresses';
 
-import { type NetworkId } from './provider';
+import type { NetworkId } from './provider';
 
 type ProviderOrAccount = ProviderInterface | AccountInterface;
 

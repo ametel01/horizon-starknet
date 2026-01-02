@@ -1,18 +1,17 @@
-import { desc, or, sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db } from '@shared/server/db';
 import {
-  enrichedRouterSwap,
-  enrichedRouterSwapYT,
   enrichedRouterAddLiquidity,
-  enrichedRouterRemoveLiquidity,
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
+  enrichedRouterRemoveLiquidity,
+  enrichedRouterSwap,
+  enrichedRouterSwapYT,
 } from '@shared/server/db/schema';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { desc, or, sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Normalize a Starknet address for database comparison.
@@ -21,7 +20,7 @@ import { applyRateLimit } from '@shared/server/rate-limit';
 function normalizeAddressForDb(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }
 
 export const dynamic = 'force-dynamic';
@@ -62,8 +61,8 @@ export async function GET(
 
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);
-  const offset = parseInt(searchParams.get('offset') ?? '0');
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '50', 10), 100);
+  const offset = Number.parseInt(searchParams.get('offset') ?? '0', 10);
   const typeFilter = searchParams.get('type')?.split(',') ?? [];
 
   try {
