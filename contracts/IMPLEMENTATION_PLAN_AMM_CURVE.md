@@ -210,8 +210,16 @@ Failure modes: rounding down allows minting with insufficient counterpart.
 
 ---
 
-## Step 4: Mirror changes to `market_math.cairo`
+## Step 4: Mirror changes to `market_math.cairo` **COMPLETE**
 Ensure every change in `market_math_fp.cairo` is mirrored in `market_math.cairo`, including helpers, precompute, signed trade core, and rounding behavior.
+
+**Changes made:**
+1. Updated `logit()` to clamp proportion to MIN_PROPORTION for safety (matching FP path)
+2. Updated `calc_swap_exact_pt_for_sy()` to return `TradeResult` (matching FP path)
+3. Updated `calc_swap_exact_sy_for_pt()` to return `(u256, TradeResult)` (matching FP path)
+4. Updated `calc_swap_sy_for_exact_pt()` to return `TradeResult` (matching FP path)
+5. Updated `calc_swap_pt_for_exact_sy()` to return `(u256, TradeResult)` (matching FP path)
+6. Updated all test files to use new return types
 
 Validate: run unit tests against both math paths.
 Failure modes: inconsistent math paths lead to mismatched swaps depending on configuration.

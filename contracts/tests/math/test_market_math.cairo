@@ -1,6 +1,6 @@
 use horizon::libraries::math::{WAD, abs_diff, exp_wad};
 use horizon::market::market_math::{
-    MIN_TIME_TO_EXPIRY, MarketState, calc_burn_lp, calc_mint_lp, calc_price_impact,
+    MIN_TIME_TO_EXPIRY, MarketState, TradeResult, calc_burn_lp, calc_mint_lp, calc_price_impact,
     calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
     calc_swap_sy_for_exact_pt, check_slippage, get_fee_rate, get_implied_apy, get_ln_implied_rate,
     get_market_exchange_rate, get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
@@ -251,7 +251,9 @@ fn test_get_implied_apy_higher() {
 #[test]
 fn test_calc_swap_exact_pt_for_sy_zero() {
     let state = default_market();
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, 0, ONE_YEAR);
+    let result = calc_swap_exact_pt_for_sy(@state, 0, ONE_YEAR);
+    let sy_out = result.net_sy_to_account;
+    let fee = result.net_sy_fee;
     assert(sy_out == 0, 'Zero in should give zero out');
     assert(fee == 0, 'Zero in should give zero fee');
 }
@@ -260,7 +262,9 @@ fn test_calc_swap_exact_pt_for_sy_zero() {
 fn test_calc_swap_exact_pt_for_sy_basic() {
     let state = default_market();
     let pt_in = 10 * WAD;
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let sy_out = result.net_sy_to_account;
+    let fee = result.net_sy_fee;
 
     // Output should be less than input (PT < SY before expiry + fees)
     assert(sy_out > 0, 'Should have output');
@@ -271,7 +275,8 @@ fn test_calc_swap_exact_pt_for_sy_basic() {
 #[test]
 fn test_calc_swap_exact_sy_for_pt_zero() {
     let state = default_market();
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, 0, ONE_YEAR);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, 0, ONE_YEAR);
+    let fee = result.net_sy_fee;
     assert(pt_out == 0, 'Zero in should give zero out');
     assert(fee == 0, 'Zero in should give zero fee');
 }
@@ -281,7 +286,8 @@ fn test_calc_swap_exact_sy_for_pt_basic() {
     // Use market with positive implied rate to satisfy exchange_rate > fee_rate
     let state = default_market_for_buy();
     let sy_in = 10 * WAD;
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
+    let fee = result.net_sy_fee;
 
     // Can get more PT than SY input (PT is discounted)
     assert(pt_out > 0, 'Should have output');
@@ -293,7 +299,9 @@ fn test_calc_swap_sy_for_exact_pt_basic() {
     // Use market with positive implied rate to satisfy exchange_rate > fee_rate
     let state = default_market_for_buy();
     let pt_out = 10 * WAD;
-    let (sy_in, fee) = calc_swap_sy_for_exact_pt(@state, pt_out, ONE_YEAR);
+    let result = calc_swap_sy_for_exact_pt(@state, pt_out, ONE_YEAR);
+    let sy_in = result.net_sy_to_account;
+    let fee = result.net_sy_fee;
 
     assert(sy_in > 0, 'Should require SY input');
     assert(fee > 0, 'Should have fee');
@@ -305,7 +313,8 @@ fn test_calc_swap_pt_for_exact_sy_basic() {
     // With Pendle's 96% max proportion, smaller pools can hit the bound
     let state = create_market_state(500 * WAD, 500 * WAD, WAD / 100, WAD / 10, WAD);
     let sy_out = 10 * WAD;
-    let (pt_in, fee) = calc_swap_pt_for_exact_sy(@state, sy_out, ONE_YEAR);
+    let (pt_in, result) = calc_swap_pt_for_exact_sy(@state, sy_out, ONE_YEAR);
+    let fee = result.net_sy_fee;
 
     assert(pt_in > 0, 'Should require PT input');
     assert(fee > 0, 'Should have fee');

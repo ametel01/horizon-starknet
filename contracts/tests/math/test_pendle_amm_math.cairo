@@ -10,9 +10,10 @@
 
 use horizon::libraries::math::{WAD, abs_diff, wad_div};
 use horizon::market::market_math::{
-    MarketState, calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
-    calc_swap_sy_for_exact_pt, get_exchange_rate, get_ln_implied_rate, get_market_pre_compute,
-    get_pt_price, get_rate_anchor, get_rate_scalar, get_time_adjusted_fee_rate,
+    MarketState, TradeResult, calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt,
+    calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt, get_exchange_rate, get_ln_implied_rate,
+    get_market_pre_compute, get_pt_price, get_rate_anchor, get_rate_scalar,
+    get_time_adjusted_fee_rate,
 };
 
 // ============ Constants for Tests ============
@@ -408,7 +409,9 @@ fn test_swap_exact_pt_for_sy_uses_logit_curve() {
     let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, WAD / 100, WAD / 10);
 
     let pt_in = 10 * WAD;
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let sy_out = result.net_sy_to_account;
+    let fee = result.net_sy_fee;
 
     // PT is worth less than SY (discounted), so sy_out < pt_in
     assert(sy_out > 0, 'should get SY out');
@@ -422,7 +425,8 @@ fn test_swap_exact_sy_for_pt_uses_logit_curve() {
     let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 2, WAD / 100, WAD / 2);
 
     let sy_in = 10 * WAD;
-    let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
+    let fee = result.net_sy_fee;
 
     // SY is worth more than PT, so pt_out > sy_in (before considering fees)
     // But after fees, it should still be positive
@@ -440,10 +444,12 @@ fn test_swap_convergence_near_expiry() {
     let pt_in = 10 * WAD;
 
     // 1 year out
-    let (sy_out_1y, _) = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let result_1y = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let sy_out_1y = result_1y.net_sy_to_account;
 
     // 1 day out
-    let (sy_out_1d, _) = calc_swap_exact_pt_for_sy(@state, pt_in, 86400);
+    let result_1d = calc_swap_exact_pt_for_sy(@state, pt_in, 86400);
+    let sy_out_1d = result_1d.net_sy_to_account;
 
     // Near expiry should give more SY (closer to 1:1)
     assert(sy_out_1d > sy_out_1y, 'near expiry = better rate');
@@ -463,10 +469,11 @@ fn test_swap_roundtrip_consistency() {
     let state = create_market(100 * WAD, 100 * WAD, 100 * WAD, WAD, WAD / 100, WAD / 10);
 
     let sy_in = 5 * WAD;
-    let (pt_out, _) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
+    let (pt_out, _result) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
 
     // Now sell the PT back
-    let (sy_back, _) = calc_swap_exact_pt_for_sy(@state, pt_out, ONE_YEAR);
+    let result_back = calc_swap_exact_pt_for_sy(@state, pt_out, ONE_YEAR);
+    let sy_back = result_back.net_sy_to_account;
 
     // Due to fees and curve shape, we should get less back
     assert(sy_back < sy_in, 'roundtrip loses to fees');
@@ -486,12 +493,13 @@ fn test_swap_exact_amounts() {
     let state = create_market(100 * WAD, 100 * WAD, 100 * WAD, WAD, WAD / 100, WAD / 10);
 
     let exact_pt_out = 5 * WAD;
-    let (sy_in, _) = calc_swap_sy_for_exact_pt(@state, exact_pt_out, ONE_YEAR);
+    let result = calc_swap_sy_for_exact_pt(@state, exact_pt_out, ONE_YEAR);
+    let sy_in = result.net_sy_to_account;
 
     assert(sy_in > 0, 'should require SY');
 
     // Verify: if we use this SY, we should get approximately exact_pt_out
-    let (pt_out_check, _) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
+    let (pt_out_check, _result) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
 
     let diff = abs_diff(pt_out_check, exact_pt_out);
     let tolerance = exact_pt_out / 50; // 2% tolerance due to binary search
@@ -506,8 +514,10 @@ fn test_swap_price_impact() {
     let small_trade = WAD; // 1 WAD
     let large_trade = 20 * WAD; // 20 WAD
 
-    let (sy_out_small, _) = calc_swap_exact_pt_for_sy(@state, small_trade, ONE_YEAR);
-    let (sy_out_large, _) = calc_swap_exact_pt_for_sy(@state, large_trade, ONE_YEAR);
+    let result_small = calc_swap_exact_pt_for_sy(@state, small_trade, ONE_YEAR);
+    let sy_out_small = result_small.net_sy_to_account;
+    let result_large = calc_swap_exact_pt_for_sy(@state, large_trade, ONE_YEAR);
+    let sy_out_large = result_large.net_sy_to_account;
 
     // Price per PT
     let price_small = wad_div(sy_out_small, small_trade);
@@ -598,7 +608,8 @@ fn test_very_small_trade() {
     let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, WAD / 100, WAD / 10);
 
     let tiny_trade = 1000; // Very small amount
-    let (sy_out, _) = calc_swap_exact_pt_for_sy(@state, tiny_trade, ONE_YEAR);
+    let result = calc_swap_exact_pt_for_sy(@state, tiny_trade, ONE_YEAR);
+    let sy_out = result.net_sy_to_account;
 
     assert(sy_out > 0, 'even tiny trade gives output');
 }
@@ -608,7 +619,9 @@ fn test_zero_fee_swap() {
     let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, 0, WAD / 10); // 0 fee
 
     let pt_in = 10 * WAD;
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let sy_out = result.net_sy_to_account;
+    let fee = result.net_sy_fee;
 
     assert(fee == 0, 'zero fee should give 0 fee');
     assert(sy_out > 0, 'should still get output');
@@ -702,9 +715,12 @@ fn test_swap_fee_decay_integration() {
     let pt_in = 10 * WAD;
 
     // Compare fees at different times to expiry
-    let (_, fee_1y) = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
-    let (_, fee_6m) = calc_swap_exact_pt_for_sy(@state, pt_in, SIX_MONTHS);
-    let (_, fee_1d) = calc_swap_exact_pt_for_sy(@state, pt_in, 86_400); // 1 day
+    let result_1y = calc_swap_exact_pt_for_sy(@state, pt_in, ONE_YEAR);
+    let fee_1y = result_1y.net_sy_fee;
+    let result_6m = calc_swap_exact_pt_for_sy(@state, pt_in, SIX_MONTHS);
+    let fee_6m = result_6m.net_sy_fee;
+    let result_1d = calc_swap_exact_pt_for_sy(@state, pt_in, 86_400); // 1 day
+    let fee_1d = result_1d.net_sy_fee;
 
     // Fees should decrease as we approach expiry
     assert(fee_6m < fee_1y, 'fee 6m < fee 1y');
@@ -721,7 +737,9 @@ fn test_swap_no_fee_at_expiry() {
     let pt_in = 10 * WAD;
 
     // Time to expiry = 1 second (minimum)
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, 1);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, 1);
+    let sy_out = result.net_sy_to_account;
+    let fee = result.net_sy_fee;
 
     // Fee should be approximately 0
     // With 1 second left and 1% base rate:
@@ -737,22 +755,30 @@ fn test_fee_decay_all_swap_types() {
     let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 2, WAD / 100, WAD / 2);
 
     // Test calc_swap_exact_pt_for_sy
-    let (_, fee_pt_sy_1y) = calc_swap_exact_pt_for_sy(@state, 10 * WAD, ONE_YEAR);
-    let (_, fee_pt_sy_1d) = calc_swap_exact_pt_for_sy(@state, 10 * WAD, 86_400);
+    let result_pt_sy_1y = calc_swap_exact_pt_for_sy(@state, 10 * WAD, ONE_YEAR);
+    let fee_pt_sy_1y = result_pt_sy_1y.net_sy_fee;
+    let result_pt_sy_1d = calc_swap_exact_pt_for_sy(@state, 10 * WAD, 86_400);
+    let fee_pt_sy_1d = result_pt_sy_1d.net_sy_fee;
     assert(fee_pt_sy_1d < fee_pt_sy_1y / 100, 'PT->SY fee decay works');
 
     // Test calc_swap_exact_sy_for_pt
-    let (_, fee_sy_pt_1y) = calc_swap_exact_sy_for_pt(@state, 10 * WAD, ONE_YEAR);
-    let (_, fee_sy_pt_1d) = calc_swap_exact_sy_for_pt(@state, 10 * WAD, 86_400);
+    let (_, result_sy_pt_1y) = calc_swap_exact_sy_for_pt(@state, 10 * WAD, ONE_YEAR);
+    let fee_sy_pt_1y = result_sy_pt_1y.net_sy_fee;
+    let (_, result_sy_pt_1d) = calc_swap_exact_sy_for_pt(@state, 10 * WAD, 86_400);
+    let fee_sy_pt_1d = result_sy_pt_1d.net_sy_fee;
     assert(fee_sy_pt_1d < fee_sy_pt_1y / 100, 'SY->PT fee decay works');
 
     // Test calc_swap_sy_for_exact_pt
-    let (_, fee_ex_pt_1y) = calc_swap_sy_for_exact_pt(@state, 5 * WAD, ONE_YEAR);
-    let (_, fee_ex_pt_1d) = calc_swap_sy_for_exact_pt(@state, 5 * WAD, 86_400);
+    let result_ex_pt_1y = calc_swap_sy_for_exact_pt(@state, 5 * WAD, ONE_YEAR);
+    let fee_ex_pt_1y = result_ex_pt_1y.net_sy_fee;
+    let result_ex_pt_1d = calc_swap_sy_for_exact_pt(@state, 5 * WAD, 86_400);
+    let fee_ex_pt_1d = result_ex_pt_1d.net_sy_fee;
     assert(fee_ex_pt_1d < fee_ex_pt_1y / 100, 'exact PT fee decay works');
 
     // Test calc_swap_pt_for_exact_sy
-    let (_, fee_ex_sy_1y) = calc_swap_pt_for_exact_sy(@state, 5 * WAD, ONE_YEAR);
-    let (_, fee_ex_sy_1d) = calc_swap_pt_for_exact_sy(@state, 5 * WAD, 86_400);
+    let (_, result_ex_sy_1y) = calc_swap_pt_for_exact_sy(@state, 5 * WAD, ONE_YEAR);
+    let fee_ex_sy_1y = result_ex_sy_1y.net_sy_fee;
+    let (_, result_ex_sy_1d) = calc_swap_pt_for_exact_sy(@state, 5 * WAD, 86_400);
+    let fee_ex_sy_1d = result_ex_sy_1d.net_sy_fee;
     assert(fee_ex_sy_1d < fee_ex_sy_1y / 100, 'exact SY fee decay works');
 }

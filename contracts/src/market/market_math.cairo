@@ -244,14 +244,18 @@ pub fn get_rate_anchor(state: @MarketState, time_to_expiry: u64) -> (u256, bool)
 /// Returns (|value|, is_negative)
 /// @param proportion Proportion in WAD (0 < p < 1)
 /// @return (ln_value, is_negative) where result = is_negative ? -ln_value : ln_value
+/// Note: Caller must validate proportion is within bounds before calling
 fn logit(proportion: u256) -> (u256, bool) {
+    // Caller is responsible for bounds checking - we only clamp to MIN for safety
+    let p = max(MIN_PROPORTION, proportion);
+
     // Calculate odds = p / (1 - p)
-    let one_minus_p = WAD - proportion;
+    let one_minus_p = WAD - p;
     if one_minus_p == 0 {
         // Proportion is 1, odds is infinite - should be caught by MAX_PROPORTION
         return (MAX_LN_IMPLIED_RATE, false);
     }
-    let odds = wad_div(proportion, one_minus_p);
+    let odds = wad_div(p, one_minus_p);
 
     // ln(odds)
     ln_wad(odds)
@@ -595,11 +599,17 @@ pub fn get_implied_apy(ln_implied_rate: u256) -> u256 {
 /// Calculate SY output for exact PT input (sell PT for SY)
 /// Uses Pendle's calcTrade with asymmetric fee handling
 /// net_pt_to_account = -exact_pt_in (user is selling PT)
+/// Returns full TradeResult for Pendle-style fee handling (LP fee vs reserve fee split)
 pub fn calc_swap_exact_pt_for_sy(
     state: @MarketState, exact_pt_in: u256, time_to_expiry: u64,
-) -> (u256, u256) {
+) -> TradeResult {
     if exact_pt_in == 0 {
-        return (0, 0);
+        return TradeResult {
+            net_sy_to_account: 0,
+            net_sy_to_account_is_negative: false,
+            net_sy_fee: 0,
+            net_sy_to_reserve: 0,
+        };
     }
 
     let comp = get_market_pre_compute(state, time_to_expiry);
@@ -616,17 +626,26 @@ pub fn calc_swap_exact_pt_for_sy(
     // User receives SY (net_sy_to_account should be positive)
     assert(!result.net_sy_to_account_is_negative, Errors::MARKET_INVALID_TRADE);
 
-    (result.net_sy_to_account, result.net_sy_fee)
+    result
 }
 
 /// Calculate PT output for exact SY input (sell SY for PT)
 /// Uses binary search with Pendle's calcTrade for asymmetric fee handling
 /// net_pt_to_account = +pt_out (user is buying PT)
+/// Returns (pt_out, TradeResult) for Pendle-style fee handling
 pub fn calc_swap_exact_sy_for_pt(
     state: @MarketState, exact_sy_in: u256, time_to_expiry: u64,
-) -> (u256, u256) {
+) -> (u256, TradeResult) {
     if exact_sy_in == 0 {
-        return (0, 0);
+        return (
+            0,
+            TradeResult {
+                net_sy_to_account: 0,
+                net_sy_to_account_is_negative: false,
+                net_sy_fee: 0,
+                net_sy_to_reserve: 0,
+            },
+        );
     }
 
     let comp = get_market_pre_compute(state, time_to_expiry);
@@ -651,7 +670,7 @@ pub fn calc_swap_exact_sy_for_pt(
     let net_pt_to_account = signed_pos(pt_out);
     let result = calc_trade(state, net_pt_to_account, @comp);
 
-    (pt_out, result.net_sy_fee)
+    (pt_out, result)
 }
 
 /// Binary search for PT_out using calc_trade for accurate fee-aware pricing
@@ -711,11 +730,17 @@ fn binary_search_pt_out_with_trade(
 /// Calculate SY input required for exact PT output
 /// Uses Pendle's calcTrade with asymmetric fee handling
 /// net_pt_to_account = +exact_pt_out (user is buying PT)
+/// Returns full TradeResult for Pendle-style fee handling (LP fee vs reserve fee split)
 pub fn calc_swap_sy_for_exact_pt(
     state: @MarketState, exact_pt_out: u256, time_to_expiry: u64,
-) -> (u256, u256) {
+) -> TradeResult {
     if exact_pt_out == 0 {
-        return (0, 0);
+        return TradeResult {
+            net_sy_to_account: 0,
+            net_sy_to_account_is_negative: false,
+            net_sy_fee: 0,
+            net_sy_to_reserve: 0,
+        };
     }
 
     assert(exact_pt_out < *state.pt_reserve, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
@@ -731,17 +756,26 @@ pub fn calc_swap_sy_for_exact_pt(
     // User pays SY (net_sy_to_account should be negative)
     assert(result.net_sy_to_account_is_negative, Errors::MARKET_INVALID_TRADE);
 
-    (result.net_sy_to_account, result.net_sy_fee)
+    result
 }
 
 /// Calculate PT input required for exact SY output
 /// Uses binary search with Pendle's calcTrade for asymmetric fee handling
 /// net_pt_to_account = -pt_in (user is selling PT)
+/// Returns (pt_in, TradeResult) for Pendle-style fee handling
 pub fn calc_swap_pt_for_exact_sy(
     state: @MarketState, exact_sy_out: u256, time_to_expiry: u64,
-) -> (u256, u256) {
+) -> (u256, TradeResult) {
     if exact_sy_out == 0 {
-        return (0, 0);
+        return (
+            0,
+            TradeResult {
+                net_sy_to_account: 0,
+                net_sy_to_account_is_negative: false,
+                net_sy_fee: 0,
+                net_sy_to_reserve: 0,
+            },
+        );
     }
 
     assert(exact_sy_out < *state.sy_reserve, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
@@ -781,7 +815,7 @@ pub fn calc_swap_pt_for_exact_sy(
     assert(!result.net_sy_to_account_is_negative, Errors::MARKET_INFEASIBLE_TRADE);
     assert(result.net_sy_to_account >= exact_sy_out, Errors::MARKET_INFEASIBLE_TRADE);
 
-    (pt_in, result.net_sy_fee)
+    (pt_in, result)
 }
 
 /// Binary search for PT_in using calc_trade for accurate fee-aware pricing
