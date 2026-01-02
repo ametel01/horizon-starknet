@@ -469,7 +469,7 @@ fn test_fuzz_get_exchange_rate_always_gte_wad(
 
     let exchange_rate = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         net_pt_change,
         is_pt_out,
         comp.rate_scalar,
@@ -502,7 +502,7 @@ fn test_fuzz_get_exchange_rate_responds_to_trades(
     // Get rate with no trade
     let rate_no_trade = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -514,7 +514,7 @@ fn test_fuzz_get_exchange_rate_responds_to_trades(
     let pt_change = state.pt_reserve / 10;
     let rate_pt_out = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         pt_change,
         true,
         comp.rate_scalar,
@@ -525,7 +525,7 @@ fn test_fuzz_get_exchange_rate_responds_to_trades(
     // Get rate with PT in (selling PT)
     let rate_pt_in = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         pt_change,
         false,
         comp.rate_scalar,

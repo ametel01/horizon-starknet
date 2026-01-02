@@ -274,7 +274,7 @@ fn test_get_exchange_rate_balanced() {
     // No trade, just get current exchange rate
     let exchange_rate = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -295,7 +295,7 @@ fn test_get_exchange_rate_pt_out_changes() {
     // Exchange rate with no trade
     let rate_before = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -307,7 +307,7 @@ fn test_get_exchange_rate_pt_out_changes() {
     let pt_out = 100_000 * WAD;
     let rate_after = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         pt_out,
         true,
         comp.rate_scalar,
@@ -597,7 +597,7 @@ fn test_exchange_rate_at_min_proportion() {
     // Exchange rate should be calculable without panic
     let exchange_rate = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -633,7 +633,7 @@ fn test_exchange_rate_at_max_proportion() {
     // Exchange rate should be calculable without panic
     let exchange_rate = get_exchange_rate(
         state.pt_reserve,
-        state.sy_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,

@@ -545,8 +545,8 @@ fn test_invariant_exchange_rate_floor_initial() {
     let comp = get_market_pre_compute(@state, time_to_expiry);
 
     let exchange_rate = get_exchange_rate(
-        state.sy_reserve,
         state.pt_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -579,8 +579,8 @@ fn test_invariant_exchange_rate_floor_after_swap() {
     let comp = get_market_pre_compute(@state, time_to_expiry);
 
     let exchange_rate = get_exchange_rate(
-        state.sy_reserve,
         state.pt_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -608,8 +608,8 @@ fn test_invariant_exchange_rate_floor_near_expiry() {
     let comp = get_market_pre_compute(@state, time_to_expiry);
 
     let exchange_rate = get_exchange_rate(
-        state.sy_reserve,
         state.pt_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
@@ -642,8 +642,8 @@ fn test_invariant_exchange_rate_floor_with_imbalanced_pool() {
     let comp = get_market_pre_compute(@state, time_to_expiry);
 
     let exchange_rate = get_exchange_rate(
-        state.sy_reserve,
         state.pt_reserve,
+        comp.total_asset,
         0,
         false,
         comp.rate_scalar,
