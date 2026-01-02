@@ -634,19 +634,21 @@ fn test_swap_pt_for_exact_sy() {
     let (underlying, sy, yt, pt, market) = setup();
     let user = user1();
 
-    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    // Use larger pool to avoid hitting proportion bounds during binary search
+    // With Pendle's 96% max proportion, smaller pools can hit the bound
+    setup_user_with_tokens(underlying, sy, yt, user, 2000 * WAD);
 
     // Add liquidity
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(market.contract_address, 100 * WAD);
+    sy.approve(market.contract_address, 500 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(pt.contract_address, user);
-    pt.approve(market.contract_address, 100 * WAD);
+    pt.approve(market.contract_address, 500 * WAD);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.mint(user, 100 * WAD, 100 * WAD);
+    market.mint(user, 500 * WAD, 500 * WAD);
     stop_cheat_caller_address(market.contract_address);
 
     // Want to get exactly 5 SY

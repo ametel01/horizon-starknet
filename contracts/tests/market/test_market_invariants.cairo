@@ -827,8 +827,11 @@ fn test_invariant_no_free_value_pt_for_exact_sy() {
     let (underlying, sy, yt, pt, market) = setup();
     let user = user1();
 
-    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
-    add_liquidity(market, sy, pt, user, 100 * WAD, 100 * WAD);
+    // Use larger pool to avoid hitting proportion bounds during binary search
+    // With Pendle's 96% max proportion, binary search on smaller pools can
+    // attempt PT values that exceed the bound during intermediate steps
+    setup_user_with_tokens(underlying, sy, yt, user, 2000 * WAD);
+    add_liquidity(market, sy, pt, user, 500 * WAD, 500 * WAD);
 
     let exact_sy_out = 5 * WAD;
 

@@ -130,9 +130,11 @@ fn create_fuzz_market(
     // ln fee rate root: 0 to 2% (0 to 0.02 WAD) - kept low to avoid fee eating into margin
     let ln_fee_rate_root = bound(fee_rate_raw, 0, WAD / 50);
 
-    // ln(implied rate): 0.5 to 1.0 WAD (50-100% implied rate)
-    // This ensures exchange_rate = exp(0.5 to 1.0) = 1.65 to 2.72, well above fee_rate
-    let last_ln_implied_rate = bound(ln_implied_rate_raw, WAD / 2, WAD);
+    // ln(implied rate): 1.0 to 2.0 WAD (100-700% implied rate)
+    // With bounds enforcement, we need higher implied rates to ensure exchange_rate >= 1.0
+    // at all valid proportions. At extreme proportions, logit can be very negative,
+    // requiring high rate_anchor (derived from ln_implied_rate) to stay above 1.0.
+    let last_ln_implied_rate = bound(ln_implied_rate_raw, WAD, WAD * 2);
 
     // Time to expiry: 1 second to 2 years
     let time_to_expiry = bound_u64(time_to_expiry_raw, 1, 2 * 31_536_000);
@@ -439,6 +441,7 @@ fn test_fuzz_calc_swap_pt_for_exact_sy_zero_output(
 // ============================================
 
 /// Property: Exchange rate should always be >= WAD (PT never worth more than SY)
+/// Note: With bounds enforcement, inputs must respect the 4-96% proportion range
 #[test]
 #[fuzzer(runs: 256, seed: 12353)]
 fn test_fuzz_get_exchange_rate_always_gte_wad(
@@ -457,15 +460,36 @@ fn test_fuzz_get_exchange_rate_always_gte_wad(
     );
 
     let comp = get_market_pre_compute(@state, tte);
-
-    // Bound the PT change to avoid panic on insufficient liquidity
-    let max_change = if is_pt_out_raw % 2 == 0 {
-        state.pt_reserve / 2 // If PT out, must be < reserve
-    } else {
-        state.pt_reserve * 2 // If PT in, can be larger
-    };
-    let net_pt_change = bound(net_pt_change_raw, 0, max_change);
     let is_pt_out = is_pt_out_raw % 2 == 0;
+
+    // Bound the PT change to respect both liquidity and proportion bounds
+    // For PT out: new_pt = pt_reserve - change >= MIN_PROPORTION * total_asset
+    // For PT in: new_pt = pt_reserve + change <= MAX_PROPORTION * total_asset
+    let max_change = if is_pt_out {
+        // PT out: can't go below min proportion (4%)
+        let min_pt = (MIN_PROPORTION * comp.total_asset) / WAD;
+        if state.pt_reserve > min_pt {
+            // Also limit to half reserve for safety
+            min(state.pt_reserve - min_pt, state.pt_reserve / 2)
+        } else {
+            0
+        }
+    } else {
+        // PT in: can't exceed max proportion (96%)
+        let max_pt = (MAX_PROPORTION * comp.total_asset) / WAD;
+        if max_pt > state.pt_reserve {
+            max_pt - state.pt_reserve
+        } else {
+            0
+        }
+    };
+
+    // Skip if no valid change range
+    if max_change == 0 {
+        return;
+    }
+
+    let net_pt_change = bound(net_pt_change_raw, 0, max_change);
 
     let exchange_rate = get_exchange_rate(
         state.pt_reserve,

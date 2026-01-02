@@ -839,8 +839,10 @@ fn test_fee_with_pt_for_exact_sy() {
     let (underlying, sy, yt, pt, market) = setup_with_expiry(expiry);
     let user = user1();
 
-    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
-    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+    // Use larger pool to avoid hitting proportion bounds during binary search
+    // With Pendle's 96% max proportion, smaller pools can hit the bound
+    setup_user_with_tokens(underlying, sy, yt, user, 2000 * WAD);
+    add_liquidity(sy, pt, market, user, 500 * WAD, 500 * WAD);
 
     // Swap PT for exact SY
     let exact_sy_out = 5 * WAD;

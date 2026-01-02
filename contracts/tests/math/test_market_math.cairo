@@ -301,7 +301,9 @@ fn test_calc_swap_sy_for_exact_pt_basic() {
 
 #[test]
 fn test_calc_swap_pt_for_exact_sy_basic() {
-    let state = create_market_state(100 * WAD, 100 * WAD, WAD / 100, WAD / 10, WAD);
+    // Use larger pool to avoid hitting proportion bounds during binary search
+    // With Pendle's 96% max proportion, smaller pools can hit the bound
+    let state = create_market_state(500 * WAD, 500 * WAD, WAD / 100, WAD / 10, WAD);
     let sy_out = 10 * WAD;
     let (pt_in, fee) = calc_swap_pt_for_exact_sy(@state, sy_out, ONE_YEAR);
 
@@ -380,6 +382,74 @@ fn test_calc_mint_lp_unbalanced() {
     assert(lp == 50 * WAD, 'Should mint 50 LP');
     assert(sy_used == 50 * WAD, 'Should use only 50 SY');
     assert(pt_used == 50 * WAD, 'Should use 50 PT');
+    assert(!is_first_mint, 'Should not be first mint');
+}
+
+/// Test that calc_mint_lp uses rawDivUp-style rounding for the "other side" amount.
+/// This prevents users from minting LP with insufficient counterpart tokens.
+#[test]
+fn test_calc_mint_lp_rounds_up_other_side() {
+    // Create a state where division doesn't result in an integer
+    // sy_reserve = 3 WAD, pt_reserve = 3 WAD, total_lp = 10 WAD
+    // When adding 1 WAD SY (limiting factor):
+    // lp_to_mint = (1 * 10) / 3 = 3.333... WAD (floored to 3_333_333_333_333_333_333)
+    // pt_used without rounding = (3 * lp) / 10 = 999_999_999_999_999_999 (just under 1 WAD)
+    // pt_used with rawDivUp = 1_000_000_000_000_000_000 (exactly 1 WAD)
+    let state = MarketState {
+        sy_reserve: 3 * WAD,
+        pt_reserve: 3 * WAD,
+        total_lp: 10 * WAD, // Intentionally different from reserves to create rounding scenario
+        scalar_root: WAD,
+        initial_anchor: WAD / 10,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
+        expiry: 0,
+        last_ln_implied_rate: 0,
+        py_index: WAD,
+    };
+
+    // Add SY that creates a non-integer LP amount
+    let (lp, sy_used, pt_used, is_first_mint) = calc_mint_lp(@state, WAD, 2 * WAD);
+
+    // SY is the limiting factor (1 WAD SY vs 2 WAD PT available)
+    // lp_by_sy = (1 * 10) / 3 = 3_333_333_333_333_333_333
+    let expected_lp: u256 = 3_333_333_333_333_333_333;
+    assert(lp == expected_lp, 'LP should be 3.33... WAD');
+    assert(sy_used == WAD, 'Should use all SY');
+
+    // PT used should be rounded UP to protect the pool
+    // pt_used = divUp(3 * 3_333_333_333_333_333_333 / 10) = divUp(999_999_999_999_999_999.9) = 1
+    // WAD Without rawDivUp, this would be 999_999_999_999_999_999 (1 wei less than 1 WAD)
+    assert(pt_used == WAD, 'PT should round UP to 1 WAD');
+    assert(!is_first_mint, 'Should not be first mint');
+}
+
+/// Test rawDivUp when PT is the limiting factor
+#[test]
+fn test_calc_mint_lp_rounds_up_sy_when_pt_limiting() {
+    let state = MarketState {
+        sy_reserve: 3 * WAD,
+        pt_reserve: 3 * WAD,
+        total_lp: 10 * WAD,
+        scalar_root: WAD,
+        initial_anchor: WAD / 10,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
+        expiry: 0,
+        last_ln_implied_rate: 0,
+        py_index: WAD,
+    };
+
+    // PT is limiting (1 WAD PT vs 2 WAD SY available)
+    let (lp, sy_used, pt_used, is_first_mint) = calc_mint_lp(@state, 2 * WAD, WAD);
+
+    // lp_by_pt = (1 * 10) / 3 = 3_333_333_333_333_333_333
+    let expected_lp: u256 = 3_333_333_333_333_333_333;
+    assert(lp == expected_lp, 'LP should be 3.33... WAD');
+    assert(pt_used == WAD, 'Should use all PT');
+
+    // SY used should be rounded UP
+    assert(sy_used == WAD, 'SY should round UP to 1 WAD');
     assert(!is_first_mint, 'Should not be first mint');
 }
 
