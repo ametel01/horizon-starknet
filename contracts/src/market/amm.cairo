@@ -375,12 +375,11 @@ pub mod Market {
             self.sy_reserve.write(self.sy_reserve.read() + sy_used);
             self.pt_reserve.write(self.pt_reserve.read() + pt_used);
 
-            // For first mint, permanently lock MINIMUM_LIQUIDITY by minting to dead address
-            // Using address 1 since OpenZeppelin ERC20 doesn't allow minting to zero address
-            // This prevents first depositor attacks and ensures pool can never be fully drained
+            // For first mint, lock MINIMUM_LIQUIDITY to treasury (Pendle-style).
+            // Fallback to a dead address if factory/treasury is unset.
             if is_first_mint {
-                let dead_address: ContractAddress = 1.try_into().unwrap();
-                self.erc20.mint(dead_address, MINIMUM_LIQUIDITY);
+                let recipient = self._get_minimum_liquidity_recipient();
+                self.erc20.mint(recipient, MINIMUM_LIQUIDITY);
             }
 
             // Mint LP tokens to receiver
@@ -1100,6 +1099,22 @@ pub mod Market {
             }
 
             (treasury, reserve_fee)
+        }
+
+        /// Resolve recipient for the permanently locked MINIMUM_LIQUIDITY on first mint.
+        /// Uses factory treasury when configured; otherwise falls back to a dead address.
+        fn _get_minimum_liquidity_recipient(self: @ContractState) -> ContractAddress {
+            let factory = self.factory.read();
+            if !factory.is_zero() {
+                let factory_contract = IMarketFactoryDispatcher { contract_address: factory };
+                let treasury = factory_contract.get_treasury();
+                if !treasury.is_zero() {
+                    return treasury;
+                }
+            }
+
+            // OpenZeppelin ERC20 disallows minting to zero address.
+            1.try_into().unwrap()
         }
 
         /// Transfer reserve fees to treasury (Pendle-style)
