@@ -518,40 +518,36 @@ pub mod Market {
             let sy_out = result.net_sy_to_account;
             assert(check_slippage(sy_out, min_sy_out), Errors::MARKET_SLIPPAGE_EXCEEDED);
 
-            // Transfer PT from caller
-            let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
+            // Get contract addresses
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
+            let pt_contract = IPTDispatcher { contract_address: pt_addr };
+
+            // --- PULL: Transfer PT from caller (safe - caller controls it) ---
             assert(
                 pt_contract.transfer_from(caller, get_contract_address(), exact_pt_in),
                 Errors::MARKET_TRANSFER_FAILED,
             );
 
-            // Transfer SY to receiver
-            let sy_addr = self.sy.read();
-            let pt_addr = self.pt.read();
-            let sy_contract = ISYDispatcher { contract_address: sy_addr };
-            assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
+            // --- CALCULATE: Determine effective reserve fee (pure check, no side effects) ---
+            let (treasury, actual_reserve_fee) = self
+                ._get_effective_reserve_fee(result.net_sy_to_reserve);
+            let lp_fee = result.net_sy_fee - actual_reserve_fee;
 
-            // Transfer reserve fee to treasury immediately (Pendle-style)
-            // Returns actual amount transferred (0 if no factory/treasury set)
-            let actual_reserve_fee_transferred = self
-                ._transfer_reserve_fee_to_treasury(sy_contract, result.net_sy_to_reserve, caller);
-
-            // Calculate LP fee based on actual transfer
-            // If treasury transfer happened: LP fee = total fee - reserve fee
-            // If no treasury: entire fee stays in pool as LP fee
-            let lp_fee = result.net_sy_fee - actual_reserve_fee_transferred;
+            // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-
-            // Update reserves: decrease by trader output + actual reserve fee transferred
-            // Only deduct what was actually sent to treasury to avoid phantom liquidity
-            self.sy_reserve.write(self.sy_reserve.read() - sy_out - actual_reserve_fee_transferred);
+            self.sy_reserve.write(self.sy_reserve.read() - sy_out - actual_reserve_fee);
             self.pt_reserve.write(self.pt_reserve.read() + exact_pt_in);
-
-            // Update implied rate cache
             self._update_implied_rate();
-
-            // Get implied rate after swap
             let implied_rate_after = self.last_ln_implied_rate.read();
+
+            // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
+            assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
+            self
+                ._transfer_reserve_fee_to_treasury(
+                    sy_contract, treasury, actual_reserve_fee, caller,
+                );
 
             // Emit event
             self
@@ -568,7 +564,7 @@ pub mod Market {
                         sy_out,
                         total_fee: result.net_sy_fee,
                         lp_fee,
-                        reserve_fee: actual_reserve_fee_transferred,
+                        reserve_fee: actual_reserve_fee,
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
@@ -606,40 +602,36 @@ pub mod Market {
             let sy_in = result.net_sy_to_account;
             assert(sy_in <= max_sy_in, Errors::MARKET_SLIPPAGE_EXCEEDED);
 
-            // Transfer SY from caller
+            // Get contract addresses
             let sy_addr = self.sy.read();
             let pt_addr = self.pt.read();
             let sy_contract = ISYDispatcher { contract_address: sy_addr };
+            let pt_contract = IPTDispatcher { contract_address: pt_addr };
+
+            // --- PULL: Transfer SY from caller (safe - caller controls it) ---
             assert(
                 sy_contract.transfer_from(caller, get_contract_address(), sy_in),
                 Errors::MARKET_TRANSFER_FAILED,
             );
 
-            // Transfer PT to receiver
-            let pt_contract = IPTDispatcher { contract_address: pt_addr };
-            assert(pt_contract.transfer(receiver, exact_pt_out), Errors::MARKET_TRANSFER_FAILED);
+            // --- CALCULATE: Determine effective reserve fee (pure check, no side effects) ---
+            let (treasury, actual_reserve_fee) = self
+                ._get_effective_reserve_fee(result.net_sy_to_reserve);
+            let lp_fee = result.net_sy_fee - actual_reserve_fee;
 
-            // Transfer reserve fee to treasury immediately (Pendle-style)
-            // Returns actual amount transferred (0 if no factory/treasury set)
-            let actual_reserve_fee_transferred = self
-                ._transfer_reserve_fee_to_treasury(sy_contract, result.net_sy_to_reserve, caller);
-
-            // Calculate LP fee based on actual transfer
-            // If treasury transfer happened: LP fee = total fee - reserve fee
-            // If no treasury: entire fee stays in pool as LP fee
-            let lp_fee = result.net_sy_fee - actual_reserve_fee_transferred;
+            // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-
-            // Update reserves: increase by user payment minus actual reserve fee transferred
-            // Only deduct what was actually sent to treasury to avoid phantom liquidity
-            self.sy_reserve.write(self.sy_reserve.read() + sy_in - actual_reserve_fee_transferred);
+            self.sy_reserve.write(self.sy_reserve.read() + sy_in - actual_reserve_fee);
             self.pt_reserve.write(self.pt_reserve.read() - exact_pt_out);
-
-            // Update implied rate cache
             self._update_implied_rate();
-
-            // Get implied rate after swap
             let implied_rate_after = self.last_ln_implied_rate.read();
+
+            // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
+            assert(pt_contract.transfer(receiver, exact_pt_out), Errors::MARKET_TRANSFER_FAILED);
+            self
+                ._transfer_reserve_fee_to_treasury(
+                    sy_contract, treasury, actual_reserve_fee, caller,
+                );
 
             // Emit event
             self
@@ -656,7 +648,7 @@ pub mod Market {
                         sy_out: 0,
                         total_fee: result.net_sy_fee,
                         lp_fee,
-                        reserve_fee: actual_reserve_fee_transferred,
+                        reserve_fee: actual_reserve_fee,
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
@@ -693,42 +685,36 @@ pub mod Market {
             let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, exact_sy_in, time_to_expiry);
             assert(check_slippage(pt_out, min_pt_out), Errors::MARKET_SLIPPAGE_EXCEEDED);
 
-            // Transfer SY from caller
+            // Get contract addresses
             let sy_addr = self.sy.read();
             let pt_addr = self.pt.read();
             let sy_contract = ISYDispatcher { contract_address: sy_addr };
+            let pt_contract = IPTDispatcher { contract_address: pt_addr };
+
+            // --- PULL: Transfer SY from caller (safe - caller controls it) ---
             assert(
                 sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in),
                 Errors::MARKET_TRANSFER_FAILED,
             );
 
-            // Transfer PT to receiver
-            let pt_contract = IPTDispatcher { contract_address: pt_addr };
-            assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
+            // --- CALCULATE: Determine effective reserve fee (pure check, no side effects) ---
+            let (treasury, actual_reserve_fee) = self
+                ._get_effective_reserve_fee(result.net_sy_to_reserve);
+            let lp_fee = result.net_sy_fee - actual_reserve_fee;
 
-            // Transfer reserve fee to treasury immediately (Pendle-style)
-            // Returns actual amount transferred (0 if no factory/treasury set)
-            let actual_reserve_fee_transferred = self
-                ._transfer_reserve_fee_to_treasury(sy_contract, result.net_sy_to_reserve, caller);
-
-            // Calculate LP fee based on actual transfer
-            // If treasury transfer happened: LP fee = total fee - reserve fee
-            // If no treasury: entire fee stays in pool as LP fee
-            let lp_fee = result.net_sy_fee - actual_reserve_fee_transferred;
+            // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-
-            // Update reserves: increase by user payment minus actual reserve fee transferred
-            // Only deduct what was actually sent to treasury to avoid phantom liquidity
-            self
-                .sy_reserve
-                .write(self.sy_reserve.read() + exact_sy_in - actual_reserve_fee_transferred);
+            self.sy_reserve.write(self.sy_reserve.read() + exact_sy_in - actual_reserve_fee);
             self.pt_reserve.write(self.pt_reserve.read() - pt_out);
-
-            // Update implied rate cache
             self._update_implied_rate();
-
-            // Get implied rate after swap
             let implied_rate_after = self.last_ln_implied_rate.read();
+
+            // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
+            assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
+            self
+                ._transfer_reserve_fee_to_treasury(
+                    sy_contract, treasury, actual_reserve_fee, caller,
+                );
 
             // Emit event
             self
@@ -745,7 +731,7 @@ pub mod Market {
                         sy_out: 0,
                         total_fee: result.net_sy_fee,
                         lp_fee,
-                        reserve_fee: actual_reserve_fee_transferred,
+                        reserve_fee: actual_reserve_fee,
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
@@ -782,42 +768,36 @@ pub mod Market {
             let (pt_in, result) = calc_swap_pt_for_exact_sy(@state, exact_sy_out, time_to_expiry);
             assert(pt_in <= max_pt_in, Errors::MARKET_SLIPPAGE_EXCEEDED);
 
-            // Transfer PT from caller
+            // Get contract addresses
             let sy_addr = self.sy.read();
             let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
             let pt_contract = IPTDispatcher { contract_address: pt_addr };
+
+            // --- PULL: Transfer PT from caller (safe - caller controls it) ---
             assert(
                 pt_contract.transfer_from(caller, get_contract_address(), pt_in),
                 Errors::MARKET_TRANSFER_FAILED,
             );
 
-            // Transfer SY to receiver
-            let sy_contract = ISYDispatcher { contract_address: sy_addr };
-            assert(sy_contract.transfer(receiver, exact_sy_out), Errors::MARKET_TRANSFER_FAILED);
+            // --- CALCULATE: Determine effective reserve fee (pure check, no side effects) ---
+            let (treasury, actual_reserve_fee) = self
+                ._get_effective_reserve_fee(result.net_sy_to_reserve);
+            let lp_fee = result.net_sy_fee - actual_reserve_fee;
 
-            // Transfer reserve fee to treasury immediately (Pendle-style)
-            // Returns actual amount transferred (0 if no factory/treasury set)
-            let actual_reserve_fee_transferred = self
-                ._transfer_reserve_fee_to_treasury(sy_contract, result.net_sy_to_reserve, caller);
-
-            // Calculate LP fee based on actual transfer
-            // If treasury transfer happened: LP fee = total fee - reserve fee
-            // If no treasury: entire fee stays in pool as LP fee
-            let lp_fee = result.net_sy_fee - actual_reserve_fee_transferred;
+            // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-
-            // Update reserves: decrease by user output + actual reserve fee transferred
-            // Only deduct what was actually sent to treasury to avoid phantom liquidity
-            self
-                .sy_reserve
-                .write(self.sy_reserve.read() - exact_sy_out - actual_reserve_fee_transferred);
+            self.sy_reserve.write(self.sy_reserve.read() - exact_sy_out - actual_reserve_fee);
             self.pt_reserve.write(self.pt_reserve.read() + pt_in);
-
-            // Update implied rate cache
             self._update_implied_rate();
-
-            // Get implied rate after swap
             let implied_rate_after = self.last_ln_implied_rate.read();
+
+            // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
+            assert(sy_contract.transfer(receiver, exact_sy_out), Errors::MARKET_TRANSFER_FAILED);
+            self
+                ._transfer_reserve_fee_to_treasury(
+                    sy_contract, treasury, actual_reserve_fee, caller,
+                );
 
             // Emit event
             self
@@ -834,7 +814,7 @@ pub mod Market {
                         sy_out: exact_sy_out,
                         total_fee: result.net_sy_fee,
                         lp_fee,
-                        reserve_fee: actual_reserve_fee_transferred,
+                        reserve_fee: actual_reserve_fee,
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
@@ -873,12 +853,28 @@ pub mod Market {
             self.initial_anchor.read()
         }
 
+        /// Returns the market's base ln_fee_rate_root.
+        /// This is the default fee used for swaps unless a per-router override is set in factory.
+        /// Per-router overrides (if any) are caller-specific and queried via
+        /// factory.get_market_config().
         fn get_ln_fee_rate_root(self: @ContractState) -> u256 {
             self.ln_fee_rate_root.read()
         }
 
+        /// Returns the effective reserve fee percent used in swaps.
+        /// When factory is set, returns factory's value (enables protocol-wide changes).
+        /// When factory is zero (standalone market), returns market's stored value.
         fn get_reserve_fee_percent(self: @ContractState) -> u8 {
-            self.reserve_fee_percent.read()
+            let factory = self.factory.read();
+            if !factory.is_zero() {
+                let factory_contract = IMarketFactoryDispatcher { contract_address: factory };
+                // Pass zero address as caller since reserve_fee_percent doesn't vary by caller
+                let config = factory_contract
+                    .get_market_config(get_contract_address(), Zero::zero());
+                config.reserve_fee_percent
+            } else {
+                self.reserve_fee_percent.read()
+            }
         }
     }
 
@@ -1078,24 +1074,21 @@ pub mod Market {
             }
         }
 
-        /// Transfer reserve fees to treasury immediately (Pendle-style)
-        /// Returns the actual amount transferred (0 if factory/treasury not set)
-        /// IMPORTANT: Caller must use returned value for reserve accounting to avoid phantom
-        /// liquidity
-        fn _transfer_reserve_fee_to_treasury(
-            ref self: ContractState,
-            sy_contract: ISYDispatcher,
-            reserve_fee: u256,
-            caller: ContractAddress,
-        ) -> u256 {
+        /// Calculate effective reserve fee (checks if transfer will occur)
+        /// Returns (treasury_address, amount_to_transfer)
+        /// If treasury is zero, amount_to_transfer is 0 (fee stays in pool as LP fee)
+        /// IMPORTANT: This is a pure check - no side effects. Call before state updates.
+        fn _get_effective_reserve_fee(
+            self: @ContractState, reserve_fee: u256,
+        ) -> (ContractAddress, u256) {
             if reserve_fee == 0 {
-                return 0;
+                return (Zero::zero(), 0);
             }
 
             // Get treasury from factory - if no factory, fee stays in pool (benefits LPs)
             let factory = self.factory.read();
             if factory.is_zero() {
-                return 0;
+                return (Zero::zero(), 0);
             }
 
             let factory_contract = IMarketFactoryDispatcher { contract_address: factory };
@@ -1103,10 +1096,27 @@ pub mod Market {
 
             // Only transfer if treasury is set - otherwise fee stays in pool
             if treasury.is_zero() {
-                return 0;
+                return (Zero::zero(), 0);
             }
 
-            // Transfer and emit event
+            (treasury, reserve_fee)
+        }
+
+        /// Transfer reserve fees to treasury (Pendle-style)
+        /// IMPORTANT: Call this AFTER state updates (CEI pattern)
+        /// Assumes _get_effective_reserve_fee was called first to determine amount
+        fn _transfer_reserve_fee_to_treasury(
+            ref self: ContractState,
+            sy_contract: ISYDispatcher,
+            treasury: ContractAddress,
+            reserve_fee: u256,
+            caller: ContractAddress,
+        ) {
+            if reserve_fee == 0 || treasury.is_zero() {
+                return;
+            }
+
+            // Transfer to treasury
             assert(sy_contract.transfer(treasury, reserve_fee), Errors::MARKET_TRANSFER_FAILED);
 
             self
@@ -1120,8 +1130,6 @@ pub mod Market {
                         timestamp: get_block_timestamp(),
                     },
                 );
-
-            reserve_fee
         }
 
         /// Update the cached implied rate
