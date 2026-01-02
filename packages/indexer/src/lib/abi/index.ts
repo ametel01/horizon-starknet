@@ -3,9 +3,9 @@
 // Only includes Horizon-specific events and required struct definitions
 
 import factoryAbi from "./factory.json" with { type: "json" };
-import marketAbi from "./market.json" with { type: "json" };
 import marketfactoryAbi from "./marketfactory.json" with { type: "json" };
 import routerAbi from "./router.json" with { type: "json" };
+import marketAbi from "./market.json" with { type: "json" };
 import syAbi from "./sy.json" with { type: "json" };
 import ytAbi from "./yt.json" with { type: "json" };
 

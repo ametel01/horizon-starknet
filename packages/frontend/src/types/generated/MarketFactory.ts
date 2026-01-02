@@ -56,6 +56,24 @@ export const MARKETFACTORY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'horizon::interfaces::i_market_factory::MarketConfig',
+    members: [
+      {
+        name: 'treasury',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'ln_fee_rate_root',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'reserve_fee_percent',
+        type: 'core::integer::u8',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_market_factory::IMarketFactory',
     items: [
@@ -76,8 +94,12 @@ export const MARKETFACTORY_ABI = [
             type: 'core::integer::u256',
           },
           {
-            name: 'fee_rate',
+            name: 'ln_fee_rate_root',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'reserve_fee_percent',
+            type: 'core::integer::u8',
           },
         ],
         outputs: [
@@ -224,6 +246,92 @@ export const MARKETFACTORY_ABI = [
         type: 'function',
         name: 'initialize_rbac',
         inputs: [],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_market_config',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'router',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'horizon::interfaces::i_market_factory::MarketConfig',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_treasury',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_default_reserve_fee_percent',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u8',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_treasury',
+        inputs: [
+          {
+            name: 'treasury',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'set_default_reserve_fee_percent',
+        inputs: [
+          {
+            name: 'percent',
+            type: 'core::integer::u8',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'set_override_fee',
+        inputs: [
+          {
+            name: 'router',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'ln_fee_rate_root',
+            type: 'core::integer::u256',
+          },
+        ],
         outputs: [],
         state_mutability: 'external',
       },
@@ -433,8 +541,13 @@ export const MARKETFACTORY_ABI = [
         kind: 'data',
       },
       {
-        name: 'fee_rate',
+        name: 'ln_fee_rate_root',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'reserve_fee_percent',
+        type: 'core::integer::u8',
         kind: 'data',
       },
       {
@@ -487,6 +600,62 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'new_class_hash',
         type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::market::market_factory::MarketFactory::TreasuryUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_treasury',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'new_treasury',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::market::market_factory::MarketFactory::DefaultReserveFeeUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_percent',
+        type: 'core::integer::u8',
+        kind: 'data',
+      },
+      {
+        name: 'new_percent',
+        type: 'core::integer::u8',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::market::market_factory::MarketFactory::OverrideFeeSet',
+    kind: 'struct',
+    members: [
+      {
+        name: 'router',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'ln_fee_rate_root',
+        type: 'core::integer::u256',
         kind: 'data',
       },
     ],
@@ -705,6 +874,21 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'MarketClassHashUpdated',
         type: 'horizon::market::market_factory::MarketFactory::MarketClassHashUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'TreasuryUpdated',
+        type: 'horizon::market::market_factory::MarketFactory::TreasuryUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'DefaultReserveFeeUpdated',
+        type: 'horizon::market::market_factory::MarketFactory::DefaultReserveFeeUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'OverrideFeeSet',
+        type: 'horizon::market::market_factory::MarketFactory::OverrideFeeSet',
         kind: 'nested',
       },
       {

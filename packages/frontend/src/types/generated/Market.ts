@@ -277,6 +277,17 @@ export const MARKET_ABI = [
       },
       {
         type: 'function',
+        name: 'factory',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
         name: 'get_scalar_root',
         inputs: [],
         outputs: [
@@ -299,11 +310,22 @@ export const MARKET_ABI = [
       },
       {
         type: 'function',
-        name: 'get_fee_rate',
+        name: 'get_ln_fee_rate_root',
         inputs: [],
         outputs: [
           {
             type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_reserve_fee_percent',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u8',
           },
         ],
         state_mutability: 'view',
@@ -730,11 +752,19 @@ export const MARKET_ABI = [
         type: 'core::integer::u256',
       },
       {
-        name: 'fee_rate',
+        name: 'ln_fee_rate_root',
         type: 'core::integer::u256',
       },
       {
+        name: 'reserve_fee_percent',
+        type: 'core::integer::u8',
+      },
+      {
         name: 'pauser',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'factory',
         type: 'core::starknet::contract_address::ContractAddress',
       },
     ],
@@ -1223,7 +1253,17 @@ export const MARKET_ABI = [
         kind: 'data',
       },
       {
-        name: 'fee',
+        name: 'total_fee',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'lp_fee',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'reserve_fee',
         type: 'core::integer::u256',
         kind: 'data',
       },
@@ -1347,8 +1387,45 @@ export const MARKET_ABI = [
         kind: 'data',
       },
       {
-        name: 'fee_rate',
+        name: 'ln_fee_rate_root',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::market::amm::Market::ReserveFeeTransferred',
+    kind: 'struct',
+    members: [
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'treasury',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
         kind: 'data',
       },
       {
@@ -1438,6 +1515,11 @@ export const MARKET_ABI = [
       {
         name: 'FeesCollected',
         type: 'horizon::market::amm::Market::FeesCollected',
+        kind: 'nested',
+      },
+      {
+        name: 'ReserveFeeTransferred',
+        type: 'horizon::market::amm::Market::ReserveFeeTransferred',
         kind: 'nested',
       },
       {

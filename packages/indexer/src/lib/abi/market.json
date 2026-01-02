@@ -218,7 +218,17 @@
         "kind": "data"
       },
       {
-        "name": "fee",
+        "name": "total_fee",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "lp_fee",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "reserve_fee",
         "type": "core::integer::u256",
         "kind": "data"
       },
@@ -342,8 +352,45 @@
         "kind": "data"
       },
       {
-        "name": "fee_rate",
+        "name": "ln_fee_rate_root",
         "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::amm::Market::ReserveFeeTransferred",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "treasury",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "expiry",
+        "type": "core::integer::u64",
         "kind": "data"
       },
       {
