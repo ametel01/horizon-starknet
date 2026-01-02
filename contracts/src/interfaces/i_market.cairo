@@ -42,8 +42,11 @@ pub trait IMarket<TContractState> {
     // Market state
     fn get_ln_implied_rate(self: @TContractState) -> u256;
 
-    // Fee info
+    // Fee info (LP fees only - reserve fees are sent to treasury immediately)
     fn get_total_fees_collected(self: @TContractState) -> u256;
+
+    // Factory address (for querying fee config and treasury)
+    fn factory(self: @TContractState) -> ContractAddress;
 
     // Market parameters (read-only)
     fn get_scalar_root(self: @TContractState) -> u256;
