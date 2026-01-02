@@ -10,10 +10,9 @@
 
 use horizon::libraries::math::{WAD, abs_diff, wad_div};
 use horizon::market::market_math::{
-    MarketState, TradeResult, calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt,
-    calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt, get_exchange_rate, get_ln_implied_rate,
-    get_market_pre_compute, get_pt_price, get_rate_anchor, get_rate_scalar,
-    get_time_adjusted_fee_rate,
+    MarketState, calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
+    calc_swap_sy_for_exact_pt, get_exchange_rate, get_ln_implied_rate, get_market_pre_compute,
+    get_pt_price, get_rate_anchor, get_rate_scalar, get_time_adjusted_fee_rate,
 };
 
 // ============ Constants for Tests ============
