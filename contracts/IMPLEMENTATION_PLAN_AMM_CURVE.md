@@ -188,9 +188,9 @@ Failure modes: accumulating fees in-contract deviates from Pendle and breaks fee
 
 ---
 
-## Step 3: Bounds + rounding parity
+## Step 3: Bounds + rounding parity **COMPLETE**
 
-### 3.1 Enforce bounds and exchange-rate floor (no clamp)
+### 3.1 Enforce bounds and exchange-rate floor (no clamp) **COMPLETE**
 **Files:** `contracts/src/market/market_math_fp.cairo`, `contracts/src/market/market_math.cairo`
 
 Replace clamping with reverts:
@@ -200,7 +200,7 @@ Replace clamping with reverts:
 Validate: tests that previously clamped cases now revert.
 Failure modes: leaving clamps will still diverge from Pendle.
 
-### 3.2 Use rawDivUp-style rounding for liquidity math
+### 3.2 Use rawDivUp-style rounding for liquidity math **COMPLETE**
 **Files:** `contracts/src/market/market_math_fp.cairo`, `contracts/src/market/market_math.cairo`
 
 In `calc_mint_lp` and any proportional calculations, use `wad_div_up` for the "other side" amount, mirroring Pendle's `rawDivUp()`.

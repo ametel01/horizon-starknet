@@ -284,7 +284,7 @@ This preserves Pendle's invariant that total redeemable SY remains stable as the
 
 ### 2.1 Core AMM Curve (MarketMathCore)
 
-**Implementation Status: 70%** (Core curve math works; missing PYIndex integration + Pendle fee mechanics; bounds/initialization behavior diverges)
+**Implementation Status: 85%** (Core curve math + PYIndex integration + Pendle-style fee split/treasury wiring implemented; remaining differences: bounds handling, initial liquidity recipient, fee decay formula, rounding, init behavior)
 
 **Reference:** Pendle's `MarketMathCore.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/MarketMathCore.sol)
 
@@ -300,9 +300,9 @@ This preserves Pendle's invariant that total redeemable SY remains stable as the
 | PT price convergence | Approaches 1 at expiry | Approaches 1 at expiry | ✅ |
 | Dual math implementations | N/A | WAD + cubit FP | ✅ **Horizon exceeds** |
 | Swap variants in core math | 2 wrappers (exact PT in / exact PT out) | 4 (all combinations) | ✅ **Horizon exceeds** |
-| PYIndex integration | `syToAsset()`, `assetToSy()`, `assetToSyUp()` | ❌ Direct SY only | 🔴 HIGH |
-| Reserve fee splitting | `reserveFeePercent`, `netSyToReserve` | ❌ Single fee bucket | 🔴 HIGH |
-| Treasury address | `address treasury` in MarketState | ❌ None | 🟡 MEDIUM |
+| PYIndex integration | `syToAsset()`, `assetToSy()`, `assetToSyUp()` | ✅ Asset-based via `py_index` | ✅ |
+| Reserve fee splitting | `reserveFeePercent`, `netSyToReserve` | ✅ `net_sy_to_reserve` + `reserve_fee_percent` | ✅ |
+| Treasury address | `address treasury` in MarketState | ✅ Factory treasury queried by Market | ✅ |
 | Initial liquidity recipient | `MINIMUM_LIQUIDITY` to reserve (treasury) | Burned to zero address | 🟡 MEDIUM |
 | Signed integer arithmetic | `int256` for netPtToAccount | ❌ `u256` only | 🟡 MEDIUM |
 | Fee formula | `exp(lnFeeRateRoot * timeToExpiry / 365d)` | Linear decay | 🟡 MEDIUM |
@@ -311,77 +311,41 @@ This preserves Pendle's invariant that total redeemable SY remains stable as the
 
 ---
 
-**Gap Detail - PYIndex Integration (HIGH):**
+**Implementation Detail - PYIndex Integration (COMPLETED):**
 
-Pendle's MarketMathCore operates in **asset** (underlying) terms, not raw SY terms:
-```solidity
-// Pendle - converts SY to asset value before calculations
-function getMarketPreCompute(...) {
-    res.totalAsset = index.syToAsset(market.totalSy);  // ← Key conversion
-    // All pricing uses totalAsset, not totalSy
-}
+Horizon now mirrors Pendle's asset-based math. `MarketState` carries `py_index`, and core math
+converts SY to asset value before pricing, then converts back using `asset_to_sy`/`asset_to_sy_up`.
 
-function calcTrade(...) {
-    int256 preFeeExchangeRate = _getExchangeRate(
-        market.totalPt,
-        comp.totalAsset,  // ← Asset value, not SY
-        ...
-    );
-    // Convert back to SY for output (round up on negative)
-    netSyToAccount = netAssetToAccount < 0
-        ? index.assetToSyUp(netAssetToAccount)
-        : index.assetToSy(netAssetToAccount);
-}
-```
+Code-verified:
+- `contracts/src/market/market_math.cairo`: `MarketState.py_index`, `sy_to_asset` in `get_proportion`,
+  `asset_to_sy`/`asset_to_sy_up` in trade output conversion.
+- `contracts/src/market/market_math_fp.cairo`: same asset-based flow for the FP math path.
+- `contracts/src/market/amm.cairo`: `_get_market_state*` loads `py_index` from YT (`update_py_index` for
+  swaps, `py_index_current` for views).
 
-Horizon works directly with SY values without asset conversion:
-```cairo
-// Horizon - works in SY terms only
-let exchange_rate = get_exchange_rate(
-    *state.pt_reserve,
-    *state.sy_reserve,  // ← Raw SY, not asset value
-    ...
-);
-```
-
-**Impact:** Economic difference in how the AMM prices PT. Pendle prices PT against the **underlying value** of SY (accounting for SY appreciation), while Horizon prices PT against raw SY tokens. This matters when SY has grown significantly - Pendle's approach ensures consistent economic behavior regardless of when the market was created.
+**Result:** PT pricing is based on underlying asset value (Pendle-equivalent), not raw SY balance.
 
 ---
 
-**Gap Detail - Reserve Fee System (HIGH):**
+**Implementation Detail - Reserve Fee System + Treasury Wiring (COMPLETED):**
 
-Pendle splits fees between LPs and protocol treasury:
-```solidity
-// Pendle - MarketState includes fee infrastructure
-struct MarketState {
-    address treasury;              // Protocol treasury address
-    uint256 lnFeeRateRoot;         // Fee rate parameter (log form)
-    uint256 reserveFeePercent;     // % of fees to reserve (base 100)
-    // ...
-}
+Horizon now splits fees into LP + reserve portions and wires treasury via MarketFactory, matching
+Pendle's fee flow.
 
-// Trade returns three values
-function calcTrade(...) returns (
-    int256 netSyToAccount,   // Amount to trader
-    int256 netSyFee,         // Total fee collected
-    int256 netSyToReserve    // Fee portion to treasury
-) {
-    int256 netAssetToReserve = (fee * market.reserveFeePercent.Int()) / 100;
-    // ...
-}
-```
+Code-verified:
+- `contracts/src/market/market_math.cairo` and `contracts/src/market/market_math_fp.cairo`:
+  `MarketState.reserve_fee_percent` and trade outputs include `net_sy_fee` + `net_sy_to_reserve`.
+- `contracts/src/market/market_factory.cairo`:
+  `treasury`, `default_reserve_fee_percent`, per-router `ln_fee_rate_root` overrides, and
+  `get_market_config()` returning `{ treasury, ln_fee_rate_root, reserve_fee_percent }`.
+- `contracts/src/market/amm.cairo`:
+  `_get_market_state_with_effective_fee()` pulls factory config (router overrides + default reserve
+  fee), `_get_effective_reserve_fee()` checks treasury, and `_transfer_reserve_fee_to_treasury()`
+  transfers reserve fees immediately and emits `ReserveFeeTransferred`.
 
-Horizon has a simpler single-bucket fee model:
-```cairo
-// Horizon - all fees to one bucket, owner-collected
-fn calc_swap_exact_pt_for_sy(...) -> (u256, u256) {  // (output, fee)
-    let fee = wad_mul(sy_out_before_fee, adjusted_fee_rate);
-    // Fee stays in pool or accumulated for owner collection
-    (sy_out, fee)
-}
-```
-
-**Impact:** No protocol revenue sharing mechanism. All fees either stay with LPs or go to owner. Pendle's model allows configurable fee distribution (e.g., 80% LPs / 20% treasury).
+**Result:** Reserve fees are carved out of trades and sent to treasury (if configured). When the
+factory or treasury is zero, the reserve portion stays in the pool as LP fees (Pendle-compatible
+fallback semantics).
 
 ---
 
