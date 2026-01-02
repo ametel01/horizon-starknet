@@ -388,6 +388,21 @@ pub fn continuous_compound(principal: u256, rate: u256, time: u256) -> u256 {
     wad_mul(principal, multiplier)
 }
 
+/// Raw ceiling division (non-WAD)
+/// Equivalent to Pendle's rawDivUp()
+/// @param a Numerator
+/// @param b Denominator
+/// @return ceil(a / b)
+pub fn div_up(a: u256, b: u256) -> u256 {
+    assert(b != 0, Errors::MATH_DIVISION_BY_ZERO);
+
+    if a == 0 {
+        return 0;
+    }
+
+    (a + b - 1) / b
+}
+
 /// Divides two WAD numbers, rounding up
 /// @param a Numerator in WAD
 /// @param b Denominator in WAD
