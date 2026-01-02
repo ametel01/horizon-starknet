@@ -11,10 +11,12 @@
 
 use horizon::libraries::errors::Errors;
 use horizon::libraries::math::{
-    HALF_WAD, WAD, exp_neg_wad, exp_wad, ln_wad, max, min, wad_div, wad_mul,
+    HALF_WAD, WAD, asset_to_sy, asset_to_sy_up, exp_neg_wad, exp_wad, ln_wad, max, min, sy_to_asset,
+    wad_div, wad_mul,
 };
 
 /// Market state containing reserves and parameters
+/// Note: py_index is populated per-call from YT, not stored in market contract
 #[derive(Drop, Copy, Serde)]
 pub struct MarketState {
     pub sy_reserve: u256,
@@ -22,16 +24,21 @@ pub struct MarketState {
     pub total_lp: u256,
     pub scalar_root: u256, // Controls rate sensitivity (in WAD)
     pub initial_anchor: u256, // Initial anchor for exchange rate (in WAD)
-    pub fee_rate: u256, // Fee rate in WAD (e.g., 0.01 WAD = 1%)
+    pub ln_fee_rate_root: u256, // Log fee rate root (Pendle-style), replaces fee_rate
+    pub reserve_fee_percent: u8, // Reserve fee in base-100 (0-100), sent to treasury
     pub expiry: u64,
-    pub last_ln_implied_rate: u256 // Cached ln(implied rate) for anchor calculation
+    pub last_ln_implied_rate: u256, // Cached ln(implied rate) for anchor calculation
+    pub py_index: u256 // SY -> asset index from YT (fetched per-call)
 }
 
 /// Pre-computed values for trade calculation (avoids redundant computation)
+/// Mirrors Pendle's MarketPreCompute with asset-based calculations
 #[derive(Drop, Copy)]
 pub struct MarketPreCompute {
     pub rate_scalar: u256,
+    pub total_asset: u256, // Total assets in pool: sy_to_asset(sy_reserve, py_index) + pt_reserve
     pub rate_anchor: u256,
+    pub fee_rate: u256 // Computed from ln_fee_rate_root using Pendle's exp formula
 }
 
 /// Seconds per year for APY calculations
@@ -56,6 +63,46 @@ pub const MAX_EXPONENT_WAD: u256 = 135_000_000_000_000_000_000; // 135 WAD
 
 /// Large scalar multiplier at expiry (flattens the curve when time_to_expiry = 0)
 pub const EXPIRY_SCALAR_MULTIPLIER: u256 = 1000;
+
+// ============ Signed Value Helper ============
+// Pendle's trade calculations require signed arithmetic for net_pt_to_account
+// and net_asset_to_account. This struct represents a signed value as (magnitude, sign).
+
+/// Represents a signed value as (magnitude, is_negative)
+/// Used for Pendle-style trade calculations where values can be positive or negative
+#[derive(Drop, Copy)]
+pub struct SignedValue {
+    pub mag: u256, // Absolute value
+    pub is_negative: bool // true if value is negative
+}
+
+/// Create a positive SignedValue
+pub fn signed_pos(value: u256) -> SignedValue {
+    SignedValue { mag: value, is_negative: false }
+}
+
+/// Create a negative SignedValue
+pub fn signed_neg(value: u256) -> SignedValue {
+    SignedValue { mag: value, is_negative: true }
+}
+
+/// Check if a SignedValue is positive (> 0)
+pub fn is_positive(v: @SignedValue) -> bool {
+    *v.mag > 0 && !*v.is_negative
+}
+
+/// Check if a SignedValue is negative (< 0)
+pub fn is_negative_val(v: @SignedValue) -> bool {
+    *v.mag > 0 && *v.is_negative
+}
+
+/// Negate a SignedValue
+pub fn negate(v: SignedValue) -> SignedValue {
+    if v.mag == 0 {
+        return v;
+    }
+    SignedValue { mag: v.mag, is_negative: !v.is_negative }
+}
 
 /// Binary search tolerance in wei (acceptable precision for swap calculations)
 pub const BINARY_SEARCH_TOLERANCE: u256 = 1000;
@@ -197,15 +244,174 @@ fn logit(proportion: u256) -> (u256, bool) {
     ln_wad(odds)
 }
 
+/// Calculate Pendle-style fee rate from ln_fee_rate_root
+/// fee_rate = exp(ln_fee_rate_root * timeToExpiry / SECONDS_PER_YEAR)
+/// Note: Pendle does NOT subtract 1 from exp result
+pub fn get_fee_rate(ln_fee_rate_root: u256, time_to_expiry: u64) -> u256 {
+    if time_to_expiry == 0 || ln_fee_rate_root == 0 {
+        return WAD; // Fee rate of 1.0 at expiry or zero fee root
+    }
+
+    // exponent = ln_fee_rate_root * timeToExpiry / SECONDS_PER_YEAR
+    let time_to_expiry_wad: u256 = time_to_expiry.into() * WAD;
+    let exponent = wad_div(wad_mul(ln_fee_rate_root, time_to_expiry_wad), SECONDS_PER_YEAR * WAD);
+
+    // fee_rate = exp(exponent)
+    // Cap exponent to prevent overflow
+    let safe_exponent = min(exponent, MAX_EXPONENT_WAD);
+    exp_wad(safe_exponent)
+}
+
 /// Get pre-computed values for trade calculations
+/// Pendle-style: validates reserves and computes asset-based totals
 /// @param state Current market state
 /// @param time_to_expiry Time to expiry in seconds
-/// @return MarketPreCompute struct with rate_scalar and rate_anchor
+/// @return MarketPreCompute struct with rate_scalar, total_asset, rate_anchor, and fee_rate
 pub fn get_market_pre_compute(state: @MarketState, time_to_expiry: u64) -> MarketPreCompute {
+    // Validate reserves (Pendle reverts if either is zero)
+    assert(*state.pt_reserve > 0, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
+
+    // Calculate total assets in pool
+    // total_asset = sy_to_asset(sy_reserve, py_index) + pt_reserve
+    // PT is valued at 1 asset each (redeemable 1:1 at expiry)
+    let sy_in_assets = sy_to_asset(*state.sy_reserve, *state.py_index);
+    let total_asset = sy_in_assets + *state.pt_reserve;
+
+    // Validate total assets
+    assert(total_asset > 0, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
+
     let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
     let rate_anchor = get_rate_anchor(state, time_to_expiry);
+    let fee_rate = get_fee_rate(*state.ln_fee_rate_root, time_to_expiry);
 
-    MarketPreCompute { rate_scalar, rate_anchor }
+    MarketPreCompute { rate_scalar, total_asset, rate_anchor, fee_rate }
+}
+
+// ============ Trade Result ============
+// Result of a trade calculation including all fee splits
+
+/// Result of a trade calculation with Pendle-style fee handling
+/// All values are in SY terms for final token transfers
+#[derive(Drop, Copy)]
+pub struct TradeResult {
+    pub net_sy_to_account: u256, // SY amount to/from user (magnitude)
+    pub net_sy_to_account_is_negative: bool, // true if user pays SY (buy PT), false if receives
+    pub net_sy_fee: u256, // Total fee in SY terms
+    pub net_sy_to_reserve: u256 // Reserve fee portion (treasury)
+}
+
+/// Core trade calculation mirroring Pendle's calcTrade
+/// Implements asymmetric fee handling based on trade direction:
+/// - Buying PT (net_pt_to_account > 0): post_fee_rate = pre_fee_rate / fee_rate
+/// - Selling PT (net_pt_to_account < 0): different fee formula
+///
+/// @param state Current market state
+/// @param net_pt_to_account Signed PT amount: positive = user buys PT, negative = user sells PT
+/// @param comp Pre-computed market values
+/// @return TradeResult with net_sy_to_account, fees, and reserve split
+pub fn calc_trade(
+    state: @MarketState, net_pt_to_account: SignedValue, comp: @MarketPreCompute,
+) -> TradeResult {
+    // Handle zero trade
+    if net_pt_to_account.mag == 0 {
+        return TradeResult {
+            net_sy_to_account: 0,
+            net_sy_to_account_is_negative: false,
+            net_sy_fee: 0,
+            net_sy_to_reserve: 0,
+        };
+    }
+
+    // Determine if user is buying or selling PT
+    let is_buying_pt = is_positive(@net_pt_to_account);
+
+    // Calculate pre-fee exchange rate at the new PT level
+    let pre_fee_exchange_rate = get_exchange_rate(
+        *state.pt_reserve,
+        *state.sy_reserve,
+        net_pt_to_account.mag,
+        is_buying_pt, // PT leaving pool if buying
+        *comp.rate_scalar,
+        *comp.rate_anchor,
+    );
+
+    // Calculate pre-fee asset amount
+    // pre_fee_asset_to_account = net_pt_to_account / pre_fee_exchange_rate
+    // This is the asset equivalent of the PT being traded
+    let pre_fee_asset_magnitude = wad_div(net_pt_to_account.mag, pre_fee_exchange_rate);
+
+    // Apply asymmetric fee based on direction (Pendle's formula)
+    let (net_asset_to_account_mag, net_asset_is_negative, fee_in_asset) = if is_buying_pt {
+        // User is BUYING PT (net_pt_to_account > 0)
+        // User pays SY to receive PT
+        // post_fee_exchange_rate = pre_fee_exchange_rate / fee_rate
+        // This makes PT more expensive when buying
+        let post_fee_exchange_rate = wad_div(pre_fee_exchange_rate, *comp.fee_rate);
+
+        // Pendle requires: post_fee_exchange_rate >= WAD (1.0)
+        // If not, the trade would allow buying PT above par value
+        assert(post_fee_exchange_rate >= WAD, Errors::MARKET_RATE_BELOW_ONE);
+
+        // Calculate what user actually pays
+        // net_asset_to_account = net_pt_to_account / post_fee_exchange_rate
+        let net_asset_paid = wad_div(net_pt_to_account.mag, post_fee_exchange_rate);
+
+        // Fee is the difference between what user pays and what goes to reserves
+        // fee = net_asset_paid - pre_fee_asset (user pays more than pre-fee amount)
+        let fee = if net_asset_paid > pre_fee_asset_magnitude {
+            net_asset_paid - pre_fee_asset_magnitude
+        } else {
+            0
+        };
+
+        // User is paying, so net_asset_to_account is negative
+        (net_asset_paid, true, fee)
+    } else {
+        // User is SELLING PT (net_pt_to_account < 0)
+        // User receives SY for their PT
+        // fee = pre_fee_asset * (fee_rate - WAD) / fee_rate
+        let fee_rate_minus_one = if *comp.fee_rate > WAD {
+            *comp.fee_rate - WAD
+        } else {
+            0
+        };
+        let fee = wad_div(wad_mul(pre_fee_asset_magnitude, fee_rate_minus_one), *comp.fee_rate);
+
+        // User receives less due to fee
+        let net_asset_received = if pre_fee_asset_magnitude > fee {
+            pre_fee_asset_magnitude - fee
+        } else {
+            0
+        };
+
+        // User is receiving, so net_asset_to_account is positive
+        (net_asset_received, false, fee)
+    };
+
+    // Calculate reserve fee (portion that goes to treasury)
+    // reserve_fee = fee * reserve_fee_percent / 100
+    let reserve_fee_in_asset = (fee_in_asset * (*state.reserve_fee_percent).into()) / 100;
+
+    // Convert asset amounts to SY using py_index
+    // Use round-up for amounts user pays (negative flows to account)
+    let (net_sy_to_account, net_sy_is_negative) = if net_asset_is_negative {
+        // User pays - round UP to ensure protocol is not undercharged
+        (asset_to_sy_up(net_asset_to_account_mag, *state.py_index), true)
+    } else {
+        // User receives - round DOWN to ensure protocol is not over-paying
+        (asset_to_sy(net_asset_to_account_mag, *state.py_index), false)
+    };
+
+    // Convert fees to SY (always round down for fee conversion)
+    let net_sy_fee = asset_to_sy(fee_in_asset, *state.py_index);
+    let net_sy_to_reserve = asset_to_sy(reserve_fee_in_asset, *state.py_index);
+
+    TradeResult {
+        net_sy_to_account,
+        net_sy_to_account_is_negative: net_sy_is_negative,
+        net_sy_fee,
+        net_sy_to_reserve,
+    }
 }
 
 /// Calculate the exchange rate (PT price in SY terms) using the logit curve
@@ -339,12 +545,8 @@ pub fn get_implied_apy(ln_implied_rate: u256) -> u256 {
 }
 
 /// Calculate SY output for exact PT input (sell PT for SY)
-/// Uses the Pendle logit-based AMM curve to determine output amount
-/// Formula: SY_out = PT_in / exchangeRate (where exchangeRate >= 1)
-/// @param state Current market state
-/// @param exact_pt_in Amount of PT to sell
-/// @param time_to_expiry Time to expiry in seconds
-/// @return (sy_out, fee_amount)
+/// Uses Pendle's calcTrade with asymmetric fee handling
+/// net_pt_to_account = -exact_pt_in (user is selling PT)
 pub fn calc_swap_exact_pt_for_sy(
     state: @MarketState, exact_pt_in: u256, time_to_expiry: u64,
 ) -> (u256, u256) {
@@ -352,39 +554,26 @@ pub fn calc_swap_exact_pt_for_sy(
         return (0, 0);
     }
 
-    // Get pre-computed values (rate_scalar, rate_anchor)
     let comp = get_market_pre_compute(state, time_to_expiry);
 
-    // Calculate exchange rate at the new PT level (PT enters pool, so is_pt_out = false)
-    let exchange_rate = get_exchange_rate(
-        *state.pt_reserve,
-        *state.sy_reserve,
-        exact_pt_in,
-        false, // PT entering pool
-        comp.rate_scalar,
-        comp.rate_anchor,
-    );
+    // User is selling PT, so net_pt_to_account is negative
+    let net_pt_to_account = signed_neg(exact_pt_in);
 
-    // SY out (before fee) = PT_in / exchangeRate
-    // Since exchangeRate >= 1, SY_out <= PT_in
-    let sy_out_before_fee = wad_div(exact_pt_in, exchange_rate);
+    // Use core trade calculation
+    let result = calc_trade(state, net_pt_to_account, @comp);
 
-    // Apply time-adjusted fee (fee decays towards expiry)
-    let adjusted_fee_rate = get_time_adjusted_fee_rate(*state.fee_rate, time_to_expiry);
-    let fee = wad_mul(sy_out_before_fee, adjusted_fee_rate);
-    let sy_out = sy_out_before_fee - fee;
+    // Ensure output doesn't exceed available reserves
+    assert(result.net_sy_to_account < *state.sy_reserve, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
 
-    (sy_out, fee)
+    // User receives SY (net_sy_to_account should be positive)
+    assert(!result.net_sy_to_account_is_negative, Errors::MARKET_INVALID_TRADE);
+
+    (result.net_sy_to_account, result.net_sy_fee)
 }
 
 /// Calculate PT output for exact SY input (sell SY for PT)
-/// Uses the Pendle logit-based AMM curve to determine output amount
-/// This requires iterative solving since PT_out depends on exchangeRate which depends on PT_out
-/// We use binary search to find the correct PT_out
-/// @param state Current market state
-/// @param exact_sy_in Amount of SY to sell
-/// @param time_to_expiry Time to expiry in seconds
-/// @return (pt_out, fee_amount)
+/// Uses binary search with Pendle's calcTrade for asymmetric fee handling
+/// net_pt_to_account = +pt_out (user is buying PT)
 pub fn calc_swap_exact_sy_for_pt(
     state: @MarketState, exact_sy_in: u256, time_to_expiry: u64,
 ) -> (u256, u256) {
@@ -392,56 +581,39 @@ pub fn calc_swap_exact_sy_for_pt(
         return (0, 0);
     }
 
-    // Apply time-adjusted fee first (fee decays towards expiry)
-    let adjusted_fee_rate = get_time_adjusted_fee_rate(*state.fee_rate, time_to_expiry);
-    let fee = wad_mul(exact_sy_in, adjusted_fee_rate);
-    let sy_in_after_fee = exact_sy_in - fee;
-
-    // Get pre-computed values
     let comp = get_market_pre_compute(state, time_to_expiry);
 
-    // Binary search for PT out
-    // Lower bound: 0
-    // Upper bound: PT reserve - 1 (can't drain the pool)
+    // Calculate a reasonable upper bound for PT_out
+    // PT trades at discount to SY, so PT_out < SY_in * rate_anchor
+    // Use rate_anchor as estimate (max exchange rate), multiply by 2 for safety margin
+    let estimated_pt_out = wad_mul(exact_sy_in, comp.rate_anchor * 2);
+
+    // Cap at available PT (reserve - 1)
     let max_pt_out = if *state.pt_reserve > 1 {
-        *state.pt_reserve - 1
+        min(*state.pt_reserve - 1, estimated_pt_out)
     } else {
         0
     };
 
-    // Start with an estimate based on exchange rate at current state
-    let current_exchange_rate = get_exchange_rate(
-        *state.pt_reserve, *state.sy_reserve, 0, false, comp.rate_scalar, comp.rate_anchor,
-    );
+    // Binary search to find PT_out where calc_trade gives us net_sy_to_account = exact_sy_in
+    // (with user paying SY)
+    let pt_out = binary_search_pt_out_with_trade(state, exact_sy_in, max_pt_out, @comp);
 
-    // Initial guess: PT_out = SY_in * exchangeRate
-    let initial_guess = wad_mul(sy_in_after_fee, current_exchange_rate);
-    let initial_guess = min(initial_guess, max_pt_out);
+    // Calculate actual fee by calling calc_trade with the found pt_out
+    let net_pt_to_account = signed_pos(pt_out);
+    let result = calc_trade(state, net_pt_to_account, @comp);
 
-    // Binary search to find exact PT_out
-    let pt_out = binary_search_pt_out(
-        state, sy_in_after_fee, initial_guess, max_pt_out, comp.rate_scalar, comp.rate_anchor,
-    );
-
-    (pt_out, fee)
+    (pt_out, result.net_sy_fee)
 }
 
-/// Binary search to find PT_out such that SY_in = PT_out / exchangeRate(PT_out)
-fn binary_search_pt_out(
-    state: @MarketState,
-    sy_in: u256,
-    initial_guess: u256,
-    max_pt_out: u256,
-    rate_scalar: u256,
-    rate_anchor: u256,
+/// Binary search for PT_out using calc_trade for accurate fee-aware pricing
+/// Finds PT_out such that calc_trade gives net_sy_to_account = sy_in_target
+fn binary_search_pt_out_with_trade(
+    state: @MarketState, sy_in_target: u256, max_pt_out: u256, comp: @MarketPreCompute,
 ) -> u256 {
-    // For precision, we need sy_in = pt_out / exchangeRate
-    // Rearranging: pt_out * WAD / exchangeRate = sy_in * WAD
-
     let mut low: u256 = 0;
     let mut high: u256 = max_pt_out;
     let mut result: u256 = 0;
-
     let mut iterations: u32 = 0;
 
     while iterations < BINARY_SEARCH_MAX_ITERATIONS && low < high {
@@ -451,38 +623,35 @@ fn binary_search_pt_out(
             break;
         }
 
-        // Calculate exchange rate at this PT_out level
-        let exchange_rate = get_exchange_rate(
-            *state.pt_reserve,
-            *state.sy_reserve,
-            mid,
-            true, // PT leaving pool
-            rate_scalar,
-            rate_anchor,
-        );
+        // User is buying PT, so net_pt_to_account is positive
+        let net_pt_to_account = signed_pos(mid);
+        let trade_result = calc_trade(state, net_pt_to_account, comp);
 
-        // Calculate implied SY_in for this PT_out
-        // sy_in = pt_out / exchangeRate
-        let implied_sy_in = wad_div(mid, exchange_rate);
+        // When buying PT, user pays SY (net_sy_to_account_is_negative = true)
+        // We want to find PT amount where user pays exactly sy_in_target
+        if trade_result.net_sy_to_account_is_negative {
+            let implied_sy_in = trade_result.net_sy_to_account;
 
-        if implied_sy_in <= sy_in {
-            // We can afford this much PT, try higher
-            result = mid;
-            low = mid + 1;
+            if implied_sy_in <= sy_in_target {
+                // Can afford this much PT, try higher
+                result = mid;
+                low = mid + 1;
+            } else {
+                // Too expensive, try lower
+                high = mid;
+            }
+
+            let diff = if implied_sy_in > sy_in_target {
+                implied_sy_in - sy_in_target
+            } else {
+                sy_in_target - implied_sy_in
+            };
+            if diff <= BINARY_SEARCH_TOLERANCE {
+                return result;
+            }
         } else {
-            // Too expensive, try lower
+            // Trade direction is wrong, try lower PT amount
             high = mid;
-        }
-
-        // Check if we're within tolerance
-        let diff = if implied_sy_in > sy_in {
-            implied_sy_in - sy_in
-        } else {
-            sy_in - implied_sy_in
-        };
-
-        if diff <= BINARY_SEARCH_TOLERANCE {
-            return result;
         }
 
         iterations += 1;
@@ -491,13 +660,9 @@ fn binary_search_pt_out(
     result
 }
 
-/// Calculate SY input required for exact PT output (buy PT with SY)
-/// Uses the Pendle logit-based AMM curve
-/// SY_in = PT_out / exchangeRate (then add fee)
-/// @param state Current market state
-/// @param exact_pt_out Amount of PT to buy
-/// @param time_to_expiry Time to expiry in seconds
-/// @return (sy_in, fee_amount)
+/// Calculate SY input required for exact PT output
+/// Uses Pendle's calcTrade with asymmetric fee handling
+/// net_pt_to_account = +exact_pt_out (user is buying PT)
 pub fn calc_swap_sy_for_exact_pt(
     state: @MarketState, exact_pt_out: u256, time_to_expiry: u64,
 ) -> (u256, u256) {
@@ -507,38 +672,23 @@ pub fn calc_swap_sy_for_exact_pt(
 
     assert(exact_pt_out < *state.pt_reserve, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
 
-    // Get pre-computed values
     let comp = get_market_pre_compute(state, time_to_expiry);
 
-    // Calculate exchange rate at the new PT level (PT leaves pool)
-    let exchange_rate = get_exchange_rate(
-        *state.pt_reserve,
-        *state.sy_reserve,
-        exact_pt_out,
-        true, // PT leaving pool
-        comp.rate_scalar,
-        comp.rate_anchor,
-    );
+    // User is buying PT, so net_pt_to_account is positive
+    let net_pt_to_account = signed_pos(exact_pt_out);
 
-    // SY required (before fee) = PT_out / exchangeRate
-    let sy_in_before_fee = wad_div(exact_pt_out, exchange_rate);
+    // Use core trade calculation
+    let result = calc_trade(state, net_pt_to_account, @comp);
 
-    // Add time-adjusted fee (fee decays towards expiry)
-    // sy_in_after_fee = sy_in_before_fee, so sy_in = sy_in_before_fee / (1 - adjusted_fee_rate)
-    let adjusted_fee_rate = get_time_adjusted_fee_rate(*state.fee_rate, time_to_expiry);
-    let sy_in = wad_div(sy_in_before_fee, WAD - adjusted_fee_rate);
-    let fee = sy_in - sy_in_before_fee;
+    // User pays SY (net_sy_to_account should be negative)
+    assert(result.net_sy_to_account_is_negative, Errors::MARKET_INVALID_TRADE);
 
-    (sy_in, fee)
+    (result.net_sy_to_account, result.net_sy_fee)
 }
 
-/// Calculate PT input required for exact SY output (buy SY with PT)
-/// Uses the Pendle logit-based AMM curve
-/// This requires binary search since PT_in depends on exchangeRate which depends on PT_in
-/// @param state Current market state
-/// @param exact_sy_out Amount of SY to buy
-/// @param time_to_expiry Time to expiry in seconds
-/// @return (pt_in, fee_amount)
+/// Calculate PT input required for exact SY output
+/// Uses binary search with Pendle's calcTrade for asymmetric fee handling
+/// net_pt_to_account = -pt_in (user is selling PT)
 pub fn calc_swap_pt_for_exact_sy(
     state: @MarketState, exact_sy_out: u256, time_to_expiry: u64,
 ) -> (u256, u256) {
@@ -548,52 +698,28 @@ pub fn calc_swap_pt_for_exact_sy(
 
     assert(exact_sy_out < *state.sy_reserve, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
 
-    // Add time-adjusted fee to output (fee decays towards expiry)
-    // If user wants exact_sy_out, pool needs to give out more before fee
-    let adjusted_fee_rate = get_time_adjusted_fee_rate(*state.fee_rate, time_to_expiry);
-    let sy_out_before_fee = wad_div(exact_sy_out, WAD - adjusted_fee_rate);
-    let fee = sy_out_before_fee - exact_sy_out;
-
-    // Get pre-computed values
     let comp = get_market_pre_compute(state, time_to_expiry);
 
-    // Binary search for PT in
-    // PT_in = SY_out * exchangeRate
-    // But exchangeRate depends on new PT level, so we need to search
-    let pt_in = binary_search_pt_in(state, sy_out_before_fee, comp.rate_scalar, comp.rate_anchor);
+    // Binary search to find PT_in where calc_trade gives net_sy_to_account = exact_sy_out
+    // (with user receiving SY)
+    let max_pt_in = *state.pt_reserve * MAX_PT_IN_RESERVE_MULTIPLIER;
+    let pt_in = binary_search_pt_in_with_trade(state, exact_sy_out, max_pt_in, @comp);
 
-    (pt_in, fee)
+    // Calculate actual fee by calling calc_trade with the found pt_in
+    let net_pt_to_account = signed_neg(pt_in);
+    let result = calc_trade(state, net_pt_to_account, @comp);
+
+    (pt_in, result.net_sy_fee)
 }
 
-/// Binary search to find PT_in such that SY_out = PT_in / exchangeRate(PT_in)
-fn binary_search_pt_in(
-    state: @MarketState, sy_out: u256, rate_scalar: u256, rate_anchor: u256,
+/// Binary search for PT_in using calc_trade for accurate fee-aware pricing
+/// Finds PT_in such that calc_trade gives net_sy_to_account = sy_out_target
+fn binary_search_pt_in_with_trade(
+    state: @MarketState, sy_out_target: u256, max_pt_in: u256, comp: @MarketPreCompute,
 ) -> u256 {
-    // We need to find PT_in such that:
-    // sy_out = pt_in / exchangeRate(new_pt_reserve)
-    // where new_pt_reserve = pt_reserve + pt_in
-
-    // Get current exchange rate for initial estimate
-    let current_exchange_rate = get_exchange_rate(
-        *state.pt_reserve, *state.sy_reserve, 0, false, rate_scalar, rate_anchor,
-    );
-
-    // Initial guess: PT_in = SY_out * exchangeRate
-    let initial_guess = wad_mul(sy_out, current_exchange_rate);
-
-    // Upper bound: use a safe multiple of the initial guess
-    // Avoid overflow by checking before multiplication
-    let max_reasonable = *state.pt_reserve * MAX_PT_IN_RESERVE_MULTIPLIER;
-    let max_pt_in = if initial_guess > max_reasonable / BINARY_SEARCH_UPPER_BOUND_MULTIPLIER {
-        max_reasonable
-    } else {
-        min(initial_guess * BINARY_SEARCH_UPPER_BOUND_MULTIPLIER + WAD, max_reasonable)
-    };
-
     let mut low: u256 = 1;
     let mut high: u256 = max_pt_in;
-    let mut result: u256 = min(initial_guess, max_pt_in);
-
+    let mut result: u256 = 1;
     let mut iterations: u32 = 0;
 
     while iterations < BINARY_SEARCH_MAX_ITERATIONS && low < high {
@@ -603,38 +729,34 @@ fn binary_search_pt_in(
             break;
         }
 
-        // Calculate exchange rate at this PT_in level
-        let exchange_rate = get_exchange_rate(
-            *state.pt_reserve,
-            *state.sy_reserve,
-            mid,
-            false, // PT entering pool
-            rate_scalar,
-            rate_anchor,
-        );
+        // User is selling PT, so net_pt_to_account is negative
+        let net_pt_to_account = signed_neg(mid);
+        let trade_result = calc_trade(state, net_pt_to_account, comp);
 
-        // Calculate implied SY_out for this PT_in
-        // sy_out = pt_in / exchangeRate
-        let implied_sy_out = wad_div(mid, exchange_rate);
+        // When selling PT, user receives SY (net_sy_to_account_is_negative = false)
+        if !trade_result.net_sy_to_account_is_negative {
+            let implied_sy_out = trade_result.net_sy_to_account;
 
-        if implied_sy_out >= sy_out {
-            // This PT_in gives enough SY, try lower
-            result = mid;
-            high = mid;
+            if implied_sy_out >= sy_out_target {
+                // This PT amount gives enough SY, try lower
+                result = mid;
+                high = mid;
+            } else {
+                // Not enough SY, need more PT
+                low = mid + 1;
+            }
+
+            let diff = if implied_sy_out > sy_out_target {
+                implied_sy_out - sy_out_target
+            } else {
+                sy_out_target - implied_sy_out
+            };
+            if diff <= BINARY_SEARCH_TOLERANCE {
+                return result;
+            }
         } else {
-            // Not enough SY, need more PT
+            // Trade direction is wrong, need more PT
             low = mid + 1;
-        }
-
-        // Check if we're within tolerance
-        let diff = if implied_sy_out > sy_out {
-            implied_sy_out - sy_out
-        } else {
-            sy_out - implied_sy_out
-        };
-
-        if diff <= BINARY_SEARCH_TOLERANCE {
-            return result;
         }
 
         iterations += 1;
@@ -748,4 +870,80 @@ pub fn check_slippage(expected_out: u256, min_out: u256) -> bool {
 pub fn get_market_exchange_rate(state: @MarketState, time_to_expiry: u64) -> u256 {
     let ln_rate = get_ln_implied_rate(state, time_to_expiry);
     get_pt_price(ln_rate, time_to_expiry)
+}
+
+/// Set the initial ln(implied rate) for a newly created market
+/// This must be called AFTER the first liquidity is added (first mint).
+///
+/// Implements Pendle's setInitialLnImpliedRate formula:
+/// 1. Convert initial_anchor (ln_implied_rate) to rate_anchor (exchange rate)
+/// 2. Compute proportion using py_index to convert SY to assets
+/// 3. Calculate exchange_rate = logit(proportion) / rate_scalar + rate_anchor
+/// 4. Derive ln_implied_rate = ln(exchange_rate) * SECONDS_PER_YEAR / time_to_expiry
+///
+/// This ensures the first stored rate properly incorporates PYIndex and matches
+/// Pendle's implementation.
+///
+/// @param state Market state with reserves and py_index populated from first mint
+/// @param time_to_expiry Time to expiry in seconds
+/// @return The computed initial ln_implied_rate
+pub fn set_initial_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> u256 {
+    // Validate reserves exist (should be called after first mint)
+    assert(*state.pt_reserve > 0, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
+    assert(*state.sy_reserve > 0, Errors::MARKET_INSUFFICIENT_LIQUIDITY);
+
+    // Handle expiry edge case
+    if time_to_expiry == 0 {
+        return 0;
+    }
+
+    // Step 1: Convert initial_anchor (ln_implied_rate) to rate_anchor (exchange rate)
+    // rate_anchor = e^(initial_anchor * time_to_expiry / SECONDS_PER_YEAR)
+    let time_in_years_wad = wad_div(time_to_expiry.into() * WAD, SECONDS_PER_YEAR * WAD);
+    let capped_ln_implied_rate = min(*state.initial_anchor, MAX_LN_IMPLIED_RATE);
+    let exponent = wad_mul(capped_ln_implied_rate, time_in_years_wad);
+    let safe_exponent = min(exponent, MAX_EXPONENT_WAD);
+    let rate_anchor = max(exp_wad(safe_exponent), WAD);
+
+    // Step 2: Get rate scalar
+    let rate_scalar = get_rate_scalar(*state.scalar_root, time_to_expiry);
+
+    // Step 3: Compute proportion using py_index (via get_proportion)
+    let proportion = get_proportion(state);
+    let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, proportion));
+
+    // Step 4: Compute logit and exchange_rate = logit / rate_scalar + rate_anchor
+    let (ln_proportion, ln_is_negative) = logit(clamped_proportion);
+    let scaled_ln = wad_div(ln_proportion, rate_scalar);
+
+    let exchange_rate = if ln_is_negative {
+        // Proportion < 0.5, logit is negative: exchange_rate = rate_anchor - |scaled_ln|
+        if scaled_ln >= rate_anchor {
+            WAD // Floor at 1.0 if would go negative
+        } else {
+            rate_anchor - scaled_ln
+        }
+    } else {
+        // Proportion >= 0.5, logit is positive: exchange_rate = rate_anchor + scaled_ln
+        rate_anchor + scaled_ln
+    };
+
+    // Ensure exchange rate is at least 1.0
+    let exchange_rate = max(exchange_rate, WAD);
+
+    // Step 5: Compute ln_implied_rate = ln(exchange_rate) * SECONDS_PER_YEAR / time_to_expiry
+    let (ln_exchange_rate, ln_is_neg) = ln_wad(exchange_rate);
+
+    // ln(exchange_rate) should always be >= 0 since exchange_rate >= 1.0
+    // But handle defensive case
+    if ln_is_neg {
+        return 0;
+    }
+
+    // ln_implied_rate = ln(exchange_rate) * SECONDS_PER_YEAR / time_to_expiry
+    let ln_implied_rate = wad_div(
+        wad_mul(ln_exchange_rate, SECONDS_PER_YEAR * WAD), time_to_expiry.into() * WAD,
+    );
+
+    min(ln_implied_rate, MAX_LN_IMPLIED_RATE)
 }

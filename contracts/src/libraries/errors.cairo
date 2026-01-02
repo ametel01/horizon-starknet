@@ -43,6 +43,8 @@ pub mod Errors {
     pub const MARKET_ZERO_LIQUIDITY: felt252 = 'HZN: zero liquidity';
     pub const MARKET_INVALID_RESERVES: felt252 = 'HZN: invalid reserves';
     pub const MARKET_TRANSFER_FAILED: felt252 = 'HZN: transfer failed';
+    pub const MARKET_INVALID_TRADE: felt252 = 'HZN: invalid trade direction';
+    pub const MARKET_RATE_BELOW_ONE: felt252 = 'HZN: rate below 1';
 
     // Market Factory errors
     pub const MARKET_FACTORY_ALREADY_EXISTS: felt252 = 'HZN: market already exists';

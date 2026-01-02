@@ -1,14 +1,19 @@
-use horizon::libraries::math::WAD;
+use horizon::libraries::math::{WAD, abs_diff, exp_wad};
 use horizon::market::market_math::{
     MIN_TIME_TO_EXPIRY, MarketState, calc_burn_lp, calc_mint_lp, calc_price_impact,
     calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
-    calc_swap_sy_for_exact_pt, check_slippage, get_implied_apy, get_ln_implied_rate,
-    get_market_exchange_rate, get_proportion, get_pt_price, get_rate_scalar, get_time_to_expiry,
+    calc_swap_sy_for_exact_pt, check_slippage, get_fee_rate, get_implied_apy, get_ln_implied_rate,
+    get_market_exchange_rate, get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
+    get_time_to_expiry,
 };
 
 // Helper to create a balanced market state
 fn create_market_state(
-    sy_reserve: u256, pt_reserve: u256, fee_rate: u256, initial_anchor: u256, scalar_root: u256,
+    sy_reserve: u256,
+    pt_reserve: u256,
+    ln_fee_rate_root: u256,
+    initial_anchor: u256,
+    scalar_root: u256,
 ) -> MarketState {
     MarketState {
         sy_reserve,
@@ -16,9 +21,35 @@ fn create_market_state(
         total_lp: 0,
         scalar_root,
         initial_anchor,
-        fee_rate,
+        ln_fee_rate_root,
+        reserve_fee_percent: 0, // No reserve fee for basic tests
         expiry: 0, // Not used directly in math functions
         last_ln_implied_rate: 0,
+        py_index: WAD // 1:1 conversion for basic tests
+    }
+}
+
+// Helper to create a market state with a positive implied rate (for buy tests)
+// This ensures exchange_rate > 1 + fee_rate, which is required for Pendle's fee model
+fn create_market_with_implied_rate(
+    sy_reserve: u256,
+    pt_reserve: u256,
+    ln_fee_rate_root: u256,
+    initial_anchor: u256,
+    scalar_root: u256,
+    last_ln_implied_rate: u256,
+) -> MarketState {
+    MarketState {
+        sy_reserve,
+        pt_reserve,
+        total_lp: 0,
+        scalar_root,
+        initial_anchor,
+        ln_fee_rate_root,
+        reserve_fee_percent: 0,
+        expiry: 0,
+        last_ln_implied_rate,
+        py_index: WAD,
     }
 }
 
@@ -27,9 +58,23 @@ fn default_market() -> MarketState {
     create_market_state(
         100 * WAD, // 100 SY
         100 * WAD, // 100 PT
-        WAD / 100, // 1% fee
+        WAD / 100, // 1% ln fee rate root
         WAD / 10, // 10% initial anchor (ln of implied rate)
         WAD // scalar root
+    )
+}
+
+// Default market with positive implied rate (suitable for buy tests)
+// Uses large reserves (1M) to minimize trade's impact on proportion.
+// Key: With large reserves, small trades don't push exchange_rate below fee_rate.
+fn default_market_for_buy() -> MarketState {
+    create_market_with_implied_rate(
+        1_000_000 * WAD, // 1M SY (large reserves for stable pricing)
+        1_000_000 * WAD, // 1M PT
+        WAD / 100, // 1% ln fee rate root
+        WAD, // 1.0 initial anchor (ln(1) = 0)
+        WAD / 100, // 0.01 scalar root
+        WAD / 20 // 5% ln implied rate
     )
 }
 
@@ -233,7 +278,8 @@ fn test_calc_swap_exact_sy_for_pt_zero() {
 
 #[test]
 fn test_calc_swap_exact_sy_for_pt_basic() {
-    let state = default_market();
+    // Use market with positive implied rate to satisfy exchange_rate > fee_rate
+    let state = default_market_for_buy();
     let sy_in = 10 * WAD;
     let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
 
@@ -244,7 +290,8 @@ fn test_calc_swap_exact_sy_for_pt_basic() {
 
 #[test]
 fn test_calc_swap_sy_for_exact_pt_basic() {
-    let state = create_market_state(100 * WAD, 100 * WAD, WAD / 100, WAD / 10, WAD);
+    // Use market with positive implied rate to satisfy exchange_rate > fee_rate
+    let state = default_market_for_buy();
     let pt_out = 10 * WAD;
     let (sy_in, fee) = calc_swap_sy_for_exact_pt(@state, pt_out, ONE_YEAR);
 
@@ -294,9 +341,11 @@ fn test_calc_mint_lp_subsequent() {
         total_lp: 100 * WAD, // sqrt(100*100) = 100
         scalar_root: WAD,
         initial_anchor: WAD / 10,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 0,
         last_ln_implied_rate: 0,
+        py_index: WAD,
     };
 
     // Add proportional liquidity
@@ -317,9 +366,11 @@ fn test_calc_mint_lp_unbalanced() {
         total_lp: 100 * WAD,
         scalar_root: WAD,
         initial_anchor: WAD / 10,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 0,
         last_ln_implied_rate: 0,
+        py_index: WAD,
     };
 
     // Try to add unbalanced (more SY than PT)
@@ -340,9 +391,11 @@ fn test_calc_burn_lp_zero() {
         total_lp: 100 * WAD,
         scalar_root: WAD,
         initial_anchor: WAD / 10,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 0,
         last_ln_implied_rate: 0,
+        py_index: WAD,
     };
 
     let (sy_out, pt_out) = calc_burn_lp(@state, 0);
@@ -358,9 +411,11 @@ fn test_calc_burn_lp_partial() {
         total_lp: 100 * WAD,
         scalar_root: WAD,
         initial_anchor: WAD / 10,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 0,
         last_ln_implied_rate: 0,
+        py_index: WAD,
     };
 
     // Burn 25% of LP
@@ -378,9 +433,11 @@ fn test_calc_burn_lp_all() {
         total_lp: 100 * WAD,
         scalar_root: WAD,
         initial_anchor: WAD / 10,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 0,
         last_ln_implied_rate: 0,
+        py_index: WAD,
     };
 
     // Burn all LP
@@ -488,4 +545,120 @@ fn test_get_ln_implied_rate_more_sy() {
 
     // More SY in pool → lower proportion → higher implied rate
     assert(ln_rate > balanced_rate, 'More SY = higher rate');
+}
+
+// ============================================
+// PENDLE-STYLE FEE RATE TESTS (Step 1.3)
+// ============================================
+
+/// Helper to check approximate equality with tolerance in basis points
+fn assert_approx_eq(actual: u256, expected: u256, tolerance_bps: u256, msg: felt252) {
+    let diff = abs_diff(actual, expected);
+    let max_diff = if expected > 0 {
+        expected * tolerance_bps / 10000
+    } else {
+        tolerance_bps
+    };
+    assert(diff <= max_diff, msg);
+}
+
+#[test]
+fn test_get_fee_rate_one_year() {
+    // At 1 year, fee_rate = exp(ln_fee_rate_root * 1) = exp(ln_fee_rate_root)
+    let ln_fee_rate_root = WAD / 100; // ln(1.01) ≈ 0.00995 ≈ 0.01 for 1% fee
+    let time_to_expiry: u64 = 31_536_000; // 1 year
+
+    let fee_rate = get_fee_rate(ln_fee_rate_root, time_to_expiry);
+    let expected = exp_wad(ln_fee_rate_root);
+
+    // fee_rate should match exp(ln_fee_rate_root) at 1 year
+    assert_approx_eq(fee_rate, expected, 10, 'fee_rate = exp at 1y');
+}
+
+#[test]
+fn test_get_fee_rate_half_year() {
+    // At 0.5 year, fee_rate = exp(ln_fee_rate_root * 0.5)
+    let ln_fee_rate_root = WAD / 50; // 0.02 WAD
+    let time_to_expiry: u64 = 15_768_000; // 0.5 year
+
+    let fee_rate = get_fee_rate(ln_fee_rate_root, time_to_expiry);
+
+    // Expected: exp(0.02 * 0.5) = exp(0.01) ≈ 1.01005
+    let expected = exp_wad(ln_fee_rate_root / 2);
+
+    assert_approx_eq(fee_rate, expected, 10, 'fee_rate at 0.5y');
+}
+
+#[test]
+fn test_get_fee_rate_at_expiry() {
+    // At expiry, fee_rate should be WAD (multiplier of 1.0 = no fee effect)
+    let ln_fee_rate_root = WAD / 100;
+    let fee_rate = get_fee_rate(ln_fee_rate_root, 0);
+
+    assert(fee_rate == WAD, 'fee_rate = WAD at expiry');
+}
+
+#[test]
+fn test_get_fee_rate_zero_ln_fee_root() {
+    // With zero ln_fee_rate_root, fee_rate should be WAD
+    let fee_rate = get_fee_rate(0, 31_536_000);
+
+    assert(fee_rate == WAD, 'fee_rate = WAD with zero root');
+}
+
+#[test]
+fn test_get_fee_rate_is_multiplier_gte_one() {
+    // fee_rate should always be >= WAD (a multiplier >= 1)
+    let ln_fee_rate_root = WAD / 100;
+
+    // Test at various time points
+    let fee_rate_1y = get_fee_rate(ln_fee_rate_root, 31_536_000);
+    let fee_rate_6m = get_fee_rate(ln_fee_rate_root, 15_768_000);
+    let fee_rate_1m = get_fee_rate(ln_fee_rate_root, 2_592_000);
+
+    assert(fee_rate_1y >= WAD, 'fee_rate >= WAD at 1y');
+    assert(fee_rate_6m >= WAD, 'fee_rate >= WAD at 6m');
+    assert(fee_rate_1m >= WAD, 'fee_rate >= WAD at 1m');
+}
+
+#[test]
+fn test_get_fee_rate_decays_towards_expiry() {
+    // fee_rate should decrease as time_to_expiry decreases
+    let ln_fee_rate_root = WAD / 100;
+
+    let fee_rate_1y = get_fee_rate(ln_fee_rate_root, 31_536_000);
+    let fee_rate_6m = get_fee_rate(ln_fee_rate_root, 15_768_000);
+    let fee_rate_3m = get_fee_rate(ln_fee_rate_root, 7_884_000);
+    let fee_rate_1m = get_fee_rate(ln_fee_rate_root, 2_592_000);
+
+    // fee_rate should decrease as we approach expiry
+    assert(fee_rate_1y > fee_rate_6m, '1y > 6m');
+    assert(fee_rate_6m > fee_rate_3m, '6m > 3m');
+    assert(fee_rate_3m > fee_rate_1m, '3m > 1m');
+}
+
+#[test]
+fn test_precompute_includes_fee_rate() {
+    let state = default_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    let comp = get_market_pre_compute(@state, time_to_expiry);
+
+    // Verify fee_rate is computed correctly
+    let expected_fee_rate = get_fee_rate(state.ln_fee_rate_root, time_to_expiry);
+    assert(comp.fee_rate == expected_fee_rate, 'precompute has fee_rate');
+}
+
+#[test]
+fn test_precompute_includes_total_asset() {
+    let state = default_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    let comp = get_market_pre_compute(@state, time_to_expiry);
+
+    // total_asset = sy_to_asset(sy_reserve, py_index) + pt_reserve
+    // With py_index = WAD, sy_to_asset(sy, WAD) = sy
+    // So total_asset = sy_reserve + pt_reserve = 100 + 100 = 200 WAD
+    let expected_total_asset = state.sy_reserve + state.pt_reserve;
+    assert(comp.total_asset == expected_total_asset, 'precompute has total_asset');
 }

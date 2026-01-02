@@ -26,7 +26,7 @@ fn create_market(
     pt_reserve: u256,
     scalar_root: u256,
     initial_anchor: u256,
-    fee_rate: u256,
+    ln_fee_rate_root: u256,
     last_ln_implied_rate: u256,
 ) -> MarketState {
     MarketState {
@@ -35,9 +35,11 @@ fn create_market(
         total_lp: 0,
         scalar_root,
         initial_anchor,
-        fee_rate,
+        ln_fee_rate_root,
+        reserve_fee_percent: 0,
         expiry: 0,
         last_ln_implied_rate,
+        py_index: WAD // Use 1:1 ratio for unit tests
     }
 }
 
@@ -369,7 +371,8 @@ fn test_swap_exact_pt_for_sy_uses_logit_curve() {
 
 #[test]
 fn test_swap_exact_sy_for_pt_uses_logit_curve() {
-    let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, WAD / 100, WAD / 10);
+    // Use higher implied rate (50%) to give exchange rate headroom above 1.0 after fee
+    let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 2, WAD / 100, WAD / 2);
 
     let sy_in = 10 * WAD;
     let (pt_out, fee) = calc_swap_exact_sy_for_pt(@state, sy_in, ONE_YEAR);
@@ -650,7 +653,8 @@ fn test_swap_no_fee_at_expiry() {
 #[test]
 fn test_fee_decay_all_swap_types() {
     // Verify fee decay works for all swap functions
-    let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 10, WAD / 100, WAD / 10);
+    // Use higher implied rate (50%) to give exchange rate headroom above 1.0 after fee
+    let state = create_market(100 * WAD, 100 * WAD, WAD, WAD / 2, WAD / 100, WAD / 2);
 
     // Test calc_swap_exact_pt_for_sy
     let (_, fee_pt_sy_1y) = calc_swap_exact_pt_for_sy(@state, 10 * WAD, ONE_YEAR);
