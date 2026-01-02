@@ -382,6 +382,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into()); // initial_anchor high
     calldata.append(fee_rate.low.into()); // fee_rate low
     calldata.append(fee_rate.high.into()); // fee_rate high
+    calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();

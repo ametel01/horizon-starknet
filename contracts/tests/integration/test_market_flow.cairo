@@ -148,6 +148,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
@@ -360,7 +361,7 @@ fn test_market_with_factory() {
     let fee_rate = WAD / 100;
 
     let market_address = market_factory
-        .create_market(pt.contract_address, scalar_root, initial_anchor, fee_rate);
+        .create_market(pt.contract_address, scalar_root, initial_anchor, fee_rate, 0);
 
     // Verify market created
     assert(market_factory.is_valid_market(market_address), 'Market is valid');

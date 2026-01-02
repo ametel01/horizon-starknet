@@ -30,11 +30,11 @@ use crate::utils::{ONE_DAY, admin, alice, bob, setup_full};
 // ============ Market Default Parameters ============
 
 fn default_scalar_root() -> u256 {
-    50 * WAD
+    100 * WAD // 100 - realistic sensitivity for asset-based curve
 }
 
 fn default_initial_anchor() -> u256 {
-    WAD / 10
+    WAD / 2 // 50% ln_implied_rate gives exchange_rate ≈ 1.65
 }
 
 fn default_fee_rate() -> u256 {
@@ -74,6 +74,7 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(default_initial_anchor().high.into());
     calldata.append(default_fee_rate().low.into());
     calldata.append(default_fee_rate().high.into());
+    calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
@@ -822,14 +823,15 @@ fn test_round_trip_sy_to_yt_to_sy() {
     let (yield_token, sy, yt, _, market, router) = setup();
     let user = alice();
     let lp = bob();
-    let liquidity_amount = 200 * WAD;
+    // Use larger pool to handle round-trip without hitting rate floor
+    let liquidity_amount = 2000 * WAD;
 
     setup_market_with_liquidity(
         yield_token, sy, yt, market, lp, liquidity_amount, liquidity_amount,
     );
 
     // User gets tokens - more SY for the collateral on the way back
-    setup_user_with_tokens(yield_token, sy, yt, user, 100 * WAD);
+    setup_user_with_tokens(yield_token, sy, yt, user, 500 * WAD);
 
     // Record initial state
     let initial_sy = sy.balance_of(user);

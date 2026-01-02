@@ -54,7 +54,7 @@ fn create_fuzz_market(
     let pt_reserve = bound(pt_reserve_raw, min_reserve, max_reserve);
     let total_lp = bound(total_lp_raw, MINIMUM_LIQUIDITY + 1, max_reserve);
     let scalar_root = bound(scalar_root_raw, WAD / 1000, WAD / 10);
-    let fee_rate = bound(fee_rate_raw, 0, WAD / 20);
+    let ln_fee_rate_root = bound(fee_rate_raw, 0, WAD / 20);
     let last_ln_implied_rate = bound(ln_implied_rate_raw, 0, WAD * 2);
     let time_to_expiry = bound_u64(time_to_expiry_raw, 1, 2 * 31_536_000);
 
@@ -67,9 +67,11 @@ fn create_fuzz_market(
         total_lp,
         scalar_root,
         initial_anchor: WAD,
-        fee_rate,
+        ln_fee_rate_root,
+        reserve_fee_percent: 0,
         expiry,
         last_ln_implied_rate,
+        py_index: WAD,
     };
 
     (state, time_to_expiry)
@@ -126,7 +128,7 @@ fn test_debug_sy_out_exceeds_reserve() {
     println!("pt_reserve: {}", state.pt_reserve);
     println!("total_lp: {}", state.total_lp);
     println!("scalar_root: {}", state.scalar_root);
-    println!("fee_rate: {}", state.fee_rate);
+    println!("ln_fee_rate_root: {}", state.ln_fee_rate_root);
     println!("last_ln_implied_rate: {}", state.last_ln_implied_rate);
     println!("time_to_expiry: {}", tte);
 
@@ -161,9 +163,11 @@ fn test_extreme_proportion_high_pt() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100, // 1%
         initial_anchor: WAD,
-        fee_rate: WAD / 100, // 1%
+        ln_fee_rate_root: WAD / 100, // 1%
+        reserve_fee_percent: 0,
         expiry: 1000000 + 31_536_000, // 1 year
-        last_ln_implied_rate: WAD / 10 // 10%
+        last_ln_implied_rate: WAD / 10, // 10%
+        py_index: WAD,
     };
 
     let tte: u64 = 31_536_000;
@@ -192,9 +196,11 @@ fn test_extreme_proportion_low_pt() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100, // 1%
         initial_anchor: WAD,
-        fee_rate: WAD / 100, // 1%
+        ln_fee_rate_root: WAD / 100, // 1%
+        reserve_fee_percent: 0,
         expiry: 1000000 + 31_536_000, // 1 year
-        last_ln_implied_rate: WAD / 10 // 10%
+        last_ln_implied_rate: WAD / 10, // 10%
+        py_index: WAD,
     };
 
     let tte: u64 = 31_536_000;
@@ -222,9 +228,11 @@ fn test_near_expiry() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100,
         initial_anchor: WAD,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 1000000 + 100, // 100 seconds to expiry
         last_ln_implied_rate: WAD / 10,
+        py_index: WAD,
     };
 
     let tte: u64 = 100;
@@ -254,9 +262,11 @@ fn test_high_implied_rate() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100,
         initial_anchor: WAD,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 1000000 + 31_536_000,
-        last_ln_implied_rate: WAD * 2 // 200% implied rate
+        last_ln_implied_rate: WAD * 2, // 200% implied rate
+        py_index: WAD,
     };
 
     let tte: u64 = 31_536_000;
