@@ -652,13 +652,16 @@ bun run check
 
 ---
 
-## Phase 8: Frontend UI Components
+## Phase 8: Frontend UI Components **COMPLETE**
 
-### Step 8.1: Create FeeStructure component
+### Step 8.1: Create FeeStructure component **COMPLETE**
 
-**File:** `packages/frontend/src/features/markets/ui/FeeStructure.tsx` (create new file)
+**File:** `packages/frontend/src/features/markets/ui/FeeStructure.tsx` (created)
 
-**Action:** Create component per Section 4.4 of analysis doc.
+**Action:** Created component per Section 4.4 of analysis doc with:
+- `FeeStructure` - Main component with compact and full display modes
+- `FeeSplitBar` - Visual bar showing LP vs Treasury split
+- Hover cards with fee breakdown details
 
 **Validation:**
 ```bash
@@ -667,11 +670,14 @@ bun run check
 
 ---
 
-### Step 8.2: Update SwapForm fee display
+### Step 8.2: Update SwapForm fee display **COMPLETE**
 
-**File:** `packages/frontend/src/features/swap/ui/SwapForm.tsx`
+**File:** `packages/frontend/src/features/swap/ui/SwapDetails.tsx`
 
-**Action:** Add fee breakdown display after swap result section.
+**Action:** Added fee breakdown display with hover card showing:
+- Total swap fee
+- LP share (fee portion retained by pool)
+- Treasury share (fee portion sent to protocol)
 
 **Validation:**
 ```bash
@@ -681,11 +687,17 @@ bun run test
 
 ---
 
-### Step 8.3: Add treasury analytics route (optional)
+### Step 8.3: Add treasury analytics route **COMPLETE**
 
-**File:** `packages/frontend/src/app/api/analytics/treasury/route.ts` (create new file)
+**File:** `packages/frontend/src/app/api/analytics/treasury/route.ts` (extended)
 
-**Action:** Implement per Section 4.5 of analysis doc.
+**Action:** Extended existing route to include reserve fee analytics:
+- YT interest claims (existing)
+- Reserve fee transfers from swaps (new)
+- Combined totals and per-market breakdown
+- Historical data for charts
+
+Also added `marketReserveFeeTransferred` table to frontend schema.
 
 **Validation:**
 ```bash
