@@ -1934,12 +1934,15 @@ export const rateHistory = pgView("rate_history", {
 
 /**
  * Exchange rate history - from SY oracle updates
+ * Includes transaction_hash and event_index to handle multiple events per block
  */
 export const exchangeRateHistory = pgView("exchange_rate_history", {
   sy: text("sy"),
   underlying: text("underlying"),
   block_timestamp: timestamp("block_timestamp"),
   block_number: bigint("block_number", { mode: "number" }),
+  transaction_hash: text("transaction_hash"),
+  event_index: integer("event_index"),
   old_rate: numeric("old_rate", { precision: 78, scale: 0 }),
   new_rate: numeric("new_rate", { precision: 78, scale: 0 }),
   rate_change_bps: numeric("rate_change_bps", { precision: 78, scale: 0 }),
