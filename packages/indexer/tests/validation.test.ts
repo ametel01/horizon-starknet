@@ -1,7 +1,7 @@
 /**
  * Validation Module Tests
  *
- * Tests Zod schemas for all 33 event types and the validateEvent helper.
+ * Tests Zod schemas for all 40 event types and the validateEvent helper.
  */
 
 import { describe, expect, it, vi } from "vitest";

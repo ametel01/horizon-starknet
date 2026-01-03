@@ -56,21 +56,26 @@ function baseFields(ctx: EventContext) {
 // Event-specific handlers
 function handleMintPY(ctx: EventContext) {
   const { keys, data, address } = ctx;
+  // NEW Pendle-style layout:
+  // keys = [selector, caller, receiver_pt, receiver_yt]
+  // data = [expiry, amount_sy_deposited(u256), amount_py_minted(u256), pt, sy, py_index(u256),
+  //         exchange_rate(u256), total_pt_supply(u256), total_yt_supply(u256), timestamp]
   return {
     event_type: "MintPY" as const,
     ...baseFields(ctx),
     caller: keys[1] ?? "",
-    receiver: keys[2] ?? "",
-    expiry: Number(BigInt(keys[3] ?? "0")),
+    receiver_pt: keys[2] ?? "",
+    receiver_yt: keys[3] ?? "",
+    expiry: Number(BigInt(data[0] ?? "0")),
     yt: address,
-    sy: data[5] ?? "",
-    pt: data[4] ?? "",
-    amount_sy_deposited: readU256(data, 0),
-    amount_py_minted: readU256(data, 2),
-    py_index: readU256(data, 6),
-    exchange_rate: readU256(data, 8),
-    total_pt_supply_after: readU256(data, 10),
-    total_yt_supply_after: readU256(data, 12),
+    sy: data[6] ?? "",
+    pt: data[5] ?? "",
+    amount_sy_deposited: readU256(data, 1),
+    amount_py_minted: readU256(data, 3),
+    py_index: readU256(data, 7),
+    exchange_rate: readU256(data, 9),
+    total_pt_supply_after: readU256(data, 11),
+    total_yt_supply_after: readU256(data, 13),
   };
 }
 
@@ -287,22 +292,27 @@ function transformYTEvent(event: EventContext) {
 
 describe("YT Indexer", () => {
   it("should transform MintPY event", () => {
+    // NEW Pendle-style layout:
+    // keys = [selector, caller, receiver_pt, receiver_yt]
+    // data = [expiry, amount_sy_deposited(u256), amount_py_minted(u256), pt, sy, py_index(u256),
+    //         exchange_rate(u256), total_pt_supply(u256), total_yt_supply(u256), timestamp]
     const event = {
-      keys: [MINT_PY, "0xcaller", "0xreceiver", "0x6774a5d5"],
+      keys: [MINT_PY, "0xcaller", "0xreceiver_pt", "0xreceiver_yt"],
       data: [
-        "0xde0b6b3a7640000", // amount_sy_deposited low
+        "0x6774a5d5", // expiry (1735697877)
+        "0xde0b6b3a7640000", // amount_sy_deposited low (1e18)
         "0x0", // amount_sy_deposited high
-        "0xde0b6b3a7640000", // amount_py_minted low
+        "0xde0b6b3a7640000", // amount_py_minted low (1e18)
         "0x0", // amount_py_minted high
         "0xpt_address", // pt
         "0xsy_address", // sy
-        "0xde0b6b3a7640000", // py_index low
+        "0xde0b6b3a7640000", // py_index low (1e18)
         "0x0", // py_index high
-        "0xde0b6b3a7640000", // exchange_rate low
+        "0xde0b6b3a7640000", // exchange_rate low (1e18)
         "0x0", // exchange_rate high
-        "0xde0b6b3a7640000", // total_pt_supply low
+        "0xde0b6b3a7640000", // total_pt_supply low (1e18)
         "0x0", // total_pt_supply high
-        "0xde0b6b3a7640000", // total_yt_supply low
+        "0xde0b6b3a7640000", // total_yt_supply low (1e18)
         "0x0", // total_yt_supply high
       ],
       address: "0xyt_address",
@@ -319,7 +329,8 @@ describe("YT Indexer", () => {
       block_timestamp: "1234567890",
       transaction_hash: "0xmint123",
       caller: "0xcaller",
-      receiver: "0xreceiver",
+      receiver_pt: "0xreceiver_pt",
+      receiver_yt: "0xreceiver_yt",
       expiry: 1735697877,
       yt: "0xyt_address",
       sy: "0xsy_address",
