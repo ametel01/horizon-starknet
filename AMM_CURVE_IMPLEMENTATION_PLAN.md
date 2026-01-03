@@ -488,7 +488,7 @@ psql "$DATABASE_URL" -f scripts/create-views.sql
 
 ## Phase 5: Indexer Testing
 
-### Step 5.1: Add unit tests for new event parsing
+### Step 5.1: Add unit tests for new event parsing **COMPLETE**
 
 **Files:**
 - `packages/indexer/tests/market.test.ts`
@@ -518,7 +518,7 @@ bun run test validation
 
 ## Phase 6: Frontend Type Updates **COMPLETE**
 
-### Step 6.1: Regenerate TypeScript types from ABIs
+### Step 6.1: Regenerate TypeScript types from ABIs **COMPLETE**
 
 **Action:**
 ```bash
@@ -535,7 +535,7 @@ bun run check
 
 ---
 
-### Step 6.2: Update API types
+### Step 6.2: Update API types **COMPLETE**
 
 **File:** `packages/frontend/src/shared/api/types.ts`
 
@@ -571,7 +571,7 @@ bun run check
 
 ---
 
-### Step 6.3: Add utility functions
+### Step 6.3: Add utility functions **COMPLETE**
 
 **File:** `packages/frontend/src/shared/lib/fees.ts` (create new file)
 
