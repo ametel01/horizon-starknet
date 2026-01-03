@@ -26,7 +26,7 @@ rg -n -C 6 "\"name\": \"ReserveFeeTransferred\"" target/dev/*.json
 
 ---
 
-## Phase 1: Indexer Schema Updates
+## Phase 1: Indexer Schema Updates **COMPLETE**
 
 ### Step 1.1: Update existing tables for new fee fields
 
