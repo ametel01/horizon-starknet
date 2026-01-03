@@ -184,7 +184,7 @@ make dev-up  # Verify tables exist in local docker database
 
 ---
 
-## Phase 2: Indexer Validation Schemas
+## Phase 2: Indexer Validation Schemas **COMPLETE**
 
 ### Step 2.1: Add validation schemas for new events
 
