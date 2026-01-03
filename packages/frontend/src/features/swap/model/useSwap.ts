@@ -9,6 +9,28 @@ import { type Call, uint256 } from 'starknet';
 
 export type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';
 
+/**
+ * Resolve input/output token addresses from swap direction.
+ * Uses decision table pattern instead of nested ternaries.
+ */
+function resolveSwapTokens(
+  direction: SwapDirection,
+  syAddress: string,
+  ptAddress: string,
+  ytAddress: string
+): { inputTokenAddress: string; outputTokenAddress: string } {
+  const tokenMap: Record<SwapDirection, { input: string; output: string }> = {
+    buy_pt: { input: syAddress, output: ptAddress },
+    sell_pt: { input: ptAddress, output: syAddress },
+    buy_yt: { input: syAddress, output: ytAddress },
+    sell_yt: { input: ytAddress, output: syAddress },
+  };
+  return {
+    inputTokenAddress: tokenMap[direction].input,
+    outputTokenAddress: tokenMap[direction].output,
+  };
+}
+
 interface SwapParams {
   marketAddress: string;
   syAddress: string;
@@ -172,20 +194,13 @@ export function useSwap(): UseSwapReturn {
      * This creates the illusion of instant response while the blockchain confirms
      */
     onMutate: async (params: SwapParams): Promise<OptimisticContext> => {
-      // Determine input/output tokens based on direction
-      const inputTokenAddress =
-        params.direction === 'buy_pt' || params.direction === 'buy_yt'
-          ? params.syAddress
-          : params.direction === 'sell_pt'
-            ? params.ptAddress
-            : params.ytAddress;
-
-      const outputTokenAddress =
-        params.direction === 'buy_pt'
-          ? params.ptAddress
-          : params.direction === 'buy_yt'
-            ? params.ytAddress
-            : params.syAddress;
+      // Resolve token addresses using decision table
+      const { inputTokenAddress, outputTokenAddress } = resolveSwapTokens(
+        params.direction,
+        params.syAddress,
+        params.ptAddress,
+        params.ytAddress
+      );
 
       // Cancel any outgoing refetches to prevent overwriting optimistic update
       await queryClient.cancelQueries({
