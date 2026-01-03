@@ -660,11 +660,11 @@ SELECT
   new_rate,
   rate_change_bps
 FROM sy_oracle_rate_updated
-ORDER BY sy, block_number, event_index;
+ORDER BY sy, block_number, transaction_hash, event_index;
 
--- Unique index includes event_index to handle multiple oracle updates per block
-CREATE UNIQUE INDEX IF NOT EXISTS idx_exchange_rate_history_sy_block_event
-  ON exchange_rate_history(sy, block_number, event_index);
+-- Unique index includes transaction_hash because event_index is per-transaction, not per-block
+CREATE UNIQUE INDEX IF NOT EXISTS idx_exchange_rate_history_sy_block_tx_event
+  ON exchange_rate_history(sy, block_number, transaction_hash, event_index);
 
 -- ============================================================================
 -- YT INTEREST ANALYTICS VIEWS (Phase 5)
