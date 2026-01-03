@@ -678,6 +678,25 @@ export const ytRedeemPYMulti = pgTable('yt_redeem_py_multi', {
   receiver_count: integer('receiver_count').notNull(),
 });
 
+// ============================================================
+// MARKET RESERVE FEE TRACKING
+// ============================================================
+
+// ReserveFeeTransferred: emitted when reserve fees are sent to treasury
+export const marketReserveFeeTransferred = pgTable('market_reserve_fee_transferred', {
+  _id: uuid('_id').primaryKey(),
+  block_number: bigint('block_number', { mode: 'number' }).notNull(),
+  block_timestamp: timestamp('block_timestamp').notNull(),
+  transaction_hash: text('transaction_hash').notNull(),
+  event_index: integer('event_index').notNull(),
+  market: text('market').notNull(),
+  treasury: text('treasury').notNull(),
+  caller: text('caller').notNull(),
+  amount: numeric('amount', { precision: 78, scale: 0 }).notNull(),
+  expiry: bigint('expiry', { mode: 'number' }).notNull(),
+  timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
+});
+
 // RedeemPYWithInterest: combined redeem + claim
 export const ytRedeemPYWithInterest = pgTable('yt_redeem_py_with_interest', {
   _id: uuid('_id').primaryKey(),
