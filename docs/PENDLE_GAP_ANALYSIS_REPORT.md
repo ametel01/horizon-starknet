@@ -284,7 +284,7 @@ This preserves Pendle's invariant that total redeemable SY remains stable as the
 
 ### 2.1 Core AMM Curve (MarketMathCore)
 
-**Implementation Status: 85%** (Core curve math + PYIndex integration + Pendle-style fee split/treasury wiring implemented; remaining differences: bounds handling, initial liquidity recipient, fee decay formula, rounding, init behavior)
+**Implementation Status: 100%** (Core curve math, PYIndex integration, Pendle-style fee decay + reserve split, bounds/rounding parity, signed math, and initial implied-rate initialization implemented)
 
 **Reference:** Pendle's `MarketMathCore.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/MarketMathCore.sol)
 
@@ -294,20 +294,29 @@ This preserves Pendle's invariant that total redeemable SY remains stable as the
 | Rate scalar time decay | `scalarRoot * 365d / timeToExpiry` | Same formula | ✅ |
 | Rate anchor continuity | Anchor derived from `lastLnImpliedRate` each trade | Same pattern | ✅ |
 | `MINIMUM_LIQUIDITY` | 1000 | 1000 | ✅ |
-| `MAX_MARKET_PROPORTION` | 96% | 96% (FP used by Market), 99.9% (WAD path) | ⚠️ Inconsistent |
-| Proportion bound enforcement | Revert if `proportion > MAX_MARKET_PROPORTION` | Clamp to `MAX_PROPORTION` (no revert) | 🟡 MEDIUM |
-| Exchange-rate lower bound | Revert if `exchangeRate < 1` | Floor to 1 (no revert) | 🟡 MEDIUM |
+| `MAX_MARKET_PROPORTION` | 96% | 96% (FP + WAD) | ✅ |
+| Proportion bound enforcement | Revert if `proportion > MAX_MARKET_PROPORTION` | Revert (`MARKET_PROPORTION_TOO_HIGH`) | ✅ |
+| Exchange-rate lower bound | Revert if `exchangeRate < 1` | Revert (`MARKET_RATE_BELOW_ONE`) | ✅ |
 | PT price convergence | Approaches 1 at expiry | Approaches 1 at expiry | ✅ |
 | Dual math implementations | N/A | WAD + cubit FP | ✅ **Horizon exceeds** |
 | Swap variants in core math | 2 wrappers (exact PT in / exact PT out) | 4 (all combinations) | ✅ **Horizon exceeds** |
 | PYIndex integration | `syToAsset()`, `assetToSy()`, `assetToSyUp()` | ✅ Asset-based via `py_index` | ✅ |
 | Reserve fee splitting | `reserveFeePercent`, `netSyToReserve` | ✅ `net_sy_to_reserve` + `reserve_fee_percent` | ✅ |
 | Treasury address | `address treasury` in MarketState | ✅ Factory treasury queried by Market | ✅ |
-| Initial liquidity recipient | `MINIMUM_LIQUIDITY` to reserve (treasury) | Burned to zero address | 🟡 MEDIUM |
-| Signed integer arithmetic | `int256` for netPtToAccount | ❌ `u256` only | 🟡 MEDIUM |
-| Fee formula | `exp(lnFeeRateRoot * timeToExpiry / 365d)` | Linear decay | 🟡 MEDIUM |
-| Rounding protection | `rawDivUp()` on sy/pt used; `assetToSyUp()` for negative | ❌ Standard division | 🟢 LOW |
-| `setInitialLnImpliedRate()` | Explicit init using `PYIndex` + `initialAnchor` | ❌ Direct `last_ln_implied_rate` set | 🟢 LOW |
+| Initial liquidity recipient | `MINIMUM_LIQUIDITY` to reserve (treasury) | Treasury if set; dead address fallback | ✅ |
+| Signed integer arithmetic | `int256` for netPtToAccount | ✅ `SignedValue` (mag + sign) | ✅ |
+| Fee formula | `exp(lnFeeRateRoot * timeToExpiry / 365d)` | ✅ `get_fee_rate()` with exp | ✅ |
+| Rounding protection | `rawDivUp()` on sy/pt used; `assetToSyUp()` for negative | ✅ `asset_to_sy_up()` on negative | ✅ |
+| `setInitialLnImpliedRate()` | Explicit init using `PYIndex` + `initialAnchor` | ✅ `set_initial_ln_implied_rate()` in first mint | ✅ |
+
+---
+
+**Authoritative Flow (Code-Verified):**
+
+- `contracts/src/market/amm.cairo` is the on-chain entry point for swaps/mints/burns and calls
+  `contracts/src/market/market_math_fp.cairo` for all pricing math.
+- `contracts/src/market/market_math.cairo` mirrors the curve in WAD and is used in tests/off-chain
+  checks; it is kept in parity with the FP path.
 
 ---
 
@@ -349,7 +358,24 @@ fallback semantics).
 
 ---
 
-**Gap Detail - Minimum Liquidity Recipient (MEDIUM):**
+**Implementation Detail - Bounds + Rounding Parity (COMPLETED):**
+
+Pendle’s hard bounds and rounding behavior are now enforced in both FP and WAD paths.
+
+Code-verified:
+- `contracts/src/market/market_math_fp.cairo` + `contracts/src/market/market_math.cairo`:
+  `MAX_PROPORTION` hard-asserted in `get_rate_anchor`, `get_exchange_rate`, and
+  `get_ln_implied_rate`; exchange rate reverts if `< 1`.
+- Signed anchor handling via `(rate_anchor, rate_anchor_is_negative)` aligns with Pendle’s signed
+  arithmetic in logit/anchor composition.
+- `asset_to_sy_up()` is used when net asset to account is negative (rounding against the trader).
+- Exact-output paths assert infeasible trades via `MARKET_INFEASIBLE_TRADE`.
+
+**Result:** Horizon now rejects out-of-bounds trades and matches Pendle’s rounding bias.
+
+---
+
+**Implementation Detail - Minimum Liquidity Recipient (COMPLETED):**
 
 Pendle mints `MINIMUM_LIQUIDITY` to the reserve (treasury) on first mint:
 ```solidity
@@ -369,106 +395,18 @@ function addLiquidityCore(...) returns (
 }
 ```
 
-Horizon gives all LP to user (except MINIMUM_LIQUIDITY burned):
+Horizon mints `MINIMUM_LIQUIDITY` to treasury when configured (factory-backed markets),
+falling back to a dead address if treasury is unset:
 ```cairo
-// Horizon - all LP to user
-fn calc_mint_lp(...) -> (u256, u256, u256, bool) {  // (lp_to_mint, sy_used, pt_used, is_first)
-    if *state.total_lp == 0 {
-        let lp_to_user = lp - MINIMUM_LIQUIDITY;
-        // MINIMUM_LIQUIDITY is burned to zero address, not sent to treasury
-        return (lp_to_user, sy_amount, pt_amount, true);
-    }
+// Horizon - first mint locks MINIMUM_LIQUIDITY to treasury (or dead address fallback)
+if is_first_mint {
+    let recipient = self._get_minimum_liquidity_recipient();
+    self.erc20.mint(recipient, MINIMUM_LIQUIDITY);
 }
 ```
 
-**Impact:** Pendle accrues a small protocol-owned LP position at market creation; Horizon permanently burns it instead.
-
----
-
-**Gap Detail - Proportion/Exchange-Rate Bounds (MEDIUM):**
-
-Pendle reverts when bounds are exceeded:
-```solidity
-if (proportion > MAX_MARKET_PROPORTION) {
-    revert Errors.MarketProportionTooHigh(proportion, MAX_MARKET_PROPORTION);
-}
-if (exchangeRate < PMath.IONE) revert Errors.MarketExchangeRateBelowOne(exchangeRate);
-```
-
-Horizon clamps and floors instead of reverting:
-```cairo
-let clamped_proportion = max(MIN_PROPORTION, min(MAX_PROPORTION, new_proportion));
-// ...
-let exchange_rate = max(exchange_rate, WAD);
-```
-
-**Impact:** Horizon permits trades that Pendle would reject, pricing them at boundary values. This changes tail-risk behavior and can allow deeper imbalances.
-
----
-
-**Gap Detail - Fee Decay Formula (MEDIUM):**
-
-Pendle uses **exponential** fee decay via log-space parameters:
-```solidity
-// Pendle - exponential decay
-// lnFeeRateRoot is stored in log space
-function _getExchangeRateFromImpliedRate(uint256 lnImpliedRate, uint256 timeToExpiry)
-    returns (int256 exchangeRate)
-{
-    uint256 rt = (lnImpliedRate * timeToExpiry) / IMPLIED_RATE_TIME;
-    exchangeRate = LogExpMath.exp(rt.Int());
-}
-// Fee uses the same helper:
-// feeRate = e^(lnFeeRateRoot * timeToExpiry / IMPLIED_RATE_TIME)
-```
-
-Horizon uses **linear** fee decay:
-```cairo
-// Horizon - linear decay
-fn get_time_adjusted_fee_rate(fee_rate: u256, time_to_expiry: u64) -> u256 {
-    wad_div(wad_mul(fee_rate, time_to_expiry_u256), SECONDS_PER_YEAR)
-    // Result: feeRate * timeToExpiry / year
-}
-```
-
-**Impact:** Different fee economics near expiry. Linear is simpler but not mathematically equivalent to Pendle's continuous compounding approach.
-
----
-
-**Gap Detail - Signed Integer Arithmetic (MEDIUM):**
-
-Pendle uses signed integers for bidirectional trades:
-```solidity
-// Pendle - single function handles both buy and sell
-function executeTradeCore(
-    MarketState memory market,
-    PYIndex index,
-    int256 netPtToAccount,  // Positive = buy PT, Negative = sell PT
-    uint256 blockTime
-) {
-    // Single code path with signed arithmetic
-    market.totalPt = market.totalPt.subNoNeg(netPtToAccount);
-    market.totalSy = market.totalSy.subNoNeg(netSyToAccount + netSyToReserve);
-}
-```
-
-Horizon uses unsigned integers with separate handling:
-```cairo
-// Horizon - separate functions for each direction
-fn calc_swap_exact_pt_for_sy(...)   // Sell PT
-fn calc_swap_exact_sy_for_pt(...)   // Buy PT
-fn calc_swap_sy_for_exact_pt(...)   // Buy exact PT
-fn calc_swap_pt_for_exact_sy(...)   // Sell for exact SY
-
-// With explicit direction flags
-let new_pt_reserve = if is_pt_out {
-    pt_reserve - net_pt_change
-} else {
-    pt_reserve + net_pt_change
-};
-```
-
-**Impact:** Functionally equivalent at the core math layer. Pendle exposes only exact PT in/out in `MarketMathCore` and relies on router-level flows for other exact-output paths; Horizon implements all four variants directly.
+**Result:** Factory-backed markets now match Pendle by minting the minimum liquidity to
+treasury. Standalone markets (no factory/treasury) still lock it to a dead address.
 
 ---
 
