@@ -11,10 +11,14 @@ import {
   factoryClassHashesUpdatedSchema,
   factoryYieldContractsCreatedSchema,
   marketBurnSchema,
+  marketFactoryDefaultReserveFeeUpdatedSchema,
   marketFactoryMarketCreatedSchema,
+  marketFactoryOverrideFeeSetSchema,
+  marketFactoryTreasuryUpdatedSchema,
   marketFeesCollectedSchema,
   marketImpliedRateUpdatedSchema,
   marketMintSchema,
+  marketReserveFeeTransferredSchema,
   marketScalarRootUpdatedSchema,
   marketSwapSchema,
   routerAddLiquiditySchema,
@@ -214,6 +218,96 @@ describe("marketFactoryMarketCreatedSchema", () => {
     };
 
     const result = marketFactoryMarketCreatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("marketFactoryTreasuryUpdatedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0xabc123", "0xdef456"], // old_treasury, new_treasury
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryTreasuryUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0xabc123"], // Only 1, need 2
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryTreasuryUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("marketFactoryDefaultReserveFeeUpdatedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x14", "0x1e"], // old_percent (20), new_percent (30)
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryDefaultReserveFeeUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x14"], // Only 1, need 2
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryDefaultReserveFeeUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("marketFactoryOverrideFeeSetSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR, "0xrouter123", "0xmarket456"],
+      data: ["0x1", "0x0"], // ln_fee_rate_root as u256 (low, high)
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryOverrideFeeSetSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR, "0xrouter123"], // Missing market
+      data: ["0x1", "0x0"],
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryOverrideFeeSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR, "0xrouter123", "0xmarket456"],
+      data: ["0x1"], // Only 1, need 2 for u256
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketFactoryOverrideFeeSetSchema.safeParse(event);
     expect(result.success).toBe(false);
   });
 });
@@ -453,6 +547,44 @@ describe("marketScalarRootUpdatedSchema", () => {
 
     const result = marketScalarRootUpdatedSchema.safeParse(event);
     expect(result.success).toBe(true);
+  });
+});
+
+describe("marketReserveFeeTransferredSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: MARKET_ADDR,
+      keys: [SELECTOR, "0xmarket123", "0xtreasury456", "0xcaller789"],
+      data: ["0x1", "0x0", "0x12345678", "0x12345678"], // amount(u256), expiry, timestamp
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketReserveFeeTransferredSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: MARKET_ADDR,
+      keys: [SELECTOR, "0xmarket123", "0xtreasury456"], // Missing caller
+      data: ["0x1", "0x0", "0x12345678", "0x12345678"],
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketReserveFeeTransferredSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: MARKET_ADDR,
+      keys: [SELECTOR, "0xmarket123", "0xtreasury456", "0xcaller789"],
+      data: ["0x1", "0x0", "0x12345678"], // Only 3, need 4
+      transactionHash: TX_HASH,
+    };
+
+    const result = marketReserveFeeTransferredSchema.safeParse(event);
+    expect(result.success).toBe(false);
   });
 });
 
