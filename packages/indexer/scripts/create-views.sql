@@ -46,6 +46,7 @@ WITH market_info AS (
     m.pt,
     m.expiry,
     m.ln_fee_rate_root,
+    m.reserve_fee_percent,
     m.initial_exchange_rate,
     m.block_timestamp as created_at,
     y.yt,
@@ -163,6 +164,7 @@ SELECT
   mi.underlying,
   mi.underlying_symbol,
   mi.ln_fee_rate_root,
+  mi.reserve_fee_percent,
   mi.initial_exchange_rate,
   mi.created_at,
   -- Reserves: prioritize swap/mint (correct parsing), then implied_rate, then router
