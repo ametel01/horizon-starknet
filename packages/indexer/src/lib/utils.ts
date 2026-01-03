@@ -207,7 +207,18 @@ function extractByteArrayChunks(
 }
 
 /**
+ * Result of decoding a ByteArray, including the next data index
+ */
+export interface ByteArrayResult {
+  /** The decoded string */
+  value: string;
+  /** The index immediately after the ByteArray (for reading subsequent fields) */
+  nextIndex: number;
+}
+
+/**
  * Decode Cairo ByteArray struct from felt252 array with bounds checking
+ * Returns both the decoded string and the next index for subsequent field parsing.
  *
  * Uses starknet.js byteArray.stringFromByteArray for robust decoding.
  *
@@ -217,16 +228,19 @@ function extractByteArrayChunks(
  * - data[startIndex + 1 + arrayLen]: pending_word (remaining bytes < 31)
  * - data[startIndex + 2 + arrayLen]: pending_word_len (byte count)
  *
+ * Total felts consumed = 3 + arrayLen
+ *
  * @param data - Array of hex strings from event data
  * @param startIndex - Starting index for the ByteArray
  * @param field - Optional field name for error context
+ * @returns ByteArrayResult with decoded value and nextIndex
  * @throws ParseError if data is insufficient
  */
-export function decodeByteArray(
+export function decodeByteArrayWithOffset(
   data: string[],
   startIndex: number,
   field?: string
-): string {
+): ByteArrayResult {
   // Guard: validate start index bounds
   if (startIndex < 0 || startIndex >= data.length) {
     throw byteArrayError(
@@ -265,13 +279,18 @@ export function decodeByteArray(
     const pendingWordHex = data[startIndex + 1 + arrayLen];
     const pendingWordLenHex = data[startIndex + 2 + arrayLen];
 
-    return byteArray.stringFromByteArray({
+    const value = byteArray.stringFromByteArray({
       data: chunks,
       pending_word: pendingWordHex ? BigInt(pendingWordHex) : 0n,
       pending_word_len: pendingWordLenHex
         ? Number(BigInt(pendingWordLenHex))
         : 0,
     });
+
+    // Next index is after: arrayLen (1) + chunks (arrayLen) + pending_word (1) + pending_word_len (1)
+    const nextIndex = startIndex + 3 + arrayLen;
+
+    return { value, nextIndex };
   } catch (err) {
     if (err instanceof ParseError) throw err;
     throw byteArrayError(
@@ -281,6 +300,31 @@ export function decodeByteArray(
       field
     );
   }
+}
+
+/**
+ * Decode Cairo ByteArray struct from felt252 array with bounds checking
+ *
+ * Uses starknet.js byteArray.stringFromByteArray for robust decoding.
+ *
+ * Cairo ByteArray serialization format:
+ * - data[startIndex]: array length (number of full 31-byte chunks)
+ * - data[startIndex + 1 ... startIndex + arrayLen]: full 31-byte chunks
+ * - data[startIndex + 1 + arrayLen]: pending_word (remaining bytes < 31)
+ * - data[startIndex + 2 + arrayLen]: pending_word_len (byte count)
+ *
+ * @param data - Array of hex strings from event data
+ * @param startIndex - Starting index for the ByteArray
+ * @param field - Optional field name for error context
+ * @throws ParseError if data is insufficient
+ * @deprecated Use decodeByteArrayWithOffset when you need to read fields after the ByteArray
+ */
+export function decodeByteArray(
+  data: string[],
+  startIndex: number,
+  field?: string
+): string {
+  return decodeByteArrayWithOffset(data, startIndex, field).value;
 }
 
 /**
