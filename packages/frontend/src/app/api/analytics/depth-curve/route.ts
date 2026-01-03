@@ -77,7 +77,7 @@ function buildMarketState(
     totalLp: BigInt(current.total_lp ?? '0'),
     scalarRoot: BigInt(created?.scalar_root ?? '1000000000000000000'), // Default 1 WAD
     initialAnchor: BigInt(created?.initial_anchor ?? '1000000000000000000'),
-    feeRate: BigInt(current.fee_rate ?? '3000000000000000'), // Default 0.3%
+    feeRate: BigInt(current.ln_fee_rate_root ?? '3000000000000000'), // Default 0.3%
     expiry: BigInt(current.expiry ?? 0),
     lastLnImpliedRate: BigInt(current.implied_rate ?? '0'),
   };

@@ -49,7 +49,8 @@ export const marketFactoryMarketCreated = pgTable('market_factory_market_created
   creator: text('creator').notNull(),
   scalar_root: numeric('scalar_root', { precision: 78, scale: 0 }).notNull(),
   initial_anchor: numeric('initial_anchor', { precision: 78, scale: 0 }).notNull(),
-  fee_rate: numeric('fee_rate', { precision: 78, scale: 0 }).notNull(),
+  ln_fee_rate_root: numeric('ln_fee_rate_root', { precision: 78, scale: 0 }).notNull(),
+  reserve_fee_percent: integer('reserve_fee_percent').notNull(),
   sy: text('sy').notNull(),
   yt: text('yt').notNull(),
   underlying: text('underlying').notNull(),
@@ -74,7 +75,12 @@ export const marketSwap = pgTable('market_swap', {
   sy_in: numeric('sy_in', { precision: 78, scale: 0 }).notNull(),
   pt_out: numeric('pt_out', { precision: 78, scale: 0 }).notNull(),
   sy_out: numeric('sy_out', { precision: 78, scale: 0 }).notNull(),
-  fee: numeric('fee', { precision: 78, scale: 0 }).notNull(),
+  // Fee columns - total_fee is the sum of lp_fee + reserve_fee
+  // Note: 'fee' column kept nullable for historical data compatibility (deprecated)
+  fee: numeric('fee', { precision: 78, scale: 0 }),
+  total_fee: numeric('total_fee', { precision: 78, scale: 0 }),
+  lp_fee: numeric('lp_fee', { precision: 78, scale: 0 }),
+  reserve_fee: numeric('reserve_fee', { precision: 78, scale: 0 }),
   implied_rate_before: numeric('implied_rate_before', { precision: 78, scale: 0 }).notNull(),
   implied_rate_after: numeric('implied_rate_after', { precision: 78, scale: 0 }).notNull(),
   exchange_rate: numeric('exchange_rate', { precision: 78, scale: 0 }).notNull(),
@@ -92,7 +98,7 @@ export const marketFeesCollected = pgTable('market_fees_collected', {
   market: text('market').notNull(),
   amount: numeric('amount', { precision: 78, scale: 0 }).notNull(),
   expiry: bigint('expiry', { mode: 'number' }).notNull(),
-  fee_rate: numeric('fee_rate', { precision: 78, scale: 0 }).notNull(),
+  ln_fee_rate_root: numeric('ln_fee_rate_root', { precision: 78, scale: 0 }).notNull(),
 });
 
 // SY Events
@@ -209,7 +215,9 @@ export const enrichedRouterSwap = pgView('enriched_router_swap', {
   exchange_rate: numeric('exchange_rate', { precision: 78, scale: 0 }),
   implied_rate_before: numeric('implied_rate_before', { precision: 78, scale: 0 }),
   implied_rate_after: numeric('implied_rate_after', { precision: 78, scale: 0 }),
-  fee: numeric('fee', { precision: 78, scale: 0 }),
+  total_fee: numeric('total_fee', { precision: 78, scale: 0 }),
+  lp_fee: numeric('lp_fee', { precision: 78, scale: 0 }),
+  reserve_fee: numeric('reserve_fee', { precision: 78, scale: 0 }),
   sy_reserve_after: numeric('sy_reserve_after', { precision: 78, scale: 0 }),
   pt_reserve_after: numeric('pt_reserve_after', { precision: 78, scale: 0 }),
 }).existing();
@@ -235,7 +243,9 @@ export const enrichedRouterSwapYT = pgView('enriched_router_swap_yt', {
   exchange_rate: numeric('exchange_rate', { precision: 78, scale: 0 }),
   implied_rate_before: numeric('implied_rate_before', { precision: 78, scale: 0 }),
   implied_rate_after: numeric('implied_rate_after', { precision: 78, scale: 0 }),
-  fee: numeric('fee', { precision: 78, scale: 0 }),
+  total_fee: numeric('total_fee', { precision: 78, scale: 0 }),
+  lp_fee: numeric('lp_fee', { precision: 78, scale: 0 }),
+  reserve_fee: numeric('reserve_fee', { precision: 78, scale: 0 }),
 }).existing();
 
 export const enrichedRouterAddLiquidity = pgView('enriched_router_add_liquidity', {
@@ -338,6 +348,8 @@ export const marketDailyStats = pgView('market_daily_stats', {
   sy_volume: numeric('sy_volume', { precision: 78, scale: 0 }),
   pt_volume: numeric('pt_volume', { precision: 78, scale: 0 }),
   total_fees: numeric('total_fees', { precision: 78, scale: 0 }),
+  lp_fees: numeric('lp_fees', { precision: 78, scale: 0 }),
+  reserve_fees: numeric('reserve_fees', { precision: 78, scale: 0 }),
   swap_count: bigint('swap_count', { mode: 'number' }),
   unique_traders: bigint('unique_traders', { mode: 'number' }),
 }).existing();
@@ -352,6 +364,8 @@ export const marketHourlyStats = pgView('market_hourly_stats', {
   sy_volume: numeric('sy_volume', { precision: 78, scale: 0 }),
   pt_volume: numeric('pt_volume', { precision: 78, scale: 0 }),
   total_fees: numeric('total_fees', { precision: 78, scale: 0 }),
+  lp_fees: numeric('lp_fees', { precision: 78, scale: 0 }),
+  reserve_fees: numeric('reserve_fees', { precision: 78, scale: 0 }),
   swap_count: bigint('swap_count', { mode: 'number' }),
 }).existing();
 
@@ -389,6 +403,8 @@ export const protocolDailyStats = pgView('protocol_daily_stats', {
   total_sy_volume: numeric('total_sy_volume', { precision: 78, scale: 0 }),
   total_pt_volume: numeric('total_pt_volume', { precision: 78, scale: 0 }),
   total_fees: numeric('total_fees', { precision: 78, scale: 0 }),
+  total_lp_fees: numeric('total_lp_fees', { precision: 78, scale: 0 }),
+  total_reserve_fees: numeric('total_reserve_fees', { precision: 78, scale: 0 }),
   swap_count: bigint('swap_count', { mode: 'number' }),
   unique_swappers: bigint('unique_swappers', { mode: 'number' }),
   total_py_minted: numeric('total_py_minted', { precision: 78, scale: 0 }),
@@ -412,7 +428,7 @@ export const marketCurrentState = pgView('market_current_state', {
   yt: text('yt'),
   underlying: text('underlying'),
   underlying_symbol: text('underlying_symbol'),
-  fee_rate: numeric('fee_rate', { precision: 78, scale: 0 }),
+  ln_fee_rate_root: numeric('ln_fee_rate_root', { precision: 78, scale: 0 }),
   initial_exchange_rate: numeric('initial_exchange_rate', { precision: 78, scale: 0 }),
   created_at: timestamp('created_at'),
   sy_reserve: numeric('sy_reserve', { precision: 78, scale: 0 }),
@@ -435,6 +451,8 @@ export const userTradingStats = pgView('user_trading_stats', {
   total_sy_volume: numeric('total_sy_volume', { precision: 78, scale: 0 }),
   total_pt_volume: numeric('total_pt_volume', { precision: 78, scale: 0 }),
   total_fees_paid: numeric('total_fees_paid', { precision: 78, scale: 0 }),
+  total_lp_fees_paid: numeric('total_lp_fees_paid', { precision: 78, scale: 0 }),
+  total_reserve_fees_paid: numeric('total_reserve_fees_paid', { precision: 78, scale: 0 }),
   first_swap: timestamp('first_swap'),
   last_swap: timestamp('last_swap'),
   active_days: bigint('active_days', { mode: 'number' }),

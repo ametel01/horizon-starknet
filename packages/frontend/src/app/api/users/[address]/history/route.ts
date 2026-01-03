@@ -108,7 +108,7 @@ interface SwapRow extends BaseRow {
   pt_in: string | null;
   sy_out: string | null;
   pt_out: string | null;
-  fee: string | null;
+  total_fee: string | null;
   exchange_rate: string | null;
   implied_rate_after: string | null;
 }
@@ -124,7 +124,7 @@ function mapSwap(row: SwapRow): HistoryEvent {
       ptIn: row.pt_in ?? '0',
       syOut: row.sy_out ?? '0',
       ptOut: row.pt_out ?? '0',
-      fee: row.fee ?? '0',
+      fee: row.total_fee ?? '0',
     },
     exchangeRate: row.exchange_rate ?? undefined,
     impliedRate: row.implied_rate_after ?? undefined,

@@ -196,16 +196,19 @@ function aggregateSwapVolume(
 async function fetchFeesFromEnrichedSwaps(oneDayAgo: Date): Promise<bigint> {
   const [enrichedSwaps, enrichedYtSwaps] = await Promise.all([
     db
-      .select({ fee: enrichedRouterSwap.fee })
+      .select({ total_fee: enrichedRouterSwap.total_fee })
       .from(enrichedRouterSwap)
       .where(gte(enrichedRouterSwap.block_timestamp, oneDayAgo)),
     db
-      .select({ fee: enrichedRouterSwapYT.fee })
+      .select({ total_fee: enrichedRouterSwapYT.total_fee })
       .from(enrichedRouterSwapYT)
       .where(gte(enrichedRouterSwapYT.block_timestamp, oneDayAgo)),
   ]);
 
-  return sumBigInt([...enrichedSwaps.map((s) => s.fee), ...enrichedYtSwaps.map((s) => s.fee)]);
+  return sumBigInt([
+    ...enrichedSwaps.map((s) => s.total_fee),
+    ...enrichedYtSwaps.map((s) => s.total_fee),
+  ]);
 }
 
 /** Collect unique users from all operation types */

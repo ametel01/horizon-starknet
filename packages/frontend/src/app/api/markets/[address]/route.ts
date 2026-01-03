@@ -51,7 +51,7 @@ interface MarketCurrentStateRow {
   yt: string | null;
   underlying: string | null;
   underlying_symbol: string | null;
-  fee_rate: string | null;
+  ln_fee_rate_root: string | null;
   initial_exchange_rate: string | null;
   created_at: Date | null;
   sy_reserve: string | null;
@@ -91,7 +91,7 @@ function buildMarketInfo(current: MarketCurrentStateRow): MarketDetailResponse['
     yt: current.yt ?? '',
     underlying: current.underlying ?? '',
     underlyingSymbol: current.underlying_symbol ?? '',
-    feeRate: current.fee_rate ?? '0',
+    feeRate: current.ln_fee_rate_root ?? '0',
     initialExchangeRate: current.initial_exchange_rate ?? '0',
     createdAt: current.created_at?.toISOString() ?? '',
   };

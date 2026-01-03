@@ -222,7 +222,7 @@ interface SwapRow {
   sy_out: string | null;
   pt_in: string | null;
   pt_out: string | null;
-  fee: string | null;
+  total_fee: string | null;
   exchange_rate: string | null;
   market: string | null;
   underlying_symbol: string | null;
@@ -233,7 +233,7 @@ function mapSwap(row: SwapRow): ValueEvent {
   const syOut = BigInt(row.sy_out ?? '0');
   const ptIn = BigInt(row.pt_in ?? '0');
   const ptOut = BigInt(row.pt_out ?? '0');
-  const fee = BigInt(row.fee ?? '0');
+  const fee = BigInt(row.total_fee ?? '0');
 
   return {
     type: 'swap',

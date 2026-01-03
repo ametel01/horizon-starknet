@@ -37,7 +37,7 @@ interface MarketRow {
   yt: string | null;
   underlying: string | null;
   underlying_symbol: string | null;
-  fee_rate: string | null;
+  ln_fee_rate_root: string | null;
   sy_reserve: string | null;
   pt_reserve: string | null;
   implied_rate: string | null;
@@ -71,7 +71,7 @@ function extractMarketIdentity(row: MarketRow) {
  */
 function extractMarketState(row: MarketRow) {
   return {
-    feeRate: row.fee_rate ?? '0',
+    feeRate: row.ln_fee_rate_root ?? '0',
     syReserve: row.sy_reserve ?? '0',
     ptReserve: row.pt_reserve ?? '0',
     impliedRate: row.implied_rate ?? '0',

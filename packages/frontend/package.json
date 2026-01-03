@@ -30,7 +30,7 @@
     "clean": "rm -rf .next node_modules/.cache",
     "codegen": "bun run scripts/generate-types.ts",
     "find-deadcode": "ts-prune",
-    "commit:check": "rm -rf node_modules && bun install && bun run codegen && bun run build && bun run format && bun run check && bun run test && bun run test:e2e"
+    "commit:check": "rm -rf node_modules && bun install && (cd ../.. && make build) && bun run codegen && bun run build && bun run format && bun run check && bun run test && bun run test:e2e"
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.0.1",

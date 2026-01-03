@@ -124,6 +124,12 @@ ${exportEntries.map((e) => e.line).join('\n')}
 
   console.log(`\nGenerated types for ${String(processedCount)} contracts`);
   console.log(`Output: ${OUTPUT_DIR}`);
+
+  // Fail if no contracts were processed - the frontend can't build without ABIs
+  if (processedCount === 0) {
+    console.error('\nNo contracts were processed. Build contracts first with: make build');
+    process.exit(1);
+  }
 }
 
 main();

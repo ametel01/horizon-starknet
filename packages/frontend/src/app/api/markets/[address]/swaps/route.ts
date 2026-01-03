@@ -144,7 +144,7 @@ export async function GET(
         syIn: row.sy_in,
         ptOut: row.pt_out,
         syOut: row.sy_out,
-        fee: row.fee,
+        fee: row.total_fee ?? row.fee,
         impliedRateBefore: row.implied_rate_before,
         impliedRateAfter: row.implied_rate_after,
         exchangeRate: row.exchange_rate,

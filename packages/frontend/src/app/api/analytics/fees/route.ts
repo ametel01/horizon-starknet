@@ -204,7 +204,7 @@ async function aggregateFromMaterializedView(
 }
 
 interface SwapRecord {
-  fee: string | null;
+  total_fee: string | null;
   market: string | null;
   block_timestamp: Date | null;
 }
@@ -217,7 +217,7 @@ function processSwapRecord(
   marketFees: Map<string, { fees: bigint; swaps: number }>,
   th: DateThresholds
 ): void {
-  const fee = BigInt(swap.fee ?? '0');
+  const fee = BigInt(swap.total_fee ?? '0');
   const market = swap.market ?? '';
   const timestamp = swap.block_timestamp ?? new Date(0);
   const dateKey = timestamp.toISOString().split('T')[0] ?? '';
