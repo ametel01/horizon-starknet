@@ -33,10 +33,10 @@ export function useIndexedMarkets(options: UseIndexedMarketsOptions = {}): UseIn
   const { activeOnly = true, refetchInterval = 30000, enabled = true } = options;
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['indexer', 'markets', { activeOnly }],
+    queryKey: ['indexer', 'markets', { active: activeOnly }],
     queryFn: () =>
       api.get<MarketsResponse>('/markets', {
-        active_only: activeOnly ? 'true' : 'false',
+        active: activeOnly ? 'true' : 'false',
       }),
     refetchInterval,
     enabled,
