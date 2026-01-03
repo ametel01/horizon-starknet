@@ -28,7 +28,6 @@ type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
 const LOG_LEVEL: LogLevel =
   (process.env["LOG_LEVEL"] as LogLevel | undefined) ?? "info";
 const LOG_PRETTY = process.env["LOG_PRETTY"] === "true";
-// eslint-disable-next-line @typescript-eslint/dot-notation -- bracket notation required by tsconfig noPropertyAccessFromIndexSignature
 const NODE_ENV = process.env["NODE_ENV"];
 
 /**

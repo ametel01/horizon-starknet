@@ -59,6 +59,56 @@ const CHECKPOINT_TABLES = [
   "airfoil.reorg_rollback",
 ];
 
+type Sql = ReturnType<typeof postgres>;
+
+/**
+ * Drop materialized views and the refresh function.
+ */
+async function dropViewsAndRefreshFunction(sql: Sql): Promise<void> {
+  log.info("Dropping materialized views...");
+  for (const view of MATERIALIZED_VIEWS) {
+    try {
+      await sql.unsafe(`DROP MATERIALIZED VIEW IF EXISTS ${view} CASCADE`);
+      log.debug({ view }, "Dropped view");
+    } catch (e: unknown) {
+      const error = e as Error;
+      log.warn({ view, error: error.message }, "Could not drop view");
+    }
+  }
+
+  try {
+    await sql.unsafe("DROP FUNCTION IF EXISTS refresh_all_views()");
+    log.debug("Dropped refresh_all_views function");
+  } catch (e: unknown) {
+    const error = e as Error;
+    log.warn({ error: error.message }, "Could not drop refresh_all_views");
+  }
+}
+
+/**
+ * Truncate a list of tables, optionally ignoring "does not exist" errors.
+ */
+async function truncateTables(
+  sql: Sql,
+  tables: readonly string[],
+  description: string,
+  ignoreMissing: boolean
+): Promise<void> {
+  log.info(`Truncating ${description}...`);
+  for (const table of tables) {
+    try {
+      await sql.unsafe(`TRUNCATE ${table} CASCADE`);
+      log.debug({ table }, "Truncated table");
+    } catch (e: unknown) {
+      const error = e as Error;
+      const isMissingTable = error.message?.includes("does not exist");
+      if (!ignoreMissing || !isMissingTable) {
+        log.warn({ table, error: error.message }, "Could not truncate table");
+      }
+    }
+  }
+}
+
 async function resetCheckpoints() {
   // Support both Railway's DATABASE_URL and our POSTGRES_CONNECTION_STRING
   const databaseUrl =
@@ -74,54 +124,9 @@ async function resetCheckpoints() {
   const sql = postgres(databaseUrl);
 
   try {
-    // Drop all materialized views first (they depend on the tables)
-    log.info("Dropping materialized views...");
-    for (const view of MATERIALIZED_VIEWS) {
-      try {
-        await sql.unsafe(`DROP MATERIALIZED VIEW IF EXISTS ${view} CASCADE`);
-        log.debug({ view }, "Dropped view");
-      } catch (e: unknown) {
-        const error = e as Error;
-        log.warn({ view, error: error.message }, "Could not drop view");
-      }
-    }
-
-    // Drop the refresh function
-    try {
-      await sql.unsafe("DROP FUNCTION IF EXISTS refresh_all_views()");
-      log.debug("Dropped refresh_all_views function");
-    } catch (e: unknown) {
-      const error = e as Error;
-      log.warn({ error: error.message }, "Could not drop refresh_all_views");
-    }
-
-    // Truncate all event tables
-    log.info("Truncating event tables...");
-    for (const table of EVENT_TABLES) {
-      try {
-        await sql.unsafe(`TRUNCATE ${table} CASCADE`);
-        log.debug({ table }, "Truncated table");
-      } catch (e: unknown) {
-        const error = e as Error;
-        if (!error.message?.includes("does not exist")) {
-          log.warn({ table, error: error.message }, "Could not truncate table");
-        }
-      }
-    }
-
-    // Truncate airfoil (checkpoint) tables
-    log.info("Truncating checkpoint tables...");
-    for (const table of CHECKPOINT_TABLES) {
-      try {
-        await sql.unsafe(`TRUNCATE ${table} CASCADE`);
-        log.debug({ table }, "Truncated table");
-      } catch (e: unknown) {
-        const error = e as Error;
-        if (!error.message?.includes("does not exist")) {
-          log.warn({ table, error: error.message }, "Could not truncate table");
-        }
-      }
-    }
+    await dropViewsAndRefreshFunction(sql);
+    await truncateTables(sql, EVENT_TABLES, "event tables", true);
+    await truncateTables(sql, CHECKPOINT_TABLES, "checkpoint tables", true);
 
     log.info(
       "Reset complete. All event data and checkpoints cleared. Indexers will restart from startingBlock."

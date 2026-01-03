@@ -180,7 +180,7 @@ describe("Version Module", () => {
       process.env["GIT_COMMIT"] = "abc123def456789";
       process.env["GIT_BRANCH"] = "main";
       process.env["BUILD_TIME"] = "2025-12-28T10:00:00Z";
-      process.env.NODE_ENV = "production";
+      process.env["NODE_ENV"] = "production";
 
       const mockLogger = {
         info: vi.fn(),
@@ -235,7 +235,7 @@ describe("Build Info Complete Flow", () => {
     process.env["GIT_COMMIT"] = "614ebdc123456789abcdef";
     process.env["GIT_BRANCH"] = "develop";
     process.env["BUILD_TIME"] = "2025-12-28T12:00:00Z";
-    process.env.NODE_ENV = "production";
+    process.env["NODE_ENV"] = "production";
     process.env["npm_package_version"] = "0.1.0";
 
     const info = getBuildInfo();
@@ -255,7 +255,7 @@ describe("Build Info Complete Flow", () => {
     process.env["GIT_COMMIT"] = undefined;
     process.env["GIT_BRANCH"] = undefined;
     process.env["BUILD_TIME"] = undefined;
-    process.env.NODE_ENV = "development";
+    process.env["NODE_ENV"] = "development";
 
     const info = getBuildInfo();
     const summary = getBuildSummary();

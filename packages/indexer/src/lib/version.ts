@@ -79,7 +79,7 @@ export function getBuildInfo(): BuildInfo {
     buildTime: process.env["BUILD_TIME"] ?? new Date().toISOString(),
     runtime: bunVersion ? `Bun ${bunVersion}` : `Node ${process.version}`,
 
-    env: process.env.NODE_ENV ?? "development",
+    env: process.env["NODE_ENV"] ?? "development",
     version: process.env["npm_package_version"] ?? "0.0.0",
   };
 }

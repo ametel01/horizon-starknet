@@ -77,6 +77,40 @@ function isStructEvent(item: AbiItem): boolean {
   return item.type === "event" && item.kind === "struct";
 }
 
+/**
+ * Find all struct definitions required by the given types, including nested dependencies.
+ * Uses breadth-first traversal to discover transitive struct references.
+ */
+function findRequiredStructs(
+  fullAbi: AbiItem[],
+  initialTypes: Set<string>
+): AbiItem[] {
+  const requiredStructs: AbiItem[] = [];
+  const structsToProcess = [...initialTypes];
+  const processedStructs = new Set<string>();
+
+  while (structsToProcess.length > 0) {
+    const typeName = structsToProcess.pop()!;
+    if (processedStructs.has(typeName)) continue;
+    processedStructs.add(typeName);
+
+    const struct = fullAbi.find(
+      (item) => item.type === "struct" && item.name === typeName
+    );
+    if (!struct) continue;
+
+    requiredStructs.push(struct);
+    const nestedTypes = extractReferencedTypes(struct.members);
+    for (const t of nestedTypes) {
+      if (!processedStructs.has(t)) {
+        structsToProcess.push(t);
+      }
+    }
+  }
+
+  return requiredStructs;
+}
+
 function processContract(name: string): boolean {
   const inputPath = join(FRONTEND_ABI_DIR, `${name}.ts`);
 
@@ -105,44 +139,19 @@ function processContract(name: string): boolean {
     return false;
   }
 
-  // Step 2: Collect all types referenced by events
+  // Step 2: Collect all types referenced by events and find required structs
   const referencedTypes = new Set<string>();
   for (const event of horizonEvents) {
-    const types = extractReferencedTypes(event.members);
-    for (const t of types) {
+    for (const t of extractReferencedTypes(event.members)) {
       referencedTypes.add(t);
     }
   }
+  const requiredStructs = findRequiredStructs(fullAbi, referencedTypes);
 
-  // Step 3: Find struct definitions for referenced types
-  const requiredStructs: AbiItem[] = [];
-  const structsToProcess = [...referencedTypes];
-  const processedStructs = new Set<string>();
-
-  while (structsToProcess.length > 0) {
-    const typeName = structsToProcess.pop()!;
-    if (processedStructs.has(typeName)) continue;
-    processedStructs.add(typeName);
-
-    const struct = fullAbi.find(
-      (item) => item.type === "struct" && item.name === typeName
-    );
-    if (struct) {
-      requiredStructs.push(struct);
-      // Also check for nested types in this struct
-      const nestedTypes = extractReferencedTypes(struct.members);
-      for (const t of nestedTypes) {
-        if (!processedStructs.has(t)) {
-          structsToProcess.push(t);
-        }
-      }
-    }
-  }
-
-  // Step 4: Build the events-only ABI (structs first, then events)
+  // Step 3: Build the events-only ABI (structs first, then events)
   const eventsAbi = [...requiredStructs, ...horizonEvents];
 
-  // Step 5: Write output as JSON (for easy import)
+  // Step 4: Write output as JSON (for easy import)
   const outputPath = join(OUTPUT_DIR, `${name.toLowerCase()}.json`);
   writeFileSync(outputPath, JSON.stringify(eventsAbi, null, 2));
 
@@ -183,6 +192,11 @@ function main(): void {
     }
   }
 
+  // Sort contracts by lowercase name (module path) for Biome's organizeImports
+  processedContracts.sort((a, b) =>
+    a.toLowerCase().localeCompare(b.toLowerCase())
+  );
+
   // Generate index file only for contracts with events
   const imports = processedContracts.map(
     (c) =>
@@ -207,6 +221,11 @@ ${exports.join("\n")}
 `;
 
   writeFileSync(join(OUTPUT_DIR, "index.ts"), indexContent);
+
+  // Format generated files with Biome to ensure they pass lint checks
+  Bun.spawnSync(["bunx", "biome", "check", OUTPUT_DIR, "--write"], {
+    stdio: ["ignore", "ignore", "ignore"],
+  });
 
   log.info({ outputDir: OUTPUT_DIR }, "Generation complete");
 }

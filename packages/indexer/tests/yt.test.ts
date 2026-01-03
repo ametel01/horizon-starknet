@@ -17,167 +17,141 @@ const REDEEM_PY_POST_EXPIRY = hash.getSelectorFromName("RedeemPYPostExpiry");
 const INTEREST_CLAIMED = hash.getSelectorFromName("InterestClaimed");
 const EXPIRY_REACHED = hash.getSelectorFromName("ExpiryReached");
 
-// Transform function (extracted from indexer logic)
-function transformYTEvent(event: {
+// Shared event context type
+interface EventContext {
   keys: string[];
   data: string[];
   address: string;
   transactionHash: string;
   blockNumber: number;
   blockTimestamp: string;
-}) {
-  const { keys, data, address, transactionHash, blockNumber, blockTimestamp } =
-    event;
-  const eventKey = keys[0];
-  const ytAddress = address;
+}
 
-  if (matchSelector(eventKey, MINT_PY)) {
-    const caller = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+// Base fields shared by all event results
+function baseFields(ctx: EventContext) {
+  return {
+    block_number: ctx.blockNumber,
+    block_timestamp: ctx.blockTimestamp,
+    transaction_hash: ctx.transactionHash,
+  };
+}
 
-    const amountSyDeposited = readU256(data, 0);
-    const amountPyMinted = readU256(data, 2);
-    const pt = data[4] ?? "";
-    const sy = data[5] ?? "";
-    const pyIndex = readU256(data, 6);
-    const exchangeRate = readU256(data, 8);
-    const totalPtSupply = readU256(data, 10);
-    const totalYtSupply = readU256(data, 12);
+// Event-specific handlers
+function handleMintPY(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "MintPY" as const,
+    ...baseFields(ctx),
+    caller: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    yt: address,
+    sy: data[5] ?? "",
+    pt: data[4] ?? "",
+    amount_sy_deposited: readU256(data, 0),
+    amount_py_minted: readU256(data, 2),
+    py_index: readU256(data, 6),
+    exchange_rate: readU256(data, 8),
+    total_pt_supply_after: readU256(data, 10),
+    total_yt_supply_after: readU256(data, 12),
+  };
+}
 
-    return {
-      event_type: "MintPY",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      caller,
-      receiver,
-      expiry,
-      yt: ytAddress,
-      sy,
-      pt,
-      amount_sy_deposited: amountSyDeposited,
-      amount_py_minted: amountPyMinted,
-      py_index: pyIndex,
-      exchange_rate: exchangeRate,
-      total_pt_supply_after: totalPtSupply,
-      total_yt_supply_after: totalYtSupply,
-    };
-  } else if (matchSelector(eventKey, REDEEM_PY)) {
-    const caller = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+function handleRedeemPY(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "RedeemPY" as const,
+    ...baseFields(ctx),
+    caller: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    yt: address,
+    sy: data[0] ?? "",
+    pt: data[1] ?? "",
+    amount_py_redeemed: readU256(data, 2),
+    amount_sy_returned: readU256(data, 4),
+    py_index: readU256(data, 6),
+    exchange_rate: readU256(data, 8),
+  };
+}
 
-    const sy = data[0] ?? "";
-    const pt = data[1] ?? "";
-    const amountPyRedeemed = readU256(data, 2);
-    const amountSyReturned = readU256(data, 4);
-    const pyIndex = readU256(data, 6);
-    const exchangeRate = readU256(data, 8);
+function handleRedeemPYPostExpiry(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "RedeemPYPostExpiry" as const,
+    ...baseFields(ctx),
+    caller: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    yt: address,
+    sy: data[5] ?? "",
+    pt: data[4] ?? "",
+    amount_pt_redeemed: readU256(data, 0),
+    amount_sy_returned: readU256(data, 2),
+    final_py_index: readU256(data, 6),
+    final_exchange_rate: readU256(data, 8),
+  };
+}
 
-    return {
-      event_type: "RedeemPY",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      caller,
-      receiver,
-      expiry,
-      yt: ytAddress,
-      sy,
-      pt,
-      amount_py_redeemed: amountPyRedeemed,
-      amount_sy_returned: amountSyReturned,
-      py_index: pyIndex,
-      exchange_rate: exchangeRate,
-    };
-  } else if (matchSelector(eventKey, REDEEM_PY_POST_EXPIRY)) {
-    const caller = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+function handleInterestClaimed(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "InterestClaimed" as const,
+    ...baseFields(ctx),
+    user: keys[1] ?? "",
+    yt: keys[2] ?? address,
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    sy: data[2] ?? "",
+    amount_sy: readU256(data, 0),
+    yt_balance: readU256(data, 3),
+    py_index_at_claim: readU256(data, 5),
+    exchange_rate: readU256(data, 7),
+  };
+}
 
-    const amountPtRedeemed = readU256(data, 0);
-    const amountSyReturned = readU256(data, 2);
-    const pt = data[4] ?? "";
-    const sy = data[5] ?? "";
-    const finalPyIndex = readU256(data, 6);
-    const finalExchangeRate = readU256(data, 8);
+function handleExpiryReached(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "ExpiryReached" as const,
+    ...baseFields(ctx),
+    market: keys[1] ?? "",
+    yt: keys[2] ?? address,
+    pt: keys[3] ?? "",
+    sy: data[0] ?? "",
+    expiry: Number(BigInt(data[1] ?? "0")),
+    final_exchange_rate: readU256(data, 2),
+    final_py_index: readU256(data, 4),
+    total_pt_supply: readU256(data, 6),
+    total_yt_supply: readU256(data, 8),
+    sy_reserve: readU256(data, 10),
+    pt_reserve: readU256(data, 12),
+  };
+}
 
-    return {
-      event_type: "RedeemPYPostExpiry",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      caller,
-      receiver,
-      expiry,
-      yt: ytAddress,
-      sy,
-      pt,
-      amount_pt_redeemed: amountPtRedeemed,
-      amount_sy_returned: amountSyReturned,
-      final_py_index: finalPyIndex,
-      final_exchange_rate: finalExchangeRate,
-    };
-  } else if (matchSelector(eventKey, INTEREST_CLAIMED)) {
-    const user = keys[1] ?? "";
-    const yt = keys[2] ?? ytAddress;
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+// Handler return types
+type YTEventResult =
+  | ReturnType<typeof handleMintPY>
+  | ReturnType<typeof handleRedeemPY>
+  | ReturnType<typeof handleRedeemPYPostExpiry>
+  | ReturnType<typeof handleInterestClaimed>
+  | ReturnType<typeof handleExpiryReached>;
 
-    const amountSy = readU256(data, 0);
-    const sy = data[2] ?? "";
-    const ytBalance = readU256(data, 3);
-    const pyIndexAtClaim = readU256(data, 5);
-    const exchangeRate = readU256(data, 7);
+// Dispatch table: [selector, handler] pairs
+const EVENT_HANDLERS: [string, (ctx: EventContext) => YTEventResult][] = [
+  [MINT_PY, handleMintPY],
+  [REDEEM_PY, handleRedeemPY],
+  [REDEEM_PY_POST_EXPIRY, handleRedeemPYPostExpiry],
+  [INTEREST_CLAIMED, handleInterestClaimed],
+  [EXPIRY_REACHED, handleExpiryReached],
+];
 
-    return {
-      event_type: "InterestClaimed",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      user,
-      yt,
-      expiry,
-      sy,
-      amount_sy: amountSy,
-      yt_balance: ytBalance,
-      py_index_at_claim: pyIndexAtClaim,
-      exchange_rate: exchangeRate,
-    };
-  } else if (matchSelector(eventKey, EXPIRY_REACHED)) {
-    const market = keys[1] ?? "";
-    const yt = keys[2] ?? ytAddress;
-    const pt = keys[3] ?? "";
-
-    const sy = data[0] ?? "";
-    const expiry = Number(BigInt(data[1] ?? "0"));
-    const finalExchangeRate = readU256(data, 2);
-    const finalPyIndex = readU256(data, 4);
-    const totalPtSupply = readU256(data, 6);
-    const totalYtSupply = readU256(data, 8);
-    const syReserve = readU256(data, 10);
-    const ptReserve = readU256(data, 12);
-
-    return {
-      event_type: "ExpiryReached",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      market,
-      yt,
-      pt,
-      sy,
-      expiry,
-      final_exchange_rate: finalExchangeRate,
-      final_py_index: finalPyIndex,
-      total_pt_supply: totalPtSupply,
-      total_yt_supply: totalYtSupply,
-      sy_reserve: syReserve,
-      pt_reserve: ptReserve,
-    };
-  }
-
-  return null;
+// Transform function using dispatch table
+function transformYTEvent(event: EventContext) {
+  const eventKey = event.keys[0];
+  const handler = EVENT_HANDLERS.find(([selector]) =>
+    matchSelector(eventKey, selector)
+  );
+  return handler ? handler[1](event) : null;
 }
 
 describe("YT Indexer", () => {

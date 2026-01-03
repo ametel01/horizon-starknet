@@ -17,183 +17,149 @@ const SWAP = hash.getSelectorFromName("Swap");
 const IMPLIED_RATE_UPDATED = hash.getSelectorFromName("ImpliedRateUpdated");
 const FEES_COLLECTED = hash.getSelectorFromName("FeesCollected");
 
-// Transform function (extracted from indexer logic)
-function transformMarketEvent(event: {
+// Shared event context type
+interface EventContext {
   keys: string[];
   data: string[];
   address: string;
   transactionHash: string;
   blockNumber: number;
   blockTimestamp: string;
-}) {
-  const { keys, data, address, transactionHash, blockNumber, blockTimestamp } =
-    event;
-  const eventKey = keys[0];
-  const marketAddress = address;
+}
 
-  if (matchSelector(eventKey, MINT)) {
-    const sender = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+// Base fields shared by all event results
+function baseFields(ctx: EventContext) {
+  return {
+    block_number: ctx.blockNumber,
+    block_timestamp: ctx.blockTimestamp,
+    transaction_hash: ctx.transactionHash,
+  };
+}
 
-    const sy = data[0] ?? "";
-    const pt = data[1] ?? "";
-    const syAmount = readU256(data, 2);
-    const ptAmount = readU256(data, 4);
-    const lpAmount = readU256(data, 6);
-    const exchangeRate = readU256(data, 8);
-    const impliedRate = readU256(data, 10);
-    const syReserve = readU256(data, 12);
-    const ptReserve = readU256(data, 14);
-    const totalLp = readU256(data, 16);
+// Event-specific handlers
+function handleMint(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "Mint" as const,
+    ...baseFields(ctx),
+    sender: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    market: address,
+    sy: data[0] ?? "",
+    pt: data[1] ?? "",
+    sy_amount: readU256(data, 2),
+    pt_amount: readU256(data, 4),
+    lp_amount: readU256(data, 6),
+    exchange_rate: readU256(data, 8),
+    implied_rate: readU256(data, 10),
+    sy_reserve_after: readU256(data, 12),
+    pt_reserve_after: readU256(data, 14),
+    total_lp_after: readU256(data, 16),
+  };
+}
 
-    return {
-      event_type: "Mint",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      sender,
-      receiver,
-      expiry,
-      market: marketAddress,
-      sy,
-      pt,
-      sy_amount: syAmount,
-      pt_amount: ptAmount,
-      lp_amount: lpAmount,
-      exchange_rate: exchangeRate,
-      implied_rate: impliedRate,
-      sy_reserve_after: syReserve,
-      pt_reserve_after: ptReserve,
-      total_lp_after: totalLp,
-    };
-  } else if (matchSelector(eventKey, BURN)) {
-    const sender = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+function handleBurn(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "Burn" as const,
+    ...baseFields(ctx),
+    sender: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    market: address,
+    sy: data[0] ?? "",
+    pt: data[1] ?? "",
+    lp_amount: readU256(data, 2),
+    sy_amount: readU256(data, 4),
+    pt_amount: readU256(data, 6),
+    exchange_rate: readU256(data, 8),
+    implied_rate: readU256(data, 10),
+    sy_reserve_after: readU256(data, 12),
+    pt_reserve_after: readU256(data, 14),
+    total_lp_after: readU256(data, 16),
+  };
+}
 
-    const sy = data[0] ?? "";
-    const pt = data[1] ?? "";
-    const lpAmount = readU256(data, 2);
-    const syAmount = readU256(data, 4);
-    const ptAmount = readU256(data, 6);
-    const exchangeRate = readU256(data, 8);
-    const impliedRate = readU256(data, 10);
-    const syReserve = readU256(data, 12);
-    const ptReserve = readU256(data, 14);
-    const totalLp = readU256(data, 16);
+function handleSwap(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "Swap" as const,
+    ...baseFields(ctx),
+    sender: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    expiry: Number(BigInt(keys[3] ?? "0")),
+    market: address,
+    sy: data[0] ?? "",
+    pt: data[1] ?? "",
+    pt_in: readU256(data, 2),
+    sy_in: readU256(data, 4),
+    pt_out: readU256(data, 6),
+    sy_out: readU256(data, 8),
+    fee: readU256(data, 10),
+    implied_rate_before: readU256(data, 12),
+    implied_rate_after: readU256(data, 14),
+    exchange_rate: readU256(data, 16),
+    sy_reserve_after: readU256(data, 18),
+    pt_reserve_after: readU256(data, 20),
+  };
+}
 
-    return {
-      event_type: "Burn",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      sender,
-      receiver,
-      expiry,
-      market: marketAddress,
-      sy,
-      pt,
-      lp_amount: lpAmount,
-      sy_amount: syAmount,
-      pt_amount: ptAmount,
-      exchange_rate: exchangeRate,
-      implied_rate: impliedRate,
-      sy_reserve_after: syReserve,
-      pt_reserve_after: ptReserve,
-      total_lp_after: totalLp,
-    };
-  } else if (matchSelector(eventKey, SWAP)) {
-    const sender = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const expiry = Number(BigInt(keys[3] ?? "0"));
+function handleImpliedRateUpdated(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "ImpliedRateUpdated" as const,
+    ...baseFields(ctx),
+    market: keys[1] ?? address,
+    expiry: Number(BigInt(keys[2] ?? "0")),
+    old_rate: readU256(data, 0),
+    new_rate: readU256(data, 2),
+    time_to_expiry: Number(BigInt(data[4] ?? "0")),
+    exchange_rate: readU256(data, 5),
+    sy_reserve: readU256(data, 7),
+    pt_reserve: readU256(data, 9),
+    total_lp: readU256(data, 11),
+  };
+}
 
-    const sy = data[0] ?? "";
-    const pt = data[1] ?? "";
-    const ptIn = readU256(data, 2);
-    const syIn = readU256(data, 4);
-    const ptOut = readU256(data, 6);
-    const syOut = readU256(data, 8);
-    const fee = readU256(data, 10);
-    const impliedRateBefore = readU256(data, 12);
-    const impliedRateAfter = readU256(data, 14);
-    const exchangeRate = readU256(data, 16);
-    const syReserve = readU256(data, 18);
-    const ptReserve = readU256(data, 20);
+function handleFeesCollected(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  return {
+    event_type: "FeesCollected" as const,
+    ...baseFields(ctx),
+    collector: keys[1] ?? "",
+    receiver: keys[2] ?? "",
+    market: keys[3] ?? address,
+    amount: readU256(data, 0),
+    expiry: Number(BigInt(data[2] ?? "0")),
+    fee_rate: readU256(data, 3),
+  };
+}
 
-    return {
-      event_type: "Swap",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      sender,
-      receiver,
-      expiry,
-      market: marketAddress,
-      sy,
-      pt,
-      pt_in: ptIn,
-      sy_in: syIn,
-      pt_out: ptOut,
-      sy_out: syOut,
-      fee,
-      implied_rate_before: impliedRateBefore,
-      implied_rate_after: impliedRateAfter,
-      exchange_rate: exchangeRate,
-      sy_reserve_after: syReserve,
-      pt_reserve_after: ptReserve,
-    };
-  } else if (matchSelector(eventKey, IMPLIED_RATE_UPDATED)) {
-    const market = keys[1] ?? marketAddress;
-    const expiry = Number(BigInt(keys[2] ?? "0"));
+// Handler return types
+type MarketEventResult =
+  | ReturnType<typeof handleMint>
+  | ReturnType<typeof handleBurn>
+  | ReturnType<typeof handleSwap>
+  | ReturnType<typeof handleImpliedRateUpdated>
+  | ReturnType<typeof handleFeesCollected>;
 
-    const oldRate = readU256(data, 0);
-    const newRate = readU256(data, 2);
-    const timeToExpiry = Number(BigInt(data[4] ?? "0"));
-    const exchangeRate = readU256(data, 5);
-    const syReserve = readU256(data, 7);
-    const ptReserve = readU256(data, 9);
-    const totalLp = readU256(data, 11);
+// Dispatch table: [selector, handler] pairs
+const EVENT_HANDLERS: [string, (ctx: EventContext) => MarketEventResult][] = [
+  [MINT, handleMint],
+  [BURN, handleBurn],
+  [SWAP, handleSwap],
+  [IMPLIED_RATE_UPDATED, handleImpliedRateUpdated],
+  [FEES_COLLECTED, handleFeesCollected],
+];
 
-    return {
-      event_type: "ImpliedRateUpdated",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      market,
-      expiry,
-      old_rate: oldRate,
-      new_rate: newRate,
-      time_to_expiry: timeToExpiry,
-      exchange_rate: exchangeRate,
-      sy_reserve: syReserve,
-      pt_reserve: ptReserve,
-      total_lp: totalLp,
-    };
-  } else if (matchSelector(eventKey, FEES_COLLECTED)) {
-    const collector = keys[1] ?? "";
-    const receiver = keys[2] ?? "";
-    const market = keys[3] ?? marketAddress;
-
-    const amount = readU256(data, 0);
-    const expiry = Number(BigInt(data[2] ?? "0"));
-    const feeRate = readU256(data, 3);
-
-    return {
-      event_type: "FeesCollected",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      collector,
-      receiver,
-      market,
-      amount,
-      expiry,
-      fee_rate: feeRate,
-    };
-  }
-
-  return null;
+// Transform function using dispatch table
+function transformMarketEvent(event: EventContext) {
+  const eventKey = event.keys[0];
+  const handler = EVENT_HANDLERS.find(([selector]) =>
+    matchSelector(eventKey, selector)
+  );
+  return handler ? handler[1](event) : null;
 }
 
 describe("Market Indexer", () => {

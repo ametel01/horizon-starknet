@@ -10,8 +10,8 @@ import syAbi from "./sy.json" with { type: "json" };
 import ytAbi from "./yt.json" with { type: "json" };
 
 export const FACTORY_EVENTS_ABI = factoryAbi;
+export const MARKET_EVENTS_ABI = marketAbi;
 export const MARKET_FACTORY_EVENTS_ABI = marketfactoryAbi;
 export const ROUTER_EVENTS_ABI = routerAbi;
-export const MARKET_EVENTS_ABI = marketAbi;
 export const SY_EVENTS_ABI = syAbi;
 export const YT_EVENTS_ABI = ytAbi;

@@ -176,6 +176,36 @@ export function readFeltAsNumber(
   return Number(BigInt(value));
 }
 
+/** Create a ParseError for ByteArray operations */
+function byteArrayError(
+  message: string,
+  startIndex: number,
+  dataLength: number,
+  field?: string
+): ParseError {
+  return new ParseError(message, {
+    index: startIndex,
+    dataLength,
+    field: field ?? "ByteArray",
+  });
+}
+
+/** Extract chunks from ByteArray data */
+function extractByteArrayChunks(
+  data: string[],
+  startIndex: number,
+  arrayLen: number
+): bigint[] {
+  const chunks: bigint[] = [];
+  for (let i = 0; i < arrayLen; i++) {
+    const chunk = data[startIndex + 1 + i];
+    if (chunk) {
+      chunks.push(BigInt(chunk));
+    }
+  }
+  return chunks;
+}
+
 /**
  * Decode Cairo ByteArray struct from felt252 array with bounds checking
  *
@@ -197,82 +227,58 @@ export function decodeByteArray(
   startIndex: number,
   field?: string
 ): string {
+  // Guard: validate start index bounds
   if (startIndex < 0 || startIndex >= data.length) {
-    throw new ParseError(
+    throw byteArrayError(
       `ByteArray start index ${String(startIndex)} out of bounds`,
-      {
-        index: startIndex,
-        dataLength: data.length,
-        field: field ?? "ByteArray",
-      }
+      startIndex,
+      data.length,
+      field
     );
   }
 
   const arrayLenHex = data[startIndex];
   if (arrayLenHex === undefined) {
-    throw new ParseError(
+    throw byteArrayError(
       `Missing ByteArray length at index ${String(startIndex)}`,
-      {
-        index: startIndex,
-        dataLength: data.length,
-        field: field ?? "ByteArray",
-      }
+      startIndex,
+      data.length,
+      field
     );
   }
 
   try {
     const arrayLen = Number(BigInt(arrayLenHex));
-
-    // Check that we have enough data for chunks + pending_word + pending_word_len
     const requiredLength = startIndex + 1 + arrayLen + 2;
+
+    // Guard: validate sufficient data for all ByteArray components
     if (requiredLength > data.length) {
-      throw new ParseError(
+      throw byteArrayError(
         `Insufficient data for ByteArray: need ${String(requiredLength)}, have ${String(data.length)}`,
-        {
-          index: startIndex,
-          dataLength: data.length,
-          field: field ?? "ByteArray",
-        }
+        startIndex,
+        data.length,
+        field
       );
     }
 
-    // Extract full 31-byte chunks
-    const chunks: bigint[] = [];
-    for (let i = 0; i < arrayLen; i++) {
-      const chunk = data[startIndex + 1 + i];
-      if (chunk) {
-        chunks.push(BigInt(chunk));
-      }
-    }
-
-    // Extract pending_word and pending_word_len
+    const chunks = extractByteArrayChunks(data, startIndex, arrayLen);
     const pendingWordHex = data[startIndex + 1 + arrayLen];
     const pendingWordLenHex = data[startIndex + 2 + arrayLen];
 
-    const pendingWord = pendingWordHex ? BigInt(pendingWordHex) : 0n;
-    const pendingWordLen = pendingWordLenHex
-      ? Number(BigInt(pendingWordLenHex))
-      : 0;
-
-    // Use starknet.js for decoding
     return byteArray.stringFromByteArray({
       data: chunks,
-      pending_word: pendingWord,
-      pending_word_len: pendingWordLen,
+      pending_word: pendingWordHex ? BigInt(pendingWordHex) : 0n,
+      pending_word_len: pendingWordLenHex
+        ? Number(BigInt(pendingWordLenHex))
+        : 0,
     });
   } catch (err) {
-    // If it's already a ParseError, rethrow
-    if (err instanceof ParseError) {
-      throw err;
-    }
-    // Otherwise wrap in ParseError
-    throw new ParseError(
+    if (err instanceof ParseError) throw err;
+    throw byteArrayError(
       `Failed to decode ByteArray: ${err instanceof Error ? err.message : String(err)}`,
-      {
-        index: startIndex,
-        dataLength: data.length,
-        field: field ?? "ByteArray",
-      }
+      startIndex,
+      data.length,
+      field
     );
   }
 }
