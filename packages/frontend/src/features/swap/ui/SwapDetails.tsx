@@ -1,14 +1,16 @@
 'use client';
 
 import type { ImpliedApyDisplay } from '@features/swap/lib/swapFormLogic';
+import { calculateFeeSplit } from '@shared/lib/fees';
 import { cn } from '@shared/lib/utils';
 import type { SwapResult } from '@shared/math/amm';
 import { formatWad } from '@shared/math/wad';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@shared/ui/Collapsible';
 import { FormRow } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
 import BigNumber from 'bignumber.js';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface SwapDetailsProps {
@@ -32,6 +34,9 @@ interface SwapDetailsProps {
   // Swap fee
   swapResult: SwapResult | null;
 
+  // Fee split configuration (from market state)
+  reserveFeePercent: number;
+
   // Gas estimate
   formattedFee: string | null;
   formattedFeeUsd: string | null;
@@ -54,6 +59,7 @@ export function SwapDetails({
   historicalAvgImpact,
   slippageBps,
   swapResult,
+  reserveFeePercent,
   formattedFee,
   formattedFeeUsd,
   isEstimatingFee,
@@ -62,8 +68,13 @@ export function SwapDetails({
   // Pre-compute rate display
   const rateDisplay = formatRateDisplay(parsedInputAmount, expectedOutput, inputLabel, outputLabel);
 
-  // Pre-compute swap fee display
-  const swapFeeDisplay = formatSwapFeeDisplay(swapResult, isValidAmount, syLabel);
+  // Pre-compute swap fee display with breakdown
+  const swapFeeDisplay = formatSwapFeeDisplay(
+    swapResult,
+    isValidAmount,
+    syLabel,
+    reserveFeePercent
+  );
 
   return (
     <Collapsible>
@@ -116,7 +127,7 @@ export function SwapDetails({
           value={`${(slippageBps / 100).toString()}%`}
         />
 
-        {/* Swap Fee */}
+        {/* Swap Fee with breakdown hover */}
         <FormRow
           label="Swap Fee"
           labelClassName="text-sm"
@@ -124,7 +135,40 @@ export function SwapDetails({
             'font-mono text-sm',
             !swapFeeDisplay.hasValue && 'text-muted-foreground'
           )}
-          value={swapFeeDisplay.text}
+          value={
+            swapFeeDisplay.hasBreakdown ? (
+              <HoverCard>
+                <HoverCardTrigger className="hover:text-primary inline-flex cursor-help items-center gap-1 font-mono transition-colors">
+                  {swapFeeDisplay.text}
+                  <Info className="h-3 w-3 opacity-50" />
+                </HoverCardTrigger>
+                <HoverCardContent side="top" align="end" className="w-56">
+                  <div className="space-y-2">
+                    <h4 className="text-foreground text-sm font-medium">Fee Breakdown</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">LP Share</span>
+                        <span className="text-foreground font-mono">
+                          {swapFeeDisplay.lpFeeFormatted}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Treasury Share</span>
+                        <span className="text-foreground font-mono">
+                          {swapFeeDisplay.reserveFeeFormatted}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground border-t pt-2 text-[10px]">
+                      LP fees stay in the pool. Treasury fees go to the protocol.
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            ) : (
+              swapFeeDisplay.text
+            )
+          }
         />
 
         {/* Estimated Gas Fee */}
@@ -169,18 +213,34 @@ function formatRateDisplay(
 interface SwapFeeDisplayResult {
   text: string;
   hasValue: boolean;
+  hasBreakdown: boolean;
+  lpFeeFormatted: string;
+  reserveFeeFormatted: string;
 }
 
 function formatSwapFeeDisplay(
   swapResult: SwapResult | null,
   isValidAmount: boolean,
-  syLabel: string
+  syLabel: string,
+  reserveFeePercent: number
 ): SwapFeeDisplayResult {
   if (isValidAmount && swapResult !== null && swapResult.fee > 0n) {
+    const { lpFee, reserveFee } = calculateFeeSplit(swapResult.fee, reserveFeePercent);
+    const hasBreakdown = reserveFeePercent > 0;
+
     return {
       text: `${formatWad(swapResult.fee, 6)} ${syLabel}`,
       hasValue: true,
+      hasBreakdown,
+      lpFeeFormatted: `${formatWad(lpFee, 6)} ${syLabel}`,
+      reserveFeeFormatted: `${formatWad(reserveFee, 6)} ${syLabel}`,
     };
   }
-  return { text: '-', hasValue: false };
+  return {
+    text: '-',
+    hasValue: false,
+    hasBreakdown: false,
+    lpFeeFormatted: '-',
+    reserveFeeFormatted: '-',
+  };
 }

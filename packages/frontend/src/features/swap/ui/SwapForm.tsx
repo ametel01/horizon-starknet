@@ -498,6 +498,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
         historicalAvgImpact={historicalAvgImpact}
         slippageBps={slippageBps}
         swapResult={swapResult}
+        reserveFeePercent={market.state.reserveFeePercent}
         formattedFee={formattedFee}
         formattedFeeUsd={formattedFeeUsd}
         isEstimatingFee={isEstimatingFee}
