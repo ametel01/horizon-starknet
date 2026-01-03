@@ -462,7 +462,7 @@ bun run test market-factory
 
 ---
 
-## Phase 4: Analytics Views Updates
+## Phase 4: Analytics Views Updates **COMPLETE**
 
 ### Step 4.1: Update materialized views for new fee fields
 
@@ -513,29 +513,6 @@ bun run test market
 bun run test market-factory
 bun run test validation
 ```
-
----
-
-### Step 5.2: Integration test with devnet
-
-**Action:**
-```bash
-# Terminal 1: Start devnet
-make dev-up
-
-# Terminal 2: Run integration tests to trigger events
-cd contracts && snforge test integration
-
-# Terminal 3: Run indexer
-cd packages/indexer && bun run dev
-
-# Verify events are indexed
-bun run db:studio
-```
-
-**Validation:** Check `market_reserve_fee_transferred` table has rows.
-
-**Failure mode:** No rows = event filter mismatch or parsing error. Check logs.
 
 ---
 
