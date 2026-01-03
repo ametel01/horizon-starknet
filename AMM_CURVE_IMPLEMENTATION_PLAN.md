@@ -28,7 +28,7 @@ rg -n -C 6 "\"name\": \"ReserveFeeTransferred\"" target/dev/*.json
 
 ## Phase 1: Indexer Schema Updates **COMPLETE**
 
-### Step 1.1: Update existing tables for new fee fields
+### Step 1.1: Update existing tables for new fee fields **COMPLETE**
 
 **File:** `packages/indexer/src/schema/index.ts`
 
@@ -58,7 +58,7 @@ cd packages/indexer && bun run check
 
 ---
 
-### Step 1.2: Add new tables to schema
+### Step 1.2: Add new tables to schema **COMPLETE**
 
 **File:** `packages/indexer/src/schema/index.ts`
 
@@ -167,7 +167,7 @@ bun run check
 
 ---
 
-### Step 1.3: Generate migration
+### Step 1.3: Generate migration **COMPLETE**
 
 **Action:**
 ```bash
@@ -186,7 +186,7 @@ make dev-up  # Verify tables exist in local docker database
 
 ## Phase 2: Indexer Validation Schemas **COMPLETE**
 
-### Step 2.1: Add validation schemas for new events
+### Step 2.1: Add validation schemas for new events **COMPLETE**
 
 **File:** `packages/indexer/src/lib/validation.ts`
 
@@ -241,7 +241,7 @@ bun run check
 
 ---
 
-### Step 2.2: Update existing swap schema
+### Step 2.2: Update existing swap schema **COMPLETE**
 
 **File:** `packages/indexer/src/lib/validation.ts`
 
@@ -260,9 +260,9 @@ export const marketSwapSchema = z.object({
 
 ---
 
-## Phase 3: Indexer Event Handlers
+## Phase 3: Indexer Event Handlers **COMPLETE**
 
-### Step 3.1: Add ReserveFeeTransferred handler to market indexer
+### Step 3.1: Add ReserveFeeTransferred handler to market indexer **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/market.indexer.ts`
 
@@ -381,7 +381,7 @@ bun run test
 
 ---
 
-### Step 3.3: Add MarketFactory event handlers
+### Step 3.3: Add MarketFactory event handlers **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/market-factory.indexer.ts`
 
@@ -412,7 +412,7 @@ bun run check && bun run test
 
 ---
 
-### Step 3.4: Update MarketCreated handler
+### Step 3.4: Update MarketCreated handler **COMPLETE**
 
 **File:** `packages/indexer/src/indexers/market-factory.indexer.ts`
 
