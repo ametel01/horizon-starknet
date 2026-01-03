@@ -48,6 +48,122 @@ interface ImpliedVsRealizedDataPoint {
   exchangeRate: string;
 }
 
+interface ExchangeRateInfo {
+  rate: bigint;
+  prevRate: bigint | null;
+}
+
+/**
+ * Creates an empty/error response with the given market address and status
+ */
+function createEmptyResponse(market: string, status: number): NextResponse {
+  return NextResponse.json(
+    {
+      market,
+      underlyingSymbol: '',
+      dataPoints: [],
+      summary: {
+        avgImpliedApy: 0,
+        avgRealizedApy: 0,
+        avgSpread: 0,
+        currentImpliedApy: 0,
+        currentExchangeRate: '0',
+      },
+    },
+    { status }
+  );
+}
+
+/**
+ * Builds a map of dates to exchange rates with previous rate tracking
+ */
+function buildExchangeRateMap(
+  exchangeRateData: { block_timestamp: Date | null; new_rate: string | null }[]
+): Map<string, ExchangeRateInfo> {
+  const exchangeRateByDate = new Map<string, ExchangeRateInfo>();
+  let prevRate: bigint | null = null;
+
+  // Process exchange rates (oldest first for prev rate tracking)
+  const sortedExchangeRates = [...exchangeRateData].reverse();
+  for (const rate of sortedExchangeRates) {
+    const dateKey = rate.block_timestamp?.toISOString().split('T')[0] ?? '';
+    if (!dateKey) continue;
+
+    const newRate = BigInt(rate.new_rate ?? '0');
+    exchangeRateByDate.set(dateKey, { rate: newRate, prevRate });
+    prevRate = newRate;
+  }
+
+  return exchangeRateByDate;
+}
+
+/**
+ * Processes a single daily stat into a data point
+ */
+function processStatToDataPoint(
+  stat: { day: Date | null; close_implied_rate: string | null; exchange_rate: string | null },
+  since: Date,
+  exchangeRateByDate: Map<string, ExchangeRateInfo>
+): ImpliedVsRealizedDataPoint | null {
+  const date = stat.day?.toISOString().split('T')[0] ?? '';
+  if (!date || stat.day === null || stat.day < since) return null;
+
+  const impliedApyPercent = lnRateToApyPercent(BigInt(stat.close_implied_rate ?? '0'));
+  const exchangeRateWad = BigInt(stat.exchange_rate ?? '0');
+  const exchangeRateInfo = exchangeRateByDate.get(date);
+
+  let realizedApyPercent = 0;
+  if (exchangeRateInfo?.prevRate !== undefined && exchangeRateInfo.prevRate !== null) {
+    realizedApyPercent = calculateRealizedApy(exchangeRateInfo.prevRate, exchangeRateInfo.rate, 1);
+  }
+
+  return {
+    date,
+    impliedApyPercent,
+    realizedApyPercent,
+    spreadPercent: impliedApyPercent - realizedApyPercent,
+    exchangeRate: exchangeRateWad.toString(),
+  };
+}
+
+/**
+ * Builds data points from daily stats and calculates running totals
+ */
+function buildDataPoints(
+  dailyStatsData: {
+    day: Date | null;
+    close_implied_rate: string | null;
+    exchange_rate: string | null;
+  }[],
+  since: Date,
+  exchangeRateByDate: Map<string, ExchangeRateInfo>
+): {
+  dataPoints: ImpliedVsRealizedDataPoint[];
+  totalImplied: number;
+  totalRealized: number;
+  count: number;
+} {
+  const dataPoints: ImpliedVsRealizedDataPoint[] = [];
+  let totalImplied = 0;
+  let totalRealized = 0;
+  let count = 0;
+
+  for (const stat of dailyStatsData) {
+    const dataPoint = processStatToDataPoint(stat, since, exchangeRateByDate);
+    if (!dataPoint) continue;
+
+    dataPoints.push(dataPoint);
+    totalImplied += dataPoint.impliedApyPercent;
+    totalRealized += dataPoint.realizedApyPercent;
+    count++;
+  }
+
+  // Reverse to get oldest first
+  dataPoints.reverse();
+
+  return { dataPoints, totalImplied, totalRealized, count };
+}
+
 /** Response type for GET /api/analytics/implied-vs-realized */
 export interface ImpliedVsRealizedResponse {
   market: string;
@@ -83,42 +199,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const marketAddress = searchParams.get('market');
 
   // Validate market address
-  if (!marketAddress) {
-    return NextResponse.json(
-      {
-        market: '',
-        underlyingSymbol: '',
-        dataPoints: [],
-        summary: {
-          avgImpliedApy: 0,
-          avgRealizedApy: 0,
-          avgSpread: 0,
-          currentImpliedApy: 0,
-          currentExchangeRate: '0',
-        },
-      },
-      { status: 400 }
-    );
-  }
+  if (!marketAddress) return createEmptyResponse('', 400);
 
   const addressResult = starknetAddressSchema.safeParse(marketAddress);
-  if (!addressResult.success) {
-    return NextResponse.json(
-      {
-        market: marketAddress,
-        underlyingSymbol: '',
-        dataPoints: [],
-        summary: {
-          avgImpliedApy: 0,
-          avgRealizedApy: 0,
-          avgSpread: 0,
-          currentImpliedApy: 0,
-          currentExchangeRate: '0',
-        },
-      },
-      { status: 400 }
-    );
-  }
+  if (!addressResult.success) return createEmptyResponse(marketAddress, 400);
 
   // Validate query parameters
   const params = validateQuery(searchParams, dateRangeSchema);
@@ -138,110 +222,36 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .limit(1);
 
     const marketInfo = marketInfoResult[0];
-    if (!marketInfo) {
-      return NextResponse.json(
-        {
-          market: marketAddress,
-          underlyingSymbol: '',
-          dataPoints: [],
-          summary: {
-            avgImpliedApy: 0,
-            avgRealizedApy: 0,
-            avgSpread: 0,
-            currentImpliedApy: 0,
-            currentExchangeRate: '0',
-          },
-        },
-        { status: 404 }
-      );
-    }
+    if (!marketInfo) return createEmptyResponse(marketAddress, 404);
 
     const syAddress = marketInfo.sy ?? '';
     const underlyingSymbol = marketInfo.underlying_symbol ?? 'Unknown';
 
-    // Get daily stats for implied rate
-    const dailyStatsData = await db
-      .select()
-      .from(marketDailyStats)
-      .where(eq(marketDailyStats.market, marketAddress))
-      .orderBy(desc(marketDailyStats.day));
+    // Fetch daily stats and exchange rate history in parallel
+    const [dailyStatsData, exchangeRateData] = await Promise.all([
+      db
+        .select()
+        .from(marketDailyStats)
+        .where(eq(marketDailyStats.market, marketAddress))
+        .orderBy(desc(marketDailyStats.day)),
+      db
+        .select()
+        .from(oracleRateHistory)
+        .where(eq(oracleRateHistory.sy, syAddress))
+        .orderBy(desc(oracleRateHistory.block_timestamp)),
+    ]);
 
-    // Get exchange rate history for realized yield calculation
-    const exchangeRateData = await db
-      .select()
-      .from(oracleRateHistory)
-      .where(eq(oracleRateHistory.sy, syAddress))
-      .orderBy(desc(oracleRateHistory.block_timestamp));
-
-    // Build a map of dates to exchange rates
-    const exchangeRateByDate = new Map<string, { rate: bigint; prevRate: bigint | null }>();
-    let prevRate: bigint | null = null;
-
-    // Process exchange rates (oldest first for prev rate tracking)
-    const sortedExchangeRates = [...exchangeRateData].reverse();
-    for (const rate of sortedExchangeRates) {
-      const dateKey = rate.block_timestamp?.toISOString().split('T')[0] ?? '';
-      if (dateKey) {
-        const newRate = BigInt(rate.new_rate ?? '0');
-        exchangeRateByDate.set(dateKey, {
-          rate: newRate,
-          prevRate: prevRate,
-        });
-        prevRate = newRate;
-      }
-    }
-
-    // Build data points
-    const dataPoints: ImpliedVsRealizedDataPoint[] = [];
-    let totalImplied = 0;
-    let totalRealized = 0;
-    let count = 0;
-
-    for (const stat of dailyStatsData) {
-      const date = stat.day?.toISOString().split('T')[0] ?? '';
-      if (!date || stat.day === null || stat.day < since) continue;
-
-      const impliedApyPercent = lnRateToApyPercent(BigInt(stat.close_implied_rate ?? '0'));
-      const exchangeRateWad = BigInt(stat.exchange_rate ?? '0');
-
-      // Calculate realized APY from exchange rate change
-      const exchangeRateInfo = exchangeRateByDate.get(date);
-      let realizedApyPercent = 0;
-
-      if (exchangeRateInfo !== undefined && exchangeRateInfo.prevRate !== null) {
-        // Use 1-day period for daily realized calculation
-        realizedApyPercent = calculateRealizedApy(
-          exchangeRateInfo.prevRate,
-          exchangeRateInfo.rate,
-          1
-        );
-      }
-
-      const spreadPercent = impliedApyPercent - realizedApyPercent;
-
-      dataPoints.push({
-        date,
-        impliedApyPercent,
-        realizedApyPercent,
-        spreadPercent,
-        exchangeRate: exchangeRateWad.toString(),
-      });
-
-      totalImplied += impliedApyPercent;
-      totalRealized += realizedApyPercent;
-      count++;
-    }
-
-    // Reverse to get oldest first
-    dataPoints.reverse();
+    // Build exchange rate map and data points
+    const exchangeRateByDate = buildExchangeRateMap(exchangeRateData);
+    const { dataPoints, totalImplied, totalRealized, count } = buildDataPoints(
+      dailyStatsData,
+      since,
+      exchangeRateByDate
+    );
 
     // Calculate summary
     const avgImpliedApy = count > 0 ? totalImplied / count : 0;
     const avgRealizedApy = count > 0 ? totalRealized / count : 0;
-    const avgSpread = avgImpliedApy - avgRealizedApy;
-
-    const currentImpliedApy = lnRateToApyPercent(BigInt(marketInfo.implied_rate ?? '0'));
-    const currentExchangeRate = marketInfo.exchange_rate ?? '0';
 
     return NextResponse.json(
       {
@@ -251,29 +261,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         summary: {
           avgImpliedApy,
           avgRealizedApy,
-          avgSpread,
-          currentImpliedApy,
-          currentExchangeRate,
+          avgSpread: avgImpliedApy - avgRealizedApy,
+          currentImpliedApy: lnRateToApyPercent(BigInt(marketInfo.implied_rate ?? '0')),
+          currentExchangeRate: marketInfo.exchange_rate ?? '0',
         },
       },
       { headers: getCacheHeaders('MEDIUM') }
     );
   } catch (error) {
     logError(error, { module: 'analytics/implied-vs-realized', market: marketAddress });
-    return NextResponse.json(
-      {
-        market: marketAddress,
-        underlyingSymbol: '',
-        dataPoints: [],
-        summary: {
-          avgImpliedApy: 0,
-          avgRealizedApy: 0,
-          avgSpread: 0,
-          currentImpliedApy: 0,
-          currentExchangeRate: '0',
-        },
-      },
-      { status: 500 }
-    );
+    return createEmptyResponse(marketAddress, 500);
   }
 }

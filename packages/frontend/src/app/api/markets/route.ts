@@ -28,6 +28,85 @@ interface MarketListItem {
   lastActivity: string | null;
 }
 
+/** Database row type for market current state */
+interface MarketRow {
+  market: string | null;
+  expiry: number | null;
+  sy: string | null;
+  pt: string | null;
+  yt: string | null;
+  underlying: string | null;
+  underlying_symbol: string | null;
+  fee_rate: string | null;
+  sy_reserve: string | null;
+  pt_reserve: string | null;
+  implied_rate: string | null;
+  exchange_rate: string | null;
+  is_expired: boolean | null;
+  sy_volume_24h: string | null;
+  pt_volume_24h: string | null;
+  fees_24h: string | null;
+  swaps_24h: number | null;
+  created_at: Date | null;
+  last_activity: Date | null;
+}
+
+/**
+ * Extracts core market identity fields from a database row
+ */
+function extractMarketIdentity(row: MarketRow) {
+  return {
+    market: row.market ?? '',
+    expiry: row.expiry ?? 0,
+    sy: row.sy ?? '',
+    pt: row.pt ?? '',
+    yt: row.yt ?? '',
+    underlying: row.underlying ?? '',
+    underlyingSymbol: row.underlying_symbol ?? '',
+  };
+}
+
+/**
+ * Extracts market state fields (rates, reserves) from a database row
+ */
+function extractMarketState(row: MarketRow) {
+  return {
+    feeRate: row.fee_rate ?? '0',
+    syReserve: row.sy_reserve ?? '0',
+    ptReserve: row.pt_reserve ?? '0',
+    impliedRate: row.implied_rate ?? '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    isExpired: row.is_expired ?? false,
+  };
+}
+
+/**
+ * Extracts market metrics (volume, fees, activity) from a database row
+ */
+function extractMarketMetrics(row: MarketRow) {
+  const syVol = BigInt(row.sy_volume_24h ?? '0');
+  const ptVol = BigInt(row.pt_volume_24h ?? '0');
+
+  return {
+    volume24h: (syVol + ptVol).toString(),
+    fees24h: row.fees_24h ?? '0',
+    swaps24h: row.swaps_24h ?? 0,
+    createdAt: row.created_at?.toISOString() ?? '',
+    lastActivity: row.last_activity?.toISOString() ?? null,
+  };
+}
+
+/**
+ * Maps a database row to a MarketListItem API response object
+ */
+function mapRowToMarketItem(row: MarketRow): MarketListItem {
+  return {
+    ...extractMarketIdentity(row),
+    ...extractMarketState(row),
+    ...extractMarketMetrics(row),
+  };
+}
+
 /** Response type for GET /api/markets */
 export interface MarketsResponse {
   markets: MarketListItem[];
@@ -95,34 +174,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     query = query.limit(limit).offset(offset);
 
     const results = await query;
-
-    const markets: MarketListItem[] = results.map((row) => {
-      // Combine SY and PT volume for total volume
-      const syVol = BigInt(row.sy_volume_24h ?? '0');
-      const ptVol = BigInt(row.pt_volume_24h ?? '0');
-      const totalVolume = (syVol + ptVol).toString();
-
-      return {
-        market: row.market ?? '',
-        expiry: row.expiry ?? 0,
-        sy: row.sy ?? '',
-        pt: row.pt ?? '',
-        yt: row.yt ?? '',
-        underlying: row.underlying ?? '',
-        underlyingSymbol: row.underlying_symbol ?? '',
-        feeRate: row.fee_rate ?? '0',
-        syReserve: row.sy_reserve ?? '0',
-        ptReserve: row.pt_reserve ?? '0',
-        impliedRate: row.implied_rate ?? '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        isExpired: row.is_expired ?? false,
-        volume24h: totalVolume,
-        fees24h: row.fees_24h ?? '0',
-        swaps24h: row.swaps_24h ?? 0,
-        createdAt: row.created_at?.toISOString() ?? '',
-        lastActivity: row.last_activity?.toISOString() ?? null,
-      };
-    });
+    const markets = results.map(mapRowToMarketItem);
 
     return NextResponse.json(
       {

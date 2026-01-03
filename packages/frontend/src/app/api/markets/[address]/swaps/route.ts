@@ -37,6 +37,40 @@ interface SwapsResponse {
 }
 
 /**
+ * Deduplicates swaps by transaction hash, preferring entries with rate data.
+ * This handles cases where both Router.Swap and Market.Swap events are emitted for the same tx.
+ */
+function deduplicateSwaps(allSwaps: SwapEvent[]): SwapEvent[] {
+  const seenTxHashes = new Map<string, SwapEvent>();
+
+  for (const swap of allSwaps) {
+    const existing = seenTxHashes.get(swap.transactionHash);
+    if (!existing) {
+      seenTxHashes.set(swap.transactionHash, swap);
+      continue;
+    }
+
+    // Prefer the entry with rate data (market_swap has impliedRateBefore/After)
+    const currentHasRateData = swap.impliedRateBefore && swap.impliedRateAfter;
+    const existingHasRateData = existing.impliedRateBefore && existing.impliedRateAfter;
+    if (currentHasRateData && !existingHasRateData) {
+      seenTxHashes.set(swap.transactionHash, swap);
+    }
+  }
+
+  return Array.from(seenTxHashes.values());
+}
+
+/**
+ * Parses and validates the since date parameter
+ */
+function parseSinceDate(since: string | null): Date | null {
+  if (!since) return null;
+  const date = new Date(since);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
  * GET /api/markets/[address]/swaps
  * Get swap history for a market (includes PT and YT swaps)
  *
@@ -57,29 +91,48 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams;
   const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '50', 10), 100);
   const offset = Number.parseInt(searchParams.get('offset') ?? '0', 10);
-  const since = searchParams.get('since');
+  const sinceDate = parseSinceDate(searchParams.get('since'));
 
   try {
-    const allSwaps: SwapEvent[] = [];
+    // Fetch all swap types in parallel
+    const [marketSwapsData, routerSwapsData, ytSwapsData] = await Promise.all([
+      // 1. Query market_swap (direct AMM swaps with full data)
+      db
+        .select()
+        .from(marketSwap)
+        .where(
+          sinceDate
+            ? and(eq(marketSwap.market, address), gte(marketSwap.block_timestamp, sinceDate))
+            : eq(marketSwap.market, address)
+        )
+        .orderBy(desc(marketSwap.block_timestamp)),
 
-    // Build date condition
-    const sinceDate = since ? new Date(since) : null;
-    const isValidSinceDate = sinceDate && !Number.isNaN(sinceDate.getTime());
+      // 2. Query router_swap (PT swaps through router)
+      db
+        .select()
+        .from(routerSwap)
+        .where(
+          sinceDate
+            ? and(eq(routerSwap.market, address), gte(routerSwap.block_timestamp, sinceDate))
+            : eq(routerSwap.market, address)
+        )
+        .orderBy(desc(routerSwap.block_timestamp)),
 
-    // 1. Query market_swap (direct AMM swaps with full data)
-    const marketConditions = [eq(marketSwap.market, address)];
-    if (isValidSinceDate) {
-      marketConditions.push(gte(marketSwap.block_timestamp, sinceDate));
-    }
+      // 3. Query router_swap_yt (YT swaps through router)
+      db
+        .select()
+        .from(routerSwapYT)
+        .where(
+          sinceDate
+            ? and(eq(routerSwapYT.market, address), gte(routerSwapYT.block_timestamp, sinceDate))
+            : eq(routerSwapYT.market, address)
+        )
+        .orderBy(desc(routerSwapYT.block_timestamp)),
+    ]);
 
-    const marketSwaps = await db
-      .select()
-      .from(marketSwap)
-      .where(and(...marketConditions))
-      .orderBy(desc(marketSwap.block_timestamp));
-
-    allSwaps.push(
-      ...marketSwaps.map((row) => ({
+    // Map results to SwapEvent format
+    const allSwaps: SwapEvent[] = [
+      ...marketSwapsData.map((row) => ({
         id: row._id,
         type: 'pt' as const,
         blockNumber: row.block_number,
@@ -95,23 +148,8 @@ export async function GET(
         impliedRateBefore: row.implied_rate_before,
         impliedRateAfter: row.implied_rate_after,
         exchangeRate: row.exchange_rate,
-      }))
-    );
-
-    // 2. Query router_swap (PT swaps through router)
-    const routerConditions = [eq(routerSwap.market, address)];
-    if (isValidSinceDate) {
-      routerConditions.push(gte(routerSwap.block_timestamp, sinceDate));
-    }
-
-    const routerSwaps = await db
-      .select()
-      .from(routerSwap)
-      .where(and(...routerConditions))
-      .orderBy(desc(routerSwap.block_timestamp));
-
-    allSwaps.push(
-      ...routerSwaps.map((row) => ({
+      })),
+      ...routerSwapsData.map((row) => ({
         id: row._id,
         type: 'pt' as const,
         blockNumber: row.block_number,
@@ -123,23 +161,8 @@ export async function GET(
         syIn: row.sy_in,
         ptOut: row.pt_out,
         syOut: row.sy_out,
-      }))
-    );
-
-    // 3. Query router_swap_yt (YT swaps through router)
-    const ytConditions = [eq(routerSwapYT.market, address)];
-    if (isValidSinceDate) {
-      ytConditions.push(gte(routerSwapYT.block_timestamp, sinceDate));
-    }
-
-    const ytSwaps = await db
-      .select()
-      .from(routerSwapYT)
-      .where(and(...ytConditions))
-      .orderBy(desc(routerSwapYT.block_timestamp));
-
-    allSwaps.push(
-      ...ytSwaps.map((row) => ({
+      })),
+      ...ytSwapsData.map((row) => ({
         id: row._id,
         type: 'yt' as const,
         blockNumber: row.block_number,
@@ -153,28 +176,11 @@ export async function GET(
         syOut: row.sy_out,
         ytIn: row.yt_in,
         ytOut: row.yt_out,
-      }))
-    );
+      })),
+    ];
 
-    // Deduplicate by transaction hash, preferring entries with rate data (from market_swap)
-    // This handles cases where both Router.Swap and Market.Swap events are emitted for the same tx
-    const seenTxHashes = new Map<string, SwapEvent>();
-    for (const swap of allSwaps) {
-      const existing = seenTxHashes.get(swap.transactionHash);
-      if (!existing) {
-        seenTxHashes.set(swap.transactionHash, swap);
-      } else {
-        // Prefer the entry with rate data (market_swap has impliedRateBefore/After)
-        const existingHasRateData = existing.impliedRateBefore && existing.impliedRateAfter;
-        const currentHasRateData = swap.impliedRateBefore && swap.impliedRateAfter;
-        if (currentHasRateData && !existingHasRateData) {
-          seenTxHashes.set(swap.transactionHash, swap);
-        }
-      }
-    }
-    const dedupedSwaps = Array.from(seenTxHashes.values());
-
-    // Sort all swaps by timestamp (descending)
+    // Deduplicate and sort
+    const dedupedSwaps = deduplicateSwaps(allSwaps);
     dedupedSwaps.sort(
       (a, b) => new Date(b.blockTimestamp).getTime() - new Date(a.blockTimestamp).getTime()
     );

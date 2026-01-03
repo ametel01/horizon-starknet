@@ -16,7 +16,8 @@ import { NextResponse } from 'next/server';
  */
 
 // Server-side only RPC URL (no NEXT_PUBLIC_ prefix)
-const RPC_URL = process.env['RPC_URL'];
+// @ts-expect-error TS4111
+const RPC_URL = process.env.RPC_URL;
 
 // Maximum request body size (10KB)
 const MAX_BODY_SIZE = 10_000;
@@ -71,7 +72,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcRe
   const contentLength = request.headers.get('content-length');
   if (contentLength && Number.parseInt(contentLength, 10) > MAX_BODY_SIZE) {
     return NextResponse.json(
-      { jsonrpc: '2.0', error: { code: -32600, message: 'Request too large' }, id: null },
+      {
+        jsonrpc: '2.0',
+        error: { code: -32600, message: 'Request too large' },
+        id: null,
+      },
       { status: 413 }
     );
   }
@@ -80,7 +85,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcRe
   if (!RPC_URL) {
     logError(new Error('RPC_URL not configured'), { module: 'api/rpc' });
     return NextResponse.json(
-      { jsonrpc: '2.0', error: { code: -32603, message: 'RPC not configured' }, id: null },
+      {
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'RPC not configured' },
+        id: null,
+      },
       { status: 500 }
     );
   }
@@ -91,7 +100,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcRe
       module: 'api/rpc',
     });
     return NextResponse.json(
-      { jsonrpc: '2.0', error: { code: -32603, message: 'Invalid RPC configuration' }, id: null },
+      {
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Invalid RPC configuration' },
+        id: null,
+      },
       { status: 500 }
     );
   }
@@ -120,14 +133,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcRe
     // Handle timeout specifically
     if (error instanceof Error && error.name === 'TimeoutError') {
       return NextResponse.json(
-        { jsonrpc: '2.0', error: { code: -32603, message: 'Request timeout' }, id: null },
+        {
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Request timeout' },
+          id: null,
+        },
         { status: 504 }
       );
     }
 
     logError(error, { module: 'api/rpc' });
     return NextResponse.json(
-      { jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' }, id: null },
+      {
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal error' },
+        id: null,
+      },
       { status: 500 }
     );
   }

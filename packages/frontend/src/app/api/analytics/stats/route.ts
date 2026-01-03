@@ -53,25 +53,279 @@ interface StatsResponse {
   fees24h: string;
 }
 
+// ----- Internal Types -----
+
+interface TvlResult {
+  totalSyReserve: bigint;
+  totalPtReserve: bigint;
+  marketCount: number;
+}
+
+interface VolumeFeesResult {
+  syVolume: bigint;
+  ptVolume: bigint;
+  swapCount: number;
+  fees: bigint;
+}
+
+interface MarketState {
+  sy_reserve: string | null;
+  pt_reserve: string | null;
+}
+
+interface DailyStat {
+  total_sy_volume: string | null;
+  total_pt_volume: string | null;
+  swap_count: number | null;
+  total_fees: string | null;
+}
+
+interface RouterSwapRecord {
+  sender: string;
+  sy_in: string;
+  sy_out: string;
+  pt_in: string;
+  pt_out: string;
+}
+
+interface YtSwapRecord {
+  sender: string;
+  sy_in: string;
+  sy_out: string;
+}
+
+// ----- Helper Functions -----
+
+function sumBigInt(values: (string | null)[]): bigint {
+  return values.reduce((acc, v) => acc + BigInt(v ?? '0'), 0n);
+}
+
+/** Fallback: get reserves from latest swaps per market */
+async function fetchReservesFromSwaps(): Promise<{ sy: bigint; pt: bigint }> {
+  const latestSwaps = await withTimeout(
+    db
+      .select({
+        market: enrichedRouterSwap.market,
+        syReserve: enrichedRouterSwap.sy_reserve_after,
+        ptReserve: enrichedRouterSwap.pt_reserve_after,
+        blockNumber: enrichedRouterSwap.block_number,
+      })
+      .from(enrichedRouterSwap)
+      .orderBy(desc(enrichedRouterSwap.block_number))
+      .limit(100)
+  );
+
+  if (!latestSwaps) return { sy: 0n, pt: 0n };
+
+  // Keep only first (latest) swap per market
+  const marketReserves = new Map<string, { sy: bigint; pt: bigint }>();
+  for (const swap of latestSwaps) {
+    const market = swap.market ?? '';
+    if (!market || marketReserves.has(market)) continue;
+    marketReserves.set(market, {
+      sy: BigInt(swap.syReserve ?? '0'),
+      pt: BigInt(swap.ptReserve ?? '0'),
+    });
+  }
+
+  let sy = 0n;
+  let pt = 0n;
+  for (const reserves of marketReserves.values()) {
+    sy += reserves.sy;
+    pt += reserves.pt;
+  }
+  return { sy, pt };
+}
+
+/** Calculate TVL from market states, with fallback to enriched swaps */
+async function calculateTvl(markets: MarketState[] | null): Promise<TvlResult> {
+  const marketsData = markets ?? [];
+  let totalSyReserve = sumBigInt(marketsData.map((m) => m.sy_reserve));
+  let totalPtReserve = sumBigInt(marketsData.map((m) => m.pt_reserve));
+
+  if (totalSyReserve === 0n && totalPtReserve === 0n) {
+    const fallback = await fetchReservesFromSwaps();
+    totalSyReserve = fallback.sy;
+    totalPtReserve = fallback.pt;
+  }
+
+  return { totalSyReserve, totalPtReserve, marketCount: marketsData.length };
+}
+
+/** Calculate volume/fees from materialized view */
+function aggregateFromDailyStats(stats: DailyStat[]): VolumeFeesResult {
+  let syVolume = 0n;
+  let ptVolume = 0n;
+  let swapCount = 0;
+  let fees = 0n;
+
+  for (const stat of stats) {
+    syVolume += BigInt(stat.total_sy_volume ?? '0');
+    ptVolume += BigInt(stat.total_pt_volume ?? '0');
+    swapCount += stat.swap_count ?? 0;
+    fees += BigInt(stat.total_fees ?? '0');
+  }
+
+  return { syVolume, ptVolume, swapCount, fees };
+}
+
+/** Calculate volume from raw swap events */
+function aggregateSwapVolume(
+  ptSwaps: RouterSwapRecord[],
+  ytSwaps: YtSwapRecord[]
+): Omit<VolumeFeesResult, 'fees'> {
+  let syVolume = 0n;
+  let ptVolume = 0n;
+  let swapCount = 0;
+
+  for (const swap of ptSwaps) {
+    syVolume += BigInt(swap.sy_in) + BigInt(swap.sy_out);
+    ptVolume += BigInt(swap.pt_in) + BigInt(swap.pt_out);
+    swapCount++;
+  }
+
+  for (const swap of ytSwaps) {
+    syVolume += BigInt(swap.sy_in) + BigInt(swap.sy_out);
+    swapCount++;
+  }
+
+  return { syVolume, ptVolume, swapCount };
+}
+
+/** Fetch fees from enriched swap views */
+async function fetchFeesFromEnrichedSwaps(oneDayAgo: Date): Promise<bigint> {
+  const [enrichedSwaps, enrichedYtSwaps] = await Promise.all([
+    db
+      .select({ fee: enrichedRouterSwap.fee })
+      .from(enrichedRouterSwap)
+      .where(gte(enrichedRouterSwap.block_timestamp, oneDayAgo)),
+    db
+      .select({ fee: enrichedRouterSwapYT.fee })
+      .from(enrichedRouterSwapYT)
+      .where(gte(enrichedRouterSwapYT.block_timestamp, oneDayAgo)),
+  ]);
+
+  return sumBigInt([...enrichedSwaps.map((s) => s.fee), ...enrichedYtSwaps.map((s) => s.fee)]);
+}
+
+/** Collect unique users from all operation types */
+function collectUniqueUsers(
+  ptSwaps: { sender: string }[],
+  ytSwaps: { sender: string }[],
+  mints: { sender: string | null }[] | null,
+  redeems: { sender: string | null }[] | null,
+  addLiq: { sender: string | null }[] | null,
+  removeLiq: { sender: string | null }[] | null,
+  deposits: { caller: string }[] | null,
+  withdrawals: { caller: string }[] | null
+): Set<string> {
+  const users = new Set<string>();
+
+  const addSenders = (records: { sender: string }[]) => {
+    for (const r of records) users.add(r.sender.toLowerCase());
+  };
+
+  const addOptionalSenders = (records: { sender: string | null }[] | null) => {
+    for (const r of records ?? []) {
+      if (r.sender) users.add(r.sender.toLowerCase());
+    }
+  };
+
+  const addCallers = (records: { caller: string }[] | null) => {
+    for (const r of records ?? []) users.add(r.caller.toLowerCase());
+  };
+
+  addSenders(ptSwaps);
+  addSenders(ytSwaps);
+  addOptionalSenders(mints);
+  addOptionalSenders(redeems);
+  addOptionalSenders(addLiq);
+  addOptionalSenders(removeLiq);
+  addCallers(deposits);
+  addCallers(withdrawals);
+
+  return users;
+}
+
+function createEmptyResponse(): StatsResponse {
+  return {
+    tvl: { totalSyReserve: '0', totalPtReserve: '0', marketCount: 0 },
+    volume24h: { syVolume: '0', ptVolume: '0', swapCount: 0, uniqueUsers: 0 },
+    fees24h: '0',
+  };
+}
+
+// ----- Query Builders -----
+
+function createParallelQueries(oneDayAgo: Date) {
+  return Promise.all([
+    withTimeout(db.select().from(marketCurrentState)),
+    withTimeout(
+      db
+        .select()
+        .from(protocolDailyStats)
+        .where(gte(protocolDailyStats.day, oneDayAgo))
+        .orderBy(desc(protocolDailyStats.day))
+        .limit(2)
+    ),
+    withTimeout(db.select().from(routerSwap).where(gte(routerSwap.block_timestamp, oneDayAgo))),
+    withTimeout(db.select().from(routerSwapYT).where(gte(routerSwapYT.block_timestamp, oneDayAgo))),
+    withTimeout(
+      db
+        .select({ sender: enrichedRouterMintPY.sender })
+        .from(enrichedRouterMintPY)
+        .where(gte(enrichedRouterMintPY.block_timestamp, oneDayAgo))
+    ),
+    withTimeout(
+      db
+        .select({ sender: enrichedRouterRedeemPY.sender })
+        .from(enrichedRouterRedeemPY)
+        .where(gte(enrichedRouterRedeemPY.block_timestamp, oneDayAgo))
+    ),
+    withTimeout(
+      db
+        .select({ sender: enrichedRouterAddLiquidity.sender })
+        .from(enrichedRouterAddLiquidity)
+        .where(gte(enrichedRouterAddLiquidity.block_timestamp, oneDayAgo))
+    ),
+    withTimeout(
+      db
+        .select({ sender: enrichedRouterRemoveLiquidity.sender })
+        .from(enrichedRouterRemoveLiquidity)
+        .where(gte(enrichedRouterRemoveLiquidity.block_timestamp, oneDayAgo))
+    ),
+    withTimeout(
+      db
+        .select({ caller: syDeposit.caller })
+        .from(syDeposit)
+        .where(gte(syDeposit.block_timestamp, oneDayAgo))
+    ),
+    withTimeout(
+      db
+        .select({ caller: syRedeem.caller })
+        .from(syRedeem)
+        .where(gte(syRedeem.block_timestamp, oneDayAgo))
+    ),
+  ]);
+}
+
+// ----- Route Handler -----
+
 /**
  * GET /api/analytics/stats
  * Get combined protocol stats in a single optimized call
  */
 export async function GET(request: NextRequest): Promise<NextResponse<StatsResponse>> {
-  // Apply rate limiting
   const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
   if (rateLimitResult) return rateLimitResult as NextResponse<StatsResponse>;
 
-  const now = new Date();
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   try {
-    // Run ALL queries in parallel with timeouts
-    // Each query returns null if it times out, allowing partial results
     const [
       allMarkets,
       dailyStats,
-      routerSwaps,
+      ptSwaps,
       ytSwaps,
       mints,
       redeems,
@@ -79,226 +333,58 @@ export async function GET(request: NextRequest): Promise<NextResponse<StatsRespo
       removeLiq,
       deposits,
       withdrawals,
-    ] = await Promise.all([
-      // TVL: Get market states
-      withTimeout(db.select().from(marketCurrentState)),
+    ] = await createParallelQueries(oneDayAgo);
 
-      // Volume/Fees: Get daily stats from materialized view
-      withTimeout(
-        db
-          .select()
-          .from(protocolDailyStats)
-          .where(gte(protocolDailyStats.day, oneDayAgo))
-          .orderBy(desc(protocolDailyStats.day))
-          .limit(2)
-      ),
+    // Calculate TVL (with fallback if market states empty)
+    const tvl = await calculateTvl(allMarkets);
 
-      // Swaps for volume calculation and unique users
-      withTimeout(db.select().from(routerSwap).where(gte(routerSwap.block_timestamp, oneDayAgo))),
-      withTimeout(
-        db.select().from(routerSwapYT).where(gte(routerSwapYT.block_timestamp, oneDayAgo))
-      ),
-
-      // Other operations for unique users count (use enriched views)
-      withTimeout(
-        db
-          .select({ sender: enrichedRouterMintPY.sender })
-          .from(enrichedRouterMintPY)
-          .where(gte(enrichedRouterMintPY.block_timestamp, oneDayAgo))
-      ),
-      withTimeout(
-        db
-          .select({ sender: enrichedRouterRedeemPY.sender })
-          .from(enrichedRouterRedeemPY)
-          .where(gte(enrichedRouterRedeemPY.block_timestamp, oneDayAgo))
-      ),
-      withTimeout(
-        db
-          .select({ sender: enrichedRouterAddLiquidity.sender })
-          .from(enrichedRouterAddLiquidity)
-          .where(gte(enrichedRouterAddLiquidity.block_timestamp, oneDayAgo))
-      ),
-      withTimeout(
-        db
-          .select({ sender: enrichedRouterRemoveLiquidity.sender })
-          .from(enrichedRouterRemoveLiquidity)
-          .where(gte(enrichedRouterRemoveLiquidity.block_timestamp, oneDayAgo))
-      ),
-      withTimeout(
-        db
-          .select({ caller: syDeposit.caller })
-          .from(syDeposit)
-          .where(gte(syDeposit.block_timestamp, oneDayAgo))
-      ),
-      withTimeout(
-        db
-          .select({ caller: syRedeem.caller })
-          .from(syRedeem)
-          .where(gte(syRedeem.block_timestamp, oneDayAgo))
-      ),
-    ]);
-
-    // Calculate TVL from market states (handle null for timed out queries)
-    let totalSyReserve = 0n;
-    let totalPtReserve = 0n;
-    const marketsData = allMarkets ?? [];
-
-    for (const market of marketsData) {
-      totalSyReserve += BigInt(market.sy_reserve ?? '0');
-      totalPtReserve += BigInt(market.pt_reserve ?? '0');
-    }
-
-    // If no reserves in view, try enriched_router_swap
-    if (totalSyReserve === 0n && totalPtReserve === 0n) {
-      const latestSwaps = await withTimeout(
-        db
-          .select({
-            market: enrichedRouterSwap.market,
-            syReserve: enrichedRouterSwap.sy_reserve_after,
-            ptReserve: enrichedRouterSwap.pt_reserve_after,
-            blockNumber: enrichedRouterSwap.block_number,
-          })
-          .from(enrichedRouterSwap)
-          .orderBy(desc(enrichedRouterSwap.block_number))
-          .limit(100)
-      );
-
-      if (latestSwaps) {
-        const marketReserves = new Map<string, { sy: bigint; pt: bigint }>();
-        for (const swap of latestSwaps) {
-          const market = swap.market ?? '';
-          if (!market || marketReserves.has(market)) continue;
-          marketReserves.set(market, {
-            sy: BigInt(swap.syReserve ?? '0'),
-            pt: BigInt(swap.ptReserve ?? '0'),
-          });
-        }
-
-        for (const reserves of marketReserves.values()) {
-          totalSyReserve += reserves.sy;
-          totalPtReserve += reserves.pt;
-        }
-      }
-    }
-
-    // Calculate volume and fees from swaps (handle null for timed out queries)
-    let syVolume24h = 0n;
-    let ptVolume24h = 0n;
-    let swapCount24h = 0;
-    let fees24h = 0n;
-
-    // Collect ALL unique users across all operations
-    const uniqueUsers = new Set<string>();
-
-    // Use safe arrays that default to empty if query timed out
+    // Calculate volume/fees from best available source
     const dailyStatsData = dailyStats ?? [];
-    const routerSwapsData = routerSwaps ?? [];
+    const ptSwapsData = ptSwaps ?? [];
     const ytSwapsData = ytSwaps ?? [];
-
-    // Check if we have data from materialized view for volume/fees
     const hasViewData =
       dailyStatsData.length > 0 && dailyStatsData.some((s) => (s.swap_count ?? 0) > 0);
 
+    let volumeFees: VolumeFeesResult;
     if (hasViewData) {
-      for (const stat of dailyStatsData) {
-        syVolume24h += BigInt(stat.total_sy_volume ?? '0');
-        ptVolume24h += BigInt(stat.total_pt_volume ?? '0');
-        swapCount24h += stat.swap_count ?? 0;
-        fees24h += BigInt(stat.total_fees ?? '0');
-      }
+      volumeFees = aggregateFromDailyStats(dailyStatsData);
     } else {
-      // Use router swap data directly for volume
-      for (const swap of routerSwapsData) {
-        syVolume24h += BigInt(swap.sy_in) + BigInt(swap.sy_out);
-        ptVolume24h += BigInt(swap.pt_in) + BigInt(swap.pt_out);
-        swapCount24h++;
-      }
-
-      for (const swap of ytSwapsData) {
-        syVolume24h += BigInt(swap.sy_in) + BigInt(swap.sy_out);
-        swapCount24h++;
-      }
-
-      // Try to get fees from enriched views (both PT swaps and YT swaps)
-      const [enrichedSwaps, enrichedYtSwaps] = await Promise.all([
-        db
-          .select({ fee: enrichedRouterSwap.fee })
-          .from(enrichedRouterSwap)
-          .where(gte(enrichedRouterSwap.block_timestamp, oneDayAgo)),
-        db
-          .select({ fee: enrichedRouterSwapYT.fee })
-          .from(enrichedRouterSwapYT)
-          .where(gte(enrichedRouterSwapYT.block_timestamp, oneDayAgo)),
-      ]);
-
-      for (const swap of enrichedSwaps) {
-        fees24h += BigInt(swap.fee ?? '0');
-      }
-      for (const swap of enrichedYtSwaps) {
-        fees24h += BigInt(swap.fee ?? '0');
-      }
+      const volume = aggregateSwapVolume(ptSwapsData, ytSwapsData);
+      const fees = await fetchFeesFromEnrichedSwaps(oneDayAgo);
+      volumeFees = { ...volume, fees };
     }
 
-    // Count unique users from ALL operations (not just swaps)
-    // Handle null for timed out queries by defaulting to empty arrays
-    const mintsData = mints ?? [];
-    const redeemsData = redeems ?? [];
-    const addLiqData = addLiq ?? [];
-    const removeLiqData = removeLiq ?? [];
-    const depositsData = deposits ?? [];
-    const withdrawalsData = withdrawals ?? [];
-
-    for (const swap of routerSwapsData) {
-      uniqueUsers.add(swap.sender.toLowerCase());
-    }
-    for (const swap of ytSwapsData) {
-      uniqueUsers.add(swap.sender.toLowerCase());
-    }
-    for (const mint of mintsData) {
-      if (mint.sender) uniqueUsers.add(mint.sender.toLowerCase());
-    }
-    for (const redeem of redeemsData) {
-      if (redeem.sender) uniqueUsers.add(redeem.sender.toLowerCase());
-    }
-    for (const add of addLiqData) {
-      if (add.sender) uniqueUsers.add(add.sender.toLowerCase());
-    }
-    for (const remove of removeLiqData) {
-      if (remove.sender) uniqueUsers.add(remove.sender.toLowerCase());
-    }
-    for (const deposit of depositsData) {
-      uniqueUsers.add(deposit.caller.toLowerCase());
-    }
-    for (const withdrawal of withdrawalsData) {
-      uniqueUsers.add(withdrawal.caller.toLowerCase());
-    }
+    // Collect unique users across all operations
+    const uniqueUsers = collectUniqueUsers(
+      ptSwapsData,
+      ytSwapsData,
+      mints,
+      redeems,
+      addLiq,
+      removeLiq,
+      deposits,
+      withdrawals
+    );
 
     return NextResponse.json(
       {
         tvl: {
-          totalSyReserve: totalSyReserve.toString(),
-          totalPtReserve: totalPtReserve.toString(),
-          marketCount: marketsData.length,
+          totalSyReserve: tvl.totalSyReserve.toString(),
+          totalPtReserve: tvl.totalPtReserve.toString(),
+          marketCount: tvl.marketCount,
         },
         volume24h: {
-          syVolume: syVolume24h.toString(),
-          ptVolume: ptVolume24h.toString(),
-          swapCount: swapCount24h,
+          syVolume: volumeFees.syVolume.toString(),
+          ptVolume: volumeFees.ptVolume.toString(),
+          swapCount: volumeFees.swapCount,
           uniqueUsers: uniqueUsers.size,
         },
-        fees24h: fees24h.toString(),
+        fees24h: volumeFees.fees.toString(),
       },
       { headers: getCacheHeaders('MEDIUM') }
     );
   } catch (error) {
     logError(error, { module: 'analytics/stats' });
-    return NextResponse.json(
-      {
-        tvl: { totalSyReserve: '0', totalPtReserve: '0', marketCount: 0 },
-        volume24h: { syVolume: '0', ptVolume: '0', swapCount: 0, uniqueUsers: 0 },
-        fees24h: '0',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json(createEmptyResponse(), { status: 500 });
   }
 }

@@ -84,6 +84,64 @@ function buildMarketState(
 }
 
 /**
+ * Try to calculate a single buy PT depth point.
+ * Returns null if calculation fails or inputs are invalid.
+ */
+function tryCalculateBuyPtPoint(
+  state: MarketState,
+  tradeSizeSy: bigint,
+  percent: number
+): DepthPoint | null {
+  try {
+    const result = calcSwapExactSyForPt(state, tradeSizeSy);
+    return {
+      tradeSizeSy: tradeSizeSy.toString(),
+      tradeSizePercent: percent,
+      impactBps: result.priceImpact * 10000,
+      effectivePrice: result.effectivePrice.toString(),
+      outputAmount: result.amountOut.toString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Try to calculate a single sell PT depth point.
+ * Converts SY trade size to PT amount using spot price estimate.
+ * Returns null if calculation fails or PT amount exceeds reserves.
+ */
+function tryCalculateSellPtPoint(
+  state: MarketState,
+  tradeSizeSy: bigint,
+  percent: number
+): DepthPoint | null {
+  // Use spot price to estimate PT amount
+  const spotPtPrice =
+    state.lastLnImpliedRate > 0n
+      ? WAD_BIGINT - (state.lastLnImpliedRate * WAD_BIGINT) / (100n * WAD_BIGINT)
+      : WAD_BIGINT;
+  const ptAmount = spotPtPrice > 0n ? (tradeSizeSy * WAD_BIGINT) / spotPtPrice : tradeSizeSy;
+
+  if (ptAmount >= state.ptReserve) {
+    return null;
+  }
+
+  try {
+    const result = calcSwapExactPtForSy(state, ptAmount);
+    return {
+      tradeSizeSy: tradeSizeSy.toString(),
+      tradeSizePercent: percent,
+      impactBps: result.priceImpact * 10000,
+      effectivePrice: result.effectivePrice.toString(),
+      outputAmount: result.amountOut.toString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Calculate depth curve points for a given direction
  */
 function calculateDepthCurve(
@@ -94,6 +152,7 @@ function calculateDepthCurve(
   maxPercent: number
 ): DepthPoint[] {
   const points: DepthPoint[] = [];
+  const calculatePoint = isBuyPt ? tryCalculateBuyPtPoint : tryCalculateSellPtPoint;
 
   for (let i = 1; i <= numPoints; i++) {
     const percent = (maxPercent * i) / numPoints;
@@ -101,42 +160,10 @@ function calculateDepthCurve(
 
     if (tradeSizeSy === 0n) continue;
 
-    try {
-      if (isBuyPt) {
-        // Buy PT with SY
-        const result = calcSwapExactSyForPt(state, tradeSizeSy);
-        const impactBps = result.priceImpact * 10000;
-
-        points.push({
-          tradeSizeSy: tradeSizeSy.toString(),
-          tradeSizePercent: percent,
-          impactBps,
-          effectivePrice: result.effectivePrice.toString(),
-          outputAmount: result.amountOut.toString(),
-        });
-      } else {
-        // Sell PT for SY - need to convert trade size to PT
-        // Use spot price to estimate PT amount
-        const spotPtPrice =
-          state.lastLnImpliedRate > 0n
-            ? WAD_BIGINT - (state.lastLnImpliedRate * WAD_BIGINT) / (100n * WAD_BIGINT)
-            : WAD_BIGINT;
-        const ptAmount = spotPtPrice > 0n ? (tradeSizeSy * WAD_BIGINT) / spotPtPrice : tradeSizeSy;
-
-        if (ptAmount >= state.ptReserve) continue;
-
-        const result = calcSwapExactPtForSy(state, ptAmount);
-        const impactBps = result.priceImpact * 10000;
-
-        points.push({
-          tradeSizeSy: tradeSizeSy.toString(),
-          tradeSizePercent: percent,
-          impactBps,
-          effectivePrice: result.effectivePrice.toString(),
-          outputAmount: result.amountOut.toString(),
-        });
-      }
-    } catch {}
+    const point = calculatePoint(state, tradeSizeSy, percent);
+    if (point) {
+      points.push(point);
+    }
   }
 
   return points;
