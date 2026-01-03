@@ -3,6 +3,63 @@
 import { cn } from '@shared/lib/utils';
 import { type ReactNode, useEffect, useState } from 'react';
 
+/**
+ * Column span class mappings for responsive grid layouts.
+ */
+type SpanValue = 1 | 2 | 3 | 4 | 6 | 8 | 12;
+
+const COL_SPAN_CLASSES: Record<SpanValue, string> = {
+  1: 'col-span-1',
+  2: 'col-span-2',
+  3: 'col-span-3',
+  4: 'col-span-4',
+  6: 'col-span-6',
+  8: 'col-span-8',
+  12: 'col-span-12',
+};
+
+const ROW_SPAN_CLASSES: Record<1 | 2 | 3, string> = {
+  1: 'row-span-1',
+  2: 'row-span-2',
+  3: 'row-span-3',
+};
+
+/**
+ * Build responsive span classes from colSpan config.
+ */
+function buildSpanClasses(
+  colSpan:
+    | {
+        default?: number | undefined;
+        sm?: number | undefined;
+        md?: number | undefined;
+        lg?: number | undefined;
+      }
+    | undefined,
+  rowSpan: number | undefined
+): string[] {
+  const classes: string[] = [];
+
+  if (colSpan?.default !== undefined && colSpan.default in COL_SPAN_CLASSES) {
+    classes.push(COL_SPAN_CLASSES[colSpan.default as SpanValue]);
+  }
+  if (colSpan?.sm !== undefined && colSpan.sm in COL_SPAN_CLASSES) {
+    classes.push(`sm:${COL_SPAN_CLASSES[colSpan.sm as SpanValue]}`);
+  }
+  if (colSpan?.md !== undefined && colSpan.md in COL_SPAN_CLASSES) {
+    classes.push(`md:${COL_SPAN_CLASSES[colSpan.md as SpanValue]}`);
+  }
+  if (colSpan?.lg !== undefined && colSpan.lg in COL_SPAN_CLASSES) {
+    classes.push(`lg:${COL_SPAN_CLASSES[colSpan.lg as SpanValue]}`);
+  }
+
+  if (rowSpan !== undefined && rowSpan in ROW_SPAN_CLASSES) {
+    classes.push(ROW_SPAN_CLASSES[rowSpan as 1 | 2 | 3]);
+  }
+
+  return classes;
+}
+
 export interface BentoCardProps {
   children: ReactNode;
   /** Column span on different breakpoints */
@@ -50,6 +107,9 @@ export function BentoCard({
     };
   }, [animationDelay]);
 
+  // Build span classes using helper
+  const spanClasses = buildSpanClasses(colSpan, rowSpan);
+
   return (
     <div
       className={cn(
@@ -64,26 +124,8 @@ export function BentoCard({
         'translate-y-2 opacity-0',
         isVisible && 'translate-y-0 opacity-100',
         'motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none',
-        // Column spans
-        colSpan.default === 1 && 'col-span-1',
-        colSpan.default === 2 && 'col-span-2',
-        colSpan.default === 3 && 'col-span-3',
-        colSpan.default === 4 && 'col-span-4',
-        colSpan.default === 6 && 'col-span-6',
-        colSpan.default === 8 && 'col-span-8',
-        colSpan.default === 12 && 'col-span-12',
-        colSpan.sm === 4 && 'sm:col-span-4',
-        colSpan.sm === 6 && 'sm:col-span-6',
-        colSpan.md === 4 && 'md:col-span-4',
-        colSpan.md === 6 && 'md:col-span-6',
-        colSpan.md === 8 && 'md:col-span-8',
-        colSpan.lg === 4 && 'lg:col-span-4',
-        colSpan.lg === 6 && 'lg:col-span-6',
-        colSpan.lg === 8 && 'lg:col-span-8',
-        // Row spans
-        rowSpan === 1 && 'row-span-1',
-        rowSpan === 2 && 'row-span-2',
-        rowSpan === 3 && 'row-span-3',
+        // Grid spans
+        ...spanClasses,
         className
       )}
       style={{

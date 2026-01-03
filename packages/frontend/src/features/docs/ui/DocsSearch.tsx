@@ -198,6 +198,7 @@ export function DocsSearch(): React.ReactNode {
     <>
       {/* Search trigger button */}
       <button
+        type="button"
         onClick={() => {
           setIsOpen(true);
         }}
@@ -238,6 +239,7 @@ export function DocsSearch(): React.ReactNode {
                 className="text-foreground placeholder:text-muted-foreground flex-1 bg-transparent focus:outline-none"
               />
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                 }}

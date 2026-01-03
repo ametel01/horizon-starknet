@@ -169,6 +169,109 @@ interface SimplePositionCardProps {
 }
 
 /**
+ * Calculate withdrawable amount based on position balances.
+ * Pre-expiry: minimum of PT and YT (must redeem in pairs)
+ * Post-expiry: just PT (YT is worthless after expiry)
+ */
+function calculateWithdrawableAmount(
+  isExpired: boolean,
+  ptAmount: bigint,
+  ytAmount: bigint
+): bigint {
+  if (isExpired) return ptAmount;
+  return ptAmount < ytAmount ? ptAmount : ytAmount;
+}
+
+/**
+ * Claimable yield section - standard view (not near expiry).
+ */
+interface StandardClaimSectionProps {
+  claimable: bigint;
+  claimableUsd: number;
+  tokenSymbol: string;
+  ytAddress: string;
+  onClaim: () => void;
+  isClaiming: boolean;
+}
+
+function StandardClaimSection({
+  claimable,
+  claimableUsd,
+  tokenSymbol,
+  ytAddress,
+  onClaim,
+  isClaiming,
+}: StandardClaimSectionProps): ReactNode {
+  return (
+    <div className="border-primary/30 bg-primary/10 mb-4 rounded-lg border p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-primary text-sm">Claimable Yield</div>
+          <div className="text-primary font-medium">
+            {formatWadCompact(claimable)} {tokenSymbol}
+          </div>
+        </div>
+        <Button size="sm" variant="default" onClick={onClaim} disabled={isClaiming}>
+          {isClaiming ? 'Claiming...' : 'Claim'}
+        </Button>
+      </div>
+      <ClaimValueWarning ytAddress={ytAddress} claimableUsd={claimableUsd} />
+    </div>
+  );
+}
+
+/**
+ * Transaction status and actions section.
+ */
+interface TxStatusSectionProps {
+  withdrawStatus: 'idle' | 'signing' | 'pending' | 'success' | 'error';
+  withdrawTxHash: string | null;
+  withdrawError: Error | null;
+  claimSuccess: boolean;
+  claimTxHash: string | null;
+  claimError: Error | null;
+  onReset: () => void;
+}
+
+function TxStatusSection({
+  withdrawStatus,
+  withdrawTxHash,
+  withdrawError,
+  claimSuccess,
+  claimTxHash,
+  claimError,
+  onReset,
+}: TxStatusSectionProps): ReactNode {
+  const showClaimStatus = claimSuccess || claimError;
+  const showWithdrawStatus = withdrawStatus !== 'idle';
+
+  return (
+    <>
+      {showClaimStatus && (
+        <div className="mb-4">
+          <TxStatus
+            status={claimSuccess ? 'success' : 'error'}
+            txHash={claimTxHash ?? null}
+            error={claimError}
+          />
+        </div>
+      )}
+
+      {showWithdrawStatus && (
+        <div className="mb-4">
+          <TxStatus status={withdrawStatus} txHash={withdrawTxHash} error={withdrawError} />
+          {withdrawStatus === 'success' && (
+            <Button onClick={onReset} variant="ghost" size="sm" className="mt-2 w-full">
+              Done
+            </Button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * Simplified position card showing deposit info without technical terminology
  */
 function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
@@ -182,11 +285,7 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
   const fixedApy = market.impliedApy.toNumber() * 100;
 
   // Min of PT and YT for withdrawal (pre-expiry) or just PT (post-expiry)
-  const withdrawableAmount = market.isExpired
-    ? pt.amount
-    : pt.amount < yt.amount
-      ? pt.amount
-      : yt.amount;
+  const withdrawableAmount = calculateWithdrawableAmount(market.isExpired, pt.amount, yt.amount);
 
   // Withdraw hook
   const {
@@ -284,45 +383,26 @@ function SimplePositionCard({ position }: SimplePositionCardProps): ReactNode {
 
         {/* Standard Claimable Yield (not near expiry or already expired) */}
         {hasClaimableYield && (daysToExpiry(market.expiry) > 7 || market.isExpired) && (
-          <div className="border-primary/30 bg-primary/10 mb-4 rounded-lg border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-primary text-sm">Claimable Yield</div>
-                <div className="text-primary font-medium">
-                  {formatWadCompact(yieldData.claimable)} {tokenSymbol}
-                </div>
-              </div>
-              <Button size="sm" variant="default" onClick={handleClaim} disabled={isClaiming}>
-                {isClaiming ? 'Claiming...' : 'Claim'}
-              </Button>
-            </div>
-            {/* Gas cost warning for small claims */}
-            <ClaimValueWarning ytAddress={market.ytAddress} claimableUsd={yieldData.claimableUsd} />
-          </div>
+          <StandardClaimSection
+            claimable={yieldData.claimable}
+            claimableUsd={yieldData.claimableUsd}
+            tokenSymbol={tokenSymbol}
+            ytAddress={market.ytAddress}
+            onClaim={handleClaim}
+            isClaiming={isClaiming}
+          />
         )}
 
-        {/* Claim Status */}
-        {(claimSuccess || claimError) && (
-          <div className="mb-4">
-            <TxStatus
-              status={claimSuccess ? 'success' : 'error'}
-              txHash={claimTxHash ?? null}
-              error={claimError}
-            />
-          </div>
-        )}
-
-        {/* Withdraw Transaction Status */}
-        {withdrawStatus !== 'idle' && (
-          <div className="mb-4">
-            <TxStatus status={withdrawStatus} txHash={withdrawTxHash} error={withdrawError} />
-            {withdrawStatus === 'success' && (
-              <Button onClick={handleReset} variant="ghost" size="sm" className="mt-2 w-full">
-                Done
-              </Button>
-            )}
-          </div>
-        )}
+        {/* Transaction Status */}
+        <TxStatusSection
+          withdrawStatus={withdrawStatus}
+          withdrawTxHash={withdrawTxHash}
+          withdrawError={withdrawError}
+          claimSuccess={claimSuccess}
+          claimTxHash={claimTxHash ?? null}
+          claimError={claimError}
+          onReset={handleReset}
+        />
 
         {/* Actions */}
         {withdrawStatus === 'idle' && (

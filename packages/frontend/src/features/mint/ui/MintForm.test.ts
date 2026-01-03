@@ -258,91 +258,40 @@ describe('MintForm validation logic', () => {
   });
 
   describe('button text', () => {
-    test('shows Connect Wallet when not connected', () => {
-      const getButtonText = (
-        isConnected: boolean,
-        isLoading: boolean,
-        validationError: string | null,
-        amountSy: string
-      ): string => {
-        if (!isConnected) return 'Connect Wallet';
-        if (isLoading) return 'Minting...';
-        if (validationError) return validationError;
-        if (!amountSy || amountSy === '0') return 'Enter Amount';
-        return 'Mint PT + YT';
-      };
+    /** Shared button text derivation - defined once, used across all tests */
+    const getButtonText = (
+      isConnected: boolean,
+      isLoading: boolean,
+      validationError: string | null,
+      amountSy: string
+    ): string => {
+      if (!isConnected) return 'Connect Wallet';
+      if (isLoading) return 'Minting...';
+      if (validationError) return validationError;
+      if (!amountSy || amountSy === '0') return 'Enter Amount';
+      return 'Mint PT + YT';
+    };
 
+    test('shows Connect Wallet when not connected', () => {
       expect(getButtonText(false, false, null, '100')).toBe('Connect Wallet');
     });
 
     test('shows Minting... when loading', () => {
-      const getButtonText = (
-        isConnected: boolean,
-        isLoading: boolean,
-        validationError: string | null,
-        amountSy: string
-      ): string => {
-        if (!isConnected) return 'Connect Wallet';
-        if (isLoading) return 'Minting...';
-        if (validationError) return validationError;
-        if (!amountSy || amountSy === '0') return 'Enter Amount';
-        return 'Mint PT + YT';
-      };
-
       expect(getButtonText(true, true, null, '100')).toBe('Minting...');
     });
 
     test('shows validation error when present', () => {
-      const getButtonText = (
-        isConnected: boolean,
-        isLoading: boolean,
-        validationError: string | null,
-        amountSy: string
-      ): string => {
-        if (!isConnected) return 'Connect Wallet';
-        if (isLoading) return 'Minting...';
-        if (validationError) return validationError;
-        if (!amountSy || amountSy === '0') return 'Enter Amount';
-        return 'Mint PT + YT';
-      };
-
       expect(getButtonText(true, false, 'Insufficient balance', '100')).toBe(
         'Insufficient balance'
       );
     });
 
     test('shows Enter Amount when no amount', () => {
-      const getButtonText = (
-        isConnected: boolean,
-        isLoading: boolean,
-        validationError: string | null,
-        amountSy: string
-      ): string => {
-        if (!isConnected) return 'Connect Wallet';
-        if (isLoading) return 'Minting...';
-        if (validationError) return validationError;
-        if (!amountSy || amountSy === '0') return 'Enter Amount';
-        return 'Mint PT + YT';
-      };
-
       expect(getButtonText(true, false, null, '')).toBe('Enter Amount');
       expect(getButtonText(true, false, null, '0')).toBe('Enter Amount');
     });
 
     test('shows Mint PT + YT when ready', () => {
-      const getButtonText = (
-        isConnected: boolean,
-        isLoading: boolean,
-        validationError: string | null,
-        amountSy: string
-      ): string => {
-        if (!isConnected) return 'Connect Wallet';
-        if (isLoading) return 'Minting...';
-        if (validationError) return validationError;
-        if (!amountSy || amountSy === '0') return 'Enter Amount';
-        return 'Mint PT + YT';
-      };
-
       expect(getButtonText(true, false, null, '100')).toBe('Mint PT + YT');
     });
   });

@@ -10,6 +10,21 @@ import { type ReactNode, useMemo, useState } from 'react';
 const WAD = BigInt(10) ** BigInt(18);
 
 /**
+ * IL direction styling using decision table pattern.
+ */
+type IlDirection = 'loss' | 'gain' | 'neutral';
+
+const IL_DIRECTION_STYLES: Record<IlDirection, { bg: string; text: string; bar: string }> = {
+  loss: { bg: 'bg-destructive/10', text: 'text-destructive', bar: 'bg-destructive' },
+  gain: { bg: 'bg-primary/10', text: 'text-primary', bar: 'bg-primary' },
+  neutral: { bg: 'bg-muted/50', text: 'text-foreground', bar: 'bg-muted-foreground/50' },
+};
+
+function getIlDirectionStyles(direction: IlDirection): { bg: string; text: string; bar: string } {
+  return IL_DIRECTION_STYLES[direction];
+}
+
+/**
  * Calculate impermanent loss for an LP position
  *
  * IL occurs when the price ratio of assets in the pool changes from entry.
@@ -166,6 +181,7 @@ export function ImpermanentLossCalc({
         <CardTitle className="flex items-center justify-between text-base">
           <span>Impermanent Loss</span>
           <button
+            type="button"
             onClick={() => {
               setShowDetails(!showDetails);
             }}
@@ -177,14 +193,7 @@ export function ImpermanentLossCalc({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* IL Summary */}
-        <div
-          className={cn(
-            'rounded-lg p-4',
-            ilMetrics.ilDirection === 'loss' && 'bg-destructive/10',
-            ilMetrics.ilDirection === 'gain' && 'bg-primary/10',
-            ilMetrics.ilDirection === 'neutral' && 'bg-muted/50'
-          )}
-        >
+        <div className={cn('rounded-lg p-4', getIlDirectionStyles(ilMetrics.ilDirection).bg)}>
           <div className="text-muted-foreground text-xs">
             {ilMetrics.ilDirection === 'loss'
               ? 'Impermanent Loss'
@@ -193,12 +202,7 @@ export function ImpermanentLossCalc({
                 : 'No Significant IL'}
           </div>
           <div
-            className={cn(
-              'text-2xl font-bold',
-              ilMetrics.ilDirection === 'loss' && 'text-destructive',
-              ilMetrics.ilDirection === 'gain' && 'text-primary',
-              ilMetrics.ilDirection === 'neutral' && 'text-foreground'
-            )}
+            className={cn('text-2xl font-bold', getIlDirectionStyles(ilMetrics.ilDirection).text)}
           >
             {ilMetrics.ilDirection !== 'neutral' && (ilMetrics.ilPercent >= 0 ? '-' : '+')}
             {Math.abs(ilMetrics.ilPercent).toFixed(2)}%
@@ -236,9 +240,7 @@ export function ImpermanentLossCalc({
             <div
               className={cn(
                 'h-full transition-all',
-                ilMetrics.ilDirection === 'loss' && 'bg-destructive',
-                ilMetrics.ilDirection === 'gain' && 'bg-primary',
-                ilMetrics.ilDirection === 'neutral' && 'bg-muted-foreground/50'
+                getIlDirectionStyles(ilMetrics.ilDirection).bar
               )}
               style={{
                 width: `${String(Math.min(100, (Number(ilMetrics.lpValueSy) / Number(ilMetrics.hodlValueSy)) * 100))}%`,
@@ -356,14 +358,7 @@ export function IlIndicator({ position, poolReserves, className }: IlIndicatorPr
   return (
     <div className={cn('text-sm', className)}>
       <span className="text-muted-foreground">IL: </span>
-      <span
-        className={cn(
-          'font-medium',
-          ilMetrics.ilDirection === 'loss' && 'text-destructive',
-          ilMetrics.ilDirection === 'gain' && 'text-primary',
-          ilMetrics.ilDirection === 'neutral' && 'text-foreground'
-        )}
-      >
+      <span className={cn('font-medium', getIlDirectionStyles(ilMetrics.ilDirection).text)}>
         {ilMetrics.ilDirection !== 'neutral' && (ilMetrics.ilPercent >= 0 ? '-' : '+')}
         {Math.abs(ilMetrics.ilPercent).toFixed(2)}%
       </span>

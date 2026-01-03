@@ -34,6 +34,44 @@ function getMarketSymbol(market: {
   return market.metadata?.yieldTokenSymbol ?? market.address.slice(0, 8);
 }
 
+/**
+ * Renders loading, error, or empty state messages for trade page.
+ * Returns null if data is ready to render.
+ */
+interface LoadingStateProps {
+  mounted: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  hasData: boolean;
+}
+
+function TradeLoadingState({ mounted, isLoading, isError, hasData }: LoadingStateProps): ReactNode {
+  if (!mounted || isLoading) {
+    return <SkeletonCard className="h-[600px]" />;
+  }
+
+  if (isError) {
+    return (
+      <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+        <p className="text-destructive">Failed to load markets. Please try again.</p>
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <div className="border-border bg-card rounded-lg border p-8 text-center">
+        <p className="text-muted-foreground">No markets available.</p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Markets will appear here once they are created.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function TradePageContent(): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,20 +120,13 @@ function TradePageContent(): ReactNode {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Swap Form */}
         <div>
-          {!mounted || isLoading ? (
-            <SkeletonCard className="h-[600px]" />
-          ) : isError ? (
-            <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
-              <p className="text-destructive">Failed to load markets. Please try again.</p>
-            </div>
-          ) : !selectedMarket ? (
-            <div className="border-border bg-card rounded-lg border p-8 text-center">
-              <p className="text-muted-foreground">No markets available.</p>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Markets will appear here once they are created.
-              </p>
-            </div>
-          ) : (
+          <TradeLoadingState
+            mounted={mounted}
+            isLoading={isLoading}
+            isError={isError}
+            hasData={!!selectedMarket}
+          />
+          {selectedMarket && mounted && !isLoading && !isError && (
             <div className="space-y-4">
               {/* Market Selector */}
               <div>

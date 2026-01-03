@@ -5,6 +5,67 @@ import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import { memo, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 /**
+ * Color resolution map for sparkline strokes.
+ */
+const SPARKLINE_COLOR_MAP: Record<string, string> = {
+  primary: 'var(--primary)',
+  destructive: 'var(--destructive)',
+  warning: 'var(--warning)',
+  muted: 'var(--muted-foreground)',
+};
+
+/**
+ * Resolve sparkline color based on color prop and trend direction.
+ */
+function resolveSparklineColor(
+  color: 'primary' | 'destructive' | 'warning' | 'muted' | 'auto',
+  values: number[]
+): string {
+  let resolvedColor = color;
+  if (color === 'auto') {
+    const first = values[0] ?? 0;
+    const last = values[values.length - 1] ?? 0;
+    resolvedColor = last >= first ? 'primary' : 'destructive';
+  }
+  return SPARKLINE_COLOR_MAP[resolvedColor] ?? SPARKLINE_COLOR_MAP['primary'] ?? 'var(--primary)';
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+/**
+ * Generate SVG path string from points using linear or smooth curve.
+ */
+function generatePathFromPoints(points: Point[], curve: 'linear' | 'smooth'): string {
+  const firstPoint = points[0];
+  if (!firstPoint) return '';
+
+  if (curve === 'smooth' && points.length > 2) {
+    let pathD = `M ${String(firstPoint.x)} ${String(firstPoint.y)}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+
+      if (!p0 || !p1 || !p2 || !p3) continue;
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      pathD += ` C ${String(cp1x)} ${String(cp1y)}, ${String(cp2x)} ${String(cp2y)}, ${String(p2.x)} ${String(p2.y)}`;
+    }
+    return pathD;
+  }
+
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${String(p.x)} ${String(p.y)}`).join(' ');
+}
+
+/**
  * Data point for sparkline charts
  */
 export interface SparklineDataPoint {
@@ -70,7 +131,7 @@ export const Sparkline = memo(function Sparkline({
     return data.map((d) => (typeof d === 'number' ? d : d.value));
   }, [data]);
 
-  // Calculate path
+  // Calculate path using extracted helpers
   const { linePath, areaPath, gradientId, strokeColor } = useMemo(() => {
     if (values.length < 2) {
       return { linePath: '', areaPath: '', gradientId: '', strokeColor: '' };
@@ -80,79 +141,27 @@ export const Sparkline = memo(function Sparkline({
     const max = Math.max(...values);
     const range = max - min || 1;
 
-    // Padding
     const paddingX = 2;
     const paddingY = 2;
     const chartWidth = width - paddingX * 2;
     const chartHeight = height - paddingY * 2;
 
-    // Generate points
-    const points = values.map((v, i) => ({
+    const points: Point[] = values.map((v, i) => ({
       x: paddingX + (i / (values.length - 1)) * chartWidth,
       y: paddingY + chartHeight - ((v - min) / range) * chartHeight,
     }));
 
-    // Determine color based on trend
-    let resolvedColor = color;
-    if (color === 'auto') {
-      const first = values[0] ?? 0;
-      const last = values[values.length - 1] ?? 0;
-      resolvedColor = last >= first ? 'primary' : 'destructive';
-    }
-
-    const colorMap: Record<string, string> = {
-      primary: 'var(--primary)',
-      destructive: 'var(--destructive)',
-      warning: 'var(--warning)',
-      muted: 'var(--muted-foreground)',
-    };
-
-    const stroke = colorMap[resolvedColor] ?? colorMap['primary'];
-
-    // Build path based on curve type
-    let pathD: string;
-    const firstPoint = points[0];
     const lastPoint = points[points.length - 1];
-
-    if (!firstPoint || !lastPoint) {
+    if (!lastPoint) {
       return { linePath: '', areaPath: '', gradientId: '', strokeColor: '' };
     }
 
-    if (curve === 'smooth' && points.length > 2) {
-      // Catmull-Rom to Bezier conversion for smooth curves
-      pathD = `M ${String(firstPoint.x)} ${String(firstPoint.y)}`;
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = points[Math.max(0, i - 1)];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = points[Math.min(points.length - 1, i + 2)];
-
-        if (!p0 || !p1 || !p2 || !p3) continue;
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-        pathD += ` C ${String(cp1x)} ${String(cp1y)}, ${String(cp2x)} ${String(cp2y)}, ${String(p2.x)} ${String(p2.y)}`;
-      }
-    } else {
-      pathD = points
-        .map((p, i) => `${i === 0 ? 'M' : 'L'} ${String(p.x)} ${String(p.y)}`)
-        .join(' ');
-    }
-
-    // Area path (close to bottom)
+    const stroke = resolveSparklineColor(color, values);
+    const pathD = generatePathFromPoints(points, curve);
     const areaD = `${pathD} L ${String(lastPoint.x)} ${String(height - paddingY)} L ${String(paddingX)} ${String(height - paddingY)} Z`;
-
     const id = `sparkline-${Math.random().toString(36).slice(2, 9)}`;
 
-    return {
-      linePath: pathD,
-      areaPath: areaD,
-      gradientId: id,
-      strokeColor: stroke,
-    };
+    return { linePath: pathD, areaPath: areaD, gradientId: id, strokeColor: stroke };
   }, [values, width, height, color, curve]);
 
   // Generate accessible description from data trend (must be before early return)

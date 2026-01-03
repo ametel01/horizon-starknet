@@ -1,12 +1,31 @@
 'use client';
 
 import { cn } from '@shared/lib/utils';
+import type { LucideIcon } from 'lucide-react';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { AnimatedNumber } from './AnimatedNumber';
 import { Card, CardContent } from './Card';
 import { Skeleton } from './Skeleton';
+
+/**
+ * Trend display configuration using decision table pattern.
+ */
+type TrendDirection = 'up' | 'down' | 'neutral';
+
+const TREND_CONFIG: Record<TrendDirection, { icon: LucideIcon; className: string }> = {
+  up: { icon: ArrowUp, className: 'text-green-500' },
+  down: { icon: ArrowDown, className: 'text-red-500' },
+  neutral: { icon: Minus, className: 'text-muted-foreground' },
+};
+
+function getTrendConfig(
+  trend: TrendDirection | undefined
+): { icon: LucideIcon; className: string } | null {
+  if (trend === undefined) return null;
+  return TREND_CONFIG[trend];
+}
 
 export interface StatCardProps {
   /** Label text displayed above the value */
@@ -69,9 +88,8 @@ export function StatCard({
     };
   }, [animationDelay]);
 
-  // Determine trend icon
-  const TrendIcon =
-    trend === 'up' ? ArrowUp : trend === 'down' ? ArrowDown : trend === 'neutral' ? Minus : null;
+  // Get trend configuration using decision table
+  const trendConfig = getTrendConfig(trend);
 
   return (
     <Card
@@ -133,13 +151,10 @@ export function StatCard({
               <span
                 className={cn(
                   'flex items-center gap-0.5 text-sm font-medium',
-                  trend === 'up' && 'text-green-500',
-                  trend === 'down' && 'text-red-500',
-                  trend === 'neutral' && 'text-muted-foreground',
-                  trend === undefined && 'text-muted-foreground'
+                  trendConfig?.className ?? 'text-muted-foreground'
                 )}
               >
-                {TrendIcon !== null && <TrendIcon className="h-3 w-3" />}
+                {trendConfig !== null && <trendConfig.icon className="h-3 w-3" />}
                 {delta}
               </span>
             )}

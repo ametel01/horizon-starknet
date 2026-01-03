@@ -148,7 +148,9 @@ function calculateDepthCurve(
         const result = calcSwapExactPtForSy(state, ptAmount);
         points.push({ percent, impactBps: result.priceImpact * 10000 });
       }
-    } catch {}
+    } catch {
+      // Silently skip points that fail calculation (e.g., trade exceeds reserves)
+    }
   }
 
   return points;
@@ -167,6 +169,37 @@ function findSlippageSize(
     }
   }
   return curve.length > 0 ? (curve[curve.length - 1]?.percent ?? 0) : 0;
+}
+
+/**
+ * Merge buy and sell curves into chart data points.
+ * Extracted to reduce complexity.
+ */
+function mergeCurvesToChartData(
+  buyPtCurve: { percent: number; impactBps: number }[],
+  sellPtCurve: { percent: number; impactBps: number }[]
+): ChartDataPoint[] {
+  const percentMap = new Map<number, ChartDataPoint>();
+
+  for (const point of buyPtCurve) {
+    const p = Math.round(point.percent * 10) / 10;
+    if (!percentMap.has(p)) {
+      percentMap.set(p, { percent: p, buyImpact: null, sellImpact: null });
+    }
+    const entry = percentMap.get(p);
+    if (entry) entry.buyImpact = point.impactBps;
+  }
+
+  for (const point of sellPtCurve) {
+    const p = Math.round(point.percent * 10) / 10;
+    if (!percentMap.has(p)) {
+      percentMap.set(p, { percent: p, buyImpact: null, sellImpact: null });
+    }
+    const entry = percentMap.get(p);
+    if (entry) entry.sellImpact = point.impactBps;
+  }
+
+  return Array.from(percentMap.values()).sort((a, b) => a.percent - b.percent);
 }
 
 /**
@@ -218,31 +251,8 @@ export function DepthCurve({
     const buyPtCurve = calculateDepthCurve(state, tvl, true, points, maxPercent);
     const sellPtCurve = calculateDepthCurve(state, tvl, false, points, maxPercent);
 
-    // Merge curves into chart data
-    const percentMap = new Map<number, ChartDataPoint>();
-
-    for (const point of buyPtCurve) {
-      const p = Math.round(point.percent * 10) / 10;
-      if (!percentMap.has(p)) {
-        percentMap.set(p, { percent: p, buyImpact: null, sellImpact: null });
-      }
-      const entry = percentMap.get(p);
-      if (entry) entry.buyImpact = point.impactBps;
-    }
-
-    for (const point of sellPtCurve) {
-      const p = Math.round(point.percent * 10) / 10;
-      if (!percentMap.has(p)) {
-        percentMap.set(p, { percent: p, buyImpact: null, sellImpact: null });
-      }
-      const entry = percentMap.get(p);
-      if (entry) entry.sellImpact = point.impactBps;
-    }
-
-    const data = Array.from(percentMap.values()).sort((a, b) => a.percent - b.percent);
-
     return {
-      chartData: data,
+      chartData: mergeCurvesToChartData(buyPtCurve, sellPtCurve),
       summary: {
         slippage50bpsSize: Math.min(
           findSlippageSize(buyPtCurve, 50),

@@ -60,6 +60,49 @@ function truncateHash(hash: string): string {
 }
 
 /**
+ * Format a single token delta for display.
+ * Returns null if delta is zero.
+ */
+function formatDelta(delta: bigint, symbol: string): { text: string; isPositive: boolean } | null {
+  if (delta === 0n) return null;
+  return {
+    text: `${delta > 0n ? '+' : ''}${formatAmount(delta)} ${symbol}`,
+    isPositive: delta > 0n,
+  };
+}
+
+/**
+ * Renders the list of non-zero token deltas.
+ */
+interface DeltaListProps {
+  syDelta: bigint;
+  ptDelta: bigint;
+  ytDelta: bigint;
+  lpDelta: bigint;
+}
+
+function DeltaList({ syDelta, ptDelta, ytDelta, lpDelta }: DeltaListProps): ReactNode {
+  const deltas = [
+    formatDelta(syDelta, 'SY'),
+    formatDelta(ptDelta, 'PT'),
+    formatDelta(ytDelta, 'YT'),
+    formatDelta(lpDelta, 'LP'),
+  ].filter((d): d is NonNullable<typeof d> => d !== null);
+
+  if (deltas.length === 0) return null;
+
+  return (
+    <>
+      {deltas.map((d) => (
+        <span key={d.text} className={cn(d.isPositive ? 'text-primary' : 'text-destructive')}>
+          {d.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
  * Get event type display info
  */
 function getEventTypeInfo(type: PortfolioValueEvent['type']): {
@@ -132,30 +175,7 @@ function EventRow({ event, price }: EventRowProps): ReactNode {
       </div>
       <div className="flex flex-col">
         <div className="text-foreground flex items-center gap-2">
-          {syDelta !== 0n && (
-            <span className={cn(syDelta > 0n ? 'text-primary' : 'text-destructive')}>
-              {syDelta > 0n ? '+' : ''}
-              {formatAmount(syDelta)} SY
-            </span>
-          )}
-          {ptDelta !== 0n && (
-            <span className={cn(ptDelta > 0n ? 'text-primary' : 'text-destructive')}>
-              {ptDelta > 0n ? '+' : ''}
-              {formatAmount(ptDelta)} PT
-            </span>
-          )}
-          {ytDelta !== 0n && (
-            <span className={cn(ytDelta > 0n ? 'text-primary' : 'text-destructive')}>
-              {ytDelta > 0n ? '+' : ''}
-              {formatAmount(ytDelta)} YT
-            </span>
-          )}
-          {lpDelta !== 0n && (
-            <span className={cn(lpDelta > 0n ? 'text-primary' : 'text-destructive')}>
-              {lpDelta > 0n ? '+' : ''}
-              {formatAmount(lpDelta)} LP
-            </span>
-          )}
+          <DeltaList syDelta={syDelta} ptDelta={ptDelta} ytDelta={ytDelta} lpDelta={lpDelta} />
         </div>
         {event.underlyingSymbol && (
           <span className="text-muted-foreground text-xs">{event.underlyingSymbol}</span>

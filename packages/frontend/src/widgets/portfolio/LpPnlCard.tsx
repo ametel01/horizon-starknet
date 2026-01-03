@@ -84,6 +84,73 @@ interface LpPnlCardProps {
 }
 
 /**
+ * Unrealized P&L section - extracted to reduce complexity.
+ */
+interface UnrealizedPnlSectionProps {
+  unrealizedSy: bigint;
+  unrealizedPt: bigint;
+  percentSy: number;
+  percentPt: number;
+}
+
+function UnrealizedPnlSection({
+  unrealizedSy,
+  unrealizedPt,
+  percentSy,
+  percentPt,
+}: UnrealizedPnlSectionProps): ReactNode {
+  return (
+    <div className="border-border space-y-2 border-t pt-3">
+      <div className="text-muted-foreground text-xs font-medium">Unrealized P&L</div>
+      <div className="grid grid-cols-2 gap-3">
+        <div
+          className={cn(
+            'rounded-lg p-2',
+            unrealizedSy >= 0n ? 'bg-primary/10' : 'bg-destructive/10'
+          )}
+        >
+          <div className="text-muted-foreground text-xs">SY</div>
+          <div
+            className={cn(
+              'font-mono text-sm font-medium',
+              unrealizedSy >= 0n ? 'text-primary' : 'text-destructive'
+            )}
+          >
+            {unrealizedSy >= 0n ? '+' : ''}
+            {formatWadCompact(unrealizedSy)}
+          </div>
+          <div className={cn('text-xs', percentSy >= 0 ? 'text-primary' : 'text-destructive')}>
+            {percentSy >= 0 ? '+' : ''}
+            {percentSy.toFixed(2)}%
+          </div>
+        </div>
+        <div
+          className={cn(
+            'rounded-lg p-2',
+            unrealizedPt >= 0n ? 'bg-primary/10' : 'bg-destructive/10'
+          )}
+        >
+          <div className="text-muted-foreground text-xs">PT</div>
+          <div
+            className={cn(
+              'font-mono text-sm font-medium',
+              unrealizedPt >= 0n ? 'text-primary' : 'text-destructive'
+            )}
+          >
+            {unrealizedPt >= 0n ? '+' : ''}
+            {formatWadCompact(unrealizedPt)}
+          </div>
+          <div className={cn('text-xs', percentPt >= 0 ? 'text-primary' : 'text-destructive')}>
+            {percentPt >= 0 ? '+' : ''}
+            {percentPt.toFixed(2)}%
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Card showing P&L summary for an LP position
  */
 export function LpPnlCard({ position, className, poolReserves }: LpPnlCardProps): ReactNode {
@@ -189,63 +256,12 @@ export function LpPnlCard({ position, className, poolReserves }: LpPnlCardProps)
 
         {/* P&L Summary */}
         {unrealizedPnl && (
-          <div className="border-border space-y-2 border-t pt-3">
-            <div className="text-muted-foreground text-xs font-medium">Unrealized P&L</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                className={cn(
-                  'rounded-lg p-2',
-                  unrealizedPnl.unrealizedSy >= 0n ? 'bg-primary/10' : 'bg-destructive/10'
-                )}
-              >
-                <div className="text-muted-foreground text-xs">SY</div>
-                <div
-                  className={cn(
-                    'font-mono text-sm font-medium',
-                    unrealizedPnl.unrealizedSy >= 0n ? 'text-primary' : 'text-destructive'
-                  )}
-                >
-                  {unrealizedPnl.unrealizedSy >= 0n ? '+' : ''}
-                  {formatWadCompact(unrealizedPnl.unrealizedSy)}
-                </div>
-                <div
-                  className={cn(
-                    'text-xs',
-                    unrealizedPnl.percentSy >= 0 ? 'text-primary' : 'text-destructive'
-                  )}
-                >
-                  {unrealizedPnl.percentSy >= 0 ? '+' : ''}
-                  {unrealizedPnl.percentSy.toFixed(2)}%
-                </div>
-              </div>
-              <div
-                className={cn(
-                  'rounded-lg p-2',
-                  unrealizedPnl.unrealizedPt >= 0n ? 'bg-primary/10' : 'bg-destructive/10'
-                )}
-              >
-                <div className="text-muted-foreground text-xs">PT</div>
-                <div
-                  className={cn(
-                    'font-mono text-sm font-medium',
-                    unrealizedPnl.unrealizedPt >= 0n ? 'text-primary' : 'text-destructive'
-                  )}
-                >
-                  {unrealizedPnl.unrealizedPt >= 0n ? '+' : ''}
-                  {formatWadCompact(unrealizedPnl.unrealizedPt)}
-                </div>
-                <div
-                  className={cn(
-                    'text-xs',
-                    unrealizedPnl.percentPt >= 0 ? 'text-primary' : 'text-destructive'
-                  )}
-                >
-                  {unrealizedPnl.percentPt >= 0 ? '+' : ''}
-                  {unrealizedPnl.percentPt.toFixed(2)}%
-                </div>
-              </div>
-            </div>
-          </div>
+          <UnrealizedPnlSection
+            unrealizedSy={unrealizedPnl.unrealizedSy}
+            unrealizedPt={unrealizedPnl.unrealizedPt}
+            percentSy={unrealizedPnl.percentSy}
+            percentPt={unrealizedPnl.percentPt}
+          />
         )}
 
         {/* Entry Info */}

@@ -10,8 +10,67 @@ import { Input } from '@shared/ui/Input';
 import { Separator } from '@shared/ui/separator';
 import { AlertTriangle, Check, Copy, Droplets, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { Call } from 'starknet';
+
+/**
+ * Eligibility status component - extracted to reduce complexity.
+ */
+interface EligibilityStatusProps {
+  isChecking: boolean;
+  canMint: boolean | null;
+  tokenSymbol: string;
+}
+
+function EligibilityStatus({
+  isChecking,
+  canMint,
+  tokenSymbol,
+}: EligibilityStatusProps): React.ReactNode {
+  if (isChecking) {
+    return (
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Checking eligibility...
+      </div>
+    );
+  }
+
+  if (canMint === false) {
+    return (
+      <div className="border-warning/20 bg-warning/5 rounded-lg border p-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="text-warning mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="text-foreground font-medium">Already minted today</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              You can only mint once every 24 hours. Please try again later.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (canMint === true) {
+    return (
+      <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
+        <div className="flex items-start gap-3">
+          <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="text-foreground font-medium">Eligible to mint</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              You can claim your 100 {tokenSymbol} test tokens.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export function FaucetPage(): React.ReactNode {
   const { address, isConnected, provider, network } = useStarknet();
@@ -210,36 +269,11 @@ export function FaucetPage(): React.ReactNode {
         {/* Status */}
         {targetAddress && (
           <div className="mt-6">
-            {isChecking ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking eligibility...
-              </div>
-            ) : canMint === false ? (
-              <div className="border-warning/20 bg-warning/5 rounded-lg border p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="text-warning mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-foreground font-medium">Already minted today</p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      You can only mint once every 24 hours. Please try again later.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : canMint === true ? (
-              <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
-                <div className="flex items-start gap-3">
-                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-foreground font-medium">Eligible to mint</p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      You can claim your 100 {faucetInfo.tokenSymbol} test tokens.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            <EligibilityStatus
+              isChecking={isChecking}
+              canMint={canMint}
+              tokenSymbol={faucetInfo.tokenSymbol}
+            />
           </div>
         )}
 

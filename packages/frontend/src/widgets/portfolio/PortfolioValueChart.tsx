@@ -21,6 +21,22 @@ import {
 } from 'recharts';
 
 /**
+ * Tooltip name display mapping for portfolio chart.
+ */
+const PORTFOLIO_CHART_LABELS: Record<string, string> = {
+  totalValueUsd: 'Total',
+  syBalanceUsd: 'SY',
+  ptBalanceUsd: 'PT',
+  ytBalanceUsd: 'YT',
+  lpBalanceUsd: 'LP',
+};
+
+function getChartDisplayName(name: string | undefined): string {
+  if (!name) return 'Unknown';
+  return PORTFOLIO_CHART_LABELS[name] ?? name;
+}
+
+/**
  * Format USD value with compact notation for large numbers
  */
 function formatUsdCompact(value: number): string {
@@ -292,24 +308,10 @@ export function PortfolioValueChart({
             />
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(value: number | undefined, name: string | undefined) => {
-                const displayName =
-                  name === 'totalValueUsd'
-                    ? 'Total'
-                    : name === 'syBalanceUsd'
-                      ? 'SY'
-                      : name === 'ptBalanceUsd'
-                        ? 'PT'
-                        : name === 'ytBalanceUsd'
-                          ? 'YT'
-                          : name === 'lpBalanceUsd'
-                            ? 'LP'
-                            : name;
-                return [
-                  `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                  displayName,
-                ];
-              }}
+              formatter={(value: number | undefined, name: string | undefined) => [
+                `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                getChartDisplayName(name),
+              ]}
               labelFormatter={(label: string) => label}
             />
             <Area

@@ -43,6 +43,164 @@ const SLIPPAGE_OPTIONS = [
   { label: '1%', value: 100 },
 ];
 
+// ----- Helper Functions -----
+
+function parseAmountSafe(amount: string): bigint {
+  if (!amount || amount === '') return BigInt(0);
+  try {
+    return parseWad(amount);
+  } catch {
+    return BigInt(0);
+  }
+}
+
+type TxStatusValue = 'idle' | 'pending' | 'success' | 'error';
+
+function determineTxStatus(isAdding: boolean, isSuccess: boolean, isError: boolean): TxStatusValue {
+  if (isAdding) return 'pending';
+  if (isSuccess) return 'success';
+  if (isError) return 'error';
+  return 'idle';
+}
+
+interface ButtonTextParams {
+  isAdding: boolean;
+  isConnected: boolean;
+  isValidAmount: boolean;
+  hasInsufficientSyBalance: boolean;
+  hasInsufficientPtBalance: boolean;
+  isSuccess: boolean;
+}
+
+function getButtonText(params: ButtonTextParams): string {
+  const {
+    isAdding,
+    isConnected,
+    isValidAmount,
+    hasInsufficientSyBalance,
+    hasInsufficientPtBalance,
+    isSuccess,
+  } = params;
+  if (isAdding) return 'Adding Liquidity...';
+  if (!isConnected) return 'Connect Wallet';
+  if (!isValidAmount) return 'Enter Amounts';
+  if (hasInsufficientSyBalance) return 'Insufficient SY Balance';
+  if (hasInsufficientPtBalance) return 'Insufficient PT Balance';
+  if (isSuccess) return 'Liquidity Added!';
+  return 'Add Liquidity';
+}
+
+interface ExpectedLpParams {
+  syAmount: bigint;
+  ptAmount: bigint;
+  syReserve: bigint;
+  ptReserve: bigint;
+  totalLpSupply: bigint;
+}
+
+function calculateExpectedLp(params: ExpectedLpParams): bigint {
+  const { syAmount, ptAmount, syReserve, ptReserve, totalLpSupply } = params;
+  if (syAmount === BigInt(0) || ptAmount === BigInt(0)) {
+    return BigInt(0);
+  }
+
+  if (totalLpSupply === BigInt(0)) {
+    // Initial liquidity - use geometric mean approximation
+    return syAmount < ptAmount ? syAmount : ptAmount;
+  }
+
+  // Calculate LP based on proportional contribution
+  const lpFromSy = (syAmount * totalLpSupply) / syReserve;
+  const lpFromPt = (ptAmount * totalLpSupply) / ptReserve;
+  return lpFromSy < lpFromPt ? lpFromSy : lpFromPt;
+}
+
+// ----- Sub-components -----
+
+interface GasEstimateRowProps {
+  isValidAmount: boolean;
+  formattedFee: string | null;
+  formattedFeeUsd: string | null;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+function GasEstimateRow({
+  isValidAmount,
+  formattedFee,
+  formattedFeeUsd,
+  isLoading,
+  error,
+}: GasEstimateRowProps): ReactNode {
+  if (!isValidAmount) return null;
+  return (
+    <FormRow
+      label="Estimated Gas"
+      value={
+        <GasEstimate
+          formattedFee={formattedFee ?? ''}
+          formattedFeeUsd={formattedFeeUsd ?? undefined}
+          isLoading={isLoading}
+          error={error}
+        />
+      }
+    />
+  );
+}
+
+interface TransactionProgressProps {
+  txStatus: TxStatusValue;
+  steps: Step[];
+  currentStep: number;
+  txHash: string | null;
+  error: Error | null;
+  gasEstimate: {
+    formattedFee: string | null;
+    formattedFeeUsd: string | null;
+    isLoading: boolean;
+    error: Error | null;
+  };
+}
+
+function TransactionProgress({
+  txStatus,
+  steps,
+  currentStep,
+  txHash,
+  error,
+  gasEstimate,
+}: TransactionProgressProps): ReactNode {
+  if (txStatus === 'idle') return null;
+
+  const normalizedGasEstimate: {
+    formattedFee: string;
+    formattedFeeUsd?: string;
+    isLoading: boolean;
+    error: Error | null;
+  } = {
+    formattedFee: gasEstimate.formattedFee ?? '',
+    isLoading: gasEstimate.isLoading,
+    error: gasEstimate.error,
+  };
+  if (gasEstimate.formattedFeeUsd !== null) {
+    normalizedGasEstimate.formattedFeeUsd = gasEstimate.formattedFeeUsd;
+  }
+
+  return (
+    <div className="space-y-4">
+      <StepProgress steps={steps} currentStep={currentStep} />
+      <TxStatus
+        status={txStatus}
+        txHash={txHash}
+        error={error}
+        gasEstimate={normalizedGasEstimate}
+      />
+    </div>
+  );
+}
+
+// ----- Main Component -----
+
 export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): ReactNode {
   const { isConnected, address } = useAccount();
   const { network } = useStarknet();
@@ -64,23 +222,8 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
   const { data: ptBalance } = useTokenBalance(market.ptAddress);
 
   // Parse amounts
-  const parsedSyAmount = useMemo(() => {
-    if (!syAmount || syAmount === '') return BigInt(0);
-    try {
-      return parseWad(syAmount);
-    } catch {
-      return BigInt(0);
-    }
-  }, [syAmount]);
-
-  const parsedPtAmount = useMemo(() => {
-    if (!ptAmount || ptAmount === '') return BigInt(0);
-    try {
-      return parseWad(ptAmount);
-    } catch {
-      return BigInt(0);
-    }
-  }, [ptAmount]);
+  const parsedSyAmount = useMemo(() => parseAmountSafe(syAmount), [syAmount]);
+  const parsedPtAmount = useMemo(() => parseAmountSafe(ptAmount), [ptAmount]);
 
   // Calculate balanced amounts when SY changes
   useEffect(() => {
@@ -96,25 +239,17 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
   }, [syAmount, isBalanced, parsedSyAmount, market.state.syReserve, market.state.ptReserve]);
 
   // Calculate expected LP output
-  const expectedLpOut = useMemo(() => {
-    if (parsedSyAmount === BigInt(0) || parsedPtAmount === BigInt(0)) {
-      return BigInt(0);
-    }
-
-    const { syReserve, ptReserve, totalLpSupply } = market.state;
-
-    if (totalLpSupply === BigInt(0)) {
-      // Initial liquidity - use geometric mean approximation
-      const minAmount = parsedSyAmount < parsedPtAmount ? parsedSyAmount : parsedPtAmount;
-      return minAmount;
-    }
-
-    // Calculate LP based on proportional contribution
-    const lpFromSy = (parsedSyAmount * totalLpSupply) / syReserve;
-    const lpFromPt = (parsedPtAmount * totalLpSupply) / ptReserve;
-
-    return lpFromSy < lpFromPt ? lpFromSy : lpFromPt;
-  }, [parsedSyAmount, parsedPtAmount, market.state]);
+  const expectedLpOut = useMemo(
+    () =>
+      calculateExpectedLp({
+        syAmount: parsedSyAmount,
+        ptAmount: parsedPtAmount,
+        syReserve: market.state.syReserve,
+        ptReserve: market.state.ptReserve,
+        totalLpSupply: market.state.totalLpSupply,
+      }),
+    [parsedSyAmount, parsedPtAmount, market.state]
+  );
 
   // Calculate minimum LP output with slippage
   const minLpOut = useMemo(() => {
@@ -186,12 +321,10 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     !isSuccess;
 
   // Determine transaction status
-  const txStatus = useMemo(() => {
-    if (isAdding) return 'pending' as const;
-    if (isSuccess) return 'success' as const;
-    if (isError) return 'error' as const;
-    return 'idle' as const;
-  }, [isAdding, isSuccess, isError]);
+  const txStatus = useMemo(
+    () => determineTxStatus(isAdding, isSuccess, isError),
+    [isAdding, isSuccess, isError]
+  );
 
   // Transaction steps for StepProgress
   const transactionSteps: Step[] = useMemo(() => {
@@ -311,19 +444,13 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
             value={`${formatWadCompact(market.state.syReserve)} SY / ${formatWadCompact(market.state.ptReserve)} PT`}
           />
           <FormRow label="Slippage Tolerance" value={`${(slippageBps / 100).toString()}%`} />
-          {isValidAmount && (
-            <FormRow
-              label="Estimated Gas"
-              value={
-                <GasEstimate
-                  formattedFee={formattedFee}
-                  formattedFeeUsd={formattedFeeUsd}
-                  isLoading={isEstimatingFee}
-                  error={feeError}
-                />
-              }
-            />
-          )}
+          <GasEstimateRow
+            isValidAmount={isValidAmount}
+            formattedFee={formattedFee}
+            formattedFeeUsd={formattedFeeUsd}
+            isLoading={isEstimatingFee}
+            error={feeError}
+          />
         </div>
       </FormInfoSection>
 
@@ -348,22 +475,19 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
       </div>
 
       {/* Transaction Progress */}
-      {txStatus !== 'idle' && (
-        <div className="space-y-4">
-          <StepProgress steps={transactionSteps} currentStep={currentStep} />
-          <TxStatus
-            status={txStatus}
-            txHash={transactionHash ?? null}
-            error={error}
-            gasEstimate={{
-              formattedFee,
-              formattedFeeUsd,
-              isLoading: isEstimatingFee,
-              error: feeError,
-            }}
-          />
-        </div>
-      )}
+      <TransactionProgress
+        txStatus={txStatus}
+        steps={transactionSteps}
+        currentStep={currentStep}
+        txHash={transactionHash ?? null}
+        error={error}
+        gasEstimate={{
+          formattedFee,
+          formattedFeeUsd,
+          isLoading: isEstimatingFee,
+          error: feeError,
+        }}
+      />
 
       {/* Actions */}
       <FormActions>
@@ -372,19 +496,14 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
           disabled={!canAddLiquidity || isAdding}
           variant="form-primary"
         >
-          {isAdding
-            ? 'Adding Liquidity...'
-            : !isConnected
-              ? 'Connect Wallet'
-              : !isValidAmount
-                ? 'Enter Amounts'
-                : hasInsufficientSyBalance
-                  ? 'Insufficient SY Balance'
-                  : hasInsufficientPtBalance
-                    ? 'Insufficient PT Balance'
-                    : isSuccess
-                      ? 'Liquidity Added!'
-                      : 'Add Liquidity'}
+          {getButtonText({
+            isAdding,
+            isConnected,
+            isValidAmount,
+            hasInsufficientSyBalance,
+            hasInsufficientPtBalance,
+            isSuccess,
+          })}
         </Button>
       </FormActions>
     </FormLayout>

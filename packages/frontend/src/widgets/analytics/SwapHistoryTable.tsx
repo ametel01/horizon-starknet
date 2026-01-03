@@ -39,6 +39,48 @@ function truncateAddress(address: string): string {
 const WAD = BigInt(10) ** BigInt(18);
 
 /**
+ * Swap display info derived from swap event.
+ * Uses decision table pattern for swap type resolution.
+ */
+interface SwapDisplayInfo {
+  direction: string;
+  directionColor: string;
+  inAmount: string;
+  outAmount: string;
+}
+
+function deriveSwapDisplayInfo(swap: SwapEvent): SwapDisplayInfo {
+  const isYtSwap = swap.type === 'yt';
+
+  if (isYtSwap) {
+    const isYtIn = BigInt(swap.ytIn ?? '0') > 0n;
+    return {
+      direction: isYtIn ? 'YT -> SY' : 'SY -> YT',
+      directionColor: 'bg-chart-3/10 text-chart-3',
+      inAmount: isYtIn ? (swap.ytIn ?? '0') : swap.syIn,
+      outAmount: isYtIn ? swap.syOut : (swap.ytOut ?? '0'),
+    };
+  }
+
+  const isPtIn = BigInt(swap.ptIn) > 0n;
+  return {
+    direction: isPtIn ? 'PT -> SY' : 'SY -> PT',
+    directionColor: isPtIn ? 'bg-chart-1/10 text-chart-1' : 'bg-chart-2/10 text-chart-2',
+    inAmount: isPtIn ? swap.ptIn : swap.syIn,
+    outAmount: isPtIn ? swap.syOut : swap.ptOut,
+  };
+}
+
+/**
+ * Impact color decision table based on severity thresholds.
+ */
+function getImpactColor(priceImpact: number): string {
+  if (priceImpact >= 1) return 'text-destructive';
+  if (priceImpact >= 0.5) return 'text-warning';
+  return 'text-muted-foreground';
+}
+
+/**
  * Calculate price impact percentage from before/after rates
  * Impact = (rate_after - rate_before) / rate_before * 100
  */
@@ -56,49 +98,19 @@ function calculatePriceImpact(rateBefore: string, rateAfter: string): number {
 }
 
 function SwapRow({ swap }: { swap: SwapEvent }): ReactNode {
-  // Determine swap type and direction
-  const isYtSwap = swap.type === 'yt';
+  // Derive display info using decision table
+  const { direction, directionColor, inAmount, outAmount } = deriveSwapDisplayInfo(swap);
 
-  let direction: string;
-  let directionColor: string;
-  let inAmount: string;
-  let outAmount: string;
-
-  if (isYtSwap) {
-    // YT swap: check if YT is going in or out
-    const isYtIn = BigInt(swap.ytIn ?? '0') > 0n;
-    direction = isYtIn ? 'YT -> SY' : 'SY -> YT';
-    // Use chart-3 for YT swaps (consistent with multi-series chart colors)
-    directionColor = 'bg-chart-3/10 text-chart-3';
-    inAmount = isYtIn ? (swap.ytIn ?? '0') : swap.syIn;
-    outAmount = isYtIn ? swap.syOut : (swap.ytOut ?? '0');
-  } else {
-    // PT swap: use chart-1 for PT In, chart-2 for SY -> PT
-    const isPtIn = BigInt(swap.ptIn) > 0n;
-    direction = isPtIn ? 'PT -> SY' : 'SY -> PT';
-    directionColor = isPtIn ? 'bg-chart-1/10 text-chart-1' : 'bg-chart-2/10 text-chart-2';
-    inAmount = isPtIn ? swap.ptIn : swap.syIn;
-    outAmount = isPtIn ? swap.syOut : swap.ptOut;
-  }
-
-  // Calculate price impact (may not be available for router swaps)
+  // Calculate price impact display
   const hasRateData = swap.impliedRateBefore && swap.impliedRateAfter;
   let impactDisplay: ReactNode = <span className="text-muted-foreground text-xs">-</span>;
 
   if (hasRateData && swap.impliedRateBefore && swap.impliedRateAfter) {
     const priceImpact = calculatePriceImpact(swap.impliedRateBefore, swap.impliedRateAfter);
-    // Color based on impact severity using semantic colors:
-    // - destructive: high impact (>= 1%) - bad
-    // - warning: medium impact (>= 0.5%) - caution
-    // - muted-foreground: low impact (< 0.5%) - good/neutral
-    const impactColor =
-      priceImpact >= 1
-        ? 'text-destructive'
-        : priceImpact >= 0.5
-          ? 'text-warning'
-          : 'text-muted-foreground';
     impactDisplay = (
-      <span className={cn('text-xs font-medium', impactColor)}>{priceImpact.toFixed(2)}%</span>
+      <span className={cn('text-xs font-medium', getImpactColor(priceImpact))}>
+        {priceImpact.toFixed(2)}%
+      </span>
     );
   }
 

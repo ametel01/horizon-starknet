@@ -91,6 +91,7 @@ function NavItemComponent({ item, level = 0 }: NavItemProps): React.ReactNode {
       <div className="flex items-center">
         {hasChildren && (
           <button
+            type="button"
             onClick={handleToggle}
             className="text-muted-foreground hover:text-foreground mr-1 p-0.5"
             aria-label={isOpen ? 'Collapse' : 'Expand'}

@@ -59,15 +59,14 @@ export function SecureScript({ src, integrity, ...props }: SecureScriptProps): R
   const sriHash = integrity ?? SRI_HASHES[src];
 
   if (!sriHash) {
-    // In development, warn but don't block
-    if (process.env.NODE_ENV === 'development') {
-    } else {
+    if (process.env.NODE_ENV !== 'development') {
       // In production, throw error to prevent loading unverified scripts
       throw new Error(
         `SecureScript: No SRI hash registered for "${src}". ` +
           'External scripts must have integrity verification.'
       );
     }
+    // In development, continue without SRI (allows testing with unverified scripts)
   }
 
   return <Script src={src} nonce={nonce} integrity={sriHash} crossOrigin="anonymous" {...props} />;

@@ -198,6 +198,7 @@ export function LpEntryExitTable({
         {hasMore && lpEvents.length >= limit && (
           <div className="mt-4 text-center">
             <button
+              type="button"
               onClick={() => {
                 fetchNextPage();
               }}

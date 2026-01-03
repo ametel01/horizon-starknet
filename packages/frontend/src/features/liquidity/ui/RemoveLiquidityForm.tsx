@@ -47,6 +47,179 @@ const PERCENTAGE_OPTIONS = [
   { label: 'Max', value: 100 },
 ];
 
+// ----- Helper Functions -----
+
+function parseAmountSafe(amount: string): bigint {
+  if (!amount || amount === '') return BigInt(0);
+  try {
+    return parseWad(amount);
+  } catch {
+    return BigInt(0);
+  }
+}
+
+type TxStatusValue = 'idle' | 'pending' | 'success' | 'error';
+
+function determineTxStatus(
+  isRemoving: boolean,
+  isSuccess: boolean,
+  isError: boolean
+): TxStatusValue {
+  if (isRemoving) return 'pending';
+  if (isSuccess) return 'success';
+  if (isError) return 'error';
+  return 'idle';
+}
+
+interface ButtonTextParams {
+  isRemoving: boolean;
+  isConnected: boolean;
+  isValidAmount: boolean;
+  hasInsufficientBalance: boolean;
+  isSuccess: boolean;
+}
+
+function getButtonText(params: ButtonTextParams): string {
+  const { isRemoving, isConnected, isValidAmount, hasInsufficientBalance, isSuccess } = params;
+  if (isRemoving) return 'Removing Liquidity...';
+  if (!isConnected) return 'Connect Wallet';
+  if (!isValidAmount) return 'Enter Amount';
+  if (hasInsufficientBalance) return 'Insufficient LP Balance';
+  if (isSuccess) return 'Liquidity Removed!';
+  return 'Remove Liquidity';
+}
+
+interface ExpectedOutputsParams {
+  lpAmount: bigint;
+  syReserve: bigint;
+  ptReserve: bigint;
+  totalLpSupply: bigint;
+}
+
+function calculateExpectedOutputs(params: ExpectedOutputsParams): {
+  expectedSyOut: bigint;
+  expectedPtOut: bigint;
+} {
+  const { lpAmount, syReserve, ptReserve, totalLpSupply } = params;
+  if (lpAmount === BigInt(0) || totalLpSupply === BigInt(0)) {
+    return { expectedSyOut: BigInt(0), expectedPtOut: BigInt(0) };
+  }
+  return {
+    expectedSyOut: (lpAmount * syReserve) / totalLpSupply,
+    expectedPtOut: (lpAmount * ptReserve) / totalLpSupply,
+  };
+}
+
+// ----- Sub-components -----
+
+interface GasEstimateRowProps {
+  isValidAmount: boolean;
+  formattedFee: string | null;
+  formattedFeeUsd: string | null;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+function GasEstimateRow({
+  isValidAmount,
+  formattedFee,
+  formattedFeeUsd,
+  isLoading,
+  error,
+}: GasEstimateRowProps): ReactNode {
+  if (!isValidAmount) return null;
+  return (
+    <FormRow
+      label="Estimated Gas"
+      value={
+        <GasEstimate
+          formattedFee={formattedFee ?? ''}
+          formattedFeeUsd={formattedFeeUsd ?? undefined}
+          isLoading={isLoading}
+          error={error}
+        />
+      }
+    />
+  );
+}
+
+interface TransactionProgressProps {
+  txStatus: TxStatusValue;
+  steps: Step[];
+  currentStep: number;
+  txHash: string | null;
+  error: Error | null;
+  gasEstimate: {
+    formattedFee: string | null;
+    formattedFeeUsd: string | null;
+    isLoading: boolean;
+    error: Error | null;
+  };
+}
+
+function TransactionProgress({
+  txStatus,
+  steps,
+  currentStep,
+  txHash,
+  error,
+  gasEstimate,
+}: TransactionProgressProps): ReactNode {
+  if (txStatus === 'idle') return null;
+
+  const normalizedGasEstimate: {
+    formattedFee: string;
+    formattedFeeUsd?: string;
+    isLoading: boolean;
+    error: Error | null;
+  } = {
+    formattedFee: gasEstimate.formattedFee ?? '',
+    isLoading: gasEstimate.isLoading,
+    error: gasEstimate.error,
+  };
+  if (gasEstimate.formattedFeeUsd !== null) {
+    normalizedGasEstimate.formattedFeeUsd = gasEstimate.formattedFeeUsd;
+  }
+
+  return (
+    <div className="space-y-4">
+      <StepProgress steps={steps} currentStep={currentStep} />
+      <TxStatus
+        status={txStatus}
+        txHash={txHash}
+        error={error}
+        gasEstimate={normalizedGasEstimate}
+      />
+    </div>
+  );
+}
+
+interface OutputPreviewRowProps {
+  label: string;
+  value: bigint;
+  minValue: bigint;
+  isValid: boolean;
+}
+
+function OutputPreviewRow({ label, value, minValue, isValid }: OutputPreviewRowProps): ReactNode {
+  const valueClass = isValid
+    ? 'text-foreground text-lg font-semibold'
+    : 'text-muted-foreground text-lg font-semibold';
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className={valueClass}>
+        {isValid ? formatWad(value, 6) : '0.000000'} {label}
+      </span>
+      <span className="text-muted-foreground text-sm">
+        min: {isValid ? formatWad(minValue, 6) : '-'}
+      </span>
+    </div>
+  );
+}
+
+// ----- Main Component -----
+
 export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormProps): ReactNode {
   const { isConnected, address } = useAccount();
   const { network } = useStarknet();
@@ -65,28 +238,19 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   const { data: lpBalance } = useTokenBalance(market.address);
 
   // Parse LP amount
-  const parsedLpAmount = useMemo(() => {
-    if (!lpAmount || lpAmount === '') return BigInt(0);
-    try {
-      return parseWad(lpAmount);
-    } catch {
-      return BigInt(0);
-    }
-  }, [lpAmount]);
+  const parsedLpAmount = useMemo(() => parseAmountSafe(lpAmount), [lpAmount]);
 
   // Calculate expected outputs
-  const { expectedSyOut, expectedPtOut } = useMemo(() => {
-    if (parsedLpAmount === BigInt(0) || market.state.totalLpSupply === BigInt(0)) {
-      return { expectedSyOut: BigInt(0), expectedPtOut: BigInt(0) };
-    }
-
-    const { syReserve, ptReserve, totalLpSupply } = market.state;
-
-    const expectedSy = (parsedLpAmount * syReserve) / totalLpSupply;
-    const expectedPt = (parsedLpAmount * ptReserve) / totalLpSupply;
-
-    return { expectedSyOut: expectedSy, expectedPtOut: expectedPt };
-  }, [parsedLpAmount, market.state]);
+  const { expectedSyOut, expectedPtOut } = useMemo(
+    () =>
+      calculateExpectedOutputs({
+        lpAmount: parsedLpAmount,
+        syReserve: market.state.syReserve,
+        ptReserve: market.state.ptReserve,
+        totalLpSupply: market.state.totalLpSupply,
+      }),
+    [parsedLpAmount, market.state]
+  );
 
   // Calculate minimum outputs with slippage
   const { minSyOut, minPtOut } = useMemo(() => {
@@ -151,12 +315,10 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     isConnected && isValidAmount && !hasInsufficientBalance && !isRemoving && !isSuccess;
 
   // Determine transaction status
-  const txStatus = useMemo(() => {
-    if (isRemoving) return 'pending' as const;
-    if (isSuccess) return 'success' as const;
-    if (isError) return 'error' as const;
-    return 'idle' as const;
-  }, [isRemoving, isSuccess, isError]);
+  const txStatus = useMemo(
+    () => determineTxStatus(isRemoving, isSuccess, isError),
+    [isRemoving, isSuccess, isError]
+  );
 
   // Transaction steps for StepProgress
   const transactionSteps: Step[] = useMemo(() => {
@@ -241,34 +403,18 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
         <CardContent className="p-4">
           <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span
-                className={
-                  isValidAmount
-                    ? 'text-foreground text-lg font-semibold'
-                    : 'text-muted-foreground text-lg font-semibold'
-                }
-              >
-                {isValidAmount ? formatWad(expectedSyOut, 6) : '0.000000'} SY
-              </span>
-              <span className="text-muted-foreground text-sm">
-                min: {isValidAmount ? formatWad(minSyOut, 6) : '-'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span
-                className={
-                  isValidAmount
-                    ? 'text-foreground text-lg font-semibold'
-                    : 'text-muted-foreground text-lg font-semibold'
-                }
-              >
-                {isValidAmount ? formatWad(expectedPtOut, 6) : '0.000000'} PT
-              </span>
-              <span className="text-muted-foreground text-sm">
-                min: {isValidAmount ? formatWad(minPtOut, 6) : '-'}
-              </span>
-            </div>
+            <OutputPreviewRow
+              label="SY"
+              value={expectedSyOut}
+              minValue={minSyOut}
+              isValid={isValidAmount}
+            />
+            <OutputPreviewRow
+              label="PT"
+              value={expectedPtOut}
+              minValue={minPtOut}
+              isValid={isValidAmount}
+            />
           </div>
         </CardContent>
       </Card>
@@ -286,19 +432,13 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
             value={`${formatWadCompact(market.state.syReserve)} SY / ${formatWadCompact(market.state.ptReserve)} PT`}
           />
           <FormRow label="Slippage Tolerance" value={`${(slippageBps / 100).toString()}%`} />
-          {isValidAmount && (
-            <FormRow
-              label="Estimated Gas"
-              value={
-                <GasEstimate
-                  formattedFee={formattedFee}
-                  formattedFeeUsd={formattedFeeUsd}
-                  isLoading={isEstimatingFee}
-                  error={feeError}
-                />
-              }
-            />
-          )}
+          <GasEstimateRow
+            isValidAmount={isValidAmount}
+            formattedFee={formattedFee}
+            formattedFeeUsd={formattedFeeUsd}
+            isLoading={isEstimatingFee}
+            error={feeError}
+          />
         </div>
       </FormInfoSection>
 
@@ -323,22 +463,19 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
       </div>
 
       {/* Transaction Progress */}
-      {txStatus !== 'idle' && (
-        <div className="space-y-4">
-          <StepProgress steps={transactionSteps} currentStep={currentStep} />
-          <TxStatus
-            status={txStatus}
-            txHash={transactionHash ?? null}
-            error={error}
-            gasEstimate={{
-              formattedFee,
-              formattedFeeUsd,
-              isLoading: isEstimatingFee,
-              error: feeError,
-            }}
-          />
-        </div>
-      )}
+      <TransactionProgress
+        txStatus={txStatus}
+        steps={transactionSteps}
+        currentStep={currentStep}
+        txHash={transactionHash ?? null}
+        error={error}
+        gasEstimate={{
+          formattedFee,
+          formattedFeeUsd,
+          isLoading: isEstimatingFee,
+          error: feeError,
+        }}
+      />
 
       {/* Actions */}
       <FormActions>
@@ -347,17 +484,13 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
           disabled={!canRemoveLiquidity || isRemoving}
           variant="form-primary"
         >
-          {isRemoving
-            ? 'Removing Liquidity...'
-            : !isConnected
-              ? 'Connect Wallet'
-              : !isValidAmount
-                ? 'Enter Amount'
-                : hasInsufficientBalance
-                  ? 'Insufficient LP Balance'
-                  : isSuccess
-                    ? 'Liquidity Removed!'
-                    : 'Remove Liquidity'}
+          {getButtonText({
+            isRemoving,
+            isConnected,
+            isValidAmount,
+            hasInsufficientBalance,
+            isSuccess,
+          })}
         </Button>
       </FormActions>
     </FormLayout>

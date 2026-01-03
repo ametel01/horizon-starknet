@@ -207,6 +207,40 @@ export function extractContractError(error: unknown): string | null {
   return null;
 }
 
+// ============================================================================
+// Error Prefix Configuration (used by multiple functions below)
+// ============================================================================
+
+/**
+ * Error prefix configuration - maps prefix to its message maps.
+ * Data-driven approach reduces cognitive complexity across error functions.
+ */
+interface ErrorPrefixConfig {
+  prefix: string;
+  messageMap: Record<string, string>;
+  simpleMap: Record<string, string>;
+}
+
+const ERROR_PREFIX_CONFIGS: ErrorPrefixConfig[] = [
+  { prefix: 'HZN:', messageMap: CONTRACT_ERROR_MESSAGES, simpleMap: CONTRACT_ERROR_SIMPLE },
+  { prefix: 'ERC20:', messageMap: ERC20_ERROR_MESSAGES, simpleMap: ERC20_ERROR_SIMPLE },
+  { prefix: 'Pausable:', messageMap: CONTRACT_ERROR_MESSAGES, simpleMap: CONTRACT_ERROR_SIMPLE },
+];
+
+/**
+ * Look up a contract error in the appropriate message map based on prefix.
+ * Returns the mapped message or null if no mapping exists.
+ */
+function lookupContractErrorMessage(contractError: string, isSimple: boolean): string | null {
+  for (const config of ERROR_PREFIX_CONFIGS) {
+    if (contractError.startsWith(config.prefix)) {
+      const messageMap = isSimple ? config.simpleMap : config.messageMap;
+      return messageMap[contractError] ?? null;
+    }
+  }
+  return null;
+}
+
 /**
  * Parse a contract error and return a user-friendly message
  * @param error - The error to parse (can be Error, string, or unknown object)
@@ -217,32 +251,8 @@ export function parseContractError(error: unknown, isSimple = false): string {
   const contractError = extractContractError(error);
 
   if (contractError) {
-    // Check HZN: errors first
-    if (contractError.startsWith('HZN:')) {
-      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) {
-        return message;
-      }
-    }
-
-    // Check ERC20: errors (OpenZeppelin)
-    if (contractError.startsWith('ERC20:')) {
-      const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) {
-        return message;
-      }
-    }
-
-    // Check Pausable: errors (OpenZeppelin)
-    if (contractError.startsWith('Pausable:')) {
-      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) {
-        return message;
-      }
-    }
+    const mappedMessage = lookupContractErrorMessage(contractError, isSimple);
+    if (mappedMessage) return mappedMessage;
 
     // If we found an error but don't have a mapping, format it nicely
     return isSimple
@@ -370,6 +380,28 @@ const errorMessageMap: Record<string, string> = {
 };
 
 /**
+ * Match an error string against a map using partial case-insensitive matching.
+ * Returns the mapped message or null if no match found.
+ */
+function matchPartialError(errorString: string, messageMap: Record<string, string>): string | null {
+  // Check for exact matches first
+  const exactMatch = messageMap[errorString];
+  if (exactMatch !== undefined) {
+    return exactMatch;
+  }
+
+  // Check for partial matches (case-insensitive)
+  const lowerError = errorString.toLowerCase();
+  for (const [key, value] of Object.entries(messageMap)) {
+    if (lowerError.includes(key.toLowerCase())) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get a user-friendly error message for simple mode
  */
 export function getSimpleErrorMessage(error: string | Error | null | undefined): string {
@@ -378,39 +410,19 @@ export function getSimpleErrorMessage(error: string | Error | null | undefined):
   // First, check for contract errors (HZN:, ERC20:, and Pausable:)
   const contractError = extractContractError(error);
   if (contractError) {
-    if (contractError.startsWith('HZN:')) {
-      const message = CONTRACT_ERROR_SIMPLE[contractError];
-      if (message) return message;
-    }
-    if (contractError.startsWith('ERC20:')) {
-      const message = ERC20_ERROR_SIMPLE[contractError];
-      if (message) return message;
-    }
-    if (contractError.startsWith('Pausable:')) {
-      const message = CONTRACT_ERROR_SIMPLE[contractError];
-      if (message) return message;
-    }
+    const mappedMessage = lookupContractErrorMessage(contractError, true);
+    if (mappedMessage) return mappedMessage;
   }
 
   const errorString = error instanceof Error ? error.message : error;
-
-  // Check for exact matches first
-  const exactMatch = errorMessageMap[errorString];
-  if (exactMatch !== undefined) {
-    return exactMatch;
-  }
-
-  // Check for partial matches (case-insensitive)
-  const lowerError = errorString.toLowerCase();
-  for (const [key, value] of Object.entries(errorMessageMap)) {
-    if (lowerError.includes(key.toLowerCase())) {
-      return value;
-    }
-  }
-
-  // Generic fallback
-  return 'Something went wrong. Please try again.';
+  return (
+    matchPartialError(errorString, errorMessageMap) ?? 'Something went wrong. Please try again.'
+  );
 }
+
+// ============================================================================
+// Mode-Aware Error Message
+// ============================================================================
 
 /**
  * Get the appropriate error message based on mode
@@ -419,27 +431,16 @@ export function getModeAwareErrorMessage(
   error: string | Error | null | undefined,
   isSimple: boolean
 ): string {
-  if (error === null || error === undefined)
+  if (error === null || error === undefined) {
     return isSimple ? 'An error occurred' : 'Unknown error';
+  }
 
-  // First, check for contract errors (HZN: and ERC20:)
+  // First, check for contract errors (HZN:, ERC20:, Pausable:)
   const contractError = extractContractError(error);
   if (contractError) {
-    if (contractError.startsWith('HZN:')) {
-      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) return message;
-    }
-    if (contractError.startsWith('ERC20:')) {
-      const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) return message;
-    }
-    if (contractError.startsWith('Pausable:')) {
-      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) return message;
-    }
+    const mappedMessage = lookupContractErrorMessage(contractError, isSimple);
+    if (mappedMessage) return mappedMessage;
+
     // If no mapping, show the raw error in advanced mode
     if (!isSimple) {
       return `Contract error: ${contractError}`;
@@ -447,13 +448,7 @@ export function getModeAwareErrorMessage(
   }
 
   const errorString = error instanceof Error ? error.message : error;
-
-  if (isSimple) {
-    return getSimpleErrorMessage(errorString);
-  }
-
-  // In advanced mode, return the original technical error
-  return errorString;
+  return isSimple ? getSimpleErrorMessage(errorString) : errorString;
 }
 
 /**
@@ -571,6 +566,39 @@ const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> 
 };
 
 /**
+ * Keyword-based help text for simple mode.
+ * Each entry: [keywords to match, help text]
+ */
+const SIMPLE_HELP_PATTERNS: [string[], string][] = [
+  [['insufficient', 'not enough'], 'You need more tokens to complete this action.'],
+  [['slippage', 'price'], 'Market conditions changed. Please try again.'],
+  [['connect', 'wallet'], 'Connect your wallet using the button in the top right.'],
+  [['reject', 'cancel'], 'You cancelled the transaction in your wallet.'],
+];
+
+/**
+ * Keyword-based help text for advanced mode.
+ * Each entry: [keywords to match, help text]
+ */
+const ADVANCED_HELP_PATTERNS: [string[], string][] = [
+  [['insufficient sy'], 'Deposit more underlying tokens to increase your SY balance.'],
+  [['slippage'], 'Increase slippage tolerance or reduce trade size.'],
+  [['price impact'], 'Consider splitting into smaller trades to reduce impact.'],
+];
+
+/**
+ * Match an error string against keyword patterns and return help text.
+ */
+function matchHelpPattern(lowerError: string, patterns: [string[], string][]): string | null {
+  for (const [keywords, helpText] of patterns) {
+    if (keywords.some((keyword) => lowerError.includes(keyword))) {
+      return helpText;
+    }
+  }
+  return null;
+}
+
+/**
  * Get help text based on error type and mode
  */
 export function getErrorHelpText(
@@ -590,33 +618,7 @@ export function getErrorHelpText(
 
   const errorString = error instanceof Error ? error.message : error;
   const lowerError = errorString.toLowerCase();
+  const patterns = isSimple ? SIMPLE_HELP_PATTERNS : ADVANCED_HELP_PATTERNS;
 
-  if (isSimple) {
-    // Provide simple help text
-    if (lowerError.includes('insufficient') || lowerError.includes('not enough')) {
-      return 'You need more tokens to complete this action.';
-    }
-    if (lowerError.includes('slippage') || lowerError.includes('price')) {
-      return 'Market conditions changed. Please try again.';
-    }
-    if (lowerError.includes('connect') || lowerError.includes('wallet')) {
-      return 'Connect your wallet using the button in the top right.';
-    }
-    if (lowerError.includes('reject') || lowerError.includes('cancel')) {
-      return 'You cancelled the transaction in your wallet.';
-    }
-  } else {
-    // Provide technical help text
-    if (lowerError.includes('insufficient sy')) {
-      return 'Deposit more underlying tokens to increase your SY balance.';
-    }
-    if (lowerError.includes('slippage')) {
-      return 'Increase slippage tolerance or reduce trade size.';
-    }
-    if (lowerError.includes('price impact')) {
-      return 'Consider splitting into smaller trades to reduce impact.';
-    }
-  }
-
-  return null;
+  return matchHelpPattern(lowerError, patterns);
 }

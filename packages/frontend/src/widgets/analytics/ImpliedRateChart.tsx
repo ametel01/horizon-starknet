@@ -63,6 +63,73 @@ interface ChartDataPoint {
 }
 
 /**
+ * Rate subtitle with current rate and 24h change - extracted to reduce complexity.
+ */
+interface RateSubtitleProps {
+  currentRate: number;
+  rateChange24h: number;
+}
+
+function RateSubtitle({ currentRate, rateChange24h }: RateSubtitleProps): ReactNode {
+  return (
+    <p className="text-muted-foreground text-sm">
+      Current: <span className="text-primary font-medium">{formatPercent(currentRate)}</span>
+      {rateChange24h !== 0 && (
+        <span
+          className={cn('ml-2 text-xs', rateChange24h >= 0 ? 'text-primary' : 'text-destructive')}
+        >
+          {rateChange24h >= 0 ? '+' : ''}
+          {formatPercent(rateChange24h)} (24h)
+        </span>
+      )}
+    </p>
+  );
+}
+
+/**
+ * Rate statistics summary - extracted to reduce main component complexity.
+ */
+interface RateStatsSummaryProps {
+  minRate: number;
+  maxRate: number;
+  avgRate: number;
+  rateChange24h: number;
+}
+
+function RateStatsSummary({
+  minRate,
+  maxRate,
+  avgRate,
+  rateChange24h,
+}: RateStatsSummaryProps): ReactNode {
+  return (
+    <div className="mt-4 grid grid-cols-4 gap-4 border-t pt-4 text-sm">
+      <div>
+        <div className="text-muted-foreground text-xs">Min</div>
+        <div className="text-foreground font-medium">{formatPercent(minRate)}</div>
+      </div>
+      <div>
+        <div className="text-muted-foreground text-xs">Max</div>
+        <div className="text-foreground font-medium">{formatPercent(maxRate)}</div>
+      </div>
+      <div>
+        <div className="text-muted-foreground text-xs">Average</div>
+        <div className="text-foreground font-medium">{formatPercent(avgRate)}</div>
+      </div>
+      <div>
+        <div className="text-muted-foreground text-xs">24h Change</div>
+        <div
+          className={cn('font-medium', rateChange24h >= 0 ? 'text-primary' : 'text-destructive')}
+        >
+          {rateChange24h >= 0 ? '+' : ''}
+          {formatPercent(rateChange24h)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Line/OHLC chart showing implied rate history for a market.
  * Supports toggle between line view and candlestick view.
  */
@@ -151,23 +218,10 @@ export function ImpliedRateChart({
         <div>
           <CardTitle>Implied Rate (APY)</CardTitle>
           {ratesData && (
-            <p className="text-muted-foreground text-sm">
-              Current:{' '}
-              <span className="text-primary font-medium">
-                {formatPercent(ratesData.currentRate)}
-              </span>
-              {ratesData.rateChange24h !== 0 && (
-                <span
-                  className={cn(
-                    'ml-2 text-xs',
-                    ratesData.rateChange24h >= 0 ? 'text-primary' : 'text-destructive'
-                  )}
-                >
-                  {ratesData.rateChange24h >= 0 ? '+' : ''}
-                  {formatPercent(ratesData.rateChange24h)} (24h)
-                </span>
-              )}
-            </p>
+            <RateSubtitle
+              currentRate={ratesData.currentRate}
+              rateChange24h={ratesData.rateChange24h}
+            />
           )}
         </div>
 
@@ -258,32 +312,12 @@ export function ImpliedRateChart({
 
         {/* Stats summary */}
         {ratesData && (
-          <div className="mt-4 grid grid-cols-4 gap-4 border-t pt-4 text-sm">
-            <div>
-              <div className="text-muted-foreground text-xs">Min</div>
-              <div className="text-foreground font-medium">{formatPercent(ratesData.minRate)}</div>
-            </div>
-            <div>
-              <div className="text-muted-foreground text-xs">Max</div>
-              <div className="text-foreground font-medium">{formatPercent(ratesData.maxRate)}</div>
-            </div>
-            <div>
-              <div className="text-muted-foreground text-xs">Average</div>
-              <div className="text-foreground font-medium">{formatPercent(ratesData.avgRate)}</div>
-            </div>
-            <div>
-              <div className="text-muted-foreground text-xs">24h Change</div>
-              <div
-                className={cn(
-                  'font-medium',
-                  ratesData.rateChange24h >= 0 ? 'text-primary' : 'text-destructive'
-                )}
-              >
-                {ratesData.rateChange24h >= 0 ? '+' : ''}
-                {formatPercent(ratesData.rateChange24h)}
-              </div>
-            </div>
-          </div>
+          <RateStatsSummary
+            minRate={ratesData.minRate}
+            maxRate={ratesData.maxRate}
+            avgRate={ratesData.avgRate}
+            rateChange24h={ratesData.rateChange24h}
+          />
         )}
       </CardContent>
     </Card>
