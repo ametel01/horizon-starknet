@@ -278,7 +278,7 @@ describe("marketFactoryOverrideFeeSetSchema", () => {
   it("validates event with sufficient keys and data", () => {
     const event = {
       address: FACTORY_ADDR,
-      keys: [SELECTOR, "0xrouter123", "0xmarket456"],
+      keys: [SELECTOR, "0xabc111", "0xdef222"],
       data: ["0x1", "0x0"], // ln_fee_rate_root as u256 (low, high)
       transactionHash: TX_HASH,
     };
@@ -290,7 +290,7 @@ describe("marketFactoryOverrideFeeSetSchema", () => {
   it("rejects event with insufficient keys", () => {
     const event = {
       address: FACTORY_ADDR,
-      keys: [SELECTOR, "0xrouter123"], // Missing market
+      keys: [SELECTOR, "0xabc111"], // Missing market
       data: ["0x1", "0x0"],
       transactionHash: TX_HASH,
     };
@@ -302,7 +302,7 @@ describe("marketFactoryOverrideFeeSetSchema", () => {
   it("rejects event with insufficient data", () => {
     const event = {
       address: FACTORY_ADDR,
-      keys: [SELECTOR, "0xrouter123", "0xmarket456"],
+      keys: [SELECTOR, "0xabc111", "0xdef222"],
       data: ["0x1"], // Only 1, need 2 for u256
       transactionHash: TX_HASH,
     };
@@ -554,7 +554,7 @@ describe("marketReserveFeeTransferredSchema", () => {
   it("validates event with sufficient keys and data", () => {
     const event = {
       address: MARKET_ADDR,
-      keys: [SELECTOR, "0xmarket123", "0xtreasury456", "0xcaller789"],
+      keys: [SELECTOR, "0xaaa111", "0xbbb222", "0xccc333"],
       data: ["0x1", "0x0", "0x12345678", "0x12345678"], // amount(u256), expiry, timestamp
       transactionHash: TX_HASH,
     };
@@ -566,7 +566,7 @@ describe("marketReserveFeeTransferredSchema", () => {
   it("rejects event with insufficient keys", () => {
     const event = {
       address: MARKET_ADDR,
-      keys: [SELECTOR, "0xmarket123", "0xtreasury456"], // Missing caller
+      keys: [SELECTOR, "0xaaa111", "0xbbb222"], // Missing caller
       data: ["0x1", "0x0", "0x12345678", "0x12345678"],
       transactionHash: TX_HASH,
     };
@@ -578,7 +578,7 @@ describe("marketReserveFeeTransferredSchema", () => {
   it("rejects event with insufficient data", () => {
     const event = {
       address: MARKET_ADDR,
-      keys: [SELECTOR, "0xmarket123", "0xtreasury456", "0xcaller789"],
+      keys: [SELECTOR, "0xaaa111", "0xbbb222", "0xccc333"],
       data: ["0x1", "0x0", "0x12345678"], // Only 3, need 4
       transactionHash: TX_HASH,
     };
