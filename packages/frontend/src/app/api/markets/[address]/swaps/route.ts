@@ -154,7 +154,7 @@ export async function GET(
         syOut: row.sy_out,
         // Fee breakdown - use new fields if available, fall back to legacy fee
         fee: row.total_fee ?? row.fee ?? undefined,
-        totalFee: row.total_fee ?? undefined,
+        totalFee: row.total_fee ?? row.fee ?? undefined,
         lpFee: row.lp_fee ?? undefined,
         reserveFee: row.reserve_fee ?? undefined,
         impliedRateBefore: row.implied_rate_before,

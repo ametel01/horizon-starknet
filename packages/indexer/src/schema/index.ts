@@ -1868,6 +1868,7 @@ export const marketCurrentState = pgView("market_current_state", {
   underlying: text("underlying"),
   underlying_symbol: text("underlying_symbol"),
   ln_fee_rate_root: numeric("ln_fee_rate_root", { precision: 78, scale: 0 }),
+  reserve_fee_percent: integer("reserve_fee_percent"),
   initial_exchange_rate: numeric("initial_exchange_rate", {
     precision: 78,
     scale: 0,
