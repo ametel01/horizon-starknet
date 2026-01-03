@@ -25,6 +25,8 @@ Horizon Protocol implements **~65% of Pendle V2's core functionality**, focusing
 | **Oracle System** | 35% | Market TWAP (CRITICAL), PT/LP price oracles, Chainlink/Pragma wrapper |
 | **Governance/Rewards** | 0% | Complete absence |
 
+**Oracle/TWAP references (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol). Horizon: [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo), [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo).
+
 ---
 
 ## Table of Contents
@@ -48,7 +50,7 @@ Horizon Protocol implements **~65% of Pendle V2's core functionality**, focusing
 
 **Implementation Status: 95%** ✅ COMPLETE (Core features + slippage, rewards, multi-token all implemented)
 
-**Reference:** Pendle's `SYBase.sol` from [Pendle-SY-Public](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol)
+**Reference (Pendle V2 code):** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
@@ -412,107 +414,36 @@ treasury. Standalone markets (no factory/treasury) still lock it to a dead addre
 
 ### 2.2 TWAP Oracle (Critical Gap)
 
-**Implementation Status: 0%**
+**Implementation Status: 0% (Market TWAP)**
 
-| Feature | Pendle V2 | Horizon | Status |
-|---------|-----------|---------|--------|
-| Observation ring buffer | 65,535 max slots (uint16), grow via `increaseObservationsCardinalityNext` | ❌ None | 🔴 CRITICAL |
-| `lnImpliedRateCumulative` | Per-observation cumulative (`uint216`) | ❌ None | 🔴 CRITICAL |
-| `observe(secondsAgos[])` | Market-level oracle (`uint216[]`) | ❌ None | 🔴 CRITICAL |
-| PT/YT TWAP helpers | `PendlePYOracleLib` / `PendlePYLpOracle` | ❌ None | 🔴 CRITICAL |
-| LP TWAP helpers | `PendleLpOracleLib` / `PendlePYLpOracle` | ❌ None | 🔴 CRITICAL |
-| Chainlink adapter | `PendleChainlinkOracleFactory` (+ `PendleChainlinkOracle`) | ❌ None | 🔴 HIGH |
+| Feature | Pendle V2 (reference) | Horizon (contracts/src) | Status |
+|---------|------------------------|-------------------------|--------|
+| Observation ring buffer | `OracleLib.Observation[65_535]` + `MarketStorage.observationIndex/Cardinality` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | No observation storage in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) | 🔴 CRITICAL |
+| `lnImpliedRateCumulative` history | `Observation.lnImpliedRateCumulative` (`uint216`) updated by `OracleLib.transform` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol)) | Only `last_ln_implied_rate` spot value (`u256`) in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) | 🔴 CRITICAL |
+| `observe(uint32[] secondsAgos)` | Market-level TWAP returns `uint216[]` via `observations.observe` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ❌ Not implemented | 🔴 CRITICAL |
+| `increaseObservationsCardinalityNext(uint16)` | Buffer growth via `observations.grow` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ❌ Not implemented | 🔴 CRITICAL |
+| PT/YT TWAP helpers | `PendlePYOracleLib` + `PendlePYLpOracle` (`getPtToSyRate`, `getYtToSyRate`) ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)) | ❌ None | 🔴 CRITICAL |
+| LP TWAP helpers | `PendleLpOracleLib` + `PendlePYLpOracle` (`getLpToSyRate`) ([PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)) | ❌ None | 🔴 CRITICAL |
+| Chainlink adapter | `PendleChainlinkOracleFactory`, `PendleChainlinkOracle`, `PendleChainlinkOracleWithQuote` ([PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)) | ❌ None | 🔴 HIGH |
 
-Pendle splits TWAP into **market-level observations** (`observe`, `increaseObservationsCardinalityNext`) and
-**oracle helpers** (`PendlePYOracleLib`, `PendleLpOracleLib`, `PendlePYLpOracle`) that derive PT/YT/LP rates from
-`lnImpliedRateCumulative`.
+Pendle's TWAP stack is split across:
+- Market-level observation buffer in [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) using [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) (writes on `_writeState`, `observe`, `increaseObservationsCardinalityNext`).
+- PT/YT/LP TWAP helpers in [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol) and [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), with a pre-deployed wrapper in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol).
+- Optional Chainlink adapters in [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol) + [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol).
+
+Horizon currently only exposes a yield index oracle for SY (Pragma TWAP) in [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo). There is no market observation buffer, no `observe` endpoint, and no PT/YT/LP TWAP helper layer in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo).
 
 **Impact:**
-- **Cannot integrate with lending protocols** (Aave, Compound forks require TWAP)
-- **No manipulation resistance** for PT/LP prices
-- **DeFi composability blocked** until implemented
+- **PT/YT/LP prices are spot-only**; no manipulation-resistant TWAP for lending collateral or price-sensitive integrations.
+- **Chainlink-style adapters cannot be built** without a market TWAP source.
+- **DeFi composability blocked** until market TWAP + helper oracles exist.
 
-**Recommended Implementation:**
-```cairo
-// Market contract additions (Pendle-style OracleLib)
-struct Observation {
-    block_timestamp: u64,
-    ln_implied_rate_cumulative: u256,
-    initialized: bool,
-}
-
-observations: LegacyMap<u32, Observation>  // ring buffer (up to 65_535)
-observations_index: u16
-observations_cardinality: u16
-observations_cardinality_next: u16
-
-fn increase_observations_cardinality_next(cardinality_next: u16)
-fn observe(seconds_agos: Span<u32>) -> Span<u256>  // returns lnImpliedRateCumulative
-fn write_observation(block_timestamp: u64, ln_implied_rate: u256)
-
-// Oracle helpers (PendlePYOracleLib / PendleLpOracleLib analogs)
-fn get_pt_to_sy_rate(market: ContractAddress, duration: u32) -> u256
-fn get_yt_to_sy_rate(market: ContractAddress, duration: u32) -> u256
-fn get_lp_to_sy_rate(market: ContractAddress, duration: u32) -> u256
-```
-
-**Draft Skeleton (Cairo, OracleLib-style):**
-```cairo
-// Minimal structure only; mirrors Pendle/Uniswap V3 style APIs.
-struct Observation {
-    block_timestamp: u64,
-    ln_implied_rate_cumulative: u256,
-    initialized: bool,
-}
-
-fn oracle_initialize(time: u64) -> (u16, u16) {
-    // observations[0] = Observation { time, 0, true }
-    (1, 1)
-}
-
-fn oracle_transform(last: Observation, time: u64, ln_implied_rate: u256) -> Observation {
-    // last.cumulative + ln_implied_rate * (time - last.time)
-    Observation { block_timestamp: time, ln_implied_rate_cumulative: 0, initialized: true }
-}
-
-fn oracle_write(
-    index: u16,
-    time: u64,
-    ln_implied_rate: u256,
-    cardinality: u16,
-    cardinality_next: u16,
-) -> (u16, u16) {
-    // if same block, no-op; else write new observation and update ring index
-    (index, cardinality)
-}
-
-fn oracle_grow(current: u16, next: u16) -> u16 {
-    // pre-fill slots to avoid storage spikes
-    current
-}
-
-fn oracle_observe_single(
-    time: u64,
-    seconds_ago: u32,
-    ln_implied_rate: u256,
-    index: u16,
-    cardinality: u16,
-) -> u256 {
-    // binary search around target timestamp and interpolate cumulative
-    0
-}
-
-fn oracle_observe(
-    time: u64,
-    seconds_agos: Span<u32>,
-    ln_implied_rate: u256,
-    index: u16,
-    cardinality: u16,
-) -> Span<u256> {
-    // map over seconds_agos -> observe_single
-    Span::<u256> { span: array![] }
-}
-```
+**Recommended Implementation (Pendle parity):**
+1. Add `OracleLib`-style observation storage and ring-buffer helpers to [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) (mirror [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) + [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)).
+2. Write observations on every state update that changes `last_ln_implied_rate` (mirror `_writeState` in [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)).
+3. Implement `observe(secondsAgos)` and `increase_observations_cardinality_next` entrypoints with `uint32`-style timestamps and cumulative ln-implied-rate history.
+4. Add PT/YT/LP TWAP helper libraries and a wrapper contract (mirror [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)).
+5. Optional: add Chainlink adapters (mirror [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)).
 
 ---
 
@@ -566,7 +497,7 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
 **Implementation Status: 60%** (Core liquidity/swap works; missing TWAP oracle, rewards, flash callbacks)
 
-**Reference:** Pendle's `PendleMarketV6.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)
+**Reference (Pendle V2 code):** [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) (market contract) and [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) (TWAP observations)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
@@ -579,9 +510,9 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 | Emergency pause | ❌ No pause | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
 | Admin scalar adjustment | ❌ Immutable | ✅ set_scalar_root() | ✅ **Horizon exceeds** |
 | Rich swap events | Basic | Detailed (rate before/after, exchange rate) | ✅ **Horizon exceeds** |
-| TWAP observation buffer | 65,535 slots | ❌ None | 🔴 CRITICAL |
-| observe(secondsAgos[]) | ✅ | ❌ None | 🔴 CRITICAL |
-| increaseObservationsCardinalityNext | ✅ | ❌ None | 🔴 CRITICAL |
+| TWAP observation buffer | `OracleLib.Observation[65_535]` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ❌ None in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) | 🔴 CRITICAL |
+| observe(secondsAgos[]) | `observations.observe` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ❌ Not implemented | 🔴 CRITICAL |
+| increaseObservationsCardinalityNext | `observations.grow` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ❌ Not implemented | 🔴 CRITICAL |
 | RewardManager integration | Via PendleGauge parent | ❌ None | 🔴 HIGH |
 | redeemRewards(user) | ✅ | ❌ None | 🔴 HIGH |
 | getRewardTokens() | ✅ | ❌ None | 🔴 HIGH |
@@ -598,6 +529,8 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 ---
 
 **Gap Detail - TWAP Observation Buffer (CRITICAL):**
+
+**Reference (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)
 
 Pendle's Market contract has a built-in Uniswap V3-style TWAP oracle:
 ```solidity
@@ -621,7 +554,9 @@ function observe(uint32[] memory secondsAgos)
 function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
 ```
 
-Horizon has no TWAP infrastructure:
+See `OracleLib.transform` for cumulative updates and `PendleMarketV6.observe()` / `increaseObservationsCardinalityNext()` for reads and buffer growth.
+
+Horizon has no TWAP infrastructure (see [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo)):
 ```cairo
 // Horizon - no observations
 struct Storage {
@@ -1464,10 +1399,12 @@ fn set_market_class_hash(ref self: ContractState, new_class_hash: ClassHash) {
 
 Pendle's oracle infrastructure serves **two distinct purposes** that Horizon partially implements:
 
+**Reference (Pendle V2 code):** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol), [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)
+
 | Oracle Type | Purpose | Pendle V2 | Horizon | Status |
 |-------------|---------|-----------|---------|--------|
-| **Yield Index Oracle** | SY exchange rate (asset → shares) | Various adapters | `PragmaIndexOracle` | ✅ 75% |
-| **Market TWAP Oracle** | PT/YT/LP token pricing | Built into Market | ❌ None | 🔴 CRITICAL 0% |
+| **Yield Index Oracle** | SY exchange rate (asset → shares) | `SYBase` + `IIndexOracle` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `PragmaIndexOracle` ([contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo)) | ✅ 75% |
+| **Market TWAP Oracle** | PT/YT/LP token pricing | Market + oracle libs ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)) | ❌ None (no TWAP in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo)) | 🔴 CRITICAL 0% |
 
 **Key Insight:** These are complementary systems, not alternatives. Pendle has BOTH. Horizon only has the first.
 
@@ -1477,24 +1414,24 @@ Pendle's oracle infrastructure serves **two distinct purposes** that Horizon par
 
 **What it does:** Provides the exchange rate for yield-bearing assets (e.g., "1 wstETH = 1.18 stETH")
 
-**Reference:** Horizon's `PragmaIndexOracle` at `src/oracles/pragma_index_oracle.cairo`
+**Reference (Pendle V2 code):** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol). **Horizon reference:** [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo)
 
-| Feature | Pendle V2 | Horizon | Status |
+| Feature | Pendle V2 (reference) | Horizon | Status |
 |---------|-----------|---------|--------|
-| ERC-4626 direct | `convert_to_assets()` | ✅ `is_erc4626` flag | ✅ |
-| Custom oracle adapter | Various implementations | `PragmaIndexOracle` | ✅ |
-| TWAP window | Configurable | Configurable (default 1hr) | ✅ |
-| Staleness check | ✅ | `max_staleness` (default 24hr) | ✅ |
-| Watermark (monotonic) | ✅ | ✅ `stored_index` | ✅ |
-| Single-feed mode | ✅ | ✅ `denominator_pair_id = 0` | ✅ |
-| Dual-feed ratio mode | ❌ None | ✅ `numerator/denominator` | ✅ **Horizon exceeds** |
-| Emergency pause | ❌ None | ✅ `PAUSER_ROLE` | ✅ **Horizon exceeds** |
-| Emergency index override | ❌ None | ✅ `emergency_set_index()` | ✅ **Horizon exceeds** |
-| RBAC for config changes | ❌ Owner only | ✅ `OPERATOR_ROLE` | ✅ **Horizon exceeds** |
-| Pragma integration | ❌ None (EVM) | ✅ Native | ✅ (Starknet-specific) |
-| Chainlink integration | ✅ Native | ❌ None | 🟡 MEDIUM |
-| Oracle factory | ✅ `PendleChainlinkOracleFactory` | ❌ Manual deployment | 🟡 MEDIUM |
-| Rich events | ❌ Basic | ✅ `IndexUpdated`, `ConfigUpdated` | ✅ **Horizon exceeds** |
+| ERC-4626 direct | `SYBase` uses ERC-4626 `convertToAssets` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol)) | ✅ `is_erc4626` flag | ✅ |
+| Custom oracle adapter | `IIndexOracle` adapter interface ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `PragmaIndexOracle` | ✅ |
+| TWAP window | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | Configurable (default 1hr) | ✅ **Horizon exceeds** |
+| Staleness check | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `max_staleness` (default 24hr) | ✅ **Horizon exceeds** |
+| Watermark (monotonic) | Oracle-specific expectation via `index()` ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | ✅ `stored_index` | ✅ **Horizon exceeds** |
+| Single-feed mode | Adapter-specific | ✅ `denominator_pair_id = 0` | ✅ **Horizon exceeds** |
+| Dual-feed ratio mode | Adapter-specific | ✅ `numerator/denominator` | ✅ **Horizon exceeds** |
+| Emergency pause | Adapter-specific | ✅ `PAUSER_ROLE` | ✅ **Horizon exceeds** |
+| Emergency index override | Adapter-specific | ✅ `emergency_set_index()` | ✅ **Horizon exceeds** |
+| RBAC for config changes | Adapter-specific | ✅ `OPERATOR_ROLE` | ✅ **Horizon exceeds** |
+| Pragma integration | N/A (EVM) | ✅ Native | ✅ (Starknet-specific) |
+| Rich events | Adapter-specific | ✅ `IndexUpdated`, `ConfigUpdated` | ✅ **Horizon exceeds** |
+
+**Pendle note:** `IIndexOracle` only standardizes `index()`; TWAP window, staleness, and pause semantics are adapter-specific and not centralized.
 
 **Horizon's PragmaIndexOracle Advantages:**
 
@@ -1525,9 +1462,9 @@ assert(new_index >= old_index, 'HZN: cannot decrease index');
 
 ### 6.3 Market TWAP Oracle (Horizon: 0% - CRITICAL GAP)
 
-**What it does:** Provides manipulation-resistant TWAP prices for PT, YT, and LP tokens themselves
+**What it does:** Provides manipulation-resistant TWAP prices for PT, YT, and LP tokens themselves.
 
-**Reference:** Pendle's `PendlePYLpOracle.sol`, `PendlePYOracleLib.sol`, `PendleLpOracleLib.sol`
+**Reference (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)
 
 **Why it matters:** This oracle is REQUIRED for:
 - Using PT as collateral in lending protocols (Aave, Compound forks)
@@ -1535,46 +1472,47 @@ assert(new_index >= old_index, 'HZN: cannot decrease index');
 - DeFi derivatives and structured products
 - External price feeds and aggregators
 
-| Feature | Pendle V2 | Horizon | Status |
+| Feature | Pendle V2 (reference) | Horizon (contracts/src) | Status |
 |---------|-----------|---------|--------|
-| Observation buffer | 65,535 slots | ❌ None | 🔴 CRITICAL |
-| `lnImpliedRateCumulative` | ✅ Accumulated | ❌ None | 🔴 CRITICAL |
-| `observe(secondsAgos[])` | ✅ Historical rates | ❌ None | 🔴 CRITICAL |
-| `increaseObservationsCardinalityNext()` | ✅ Buffer expansion | ❌ None | 🔴 CRITICAL |
-| `getOracleState(market, duration)` | ✅ Readiness check | ❌ None | 🔴 CRITICAL |
-| `getPtToSyRate(duration)` | ✅ PT TWAP | ❌ None | 🔴 CRITICAL |
-| `getPtToAssetRate(duration)` | ✅ PT to underlying | ❌ None | 🔴 CRITICAL |
-| `getYtToSyRate(duration)` | ✅ YT TWAP | ❌ None | 🔴 CRITICAL |
-| `getYtToAssetRate(duration)` | ✅ YT to underlying | ❌ None | 🔴 CRITICAL |
-| `getLpToSyRate(duration)` | ✅ LP TWAP | ❌ None | 🔴 CRITICAL |
-| `getLpToAssetRate(duration)` | ✅ LP to underlying | ❌ None | 🔴 CRITICAL |
-| Pre-deployed oracle contract | ✅ `PendlePYLpOracle` | ❌ None | 🔴 HIGH |
-| Chainlink wrapper | ✅ `PendleChainlinkOracle` | ❌ None | 🔴 HIGH |
-| `latestRoundData()` compatibility | ✅ Chainlink interface | ❌ None | 🔴 HIGH |
-| Reentrancy guard check | ✅ `_checkMarketReentrancy()` | ❌ None | 🟡 MEDIUM |
-| SY/PY index adjustment | ✅ For insolvency | ❌ None | 🟡 MEDIUM |
+| Observation buffer | `OracleLib.Observation[65_535]` + market cardinality tracking ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | No observation storage in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) | 🔴 CRITICAL |
+| `lnImpliedRateCumulative` | `Observation.lnImpliedRateCumulative` (`uint216`) in [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) | ❌ None (only `last_ln_implied_rate`) in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) | 🔴 CRITICAL |
+| `observe(uint32[] secondsAgos)` | Market TWAP via `observations.observe` in [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) | ❌ Not implemented | 🔴 CRITICAL |
+| `increaseObservationsCardinalityNext(uint16)` | Buffer expansion via `observations.grow` in [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) | ❌ Not implemented | 🔴 CRITICAL |
+| `getOracleState(market, duration)` | Readiness check in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ❌ None | 🔴 CRITICAL |
+| `getPtToSyRate(duration)` | `PendlePYOracleLib.getPtToSyRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ❌ None | 🔴 CRITICAL |
+| `getPtToAssetRate(duration)` | `PendlePYOracleLib.getPtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ❌ None | 🔴 CRITICAL |
+| `getYtToSyRate(duration)` | `PendlePYOracleLib.getYtToSyRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ❌ None | 🔴 CRITICAL |
+| `getYtToAssetRate(duration)` | `PendlePYOracleLib.getYtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ❌ None | 🔴 CRITICAL |
+| `getLpToSyRate(duration)` | `PendleLpOracleLib.getLpToSyRate` ([PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)) | ❌ None | 🔴 CRITICAL |
+| `getLpToAssetRate(duration)` | `PendleLpOracleLib.getLpToAssetRate` ([PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)) | ❌ None | 🔴 CRITICAL |
+| Pre-deployed oracle contract | `PendlePYLpOracle` ([PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)) | ❌ None | 🔴 HIGH |
+| Chainlink wrapper | `PendleChainlinkOracle` / `PendleChainlinkOracleWithQuote` ([PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)) | ❌ None | 🔴 HIGH |
+| `latestRoundData()` compatibility | Chainlink-style `latestRoundData` in [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol) | ❌ None | 🔴 HIGH |
+| Reentrancy guard check | `_checkMarketReentrancy` in [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol) | ❌ None | 🟡 MEDIUM |
+| SY/PY index adjustment | `getSYandPYIndexCurrent` in [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol) | ❌ None | 🟡 MEDIUM |
+
+Horizon currently only exposes a yield index oracle for SY (Pragma TWAP) in [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo). There is no market observation buffer, no `observe` endpoint, and no PT/YT/LP TWAP helper layer in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo).
 
 ---
 
 **Gap Detail - Pendle's TWAP Oracle Architecture:**
 
-Pendle's Market TWAP is inspired by UniswapV3 but uses **implied rate** instead of price:
+Pendle's Market TWAP is built into the market itself via [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) using [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol). It stores a ring buffer of cumulative ln(implied rate) and updates it on every state write.
 
 ```solidity
-// Pendle - Market stores observations (in MarketStorage)
+// Pendle - Market stores observations (MarketStorage + OracleLib)
 struct MarketStorage {
     int128 totalPt;
     int128 totalSy;
-    uint96 lastLnImpliedRate;              // Current implied rate (log form)
-    uint16 observationIndex;               // Ring buffer position
-    uint16 observationCardinality;         // Initialized slots
-    uint16 observationCardinalityNext;     // Target expansion
+    uint96 lastLnImpliedRate;
+    uint16 observationIndex;
+    uint16 observationCardinality;
+    uint16 observationCardinalityNext;
 }
 
-// Each observation stores cumulative ln(impliedRate)
 struct Observation {
     uint32 blockTimestamp;
-    uint216 lnImpliedRateCumulative;       // Running sum
+    uint216 lnImpliedRateCumulative;
     bool initialized;
 }
 
@@ -1584,28 +1522,26 @@ OracleLib.Observation[65_535] public observations;
 **TWAP Calculation Flow:**
 
 ```
-1. lnImpliedRate = (cumulative₁ - cumulative₀) / (t₁ - t₀)
-
-2. impliedRate = e^(lnImpliedRate)
-
-3. assetToPtPrice = impliedRate^(timeToMaturity / oneYear)
-
-4. ptToAssetPrice = 1 / assetToPtPrice
+1. getMarketLnImpliedRate: observe([duration, 0]) and compute
+   lnImpliedRate = (cumulative_now - cumulative_then) / duration
+2. assetToPtRate = MarketMathCore._getExchangeRateFromImpliedRate(lnImpliedRate, timeToExpiry)
+3. ptToAssetRate = 1 / assetToPtRate
+4. ytToAssetRate = 1 - ptToAssetRate
+5. pt/yt to SY rates adjust by syIndex vs pyIndex (solvency handling)
 ```
 
-**Why Geometric Mean?** The geometric mean (via log-space averaging) is more manipulation-resistant than arithmetic mean and properly handles compound interest dynamics.
+Reference flow lives in [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol) and [MarketMathCore.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/MarketMathCore.sol).
 
 ---
 
 **Gap Detail - Oracle Initialization Requirements:**
 
-Lending protocols require specific cardinality based on TWAP duration:
+Pendle’s pre-deployed oracle checks TWAP readiness with `getOracleState` in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol). Cardinality required is computed from the on-chain formula:
 
-| Chain | Block Time | 15min TWAP Cardinality | 30min TWAP Cardinality |
-|-------|-----------|------------------------|------------------------|
-| Ethereum | ~12s | 85 | 165 |
-| Arbitrum | ~0.26s | 900 | 1,800 |
-| Starknet | ~3-6s | ~180-360 | ~360-720 |
+```
+cardinalityRequired =
+  (duration * BLOCK_CYCLE_DENOMINATOR + blockCycleNumerator - 1) / blockCycleNumerator + 1
+```
 
 ```solidity
 // Pendle - initialize oracle before use
@@ -1617,7 +1553,7 @@ IPMarket(market).increaseObservationsCardinalityNext(cardinalityRequired);
 
 **Gap Detail - PT as Collateral Requirements:**
 
-From Pendle's documentation, using PT as lending collateral requires:
+From Pendle documentation (not on-chain code), using PT as lending collateral requires:
 
 ```
 Liquidation capacity = dCap × cRatio × k × f × (1+p)
@@ -1636,19 +1572,15 @@ Where:
 
 **Gap Detail - LP Oracle Additional Complexity:**
 
-LP pricing requires additional calculations beyond PT:
+LP pricing requires additional calculations beyond PT (see [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)):
 
 ```solidity
-// Pendle - LP oracle considers market state
-function _getLpToAssetRateRaw() {
-    if (market.isExpired()) {
-        // Post-expiry: 1 PT = 1 asset
-        return totalAsset + totalPt;
-    } else {
-        // Pre-expiry: complex calculation using implied rate
-        uint256 assetFromPt = totalPt * getExchangeRateFromImpliedRate(...);
-        return totalAsset + assetFromPt;
-    }
+if (state.expiry <= block.timestamp) {
+    totalHypotheticalAsset = state.totalPt + PYIndexLib.syToAsset(pyIndex, state.totalSy);
+} else {
+    MarketPreCompute memory comp = state.getMarketPreCompute(pyIndex, block.timestamp);
+    (int256 rateOracle, int256 rateHypTrade) = _getPtRatesRaw(market, state, duration);
+    // ... trade-size simulation using rateOracle and rateHypTrade ...
 }
 ```
 
@@ -1707,16 +1639,16 @@ pub mod HorizonPtLpOracle {
 
 ### 6.5 Oracle System Summary
 
-| Oracle Component | Pendle V2 | Horizon | Implementation Priority |
+| Oracle Component | Pendle V2 (reference) | Horizon (contracts/src) | Implementation Priority |
 |-----------------|-----------|---------|------------------------|
-| Yield Index Oracle | ✅ Various | ✅ `PragmaIndexOracle` | Done |
-| Market Observation Buffer | ✅ 65k slots | ❌ None | Priority 0 (CRITICAL) |
-| PT TWAP Functions | ✅ Full suite | ❌ None | Priority 0 (CRITICAL) |
-| LP TWAP Functions | ✅ Full suite | ❌ None | Priority 0 (CRITICAL) |
-| Oracle State Check | ✅ `getOracleState()` | ❌ None | Priority 0 (CRITICAL) |
-| Pre-deployed Oracle | ✅ `PendlePYLpOracle` | ❌ None | Priority 1 (HIGH) |
-| Chainlink/Pragma Wrapper | ✅ `PendleChainlinkOracle` | ❌ None | Priority 1 (HIGH) |
-| Oracle Factory | ✅ `PendleChainlinkOracleFactory` | ❌ None | Priority 2 (MEDIUM) |
+| Yield Index Oracle | `SYBase` + `IIndexOracle` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | ✅ `PragmaIndexOracle` ([contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo)) | Done |
+| Market Observation Buffer | `OracleLib.Observation[65_535]` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ❌ None in [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) | Priority 0 (CRITICAL) |
+| PT TWAP Functions | `PendlePYOracleLib.getPtToSyRate/getPtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ❌ None | Priority 0 (CRITICAL) |
+| LP TWAP Functions | `PendleLpOracleLib.getLpToSyRate/getLpToAssetRate` ([PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)) | ❌ None | Priority 0 (CRITICAL) |
+| Oracle State Check | `getOracleState` in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ❌ None | Priority 0 (CRITICAL) |
+| Pre-deployed Oracle | [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ❌ None | Priority 1 (HIGH) |
+| Chainlink/Pragma Wrapper | [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol) / [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol) | ❌ None | Priority 1 (HIGH) |
+| Oracle Factory | [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol) | ❌ None | Priority 2 (MEDIUM) |
 
 **Total Oracle Gaps: 18** (8 CRITICAL, 6 HIGH, 4 MEDIUM)
 
@@ -1777,6 +1709,10 @@ Governance is explicitly **Phase 4** on the roadmap:
 ## 8. Implementation Priority Matrix
 
 ### 8.1 Priority 0 - Critical (Blocks Integrations)
+
+**Reference (Pendle V2 code):** Market TWAP core in [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) and [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol); PT/YT/LP helpers in [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol) and [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol); readiness/wrapper in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol); Chainlink adapters in [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)
+
+**Horizon reference:** [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo) (no observation buffer/observe) and [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo) (SY index only).
 
 | Gap | Impact | Effort | Blocking |
 |-----|--------|--------|----------|
@@ -1863,6 +1799,8 @@ Governance is explicitly **Phase 4** on the roadmap:
 ## 9. Detailed Feature Comparison
 
 ### 9.1 Complete Feature Matrix
+
+**Oracle/TWAP references for this matrix:** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol), [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol). Horizon: [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo), [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo).
 
 ```
 FEATURE                              PENDLE V2    HORIZON      GAP LEVEL
@@ -2097,6 +2035,8 @@ GOVERNANCE
 | Oracle | 35% | 18 | 8 CRITICAL (Market TWAP buffer, observe(), PT/YT/LP rate functions) | Yield Index Oracle: 75% with 5 areas Horizon EXCEEDS; Market TWAP Oracle: 0% - complete absence blocks lending integrations |
 | Governance | 0% | 7 | All (by design) | |
 
+**Oracle/TWAP references (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol). Horizon: [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo), [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo).
+
 ---
 
 ## 10. Code Location Reference
@@ -2122,6 +2062,8 @@ GOVERNANCE
 | Pragma Oracle | `contracts/src/oracles/pragma_index_oracle.cairo` | ~450 |
 
 ### 10.2 Key Code Locations for Gap Implementation
+
+**Reference (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)
 
 | Gap | Target File | Suggested Location |
 |-----|-------------|-------------------|
@@ -2197,6 +2139,8 @@ GOVERNANCE
 
 ### Phase 1: Critical (DeFi Composability - Oracle Focus)
 **This is Horizon's principal weak point - must be prioritized**
+
+**Reference (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)
 
 1. **Market Observation Buffer** - Add storage for observation ring buffer (65k slots)
 2. **lnImpliedRateCumulative** - Track cumulative ln(impliedRate) on each swap
