@@ -18,7 +18,12 @@ interface MarketDetailResponse {
     yt: string;
     underlying: string;
     underlyingSymbol: string;
+    /** @deprecated Use lnFeeRateRoot instead */
     feeRate: string;
+    /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
+    lnFeeRateRoot: string;
+    /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
+    reserveFeePercent: number;
     initialExchangeRate: string;
     createdAt: string;
   };
@@ -52,6 +57,7 @@ interface MarketCurrentStateRow {
   underlying: string | null;
   underlying_symbol: string | null;
   ln_fee_rate_root: string | null;
+  reserve_fee_percent: number | null;
   initial_exchange_rate: string | null;
   created_at: Date | null;
   sy_reserve: string | null;
@@ -83,6 +89,7 @@ interface Stats7d {
 // ----- Helper Functions -----
 
 function buildMarketInfo(current: MarketCurrentStateRow): MarketDetailResponse['market'] {
+  const lnFeeRateRoot = current.ln_fee_rate_root ?? '0';
   return {
     address: current.market ?? '',
     expiry: current.expiry ?? 0,
@@ -91,7 +98,10 @@ function buildMarketInfo(current: MarketCurrentStateRow): MarketDetailResponse['
     yt: current.yt ?? '',
     underlying: current.underlying ?? '',
     underlyingSymbol: current.underlying_symbol ?? '',
-    feeRate: current.ln_fee_rate_root ?? '0',
+    // Keep deprecated feeRate for backward compatibility
+    feeRate: lnFeeRateRoot,
+    lnFeeRateRoot,
+    reserveFeePercent: current.reserve_fee_percent ?? 0,
     initialExchangeRate: current.initial_exchange_rate ?? '0',
     createdAt: current.created_at?.toISOString() ?? '',
   };

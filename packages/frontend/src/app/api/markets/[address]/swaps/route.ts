@@ -23,8 +23,16 @@ interface SwapEvent {
   // YT swap fields (only for type: 'yt')
   ytIn?: string;
   ytOut?: string;
-  // Optional fields (may not be available for router swaps)
+  // Fee breakdown (new events have full breakdown, legacy may only have fee)
+  /** @deprecated Use totalFee instead */
   fee?: string;
+  /** Total fee charged in SY (totalFee = lpFee + reserveFee) */
+  totalFee?: string;
+  /** Fee portion retained by LPs */
+  lpFee?: string;
+  /** Fee portion sent to treasury */
+  reserveFee?: string;
+  // Rate tracking fields (only available from market_swap)
   impliedRateBefore?: string;
   impliedRateAfter?: string;
   exchangeRate?: string;
@@ -144,7 +152,11 @@ export async function GET(
         syIn: row.sy_in,
         ptOut: row.pt_out,
         syOut: row.sy_out,
-        fee: row.total_fee ?? row.fee,
+        // Fee breakdown - use new fields if available, fall back to legacy fee
+        fee: row.total_fee ?? row.fee ?? undefined,
+        totalFee: row.total_fee ?? undefined,
+        lpFee: row.lp_fee ?? undefined,
+        reserveFee: row.reserve_fee ?? undefined,
         impliedRateBefore: row.implied_rate_before,
         impliedRateAfter: row.implied_rate_after,
         exchangeRate: row.exchange_rate,

@@ -15,7 +15,12 @@ interface MarketListItem {
   yt: string;
   underlying: string;
   underlyingSymbol: string;
+  /** @deprecated Use lnFeeRateRoot instead */
   feeRate: string;
+  /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
+  lnFeeRateRoot: string;
+  /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
+  reserveFeePercent: number;
   syReserve: string;
   ptReserve: string;
   impliedRate: string;
@@ -38,6 +43,7 @@ interface MarketRow {
   underlying: string | null;
   underlying_symbol: string | null;
   ln_fee_rate_root: string | null;
+  reserve_fee_percent: number | null;
   sy_reserve: string | null;
   pt_reserve: string | null;
   implied_rate: string | null;
@@ -70,8 +76,12 @@ function extractMarketIdentity(row: MarketRow) {
  * Extracts market state fields (rates, reserves) from a database row
  */
 function extractMarketState(row: MarketRow) {
+  const lnFeeRateRoot = row.ln_fee_rate_root ?? '0';
   return {
-    feeRate: row.ln_fee_rate_root ?? '0',
+    // Keep deprecated feeRate for backward compatibility
+    feeRate: lnFeeRateRoot,
+    lnFeeRateRoot,
+    reserveFeePercent: row.reserve_fee_percent ?? 0,
     syReserve: row.sy_reserve ?? '0',
     ptReserve: row.pt_reserve ?? '0',
     impliedRate: row.implied_rate ?? '0',

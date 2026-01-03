@@ -32,7 +32,12 @@ export interface IndexedMarket {
   yt: string;
   underlying: string;
   underlyingSymbol: string;
-  feeRate: string;
+  /** @deprecated Use lnFeeRateRoot instead */
+  feeRate?: string;
+  /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
+  lnFeeRateRoot: string;
+  /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
+  reserveFeePercent: number;
   initialExchangeRate: string;
   createdAt: string;
   syReserve: string;
@@ -59,7 +64,12 @@ export interface MarketDetailResponse {
     yt: string;
     underlying: string;
     underlyingSymbol: string;
-    feeRate: string;
+    /** @deprecated Use lnFeeRateRoot instead */
+    feeRate?: string;
+    /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
+    lnFeeRateRoot: string;
+    /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
+    reserveFeePercent: number;
     initialExchangeRate: string;
     createdAt: string;
   };
@@ -100,8 +110,16 @@ export interface SwapEvent {
   // YT swap fields (only for type: 'yt')
   ytIn?: string;
   ytOut?: string;
-  // Optional fields (may not be available for router swaps)
+  // Fee breakdown (new events have full breakdown, legacy may only have fee)
+  /** @deprecated Use totalFee instead */
   fee?: string;
+  /** Total fee charged in SY (totalFee = lpFee + reserveFee) */
+  totalFee?: string;
+  /** Fee portion retained by LPs */
+  lpFee?: string;
+  /** Fee portion sent to treasury */
+  reserveFee?: string;
+  // Rate tracking fields
   impliedRateBefore?: string;
   impliedRateAfter?: string;
   exchangeRate?: string;
