@@ -22,39 +22,21 @@ interface RewardApyBadgeProps {
 }
 
 /**
- * Format APY as percentage string.
- * Input is decimal (e.g., 0.05 = 5%)
+ * Check if there are active rewards being distributed.
+ * Uses rawRewardRatio > 0 as indicator (actual APY requires price data).
  */
-function formatApyPercent(apy: number): string {
-  const percent = apy * 100;
-
-  if (percent === 0) {
-    return '0%';
-  }
-
-  if (percent < 0.01) {
-    return '< 0.01%';
-  }
-
-  if (percent < 1) {
-    return `${percent.toFixed(2)}%`;
-  }
-
-  if (percent < 10) {
-    return `${percent.toFixed(1)}%`;
-  }
-
-  return `${String(Math.round(percent))}%`;
+function hasActiveRewards(ratio: number): boolean {
+  return ratio > 0;
 }
 
 /**
- * Badge showing reward APY for an SYWithRewards contract.
+ * Badge indicating active rewards for an SYWithRewards contract.
  *
- * Uses the 7-day rolling window from indexed data to display
- * estimated annual reward rates. Shows combined APY across all
- * reward tokens.
+ * Shows a "Rewards" indicator when the SY contract has active reward
+ * distributions. Does NOT display APY percentage because accurate APY
+ * calculation requires token price data that isn't available here.
  *
- * Returns null if no rewards are configured or APY is zero.
+ * Returns null if no rewards are being distributed.
  *
  * @example
  * ```tsx
@@ -71,40 +53,36 @@ export function RewardApyBadge({
   className,
 }: RewardApyBadgeProps): ReactNode {
   const { isLoading, data } = useRewardApy(syAddress);
-  const totalApy = useTotalRewardApy(syAddress);
+  const totalRatio = useTotalRewardApy(syAddress);
 
   // Show skeleton while loading (only for badge variant)
   if (isLoading && variant === 'badge') {
     return (
       <Skeleton
         className={cn('h-5 w-14 rounded-full', className)}
-        aria-label="Loading reward APY"
+        aria-label="Loading rewards status"
       />
     );
   }
 
-  // Don't render if no rewards or zero APY
-  if (!data?.rewardTokens || data.rewardTokens.length === 0 || totalApy === 0) {
+  // Don't render if no rewards or no active distributions
+  if (!data?.rewardTokens || data.rewardTokens.length === 0 || !hasActiveRewards(totalRatio)) {
     return null;
   }
 
-  const formattedApy = formatApyPercent(totalApy);
-
   // Plain text variant
   if (variant === 'text') {
-    return (
-      <span className={cn('text-success font-medium', className)}>+{formattedApy} rewards</span>
-    );
+    return <span className={cn('text-success font-medium', className)}>Rewards</span>;
   }
 
-  // Badge variant (default)
+  // Badge variant (default) - shows indicator without misleading APY percentage
   return (
     <Badge
       variant="outline"
       className={cn('border-success/50 bg-success/10 text-success gap-1', className)}
     >
       <GiftIcon className="h-3 w-3" aria-hidden="true" />
-      <span>+{formattedApy}</span>
+      <span>Rewards</span>
     </Badge>
   );
 }

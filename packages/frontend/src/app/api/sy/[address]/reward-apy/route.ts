@@ -21,8 +21,19 @@ interface RewardApyData {
   rewardsLast7Days: string;
   avgTotalSupply: string;
   updateCount: number;
-  /** Annualized APY as a decimal string (e.g., "0.05" for 5%) */
-  estimatedApy: string;
+  /**
+   * Raw annualized reward ratio: (rewards / supply) * (365/7)
+   *
+   * WARNING: This is NOT a true APY! It divides reward tokens by SY tokens
+   * without price conversion. To get actual APY, consumers must:
+   * 1. Get reward token price and decimals
+   * 2. Get SY token price and decimals
+   * 3. Compute: (rewardValue_USD / supplyValue_USD) * (365/7)
+   *
+   * This field is provided for consumers who have access to price data.
+   * Without price adjustment, this value can be off by orders of magnitude.
+   */
+  rawRewardRatio: string;
 }
 
 interface RewardApyResponse {
@@ -31,12 +42,15 @@ interface RewardApyResponse {
 }
 
 /**
- * Calculate estimated APY from 7-day reward data.
- * APY = (rewardsLast7Days / avgTotalSupply) * (365 / 7)
+ * Calculate raw annualized reward ratio from 7-day data.
+ * Ratio = (rewardsLast7Days / avgTotalSupply) * (365 / 7)
+ *
+ * NOTE: This is NOT a true APY - it divides different token types without
+ * price/decimal adjustment. See RewardApyData.rawRewardRatio for details.
  *
  * Returns "0" if totalSupply is 0 or insufficient data.
  */
-function calculateEstimatedApy(rewardsLast7Days: string, avgTotalSupply: string): string {
+function calculateRawRewardRatio(rewardsLast7Days: string, avgTotalSupply: string): string {
   const rewards = BigInt(rewardsLast7Days);
   const supply = BigInt(avgTotalSupply);
 
@@ -60,9 +74,10 @@ function calculateEstimatedApy(rewardsLast7Days: string, avgTotalSupply: string)
 
 /**
  * GET /api/sy/[address]/reward-apy
- * Returns reward APY calculation for an SY contract
+ * Returns reward stats and raw ratio for an SY contract
  *
- * Uses the 7-day rolling window from sy_reward_apy view
+ * Uses the 7-day rolling window from sy_reward_stats view.
+ * Note: rawRewardRatio requires price data to convert to true APY.
  */
 export async function GET(
   request: NextRequest,
@@ -96,7 +111,7 @@ export async function GET(
         rewardsLast7Days: data.rewards_last_7_days ?? '0',
         avgTotalSupply: data.avg_total_supply ?? '0',
         updateCount: data.update_count ?? 0,
-        estimatedApy: calculateEstimatedApy(
+        rawRewardRatio: calculateRawRewardRatio(
           data.rewards_last_7_days ?? '0',
           data.avg_total_supply ?? '0'
         ),

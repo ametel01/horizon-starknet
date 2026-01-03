@@ -3,15 +3,22 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
- * APY data for a single reward token.
+ * Reward stats for a single reward token.
  */
 export interface RewardApyData {
   rewardToken: string;
   rewardsLast7Days: string;
   avgTotalSupply: string;
   updateCount: number;
-  /** Annualized APY as a decimal string (e.g., "0.05" for 5%) */
-  estimatedApy: string;
+  /**
+   * Raw annualized reward ratio: (rewards / supply) * (365/7)
+   *
+   * WARNING: This is NOT a true APY! It divides reward tokens by SY tokens
+   * without price conversion. To convert to actual APY:
+   * actualApy = rawRewardRatio * (rewardTokenPrice / syTokenPrice)
+   *            * (10^syDecimals / 10^rewardDecimals)
+   */
+  rawRewardRatio: string;
 }
 
 /**
@@ -34,22 +41,26 @@ async function fetchRewardApy(syAddress: string): Promise<RewardApyResponse> {
 }
 
 /**
- * Hook to fetch reward APY for an SYWithRewards contract.
+ * Hook to fetch reward stats for an SYWithRewards contract.
  *
- * Uses the 7-day rolling window from indexed data to calculate
- * estimated annual reward rates. More stable than real-time
- * calculations and accounts for reward distribution patterns.
+ * Uses the 7-day rolling window from indexed data to provide
+ * reward statistics. More stable than real-time calculations.
+ *
+ * WARNING: rawRewardRatio is NOT a true APY - it requires price data
+ * to convert to actual APY. See RewardApyData.rawRewardRatio docs.
  *
  * @param syAddress - The SYWithRewards contract address
- * @returns Query result with APY data per reward token
+ * @returns Query result with reward stats per reward token
  *
  * @example
  * ```typescript
  * const { data, isLoading } = useRewardApy(syAddress);
  *
+ * // To display, you need price data for accurate APY:
+ * // actualApy = rawRewardRatio * (rewardPrice / syPrice)
  * data?.rewardTokens.map(token => (
  *   <div key={token.rewardToken}>
- *     {parseFloat(token.estimatedApy) * 100}% APY
+ *     Raw ratio: {parseFloat(token.rawRewardRatio)}
  *   </div>
  * ));
  * ```
@@ -67,11 +78,14 @@ export function useRewardApy(syAddress: string | undefined): UseQueryResult<Rewa
 }
 
 /**
- * Get total combined APY across all reward tokens.
+ * Get total combined raw reward ratio across all reward tokens.
  * Returns 0 if no data or no rewards.
  *
+ * WARNING: This returns the raw ratio sum, NOT actual APY.
+ * To get true APY, each token's ratio must be price-adjusted first.
+ *
  * @param syAddress - The SYWithRewards contract address
- * @returns Combined APY as a decimal (e.g., 0.05 for 5%)
+ * @returns Combined raw ratio as a decimal (NOT a true APY)
  */
 export function useTotalRewardApy(syAddress: string | undefined): number {
   const { data } = useRewardApy(syAddress);
@@ -80,5 +94,5 @@ export function useTotalRewardApy(syAddress: string | undefined): number {
     return 0;
   }
 
-  return data.rewardTokens.reduce((sum, token) => sum + Number.parseFloat(token.estimatedApy), 0);
+  return data.rewardTokens.reduce((sum, token) => sum + Number.parseFloat(token.rawRewardRatio), 0);
 }
