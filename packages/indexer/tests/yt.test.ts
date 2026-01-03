@@ -314,6 +314,7 @@ describe("YT Indexer", () => {
         "0x0", // total_pt_supply high
         "0xde0b6b3a7640000", // total_yt_supply low (1e18)
         "0x0", // total_yt_supply high
+        "0x499602d2", // timestamp (1234567890)
       ],
       address: "0xyt_address",
       transactionHash: "0xmint123",
