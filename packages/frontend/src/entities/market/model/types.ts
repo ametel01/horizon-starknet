@@ -16,6 +16,10 @@ export interface MarketState {
   lnImpliedRate: bigint;
   /** Total protocol fees collected (in SY) @see Security Audit I-07 */
   feesCollected: bigint;
+  /** Natural log of fee rate root in WAD (10^18). Use calculateAnnualFeeRate() to convert. */
+  lnFeeRateRoot: bigint;
+  /** Percentage (0-100) of fees going to protocol treasury. Remainder goes to LPs. */
+  reserveFeePercent: number;
 }
 
 // Token metadata for display
@@ -34,6 +38,8 @@ export interface MarketData extends MarketInfo {
   impliedApy: BigNumber;
   tvlSy: bigint; // Total SY in pool (reserves + implicit from PT)
   daysToExpiry: number;
+  /** Annual fee rate as a decimal (e.g., 0.01 = 1%). Computed from lnFeeRateRoot. */
+  annualFeeRate: number;
   // Token metadata (optional, may not be available for unknown markets)
   metadata?: MarketTokenMetadata;
 }

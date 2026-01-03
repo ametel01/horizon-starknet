@@ -3,6 +3,7 @@
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { useStarknet } from '@features/wallet';
 import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
+import { calculateAnnualFeeRate } from '@shared/lib/fees';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
 import { getMarketContract, getMarketFactoryContract } from '@shared/starknet/contracts';
@@ -53,6 +54,8 @@ async function fetchMarketData(
       totalLpSupply,
       lnRate,
       feesCollected,
+      lnFeeRateRoot,
+      reserveFeePercent,
     ] = await Promise.all([
       market.sy(),
       market.pt(),
@@ -63,6 +66,8 @@ async function fetchMarketData(
       market.total_lp_supply(),
       market.get_ln_implied_rate(),
       market.get_total_fees_collected(),
+      market.get_ln_fee_rate_root(),
+      market.get_reserve_fee_percent(),
     ]);
 
     const info: MarketInfo = {
@@ -76,17 +81,21 @@ async function fetchMarketData(
 
     // Reserves are returned as a tuple [sy_reserve, pt_reserve]
     const reservesArr = reserves as unknown[];
+    const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
     const state: MarketState = {
       syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
       ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
       totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
       lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
       feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
+      lnFeeRateRoot: lnFeeRateRootValue,
+      reserveFeePercent: Number(reserveFeePercent),
     };
 
     const impliedApy = lnRateToApy(state.lnImpliedRate);
     const days = daysToExpiry(info.expiry);
     const tvlSy = state.syReserve + state.ptReserve;
+    const annualFeeRate = calculateAnnualFeeRate(lnFeeRateRootValue);
 
     // Get token metadata from static config if available
     const staticInfo = getMarketInfoByAddress(network, marketAddress);
@@ -97,6 +106,7 @@ async function fetchMarketData(
       impliedApy,
       tvlSy,
       daysToExpiry: days,
+      annualFeeRate,
     };
 
     if (staticInfo) {

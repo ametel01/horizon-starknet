@@ -2,6 +2,7 @@
 
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { useStarknet } from '@features/wallet';
+import { calculateAnnualFeeRate } from '@shared/lib/fees';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { getMarketContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
@@ -49,6 +50,8 @@ export function useMarket(
         totalLpSupply,
         lnRate,
         feesCollected,
+        lnFeeRateRoot,
+        reserveFeePercent,
       ] = await Promise.all([
         market.sy(),
         market.pt(),
@@ -59,6 +62,8 @@ export function useMarket(
         market.total_lp_supply(),
         market.get_ln_implied_rate(),
         market.get_total_fees_collected(),
+        market.get_ln_fee_rate_root(),
+        market.get_reserve_fee_percent(),
       ]);
 
       const info: MarketInfo = {
@@ -73,17 +78,21 @@ export function useMarket(
       // Reserves are returned as a tuple [sy_reserve, pt_reserve]
       // Handle both array and Uint256 return types
       const reservesArr = reserves as unknown[];
+      const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
       const state: MarketState = {
         syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
         ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
         totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
         lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
         feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
+        lnFeeRateRoot: lnFeeRateRootValue,
+        reserveFeePercent: Number(reserveFeePercent),
       };
 
       // Compute derived values
       const impliedApy = lnRateToApy(state.lnImpliedRate);
       const days = daysToExpiry(info.expiry);
+      const annualFeeRate = calculateAnnualFeeRate(lnFeeRateRootValue);
 
       // TVL = SY reserve (PT is also valued in SY terms)
       const tvlSy = state.syReserve + state.ptReserve;
@@ -94,6 +103,7 @@ export function useMarket(
         impliedApy,
         tvlSy,
         daysToExpiry: days,
+        annualFeeRate,
       };
     },
     enabled: enabled && !!marketAddress,
@@ -152,15 +162,19 @@ export function useMarketState(
 
       const market = getMarketContract(marketAddress, provider);
 
-      const [reserves, totalLpSupply, lnRate, feesCollected] = await Promise.all([
-        market.get_reserves(),
-        market.total_lp_supply(),
-        market.get_ln_implied_rate(),
-        market.get_total_fees_collected(),
-      ]);
+      const [reserves, totalLpSupply, lnRate, feesCollected, lnFeeRateRoot, reserveFeePercent] =
+        await Promise.all([
+          market.get_reserves(),
+          market.total_lp_supply(),
+          market.get_ln_implied_rate(),
+          market.get_total_fees_collected(),
+          market.get_ln_fee_rate_root(),
+          market.get_reserve_fee_percent(),
+        ]);
 
       const reservesArr = reserves as unknown[];
       const lnImpliedRate = toBigInt(lnRate as bigint | { low: bigint; high: bigint });
+      const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
 
       return {
         syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
@@ -168,6 +182,8 @@ export function useMarketState(
         totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
         lnImpliedRate,
         feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
+        lnFeeRateRoot: lnFeeRateRootValue,
+        reserveFeePercent: Number(reserveFeePercent),
         impliedApy: lnRateToApy(lnImpliedRate),
       };
     },
