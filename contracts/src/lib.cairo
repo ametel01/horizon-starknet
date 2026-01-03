@@ -21,6 +21,7 @@ pub mod libraries {
     pub mod errors;
     pub mod math;
     pub mod math_fp;
+    pub mod oracle_lib;
     pub mod roles;
 }
 pub mod market {
