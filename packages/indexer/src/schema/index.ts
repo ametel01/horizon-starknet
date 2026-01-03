@@ -6,7 +6,8 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 29 event tables across 6 contracts (Phase 4 adds 5 SY tables)
+ * Total: 33 event tables across 6 contracts
+ * (includes 4 new AMM fee tables for reserve fee tracking)
  */
 
 import {
@@ -86,7 +87,8 @@ export const factoryClassHashesUpdated = pgTable(
 );
 
 // ============================================================
-// MARKET FACTORY EVENTS (2 tables)
+// MARKET FACTORY EVENTS (5 tables)
+// 2 core + 3 AMM fee management tables
 // ============================================================
 
 export const marketFactoryMarketCreated = pgTable(
@@ -108,7 +110,11 @@ export const marketFactoryMarketCreated = pgTable(
       precision: 78,
       scale: 0,
     }).notNull(),
-    fee_rate: numeric("fee_rate", { precision: 78, scale: 0 }).notNull(),
+    ln_fee_rate_root: numeric("ln_fee_rate_root", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    reserve_fee_percent: integer("reserve_fee_percent").notNull(),
     sy: text("sy").notNull(),
     yt: text("yt").notNull(),
     underlying: text("underlying").notNull(),
@@ -145,6 +151,72 @@ export const marketFactoryClassHashUpdated = pgTable(
   },
   (table) => [
     uniqueIndex("mf_chu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryTreasuryUpdated = pgTable(
+  "market_factory_treasury_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_treasury: text("old_treasury").notNull(),
+    new_treasury: text("new_treasury").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_tu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryDefaultReserveFeeUpdated = pgTable(
+  "market_factory_default_reserve_fee_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_percent: integer("old_percent").notNull(),
+    new_percent: integer("new_percent").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_drfu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryOverrideFeeSet = pgTable(
+  "market_factory_override_fee_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    router: text("router").notNull(),
+    market: text("market").notNull(),
+    ln_fee_rate_root: numeric("ln_fee_rate_root", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("mf_ofs_router_idx").on(table.router),
+    index("mf_ofs_market_idx").on(table.market),
+    uniqueIndex("mf_ofs_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index
@@ -924,7 +996,8 @@ export const ytRedeemPYWithInterest = pgTable(
 );
 
 // ============================================================
-// MARKET (AMM) EVENTS (6 tables)
+// MARKET (AMM) EVENTS (7 tables)
+// 6 core + 1 reserve fee transfer table
 // ============================================================
 
 export const marketMint = pgTable(
@@ -1053,7 +1126,12 @@ export const marketSwap = pgTable(
     sy_in: numeric("sy_in", { precision: 78, scale: 0 }).notNull(),
     pt_out: numeric("pt_out", { precision: 78, scale: 0 }).notNull(),
     sy_out: numeric("sy_out", { precision: 78, scale: 0 }).notNull(),
-    fee: numeric("fee", { precision: 78, scale: 0 }).notNull(),
+    // Fee columns - total_fee is the sum of lp_fee + reserve_fee
+    // Note: 'fee' column kept nullable for historical data compatibility (deprecated)
+    fee: numeric("fee", { precision: 78, scale: 0 }),
+    total_fee: numeric("total_fee", { precision: 78, scale: 0 }),
+    lp_fee: numeric("lp_fee", { precision: 78, scale: 0 }),
+    reserve_fee: numeric("reserve_fee", { precision: 78, scale: 0 }),
     implied_rate_before: numeric("implied_rate_before", {
       precision: 78,
       scale: 0,
@@ -1139,7 +1217,10 @@ export const marketFeesCollected = pgTable(
     // Event data
     amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
-    fee_rate: numeric("fee_rate", { precision: 78, scale: 0 }).notNull(),
+    ln_fee_rate_root: numeric("ln_fee_rate_root", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
   },
   (table) => [
     index("market_fc_collector_idx").on(table.collector),
@@ -1171,6 +1252,36 @@ export const marketScalarRootUpdated = pgTable(
     index("market_sru_market_idx").on(table.market),
     index("market_sru_timestamp_idx").on(table.block_timestamp),
     uniqueIndex("market_sru_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketReserveFeeTransferred = pgTable(
+  "market_reserve_fee_transferred",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    market: text("market").notNull(),
+    treasury: text("treasury").notNull(),
+    caller: text("caller").notNull(),
+    // Event data
+    amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_rft_market_idx").on(table.market),
+    index("market_rft_treasury_idx").on(table.treasury),
+    index("market_rft_caller_idx").on(table.caller),
+    index("market_rft_expiry_idx").on(table.expiry),
+    uniqueIndex("market_rft_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index

@@ -197,7 +197,7 @@ describe("marketFactoryMarketCreatedSchema", () => {
     const event = {
       address: FACTORY_ADDR,
       keys: [SELECTOR, "0xabc123", "0xdef456"],
-      data: Array.from({ length: 18 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      data: Array.from({ length: 19 }, (_, i) => `0x${(i + 1).toString(16)}`),
       transactionHash: TX_HASH,
     };
 
@@ -209,7 +209,7 @@ describe("marketFactoryMarketCreatedSchema", () => {
     const event = {
       address: FACTORY_ADDR,
       keys: [SELECTOR, "0xabc123", "0xdef456"],
-      data: Array.from({ length: 10 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 10, need 18
+      data: Array.from({ length: 10 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 10, need 19
       transactionHash: TX_HASH,
     };
 
@@ -393,7 +393,7 @@ describe("marketSwapSchema", () => {
     const event = {
       address: MARKET_ADDR,
       keys: [SELECTOR, "0xabc1", "0xabc2", "0xabc3"],
-      data: Array.from({ length: 22 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      data: Array.from({ length: 27 }, (_, i) => `0x${(i + 1).toString(16)}`),
       transactionHash: TX_HASH,
     };
 
@@ -405,7 +405,7 @@ describe("marketSwapSchema", () => {
     const event = {
       address: MARKET_ADDR,
       keys: [SELECTOR, "0xabc1", "0xabc2", "0xabc3"],
-      data: Array.from({ length: 10 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 10, need 22
+      data: Array.from({ length: 10 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 10, need 27
       transactionHash: TX_HASH,
     };
 
@@ -433,7 +433,7 @@ describe("marketFeesCollectedSchema", () => {
     const event = {
       address: MARKET_ADDR,
       keys: [SELECTOR, "0xabc1", "0xabc2", "0xabc3"],
-      data: Array.from({ length: 5 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`),
       transactionHash: TX_HASH,
     };
 

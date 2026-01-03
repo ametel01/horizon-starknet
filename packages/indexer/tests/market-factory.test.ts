@@ -34,13 +34,14 @@ function transformMarketFactoryEvent(event: {
     // u256 fields use 2 felts each (low, high)
     const scalarRoot = readU256(data, 2);
     const initialAnchor = readU256(data, 4);
-    const feeRate = readU256(data, 6);
-    const sy = data[8];
-    const yt = data[9];
-    const underlying = data[10];
-    const underlyingSymbol = decodeByteArray(data, 11);
-    const initialExchangeRate = readU256(data, 14);
-    const marketIndex = Number(data[17] ?? "0");
+    const lnFeeRateRoot = readU256(data, 6);
+    const reserveFeePercent = Number(data[8] ?? "0");
+    const sy = data[9];
+    const yt = data[10];
+    const underlying = data[11];
+    const underlyingSymbol = decodeByteArray(data, 12);
+    const initialExchangeRate = readU256(data, 15);
+    const marketIndex = Number(data[18] ?? "0");
 
     return {
       event_type: "MarketCreated",
@@ -53,7 +54,8 @@ function transformMarketFactoryEvent(event: {
       creator: creator ?? "",
       scalar_root: scalarRoot,
       initial_anchor: initialAnchor,
-      fee_rate: feeRate,
+      ln_fee_rate_root: lnFeeRateRoot,
+      reserve_fee_percent: reserveFeePercent,
       sy: sy ?? "",
       yt: yt ?? "",
       underlying: underlying ?? "",
@@ -87,25 +89,26 @@ describe("MarketFactory Indexer", () => {
         "0x6774a5d5", // expiry
       ],
       data: [
-        "0xmarket_address", // market
-        "0xcreator", // creator
-        "0xde0b6b3a7640000", // scalar_root (1e18)
-        "0x0",
-        "0xde0b6b3a7640000", // initial_anchor
-        "0x0",
-        "0x5f5e100", // fee_rate (100_000_000 = 1%)
-        "0x0",
-        "0xsy_address", // sy
-        "0xyt_address", // yt
-        "0xunderlying", // underlying
+        "0xmarket_address", // market (data[0])
+        "0xcreator", // creator (data[1])
+        "0xde0b6b3a7640000", // scalar_root low (data[2])
+        "0x0", // scalar_root high (data[3])
+        "0xde0b6b3a7640000", // initial_anchor low (data[4])
+        "0x0", // initial_anchor high (data[5])
+        "0x5f5e100", // ln_fee_rate_root low (data[6])
+        "0x0", // ln_fee_rate_root high (data[7])
+        "0x5", // reserve_fee_percent (5%) (data[8])
+        "0xsy_address", // sy (data[9])
+        "0xyt_address", // yt (data[10])
+        "0xunderlying", // underlying (data[11])
         // ByteArray for "ETH": [array_len, pending_word, pending_word_len]
-        "0x0", // array_len (no full 31-byte chunks)
-        "0x455448", // pending_word "ETH"
-        "0x3", // pending_word_len (3 bytes)
-        "0xde0b6b3a7640000", // initial_exchange_rate (low)
-        "0x0", // initial_exchange_rate (high)
-        "0x12345678", // timestamp
-        "0x1", // market_index
+        "0x0", // array_len (data[12])
+        "0x455448", // pending_word "ETH" (data[13])
+        "0x3", // pending_word_len (data[14])
+        "0xde0b6b3a7640000", // initial_exchange_rate low (data[15])
+        "0x0", // initial_exchange_rate high (data[16])
+        "0x12345678", // timestamp (data[17])
+        "0x1", // market_index (data[18])
       ],
       transactionHash: "0xabc123",
       blockNumber: 4643359,
@@ -125,7 +128,8 @@ describe("MarketFactory Indexer", () => {
       creator: "0xcreator",
       scalar_root: "1000000000000000000",
       initial_anchor: "1000000000000000000",
-      fee_rate: "100000000",
+      ln_fee_rate_root: "100000000",
+      reserve_fee_percent: 5,
       sy: "0xsy_address",
       yt: "0xyt_address",
       underlying: "0xunderlying",

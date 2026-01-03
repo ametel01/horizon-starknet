@@ -10,6 +10,7 @@
  * - ImpliedRateUpdated: Implied rate changes
  * - FeesCollected: Protocol fees collected
  * - ScalarRootUpdated: Scalar root parameter changes (admin)
+ * - ReserveFeeTransferred: Reserve fees transferred to treasury
  */
 
 import {
@@ -25,6 +26,7 @@ import {
   marketFeesCollected,
   marketImpliedRateUpdated,
   marketMint,
+  marketReserveFeeTransferred,
   marketScalarRootUpdated,
   marketSwap,
 } from "@/schema";
@@ -45,6 +47,7 @@ import {
   marketFeesCollectedSchema,
   marketImpliedRateUpdatedSchema,
   marketMintSchema,
+  marketReserveFeeTransferredSchema,
   marketScalarRootUpdatedSchema,
   marketSwapSchema,
   validateEvent,
@@ -60,6 +63,7 @@ const SWAP = getSelector("Swap");
 const IMPLIED_RATE_UPDATED = getSelector("ImpliedRateUpdated");
 const FEES_COLLECTED = getSelector("FeesCollected");
 const SCALAR_ROOT_UPDATED = getSelector("ScalarRootUpdated");
+const RESERVE_FEE_TRANSFERRED = getSelector("ReserveFeeTransferred");
 
 const log = createIndexerLogger("market");
 
@@ -76,6 +80,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       marketImpliedRateUpdated,
       marketFeesCollected,
       marketScalarRootUpdated,
+      marketReserveFeeTransferred,
     })
   );
 
@@ -96,6 +101,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
       { address: marketAddress, keys: [FEES_COLLECTED] },
       { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
+      { address: marketAddress, keys: [RESERVE_FEE_TRANSFERRED] },
     ]
   );
 
@@ -137,6 +143,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
           { address: marketAddress, keys: [FEES_COLLECTED] },
           { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
+          { address: marketAddress, keys: [RESERVE_FEE_TRANSFERRED] },
         ];
       });
 
@@ -167,6 +174,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       type ImpliedRateRow = typeof marketImpliedRateUpdated.$inferInsert;
       type FeesRow = typeof marketFeesCollected.$inferInsert;
       type ScalarRootRow = typeof marketScalarRootUpdated.$inferInsert;
+      type ReserveFeeRow = typeof marketReserveFeeTransferred.$inferInsert;
 
       const mintRows: MintRow[] = [];
       const burnRows: BurnRow[] = [];
@@ -174,6 +182,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const impliedRateRows: ImpliedRateRow[] = [];
       const feesRows: FeesRow[] = [];
       const scalarRootRows: ScalarRootRow[] = [];
+      const reserveFeeRows: ReserveFeeRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -309,12 +318,16 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const syIn = readU256(data, 4, "sy_in");
             const ptOut = readU256(data, 6, "pt_out");
             const syOut = readU256(data, 8, "sy_out");
-            const fee = readU256(data, 10, "fee");
-            const impliedRateBefore = readU256(data, 12, "implied_rate_before");
-            const impliedRateAfter = readU256(data, 14, "implied_rate_after");
-            const exchangeRate = readU256(data, 16, "exchange_rate");
-            const syReserve = readU256(data, 18, "sy_reserve");
-            const ptReserve = readU256(data, 20, "pt_reserve");
+            // Fee fields added in AMM curve integration (3 u256 fields = 6 data positions)
+            const totalFee = readU256(data, 10, "total_fee");
+            const lpFee = readU256(data, 12, "lp_fee");
+            const reserveFee = readU256(data, 14, "reserve_fee");
+            // Remaining fields shifted by 6 positions due to new fee fields
+            const impliedRateBefore = readU256(data, 16, "implied_rate_before");
+            const impliedRateAfter = readU256(data, 18, "implied_rate_after");
+            const exchangeRate = readU256(data, 20, "exchange_rate");
+            const syReserve = readU256(data, 22, "sy_reserve");
+            const ptReserve = readU256(data, 24, "pt_reserve");
 
             swapRows.push({
               block_number: blockNumber,
@@ -331,7 +344,9 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               sy_in: syIn,
               pt_out: ptOut,
               sy_out: syOut,
-              fee,
+              total_fee: totalFee,
+              lp_fee: lpFee,
+              reserve_fee: reserveFee,
               implied_rate_before: impliedRateBefore,
               implied_rate_after: impliedRateAfter,
               exchange_rate: exchangeRate,
@@ -412,7 +427,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const data = validated.data;
             const amount = readU256(data, 0, "amount");
             const expiry = Number(BigInt(data[2] ?? "0"));
-            const feeRate = readU256(data, 3, "fee_rate");
+            const lnFeeRateRoot = readU256(data, 3, "ln_fee_rate_root");
 
             feesRows.push({
               block_number: blockNumber,
@@ -424,7 +439,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               market,
               amount,
               expiry,
-              fee_rate: feeRate,
+              ln_fee_rate_root: lnFeeRateRoot,
             });
           } else if (matchSelector(eventKey, SCALAR_ROOT_UPDATED)) {
             // Validate event structure
@@ -458,6 +473,46 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               market,
               old_value: oldValue,
               new_value: newValue,
+            });
+          } else if (matchSelector(eventKey, RESERVE_FEE_TRANSFERRED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketReserveFeeTransferredSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "ReserveFeeTransferred",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // ReserveFeeTransferred: keys = [selector, market, treasury, caller]
+            // data = [amount(u256), expiry, timestamp]
+            const market = validated.keys[1] ?? marketAddress;
+            const treasury = validated.keys[2] ?? "";
+            const caller = validated.keys[3] ?? "";
+
+            const data = validated.data;
+            const amount = readU256(data, 0, "amount");
+            const expiry = Number(BigInt(data[2] ?? "0"));
+            const timestamp = Number(BigInt(data[3] ?? "0"));
+
+            reserveFeeRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              market,
+              treasury,
+              caller,
+              amount,
+              expiry,
+              timestamp,
             });
           }
         } catch (err) {
@@ -523,6 +578,12 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(scalarRootRows)
               .onConflictDoNothing();
           }
+          if (reserveFeeRows.length > 0) {
+            await tx
+              .insert(marketReserveFeeTransferred)
+              .values(reserveFeeRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
@@ -533,7 +594,8 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         swapRows.length +
         impliedRateRows.length +
         feesRows.length +
-        scalarRootRows.length;
+        scalarRootRows.length +
+        reserveFeeRows.length;
       recordEvents("market", successCount, errorCount);
       recordBlock("market", blockNumber);
 

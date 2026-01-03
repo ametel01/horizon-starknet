@@ -38,7 +38,7 @@ WITH market_info AS (
     m.sy,
     m.pt,
     m.expiry,
-    m.fee_rate,
+    m.ln_fee_rate_root,
     m.initial_exchange_rate,
     m.block_timestamp as created_at,
     y.yt,
@@ -153,7 +153,7 @@ SELECT
   mi.yt,
   mi.underlying,
   mi.underlying_symbol,
-  mi.fee_rate,
+  mi.ln_fee_rate_root,
   mi.initial_exchange_rate,
   mi.created_at,
   -- Reserves: prioritize swap/mint (correct parsing), then implied_rate, then router
@@ -169,10 +169,10 @@ SELECT
   COALESCE(vm.sy_volume_24h, vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0) as sy_volume_24h,
   COALESCE(vm.pt_volume_24h, vr.pt_volume_24h, 0) as pt_volume_24h,
   COALESCE(vm.sy_volume_24h, vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0) + COALESCE(vm.pt_volume_24h, vr.pt_volume_24h, 0) as volume_24h,
-  -- Fees: use market fees if available, else estimate from volume * fee_rate
+  -- Fees: use market fees if available, else estimate from volume * ln_fee_rate_root
   COALESCE(
     vm.fees_24h,
-    ((COALESCE(vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0)) * mi.fee_rate / 1000000000000000000)
+    ((COALESCE(vr.sy_volume_24h, 0) + COALESCE(vry.sy_volume_24h, 0)) * mi.ln_fee_rate_root / 1000000000000000000)
   ) as fees_24h,
   COALESCE(vm.swaps_24h, vr.swaps_24h, 0) + COALESCE(vry.swaps_24h, 0) as swaps_24h
 FROM market_info mi

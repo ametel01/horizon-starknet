@@ -4,6 +4,9 @@
  * Indexes events from the MarketFactory contract:
  * - MarketCreated: When new AMM markets are deployed
  * - MarketClassHashUpdated: When market class hash is updated
+ * - TreasuryUpdated: When the treasury address is changed
+ * - DefaultReserveFeeUpdated: When the default reserve fee percent is changed
+ * - OverrideFeeSet: When a per-router per-market fee override is set
  */
 
 import {
@@ -16,7 +19,10 @@ import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   marketFactoryClassHashUpdated,
+  marketFactoryDefaultReserveFeeUpdated,
   marketFactoryMarketCreated,
+  marketFactoryOverrideFeeSet,
+  marketFactoryTreasuryUpdated,
 } from "@/schema";
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
@@ -31,13 +37,19 @@ import { streamTimeoutPlugin } from "../lib/plugins";
 import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
 import {
   marketFactoryClassHashUpdatedSchema,
+  marketFactoryDefaultReserveFeeUpdatedSchema,
   marketFactoryMarketCreatedSchema,
+  marketFactoryOverrideFeeSetSchema,
+  marketFactoryTreasuryUpdatedSchema,
   validateEvent,
 } from "../lib/validation";
 
 // Event selectors using Apibara's getSelector helper
 const MARKET_CREATED = getSelector("MarketCreated");
 const MARKET_CLASS_HASH_UPDATED = getSelector("MarketClassHashUpdated");
+const TREASURY_UPDATED = getSelector("TreasuryUpdated");
+const DEFAULT_RESERVE_FEE_UPDATED = getSelector("DefaultReserveFeeUpdated");
+const OVERRIDE_FEE_SET = getSelector("OverrideFeeSet");
 
 const log = createIndexerLogger("market-factory");
 
@@ -52,6 +64,9 @@ export default function marketFactoryIndexer(
     getDrizzleOptions({
       marketFactoryMarketCreated,
       marketFactoryClassHashUpdated,
+      marketFactoryTreasuryUpdated,
+      marketFactoryDefaultReserveFeeUpdated,
+      marketFactoryOverrideFeeSet,
     })
   );
 
@@ -77,6 +92,9 @@ export default function marketFactoryIndexer(
       events: [
         { address: config.marketFactory, keys: [MARKET_CREATED] },
         { address: config.marketFactory, keys: [MARKET_CLASS_HASH_UPDATED] },
+        { address: config.marketFactory, keys: [TREASURY_UPDATED] },
+        { address: config.marketFactory, keys: [DEFAULT_RESERVE_FEE_UPDATED] },
+        { address: config.marketFactory, keys: [OVERRIDE_FEE_SET] },
       ],
     },
     async transform({ block, endCursor }) {
@@ -92,9 +110,17 @@ export default function marketFactoryIndexer(
       // Collect events by type for batch insert
       type MarketCreatedRow = typeof marketFactoryMarketCreated.$inferInsert;
       type ClassHashRow = typeof marketFactoryClassHashUpdated.$inferInsert;
+      type TreasuryUpdatedRow =
+        typeof marketFactoryTreasuryUpdated.$inferInsert;
+      type DefaultReserveFeeUpdatedRow =
+        typeof marketFactoryDefaultReserveFeeUpdated.$inferInsert;
+      type OverrideFeeSetRow = typeof marketFactoryOverrideFeeSet.$inferInsert;
 
       const marketCreatedRows: MarketCreatedRow[] = [];
       const classHashRows: ClassHashRow[] = [];
+      const treasuryUpdatedRows: TreasuryUpdatedRow[] = [];
+      const defaultReserveFeeUpdatedRows: DefaultReserveFeeUpdatedRow[] = [];
+      const overrideFeeSetRows: OverrideFeeSetRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -133,22 +159,23 @@ export default function marketFactoryIndexer(
             // u256 fields use 2 felts each (low, high)
             const scalarRoot = readU256(data, 2, "scalar_root");
             const initialAnchor = readU256(data, 4, "initial_anchor");
-            const feeRate = readU256(data, 6, "fee_rate");
-            const sy = data[8];
-            const yt = data[9];
-            const underlying = data[10];
+            const lnFeeRateRoot = readU256(data, 6, "ln_fee_rate_root");
+            const reserveFeePercent = Number(data[8] ?? "0");
+            const sy = data[9];
+            const yt = data[10];
+            const underlying = data[11];
             const underlyingSymbol = decodeByteArray(
               data,
-              11,
+              12,
               "underlying_symbol"
             );
             const initialExchangeRate = readU256(
               data,
-              14,
+              15,
               "initial_exchange_rate"
             );
-            // data[16] is timestamp (unused)
-            const marketIndex = Number(data[17] ?? "0");
+            // data[17] is timestamp (unused)
+            const marketIndex = Number(data[18] ?? "0");
 
             marketCreatedRows.push({
               block_number: blockNumber,
@@ -161,7 +188,8 @@ export default function marketFactoryIndexer(
               creator: creator ?? "",
               scalar_root: scalarRoot,
               initial_anchor: initialAnchor,
-              fee_rate: feeRate,
+              ln_fee_rate_root: lnFeeRateRoot,
+              reserve_fee_percent: reserveFeePercent,
               sy: sy ?? "",
               yt: yt ?? "",
               underlying: underlying ?? "",
@@ -196,6 +224,99 @@ export default function marketFactoryIndexer(
               event_index: eventIndex,
               old_class_hash: oldClassHash ?? "",
               new_class_hash: newClassHash ?? "",
+            });
+          } else if (matchSelector(eventKey, TREASURY_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryTreasuryUpdatedSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "TreasuryUpdated",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // TreasuryUpdated: keys = [selector], data = [old_treasury, new_treasury]
+            const oldTreasury = validated.data[0];
+            const newTreasury = validated.data[1];
+
+            treasuryUpdatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_treasury: oldTreasury ?? "",
+              new_treasury: newTreasury ?? "",
+            });
+          } else if (matchSelector(eventKey, DEFAULT_RESERVE_FEE_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryDefaultReserveFeeUpdatedSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "DefaultReserveFeeUpdated",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // DefaultReserveFeeUpdated: keys = [selector], data = [old_percent, new_percent]
+            const oldPercent = Number(validated.data[0] ?? "0");
+            const newPercent = Number(validated.data[1] ?? "0");
+
+            defaultReserveFeeUpdatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_percent: oldPercent,
+              new_percent: newPercent,
+            });
+          } else if (matchSelector(eventKey, OVERRIDE_FEE_SET)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryOverrideFeeSetSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "OverrideFeeSet",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // OverrideFeeSet: keys = [selector, router, market], data = [ln_fee_rate_root(u256)]
+            const router = validated.keys[1] ?? "";
+            const market = validated.keys[2] ?? "";
+            const lnFeeRateRoot = readU256(
+              validated.data,
+              0,
+              "ln_fee_rate_root"
+            );
+
+            overrideFeeSetRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              router,
+              market,
+              ln_fee_rate_root: lnFeeRateRoot,
             });
           }
         } catch (err) {
@@ -246,11 +367,34 @@ export default function marketFactoryIndexer(
               .values(classHashRows)
               .onConflictDoNothing();
           }
+          if (treasuryUpdatedRows.length > 0) {
+            await tx
+              .insert(marketFactoryTreasuryUpdated)
+              .values(treasuryUpdatedRows)
+              .onConflictDoNothing();
+          }
+          if (defaultReserveFeeUpdatedRows.length > 0) {
+            await tx
+              .insert(marketFactoryDefaultReserveFeeUpdated)
+              .values(defaultReserveFeeUpdatedRows)
+              .onConflictDoNothing();
+          }
+          if (overrideFeeSetRows.length > 0) {
+            await tx
+              .insert(marketFactoryOverrideFeeSet)
+              .values(overrideFeeSetRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
       // Record metrics
-      const successCount = marketCreatedRows.length + classHashRows.length;
+      const successCount =
+        marketCreatedRows.length +
+        classHashRows.length +
+        treasuryUpdatedRows.length +
+        defaultReserveFeeUpdatedRows.length +
+        overrideFeeSetRows.length;
       recordEvents("market-factory", successCount, errorCount);
       recordBlock("market-factory", blockNumber);
     },

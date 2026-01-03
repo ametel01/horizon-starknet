@@ -96,12 +96,16 @@ function handleSwap(ctx: EventContext) {
     sy_in: readU256(data, 4),
     pt_out: readU256(data, 6),
     sy_out: readU256(data, 8),
-    fee: readU256(data, 10),
-    implied_rate_before: readU256(data, 12),
-    implied_rate_after: readU256(data, 14),
-    exchange_rate: readU256(data, 16),
-    sy_reserve_after: readU256(data, 18),
-    pt_reserve_after: readU256(data, 20),
+    // Fee fields (3 u256 = 6 data positions)
+    total_fee: readU256(data, 10),
+    lp_fee: readU256(data, 12),
+    reserve_fee: readU256(data, 14),
+    // Remaining fields shifted by 4 positions (2 new u256 fields)
+    implied_rate_before: readU256(data, 16),
+    implied_rate_after: readU256(data, 18),
+    exchange_rate: readU256(data, 20),
+    sy_reserve_after: readU256(data, 22),
+    pt_reserve_after: readU256(data, 24),
   };
 }
 
@@ -132,7 +136,8 @@ function handleFeesCollected(ctx: EventContext) {
     market: keys[3] ?? address,
     amount: readU256(data, 0),
     expiry: Number(BigInt(data[2] ?? "0")),
-    fee_rate: readU256(data, 3),
+    ln_fee_rate_root: readU256(data, 3),
+    // Note: data[5] is timestamp, not used in test but present in event
   };
 }
 
@@ -273,28 +278,35 @@ describe("Market Indexer", () => {
     const event = {
       keys: [SWAP, "0xsender", "0xreceiver", "0x6774a5d5"],
       data: [
-        "0xsy_address", // sy
-        "0xpt_address", // pt
-        "0xde0b6b3a7640000", // pt_in low
-        "0x0", // pt_in high
-        "0x0", // sy_in low
-        "0x0", // sy_in high
-        "0x0", // pt_out low
-        "0x0", // pt_out high
-        "0xde0b6b3a7640000", // sy_out low
-        "0x0", // sy_out high
-        "0x2386f26fc10000", // fee low (0.01e18 = 1%)
-        "0x0", // fee high
-        "0x6f05b59d3b20000", // implied_rate_before low
-        "0x0", // implied_rate_before high
-        "0x6f05b59d3b20000", // implied_rate_after low
-        "0x0", // implied_rate_after high
-        "0xde0b6b3a7640000", // exchange_rate low
-        "0x0", // exchange_rate high
-        "0xde0b6b3a7640000", // sy_reserve low
-        "0x0", // sy_reserve high
-        "0xde0b6b3a7640000", // pt_reserve low
-        "0x0", // pt_reserve high
+        "0xsy_address", // sy (data[0])
+        "0xpt_address", // pt (data[1])
+        "0xde0b6b3a7640000", // pt_in low (data[2])
+        "0x0", // pt_in high (data[3])
+        "0x0", // sy_in low (data[4])
+        "0x0", // sy_in high (data[5])
+        "0x0", // pt_out low (data[6])
+        "0x0", // pt_out high (data[7])
+        "0xde0b6b3a7640000", // sy_out low (data[8])
+        "0x0", // sy_out high (data[9])
+        // Fee breakdown: total_fee, lp_fee, reserve_fee (3 u256 = 6 felts)
+        "0x2386f26fc10000", // total_fee low (0.01e18) (data[10])
+        "0x0", // total_fee high (data[11])
+        "0x1c6bf526340000", // lp_fee low (0.008e18 = 80% of fee) (data[12])
+        "0x0", // lp_fee high (data[13])
+        "0x71afd498d0000", // reserve_fee low (0.002e18 = 20% of fee) (data[14])
+        "0x0", // reserve_fee high (data[15])
+        // Remaining fields shifted by 4 positions
+        "0x6f05b59d3b20000", // implied_rate_before low (data[16])
+        "0x0", // implied_rate_before high (data[17])
+        "0x6f05b59d3b20000", // implied_rate_after low (data[18])
+        "0x0", // implied_rate_after high (data[19])
+        "0xde0b6b3a7640000", // exchange_rate low (data[20])
+        "0x0", // exchange_rate high (data[21])
+        "0xde0b6b3a7640000", // sy_reserve low (data[22])
+        "0x0", // sy_reserve high (data[23])
+        "0xde0b6b3a7640000", // pt_reserve low (data[24])
+        "0x0", // pt_reserve high (data[25])
+        "0x12345678", // timestamp (data[26])
       ],
       address: "0xmarket_address",
       transactionHash: "0xswap123",
@@ -319,7 +331,9 @@ describe("Market Indexer", () => {
       sy_in: "0",
       pt_out: "0",
       sy_out: "1000000000000000000",
-      fee: "10000000000000000",
+      total_fee: "10000000000000000",
+      lp_fee: "8000000000000000",
+      reserve_fee: "2000000000000000",
       implied_rate_before: "500000000000000000",
       implied_rate_after: "500000000000000000",
       exchange_rate: "1000000000000000000",
@@ -375,11 +389,12 @@ describe("Market Indexer", () => {
     const event = {
       keys: [FEES_COLLECTED, "0xcollector", "0xreceiver", "0xmarket_address"],
       data: [
-        "0x2386f26fc10000", // amount low (0.01e18)
-        "0x0", // amount high
-        "0x6774a5d5", // expiry
-        "0x5f5e100", // fee_rate low (100_000_000)
-        "0x0", // fee_rate high
+        "0x2386f26fc10000", // amount low (0.01e18) (data[0])
+        "0x0", // amount high (data[1])
+        "0x6774a5d5", // expiry (data[2])
+        "0x5f5e100", // ln_fee_rate_root low (100_000_000) (data[3])
+        "0x0", // ln_fee_rate_root high (data[4])
+        "0x12345678", // timestamp (data[5])
       ],
       address: "0xmarket_address",
       transactionHash: "0xfees123",
@@ -399,7 +414,7 @@ describe("Market Indexer", () => {
       market: "0xmarket_address",
       amount: "10000000000000000",
       expiry: 1735697877,
-      fee_rate: "100000000",
+      ln_fee_rate_root: "100000000",
     });
   });
 

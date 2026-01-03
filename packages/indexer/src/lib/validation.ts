@@ -73,14 +73,15 @@ export const factoryClassHashesUpdatedSchema = baseEventSchema.extend({
 /**
  * MarketFactory.MarketCreated event
  * keys: [selector, pt, expiry]
- * data: [market, creator, scalar_root(u256), initial_anchor(u256), fee_rate(u256),
- *        sy, yt, underlying, symbol(ByteArray), initial_exchange_rate(u256), timestamp, market_index]
+ * data: [market, creator, scalar_root(u256), initial_anchor(u256), ln_fee_rate_root(u256),
+ *        reserve_fee_percent, sy, yt, underlying, underlying_symbol(ByteArray),
+ *        initial_exchange_rate(u256), timestamp, market_index]
  */
 export const marketFactoryMarketCreatedSchema = baseEventSchema.extend({
   keys: z.array(z.string()).min(3, "MarketCreated requires at least 3 keys"),
   data: z
     .array(z.string())
-    .min(18, "MarketCreated requires at least 18 data elements"),
+    .min(19, "MarketCreated requires at least 19 data elements"),
 });
 
 /**
@@ -93,6 +94,43 @@ export const marketFactoryClassHashUpdatedSchema = baseEventSchema.extend({
   data: z
     .array(z.string())
     .min(2, "MarketClassHashUpdated requires at least 2 data elements"),
+});
+
+/**
+ * MarketFactory.TreasuryUpdated event
+ * keys: [selector]
+ * data: [old_treasury, new_treasury]
+ */
+export const marketFactoryTreasuryUpdatedSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1),
+  data: z
+    .array(z.string())
+    .min(2, "TreasuryUpdated requires at least 2 data elements"),
+});
+
+/**
+ * MarketFactory.DefaultReserveFeeUpdated event
+ * keys: [selector]
+ * data: [old_percent, new_percent]
+ */
+export const marketFactoryDefaultReserveFeeUpdatedSchema =
+  baseEventSchema.extend({
+    keys: z.array(z.string()).min(1),
+    data: z
+      .array(z.string())
+      .min(2, "DefaultReserveFeeUpdated requires at least 2 data elements"),
+  });
+
+/**
+ * MarketFactory.OverrideFeeSet event
+ * keys: [selector, router, market]
+ * data: [ln_fee_rate_root(u256)]
+ */
+export const marketFactoryOverrideFeeSetSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "OverrideFeeSet requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(2, "OverrideFeeSet requires at least 2 data elements"),
 });
 
 // ============================================================
@@ -402,13 +440,15 @@ export const marketBurnSchema = baseEventSchema.extend({
 /**
  * Market.Swap event
  * keys: [selector, sender, receiver, expiry]
- * data: [sy, pt, pt_in(u256), sy_in(u256), pt_out(u256), sy_out(u256), fee(u256),
+ * data: [sy, pt, pt_in(u256), sy_in(u256), pt_out(u256), sy_out(u256),
+ *        total_fee(u256), lp_fee(u256), reserve_fee(u256),
  *        implied_rate_before(u256), implied_rate_after(u256), exchange_rate(u256),
- *        sy_reserve(u256), pt_reserve(u256)]
+ *        sy_reserve_after(u256), pt_reserve_after(u256), timestamp]
+ * Total: 2 + (7 * 2) + (5 * 2) + 1 = 27 data elements
  */
 export const marketSwapSchema = baseEventSchema.extend({
   keys: z.array(z.string()).min(4, "Swap requires at least 4 keys"),
-  data: z.array(z.string()).min(22, "Swap requires at least 22 data elements"),
+  data: z.array(z.string()).min(27, "Swap requires at least 27 data elements"),
 });
 
 /**
@@ -429,13 +469,13 @@ export const marketImpliedRateUpdatedSchema = baseEventSchema.extend({
 /**
  * Market.FeesCollected event
  * keys: [selector, collector, receiver, market]
- * data: [amount(u256), expiry, fee_rate(u256)]
+ * data: [amount(u256), expiry, ln_fee_rate_root(u256), timestamp]
  */
 export const marketFeesCollectedSchema = baseEventSchema.extend({
   keys: z.array(z.string()).min(4, "FeesCollected requires at least 4 keys"),
   data: z
     .array(z.string())
-    .min(5, "FeesCollected requires at least 5 data elements"),
+    .min(6, "FeesCollected requires at least 6 data elements"),
 });
 
 /**
@@ -450,6 +490,20 @@ export const marketScalarRootUpdatedSchema = baseEventSchema.extend({
   data: z
     .array(z.string())
     .min(4, "ScalarRootUpdated requires at least 4 data elements"),
+});
+
+/**
+ * Market.ReserveFeeTransferred event
+ * keys: [selector, market, treasury, caller]
+ * data: [amount(u256), expiry, timestamp]
+ */
+export const marketReserveFeeTransferredSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(4, "ReserveFeeTransferred requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(4, "ReserveFeeTransferred requires at least 4 data elements"),
 });
 
 // ============================================================
@@ -645,6 +699,9 @@ export const eventSchemas = {
   // MarketFactory
   MarketCreated: marketFactoryMarketCreatedSchema,
   MarketClassHashUpdated: marketFactoryClassHashUpdatedSchema,
+  TreasuryUpdated: marketFactoryTreasuryUpdatedSchema,
+  DefaultReserveFeeUpdated: marketFactoryDefaultReserveFeeUpdatedSchema,
+  OverrideFeeSet: marketFactoryOverrideFeeSetSchema,
 
   // SY (core)
   Deposit: syDepositSchema,
@@ -682,6 +739,7 @@ export const eventSchemas = {
   ImpliedRateUpdated: marketImpliedRateUpdatedSchema,
   FeesCollected: marketFeesCollectedSchema,
   ScalarRootUpdated: marketScalarRootUpdatedSchema,
+  ReserveFeeTransferred: marketReserveFeeTransferredSchema,
 
   // Router
   "Router.MintPY": routerMintPYSchema,
