@@ -28,7 +28,12 @@ import {
 } from "../lib/logger";
 import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
-import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
+import {
+  decodeByteArrayWithOffset,
+  matchSelector,
+  readFeltAsNumber,
+  readU256,
+} from "../lib/utils";
 import {
   factoryClassHashesUpdatedSchema,
   factoryYieldContractsCreatedSchema,
@@ -130,18 +135,21 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const yt = data[1];
             const creator = data[2];
             const underlying = data[3];
-            const underlyingSymbol = decodeByteArray(
-              data,
-              4,
-              "underlying_symbol"
-            );
-            // data[7-8] = initial_exchange_rate (u256), data[9] = timestamp, data[10] = market_index
+            // ByteArray is variable-length: 3 + arrayLen felts
+            // Use decodeByteArrayWithOffset to get next index dynamically
+            const { value: underlyingSymbol, nextIndex: afterSymbol } =
+              decodeByteArrayWithOffset(data, 4, "underlying_symbol");
             const initialExchangeRate = readU256(
               data,
-              7,
+              afterSymbol,
               "initial_exchange_rate"
             );
-            const marketIndex = Number(data[10] ?? "0");
+            // afterSymbol + 2 is timestamp (unused), afterSymbol + 3 is market_index
+            const marketIndex = readFeltAsNumber(
+              data,
+              afterSymbol + 3,
+              "market_index"
+            );
 
             log.info(
               { sy, pt, yt, underlying, symbol: underlyingSymbol },

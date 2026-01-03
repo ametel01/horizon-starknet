@@ -44,6 +44,9 @@ export type BaseEvent = z.infer<typeof baseEventSchema>;
  * Factory.YieldContractsCreated event
  * keys: [selector, sy, expiry]
  * data: [pt, yt, creator, underlying, symbol(ByteArray), initial_exchange_rate(u256), timestamp, market_index]
+ *
+ * Note: symbol is a variable-length ByteArray (3 + arrayLen felts).
+ * Minimum 11 elements assumes arrayLen=0 (symbol ≤31 chars). Longer symbols add more felts.
  */
 export const factoryYieldContractsCreatedSchema = baseEventSchema.extend({
   keys: z
@@ -76,6 +79,9 @@ export const factoryClassHashesUpdatedSchema = baseEventSchema.extend({
  * data: [market, creator, scalar_root(u256), initial_anchor(u256), ln_fee_rate_root(u256),
  *        reserve_fee_percent, sy, yt, underlying, underlying_symbol(ByteArray),
  *        initial_exchange_rate(u256), timestamp, market_index]
+ *
+ * Note: underlying_symbol is a variable-length ByteArray (3 + arrayLen felts).
+ * Minimum 19 elements assumes arrayLen=0 (symbol ≤31 chars). Longer symbols add more felts.
  */
 export const marketFactoryMarketCreatedSchema = baseEventSchema.extend({
   keys: z.array(z.string()).min(3, "MarketCreated requires at least 3 keys"),

@@ -34,7 +34,12 @@ import {
 } from "../lib/logger";
 import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
-import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
+import {
+  decodeByteArrayWithOffset,
+  matchSelector,
+  readFeltAsNumber,
+  readU256,
+} from "../lib/utils";
 import {
   marketFactoryClassHashUpdatedSchema,
   marketFactoryDefaultReserveFeeUpdatedSchema,
@@ -164,18 +169,21 @@ export default function marketFactoryIndexer(
             const sy = data[9];
             const yt = data[10];
             const underlying = data[11];
-            const underlyingSymbol = decodeByteArray(
-              data,
-              12,
-              "underlying_symbol"
-            );
+            // ByteArray is variable-length: 3 + arrayLen felts
+            // Use decodeByteArrayWithOffset to get next index dynamically
+            const { value: underlyingSymbol, nextIndex: afterSymbol } =
+              decodeByteArrayWithOffset(data, 12, "underlying_symbol");
             const initialExchangeRate = readU256(
               data,
-              15,
+              afterSymbol,
               "initial_exchange_rate"
             );
-            // data[17] is timestamp (unused)
-            const marketIndex = Number(data[18] ?? "0");
+            // afterSymbol + 2 is timestamp (unused), afterSymbol + 3 is market_index
+            const marketIndex = readFeltAsNumber(
+              data,
+              afterSymbol + 3,
+              "market_index"
+            );
 
             marketCreatedRows.push({
               block_number: blockNumber,
