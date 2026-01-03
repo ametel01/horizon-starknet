@@ -610,9 +610,9 @@ bun run check
 
 ---
 
-## Phase 7: Frontend Hook Updates
+## Phase 7: Frontend Hook Updates **COMPLETE**
 
-### Step 7.1: Update useMarkets hook
+### Step 7.1: Update useMarkets hook **COMPLETE**
 
 **File:** `packages/frontend/src/features/markets/model/useMarkets.ts`
 
