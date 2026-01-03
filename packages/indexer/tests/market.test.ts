@@ -19,6 +19,7 @@ const FEES_COLLECTED = hash.getSelectorFromName("FeesCollected");
 const RESERVE_FEE_TRANSFERRED = hash.getSelectorFromName(
   "ReserveFeeTransferred"
 );
+const SCALAR_ROOT_UPDATED = hash.getSelectorFromName("ScalarRootUpdated");
 
 // Shared event context type
 interface EventContext {
@@ -169,6 +170,19 @@ function handleReserveFeeTransferred(ctx: EventContext) {
   };
 }
 
+function handleScalarRootUpdated(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  // ScalarRootUpdated: keys = [selector, market]
+  // data = [old_value(u256), new_value(u256), timestamp]
+  return {
+    event_type: "ScalarRootUpdated" as const,
+    ...baseFields(ctx),
+    market: keys[1] ?? address,
+    old_value: readU256(data, 0),
+    new_value: readU256(data, 2),
+  };
+}
+
 // Handler return types
 type MarketEventResult =
   | ReturnType<typeof handleMint>
@@ -176,7 +190,8 @@ type MarketEventResult =
   | ReturnType<typeof handleSwap>
   | ReturnType<typeof handleImpliedRateUpdated>
   | ReturnType<typeof handleFeesCollected>
-  | ReturnType<typeof handleReserveFeeTransferred>;
+  | ReturnType<typeof handleReserveFeeTransferred>
+  | ReturnType<typeof handleScalarRootUpdated>;
 
 // Dispatch table: [selector, handler] pairs
 const EVENT_HANDLERS: [string, (ctx: EventContext) => MarketEventResult][] = [
@@ -186,6 +201,7 @@ const EVENT_HANDLERS: [string, (ctx: EventContext) => MarketEventResult][] = [
   [IMPLIED_RATE_UPDATED, handleImpliedRateUpdated],
   [FEES_COLLECTED, handleFeesCollected],
   [RESERVE_FEE_TRANSFERRED, handleReserveFeeTransferred],
+  [SCALAR_ROOT_UPDATED, handleScalarRootUpdated],
 ];
 
 // Transform function using dispatch table
@@ -482,6 +498,35 @@ describe("Market Indexer", () => {
       amount: "10000000000000000",
       expiry: 1735697877,
       timestamp: 305419896,
+    });
+  });
+
+  it("should transform ScalarRootUpdated event", () => {
+    const event = {
+      keys: [SCALAR_ROOT_UPDATED, "0xmarket_address"],
+      data: [
+        "0xde0b6b3a7640000", // old_value low (1e18) (data[0])
+        "0x0", // old_value high (data[1])
+        "0x1bc16d674ec80000", // new_value low (2e18) (data[2])
+        "0x0", // new_value high (data[3])
+        "0x12345678", // timestamp (data[4])
+      ],
+      address: "0xmarket_address",
+      transactionHash: "0xscalar123",
+      blockNumber: 4643700,
+      blockTimestamp: "1234568200",
+    };
+
+    const result = transformMarketEvent(event);
+
+    expect(result).toEqual({
+      event_type: "ScalarRootUpdated",
+      block_number: 4643700,
+      block_timestamp: "1234568200",
+      transaction_hash: "0xscalar123",
+      market: "0xmarket_address",
+      old_value: "1000000000000000000",
+      new_value: "2000000000000000000",
     });
   });
 

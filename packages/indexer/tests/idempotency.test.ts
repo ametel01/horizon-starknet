@@ -34,13 +34,25 @@ import {
   routerSwap,
   routerSwapYT,
   syDeposit,
+  syNegativeYieldDetected,
   syOracleRateUpdated,
+  syPauseState,
   syRedeem,
+  syRewardIndexUpdated,
+  syRewardsClaimed,
+  syRewardTokenAdded,
   ytExpiryReached,
   ytInterestClaimed,
+  ytInterestFeeRateSet,
   ytMintPY,
+  ytMintPYMulti,
+  ytPostExpiryDataSet,
+  ytPyIndexUpdated,
   ytRedeemPY,
+  ytRedeemPYMulti,
   ytRedeemPYPostExpiry,
+  ytRedeemPYWithInterest,
+  ytTreasuryInterestRedeemed,
 } from "../src/schema";
 
 // ============================================================
@@ -48,7 +60,7 @@ import {
 // ============================================================
 
 /**
- * All 24 event tables must have these three columns for idempotency:
+ * All 40 event tables must have these three columns for idempotency:
  * - block_number: The block where the event occurred
  * - transaction_hash: The transaction containing the event
  * - event_index: The position of the event within the transaction
@@ -79,11 +91,26 @@ const ALL_EVENT_TABLES = [
   { name: "syDeposit", table: syDeposit },
   { name: "syRedeem", table: syRedeem },
   { name: "syOracleRateUpdated", table: syOracleRateUpdated },
+  // SY Phase 4: Monitoring tables
+  { name: "syNegativeYieldDetected", table: syNegativeYieldDetected },
+  { name: "syPauseState", table: syPauseState },
+  // SY Phase 4: Reward tables
+  { name: "syRewardsClaimed", table: syRewardsClaimed },
+  { name: "syRewardIndexUpdated", table: syRewardIndexUpdated },
+  { name: "syRewardTokenAdded", table: syRewardTokenAdded },
   { name: "ytMintPY", table: ytMintPY },
   { name: "ytRedeemPY", table: ytRedeemPY },
   { name: "ytRedeemPYPostExpiry", table: ytRedeemPYPostExpiry },
   { name: "ytInterestClaimed", table: ytInterestClaimed },
   { name: "ytExpiryReached", table: ytExpiryReached },
+  // YT Pendle-style interest system events
+  { name: "ytTreasuryInterestRedeemed", table: ytTreasuryInterestRedeemed },
+  { name: "ytInterestFeeRateSet", table: ytInterestFeeRateSet },
+  { name: "ytMintPYMulti", table: ytMintPYMulti },
+  { name: "ytRedeemPYMulti", table: ytRedeemPYMulti },
+  { name: "ytRedeemPYWithInterest", table: ytRedeemPYWithInterest },
+  { name: "ytPostExpiryDataSet", table: ytPostExpiryDataSet },
+  { name: "ytPyIndexUpdated", table: ytPyIndexUpdated },
   { name: "marketMint", table: marketMint },
   { name: "marketBurn", table: marketBurn },
   { name: "marketSwap", table: marketSwap },
@@ -126,8 +153,8 @@ describe("Schema Idempotency Constraints", () => {
     });
   });
 
-  it("verifies we have all 28 event tables", () => {
-    expect(ALL_EVENT_TABLES).toHaveLength(28);
+  it("verifies we have all 40 event tables", () => {
+    expect(ALL_EVENT_TABLES).toHaveLength(40);
   });
 });
 
@@ -364,14 +391,14 @@ describe("Complete Table Coverage", () => {
     expect(marketFactoryTables).toHaveLength(5);
   });
 
-  it("covers all SY events (3)", () => {
+  it("covers all SY events (8)", () => {
     const syTables = ALL_EVENT_TABLES.filter((t) => t.name.startsWith("sy"));
-    expect(syTables).toHaveLength(3);
+    expect(syTables).toHaveLength(8);
   });
 
-  it("covers all YT events (5)", () => {
+  it("covers all YT events (12)", () => {
     const ytTables = ALL_EVENT_TABLES.filter((t) => t.name.startsWith("yt"));
-    expect(ytTables).toHaveLength(5);
+    expect(ytTables).toHaveLength(12);
   });
 
   it("covers all Market events (7)", () => {

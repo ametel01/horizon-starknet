@@ -1,7 +1,7 @@
 /**
  * Validation Module Tests
  *
- * Tests Zod schemas for all 24 event types and the validateEvent helper.
+ * Tests Zod schemas for all 33 event types and the validateEvent helper.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -28,14 +28,27 @@ import {
   routerSwapSchema,
   routerSwapYTSchema,
   syDepositSchema,
+  syNegativeYieldDetectedSchema,
   syOracleRateUpdatedSchema,
+  syPausedSchema,
   syRedeemSchema,
+  syRewardIndexUpdatedSchema,
+  syRewardsClaimedSchema,
+  syRewardTokenAddedSchema,
+  syUnpausedSchema,
   validateEvent,
   ytExpiryReachedSchema,
   ytInterestClaimedSchema,
+  ytInterestFeeRateSetSchema,
+  ytMintPYMultiSchema,
   ytMintPYSchema,
+  ytPostExpiryDataSetSchema,
+  ytPyIndexUpdatedSchema,
+  ytRedeemPYMultiSchema,
   ytRedeemPYPostExpirySchema,
   ytRedeemPYSchema,
+  ytRedeemPYWithInterestSchema,
+  ytTreasuryInterestRedeemedSchema,
 } from "../src/lib/validation";
 
 // Mock logger to suppress output during tests
@@ -373,6 +386,218 @@ describe("syOracleRateUpdatedSchema", () => {
 });
 
 // ============================================================
+// SY PHASE 4: MONITORING EVENT SCHEMA TESTS
+// ============================================================
+
+describe("syNegativeYieldDetectedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xsy", "0xunderlying"],
+      data: Array.from({ length: 7 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = syNegativeYieldDetectedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xsy"], // Missing underlying
+      data: Array.from({ length: 7 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = syNegativeYieldDetectedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xsy", "0xunderlying"],
+      data: Array.from({ length: 5 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 5, need 7
+      transactionHash: TX_HASH,
+    };
+
+    const result = syNegativeYieldDetectedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("syPausedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR],
+      data: ["0xaccount"],
+      transactionHash: TX_HASH,
+    };
+
+    const result = syPausedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with empty data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR],
+      data: [],
+      transactionHash: TX_HASH,
+    };
+
+    const result = syPausedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("syUnpausedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR],
+      data: ["0xaccount"],
+      transactionHash: TX_HASH,
+    };
+
+    const result = syUnpausedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with empty data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR],
+      data: [],
+      transactionHash: TX_HASH,
+    };
+
+    const result = syUnpausedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+// ============================================================
+// SY PHASE 4: REWARD MANAGER EVENT SCHEMA TESTS
+// ============================================================
+
+describe("syRewardsClaimedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xuser", "0xreward_token"],
+      data: Array.from({ length: 3 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardsClaimedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xuser"], // Missing reward_token
+      data: Array.from({ length: 3 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardsClaimedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xuser", "0xreward_token"],
+      data: ["0x1", "0x0"], // Only 2, need 3
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardsClaimedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("syRewardIndexUpdatedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xreward_token"],
+      data: Array.from({ length: 9 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR], // Missing reward_token
+      data: Array.from({ length: 9 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xreward_token"],
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 6, need 9
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("syRewardTokenAddedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xreward_token"],
+      data: ["0x1", "0x12345678"], // index, timestamp
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardTokenAddedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR], // Missing reward_token
+      data: ["0x1", "0x12345678"],
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardTokenAddedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: SY_ADDR,
+      keys: [SELECTOR, "0xreward_token"],
+      data: ["0x1"], // Only 1, need 2
+      transactionHash: TX_HASH,
+    };
+
+    const result = syRewardTokenAddedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+// ============================================================
 // YT EVENT SCHEMA TESTS
 // ============================================================
 
@@ -445,6 +670,276 @@ describe("ytExpiryReachedSchema", () => {
 
     const result = ytExpiryReachedSchema.safeParse(event);
     expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================
+// YT PENDLE-STYLE INTEREST SYSTEM EVENT SCHEMA TESTS
+// ============================================================
+
+describe("ytTreasuryInterestRedeemedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt", "0xtreasury"],
+      data: Array.from({ length: 10 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytTreasuryInterestRedeemedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt"], // Missing treasury
+      data: Array.from({ length: 10 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytTreasuryInterestRedeemedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt", "0xtreasury"],
+      data: Array.from({ length: 5 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 10
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytTreasuryInterestRedeemedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytInterestFeeRateSetSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt"],
+      data: Array.from({ length: 5 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytInterestFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR], // Missing yt
+      data: Array.from({ length: 5 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytInterestFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt"],
+      data: Array.from({ length: 2 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 5
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytInterestFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytMintPYMultiSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xexpiry"],
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytMintPYMultiSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller"], // Missing expiry
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytMintPYMultiSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xexpiry"],
+      data: Array.from({ length: 3 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 6
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytMintPYMultiSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytRedeemPYMultiSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xexpiry"],
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytRedeemPYMultiSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller"], // Missing expiry
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytRedeemPYMultiSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xexpiry"],
+      data: Array.from({ length: 3 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 6
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytRedeemPYMultiSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytRedeemPYWithInterestSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xreceiver", "0xexpiry"],
+      data: Array.from({ length: 7 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytRedeemPYWithInterestSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xreceiver"], // Missing expiry
+      data: Array.from({ length: 7 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytRedeemPYWithInterestSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xreceiver", "0xexpiry"],
+      data: Array.from({ length: 4 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 7
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytRedeemPYWithInterestSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytPostExpiryDataSetSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt", "0xpt"],
+      data: Array.from({ length: 11 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytPostExpiryDataSetSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt"], // Missing pt
+      data: Array.from({ length: 11 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytPostExpiryDataSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt", "0xpt"],
+      data: Array.from({ length: 6 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 11
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytPostExpiryDataSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytPyIndexUpdatedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt"],
+      data: Array.from({ length: 8 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytPyIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR], // Missing yt
+      data: Array.from({ length: 8 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytPyIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xyt"],
+      data: Array.from({ length: 4 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 8
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytPyIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
   });
 });
 
