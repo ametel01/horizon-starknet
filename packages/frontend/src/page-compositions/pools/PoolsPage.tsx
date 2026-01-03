@@ -2,7 +2,7 @@
 
 import type { MarketData } from '@entities/market';
 import { AddLiquidityForm, RemoveLiquidityForm } from '@features/liquidity';
-import { useDashboardMarkets } from '@features/markets';
+import { FeeStructure, useDashboardMarkets } from '@features/markets';
 import { useTokenBalance } from '@features/portfolio';
 import { useStarknet } from '@features/wallet';
 import { ApyBreakdown, useApyBreakdown } from '@features/yield';
@@ -431,6 +431,10 @@ function PoolsPageContent(): ReactNode {
                       {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
                     </span>
                   </div>
+                </div>
+                {/* Fee Structure */}
+                <div className="border-border/50 border-t pt-3">
+                  <FeeStructure market={selectedMarket} />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Days to Expiry</span>
