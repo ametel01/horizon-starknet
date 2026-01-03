@@ -1,4 +1,4 @@
-import { db, syRewardApy } from '@shared/server/db';
+import { db, syRewardStats } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
 import { or, sql } from 'drizzle-orm';
@@ -78,14 +78,14 @@ export async function GET(
   try {
     const normalizedAddress = normalizeAddressForDb(address);
 
-    // Get APY data from the view
+    // Get stats data from the view (we compute APY from this)
     const apyData = await db
       .select()
-      .from(syRewardApy)
+      .from(syRewardStats)
       .where(
         or(
-          sql`LOWER(${syRewardApy.sy}) = ${normalizedAddress}`,
-          sql`LOWER(${syRewardApy.sy}) = ${address.toLowerCase()}`
+          sql`LOWER(${syRewardStats.sy}) = ${normalizedAddress}`,
+          sql`LOWER(${syRewardStats.sy}) = ${address.toLowerCase()}`
         )
       );
 

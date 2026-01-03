@@ -580,8 +580,9 @@ export const negativeYieldAlerts = pgView('negative_yield_alerts', {
   last_detected_at: timestamp('last_detected_at'),
 }).existing();
 
-// SY Reward APY View
-export const syRewardApy = pgView('sy_reward_apy', {
+// SY Reward Stats View
+// Named "stats" not "APY" - the API layer computes APY from this raw data
+export const syRewardStats = pgView('sy_reward_stats', {
   sy: text('sy'),
   reward_token: text('reward_token'),
   rewards_last_7_days: numeric('rewards_last_7_days', { precision: 78, scale: 0 }),
