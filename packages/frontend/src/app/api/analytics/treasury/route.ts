@@ -6,7 +6,7 @@ import {
 } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
-import { desc } from 'drizzle-orm';
+import { desc, gte, sql } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -169,68 +169,6 @@ async function fetchYtInterestData(limit: number): Promise<YtInterestData> {
   };
 }
 
-interface TransferRow {
-  _id: string;
-  block_number: number;
-  block_timestamp: Date;
-  transaction_hash: string;
-  market: string;
-  treasury: string;
-  caller: string;
-  amount: string;
-  expiry: number;
-  timestamp: number;
-}
-
-function processTransferRow(
-  row: TransferRow,
-  thresholds: { oneDayAgo: Date; sevenDaysAgo: Date; thirtyDaysAgo: Date; historyStart: Date },
-  totals: { allTime: bigint; day: bigint; week: bigint; month: bigint },
-  marketSet: Set<string>,
-  marketSummaryMap: Map<
-    string,
-    { treasury: string; total: bigint; count: number; lastTransfer: Date | null }
-  >,
-  dailyMap: Map<string, { total: bigint; count: number }>
-): { allTime: bigint; day: bigint; week: bigint; month: bigint } {
-  const amount = BigInt(row.amount);
-  const ts = row.block_timestamp;
-
-  const newTotals = { ...totals, allTime: totals.allTime + amount };
-  marketSet.add(row.market);
-
-  if (ts >= thresholds.oneDayAgo) newTotals.day = totals.day + amount;
-  if (ts >= thresholds.sevenDaysAgo) newTotals.week = totals.week + amount;
-  if (ts >= thresholds.thirtyDaysAgo) newTotals.month = totals.month + amount;
-
-  const existing = marketSummaryMap.get(row.market);
-  if (existing) {
-    existing.total += amount;
-    existing.count += 1;
-    if (!existing.lastTransfer || ts > existing.lastTransfer) existing.lastTransfer = ts;
-  } else {
-    marketSummaryMap.set(row.market, {
-      treasury: row.treasury,
-      total: amount,
-      count: 1,
-      lastTransfer: ts,
-    });
-  }
-
-  if (ts >= thresholds.historyStart) {
-    const dateKey = ts.toISOString().split('T')[0] ?? '';
-    const dayData = dailyMap.get(dateKey);
-    if (dayData) {
-      dayData.total += amount;
-      dayData.count += 1;
-    } else {
-      dailyMap.set(dateKey, { total: amount, count: 1 });
-    }
-  }
-
-  return newTotals;
-}
-
 async function fetchReserveFeeData(limit: number, days: number): Promise<ReserveFeeData> {
   const now = new Date();
   const thresholds = {
@@ -240,12 +178,34 @@ async function fetchReserveFeeData(limit: number, days: number): Promise<Reserve
     historyStart: new Date(now.getTime() - days * 24 * 60 * 60 * 1000),
   };
 
-  const allTransfers = await db
+  // DB-side aggregation for per-market totals (all-time)
+  const marketAggregates = await db
+    .select({
+      market: marketReserveFeeTransferred.market,
+      treasury: marketReserveFeeTransferred.treasury,
+      totalAmount: sql<string>`SUM(${marketReserveFeeTransferred.amount})`,
+      transferCount: sql<number>`COUNT(*)::int`,
+      lastTransfer: sql<Date>`MAX(${marketReserveFeeTransferred.block_timestamp})`,
+    })
+    .from(marketReserveFeeTransferred)
+    .groupBy(marketReserveFeeTransferred.market, marketReserveFeeTransferred.treasury);
+
+  // Query for recent transfers (limited to N most recent)
+  const recentTransfersRaw = await db
     .select()
     .from(marketReserveFeeTransferred)
+    .orderBy(desc(marketReserveFeeTransferred.block_timestamp))
+    .limit(limit);
+
+  // Query for last 30 days data (for time-based totals and history)
+  const recentData = await db
+    .select()
+    .from(marketReserveFeeTransferred)
+    .where(gte(marketReserveFeeTransferred.block_timestamp, thresholds.thirtyDaysAgo))
     .orderBy(desc(marketReserveFeeTransferred.block_timestamp));
 
-  const recentTransfers: ReserveFeeTransferEvent[] = allTransfers.slice(0, limit).map((row) => ({
+  // Format recent transfers
+  const recentTransfers: ReserveFeeTransferEvent[] = recentTransfersRaw.map((row) => ({
     id: row._id,
     market: row.market,
     treasury: row.treasury,
@@ -258,28 +218,49 @@ async function fetchReserveFeeData(limit: number, days: number): Promise<Reserve
     transactionHash: row.transaction_hash,
   }));
 
-  const marketSet = new Set<string>();
-  const marketSummaryMap = new Map<
-    string,
-    { treasury: string; total: bigint; count: number; lastTransfer: Date | null }
-  >();
+  // Compute time-based totals from filtered data
+  const totals = { day: BigInt(0), week: BigInt(0), month: BigInt(0) };
   const dailyMap = new Map<string, { total: bigint; count: number }>();
 
-  let totals = { allTime: BigInt(0), day: BigInt(0), week: BigInt(0), month: BigInt(0) };
+  for (const row of recentData) {
+    const amount = BigInt(row.amount);
+    const ts = row.block_timestamp;
 
-  for (const row of allTransfers) {
-    totals = processTransferRow(row, thresholds, totals, marketSet, marketSummaryMap, dailyMap);
+    if (ts >= thresholds.oneDayAgo) totals.day += amount;
+    if (ts >= thresholds.sevenDaysAgo) totals.week += amount;
+    totals.month += amount;
+
+    if (ts >= thresholds.historyStart) {
+      const dateKey = ts.toISOString().split('T')[0] ?? '';
+      const dayData = dailyMap.get(dateKey);
+      if (dayData) {
+        dayData.total += amount;
+        dayData.count += 1;
+      } else {
+        dailyMap.set(dateKey, { total: amount, count: 1 });
+      }
+    }
   }
 
-  const summaryByMarket: ReserveFeeSummary[] = Array.from(marketSummaryMap.entries())
-    .map(([market, data]) => ({
-      market,
-      treasury: data.treasury,
-      totalAmount: data.total.toString(),
-      transferCount: data.count,
-      lastTransfer: data.lastTransfer?.toISOString() ?? null,
+  // Format market summaries from DB aggregates
+  const summaryByMarket: ReserveFeeSummary[] = marketAggregates
+    .map((row) => ({
+      market: row.market,
+      treasury: row.treasury,
+      totalAmount: row.totalAmount ?? '0',
+      transferCount: row.transferCount ?? 0,
+      lastTransfer: row.lastTransfer?.toISOString() ?? null,
     }))
-    .sort((a, b) => Number(BigInt(b.totalAmount) - BigInt(a.totalAmount)));
+    .sort((a, b) => {
+      const diff = BigInt(b.totalAmount) - BigInt(a.totalAmount);
+      return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+    });
+
+  // Calculate all-time total from aggregates
+  let totalAllTime = BigInt(0);
+  for (const row of marketAggregates) {
+    totalAllTime += BigInt(row.totalAmount ?? '0');
+  }
 
   const history: ReserveFeeHistory[] = Array.from(dailyMap.entries())
     .map(([date, data]) => ({
@@ -293,9 +274,9 @@ async function fetchReserveFeeData(limit: number, days: number): Promise<Reserve
     total24h: totals.day,
     total7d: totals.week,
     total30d: totals.month,
-    totalAllTime: totals.allTime,
-    transferCount: allTransfers.length,
-    marketCount: marketSet.size,
+    totalAllTime,
+    transferCount: marketAggregates.reduce((sum, r) => sum + (r.transferCount ?? 0), 0),
+    marketCount: marketAggregates.length,
     summaryByMarket,
     recentTransfers,
     history,
@@ -343,8 +324,14 @@ export async function GET(request: NextRequest): Promise<NextResponse<TreasuryAn
   if (rateLimitResult) return rateLimitResult as NextResponse<TreasuryAnalyticsResponse>;
 
   const searchParams = request.nextUrl.searchParams;
-  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '50', 10), 200);
-  const days = Math.min(Number.parseInt(searchParams.get('days') ?? '30', 10), 365);
+
+  // Parse and validate limit: must be 1-200, defaults to 50
+  const parsedLimit = Number.parseInt(searchParams.get('limit') ?? '50', 10);
+  const limit = Number.isNaN(parsedLimit) || parsedLimit < 1 ? 50 : Math.min(parsedLimit, 200);
+
+  // Parse and validate days: must be 1-365, defaults to 30
+  const parsedDays = Number.parseInt(searchParams.get('days') ?? '30', 10);
+  const days = Number.isNaN(parsedDays) || parsedDays < 1 ? 30 : Math.min(parsedDays, 365);
 
   try {
     const [ytData, reserveData] = await Promise.all([
