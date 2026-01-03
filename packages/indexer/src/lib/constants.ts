@@ -56,26 +56,26 @@ export const SEPOLIA: NetworkConfig = {
 };
 
 export const DEVNET: NetworkConfig = {
-  factory: "0x06a17d4caceef24805c4827c8f3fdedd365dfcfc5a2d0ebb0c665d60e338f0f7",
+  factory: "0x00893e6062346f58b31c8b12a1a43109520154e9c25b4c8f7f70a2ef0248ffcc",
   marketFactory:
-    "0x05a312e97a580ae4e20356cf8c195b87a4c5745ce1c001e714c6b6324c518e2a",
-  router: "0x030808007aeac8be44a3c0d0bd3f3f6af02205f4ef38fc07b4107bc674e58bc7",
+    "0x036ca9bb1231eab175282fd183329ffad8d3d963066057d406d39a0e89c3ce5a",
+  router: "0x03b3709282cf4b5ee496889e2c9ed68a872364ce8e5d03a90532d5e4252d5fa4",
   startingBlock: 0,
-  // Known contracts from deploy/addresses/devnet.json
+  // Known contracts from deploy/addresses/devnet.json (2026-01-03)
+  // Note: Markets show 0x0 in devnet.json - they are discovered dynamically from MarketFactory events
   knownYTContracts: [
-    "0x05e2fb0f7965d54863b1caadc4326a6e515ed55e01aee0f3021c5d6956a7783e", // nstSTRK YT
-    "0x07c2c668685021643253ad05f72df84173430037c0761236d7762e09a3ac105e", // sSTRK YT
-    "0x01c5eb1f2f49d645d4f024f59f117d13502a147250c93791ccebfa80d0d4cae9", // wstETH YT
+    "0x0143a74315e0a5519be7828443e9c3e5b7bce7eb844852ac8e3818fe55c41db2", // nstSTRK YT
+    "0x04ef0885b582b110ddde49c5a5e4b4426d0e71afbb18310c8f0acd20b13ec694", // sSTRK YT
+    "0x02aae9f4cfea1383b91ee522e5af61ba42f2237c2a07c7ebadb5ac1e3f644821", // wstETH YT
   ],
   knownSYContracts: [
-    "0x03d9a5277800d6b9bf6e8ce43ced73ee91a343a0481de716ef4fa8ac1b9a4dc3", // SY-nstSTRK
-    "0x04fe75f4082ce83ac94736c9fc05f465a5d3aba1606b8387167d0614a7752a42", // SY-sSTRK
-    "0x01a6bfced4b29533bb4f68ae2edd0807ca283bd6591dd20183fc16421578ee6f", // SY-wstETH
+    "0x00afa4b40deaa0ee8307de627dd03c6b61a38a31942f1bfed67fe9c63efe0c12", // SY-nstSTRK
+    "0x0543759da00b9eab75f09c380feb2a9c2703ad6b297e9278f64971d498bbd6b6", // SY-sSTRK
+    "0x0514f39b7c1db7c5ac1ead7413aea2b6f81ede469319ab7591761863bdad8266", // SY-wstETH
   ],
   knownMarkets: [
-    "0x0382a6cb6b0703db78b0bd19e18dc0de277bd99e6f489bef1975834c05443f48", // nstSTRK Market
-    "0x04de4a8983b6cf35e36e70d3677be9bfb74ab24ef7d26e4beb793e90fdce6d1a", // sSTRK Market
-    "0x0575cb615ebdd49d872ca2a41cc8c6437f7166758d8c38bb20386d6b561ab58f", // wstETH Market
+    // Markets are discovered dynamically from MarketFactory.MarketCreated events
+    // devnet.json shows 0x0 for markets - they are created after initial deploy
   ],
 };
 

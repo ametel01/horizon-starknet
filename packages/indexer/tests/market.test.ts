@@ -111,6 +111,15 @@ function handleSwap(ctx: EventContext) {
 
 function handleImpliedRateUpdated(ctx: EventContext) {
   const { keys, data, address } = ctx;
+  // Event data layout:
+  // data[0-1]: old_rate (u256)
+  // data[2-3]: new_rate (u256)
+  // data[4]: timestamp (u64)
+  // data[5]: time_to_expiry (u64)
+  // data[6-7]: exchange_rate (u256)
+  // data[8-9]: sy_reserve (u256)
+  // data[10-11]: pt_reserve (u256)
+  // data[12-13]: total_lp (u256)
   return {
     event_type: "ImpliedRateUpdated" as const,
     ...baseFields(ctx),
@@ -118,11 +127,11 @@ function handleImpliedRateUpdated(ctx: EventContext) {
     expiry: Number(BigInt(keys[2] ?? "0")),
     old_rate: readU256(data, 0),
     new_rate: readU256(data, 2),
-    time_to_expiry: Number(BigInt(data[4] ?? "0")),
-    exchange_rate: readU256(data, 5),
-    sy_reserve: readU256(data, 7),
-    pt_reserve: readU256(data, 9),
-    total_lp: readU256(data, 11),
+    time_to_expiry: Number(BigInt(data[5] ?? "0")),
+    exchange_rate: readU256(data, 6),
+    sy_reserve: readU256(data, 8),
+    pt_reserve: readU256(data, 10),
+    total_lp: readU256(data, 12),
   };
 }
 
@@ -346,19 +355,20 @@ describe("Market Indexer", () => {
     const event = {
       keys: [IMPLIED_RATE_UPDATED, "0xmarket_address", "0x6774a5d5"],
       data: [
-        "0x6f05b59d3b20000", // old_rate low
-        "0x0", // old_rate high
-        "0x8ac7230489e80000", // new_rate low (10e18)
-        "0x0", // new_rate high
-        "0x278d00", // time_to_expiry (2592000 = 30 days)
-        "0xde0b6b3a7640000", // exchange_rate low
-        "0x0", // exchange_rate high
-        "0xde0b6b3a7640000", // sy_reserve low
-        "0x0", // sy_reserve high
-        "0xde0b6b3a7640000", // pt_reserve low
-        "0x0", // pt_reserve high
-        "0x1bc16d674ec80000", // total_lp low
-        "0x0", // total_lp high
+        "0x6f05b59d3b20000", // old_rate low (data[0])
+        "0x0", // old_rate high (data[1])
+        "0x8ac7230489e80000", // new_rate low (10e18) (data[2])
+        "0x0", // new_rate high (data[3])
+        "0x12345678", // timestamp (data[4])
+        "0x278d00", // time_to_expiry (2592000 = 30 days) (data[5])
+        "0xde0b6b3a7640000", // exchange_rate low (data[6])
+        "0x0", // exchange_rate high (data[7])
+        "0xde0b6b3a7640000", // sy_reserve low (data[8])
+        "0x0", // sy_reserve high (data[9])
+        "0xde0b6b3a7640000", // pt_reserve low (data[10])
+        "0x0", // pt_reserve high (data[11])
+        "0x1bc16d674ec80000", // total_lp low (data[12])
+        "0x0", // total_lp high (data[13])
       ],
       address: "0xmarket_address",
       transactionHash: "0xrate123",

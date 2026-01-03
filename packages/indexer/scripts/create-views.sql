@@ -118,7 +118,9 @@ volume_24h_market AS (
     market,
     COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as sy_volume_24h,
     COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as pt_volume_24h,
-    COALESCE(SUM(fee), 0) as fees_24h,
+    COALESCE(SUM(total_fee), 0) as fees_24h,
+    COALESCE(SUM(lp_fee), 0) as lp_fees_24h,
+    COALESCE(SUM(reserve_fee), 0) as reserve_fees_24h,
     COUNT(*) as swaps_24h
   FROM market_swap
   WHERE block_timestamp >= NOW() - INTERVAL '24 hours'
@@ -199,7 +201,9 @@ market_swap_stats AS (
     DATE_TRUNC('day', block_timestamp) as day,
     COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
     COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as total_pt_volume,
-    COALESCE(SUM(fee), 0) as total_fees,
+    COALESCE(SUM(total_fee), 0) as total_fees,
+    COALESCE(SUM(lp_fee), 0) as total_lp_fees,
+    COALESCE(SUM(reserve_fee), 0) as total_reserve_fees,
     COUNT(*) as swap_count,
     COUNT(DISTINCT sender) as unique_swappers
   FROM market_swap
@@ -233,6 +237,8 @@ swap_stats AS (
     COALESCE(ms.total_sy_volume, rs.total_sy_volume, 0) + COALESCE(rsy.total_sy_volume, 0) as total_sy_volume,
     COALESCE(ms.total_pt_volume, rs.total_pt_volume, 0) as total_pt_volume,
     COALESCE(ms.total_fees, 0) as total_fees,
+    COALESCE(ms.total_lp_fees, 0) as total_lp_fees,
+    COALESCE(ms.total_reserve_fees, 0) as total_reserve_fees,
     COALESCE(ms.swap_count, rs.swap_count, 0) + COALESCE(rsy.swap_count, 0) as swap_count,
     GREATEST(COALESCE(ms.unique_swappers, rs.unique_swappers, 0), COALESCE(rsy.unique_swappers, 0)) as unique_swappers
   FROM market_swap_stats ms
@@ -299,6 +305,8 @@ SELECT
   COALESCE(s.total_sy_volume, 0) as total_sy_volume,
   COALESCE(s.total_pt_volume, 0) as total_pt_volume,
   COALESCE(s.total_fees, 0) as total_fees,
+  COALESCE(s.total_lp_fees, 0) as total_lp_fees,
+  COALESCE(s.total_reserve_fees, 0) as total_reserve_fees,
   COALESCE(s.swap_count, 0) as swap_count,
   COALESCE(s.unique_swappers, 0) as unique_swappers,
   COALESCE(m.total_py_minted, 0) as total_py_minted,
@@ -335,7 +343,9 @@ SELECT
   COUNT(DISTINCT market) as markets_traded,
   COALESCE(SUM(sy_in), 0) + COALESCE(SUM(sy_out), 0) as total_sy_volume,
   COALESCE(SUM(pt_in), 0) + COALESCE(SUM(pt_out), 0) as total_pt_volume,
-  COALESCE(SUM(fee), 0) as total_fees_paid,
+  COALESCE(SUM(total_fee), 0) as total_fees_paid,
+  COALESCE(SUM(lp_fee), 0) as total_lp_fees_paid,
+  COALESCE(SUM(reserve_fee), 0) as total_reserve_fees_paid,
   MIN(block_timestamp) as first_swap,
   MAX(block_timestamp) as last_swap,
   COUNT(DISTINCT DATE_TRUNC('day', block_timestamp)) as active_days
@@ -406,7 +416,9 @@ SELECT
   (ARRAY_AGG(ms.exchange_rate ORDER BY ms.block_number DESC))[1] as exchange_rate,
   COALESCE(SUM(ms.sy_in), 0) + COALESCE(SUM(ms.sy_out), 0) as sy_volume,
   COALESCE(SUM(ms.pt_in), 0) + COALESCE(SUM(ms.pt_out), 0) as pt_volume,
-  COALESCE(SUM(ms.fee), 0) as total_fees,
+  COALESCE(SUM(ms.total_fee), 0) as total_fees,
+  COALESCE(SUM(ms.lp_fee), 0) as lp_fees,
+  COALESCE(SUM(ms.reserve_fee), 0) as reserve_fees,
   COUNT(*) as swap_count,
   COUNT(DISTINCT ms.sender) as unique_traders
 FROM market_swap ms
@@ -431,7 +443,9 @@ SELECT
   (ARRAY_AGG(ms.exchange_rate ORDER BY ms.block_number DESC))[1] as exchange_rate,
   COALESCE(SUM(ms.sy_in), 0) + COALESCE(SUM(ms.sy_out), 0) as sy_volume,
   COALESCE(SUM(ms.pt_in), 0) + COALESCE(SUM(ms.pt_out), 0) as pt_volume,
-  COALESCE(SUM(ms.fee), 0) as total_fees,
+  COALESCE(SUM(ms.total_fee), 0) as total_fees,
+  COALESCE(SUM(ms.lp_fee), 0) as lp_fees,
+  COALESCE(SUM(ms.reserve_fee), 0) as reserve_fees,
   COUNT(*) as swap_count
 FROM market_swap ms
 LEFT JOIN market_factory_market_created mc ON ms.market = mc.market
@@ -717,7 +731,9 @@ SELECT
   ms.exchange_rate,
   ms.implied_rate_before,
   ms.implied_rate_after,
-  ms.fee,
+  ms.total_fee,
+  ms.lp_fee,
+  ms.reserve_fee,
   ms.sy_reserve_after,
   ms.pt_reserve_after
 FROM router_swap rs
@@ -751,7 +767,9 @@ SELECT
   ms.exchange_rate,
   ms.implied_rate_before,
   ms.implied_rate_after,
-  ms.fee
+  ms.total_fee,
+  ms.lp_fee,
+  ms.reserve_fee
 FROM router_swap_yt rsy
 LEFT JOIN market_factory_market_created mc ON rsy.market = mc.market
 LEFT JOIN market_swap ms ON rsy.transaction_hash = ms.transaction_hash

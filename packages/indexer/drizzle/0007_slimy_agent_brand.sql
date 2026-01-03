@@ -1,2 +1,2 @@
-ALTER TABLE "market_fees_collected" ADD COLUMN "ln_fee_rate_root" numeric(78, 0) NOT NULL;--> statement-breakpoint
-ALTER TABLE "market_fees_collected" DROP COLUMN "fee_rate";
+-- Rename fee_rate to ln_fee_rate_root (preserves existing data)
+ALTER TABLE "market_fees_collected" RENAME COLUMN "fee_rate" TO "ln_fee_rate_root";
