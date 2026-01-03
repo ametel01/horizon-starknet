@@ -183,3 +183,12 @@ Instead of dragging an ever-growing conversation forward, you:
   - Tool traces
   - Full file contents
   - Repetitive error explanations
+
+## Code Quality
+
+- **Linting**: Ensure code adheres to style guidelines. Never bypass linting using exceptions unless requested by the user
+- **Documentation**: Document public APIs and interfaces.
+- **Testing**: Write unit tests for critical functions.
+- **Security**: Review for vulnerabilities and best practices.
+- **Performance**: Optimize for speed and resource usage.
+- **Maintainability**: Keep codebase clean and modular.
