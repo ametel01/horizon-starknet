@@ -16,6 +16,9 @@ const BURN = hash.getSelectorFromName("Burn");
 const SWAP = hash.getSelectorFromName("Swap");
 const IMPLIED_RATE_UPDATED = hash.getSelectorFromName("ImpliedRateUpdated");
 const FEES_COLLECTED = hash.getSelectorFromName("FeesCollected");
+const RESERVE_FEE_TRANSFERRED = hash.getSelectorFromName(
+  "ReserveFeeTransferred"
+);
 
 // Shared event context type
 interface EventContext {
@@ -150,13 +153,30 @@ function handleFeesCollected(ctx: EventContext) {
   };
 }
 
+function handleReserveFeeTransferred(ctx: EventContext) {
+  const { keys, data, address } = ctx;
+  // ReserveFeeTransferred: keys = [selector, market, treasury, caller]
+  // data = [amount(u256), expiry, timestamp]
+  return {
+    event_type: "ReserveFeeTransferred" as const,
+    ...baseFields(ctx),
+    market: keys[1] ?? address,
+    treasury: keys[2] ?? "",
+    caller: keys[3] ?? "",
+    amount: readU256(data, 0),
+    expiry: Number(BigInt(data[2] ?? "0")),
+    timestamp: Number(BigInt(data[3] ?? "0")),
+  };
+}
+
 // Handler return types
 type MarketEventResult =
   | ReturnType<typeof handleMint>
   | ReturnType<typeof handleBurn>
   | ReturnType<typeof handleSwap>
   | ReturnType<typeof handleImpliedRateUpdated>
-  | ReturnType<typeof handleFeesCollected>;
+  | ReturnType<typeof handleFeesCollected>
+  | ReturnType<typeof handleReserveFeeTransferred>;
 
 // Dispatch table: [selector, handler] pairs
 const EVENT_HANDLERS: [string, (ctx: EventContext) => MarketEventResult][] = [
@@ -165,6 +185,7 @@ const EVENT_HANDLERS: [string, (ctx: EventContext) => MarketEventResult][] = [
   [SWAP, handleSwap],
   [IMPLIED_RATE_UPDATED, handleImpliedRateUpdated],
   [FEES_COLLECTED, handleFeesCollected],
+  [RESERVE_FEE_TRANSFERRED, handleReserveFeeTransferred],
 ];
 
 // Transform function using dispatch table
@@ -425,6 +446,42 @@ describe("Market Indexer", () => {
       amount: "10000000000000000",
       expiry: 1735697877,
       ln_fee_rate_root: "100000000",
+    });
+  });
+
+  it("should transform ReserveFeeTransferred event", () => {
+    const event = {
+      keys: [
+        RESERVE_FEE_TRANSFERRED,
+        "0xmarket_address",
+        "0xtreasury_address",
+        "0xcaller_address",
+      ],
+      data: [
+        "0x2386f26fc10000", // amount low (0.01e18) (data[0])
+        "0x0", // amount high (data[1])
+        "0x6774a5d5", // expiry (data[2])
+        "0x12345678", // timestamp (data[3])
+      ],
+      address: "0xmarket_address",
+      transactionHash: "0xreserve123",
+      blockNumber: 4643650,
+      blockTimestamp: "1234568150",
+    };
+
+    const result = transformMarketEvent(event);
+
+    expect(result).toEqual({
+      event_type: "ReserveFeeTransferred",
+      block_number: 4643650,
+      block_timestamp: "1234568150",
+      transaction_hash: "0xreserve123",
+      market: "0xmarket_address",
+      treasury: "0xtreasury_address",
+      caller: "0xcaller_address",
+      amount: "10000000000000000",
+      expiry: 1735697877,
+      timestamp: 305419896,
     });
   });
 

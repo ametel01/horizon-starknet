@@ -17,10 +17,14 @@ import {
   factoryYieldContractsCreated,
   marketBurn,
   marketFactoryClassHashUpdated,
+  marketFactoryDefaultReserveFeeUpdated,
   marketFactoryMarketCreated,
+  marketFactoryOverrideFeeSet,
+  marketFactoryTreasuryUpdated,
   marketFeesCollected,
   marketImpliedRateUpdated,
   marketMint,
+  marketReserveFeeTransferred,
   marketScalarRootUpdated,
   marketSwap,
   routerAddLiquidity,
@@ -60,6 +64,18 @@ const ALL_EVENT_TABLES = [
     name: "marketFactoryClassHashUpdated",
     table: marketFactoryClassHashUpdated,
   },
+  {
+    name: "marketFactoryTreasuryUpdated",
+    table: marketFactoryTreasuryUpdated,
+  },
+  {
+    name: "marketFactoryDefaultReserveFeeUpdated",
+    table: marketFactoryDefaultReserveFeeUpdated,
+  },
+  {
+    name: "marketFactoryOverrideFeeSet",
+    table: marketFactoryOverrideFeeSet,
+  },
   { name: "syDeposit", table: syDeposit },
   { name: "syRedeem", table: syRedeem },
   { name: "syOracleRateUpdated", table: syOracleRateUpdated },
@@ -74,6 +90,7 @@ const ALL_EVENT_TABLES = [
   { name: "marketImpliedRateUpdated", table: marketImpliedRateUpdated },
   { name: "marketFeesCollected", table: marketFeesCollected },
   { name: "marketScalarRootUpdated", table: marketScalarRootUpdated },
+  { name: "marketReserveFeeTransferred", table: marketReserveFeeTransferred },
   { name: "routerMintPY", table: routerMintPY },
   { name: "routerRedeemPY", table: routerRedeemPY },
   { name: "routerAddLiquidity", table: routerAddLiquidity },
@@ -109,8 +126,8 @@ describe("Schema Idempotency Constraints", () => {
     });
   });
 
-  it("verifies we have all 24 event tables", () => {
-    expect(ALL_EVENT_TABLES).toHaveLength(24);
+  it("verifies we have all 28 event tables", () => {
+    expect(ALL_EVENT_TABLES).toHaveLength(28);
   });
 });
 
@@ -340,11 +357,11 @@ describe("Complete Table Coverage", () => {
     expect(factoryTables).toHaveLength(2);
   });
 
-  it("covers all MarketFactory events (2)", () => {
+  it("covers all MarketFactory events (5)", () => {
     const marketFactoryTables = ALL_EVENT_TABLES.filter((t) =>
       t.name.startsWith("marketFactory")
     );
-    expect(marketFactoryTables).toHaveLength(2);
+    expect(marketFactoryTables).toHaveLength(5);
   });
 
   it("covers all SY events (3)", () => {
@@ -357,11 +374,11 @@ describe("Complete Table Coverage", () => {
     expect(ytTables).toHaveLength(5);
   });
 
-  it("covers all Market events (6)", () => {
+  it("covers all Market events (7)", () => {
     const marketTables = ALL_EVENT_TABLES.filter(
       (t) => t.name.startsWith("market") && !t.name.startsWith("marketFactory")
     );
-    expect(marketTables).toHaveLength(6);
+    expect(marketTables).toHaveLength(7);
   });
 
   it("covers all Router events (6)", () => {

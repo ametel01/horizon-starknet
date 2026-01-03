@@ -1,7 +1,8 @@
 /**
  * MarketFactory Indexer Unit Test
  *
- * Tests the transform logic for MarketCreated and MarketClassHashUpdated events
+ * Tests the transform logic for MarketCreated, MarketClassHashUpdated,
+ * TreasuryUpdated, DefaultReserveFeeUpdated, and OverrideFeeSet events
  */
 
 import { hash } from "starknet";
@@ -14,70 +15,136 @@ const MARKET_CREATED = hash.getSelectorFromName("MarketCreated");
 const MARKET_CLASS_HASH_UPDATED = hash.getSelectorFromName(
   "MarketClassHashUpdated"
 );
+const TREASURY_UPDATED = hash.getSelectorFromName("TreasuryUpdated");
+const DEFAULT_RESERVE_FEE_UPDATED = hash.getSelectorFromName(
+  "DefaultReserveFeeUpdated"
+);
+const OVERRIDE_FEE_SET = hash.getSelectorFromName("OverrideFeeSet");
 
-// Transform function (extracted from indexer logic)
-function transformMarketFactoryEvent(event: {
+// Shared event context type
+interface EventContext {
   keys: string[];
   data: string[];
   transactionHash: string;
   blockNumber: number;
   blockTimestamp: string;
-}) {
-  const { keys, data, transactionHash, blockNumber, blockTimestamp } = event;
-  const eventKey = keys[0];
+}
 
-  if (matchSelector(eventKey, MARKET_CREATED)) {
-    const pt = keys[1];
-    const expiry = Number(BigInt(keys[2] ?? "0"));
-    const market = data[0];
-    const creator = data[1];
-    // u256 fields use 2 felts each (low, high)
-    const scalarRoot = readU256(data, 2);
-    const initialAnchor = readU256(data, 4);
-    const lnFeeRateRoot = readU256(data, 6);
-    const reserveFeePercent = Number(data[8] ?? "0");
-    const sy = data[9];
-    const yt = data[10];
-    const underlying = data[11];
-    const underlyingSymbol = decodeByteArray(data, 12);
-    const initialExchangeRate = readU256(data, 15);
-    const marketIndex = Number(data[18] ?? "0");
+// Base fields shared by all event results
+function baseFields(ctx: EventContext) {
+  return {
+    block_number: ctx.blockNumber,
+    block_timestamp: ctx.blockTimestamp,
+    transaction_hash: ctx.transactionHash,
+  };
+}
 
-    return {
-      event_type: "MarketCreated",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      pt: pt ?? "",
-      expiry,
-      market: market ?? "",
-      creator: creator ?? "",
-      scalar_root: scalarRoot,
-      initial_anchor: initialAnchor,
-      ln_fee_rate_root: lnFeeRateRoot,
-      reserve_fee_percent: reserveFeePercent,
-      sy: sy ?? "",
-      yt: yt ?? "",
-      underlying: underlying ?? "",
-      underlying_symbol: underlyingSymbol,
-      initial_exchange_rate: initialExchangeRate,
-      market_index: marketIndex,
-    };
-  } else if (matchSelector(eventKey, MARKET_CLASS_HASH_UPDATED)) {
-    const oldClassHash = data[0];
-    const newClassHash = data[1];
+// Event-specific handlers
+function handleMarketCreated(ctx: EventContext) {
+  const { keys, data } = ctx;
+  const pt = keys[1];
+  const expiry = Number(BigInt(keys[2] ?? "0"));
+  const market = data[0];
+  const creator = data[1];
+  const scalarRoot = readU256(data, 2);
+  const initialAnchor = readU256(data, 4);
+  const lnFeeRateRoot = readU256(data, 6);
+  const reserveFeePercent = Number(data[8] ?? "0");
+  const sy = data[9];
+  const yt = data[10];
+  const underlying = data[11];
+  const underlyingSymbol = decodeByteArray(data, 12);
+  const initialExchangeRate = readU256(data, 15);
+  const marketIndex = Number(data[18] ?? "0");
 
-    return {
-      event_type: "MarketClassHashUpdated",
-      block_number: blockNumber,
-      block_timestamp: blockTimestamp,
-      transaction_hash: transactionHash,
-      old_class_hash: oldClassHash ?? "",
-      new_class_hash: newClassHash ?? "",
-    };
-  }
+  return {
+    event_type: "MarketCreated" as const,
+    ...baseFields(ctx),
+    pt: pt ?? "",
+    expiry,
+    market: market ?? "",
+    creator: creator ?? "",
+    scalar_root: scalarRoot,
+    initial_anchor: initialAnchor,
+    ln_fee_rate_root: lnFeeRateRoot,
+    reserve_fee_percent: reserveFeePercent,
+    sy: sy ?? "",
+    yt: yt ?? "",
+    underlying: underlying ?? "",
+    underlying_symbol: underlyingSymbol,
+    initial_exchange_rate: initialExchangeRate,
+    market_index: marketIndex,
+  };
+}
 
-  return null;
+function handleMarketClassHashUpdated(ctx: EventContext) {
+  const { data } = ctx;
+  return {
+    event_type: "MarketClassHashUpdated" as const,
+    ...baseFields(ctx),
+    old_class_hash: data[0] ?? "",
+    new_class_hash: data[1] ?? "",
+  };
+}
+
+function handleTreasuryUpdated(ctx: EventContext) {
+  const { data } = ctx;
+  return {
+    event_type: "TreasuryUpdated" as const,
+    ...baseFields(ctx),
+    old_treasury: data[0] ?? "",
+    new_treasury: data[1] ?? "",
+  };
+}
+
+function handleDefaultReserveFeeUpdated(ctx: EventContext) {
+  const { data } = ctx;
+  return {
+    event_type: "DefaultReserveFeeUpdated" as const,
+    ...baseFields(ctx),
+    old_percent: Number(data[0] ?? "0"),
+    new_percent: Number(data[1] ?? "0"),
+  };
+}
+
+function handleOverrideFeeSet(ctx: EventContext) {
+  const { keys, data } = ctx;
+  return {
+    event_type: "OverrideFeeSet" as const,
+    ...baseFields(ctx),
+    router: keys[1] ?? "",
+    market: keys[2] ?? "",
+    ln_fee_rate_root: readU256(data, 0),
+  };
+}
+
+// Handler return types
+type MarketFactoryEventResult =
+  | ReturnType<typeof handleMarketCreated>
+  | ReturnType<typeof handleMarketClassHashUpdated>
+  | ReturnType<typeof handleTreasuryUpdated>
+  | ReturnType<typeof handleDefaultReserveFeeUpdated>
+  | ReturnType<typeof handleOverrideFeeSet>;
+
+// Dispatch table: [selector, handler] pairs
+const EVENT_HANDLERS: [
+  string,
+  (ctx: EventContext) => MarketFactoryEventResult,
+][] = [
+  [MARKET_CREATED, handleMarketCreated],
+  [MARKET_CLASS_HASH_UPDATED, handleMarketClassHashUpdated],
+  [TREASURY_UPDATED, handleTreasuryUpdated],
+  [DEFAULT_RESERVE_FEE_UPDATED, handleDefaultReserveFeeUpdated],
+  [OVERRIDE_FEE_SET, handleOverrideFeeSet],
+];
+
+// Transform function using dispatch table
+function transformMarketFactoryEvent(event: EventContext) {
+  const eventKey = event.keys[0];
+  const handler = EVENT_HANDLERS.find(([selector]) =>
+    matchSelector(eventKey, selector)
+  );
+  return handler ? handler[1](event) : null;
 }
 
 describe("MarketFactory Indexer", () => {
@@ -157,6 +224,76 @@ describe("MarketFactory Indexer", () => {
       transaction_hash: "0xdef456",
       old_class_hash: "0xold_class_hash",
       new_class_hash: "0xnew_class_hash",
+    });
+  });
+
+  it("should transform TreasuryUpdated event", () => {
+    const event = {
+      keys: [TREASURY_UPDATED],
+      data: ["0xold_treasury_address", "0xnew_treasury_address"],
+      transactionHash: "0xtreasury123",
+      blockNumber: 4643450,
+      blockTimestamp: "1234567950",
+    };
+
+    const result = transformMarketFactoryEvent(event);
+
+    expect(result).toEqual({
+      event_type: "TreasuryUpdated",
+      block_number: 4643450,
+      block_timestamp: "1234567950",
+      transaction_hash: "0xtreasury123",
+      old_treasury: "0xold_treasury_address",
+      new_treasury: "0xnew_treasury_address",
+    });
+  });
+
+  it("should transform DefaultReserveFeeUpdated event", () => {
+    const event = {
+      keys: [DEFAULT_RESERVE_FEE_UPDATED],
+      data: [
+        "0x14", // old_percent (20 decimal)
+        "0x1e", // new_percent (30 decimal)
+      ],
+      transactionHash: "0xfee123",
+      blockNumber: 4643500,
+      blockTimestamp: "1234568000",
+    };
+
+    const result = transformMarketFactoryEvent(event);
+
+    expect(result).toEqual({
+      event_type: "DefaultReserveFeeUpdated",
+      block_number: 4643500,
+      block_timestamp: "1234568000",
+      transaction_hash: "0xfee123",
+      old_percent: 20,
+      new_percent: 30,
+    });
+  });
+
+  it("should transform OverrideFeeSet event", () => {
+    const event = {
+      keys: [OVERRIDE_FEE_SET, "0xrouter_address", "0xmarket_address"],
+      data: [
+        "0x5f5e100", // ln_fee_rate_root low (100_000_000)
+        "0x0", // ln_fee_rate_root high
+      ],
+      transactionHash: "0xoverride123",
+      blockNumber: 4643550,
+      blockTimestamp: "1234568050",
+    };
+
+    const result = transformMarketFactoryEvent(event);
+
+    expect(result).toEqual({
+      event_type: "OverrideFeeSet",
+      block_number: 4643550,
+      block_timestamp: "1234568050",
+      transaction_hash: "0xoverride123",
+      router: "0xrouter_address",
+      market: "0xmarket_address",
+      ln_fee_rate_root: "100000000",
     });
   });
 
