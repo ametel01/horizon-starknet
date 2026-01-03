@@ -1990,11 +1990,12 @@ export const negativeYieldAlerts = pgView("negative_yield_alerts", {
 }).existing();
 
 /**
- * SY Reward APY View
- * Rolling 7-day reward APY calculation per SY per reward token
- * Use for: APY display on market cards
+ * SY Reward Stats View
+ * Rolling 7-day reward statistics per SY per reward token
+ * NOTE: Named "stats" not "APY" - consumers must compute APY using token decimals and prices
+ * Use for: Raw reward data for APY calculations
  */
-export const syRewardApy = pgView("sy_reward_apy", {
+export const syRewardStats = pgView("sy_reward_stats", {
   sy: text("sy"),
   reward_token: text("reward_token"),
   rewards_last_7_days: numeric("rewards_last_7_days", {

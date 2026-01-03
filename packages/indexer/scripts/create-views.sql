@@ -12,6 +12,13 @@ DROP MATERIALIZED VIEW IF EXISTS market_hourly_stats CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS user_py_positions CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS market_lp_positions CASCADE;
 
+-- Drop SY Monitoring views (Phase 4)
+DROP MATERIALIZED VIEW IF EXISTS user_reward_history CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS sy_current_pause_state CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS negative_yield_alerts CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS sy_reward_stats CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS exchange_rate_history CASCADE;
+
 -- Drop YT Interest analytics views (Phase 5)
 DROP MATERIALIZED VIEW IF EXISTS yt_fee_analytics CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS treasury_yield_summary CASCADE;
@@ -567,6 +574,99 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_market_lp_positions_user_market
   ON market_lp_positions(user_address, market);
 
 -- ============================================================================
+-- SY MONITORING VIEWS (Phase 4)
+-- Views for negative yield alerts, pause state, and rewards
+-- ============================================================================
+
+-- User Reward History
+-- Aggregates reward claims per user per SY per reward token
+CREATE MATERIALIZED VIEW IF NOT EXISTS user_reward_history AS
+SELECT
+  "user",
+  sy,
+  reward_token,
+  SUM(amount) as total_claimed,
+  COUNT(*) as claim_count,
+  MAX(block_timestamp) as last_claim_timestamp
+FROM sy_rewards_claimed
+GROUP BY "user", sy, reward_token;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_reward_history_user_sy_token
+  ON user_reward_history("user", sy, reward_token);
+
+-- SY Current Pause State
+-- Latest pause state for each SY contract
+-- NOTE: event_index ensures correct ordering when multiple pause/unpause events occur in same block
+CREATE MATERIALIZED VIEW IF NOT EXISTS sy_current_pause_state AS
+SELECT DISTINCT ON (sy)
+  sy,
+  is_paused,
+  block_timestamp as last_updated_at,
+  account as last_updated_by
+FROM sy_pause_state
+ORDER BY sy, block_number DESC, event_index DESC;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sy_current_pause_state_sy
+  ON sy_current_pause_state(sy);
+
+-- Negative Yield Alerts
+-- Aggregated negative yield events per SY
+CREATE MATERIALIZED VIEW IF NOT EXISTS negative_yield_alerts AS
+SELECT
+  sy,
+  underlying,
+  COUNT(*) as event_count,
+  MAX(rate_drop_bps) as max_drop_bps,
+  MAX(block_timestamp) as last_detected_at
+FROM sy_negative_yield_detected
+GROUP BY sy, underlying;
+
+-- Unique index matches GROUP BY columns (sy, underlying)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_negative_yield_alerts_sy_underlying
+  ON negative_yield_alerts(sy, underlying);
+
+-- SY Reward Stats
+-- Rolling 7-day reward statistics per SY per reward token
+-- NOTE: Named "stats" not "APY" - consumers must compute APY using token decimals and prices
+CREATE MATERIALIZED VIEW IF NOT EXISTS sy_reward_stats AS
+SELECT
+  sy,
+  reward_token,
+  -- Sum of rewards added in last 7 days
+  SUM(rewards_added) as rewards_last_7_days,
+  -- Average total supply during the period
+  AVG(total_supply) as avg_total_supply,
+  COUNT(*) as update_count
+FROM sy_reward_index_updated
+WHERE block_timestamp >= NOW() - INTERVAL '7 days'
+GROUP BY sy, reward_token;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sy_reward_stats_sy_token
+  ON sy_reward_stats(sy, reward_token);
+
+-- Exchange Rate History
+-- SY exchange rate changes (directly from sy_oracle_rate_updated)
+-- NOTE: underlying and rate_change_bps are stored on-chain, no recomputation needed
+-- Includes transaction_hash and event_index to handle multiple events per block
+CREATE MATERIALIZED VIEW IF NOT EXISTS exchange_rate_history AS
+SELECT
+  sy,
+  underlying,
+  block_timestamp,
+  block_number,
+  transaction_hash,
+  event_index,
+  old_rate,
+  new_rate,
+  rate_change_bps
+FROM sy_oracle_rate_updated
+ORDER BY sy, block_number, event_index;
+
+-- Unique index includes event_index to handle multiple oracle updates per block
+CREATE UNIQUE INDEX IF NOT EXISTS idx_exchange_rate_history_sy_block_event
+  ON exchange_rate_history(sy, block_number, event_index);
+
+-- ============================================================================
 -- YT INTEREST ANALYTICS VIEWS (Phase 5)
 -- Views for fee rate tracking, treasury yields, and batch operations
 -- ============================================================================
@@ -907,6 +1007,12 @@ BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY market_hourly_stats;
   REFRESH MATERIALIZED VIEW CONCURRENTLY user_py_positions;
   REFRESH MATERIALIZED VIEW CONCURRENTLY market_lp_positions;
+  -- SY Monitoring views (Phase 4)
+  REFRESH MATERIALIZED VIEW CONCURRENTLY user_reward_history;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY sy_current_pause_state;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY negative_yield_alerts;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY sy_reward_stats;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY exchange_rate_history;
   -- YT Interest analytics views (Phase 5)
   REFRESH MATERIALIZED VIEW CONCURRENTLY yt_fee_analytics;
   REFRESH MATERIALIZED VIEW CONCURRENTLY treasury_yield_summary;
