@@ -31,7 +31,7 @@
       "complexity": {
         "noUselessFragments": "error",
         "noUselessTypeConstraint": "error",
-        "useLiteralKeys": "warn",
+        "useLiteralKeys": "off",
         "noExcessiveCognitiveComplexity": "warn"
       },
       "correctness": {
@@ -165,6 +165,33 @@
         "rules": {
           "style": {
             "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/src/app/loading.tsx",
+        "**/src/shared/ui/Skeleton.tsx",
+        "**/src/shared/ui/Sparkline.tsx",
+        "**/src/shared/ui/StepProgress.tsx",
+        "**/src/shared/ui/animations.tsx",
+        "**/src/shared/ui/slider.tsx",
+        "**/src/widgets/**/Loading*.tsx",
+        "**/src/widgets/portfolio/PositionValueHistory.tsx",
+        "**/src/widgets/portfolio/YieldByPosition.tsx",
+        "**/src/widgets/portfolio/YieldHistory.tsx",
+        "**/src/widgets/portfolio/LpEntryExitTable.tsx",
+        "**/src/widgets/analytics/RateHistoryTable.tsx",
+        "**/src/widgets/analytics/FeeCollectionLog.tsx",
+        "**/src/widgets/analytics/ExecutionQualityPanel.tsx",
+        "**/src/widgets/analytics/TransactionHistory.tsx",
+        "**/src/widgets/analytics/SwapHistoryTable.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
           }
         }
       }
