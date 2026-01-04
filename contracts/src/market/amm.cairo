@@ -7,7 +7,7 @@
 #[starknet::contract]
 pub mod Market {
     use core::num::traits::Zero;
-    use horizon::interfaces::i_market::{IMarket, IMarketAdmin};
+    use horizon::interfaces::i_market::{IMarket, IMarketAdmin, IMarketOracle, OracleState};
     use horizon::interfaces::i_market_factory::{
         IMarketFactoryDispatcher, IMarketFactoryDispatcherTrait,
     };
@@ -15,6 +15,7 @@ pub mod Market {
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::oracle_lib::{self, Observation, SurroundingObservations};
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use horizon::market::market_math_fp::{
         MINIMUM_LIQUIDITY, MarketState, calc_burn_lp, calc_mint_lp, calc_swap_exact_pt_for_sy,
@@ -26,7 +27,10 @@ pub mod Market {
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
+    };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
@@ -90,6 +94,11 @@ pub mod Market {
         last_ln_implied_rate: u256,
         // LP fees collected (in SY) - reserve fees are sent to treasury immediately
         lp_fees_collected: u256,
+        // TWAP oracle - ring buffer of ln(implied rate) observations
+        observations: Map<u16, Observation>,
+        observation_index: u16,
+        observation_cardinality: u16,
+        observation_cardinality_next: u16,
     }
 
     #[event]
@@ -293,6 +302,14 @@ pub mod Market {
         // after first mint using set_initial_ln_implied_rate (Pendle parity)
         self.last_ln_implied_rate.write(0);
         self.lp_fees_collected.write(0);
+
+        // Initialize TWAP oracle with first observation at deployment time
+        let timestamp = get_block_timestamp();
+        let init_result = oracle_lib::initialize(timestamp);
+        self.observations.write(0_u16, init_result.observation);
+        self.observation_index.write(0_u16);
+        self.observation_cardinality.write(init_result.cardinality);
+        self.observation_cardinality_next.write(init_result.cardinality_next);
     }
 
     #[abi(embed_v0)]
@@ -973,6 +990,103 @@ pub mod Market {
         }
     }
 
+    // TWAP Oracle functions
+    #[abi(embed_v0)]
+    impl MarketOracleImpl of IMarketOracle<ContractState> {
+        /// Query cumulative ln(implied rate) values at multiple time offsets.
+        /// Returns an array of cumulative values that can be used to compute TWAP:
+        /// TWAP = (cumulative_now - cumulative_past) / duration
+        fn observe(self: @ContractState, seconds_agos: Array<u32>) -> Array<u256> {
+            let time = get_block_timestamp();
+            let index = self.observation_index.read();
+            let cardinality = self.observation_cardinality.read();
+            let ln_implied_rate = self.last_ln_implied_rate.read();
+
+            assert(cardinality > 0, Errors::ORACLE_ZERO_CARDINALITY);
+
+            // Get newest observation
+            let newest = self.observations.read(index);
+
+            // Build surrounding observations for each seconds_ago query
+            let mut surrounding_observations: Array<SurroundingObservations> = ArrayTrait::new();
+            let mut i: usize = 0;
+            while i < seconds_agos.len() {
+                let seconds_ago: u64 = (*seconds_agos.at(i)).into();
+                assert(seconds_ago <= time, Errors::ORACLE_TARGET_IN_FUTURE);
+                let target = time - seconds_ago;
+
+                // Get oldest observation
+                let candidate_idx = (index + 1) % cardinality;
+                let candidate = self.observations.read(candidate_idx);
+                let oldest_idx = oracle_lib::get_oldest_observation_index(
+                    index, cardinality, candidate.initialized,
+                );
+                let oldest = self.observations.read(oldest_idx);
+
+                // Try to get surrounding without binary search
+                let surrounding =
+                    match oracle_lib::get_surrounding_observations(
+                        target, newest, oldest, ln_implied_rate,
+                    ) {
+                    Option::Some(s) => s,
+                    Option::None => {
+                        // Need binary search - read all observations
+                        let mut all_obs: Array<Observation> = ArrayTrait::new();
+                        let mut j: u16 = 0;
+                        while j < cardinality {
+                            all_obs.append(self.observations.read(j));
+                            j += 1;
+                        }
+                        oracle_lib::binary_search(all_obs.span(), target, index, cardinality)
+                    },
+                };
+                surrounding_observations.append(surrounding);
+                i += 1;
+            }
+
+            // Compute cumulative values using observe helper
+            oracle_lib::observe(
+                time, seconds_agos.span(), newest, ln_implied_rate, surrounding_observations.span(),
+            )
+        }
+
+        /// Pre-allocate observation buffer slots to reduce storage costs during swaps.
+        /// Only grows the buffer (cannot shrink).
+        fn increase_observations_cardinality_next(ref self: ContractState, cardinality_next: u16) {
+            let current_next = self.observation_cardinality_next.read();
+            let grow_result = oracle_lib::grow(current_next, cardinality_next);
+
+            // Write pre-initialized observations to storage
+            let mut slots = grow_result.slots_to_initialize;
+            while let Option::Some((idx, obs)) = slots.pop_front() {
+                self.observations.write(idx, obs);
+            }
+
+            // Update cardinality_next if changed
+            if grow_result.cardinality_next != current_next {
+                self.observation_cardinality_next.write(grow_result.cardinality_next);
+            }
+        }
+
+        /// Read a single observation from the ring buffer.
+        /// Returns (block_timestamp, ln_implied_rate_cumulative, initialized)
+        fn get_observation(self: @ContractState, index: u16) -> (u64, u256, bool) {
+            let obs = self.observations.read(index);
+            (obs.block_timestamp, obs.ln_implied_rate_cumulative, obs.initialized)
+        }
+
+        /// Get oracle state for external TWAP calculations.
+        /// Returns the last_ln_implied_rate and oracle buffer indices.
+        fn get_oracle_state(self: @ContractState) -> OracleState {
+            OracleState {
+                last_ln_implied_rate: self.last_ln_implied_rate.read(),
+                observation_index: self.observation_index.read(),
+                observation_cardinality: self.observation_cardinality.read(),
+                observation_cardinality_next: self.observation_cardinality_next.read(),
+            }
+        }
+    }
+
     // Internal functions
     #[generate_trait]
     pub impl InternalImpl of InternalTrait {
@@ -1147,11 +1261,34 @@ pub mod Market {
                 );
         }
 
-        /// Update the cached implied rate
+        /// Update the cached implied rate and write TWAP observation.
+        /// CRITICAL: Writes observation with OLD rate BEFORE updating the rate.
+        /// This ensures the cumulative calculation reflects the rate that was active
+        /// during the elapsed time period.
         fn _update_implied_rate(ref self: ContractState) {
+            let timestamp = get_block_timestamp();
             let old_rate = self.last_ln_implied_rate.read();
+
+            // --- TWAP: Write observation BEFORE updating rate ---
+            // The cumulative calculation uses old_rate × time_delta
+            let last_obs = self.observations.read(self.observation_index.read());
+            let write_result = oracle_lib::write(
+                last_obs,
+                self.observation_index.read(),
+                timestamp,
+                old_rate, // MUST use stored (old) rate
+                self.observation_cardinality.read(),
+                self.observation_cardinality_next.read(),
+            );
+            // Persist observation changes (no-op if same block)
+            self.observations.write(write_result.index, write_result.observation);
+            self.observation_index.write(write_result.index);
+            self.observation_cardinality.write(write_result.cardinality);
+            // --- End TWAP write ---
+
+            // Calculate new rate
             let state = self._get_market_state();
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(self.expiry.read(), timestamp);
             let new_rate = get_ln_implied_rate(@state, time_to_expiry);
 
             // Only update and emit if rate has changed
@@ -1168,7 +1305,7 @@ pub mod Market {
                             expiry: self.expiry.read(),
                             old_rate,
                             new_rate,
-                            timestamp: get_block_timestamp(),
+                            timestamp,
                             time_to_expiry,
                             exchange_rate: sy_contract.exchange_rate(),
                             sy_reserve: self.sy_reserve.read(),
@@ -1179,12 +1316,32 @@ pub mod Market {
             }
         }
 
-        /// Set the initial ln(implied rate) for first mint
-        /// Mirrors Pendle's setInitialLnImpliedRate - called AFTER first liquidity is added
-        /// Computes the initial rate based on pool proportion and initial_anchor
+        /// Set the initial ln(implied rate) for first mint.
+        /// Mirrors Pendle's setInitialLnImpliedRate - called AFTER first liquidity is added.
+        /// Computes the initial rate based on pool proportion and initial_anchor.
+        /// Also writes an observation to establish the TWAP baseline.
         fn _set_initial_ln_implied_rate(ref self: ContractState) {
+            let timestamp = get_block_timestamp();
+            let old_rate = self.last_ln_implied_rate.read(); // Expected to be 0
+
+            // --- TWAP: Write observation with stored (0) rate BEFORE setting initial rate ---
+            let last_obs = self.observations.read(self.observation_index.read());
+            let write_result = oracle_lib::write(
+                last_obs,
+                self.observation_index.read(),
+                timestamp,
+                old_rate, // Use stored rate (0 before first mint)
+                self.observation_cardinality.read(),
+                self.observation_cardinality_next.read(),
+            );
+            // Persist observation changes
+            self.observations.write(write_result.index, write_result.observation);
+            self.observation_index.write(write_result.index);
+            self.observation_cardinality.write(write_result.cardinality);
+            // --- End TWAP write ---
+
             let state = self._get_market_state();
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(self.expiry.read(), timestamp);
 
             // Use Pendle's formula to compute initial implied rate
             let initial_rate = set_initial_ln_implied_rate(@state, time_to_expiry);
@@ -1201,9 +1358,9 @@ pub mod Market {
                     ImpliedRateUpdated {
                         market: get_contract_address(),
                         expiry: self.expiry.read(),
-                        old_rate: 0, // Was 0 before first mint
+                        old_rate, // Was 0 before first mint
                         new_rate: initial_rate,
-                        timestamp: get_block_timestamp(),
+                        timestamp,
                         time_to_expiry,
                         exchange_rate: sy_contract.exchange_rate(),
                         sy_reserve: self.sy_reserve.read(),

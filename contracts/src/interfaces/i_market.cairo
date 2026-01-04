@@ -1,5 +1,19 @@
 use starknet::ContractAddress;
 
+/// Oracle state returned by get_oracle_state.
+/// Provides the data needed for TWAP calculations.
+#[derive(Copy, Drop, Serde)]
+pub struct OracleState {
+    /// Last cached ln(implied rate)
+    pub last_ln_implied_rate: u256,
+    /// Current observation index in the ring buffer
+    pub observation_index: u16,
+    /// Active buffer size (how many slots contain valid observations)
+    pub observation_cardinality: u16,
+    /// Target buffer size (will grow to this when index wraps)
+    pub observation_cardinality_next: u16,
+}
+
 #[starknet::interface]
 pub trait IMarket<TContractState> {
     // Pool info
@@ -77,4 +91,30 @@ pub trait IMarketAdmin<TContractState> {
     /// Typical values: 0.01-0.5 WAD (10^16 to 5*10^17)
     /// @param new_scalar_root New scalar root value in WAD
     fn set_scalar_root(ref self: TContractState, new_scalar_root: u256);
+}
+
+/// TWAP Oracle interface for Market
+/// Provides methods to query TWAP data and manage observation buffer
+#[starknet::interface]
+pub trait IMarketOracle<TContractState> {
+    /// Query cumulative ln(implied rate) values at multiple time offsets.
+    /// Used for TWAP calculations: TWAP = (cumulative_now - cumulative_past) / duration
+    /// @param seconds_agos Array of time offsets from current block (e.g., [3600, 0] for 1-hour
+    /// TWAP)
+    /// @return Array of cumulative values, one per seconds_ago entry
+    fn observe(self: @TContractState, seconds_agos: Array<u32>) -> Array<u256>;
+
+    /// Pre-allocate observation buffer slots to reduce gas costs during swaps.
+    /// Only grows the buffer - cannot shrink.
+    /// @param cardinality_next Target buffer size
+    fn increase_observations_cardinality_next(ref self: TContractState, cardinality_next: u16);
+
+    /// Read a single observation from the ring buffer.
+    /// @param index Physical slot index (0..cardinality)
+    /// @return (block_timestamp, ln_implied_rate_cumulative, initialized)
+    fn get_observation(self: @TContractState, index: u16) -> (u64, u256, bool);
+
+    /// Get the oracle state needed for external TWAP calculations.
+    /// @return OracleState containing last_ln_implied_rate and buffer indices
+    fn get_oracle_state(self: @TContractState) -> OracleState;
 }
