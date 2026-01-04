@@ -279,7 +279,7 @@ pub fn observe_single(
     surrounding: SurroundingObservations,
 ) -> u256 {
     // Guard: target must be <= time (can't query the future)
-    assert(target <= time, Errors::ORACLE_TARGET_TOO_OLD);
+    assert(target <= time, Errors::ORACLE_TARGET_IN_FUTURE);
     // Guard: target must be >= before_or_at timestamp (surrounding must bracket target)
     assert(target >= surrounding.before_or_at.block_timestamp, Errors::ORACLE_TARGET_TOO_OLD);
 
@@ -359,8 +359,8 @@ pub fn observe(
 
     while i < seconds_agos.len() {
         let seconds_ago: u64 = (*seconds_agos.at(i)).into();
-        // Guard: seconds_ago must not exceed current time (prevent underflow)
-        assert(seconds_ago <= time, Errors::ORACLE_TARGET_TOO_OLD);
+        // Guard: seconds_ago must not exceed current time (target would be in the future)
+        assert(seconds_ago <= time, Errors::ORACLE_TARGET_IN_FUTURE);
         let target = time - seconds_ago;
         let surrounding = *surrounding_observations.at(i);
 
