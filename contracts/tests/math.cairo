@@ -5,6 +5,7 @@
 /// - Fixed-point math using cairo_fp crate
 /// - Market pricing formulas
 /// - Pendle AMM math validation
+/// - TWAP oracle ring buffer logic
 ///
 /// Run with: snforge test math
 
@@ -12,4 +13,5 @@ pub mod test_market_math;
 pub mod test_market_math_fp;
 pub mod test_math;
 pub mod test_math_fp;
+pub mod test_oracle_lib;
 pub mod test_pendle_amm_math;
