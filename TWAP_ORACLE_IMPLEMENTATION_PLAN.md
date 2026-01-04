@@ -217,9 +217,9 @@ Validation:
 
 ---
 
-## Phase 2: Market integration (TWAP storage + entrypoints)
+## Phase 2: Market integration (TWAP storage + entrypoints) **COMPLETE**
 
-### 2.1 Append storage fields
+### 2.1 Append storage fields **COMPLETE**
 
 **File:** `contracts/src/market/amm.cairo`
 Append to `Storage` (after existing fields):
@@ -238,7 +238,7 @@ Validation:
 Failure modes:
 - Storage reordering breaks existing deployments.
 
-### 2.2 Constructor initialization
+### 2.2 Constructor initialization **COMPLETE**
 
 Add:
 ```cairo
@@ -252,7 +252,7 @@ self.observation_cardinality_next.write(cardinality_next);
 Validation:
 - Unit test: cardinality == 1, observation[0].initialized == true.
 
-### 2.3 `_update_implied_rate` ordering (critical)
+### 2.3 `_update_implied_rate` ordering (critical) **COMPLETE**
 
 Update to:
 ```cairo
@@ -280,7 +280,7 @@ Validation:
 Failure modes:
 - Writing after `last_ln_implied_rate` update corrupts TWAP.
 
-### 2.4 `_set_initial_ln_implied_rate`
+### 2.4 `_set_initial_ln_implied_rate` **COMPLETE**
 
 Write observation with stored rate (expected 0) before setting initial rate:
 ```cairo
@@ -293,7 +293,7 @@ self.last_ln_implied_rate.write(initial_rate);
 Validation:
 - Unit test: first mint yields 2 observations (slot 0 init + first write).
 
-### 2.5 Market entrypoints
+### 2.5 Market entrypoints **COMPLETE**
 
 **Add to `IMarket` + `MarketImpl`:**
 ```cairo
@@ -322,7 +322,7 @@ Failure modes:
 - Using `observation_cardinality` instead of `observation_cardinality_next` when growing.
 - Returning `new_rate` instead of stored `last_ln_implied_rate` for duration=0.
 
-### 2.6 Update `contracts/src/interfaces/i_market.cairo`
+### 2.6 Update `contracts/src/interfaces/i_market.cairo` **COMPLETE**
 
 Ensure interface signatures match the new entrypoints and types exactly.
 
@@ -331,9 +331,9 @@ Validation:
 
 ---
 
-## Phase 3: PT/YT/LP oracle helper
-
-### 3.1 Interface
+## Phase 3: PT/YT/LP oracle helper **COMPLETE**
+ 
+### 3.1 Interface **COMPLETE**
 
 **File:** `contracts/src/interfaces/i_py_lp_oracle.cairo` (NEW)
 Expose Pendle-style methods:
@@ -348,7 +348,7 @@ Expose Pendle-style methods:
 Validation:
 - `scarb build`
 
-### 3.2 Implementation
+### 3.2 Implementation **COMPLETE**
 
 **File:** `contracts/src/oracles/py_lp_oracle.cairo` (NEW)
 
@@ -392,7 +392,7 @@ Failure modes:
 ### 4.1 `contracts/tests/test_oracle_lib.cairo`
 - initialize, transform, write (same-block), grow, observe (interpolation + too-old).
 
-### 4.2 `contracts/tests/test_market_oracle.cairo`
+### 4.2 `contracts/tests/test_market_oracle.cairo` 
 - constructor initializes observation.
 - swaps/mints write observations.
 - `observe([duration, 0])` computes TWAP.
