@@ -294,8 +294,10 @@ fn test_get_pt_to_sy_rate_with_twap() {
 
     setup_market_with_liquidity(yield_token, sy, yt, pt, market);
 
-    // Record rate at T=0
-    let spot_rate_t0 = oracle.get_pt_to_sy_rate(market.contract_address, 0);
+    // Record ln_rate at T=0 (use ln-rate space, not PT price space)
+    // PT price depends on both ln_rate AND time_to_expiry, so prices at different
+    // timestamps aren't directly comparable. The oracle TWAPs ln_rate, so we validate there.
+    let ln_rate_t0 = oracle.get_ln_implied_rate_twap(market.contract_address, 0);
 
     // Do a swap at T+30min to change the rate and create a new observation
     start_cheat_block_timestamp_global(INITIAL_TIME + 1800);
@@ -310,28 +312,55 @@ fn test_get_pt_to_sy_rate_with_twap() {
     stop_cheat_caller_address(market.contract_address);
 
     // Do another swap at T+1h to create more history
+    // Use larger swap size to ensure rate definitely changes (avoids flakiness)
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
     market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
     stop_cheat_caller_address(market.contract_address);
 
-    // Record spot rate after swaps (at T+1h)
-    let spot_rate_t1 = oracle.get_pt_to_sy_rate(market.contract_address, 0);
+    // Record ln_rate after swaps (at T+1h)
+    let ln_rate_t1 = oracle.get_ln_implied_rate_twap(market.contract_address, 0);
 
-    // The spot rate should have changed from t0 to t1
-    assert(spot_rate_t1 != spot_rate_t0, 'spot rate should change');
+    // Verify meaningful rate delta (0.1% minimum) to ensure TWAP test is valid
+    // Simple != check is brittle with rounding - TWAP could equal spot by chance
+    let delta = if ln_rate_t1 > ln_rate_t0 {
+        ln_rate_t1 - ln_rate_t0
+    } else {
+        ln_rate_t0 - ln_rate_t1
+    };
+    let min_delta = ln_rate_t0 / 1000; // 0.1% of initial rate
+    assert(delta >= min_delta, 'ln_rate delta too small');
 
-    // Query with 30-minute TWAP (covers T+30min to T+1h)
-    let twap_rate = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
+    // Query PT price with 30-minute TWAP (covers T+30min to T+1h)
+    let twap_pt_rate = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
+    let spot_pt_rate = oracle.get_pt_to_sy_rate(market.contract_address, 0);
 
     // TWAP should be positive and less than WAD
-    assert(twap_rate > 0, 'PT rate should be > 0');
-    assert(twap_rate < WAD, 'PT rate should be < WAD');
+    assert(twap_pt_rate > 0, 'PT rate should be > 0');
+    assert(twap_pt_rate < WAD, 'PT rate should be < WAD');
 
     // Verify we actually have multiple observations (not just interpolated)
     let state = market_oracle.get_oracle_state();
     assert(state.observation_index >= 2, 'should have 2+ observations');
+
+    // CRITICAL: TWAP PT rate must differ from spot PT rate when ln_rate changed
+    // This proves the duration path is actually used, not just returning spot
+    assert(twap_pt_rate != spot_pt_rate, 'TWAP must differ from spot');
+
+    // Validate bounds in ln-rate space (what the oracle actually TWAPs)
+    // PT price depends on time_to_expiry which changes between t0 and t1,
+    // so we can't safely bound PT prices across time. ln_rate TWAP should
+    // fall between the endpoint ln_rates.
+    let ln_rate_twap = oracle.get_ln_implied_rate_twap(market.contract_address, 1800);
+    let (twap_min, twap_max) = if ln_rate_t0 < ln_rate_t1 {
+        (ln_rate_t0, ln_rate_t1)
+    } else {
+        (ln_rate_t1, ln_rate_t0)
+    };
+    // Allow small tolerance at boundaries for fixed-point precision
+    assert(ln_rate_twap >= twap_min * 99 / 100, 'TWAP below min bound');
+    assert(ln_rate_twap <= twap_max * 101 / 100, 'TWAP above max bound');
 }
 
 // ============================================
@@ -564,7 +593,14 @@ fn test_get_ln_implied_rate_twap_non_zero_duration() {
     let spot_rate_t1 = market_oracle.get_oracle_state().last_ln_implied_rate;
 
     // Spot rate should have changed (swaps affect implied rate)
-    assert(spot_rate_t1 != spot_rate_t0, 'spot rate should change');
+    // Use minimum delta threshold (0.1% of rate) to ensure meaningful change for TWAP test
+    let delta = if spot_rate_t1 > spot_rate_t0 {
+        spot_rate_t1 - spot_rate_t0
+    } else {
+        spot_rate_t0 - spot_rate_t1
+    };
+    let min_delta = spot_rate_t0 / 1000; // 0.1% of initial rate
+    assert(delta >= min_delta, 'rate delta too small');
 
     // Query TWAP over last 30 minutes
     let twap = oracle.get_ln_implied_rate_twap(market.contract_address, 1800);
@@ -575,6 +611,31 @@ fn test_get_ln_implied_rate_twap_non_zero_duration() {
     // Verify we have multiple observations
     let state = market_oracle.get_oracle_state();
     assert(state.observation_index >= 2, 'should have 2+ observations');
+
+    // Compute expected TWAP independently from observe() for validation
+    let seconds_agos: Array<u32> = array![1800, 0];
+    let cumulatives = market_oracle.observe(seconds_agos);
+    let cumulative_past = *cumulatives.at(0);
+    let cumulative_now = *cumulatives.at(1);
+    let expected_twap = (cumulative_now - cumulative_past) / 1800;
+
+    // CRITICAL: TWAP from oracle must match expected TWAP from observe()
+    // This validates the oracle is correctly using the duration path
+    assert(twap == expected_twap, 'TWAP != expected from observe');
+
+    // Since we verified meaningful delta, TWAP must differ from current spot
+    // (TWAP averages historical rates, so with delta it cannot equal endpoint)
+    assert(twap != spot_rate_t1, 'TWAP must differ from spot');
+
+    // TWAP should be bounded between t0 and t1 spot rates
+    let (twap_min, twap_max) = if spot_rate_t0 < spot_rate_t1 {
+        (spot_rate_t0, spot_rate_t1)
+    } else {
+        (spot_rate_t1, spot_rate_t0)
+    };
+    // Allow small tolerance at boundaries for fixed-point precision
+    assert(twap >= twap_min * 99 / 100, 'TWAP below min bound');
+    assert(twap <= twap_max * 101 / 100, 'TWAP above max bound');
 }
 
 // ============================================
@@ -602,6 +663,9 @@ fn test_pt_plus_yt_equals_wad_with_twap() {
     market_oracle.increase_observations_cardinality_next(100);
     setup_market_with_liquidity(yield_token, sy, yt, pt, market);
 
+    // Record ln_rate at T=0 (use ln-rate space for delta check)
+    let ln_rate_t0 = market_oracle.get_oracle_state().last_ln_implied_rate;
+
     // Build real observation history with swaps at different times
     start_cheat_block_timestamp_global(INITIAL_TIME + 1800);
     setup_user_with_tokens(yield_token, sy, yt, user, 30 * WAD);
@@ -620,15 +684,48 @@ fn test_pt_plus_yt_equals_wad_with_twap() {
     market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
     stop_cheat_caller_address(market.contract_address);
 
+    // Record ln_rate at T+1h
+    let ln_rate_t1 = market_oracle.get_oracle_state().last_ln_implied_rate;
+
     // Verify we built real history
     let state = market_oracle.get_oracle_state();
     assert(state.observation_index >= 2, 'should have 2+ observations');
 
-    let pt_rate = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
-    let yt_rate = oracle.get_yt_to_sy_rate(market.contract_address, 1800);
+    // Verify meaningful rate delta (0.1% minimum) to ensure TWAP test is valid
+    let delta = if ln_rate_t1 > ln_rate_t0 {
+        ln_rate_t1 - ln_rate_t0
+    } else {
+        ln_rate_t0 - ln_rate_t1
+    };
+    let min_delta = ln_rate_t0 / 1000; // 0.1% of initial rate
+    assert(delta >= min_delta, 'rate delta too small');
 
-    // Invariant should hold for TWAP rates too
-    assert(pt_rate + yt_rate == WAD, 'PT + YT should equal WAD');
+    // Validate TWAP matches expected from observe() (proves duration path is used)
+    let seconds_agos: Array<u32> = array![1800, 0];
+    let cumulatives = market_oracle.observe(seconds_agos);
+    let cumulative_past = *cumulatives.at(0);
+    let cumulative_now = *cumulatives.at(1);
+    let expected_ln_twap = (cumulative_now - cumulative_past) / 1800;
+    let actual_ln_twap = oracle.get_ln_implied_rate_twap(market.contract_address, 1800);
+    assert(actual_ln_twap == expected_ln_twap, 'ln TWAP != expected');
+
+    // Get spot rates (duration=0) for comparison
+    let pt_spot = oracle.get_pt_to_sy_rate(market.contract_address, 0);
+    let yt_spot = oracle.get_yt_to_sy_rate(market.contract_address, 0);
+
+    // Get TWAP rates (duration=1800)
+    let pt_twap = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
+    let yt_twap = oracle.get_yt_to_sy_rate(market.contract_address, 1800);
+
+    // With verified meaningful delta, TWAP rates must differ from spot rates
+    // (TWAP averages historical rates, so cannot equal current spot with delta)
+    assert(pt_twap != pt_spot, 'PT TWAP must differ from spot');
+    assert(yt_twap != yt_spot, 'YT TWAP must differ from spot');
+
+    // CORE INVARIANT: PT + YT = WAD must hold for both spot and TWAP rates
+    // This is the economic property we're testing - YT is defined as WAD - PT
+    assert(pt_spot + yt_spot == WAD, 'spot: PT + YT = WAD');
+    assert(pt_twap + yt_twap == WAD, 'TWAP: PT + YT = WAD');
 }
 
 // ============================================

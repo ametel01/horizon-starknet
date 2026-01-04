@@ -688,6 +688,9 @@ fn test_twap_after_multiple_swaps() {
     market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
     stop_cheat_caller_address(market.contract_address);
 
+    // Capture spot rate at T+1h (start of TWAP window)
+    let spot_rate_t1 = oracle.get_oracle_state().last_ln_implied_rate;
+
     // Second swap at t+2h
     start_cheat_block_timestamp_global(INITIAL_TIME + 2 * ONE_HOUR);
 
@@ -695,12 +698,27 @@ fn test_twap_after_multiple_swaps() {
     market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
     stop_cheat_caller_address(market.contract_address);
 
+    // Capture spot rate at T+2h (mid-point)
+    let spot_rate_t2 = oracle.get_oracle_state().last_ln_implied_rate;
+
     // Third swap at t+3h
     start_cheat_block_timestamp_global(INITIAL_TIME + 3 * ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
     market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
     stop_cheat_caller_address(market.contract_address);
+
+    // Capture spot rate at T+3h (end of TWAP window)
+    let spot_rate_t3 = oracle.get_oracle_state().last_ln_implied_rate;
+
+    // Verify meaningful rate delta (0.1% minimum) for robust TWAP test
+    let delta = if spot_rate_t3 > spot_rate_t1 {
+        spot_rate_t3 - spot_rate_t1
+    } else {
+        spot_rate_t1 - spot_rate_t3
+    };
+    let min_delta = spot_rate_t1 / 1000; // 0.1% of initial rate
+    assert(delta >= min_delta, 'rate delta too small');
 
     // Query TWAP over last 2 hours
     let seconds_agos: Array<u32> = array![7200, 0]; // 2 hours ago, now
@@ -719,6 +737,34 @@ fn test_twap_after_multiple_swaps() {
     // Verify we have multiple distinct observations (not just interpolated)
     let state = oracle.get_oracle_state();
     assert(state.observation_index >= 3, 'should have 3+ observations');
+
+    // CRITICAL: TWAP must differ from current spot rate
+    // This proves the TWAP calculation actually averages historical values
+    assert(twap != spot_rate_t3, 'TWAP must differ from spot');
+
+    // Compute min/max across ALL observation points in the window (t1, t2, t3)
+    // This handles non-monotonic rate changes where intermediate values may
+    // exceed the endpoints (e.g., rate goes up at t2 then down at t3)
+    let mut window_min = spot_rate_t1;
+    let mut window_max = spot_rate_t1;
+
+    if spot_rate_t2 < window_min {
+        window_min = spot_rate_t2;
+    }
+    if spot_rate_t2 > window_max {
+        window_max = spot_rate_t2;
+    }
+    if spot_rate_t3 < window_min {
+        window_min = spot_rate_t3;
+    }
+    if spot_rate_t3 > window_max {
+        window_max = spot_rate_t3;
+    }
+
+    // TWAP should be bounded between min/max of ALL rates in the window
+    // Allow 1% tolerance for fixed-point precision and interpolation
+    assert(twap >= window_min * 99 / 100, 'TWAP below window min');
+    assert(twap <= window_max * 101 / 100, 'TWAP above window max');
 }
 
 // ============================================
