@@ -287,20 +287,51 @@ fn test_get_pt_to_sy_rate_after_expiry() {
 fn test_get_pt_to_sy_rate_with_twap() {
     let (yield_token, sy, yt, pt, market, oracle) = setup();
     let market_oracle = IMarketOracleDispatcher { contract_address: market.contract_address };
+    let user = user1();
 
     // Increase cardinality for TWAP support
     market_oracle.increase_observations_cardinality_next(100);
 
     setup_market_with_liquidity(yield_token, sy, yt, pt, market);
 
-    // Advance time to build history
+    // Record rate at T=0
+    let spot_rate_t0 = oracle.get_pt_to_sy_rate(market.contract_address, 0);
+
+    // Do a swap at T+30min to change the rate and create a new observation
+    start_cheat_block_timestamp_global(INITIAL_TIME + 1800);
+    setup_user_with_tokens(yield_token, sy, yt, user, 50 * WAD);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 20 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 15 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Do another swap at T+1h to create more history
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
 
-    // Query with 30-minute TWAP
-    let pt_rate = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
 
-    assert(pt_rate > 0, 'PT rate should be > 0');
-    assert(pt_rate < WAD, 'PT rate should be < WAD');
+    // Record spot rate after swaps (at T+1h)
+    let spot_rate_t1 = oracle.get_pt_to_sy_rate(market.contract_address, 0);
+
+    // The spot rate should have changed from t0 to t1
+    assert(spot_rate_t1 != spot_rate_t0, 'spot rate should change');
+
+    // Query with 30-minute TWAP (covers T+30min to T+1h)
+    let twap_rate = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
+
+    // TWAP should be positive and less than WAD
+    assert(twap_rate > 0, 'PT rate should be > 0');
+    assert(twap_rate < WAD, 'PT rate should be < WAD');
+
+    // Verify we actually have multiple observations (not just interpolated)
+    let state = market_oracle.get_oracle_state();
+    assert(state.observation_index >= 2, 'should have 2+ observations');
 }
 
 // ============================================
@@ -502,18 +533,48 @@ fn test_get_ln_implied_rate_twap_duration_zero() {
 fn test_get_ln_implied_rate_twap_non_zero_duration() {
     let (yield_token, sy, yt, pt, market, oracle) = setup();
     let market_oracle = IMarketOracleDispatcher { contract_address: market.contract_address };
+    let user = user1();
 
     market_oracle.increase_observations_cardinality_next(100);
     setup_market_with_liquidity(yield_token, sy, yt, pt, market);
 
-    // Advance time
+    // Record spot rate at T=0
+    let spot_rate_t0 = market_oracle.get_oracle_state().last_ln_implied_rate;
+
+    // Create new observation at T+30min by doing a swap
+    start_cheat_block_timestamp_global(INITIAL_TIME + 1800);
+    setup_user_with_tokens(yield_token, sy, yt, user, 30 * WAD);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 15 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Create another observation at T+1h
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
 
-    // Query TWAP
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Record spot rate after swaps
+    let spot_rate_t1 = market_oracle.get_oracle_state().last_ln_implied_rate;
+
+    // Spot rate should have changed (swaps affect implied rate)
+    assert(spot_rate_t1 != spot_rate_t0, 'spot rate should change');
+
+    // Query TWAP over last 30 minutes
     let twap = oracle.get_ln_implied_rate_twap(market.contract_address, 1800);
 
     // TWAP should be positive
     assert(twap > 0, 'TWAP should be > 0');
+
+    // Verify we have multiple observations
+    let state = market_oracle.get_oracle_state();
+    assert(state.observation_index >= 2, 'should have 2+ observations');
 }
 
 // ============================================
@@ -536,11 +597,32 @@ fn test_pt_plus_yt_equals_wad() {
 fn test_pt_plus_yt_equals_wad_with_twap() {
     let (yield_token, sy, yt, pt, market, oracle) = setup();
     let market_oracle = IMarketOracleDispatcher { contract_address: market.contract_address };
+    let user = user1();
 
     market_oracle.increase_observations_cardinality_next(100);
     setup_market_with_liquidity(yield_token, sy, yt, pt, market);
 
+    // Build real observation history with swaps at different times
+    start_cheat_block_timestamp_global(INITIAL_TIME + 1800);
+    setup_user_with_tokens(yield_token, sy, yt, user, 30 * WAD);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 15 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify we built real history
+    let state = market_oracle.get_oracle_state();
+    assert(state.observation_index >= 2, 'should have 2+ observations');
 
     let pt_rate = oracle.get_pt_to_sy_rate(market.contract_address, 1800);
     let yt_rate = oracle.get_yt_to_sy_rate(market.contract_address, 1800);
@@ -608,30 +690,70 @@ fn test_rates_with_high_yield_index() {
 }
 
 #[test]
-fn test_lp_rate_consistency() {
+fn test_lp_rate_bounds() {
+    // Test LP rate against independent economic bounds, not the same formula
     let (yield_token, sy, yt, pt, market, oracle) = setup();
     setup_market_with_liquidity(yield_token, sy, yt, pt, market);
 
-    // LP value in SY terms
     let lp_to_sy = oracle.get_lp_to_sy_rate(market.contract_address, 0);
-
-    // Calculate expected value manually:
-    // LP value = (SY_reserve + PT_reserve * PT_price) / total_LP
     let (sy_reserve, pt_reserve) = market.get_reserves();
     let total_lp = market.total_lp_supply();
     let pt_price = oracle.get_pt_to_sy_rate(market.contract_address, 0);
 
-    // Manual calculation (using WAD math approximation)
-    let pt_value = pt_reserve * pt_price / WAD;
-    let total_value = sy_reserve + pt_value;
-    let expected_lp_rate = total_value * WAD / total_lp;
-
+    // LOWER BOUND: LP value >= (sy_reserve + pt_reserve * pt_price) / total_lp
+    // Since PT is discounted (pt_price < WAD), LP gets minimum value from this
+    // This is the fair value - LP should be at least this much
+    let pt_value_discounted = pt_reserve * pt_price / WAD;
+    let fair_value_in_sy = sy_reserve + pt_value_discounted;
+    let lower_bound = fair_value_in_sy * WAD / total_lp;
     // Allow 1% tolerance for fixed-point precision
-    let diff = if lp_to_sy > expected_lp_rate {
-        lp_to_sy - expected_lp_rate
+    assert(lp_to_sy >= lower_bound * 99 / 100, 'LP below fair value');
+
+    // UPPER BOUND: LP value <= (sy_reserve + pt_reserve) / total_lp
+    // Even if PT=WAD (at expiry), LP can't exceed this
+    let max_value_in_sy = sy_reserve + pt_reserve;
+    let upper_bound = max_value_in_sy * WAD / total_lp;
+    assert(lp_to_sy <= upper_bound, 'LP above max value');
+
+    // PT DISCOUNT REFLECTED: Since pt_price < WAD, LP rate should be less than upper_bound
+    // This ensures the PT discount is actually applied, not ignored
+    assert(pt_price < WAD, 'PT should be discounted');
+    assert(lp_to_sy < upper_bound, 'PT discount not applied');
+}
+
+#[test]
+fn test_lp_rate_responds_to_reserves() {
+    // Test that LP rate changes correctly when reserves change
+    let (yield_token, sy, yt, pt, market, oracle) = setup();
+    let user = user1();
+    setup_market_with_liquidity(yield_token, sy, yt, pt, market);
+
+    let lp_rate_before = oracle.get_lp_to_sy_rate(market.contract_address, 0);
+
+    // Add more liquidity (increases reserves proportionally)
+    setup_user_with_tokens(yield_token, sy, yt, user, 60 * WAD);
+
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 50 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 50 * WAD, 50 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    let lp_rate_after = oracle.get_lp_to_sy_rate(market.contract_address, 0);
+
+    // LP rate should stay similar (proportional add doesn't change per-LP value much)
+    // Allow 5% tolerance for rate changes due to proportional adds
+    let diff = if lp_rate_after > lp_rate_before {
+        lp_rate_after - lp_rate_before
     } else {
-        expected_lp_rate - lp_to_sy
+        lp_rate_before - lp_rate_after
     };
-    let tolerance = expected_lp_rate / 100;
-    assert(diff <= tolerance, 'LP rate should match formula');
+    let tolerance = lp_rate_before / 20;
+    assert(diff <= tolerance, 'LP rate unstable on add');
 }

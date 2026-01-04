@@ -257,9 +257,17 @@ fn test_first_mint_writes_observation() {
 
     setup_user_with_tokens(yield_token, sy, yt, user, 200 * WAD);
 
+    // Increase cardinality to allow index advancement
+    // (with cardinality=1, index wraps: (0+1)%1=0)
+    oracle.increase_observations_cardinality_next(10);
+
     // Check state before mint
     let state_before = oracle.get_oracle_state();
     assert(state_before.observation_index == 0, 'index before should be 0');
+
+    // Read initial observation
+    let (init_ts, _, _) = oracle.get_observation(0);
+    assert(init_ts == INITIAL_TIME, 'init ts should be INITIAL_TIME');
 
     // Advance time
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
@@ -282,6 +290,19 @@ fn test_first_mint_writes_observation() {
 
     // First mint should set initial implied rate
     assert(state_after.last_ln_implied_rate > 0, 'rate should be set');
+
+    // Verify observation index advanced (new observation was written)
+    assert(state_after.observation_index > state_before.observation_index, 'index should advance');
+
+    // Read the new observation directly and verify it has correct values
+    let (obs_ts, _, obs_initialized) = oracle.get_observation(state_after.observation_index);
+    assert(obs_initialized, 'obs should be initialized');
+    assert(obs_ts == INITIAL_TIME + ONE_HOUR, 'obs timestamp wrong');
+
+    // Note: cumulative may still be 0 after first mint because:
+    // cumulative += old_rate * time_delta, and old_rate = 0 before first mint
+    // The important thing is that rate is now set for future observations
+    assert(state_after.last_ln_implied_rate > 0, 'rate should be set after mint');
 }
 
 // ============================================
@@ -296,6 +317,10 @@ fn test_swap_writes_observation() {
 
     setup_user_with_tokens(yield_token, sy, yt, user, 300 * WAD);
 
+    // Increase cardinality to allow index advancement
+    // (with cardinality=1, index wraps: (0+1)%1=0)
+    oracle.increase_observations_cardinality_next(10);
+
     // Add liquidity
     start_cheat_caller_address(sy.contract_address, user);
     sy.approve(market.contract_address, 100 * WAD);
@@ -309,7 +334,15 @@ fn test_swap_writes_observation() {
     market.mint(user, 100 * WAD, 100 * WAD);
     stop_cheat_caller_address(market.contract_address);
 
-    let rate_before = oracle.get_oracle_state().last_ln_implied_rate;
+    // Advance time before recording state (so mint observation is written)
+    start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
+
+    let state_before = oracle.get_oracle_state();
+    let rate_before = state_before.last_ln_implied_rate;
+    let index_before = state_before.observation_index;
+
+    // Read cumulative at current index before swap
+    let (_, cumulative_before, _) = oracle.get_observation(index_before);
 
     // Advance time and swap
     start_cheat_block_timestamp_global(INITIAL_TIME + 2 * ONE_HOUR);
@@ -323,8 +356,19 @@ fn test_swap_writes_observation() {
     stop_cheat_caller_address(market.contract_address);
 
     // Rate should have changed
-    let rate_after = oracle.get_oracle_state().last_ln_implied_rate;
+    let state_after = oracle.get_oracle_state();
+    let rate_after = state_after.last_ln_implied_rate;
     assert(rate_after != rate_before, 'rate should change');
+
+    // Observation index should advance when time passes
+    assert(state_after.observation_index > index_before, 'index should advance');
+
+    // Read the new observation and verify cumulative increased
+    let (obs_ts, obs_cumulative, obs_initialized) = oracle
+        .get_observation(state_after.observation_index);
+    assert(obs_initialized, 'obs should be initialized');
+    assert(obs_ts == INITIAL_TIME + 2 * ONE_HOUR, 'obs timestamp wrong');
+    assert(obs_cumulative > cumulative_before, 'cumulative should increase');
 }
 
 #[test]
@@ -665,11 +709,16 @@ fn test_twap_after_multiple_swaps() {
     let cumulative_past = *cumulatives.at(0);
     let cumulative_now = *cumulatives.at(1);
 
-    // TWAP calculation
-    if cumulative_now > cumulative_past {
-        let twap = (cumulative_now - cumulative_past) / 7200;
-        assert(twap > 0, 'TWAP should be positive');
-    }
+    // Cumulative MUST increase over time - this is not optional
+    assert(cumulative_now > cumulative_past, 'cumulative must increase');
+
+    // TWAP = delta_cumulative / delta_time
+    let twap = (cumulative_now - cumulative_past) / 7200;
+    assert(twap > 0, 'TWAP should be positive');
+
+    // Verify we have multiple distinct observations (not just interpolated)
+    let state = oracle.get_oracle_state();
+    assert(state.observation_index >= 3, 'should have 3+ observations');
 }
 
 // ============================================
