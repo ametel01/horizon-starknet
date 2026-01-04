@@ -7,10 +7,11 @@
 /// Key formulas:
 /// - PT to SY: exp(-ln_rate_twap * time_to_expiry / SECONDS_PER_YEAR)
 /// - YT to SY: WAD - PT_to_SY (before expiry), 0 (after expiry)
-/// - LP to SY: (SY_reserve + PT_reserve * PT_price) / total_LP
+/// - LP to SY: (SY_reserve + PT_reserve * PT_to_SY) / total_LP
+/// - LP to Asset: (SY_reserve + PT_reserve * PT_to_Asset) / total_LP (Pendle exact formula)
 ///
-/// For asset-denominated rates, we adjust by the SY exchange rate and handle
-/// index discrepancies per Pendle's formula.
+/// For PT/YT asset-denominated rates, we adjust by the SY exchange rate and handle
+/// index discrepancies per Pendle's formula. LP to Asset uses Pendle's direct approach.
 ///
 /// Reference: Pendle's PendlePYOracleLib.sol and PendleLpOracleLib.sol
 
@@ -36,7 +37,7 @@ pub mod PyLpOracle {
     struct Storage {}
 
     #[constructor]
-    fn constructor(ref self: ContractState) {// Stateless oracle - no initialization needed
+    fn constructor(ref self: ContractState) { // Stateless oracle - no initialization needed
     }
 
     #[abi(embed_v0)]
@@ -129,6 +130,12 @@ pub mod PyLpOracle {
         }
 
         /// Get LP token price in underlying asset terms using TWAP.
+        ///
+        /// Computes LP value in SY terms first, then converts to asset terms
+        /// using the SY exchange rate. This correctly values both SY and PT
+        /// reserves in asset-denominated units.
+        ///
+        /// Formula: lp_to_asset = lp_to_sy * sy_to_asset_rate
         fn get_lp_to_asset_rate(
             self: @ContractState, market: ContractAddress, duration: u32,
         ) -> u256 {
