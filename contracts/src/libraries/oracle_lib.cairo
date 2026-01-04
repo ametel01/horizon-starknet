@@ -11,6 +11,8 @@
 // - Cairo storage model: functions return values, caller handles storage writes
 //   (unlike Solidity where libraries can take storage references)
 
+use super::errors::Errors;
+
 /// A single observation in the TWAP ring buffer.
 ///
 /// Each observation records:
@@ -188,6 +190,9 @@ pub fn write(
     cardinality: u16,
     cardinality_next: u16,
 ) -> WriteResult {
+    // Guard: cardinality must be > 0 (oracle must be initialized)
+    assert(cardinality > 0, Errors::ORACLE_ZERO_CARDINALITY);
+
     // Same-block no-op: if we've already written this block, skip
     // Returns unchanged values - caller can always write, it's a no-op
     if last.block_timestamp == block_timestamp {
@@ -260,6 +265,10 @@ pub struct SurroundingObservations {
 /// let twap = (cumulative_now - cumulative_past) / 3600;
 /// ```
 ///
+/// # Panics
+/// * If `target > time` (can't query the future)
+/// * If `target < surrounding.before_or_at.block_timestamp` (target too old for surrounding)
+///
 /// # Pendle Reference
 /// Mirrors `OracleLib.observeSingle()` - cumulative value lookup with interpolation
 pub fn observe_single(
@@ -269,6 +278,11 @@ pub fn observe_single(
     ln_implied_rate: u256,
     surrounding: SurroundingObservations,
 ) -> u256 {
+    // Guard: target must be <= time (can't query the future)
+    assert(target <= time, Errors::ORACLE_TARGET_TOO_OLD);
+    // Guard: target must be >= before_or_at timestamp (surrounding must bracket target)
+    assert(target >= surrounding.before_or_at.block_timestamp, Errors::ORACLE_TARGET_TOO_OLD);
+
     // Case 1: Querying current time (seconds_ago == 0)
     // Transform newest observation to current timestamp if needed
     if target == time {
@@ -322,6 +336,7 @@ pub fn observe_single(
 ///
 /// # Panics
 /// * If `seconds_agos.len() != surrounding_observations.len()`
+/// * If any `seconds_ago > time` (target would be in the future / underflow)
 ///
 /// # Note on Cairo Storage Model
 /// Since Cairo libraries cannot access contract storage, the caller (market contract)
@@ -344,6 +359,8 @@ pub fn observe(
 
     while i < seconds_agos.len() {
         let seconds_ago: u64 = (*seconds_agos.at(i)).into();
+        // Guard: seconds_ago must not exceed current time (prevent underflow)
+        assert(seconds_ago <= time, Errors::ORACLE_TARGET_TOO_OLD);
         let target = time - seconds_ago;
         let surrounding = *surrounding_observations.at(i);
 
@@ -400,7 +417,7 @@ pub fn get_surrounding_observations(
     target: u64, newest: Observation, oldest: Observation, ln_implied_rate: u256,
 ) -> Option<SurroundingObservations> {
     // Validate: target must not be older than our history
-    assert(target >= oldest.block_timestamp, 'HZN: target too old');
+    assert(target >= oldest.block_timestamp, Errors::ORACLE_TARGET_TOO_OLD);
 
     // Case 1: target at or after newest observation
     // This is the common case for recent TWAP queries (e.g., last 30min)
@@ -452,6 +469,9 @@ pub fn get_surrounding_observations(
 /// let oldest = self.observations.read(oldest_idx);
 /// ```
 pub fn get_oldest_observation_index(index: u16, cardinality: u16, slot_initialized: bool) -> u16 {
+    // Guard: cardinality must be > 0 (oracle must be initialized)
+    assert(cardinality > 0, Errors::ORACLE_ZERO_CARDINALITY);
+
     let candidate = (index + 1) % cardinality;
     if slot_initialized {
         candidate
@@ -521,7 +541,7 @@ pub struct GrowResult {
 /// Mirrors `OracleLib.grow()` - storage slot pre-warming
 pub fn grow(current: u16, next: u16) -> GrowResult {
     // Oracle must be initialized (cardinality_next >= 1)
-    assert(current > 0, 'HZN: zero cardinality');
+    assert(current > 0, Errors::ORACLE_ZERO_CARDINALITY);
 
     // No-op: can't shrink, only grow
     if next <= current {
@@ -539,7 +559,8 @@ pub fn grow(current: u16, next: u16) -> GrowResult {
                     i,
                     Observation {
                         // timestamp=1 marks slot as pre-initialized (vs 0 for never-touched)
-                        block_timestamp: 1, ln_implied_rate_cumulative: 0, // initialized=false tells binary search to skip this slot
+                        block_timestamp: 1,
+                        ln_implied_rate_cumulative: 0, // initialized=false tells binary search to skip this slot
                         initialized: false,
                     },
                 ),
@@ -571,6 +592,7 @@ pub fn grow(current: u16, next: u16) -> GrowResult {
 /// # Panics
 /// * If search fails (indicates corrupted state or invalid precondition)
 /// * If `cardinality == 0`
+/// * If `observations.len() != cardinality` (span size must match buffer size exactly)
 ///
 /// # Precondition
 /// Caller must verify `oldest.block_timestamp < target < newest.block_timestamp`
@@ -593,7 +615,11 @@ pub fn grow(current: u16, next: u16) -> GrowResult {
 pub fn binary_search(
     observations: Span<Observation>, target: u64, index: u16, cardinality: u16,
 ) -> SurroundingObservations {
-    assert(cardinality > 0, 'HZN: zero cardinality');
+    assert(cardinality > 0, Errors::ORACLE_ZERO_CARDINALITY);
+
+    // Guard: observations span must have exactly cardinality elements
+    // The ring buffer arithmetic assumes physical indices 0..cardinality
+    assert(observations.len() == cardinality.into(), Errors::ORACLE_INVALID_OBS_LENGTH);
 
     // Physical index of oldest observation
     let oldest_slot: u32 = ((index + 1) % cardinality).into();
@@ -612,7 +638,7 @@ pub fn binary_search(
 
         // Convert logical index to physical slot
         let physical_mid: u32 = (oldest_slot + mid) % cardinality_u32;
-        let before_or_at = *observations.at(physical_mid.try_into().unwrap());
+        let before_or_at = *observations.at(physical_mid);
 
         // Skip uninitialized slots (search right)
         if !before_or_at.initialized {
@@ -622,7 +648,7 @@ pub fn binary_search(
 
         // Get the next observation (at_or_after)
         let physical_next: u32 = (physical_mid + 1) % cardinality_u32;
-        let at_or_after = *observations.at(physical_next.try_into().unwrap());
+        let at_or_after = *observations.at(physical_next);
 
         // Check if target is in the bracket [before_or_at.ts, at_or_after.ts]
         let target_after_before = target >= before_or_at.block_timestamp;

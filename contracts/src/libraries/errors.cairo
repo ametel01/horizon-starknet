@@ -96,4 +96,5 @@ pub mod Errors {
     pub const ORACLE_ZERO_CARDINALITY: felt252 = 'HZN: oracle zero cardinality';
     pub const ORACLE_TARGET_TOO_OLD: felt252 = 'HZN: oracle target too old';
     pub const ORACLE_UNINITIALIZED: felt252 = 'HZN: oracle uninitialized';
+    pub const ORACLE_INVALID_OBS_LENGTH: felt252 = 'HZN: invalid obs length';
 }
