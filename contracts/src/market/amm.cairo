@@ -33,6 +33,10 @@ pub mod Market {
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
+    /// Maximum cardinality for TWAP oracle buffer (8760 = 1 year of hourly observations).
+    /// Prevents unbounded storage growth while allowing sufficient TWAP history.
+    const MAX_CARDINALITY: u16 = 8760;
+
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
@@ -1007,6 +1011,19 @@ pub mod Market {
             // Get newest observation
             let newest = self.observations.read(index);
 
+            // Compute oldest observation once (not per-iteration)
+            let candidate_idx = (index + 1) % cardinality;
+            let candidate = self.observations.read(candidate_idx);
+            let oldest_idx = oracle_lib::get_oldest_observation_index(
+                index, cardinality, candidate.initialized,
+            );
+            let oldest = self.observations.read(oldest_idx);
+
+            // Build all observations array once for binary search (lazy - only if needed)
+            // We'll populate this on first binary search need
+            let mut all_obs_built: bool = false;
+            let mut all_obs: Array<Observation> = ArrayTrait::new();
+
             // Build surrounding observations for each seconds_ago query
             let mut surrounding_observations: Array<SurroundingObservations> = ArrayTrait::new();
             let mut i: usize = 0;
@@ -1015,14 +1032,6 @@ pub mod Market {
                 assert(seconds_ago <= time, Errors::ORACLE_TARGET_IN_FUTURE);
                 let target = time - seconds_ago;
 
-                // Get oldest observation
-                let candidate_idx = (index + 1) % cardinality;
-                let candidate = self.observations.read(candidate_idx);
-                let oldest_idx = oracle_lib::get_oldest_observation_index(
-                    index, cardinality, candidate.initialized,
-                );
-                let oldest = self.observations.read(oldest_idx);
-
                 // Try to get surrounding without binary search
                 let surrounding =
                     match oracle_lib::get_surrounding_observations(
@@ -1030,12 +1039,14 @@ pub mod Market {
                     ) {
                     Option::Some(s) => s,
                     Option::None => {
-                        // Need binary search - read all observations
-                        let mut all_obs: Array<Observation> = ArrayTrait::new();
-                        let mut j: u16 = 0;
-                        while j < cardinality {
-                            all_obs.append(self.observations.read(j));
-                            j += 1;
+                        // Need binary search - build all_obs once on first need
+                        if !all_obs_built {
+                            let mut j: u16 = 0;
+                            while j < cardinality {
+                                all_obs.append(self.observations.read(j));
+                                j += 1;
+                            }
+                            all_obs_built = true;
                         }
                         oracle_lib::binary_search(all_obs.span(), target, index, cardinality)
                     },
@@ -1051,8 +1062,11 @@ pub mod Market {
         }
 
         /// Pre-allocate observation buffer slots to reduce storage costs during swaps.
-        /// Only grows the buffer (cannot shrink).
+        /// Only grows the buffer (cannot shrink). Capped at MAX_CARDINALITY to prevent bloat.
         fn increase_observations_cardinality_next(ref self: ContractState, cardinality_next: u16) {
+            // Cap cardinality to prevent unbounded storage growth
+            assert(cardinality_next <= MAX_CARDINALITY, Errors::ORACLE_CARDINALITY_EXCEEDS_MAX);
+
             let current_next = self.observation_cardinality_next.read();
             let grow_result = oracle_lib::grow(current_next, cardinality_next);
 
@@ -1070,7 +1084,10 @@ pub mod Market {
 
         /// Read a single observation from the ring buffer.
         /// Returns (block_timestamp, ln_implied_rate_cumulative, initialized)
+        /// Reverts if index is out of bounds (>= observation_cardinality).
         fn get_observation(self: @ContractState, index: u16) -> (u64, u256, bool) {
+            let cardinality = self.observation_cardinality.read();
+            assert(index < cardinality, Errors::ORACLE_INDEX_OUT_OF_BOUNDS);
             let obs = self.observations.read(index);
             (obs.block_timestamp, obs.ln_implied_rate_cumulative, obs.initialized)
         }

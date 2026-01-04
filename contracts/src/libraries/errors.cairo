@@ -98,4 +98,6 @@ pub mod Errors {
     pub const ORACLE_TARGET_IN_FUTURE: felt252 = 'HZN: oracle target in future';
     pub const ORACLE_UNINITIALIZED: felt252 = 'HZN: oracle uninitialized';
     pub const ORACLE_INVALID_OBS_LENGTH: felt252 = 'HZN: invalid obs length';
+    pub const ORACLE_INDEX_OUT_OF_BOUNDS: felt252 = 'HZN: oracle idx out of bounds';
+    pub const ORACLE_CARDINALITY_EXCEEDS_MAX: felt252 = 'HZN: cardinality exceeds max';
 }
