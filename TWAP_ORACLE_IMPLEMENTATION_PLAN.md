@@ -387,38 +387,49 @@ Failure modes:
 
 ---
 
-## Phase 4: Tests and validation
+## Phase 4: Tests and validation **COMPLETE**
 
-### 4.1 `contracts/tests/test_oracle_lib.cairo`
+### 4.1 `contracts/tests/math/test_oracle_lib.cairo` **COMPLETE** (42 tests)
 - initialize, transform, write (same-block), grow, observe (interpolation + too-old).
+- Binary search tests for ring buffer navigation.
+- TWAP calculation tests for constant and varying rates.
 
-### 4.2 `contracts/tests/test_market_oracle.cairo` 
+### 4.2 `contracts/tests/market/test_market_oracle.cairo` **COMPLETE** (16 tests)
 - constructor initializes observation.
 - swaps/mints write observations.
 - `observe([duration, 0])` computes TWAP.
+- Same-block no-op behavior.
+- Cardinality growth tests.
 
-### 4.3 `contracts/tests/test_py_lp_oracle.cairo`
+### 4.3 `contracts/tests/oracles/test_py_lp_oracle.cairo` **COMPLETE** (22 tests)
 - PT/YT/LP rate paths (duration=0 and non-zero).
 - `get_oracle_state` cardinality + oldest checks.
+- PT + YT = WAD invariant verification.
+- Asset-denominated rate tests with yield index adjustments.
+- Time progression tests (PT increases, YT decreases toward expiry).
 
 Validation:
-- `snforge test test_oracle_lib`
-- `snforge test test_market_oracle`
-- `snforge test test_py_lp_oracle`
+- ✅ `snforge test test_oracle_lib` - 42 passed
+- ✅ `snforge test test_market_oracle` - 16 passed
+- ✅ `snforge test test_py_lp_oracle` - 22 passed
+- ✅ Total oracle-related tests: **109 passed**
 
 ---
 
 ## File summary
 
-| File | Action |
-|------|--------|
-| `contracts/src/libraries/oracle_lib.cairo` | CREATE |
-| `contracts/src/libraries/errors.cairo` | MODIFY |
-| `contracts/src/lib.cairo` | MODIFY |
-| `contracts/src/market/amm.cairo` | MODIFY |
-| `contracts/src/interfaces/i_market.cairo` | MODIFY |
-| `contracts/src/oracles/py_lp_oracle.cairo` | CREATE |
-| `contracts/src/interfaces/i_py_lp_oracle.cairo` | CREATE |
-| `contracts/tests/test_oracle_lib.cairo` | CREATE |
-| `contracts/tests/test_market_oracle.cairo` | CREATE |
-| `contracts/tests/test_py_lp_oracle.cairo` | CREATE |
+| File | Action | Status |
+|------|--------|--------|
+| `contracts/src/libraries/oracle_lib.cairo` | CREATE | ✅ |
+| `contracts/src/libraries/errors.cairo` | MODIFY | ✅ |
+| `contracts/src/lib.cairo` | MODIFY | ✅ |
+| `contracts/src/market/amm.cairo` | MODIFY | ✅ |
+| `contracts/src/interfaces/i_market.cairo` | MODIFY | ✅ |
+| `contracts/src/oracles/py_lp_oracle.cairo` | CREATE | ✅ |
+| `contracts/src/interfaces/i_py_lp_oracle.cairo` | CREATE | ✅ |
+| `contracts/tests/math/test_oracle_lib.cairo` | CREATE | ✅ |
+| `contracts/tests/market/test_market_oracle.cairo` | CREATE | ✅ |
+| `contracts/tests/oracles/test_py_lp_oracle.cairo` | CREATE | ✅ |
+| `contracts/tests/math.cairo` | MODIFY | ✅ |
+| `contracts/tests/market.cairo` | MODIFY | ✅ |
+| `contracts/tests/oracles.cairo` | MODIFY | ✅ |
