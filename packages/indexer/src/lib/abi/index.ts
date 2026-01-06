@@ -5,6 +5,9 @@
 import factoryAbi from "./factory.json" with { type: "json" };
 import marketAbi from "./market.json" with { type: "json" };
 import marketfactoryAbi from "./marketfactory.json" with { type: "json" };
+import pragmaindexoracleAbi from "./pragmaindexoracle.json" with {
+  type: "json",
+};
 import routerAbi from "./router.json" with { type: "json" };
 import syAbi from "./sy.json" with { type: "json" };
 import ytAbi from "./yt.json" with { type: "json" };
@@ -12,6 +15,7 @@ import ytAbi from "./yt.json" with { type: "json" };
 export const FACTORY_EVENTS_ABI = factoryAbi;
 export const MARKET_EVENTS_ABI = marketAbi;
 export const MARKET_FACTORY_EVENTS_ABI = marketfactoryAbi;
+export const PRAGMAINDEXORACLE_EVENTS_ABI = pragmaindexoracleAbi;
 export const ROUTER_EVENTS_ABI = routerAbi;
 export const SY_EVENTS_ABI = syAbi;
 export const YT_EVENTS_ABI = ytAbi;
