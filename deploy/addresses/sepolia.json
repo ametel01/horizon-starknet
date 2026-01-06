@@ -18,7 +18,8 @@
   "contracts": {
     "Factory": "0x00f6b0761a883e86e3d4a1c908e5b09b37c7c0a9ebf893d9287b1fbe011d0033",
     "MarketFactory": "0x024cde81f6c21ae3e1cc911a573dc28f1f6acea8039fdcb27a9cdcc41488546e",
-    "Router": "0x036d91febd5235683cb2d12c0918e4ca6150f97e49075b73a8907af61eadd8aa"
+    "Router": "0x036d91febd5235683cb2d12c0918e4ca6150f97e49075b73a8907af61eadd8aa",
+    "PyLpOracle": "0x0"
   },
   "testSetup": {
     "testRecipient": "0x0715140EF3b872C34c0E82CB2650c4bEB0E9F60d5a157414af6913E9326cd691",
