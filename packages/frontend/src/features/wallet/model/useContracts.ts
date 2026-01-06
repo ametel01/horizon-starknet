@@ -5,7 +5,6 @@ import {
   getFactoryContract,
   getMarketContract,
   getMarketFactoryContract,
-  getMockYieldTokenContract,
   getPTContract,
   getRouterContract,
   getSYContract,
@@ -13,7 +12,6 @@ import {
   type TypedFactory,
   type TypedMarket,
   type TypedMarketFactory,
-  type TypedMockYieldToken,
   type TypedPT,
   type TypedRouter,
   type TypedSY,
@@ -37,7 +35,6 @@ export interface UseContractsReturn {
   getSY: (address: string) => TypedSY;
   getPT: (address: string) => TypedPT;
   getYT: (address: string) => TypedYT;
-  getMockYieldToken: (address: string) => TypedMockYieldToken;
 }
 
 export function useContracts(): UseContractsReturn {
@@ -91,11 +88,6 @@ export function useContracts(): UseContractsReturn {
     [account, provider]
   );
 
-  const getMockYieldToken = useMemo(
-    () => (address: string) => getMockYieldTokenContract(address, account ?? provider),
-    [account, provider]
-  );
-
   return {
     factory,
     marketFactory,
@@ -107,6 +99,5 @@ export function useContracts(): UseContractsReturn {
     getSY,
     getPT,
     getYT,
-    getMockYieldToken,
   };
 }

@@ -4,7 +4,6 @@ import { useStarknet } from '@features/wallet';
 import { getFaucetInfo } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { logError } from '@shared/server/logger';
-import { getFaucetContract } from '@shared/starknet/contracts';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Separator } from '@shared/ui/separator';
@@ -12,7 +11,37 @@ import { AlertTriangle, Check, Copy, Droplets, ExternalLink, Loader2 } from 'luc
 import Link from 'next/link';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import type { Call } from 'starknet';
+import type { Call, ProviderInterface } from 'starknet';
+import { Contract } from 'starknet';
+
+/**
+ * Minimal Faucet ABI for can_mint and mint functions.
+ *
+ * Note: Faucet is test infrastructure, not a production contract, so its ABI
+ * is not included in the generated types. This inline definition provides
+ * only the two functions needed for this page. If the Faucet contract changes,
+ * update this ABI accordingly.
+ */
+const FAUCET_ABI = [
+  {
+    type: 'function',
+    name: 'can_mint',
+    inputs: [{ name: 'user', type: 'core::starknet::contract_address::ContractAddress' }],
+    outputs: [{ type: 'core::bool' }],
+    state_mutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'mint',
+    inputs: [],
+    outputs: [],
+    state_mutability: 'external',
+  },
+] as const;
+
+function getFaucetContract(address: string, provider: ProviderInterface) {
+  return new Contract({ abi: FAUCET_ABI, address, providerOrAccount: provider });
+}
 
 /**
  * Eligibility status component - extracted to reduce complexity.
@@ -98,8 +127,10 @@ export function FaucetPage(): React.ReactNode {
 
     try {
       const faucet = getFaucetContract(faucetInfo.faucetAddress, provider);
-      const result = await faucet.can_mint(targetAddress);
-      setCanMint(result);
+      const result = await faucet['can_mint'](targetAddress);
+      // Starknet returns booleans as bigint (0n/1n) for untyped contracts
+      // Must explicitly convert to boolean - cannot use `as boolean` cast
+      setCanMint(result === 1n || result === true);
     } catch (err) {
       logError(err, { module: 'faucet', action: 'checkCanMint', targetAddress });
       setError('Failed to check mint status');
