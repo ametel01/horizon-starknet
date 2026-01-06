@@ -14,11 +14,11 @@
  */
 
 export { FACTORY_ABI } from './Factory';
-export { FAUCET_ABI } from './Faucet';
 export { MARKET_ABI } from './Market';
 export { MARKETFACTORY_ABI } from './MarketFactory';
-export { MOCKYIELDTOKEN_ABI } from './MockYieldToken';
+export { PRAGMAINDEXORACLE_ABI } from './PragmaIndexOracle';
 export { PT_ABI } from './PT';
+export { PYLPORACLE_ABI } from './PyLpOracle';
 export { ROUTER_ABI } from './Router';
 export { SY_ABI } from './SY';
 export { SYWITHREWARDS_ABI } from './SYWithRewards';

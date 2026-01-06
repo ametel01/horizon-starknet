@@ -18,18 +18,21 @@ import { join } from 'path';
 const CONTRACTS_DIR = join(__dirname, '../../..', 'contracts/target/dev');
 const OUTPUT_DIR = join(__dirname, '../src/types/generated');
 
-// Contract files to process (main contracts only, not tests)
+// Contract files to process (production contracts only)
 const CONTRACTS = [
+  // Core protocol contracts
   { file: 'horizon_Factory.contract_class.json', name: 'Factory' },
   { file: 'horizon_MarketFactory.contract_class.json', name: 'MarketFactory' },
   { file: 'horizon_Router.contract_class.json', name: 'Router' },
   { file: 'horizon_Market.contract_class.json', name: 'Market' },
+  // Token contracts
   { file: 'horizon_SY.contract_class.json', name: 'SY' },
   { file: 'horizon_SYWithRewards.contract_class.json', name: 'SYWithRewards' },
   { file: 'horizon_PT.contract_class.json', name: 'PT' },
   { file: 'horizon_YT.contract_class.json', name: 'YT' },
-  { file: 'horizon_MockYieldToken.contract_class.json', name: 'MockYieldToken' },
-  { file: 'horizon_Faucet.contract_class.json', name: 'Faucet' },
+  // Oracle contracts
+  { file: 'horizon_PragmaIndexOracle.contract_class.json', name: 'PragmaIndexOracle' },
+  { file: 'horizon_PyLpOracle.contract_class.json', name: 'PyLpOracle' },
 ];
 
 function main(): void {

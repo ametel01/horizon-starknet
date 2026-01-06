@@ -387,6 +387,94 @@ export const MARKET_ABI = [
   },
   {
     type: 'impl',
+    name: 'MarketOracleImpl',
+    interface_name: 'horizon::interfaces::i_market::IMarketOracle',
+  },
+  {
+    type: 'struct',
+    name: 'horizon::interfaces::i_market::OracleState',
+    members: [
+      {
+        name: 'last_ln_implied_rate',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'observation_index',
+        type: 'core::integer::u16',
+      },
+      {
+        name: 'observation_cardinality',
+        type: 'core::integer::u16',
+      },
+      {
+        name: 'observation_cardinality_next',
+        type: 'core::integer::u16',
+      },
+    ],
+  },
+  {
+    type: 'interface',
+    name: 'horizon::interfaces::i_market::IMarketOracle',
+    items: [
+      {
+        type: 'function',
+        name: 'observe',
+        inputs: [
+          {
+            name: 'seconds_agos',
+            type: 'core::array::Array::<core::integer::u32>',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Array::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'increase_observations_cardinality_next',
+        inputs: [
+          {
+            name: 'cardinality_next',
+            type: 'core::integer::u16',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_observation',
+        inputs: [
+          {
+            name: 'index',
+            type: 'core::integer::u16',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u64, core::integer::u256, core::bool)',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_oracle_state',
+        inputs: [],
+        outputs: [
+          {
+            type: 'horizon::interfaces::i_market::OracleState',
+          },
+        ],
+        state_mutability: 'view',
+      },
+    ],
+  },
+  {
+    type: 'impl',
     name: 'ERC20Impl',
     interface_name: 'openzeppelin_interfaces::token::erc20::IERC20',
   },
