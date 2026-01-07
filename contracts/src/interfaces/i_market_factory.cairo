@@ -5,11 +5,15 @@ use starknet::{ClassHash, ContractAddress};
 /// @param ln_fee_rate_root Effective ln fee rate root (override if set, else 0 = use market
 /// default)
 /// @param reserve_fee_percent Reserve fee percentage (0-100)
+/// @param rate_impact_sensitivity Sensitivity factor for dynamic fee based on rate impact (in WAD)
+///        Higher values = larger fee increase for trades that move the rate
+///        E.g., 0.1 WAD (10%) means 10% rate change → ~1% fee increase
 #[derive(Copy, Drop, Serde)]
 pub struct MarketConfig {
     pub treasury: ContractAddress,
     pub ln_fee_rate_root: u256,
     pub reserve_fee_percent: u8,
+    pub rate_impact_sensitivity: u256,
 }
 
 #[starknet::interface]
@@ -109,4 +113,15 @@ pub trait IMarketFactory<TContractState> {
         market: ContractAddress,
         ln_fee_rate_root: u256,
     );
+
+    // ============ Rate Impact Fee Configuration ============
+
+    /// Get the default rate impact sensitivity
+    /// @return Sensitivity factor in WAD (e.g., 0.1 WAD = 10% sensitivity)
+    fn get_default_rate_impact_sensitivity(self: @TContractState) -> u256;
+
+    /// Set the default rate impact sensitivity (owner only)
+    /// Controls how much fees increase based on trade's rate impact
+    /// @param sensitivity Sensitivity factor in WAD (0 to disable, max ~10 WAD for safety)
+    fn set_default_rate_impact_sensitivity(ref self: TContractState, sensitivity: u256);
 }

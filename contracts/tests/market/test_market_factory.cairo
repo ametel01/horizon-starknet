@@ -760,3 +760,106 @@ fn test_market_factory_set_override_unauthorized() {
     factory.set_override_fee(user1(), market_addr, WAD / 200);
     stop_cheat_caller_address(factory.contract_address);
 }
+
+// ============ Rate Impact Sensitivity Configuration Tests (Step 4) ============
+
+#[test]
+fn test_market_factory_get_default_rate_impact_sensitivity() {
+    let factory = deploy_market_factory();
+
+    // Initial sensitivity should be zero (disabled)
+    let sensitivity = factory.get_default_rate_impact_sensitivity();
+    assert(sensitivity == 0, 'Initial sensitivity should be 0');
+}
+
+#[test]
+fn test_market_factory_set_rate_impact_sensitivity() {
+    let factory = deploy_market_factory();
+
+    // Set sensitivity as admin (10% = 0.1 WAD)
+    let new_sensitivity = WAD / 10;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_rate_impact_sensitivity(new_sensitivity);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify sensitivity was set
+    let sensitivity = factory.get_default_rate_impact_sensitivity();
+    assert(sensitivity == new_sensitivity, 'Sensitivity should be set');
+}
+
+#[test]
+fn test_market_factory_set_rate_impact_sensitivity_max() {
+    let factory = deploy_market_factory();
+
+    // Set sensitivity to maximum allowed (10 WAD)
+    let max_sensitivity = 10 * WAD;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_rate_impact_sensitivity(max_sensitivity);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify sensitivity was set
+    let sensitivity = factory.get_default_rate_impact_sensitivity();
+    assert(sensitivity == max_sensitivity, 'Max sensitivity should work');
+}
+
+#[test]
+fn test_market_factory_set_rate_impact_sensitivity_zero() {
+    let factory = deploy_market_factory();
+
+    // First set a non-zero value
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_rate_impact_sensitivity(WAD);
+
+    // Then disable by setting to zero
+    factory.set_default_rate_impact_sensitivity(0);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify sensitivity was disabled
+    let sensitivity = factory.get_default_rate_impact_sensitivity();
+    assert(sensitivity == 0, 'Sensitivity should be disabled');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee')]
+fn test_market_factory_set_rate_impact_sensitivity_too_high() {
+    let factory = deploy_market_factory();
+
+    // Try to set sensitivity above maximum (10 WAD)
+    let invalid_sensitivity = 11 * WAD;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_rate_impact_sensitivity(invalid_sensitivity);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_market_factory_set_rate_impact_sensitivity_unauthorized() {
+    let factory = deploy_market_factory();
+
+    // Try to set sensitivity as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_default_rate_impact_sensitivity(WAD / 10);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_market_factory_get_market_config_with_rate_impact_sensitivity() {
+    let factory = deploy_market_factory();
+    let router = user1();
+    let market = user1(); // Using user1 as a fake market address for this test
+
+    // Set up factory config including rate impact sensitivity
+    let sensitivity = WAD / 5; // 20% sensitivity
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_treasury(treasury());
+    factory.set_default_reserve_fee_percent(15);
+    factory.set_default_rate_impact_sensitivity(sensitivity);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Get market config and verify rate_impact_sensitivity is included
+    let config = factory.get_market_config(market, router);
+
+    assert(config.treasury == treasury(), 'Wrong treasury');
+    assert(config.reserve_fee_percent == 15, 'Wrong reserve fee');
+    assert(config.rate_impact_sensitivity == sensitivity, 'Wrong rate impact sensitivity');
+}

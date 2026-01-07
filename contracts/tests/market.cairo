@@ -18,3 +18,4 @@ pub mod test_market_first_depositor;
 pub mod test_market_invariants;
 pub mod test_market_large_trades;
 pub mod test_market_oracle;
+pub mod test_rate_impact_fee;

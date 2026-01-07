@@ -98,6 +98,11 @@ pub mod MarketFactory {
         // Per-router per-market ln_fee_rate_root overrides
         // Key: (router, market) -> ln_fee_rate_root (0 = no override)
         overridden_fee: Map<(ContractAddress, ContractAddress), u256>,
+        // === RATE IMPACT FEE CONFIGURATION ===
+        // Default rate impact sensitivity factor (in WAD)
+        // Controls how much fees increase based on trade's rate impact
+        // E.g., 0.1 WAD (10%) means 10% rate change → ~1% additional fee
+        default_rate_impact_sensitivity: u256,
     }
 
     #[event]
@@ -108,6 +113,7 @@ pub mod MarketFactory {
         TreasuryUpdated: TreasuryUpdated,
         DefaultReserveFeeUpdated: DefaultReserveFeeUpdated,
         OverrideFeeSet: OverrideFeeSet,
+        DefaultRateImpactSensitivityUpdated: DefaultRateImpactSensitivityUpdated,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -164,6 +170,12 @@ pub mod MarketFactory {
         #[key]
         pub market: ContractAddress,
         pub ln_fee_rate_root: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DefaultRateImpactSensitivityUpdated {
+        pub old_sensitivity: u256,
+        pub new_sensitivity: u256,
     }
 
     #[constructor]
@@ -480,17 +492,19 @@ pub mod MarketFactory {
         // ============ Fee Configuration (Pendle-style) ============
 
         /// Get market configuration for a specific router
-        /// Returns treasury, effective ln_fee_rate_root (override or 0), and reserve_fee_percent
+        /// Returns treasury, effective ln_fee_rate_root (override or 0), reserve_fee_percent,
+        /// and rate_impact_sensitivity
         fn get_market_config(
             self: @ContractState, market: ContractAddress, router: ContractAddress,
         ) -> MarketConfig {
             let treasury = self.treasury.read();
             let reserve_fee_percent = self.default_reserve_fee_percent.read();
+            let rate_impact_sensitivity = self.default_rate_impact_sensitivity.read();
 
             // Get override fee for this router/market pair (0 if not set)
             let ln_fee_rate_root = self.overridden_fee.read((router, market));
 
-            MarketConfig { treasury, ln_fee_rate_root, reserve_fee_percent }
+            MarketConfig { treasury, ln_fee_rate_root, reserve_fee_percent, rate_impact_sensitivity }
         }
 
         /// Get the treasury address
@@ -553,6 +567,30 @@ pub mod MarketFactory {
             self.overridden_fee.write((router, market), ln_fee_rate_root);
 
             self.emit(OverrideFeeSet { router, market, ln_fee_rate_root });
+        }
+
+        // ============ Rate Impact Fee Configuration ============
+
+        /// Get the default rate impact sensitivity
+        fn get_default_rate_impact_sensitivity(self: @ContractState) -> u256 {
+            self.default_rate_impact_sensitivity.read()
+        }
+
+        /// Set the default rate impact sensitivity (owner only)
+        /// Controls how much fees increase based on trade's rate impact
+        /// @param sensitivity Sensitivity factor in WAD (0 to disable dynamic fees)
+        fn set_default_rate_impact_sensitivity(ref self: ContractState, sensitivity: u256) {
+            self.ownable.assert_only_owner();
+
+            // Cap sensitivity at 10 WAD (1000%) to prevent extreme fee multipliers
+            // At 10 WAD sensitivity, a 10% rate change would give 100% fee increase (capped at 2x)
+            let max_sensitivity: u256 = 10_000_000_000_000_000_000; // 10 WAD
+            assert(sensitivity <= max_sensitivity, Errors::MARKET_FACTORY_INVALID_FEE);
+
+            let old_sensitivity = self.default_rate_impact_sensitivity.read();
+            self.default_rate_impact_sensitivity.write(sensitivity);
+
+            self.emit(DefaultRateImpactSensitivityUpdated { old_sensitivity, new_sensitivity: sensitivity });
         }
     }
 }

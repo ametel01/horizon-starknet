@@ -1111,6 +1111,7 @@ pub mod Market {
         /// Updates and fetches py_index from YT contract per-call to ensure fresh value
         /// Calls update_py_index() instead of py_index_current() to advance YT's stored index,
         /// ensuring interest calculations stay accurate during swaps
+        /// Note: rate_impact_sensitivity is 0 for non-swap operations (mint/burn)
         fn _get_market_state(self: @ContractState) -> MarketState {
             // Fetch and update py_index from YT - this is the SY -> asset conversion rate
             // Using update_py_index() ensures the YT's stored index advances during swaps,
@@ -1129,6 +1130,7 @@ pub mod Market {
                 expiry: self.expiry.read(),
                 last_ln_implied_rate: self.last_ln_implied_rate.read(),
                 py_index,
+                rate_impact_sensitivity: 0, // Not used for non-swap operations
             }
         }
 
@@ -1152,6 +1154,7 @@ pub mod Market {
                 expiry: self.expiry.read(),
                 last_ln_implied_rate: self.last_ln_implied_rate.read(),
                 py_index,
+                rate_impact_sensitivity: 0, // Not used for view functions
             }
         }
 
@@ -1159,9 +1162,10 @@ pub mod Market {
         /// settings and per-router overrides)
         /// When factory is set:
         ///   - Uses factory's reserve_fee_percent (allows protocol-wide fee changes)
+        ///   - Uses factory's rate_impact_sensitivity (enables dynamic fee adjustment)
         ///   - Uses per-router ln_fee_rate_root override if set, else market's base fee
         /// When factory is zero (standalone market):
-        ///   - Falls back to market's own stored values
+        ///   - Falls back to market's own stored values (sensitivity = 0)
         fn _get_market_state_with_effective_fee(
             self: @ContractState, caller: ContractAddress,
         ) -> MarketState {
@@ -1170,7 +1174,10 @@ pub mod Market {
 
             // Query factory for effective fee config
             let factory = self.factory.read();
-            let (effective_ln_fee_rate_root, effective_reserve_fee_percent) = if !factory
+            let (
+                effective_ln_fee_rate_root, effective_reserve_fee_percent, effective_rate_impact_sensitivity,
+            ) =
+                if !factory
                 .is_zero() {
                 let factory_contract = IMarketFactoryDispatcher { contract_address: factory };
                 let config = factory_contract.get_market_config(get_contract_address(), caller);
@@ -1182,12 +1189,12 @@ pub mod Market {
                     self.ln_fee_rate_root.read()
                 };
 
-                // For reserve_fee_percent: always use factory's value (enables protocol-wide
-                // changes)
-                (ln_fee, config.reserve_fee_percent)
+                // For reserve_fee_percent and rate_impact_sensitivity: always use factory's value
+                // (enables protocol-wide changes)
+                (ln_fee, config.reserve_fee_percent, config.rate_impact_sensitivity)
             } else {
-                // No factory - use market's own stored values
-                (self.ln_fee_rate_root.read(), self.reserve_fee_percent.read())
+                // No factory - use market's own stored values, no rate impact sensitivity
+                (self.ln_fee_rate_root.read(), self.reserve_fee_percent.read(), 0)
             };
 
             MarketState {
@@ -1201,6 +1208,7 @@ pub mod Market {
                 expiry: self.expiry.read(),
                 last_ln_implied_rate: self.last_ln_implied_rate.read(),
                 py_index,
+                rate_impact_sensitivity: effective_rate_impact_sensitivity,
             }
         }
 

@@ -156,7 +156,8 @@ fn create_fuzz_market(
         reserve_fee_percent: 0,
         expiry,
         last_ln_implied_rate,
-        py_index: WAD // 1:1 for fuzz tests
+        py_index: WAD, // 1:1 for fuzz tests
+        rate_impact_sensitivity: 0,
     };
 
     (state, time_to_expiry)
@@ -643,6 +644,7 @@ fn test_fuzz_get_proportion_valid_range(sy_reserve: u256, pt_reserve: u256) {
         expiry: 1000000 + 31_536_000,
         last_ln_implied_rate: WAD / 20,
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let proportion = get_proportion(@state);
