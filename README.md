@@ -120,24 +120,24 @@ A specialized AMM for trading PT against SY. Uses a time-decay pricing curve whe
 
 | Contract | Address | Upgradeable | Notes |
 |----------|---------|-------------|-------|
-| **Factory** | `0x02e7ce691e51fe60b92f25bb845100b4797cd7961647408294a8074fe966f5fd` | Yes | Deploys SY/PT/YT pairs; owner-upgradeable |
-| **MarketFactory** | `0x014aa95f5c995f57f29f9c6de9d4c245ea231bd695741876c02a887fda8ad9b2` | Yes | Deploys PT/SY AMM markets; owner-upgradeable |
-| **Router** | `0x04d76ca0b5ce4cb9ed2f4a32de04682637f805512ba2afd2d5ab463d61667870` | Yes | User entry point; owner-upgradeable |
+| **Factory** | `0x04fd6d42072f76612ae0a5f97d191ab4c5ede3688d2df0185352e01b7f2fc444` | Yes | Deploys SY/PT/YT pairs; owner-upgradeable |
+| **MarketFactory** | `0x0465bc423ddde2495e9d4c31563e0b333d9c8b818a86d3d76064fd652ee4be6f` | Yes | Deploys PT/SY AMM markets; owner-upgradeable |
+| **Router** | `0x07ccd371e51703e562cf7c7789d4252b7a63845dc87f25a07cf8b5c28e80563b` | Yes | User entry point; owner-upgradeable |
 
 #### hrzSTRK Market (Mock Staked STRK)
 
 | Contract | Address | Upgradeable | Purpose |
 |----------|---------|-------------|---------|
-| **hrzSTRK** | `0x076d321f884d740005f318ae552b3fa76698c8937f8144b0e3d4e7be4dccb7d4` | No (mock) | ERC-4626 mock yield token (staking vault) |
-| **Faucet** | `0x05afa0f74e4e59699fc8cd2ee727b2de2f53567a4439274c714b5f368b79bbca` | No | Test token distributor |
-| **SY (hrzSTRK)** | `0x06c6c003bae41be14074ec93659cc8a3af3bbec99c54fd921e1ff68c54a38867` | Yes | Standardized yield wrapper |
-| **PT (hrzSTRK)** | `0x0324e54014538fe2bf67a6c71d169c62bb7bc92ec383b7a728da31a81ae2e8d` | Yes | Principal token, redeemable 1:1 at expiry |
-| **YT (hrzSTRK)** | `0x0125e4070194897078c46cb37731a38e3fff03ac3c2db91758671fc70ca804da` | Yes | Yield token, accrues interest until expiry |
-| **Market (hrzSTRK/SY)** | `0x064f967a496330bae100b9931f520054c6d3298f6386d9130cc388a6e9079720` | Yes | PT/SY AMM trading pool |
+| **hrzSTRK** | `0x02f87c98336c7457aa5aa9237d41e2b903346aeae64be60f63423486d0c16f02` | No (mock) | ERC-4626 mock yield token (staking vault) |
+| **Faucet** | `0x01b472105605d569778515bcf7ea03759f77af0b2cc945dc999a19edc6572d71` | No | Test token distributor |
+| **SY (hrzSTRK)** | `0x0601a6717bedf8010f68ec2e4993ea12c208ed949ed76b33b616add725dbc15c` | Yes | Standardized yield wrapper |
+| **PT (hrzSTRK)** | `0x05f94e491f3deb3137eecc94a4641f11112219e7923613d2e2f0f3ef5496b9ca` | Yes | Principal token, redeemable 1:1 at expiry |
+| **YT (hrzSTRK)** | `0x070c396667613d74cb473ad937d717355222c76a41d3a1d2b34299eefda6405d` | Yes | Yield token, accrues interest until expiry |
+| **Market (hrzSTRK/SY)** | `0x04d2f052b91f5c744e67816e72e426cab538661deda0d38143a9cefad973c18` | Yes | PT/SY AMM trading pool |
 
 **Deployment Info:**
 - Network: Starknet Mainnet
-- Deployed: 2025-12-20
+- Deployed: 2025-12-23
 - Expiry: January 17, 2026 (Unix timestamp: 1774018125)
 - Deployment: `./deploy/scripts/deploy.sh mainnet`
 - Explorer: Use [Starkscan](https://starkscan.co/) to verify addresses
@@ -188,7 +188,7 @@ As expiry approaches:
 ### Prerequisites (pinned versions)
 
 - **[Scarb](https://docs.swmansion.com/scarb/)** 2.15.0 (check `.tool-versions`)
-- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.54.0 (snforge + sncast)
+- **[Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)** 0.54.1 (snforge + sncast)
 - **[starkli](https://book.cairo-lang.org/appendix-07-starkli.html)** 0.4.2 (deployment tool)
 
 Use `asdf` or your OS package manager to install exact versions:
@@ -196,7 +196,7 @@ Use `asdf` or your OS package manager to install exact versions:
 ```bash
 # Verify installations
 scarb --version     # Should show 2.15.0
-snforge --version   # Should show 0.54.0
+snforge --version   # Should show 0.54.1
 starkli --version   # Should show 0.4.2
 ```
 
@@ -294,7 +294,7 @@ The indexer captures all protocol events from Starknet and stores them in Postgr
 
 - **Runtime**: Bun + Apibara DNA (Starknet indexing framework)
 - **Database**: PostgreSQL 16 (hosted on Railway)
-- **Tables**: 24 event tables + 15 materialized views for analytics
+- **Tables**: 40 event tables + 23 views (9 materialized, 14 enriched/aggregated)
 
 ### Local Development
 
@@ -375,12 +375,12 @@ SELECT 'market_swap', COUNT(*) FROM market_swap;
 | `sy_deposit` / `sy_redeem` | SY token operations |
 | `yt_interest_claimed` | Yield claims |
 
-### Materialized Views
+### Views
 
 Analytics views are refreshed periodically for dashboard queries:
-- `market_stats` - Market TVL, volume, fees
-- `user_positions` - Aggregated user holdings
-- `yield_history` - Historical yield rates
+- **9 Materialized views**: Daily stats, current state, user positions
+- **14 Enriched/aggregated views**: Router events with token metadata, SY monitoring, YT interest analytics
+- Example views: `market_stats`, `user_positions`, `yield_history`
 
 ## Security
 
@@ -542,14 +542,14 @@ All core protocol contracts are **owner-upgradeable** using OpenZeppelin's compo
 
 ## License
 
-Horizon is licensed under the **[Business Source License 1.1 (BSL-1.1)](LICENSE)**.
+Horizon is licensed under the **[Business Source License 1.1 (BUSL-1.1)](LICENSE)**.
 
 | Aspect | Details |
 |--------|---------|
-| **Source Visibility** | Code is private for the next 2 years (until 2026-12-19) |
+| **Source Visibility** | Code is source-available under BUSL-1.1 restrictions until Change Date |
 | **Commercial Use** | Restricted; usage on Horizon-deployed instances allowed immediately |
 | **Change Date** | 2028-12-19 |
 | **Change License** | Converts to GPL-3.0 on change date |
-| **Summary** | Private development + competitive protection + automatic open-source transition |
+| **Summary** | Source-available with competitive protection + automatic open-source transition |
 
 For details, see the [LICENSE](LICENSE) file.

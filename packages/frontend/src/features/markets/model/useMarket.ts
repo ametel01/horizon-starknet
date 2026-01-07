@@ -23,6 +23,14 @@ function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
   return uint256.uint256ToBN(value);
 }
 
+// Helper to convert address (bigint or string) to hex string
+function toHexAddress(value: unknown): string {
+  if (typeof value === 'bigint') {
+    return `0x${value.toString(16).padStart(64, '0')}`;
+  }
+  return String(value);
+}
+
 export function useMarket(
   marketAddress: string | null,
   options: UseMarketOptions = {}
@@ -68,9 +76,9 @@ export function useMarket(
 
       const info: MarketInfo = {
         address: marketAddress,
-        syAddress,
-        ptAddress,
-        ytAddress,
+        syAddress: toHexAddress(syAddress),
+        ptAddress: toHexAddress(ptAddress),
+        ytAddress: toHexAddress(ytAddress),
         expiry: Number(expiry),
         isExpired: isExpiredVal,
       };
@@ -104,6 +112,11 @@ export function useMarket(
         tvlSy,
         daysToExpiry: days,
         annualFeeRate,
+        // TWAP fields - fallback to spot-only (useMarkets has full TWAP support)
+        twapImpliedApy: impliedApy,
+        spotImpliedApy: impliedApy,
+        oracleState: 'spot-only' as const,
+        twapDuration: 0,
       };
     },
     enabled: enabled && !!marketAddress,
@@ -136,9 +149,9 @@ export function useMarketInfo(marketAddress: string | null): UseQueryResult<Mark
 
       return {
         address: marketAddress,
-        syAddress,
-        ptAddress,
-        ytAddress,
+        syAddress: toHexAddress(syAddress),
+        ptAddress: toHexAddress(ptAddress),
+        ytAddress: toHexAddress(ytAddress),
         expiry: Number(expiry),
         isExpired: isExpiredVal,
       };

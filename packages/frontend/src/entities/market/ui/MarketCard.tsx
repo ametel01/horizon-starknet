@@ -1,7 +1,9 @@
 'use client';
 
 import { TokenAmount } from '@entities/token';
+import { formatApyWithStatus, type OracleStatus, OracleStatusBadge } from '@features/oracle';
 import { ApyBreakdown, NegativeYieldWarning, useApyBreakdown } from '@features/yield';
+import { TWAP_DEFAULT_DURATION, TWAP_ESTIMATED_READY_DEFAULT } from '@shared/config/twap';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { buttonVariants } from '@shared/ui/Button';
@@ -17,6 +19,40 @@ import { memo, type ReactNode, useMemo } from 'react';
 import type { MarketData } from '../model/types';
 
 import { AssetTypeBadge } from './AssetTypeBadge';
+
+/**
+ * Build OracleStatus object from MarketData for badge display
+ */
+function buildOracleStatus(market: MarketData): OracleStatus {
+  const baseStatus = {
+    rate: market.state.lnImpliedRate,
+  };
+
+  switch (market.oracleState) {
+    case 'ready':
+      return {
+        ...baseStatus,
+        state: 'ready',
+        apy: market.twapImpliedApy.toNumber(),
+        duration: market.twapDuration,
+      };
+    case 'partial':
+      return {
+        ...baseStatus,
+        state: 'partial',
+        apy: market.twapImpliedApy.toNumber(),
+        availableDuration: market.twapDuration,
+        requestedDuration: TWAP_DEFAULT_DURATION,
+      };
+    case 'spot-only':
+      return {
+        ...baseStatus,
+        state: 'spot-only',
+        apy: market.spotImpliedApy.toNumber(),
+        estimatedReadyIn: TWAP_ESTIMATED_READY_DEFAULT,
+      };
+  }
+}
 
 interface MarketCardProps {
   market: MarketData;
@@ -143,22 +179,46 @@ export const MarketCard = memo(function MarketCard({
             </CardTitle>
           </div>
 
-          {/* APY Hero Display - compact with hover breakdown */}
+          {/* APY Hero Display - compact with hover breakdown and oracle status */}
           <HoverCard>
             <HoverCardTrigger className="flex-shrink-0 cursor-help text-right">
-              <div className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-                APY
+              <div className="flex items-center justify-end gap-1">
+                <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+                  APY
+                </span>
+                <OracleStatusBadge status={buildOracleStatus(market)} className="text-[10px]" />
               </div>
               <div className="text-primary font-mono text-xl font-semibold tabular-nums">
                 {apyPercent >= 0 ? '+' : ''}
                 {apyPercent.toFixed(1)}%
               </div>
+              {market.oracleState !== 'spot-only' && (
+                <div className="text-muted-foreground text-[10px]">
+                  Current: {formatApyWithStatus(market.spotImpliedApy.toNumber())}
+                </div>
+              )}
             </HoverCardTrigger>
             {apyBreakdown && (
               <HoverCardContent side="top" align="end" className="w-80">
                 <div className="space-y-2">
                   <div className="text-foreground text-sm font-medium">APY Breakdown</div>
                   <ApyBreakdown breakdown={apyBreakdown} view="pt" />
+                  {market.oracleState !== 'spot-only' && (
+                    <div className="border-border mt-2 border-t pt-2">
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
+                        <span>TWAP Rate ({market.twapDuration / 60}m)</span>
+                        <span className="font-medium">
+                          {formatApyWithStatus(market.twapImpliedApy.toNumber())}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
+                        <span>Spot Rate</span>
+                        <span className="font-medium">
+                          {formatApyWithStatus(market.spotImpliedApy.toNumber())}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </HoverCardContent>
             )}

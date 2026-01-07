@@ -32,6 +32,7 @@ const CONTRACTS = [
   "SY",
   "PT",
   "YT",
+  "PragmaIndexOracle",
 ] as const;
 
 interface AbiItem {

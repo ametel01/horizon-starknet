@@ -72,6 +72,7 @@ fn create_fuzz_market(
         expiry,
         last_ln_implied_rate,
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     (state, time_to_expiry)
@@ -173,6 +174,7 @@ fn test_extreme_proportion_high_pt() {
         expiry: 1000000 + 31_536_000, // 1 year
         last_ln_implied_rate: WAD / 10, // 10%
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 31_536_000;
@@ -201,6 +203,7 @@ fn test_extreme_proportion_low_pt() {
         expiry: 1000000 + 31_536_000, // 1 year
         last_ln_implied_rate: WAD / 10, // 10%
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 31_536_000;
@@ -233,6 +236,7 @@ fn test_near_expiry() {
         expiry: 1000000 + 100, // 100 seconds to expiry
         last_ln_implied_rate: WAD / 10,
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 100;
@@ -267,6 +271,7 @@ fn test_high_implied_rate() {
         expiry: 1000000 + 31_536_000,
         last_ln_implied_rate: WAD * 2, // 200% implied rate
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 31_536_000;

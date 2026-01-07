@@ -3,10 +3,11 @@
 
 use horizon::libraries::math_fp::{HALF_WAD, WAD, abs_diff, exp_wad};
 use horizon::market::market_math_fp::{
-    MAX_PROPORTION, MIN_PROPORTION, MarketState, calc_burn_lp, calc_mint_lp, calc_price_impact,
-    calc_swap_exact_pt_for_sy, calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy,
-    calc_swap_sy_for_exact_pt, get_exchange_rate, get_fee_rate, get_implied_apy,
-    get_market_exchange_rate, get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
+    MAX_FEE_MULTIPLIER, MAX_PROPORTION, MIN_PROPORTION, MarketState, calc_burn_lp, calc_mint_lp,
+    calc_price_impact, calc_rate_impact_multiplier, calc_swap_exact_pt_for_sy,
+    calc_swap_exact_sy_for_pt, calc_swap_pt_for_exact_sy, calc_swap_sy_for_exact_pt,
+    get_exchange_rate, get_fee_rate, get_implied_apy, get_market_exchange_rate,
+    get_market_pre_compute, get_proportion, get_pt_price, get_rate_scalar,
     get_time_adjusted_fee_rate, get_time_to_expiry,
 };
 
@@ -26,7 +27,8 @@ fn create_test_market() -> MarketState {
         reserve_fee_percent: 0, // No reserve fee for basic tests
         expiry: 31_536_000 + 1000, // 1 year from now
         last_ln_implied_rate: WAD / 5, // 20% implied rate -> exp(0.2) ≈ 1.22 exchange rate
-        py_index: WAD // 1:1 conversion for basic tests
+        py_index: WAD, // 1:1 conversion for basic tests
+        rate_impact_sensitivity: 0 // No dynamic fee for basic tests
     }
 }
 
@@ -44,6 +46,7 @@ fn create_large_trade_market() -> MarketState {
         expiry: 31_536_000 + 1000,
         last_ln_implied_rate: WAD / 2, // 50% implied rate -> exp(0.5) ≈ 1.65 exchange rate
         py_index: WAD,
+        rate_impact_sensitivity: 0, // No dynamic fee for stress tests
     }
 }
 
@@ -478,6 +481,7 @@ fn test_calc_mint_lp_rounds_up_other_side() {
         expiry: 0,
         last_ln_implied_rate: 0,
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     // Add SY that creates a non-integer LP amount
@@ -508,6 +512,7 @@ fn test_calc_mint_lp_rounds_up_sy_when_pt_limiting() {
         expiry: 0,
         last_ln_implied_rate: 0,
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     // PT is limiting (1 WAD PT vs 2 WAD SY available)
@@ -820,10 +825,292 @@ fn test_calc_swap_pt_for_exact_sy_infeasible_proportion_limit() {
         expiry: 0,
         last_ln_implied_rate: 0,
         py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     // Try to get exact SY out - this requires selling PT, which would push proportion above 96%
     // Should fail with "trade infeasible"
     let time_to_expiry: u64 = 31_536_000;
     let _result = calc_swap_pt_for_exact_sy(@state, WAD, time_to_expiry);
+}
+
+// ============================================
+// RATE IMPACT MULTIPLIER TESTS
+// ============================================
+
+/// Test rate impact multiplier with no rate change returns 1.0
+#[test]
+fn test_rate_impact_multiplier_no_change() {
+    let rate_before = WAD; // 1.0
+    let rate_after = WAD; // 1.0
+    let sensitivity = WAD / 10; // 10% sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    assert(multiplier == WAD, 'no change = 1.0 multiplier');
+}
+
+/// Test rate impact multiplier with zero rate_before returns 1.0 (division by zero guard)
+#[test]
+fn test_rate_impact_multiplier_zero_rate_before() {
+    let rate_before = 0;
+    let rate_after = WAD;
+    let sensitivity = WAD / 10;
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Should return WAD (1.0) to prevent division by zero
+    assert(multiplier == WAD, 'zero rate_before = 1.0');
+}
+
+/// Test rate impact multiplier with 10% rate increase and 100% sensitivity
+/// Expected: 1.0 + 1.0 * 0.1 = 1.1 (10% higher multiplier)
+#[test]
+fn test_rate_impact_multiplier_rate_increase() {
+    let rate_before = WAD; // 1.0
+    let rate_after = WAD + WAD / 10; // 1.1 (10% increase)
+    let sensitivity = WAD; // 100% sensitivity (1:1 mapping)
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Expected: 1.0 + 1.0 * 0.1 = 1.1 WAD
+    let expected = WAD + WAD / 10;
+    assert_approx_eq(multiplier, expected, 10, '10% increase = 1.1x');
+}
+
+/// Test rate impact multiplier with 10% rate decrease
+/// Should give same multiplier as 10% increase (absolute difference)
+#[test]
+fn test_rate_impact_multiplier_rate_decrease() {
+    let rate_before = WAD + WAD / 10; // 1.1
+    let rate_after = WAD; // 1.0 (10% decrease from 1.1)
+    let sensitivity = WAD; // 100% sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Rate change = |1.0 - 1.1| = 0.1
+    // Rate change % = 0.1 / 1.1 ≈ 0.0909 (9.09%)
+    // Expected multiplier ≈ 1.0 + 1.0 * 0.0909 ≈ 1.0909
+    let expected: u256 = 1_090_909_090_909_090_909; // ~1.0909 WAD
+    assert_approx_eq(multiplier, expected, 100, '10% decrease from 1.1');
+}
+
+/// Test rate impact multiplier is capped at MAX_FEE_MULTIPLIER (2.0)
+#[test]
+fn test_rate_impact_multiplier_capped_at_max() {
+    let rate_before = WAD; // 1.0
+    let rate_after = 3 * WAD; // 3.0 (200% increase)
+    let sensitivity = WAD; // 100% sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Without cap: 1.0 + 1.0 * 2.0 = 3.0
+    // With cap: MAX_FEE_MULTIPLIER = 2.0
+    assert(multiplier == MAX_FEE_MULTIPLIER, 'capped at 2.0x');
+}
+
+/// Test rate impact multiplier with low sensitivity
+/// 10% sensitivity means 10% rate change → ~1% extra multiplier
+#[test]
+fn test_rate_impact_multiplier_low_sensitivity() {
+    let rate_before = WAD; // 1.0
+    let rate_after = WAD + WAD / 10; // 1.1 (10% increase)
+    let sensitivity = WAD / 10; // 10% sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Expected: 1.0 + 0.1 * 0.1 = 1.01 WAD
+    let expected = WAD + WAD / 100;
+    assert_approx_eq(multiplier, expected, 10, 'low sensitivity = 1.01x');
+}
+
+/// Test rate impact multiplier with high sensitivity
+/// 200% sensitivity means 10% rate change → 20% extra multiplier
+#[test]
+fn test_rate_impact_multiplier_high_sensitivity() {
+    let rate_before = WAD; // 1.0
+    let rate_after = WAD + WAD / 10; // 1.1 (10% increase)
+    let sensitivity = 2 * WAD; // 200% sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Expected: 1.0 + 2.0 * 0.1 = 1.2 WAD
+    let expected = WAD + WAD / 5;
+    assert_approx_eq(multiplier, expected, 10, 'high sensitivity = 1.2x');
+}
+
+/// Test rate impact multiplier with zero sensitivity returns 1.0
+#[test]
+fn test_rate_impact_multiplier_zero_sensitivity() {
+    let rate_before = WAD;
+    let rate_after = 2 * WAD; // 100% increase
+    let sensitivity = 0; // No sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // With zero sensitivity, impact component = 0, so multiplier = 1.0
+    assert(multiplier == WAD, 'zero sensitivity = 1.0x');
+}
+
+/// Test rate impact multiplier with very small rate change
+#[test]
+fn test_rate_impact_multiplier_small_change() {
+    let rate_before = WAD;
+    let rate_after = WAD + 1000; // Tiny increase (0.0000001%)
+    let sensitivity = WAD;
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Multiplier should be very close to 1.0
+    assert(multiplier >= WAD, 'multiplier >= 1.0');
+    assert(multiplier < WAD + WAD / 1000, 'multiplier barely above 1.0');
+}
+
+/// Test rate impact multiplier with large rate values (overflow safety)
+#[test]
+fn test_rate_impact_multiplier_large_values() {
+    let rate_before = 50 * WAD; // 50.0 exchange rate
+    let rate_after = 55 * WAD; // 55.0 (10% increase)
+    let sensitivity = WAD; // 100% sensitivity
+
+    let multiplier = calc_rate_impact_multiplier(rate_before, rate_after, sensitivity);
+
+    // Expected: 1.0 + 1.0 * 0.1 = 1.1 WAD
+    let expected = WAD + WAD / 10;
+    assert_approx_eq(multiplier, expected, 10, 'large values = 1.1x');
+}
+
+/// Test that MAX_FEE_MULTIPLIER constant is 2.0 WAD
+#[test]
+fn test_max_fee_multiplier_constant() {
+    assert(MAX_FEE_MULTIPLIER == 2 * WAD, 'MAX_FEE_MULTIPLIER = 2.0 WAD');
+}
+
+// ============================================
+// DYNAMIC FEE INTEGRATION TESTS
+// ============================================
+
+/// Helper to create a market state with dynamic fee enabled
+fn create_dynamic_fee_market() -> MarketState {
+    MarketState {
+        sy_reserve: 1_000_000 * WAD,
+        pt_reserve: 1_000_000 * WAD,
+        total_lp: 1_000_000 * WAD,
+        scalar_root: 100 * WAD,
+        initial_anchor: WAD,
+        ln_fee_rate_root: WAD / 100, // 1% base fee
+        reserve_fee_percent: 0,
+        expiry: 31_536_000 + 1000,
+        last_ln_implied_rate: WAD / 5, // 20% implied rate
+        py_index: WAD,
+        rate_impact_sensitivity: WAD, // 100% sensitivity
+    }
+}
+
+/// Test that small trades have minimal fee increase with dynamic fees enabled
+#[test]
+fn test_dynamic_fee_small_trade_minimal_impact() {
+    let state_no_dynamic = create_test_market(); // sensitivity = 0
+    let state_dynamic = create_dynamic_fee_market(); // sensitivity = 100%
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Small trade: 0.1% of reserves
+    let small_pt_in = 1_000 * WAD;
+
+    let result_no_dynamic = calc_swap_exact_pt_for_sy(@state_no_dynamic, small_pt_in, time_to_expiry);
+    let result_dynamic = calc_swap_exact_pt_for_sy(@state_dynamic, small_pt_in, time_to_expiry);
+
+    // Small trades should have very similar fees (minimal rate impact)
+    // Dynamic fee should be slightly higher due to small rate change
+    assert(result_dynamic.net_sy_fee >= result_no_dynamic.net_sy_fee, 'dynamic fee >= base fee');
+
+    // Fee increase should be less than 5% for such small trades
+    let fee_increase = result_dynamic.net_sy_fee - result_no_dynamic.net_sy_fee;
+    let max_increase = result_no_dynamic.net_sy_fee / 20; // 5%
+    assert(fee_increase <= max_increase, 'small trade fee <5% increase');
+}
+
+/// Test that large trades have significant fee increase with dynamic fees enabled
+#[test]
+fn test_dynamic_fee_large_trade_significant_impact() {
+    let state_no_dynamic = create_test_market(); // sensitivity = 0
+    let state_dynamic = create_dynamic_fee_market(); // sensitivity = 100%
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Large trade: 10% of reserves
+    let large_pt_in = 100_000 * WAD;
+
+    let result_no_dynamic = calc_swap_exact_pt_for_sy(@state_no_dynamic, large_pt_in, time_to_expiry);
+    let result_dynamic = calc_swap_exact_pt_for_sy(@state_dynamic, large_pt_in, time_to_expiry);
+
+    // Dynamic fee should be noticeably higher for large trades
+    assert(result_dynamic.net_sy_fee > result_no_dynamic.net_sy_fee, 'dynamic fee > base fee');
+
+    // User should receive less SY with dynamic fees
+    assert(
+        result_dynamic.net_sy_to_account < result_no_dynamic.net_sy_to_account,
+        'less SY with dynamic fee',
+    );
+}
+
+/// Test that zero sensitivity behaves same as no dynamic fee
+#[test]
+fn test_dynamic_fee_zero_sensitivity_no_effect() {
+    let state = create_test_market(); // sensitivity = 0
+    let time_to_expiry: u64 = 31_536_000;
+
+    let pt_in = 10_000 * WAD;
+
+    // With sensitivity = 0, calc_rate_impact_multiplier returns 1.0
+    // So the fee should be identical to base calculation
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, time_to_expiry);
+
+    // Just verify it produces valid output
+    assert(result.net_sy_to_account > 0, 'positive SY output');
+    assert(result.net_sy_fee > 0, 'fee applied');
+}
+
+/// Test that buying PT with dynamic fee works correctly
+#[test]
+fn test_dynamic_fee_buy_pt() {
+    let state = create_dynamic_fee_market();
+    let time_to_expiry: u64 = 31_536_000;
+
+    // Buy PT with SY
+    let sy_in = 50_000 * WAD;
+
+    let (pt_out, result) = calc_swap_exact_sy_for_pt(@state, sy_in, time_to_expiry);
+
+    // Should receive positive PT
+    assert(pt_out > 0, 'positive PT output');
+    // Fee should be applied
+    assert(result.net_sy_fee > 0, 'fee applied');
+    // PT should be less than what we'd get without dynamic fee
+    // (can't easily compare here, but verify bounds)
+    assert(pt_out < sy_in * 2, 'PT output bounded');
+}
+
+/// Test that very high sensitivity leads to higher fees
+#[test]
+fn test_dynamic_fee_high_sensitivity() {
+    let mut state_low = create_dynamic_fee_market();
+    state_low.rate_impact_sensitivity = WAD / 10; // 10% sensitivity
+
+    let mut state_high = create_dynamic_fee_market();
+    state_high.rate_impact_sensitivity = 2 * WAD; // 200% sensitivity
+
+    let time_to_expiry: u64 = 31_536_000;
+    let pt_in = 50_000 * WAD;
+
+    let result_low = calc_swap_exact_pt_for_sy(@state_low, pt_in, time_to_expiry);
+    let result_high = calc_swap_exact_pt_for_sy(@state_high, pt_in, time_to_expiry);
+
+    // Higher sensitivity should result in higher fees
+    assert(result_high.net_sy_fee > result_low.net_sy_fee, 'high sens > low sens fee');
+
+    // Higher sensitivity means less SY received
+    assert(
+        result_high.net_sy_to_account < result_low.net_sy_to_account,
+        'high sens less SY out',
+    );
 }

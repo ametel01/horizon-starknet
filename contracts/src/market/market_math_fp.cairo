@@ -34,7 +34,8 @@ pub struct MarketState {
     pub reserve_fee_percent: u8, // Reserve fee in base-100 (0-100), sent to treasury
     pub expiry: u64,
     pub last_ln_implied_rate: u256, // Cached ln(implied rate) for anchor calculation
-    pub py_index: u256 // SY -> asset index from YT (fetched per-call)
+    pub py_index: u256, // SY -> asset index from YT (fetched per-call)
+    pub rate_impact_sensitivity: u256 // Sensitivity factor for dynamic fee (in WAD, from factory)
 }
 
 /// Pre-computed values for trade calculation
@@ -63,6 +64,10 @@ pub const MAX_PROPORTION: u256 = 960_000_000_000_000_000; // 0.96 WAD (96%) - Pe
 
 /// Minimum liquidity to prevent first depositor attacks
 pub const MINIMUM_LIQUIDITY: u256 = 1000;
+
+/// Maximum fee multiplier for rate-impact (2x = 200% of base fee)
+/// Prevents excessive fees even for very large rate impacts
+pub const MAX_FEE_MULTIPLIER: u256 = 2_000_000_000_000_000_000; // 2.0 WAD
 
 /// Large scalar at expiry (flattens curve)
 pub const EXPIRY_SCALAR_MULTIPLIER: u256 = 1000;
@@ -298,7 +303,12 @@ pub struct TradeResult {
 /// - Buying PT (net_pt_to_account > 0): post_fee_rate = pre_fee_rate / fee_rate
 /// - Selling PT (net_pt_to_account < 0): different fee formula
 ///
-/// @param state Current market state
+/// Additionally applies rate-impact fee multiplier for large trades:
+/// - Calculates exchange rate before and after the trade
+/// - Applies multiplier = 1 + sensitivity × |rate_change| / rate_before
+/// - This protects LPs from adverse selection on large trades
+///
+/// @param state Current market state (includes rate_impact_sensitivity from factory)
 /// @param net_pt_to_account Signed PT amount: positive = user buys PT, negative = user sells PT
 /// @param comp Pre-computed market values
 /// @return TradeResult with net_sy_to_account, fees, and reserve split
@@ -318,9 +328,22 @@ pub fn calc_trade(
     // Determine if user is buying or selling PT
     let is_buying_pt = is_positive(@net_pt_to_account);
 
-    // Calculate pre-fee exchange rate at the new PT level
+    // ============ RATE-IMPACT FEE CALCULATION ============
+    // Calculate exchange rate BEFORE the trade (at current reserve state)
+    // This is the baseline rate used to measure rate impact
+    let rate_before_trade = get_exchange_rate(
+        *state.pt_reserve,
+        *comp.total_asset,
+        0, // No change yet - current state
+        false,
+        *comp.rate_scalar,
+        *comp.rate_anchor,
+        *comp.rate_anchor_is_negative,
+    );
+
+    // Calculate exchange rate AFTER the trade (at new PT level)
     // Uses asset-based curve: pass total_asset instead of sy_reserve
-    let pre_fee_exchange_rate = get_exchange_rate(
+    let rate_after_trade = get_exchange_rate(
         *state.pt_reserve,
         *comp.total_asset, // Asset-based: pt_reserve + sy_to_asset(sy_reserve, py_index)
         net_pt_to_account.mag,
@@ -330,18 +353,33 @@ pub fn calc_trade(
         *comp.rate_anchor_is_negative,
     );
 
+    // Calculate rate-impact multiplier based on how much the trade moves the rate
+    // multiplier = 1 + sensitivity × |rate_after - rate_before| / rate_before
+    // Capped at MAX_FEE_MULTIPLIER (2x) to prevent excessive fees
+    let rate_impact_multiplier = calc_rate_impact_multiplier(
+        rate_before_trade, rate_after_trade, *state.rate_impact_sensitivity,
+    );
+
+    // Apply rate-impact multiplier to the base fee_rate
+    // effective_fee_rate = base_fee_rate × multiplier
+    // This increases fees for trades that cause larger rate movements
+    let effective_fee_rate = wad_mul(*comp.fee_rate, rate_impact_multiplier);
+
+    // ============ STANDARD TRADE CALCULATION ============
+    // (Using effective_fee_rate instead of comp.fee_rate)
+
     // Calculate pre-fee asset amount
-    // pre_fee_asset_to_account = net_pt_to_account / pre_fee_exchange_rate
+    // pre_fee_asset_to_account = net_pt_to_account / rate_after_trade
     // This is the asset equivalent of the PT being traded
-    let pre_fee_asset_magnitude = wad_div(net_pt_to_account.mag, pre_fee_exchange_rate);
+    let pre_fee_asset_magnitude = wad_div(net_pt_to_account.mag, rate_after_trade);
 
     // Apply asymmetric fee based on direction (Pendle's formula)
     let (net_asset_to_account_mag, net_asset_is_negative, fee_in_asset) = if is_buying_pt {
         // User is BUYING PT (net_pt_to_account > 0)
         // User pays SY to receive PT
-        // post_fee_exchange_rate = pre_fee_exchange_rate / fee_rate
+        // post_fee_exchange_rate = pre_fee_exchange_rate / effective_fee_rate
         // This makes PT more expensive when buying
-        let post_fee_exchange_rate = wad_div(pre_fee_exchange_rate, *comp.fee_rate);
+        let post_fee_exchange_rate = wad_div(rate_after_trade, effective_fee_rate);
 
         // Pendle requires: post_fee_exchange_rate >= WAD (1.0)
         // If not, the trade would allow buying PT above par value
@@ -364,13 +402,13 @@ pub fn calc_trade(
     } else {
         // User is SELLING PT (net_pt_to_account < 0)
         // User receives SY for their PT
-        // fee = pre_fee_asset * (fee_rate - WAD) / fee_rate
-        let fee_rate_minus_one = if *comp.fee_rate > WAD {
-            *comp.fee_rate - WAD
+        // fee = pre_fee_asset * (effective_fee_rate - WAD) / effective_fee_rate
+        let fee_rate_minus_one = if effective_fee_rate > WAD {
+            effective_fee_rate - WAD
         } else {
             0
         };
-        let fee = wad_div(wad_mul(pre_fee_asset_magnitude, fee_rate_minus_one), *comp.fee_rate);
+        let fee = wad_div(wad_mul(pre_fee_asset_magnitude, fee_rate_minus_one), effective_fee_rate);
 
         // User receives less due to fee
         let net_asset_received = if pre_fee_asset_magnitude > fee {
@@ -980,4 +1018,56 @@ pub fn set_initial_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> 
     );
 
     min(ln_implied_rate, MAX_LN_IMPLIED_RATE)
+}
+
+/// Calculate fee multiplier based on rate impact
+///
+/// This function implements a dynamic fee mechanism that increases fees based on
+/// how much a trade moves the exchange rate. Larger trades that cause more rate
+/// impact pay proportionally higher fees, protecting LPs from adverse selection.
+///
+/// Formula: multiplier = 1 + sensitivity × |rate_after - rate_before| / rate_before
+///
+/// The multiplier is capped at MAX_FEE_MULTIPLIER (2x) to prevent excessive fees
+/// even for very large trades.
+///
+/// @param rate_before Exchange rate before the trade (in WAD)
+/// @param rate_after Exchange rate after the trade (in WAD)
+/// @param sensitivity Sensitivity factor (in WAD). E.g., 0.1e18 = 10% sensitivity means
+///                    a 10% rate change results in ~1% additional fee multiplier
+/// @return Multiplier in WAD (1e18 = 1x, 1.5e18 = 1.5x, max 2e18 = 2x)
+///
+/// ## Failure Modes
+/// - Returns WAD (1.0) if rate_before is 0 (prevents division by zero)
+/// - Handles overflow by using safe WAD arithmetic
+/// - Handles underflow by using abs_diff for rate changes
+pub fn calc_rate_impact_multiplier(
+    rate_before: u256, rate_after: u256, sensitivity: u256,
+) -> u256 {
+    // Guard against division by zero - if rate_before is 0, return no multiplier
+    if rate_before == 0 {
+        return WAD;
+    }
+
+    // If no rate change, return base multiplier (1.0)
+    if rate_before == rate_after {
+        return WAD;
+    }
+
+    // Calculate absolute rate change: |rate_after - rate_before|
+    let rate_change = abs_diff(rate_after, rate_before);
+
+    // Calculate rate change as a percentage of rate_before
+    // rate_change_percent = rate_change / rate_before (in WAD)
+    let rate_change_percent = wad_div(rate_change, rate_before);
+
+    // Calculate the impact component: sensitivity × rate_change_percent
+    // This gives us the additional multiplier above 1.0
+    let impact_component = wad_mul(sensitivity, rate_change_percent);
+
+    // Final multiplier = 1.0 + impact_component
+    let multiplier = WAD + impact_component;
+
+    // Cap at MAX_FEE_MULTIPLIER to prevent excessive fees
+    min(multiplier, MAX_FEE_MULTIPLIER)
 }

@@ -85,4 +85,4 @@ This LaTeX version is the canonical formatted PDF document intended for:
 
 ## License
 
-BSL-1.1 (converts to GPL-3.0 on 2028-12-19)
+BUSL-1.1 (converts to GPL-3.0 on 2028-12-19)

@@ -35,6 +35,7 @@ interface SepoliaAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    PyLpOracle?: string;
   };
   testSetup: {
     testRecipient: string;
@@ -107,6 +108,7 @@ interface DevnetAddresses {
     Factory?: string;
     MarketFactory?: string;
     Router?: string;
+    PyLpOracle?: string;
   };
   testSetup: {
     testRecipient?: string;
@@ -155,6 +157,7 @@ interface ForkAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    PyLpOracle?: string;
   };
   mainnetTokens: {
     sSTRK: string;
@@ -206,6 +209,7 @@ interface MainnetAddresses {
     MarketFactory: string;
     Router: string;
     Faucet: string;
+    PyLpOracle?: string;
   };
   tokens: {
     STRK: string;
@@ -235,6 +239,7 @@ export interface ContractAddresses {
   factory: string;
   marketFactory: string;
   router: string;
+  pyLpOracle: string;
 }
 
 // New market info structure for dual-market support
@@ -261,21 +266,25 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
     factory: devnetAddresses.contracts.Factory ?? ZERO_ADDRESS,
     marketFactory: devnetAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
     router: devnetAddresses.contracts.Router ?? ZERO_ADDRESS,
+    pyLpOracle: devnetAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   fork: {
     factory: forkAddresses.contracts.Factory,
     marketFactory: forkAddresses.contracts.MarketFactory,
     router: forkAddresses.contracts.Router,
+    pyLpOracle: forkAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   sepolia: {
     factory: sepoliaAddresses.contracts.Factory,
     marketFactory: sepoliaAddresses.contracts.MarketFactory,
     router: sepoliaAddresses.contracts.Router,
+    pyLpOracle: sepoliaAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   mainnet: {
     factory: mainnetAddresses.contracts.Factory,
     marketFactory: mainnetAddresses.contracts.MarketFactory,
     router: mainnetAddresses.contracts.Router,
+    pyLpOracle: mainnetAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
 };
 

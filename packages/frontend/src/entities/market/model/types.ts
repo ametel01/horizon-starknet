@@ -42,6 +42,15 @@ export interface MarketData extends MarketInfo {
   annualFeeRate: number;
   // Token metadata (optional, may not be available for unknown markets)
   metadata?: MarketTokenMetadata;
+  // TWAP oracle fields
+  /** TWAP-based implied APY (primary display), falls back to spot if unavailable */
+  twapImpliedApy: BigNumber;
+  /** Spot implied APY (secondary display, always available) */
+  spotImpliedApy: BigNumber;
+  /** Oracle status for this market */
+  oracleState: 'ready' | 'partial' | 'spot-only';
+  /** TWAP duration used (seconds), 0 if spot-only */
+  twapDuration: number;
 }
 
 export interface TokenMetadata {

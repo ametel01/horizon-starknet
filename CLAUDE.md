@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Horizon Protocol is a Pendle-style yield tokenization protocol on Starknet. It splits yield-bearing assets into Principal Tokens (PT) and Yield Tokens (YT), enabling fixed yield strategies and yield speculation.
 
-**Status:** Alpha on Starknet Mainnet | **License:** BSL-1.1 (converts to GPL-3.0 on 2028-12-19)
+**Status:** Alpha on Starknet Mainnet | **License:** BUSL-1.1 (converts to GPL-3.0 on 2028-12-19)
 
 ## Build Commands
 
@@ -54,7 +54,7 @@ make dev-fork-down            # Stop forked devnet
 
 From `.tool-versions`:
 - scarb 2.15.0
-- starknet-foundry 0.54.0
+- starknet-foundry 0.54.1
 - starkli 0.4.2
 
 ## Architecture
@@ -98,9 +98,12 @@ Each upgradeable contract uses OpenZeppelin's OwnableComponent and UpgradeableCo
 ### Key Libraries
 
 - `libraries/math.cairo` - WAD (10^18) fixed-point math, exp, ln functions
-- `libraries/market_math.cairo` - AMM pricing with time-decay curves
+- `libraries/math_fp.cairo` - Fixed-point math extensions
+- `libraries/oracle_lib.cairo` - Oracle library utilities
 - `libraries/roles.cairo` - RBAC role definitions
-- `libraries/errors.cairo` - Custom error definitions
+- `libraries/errors.cairo` - Custom error definitions (56 error constants)
+- `market/market_math.cairo` - AMM pricing with time-decay curves
+- `market/market_math_fp.cairo` - Fixed-point AMM math (Pendle V2 formulas)
 
 ## Code Patterns
 
@@ -126,11 +129,12 @@ contracts/
 │   ├── router.cairo         # User entry point
 │   ├── tokens/              # SY, PT, YT implementations
 │   ├── market/              # AMM and MarketFactory
-│   ├── libraries/           # math, errors, roles
-│   ├── interfaces/          # Contract interfaces
+│   ├── libraries/           # math, math_fp, oracle_lib, errors, roles
+│   ├── components/          # sy_component, reward_manager_component
+│   ├── interfaces/          # Contract interfaces (13 files)
 │   ├── mocks/               # Test mocks
 │   └── oracles/             # Pragma oracle integration
-└── tests/                   # Unit & integration tests
+└── tests/                   # Unit & integration tests (48 files)
 
 packages/
 ├── frontend/                # Next.js dApp (React 19, TypeScript, Bun)

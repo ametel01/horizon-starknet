@@ -263,7 +263,8 @@ fn get_market_state(market: IMarketDispatcher) -> MarketState {
         reserve_fee_percent: market.get_reserve_fee_percent(),
         expiry: market.expiry(),
         last_ln_implied_rate: market.get_ln_implied_rate(),
-        py_index: WAD // Use 1:1 ratio for invariant tests
+        py_index: WAD, // Use 1:1 ratio for invariant tests
+        rate_impact_sensitivity: 0,
     }
 }
 

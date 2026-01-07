@@ -2,11 +2,16 @@
 
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { useStarknet } from '@features/wallet';
-import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
+import { getAddresses, getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
+import { TWAP_DEFAULT_DURATION, TWAP_DURATIONS } from '@shared/config/twap';
 import { calculateAnnualFeeRate } from '@shared/lib/fees';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
-import { getMarketContract, getMarketFactoryContract } from '@shared/starknet/contracts';
+import {
+  getMarketContract,
+  getMarketFactoryContract,
+  getPyLpOracleContract,
+} from '@shared/starknet/contracts';
 import type { NetworkId } from '@shared/starknet/provider';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
@@ -41,6 +46,7 @@ async function fetchMarketData(
   network: NetworkId
 ): Promise<MarketData> {
   const market = getMarketContract(marketAddress, provider);
+  const addresses = getAddresses(network);
 
   try {
     // Fetch all market data in parallel using typed contract calls
@@ -92,7 +98,53 @@ async function fetchMarketData(
       reserveFeePercent: Number(reserveFeePercent),
     };
 
-    const impliedApy = lnRateToApy(state.lnImpliedRate);
+    // Spot rate (always available)
+    const spotRate = state.lnImpliedRate;
+    const spotApy = lnRateToApy(spotRate);
+
+    // TWAP rate with graceful fallback
+    let twapRate = spotRate;
+    let twapDuration = 0;
+    let oracleState: 'ready' | 'partial' | 'spot-only' = 'spot-only';
+
+    // Only attempt TWAP if PyLpOracle is configured
+    if (addresses.pyLpOracle && addresses.pyLpOracle !== '0x0') {
+      try {
+        const pyLpOracle = getPyLpOracleContract(addresses.pyLpOracle, provider);
+
+        // Check if full TWAP is available
+        const readiness = await pyLpOracle.check_oracle_state(marketAddress, TWAP_DEFAULT_DURATION);
+
+        if (readiness.oldest_observation_satisfied) {
+          const rawRate = await pyLpOracle.get_ln_implied_rate_twap(
+            marketAddress,
+            TWAP_DEFAULT_DURATION
+          );
+          twapRate = toBigInt(rawRate as bigint | { low: bigint; high: bigint });
+          twapDuration = TWAP_DEFAULT_DURATION;
+          oracleState = 'ready';
+        } else {
+          // Try shorter duration (minimum 5 min)
+          const shortDuration = TWAP_DURATIONS.MINIMUM;
+          const shortReadiness = await pyLpOracle.check_oracle_state(marketAddress, shortDuration);
+          if (shortReadiness.oldest_observation_satisfied) {
+            const rawRate = await pyLpOracle.get_ln_implied_rate_twap(marketAddress, shortDuration);
+            twapRate = toBigInt(rawRate as bigint | { low: bigint; high: bigint });
+            twapDuration = shortDuration;
+            oracleState = 'partial';
+          }
+        }
+      } catch (twapError) {
+        // Log TWAP error but continue with spot rate
+        logWarn('TWAP fetch failed, using spot rate', {
+          module: 'useMarkets',
+          marketAddress,
+          error: String(twapError),
+        });
+      }
+    }
+
+    const twapApy = lnRateToApy(twapRate);
     const days = daysToExpiry(info.expiry);
     const tvlSy = state.syReserve + state.ptReserve;
     const annualFeeRate = calculateAnnualFeeRate(lnFeeRateRootValue);
@@ -103,10 +155,16 @@ async function fetchMarketData(
     const baseData = {
       ...info,
       state,
-      impliedApy,
+      // Primary display now uses TWAP (falls back to spot)
+      impliedApy: twapApy,
       tvlSy,
       daysToExpiry: days,
       annualFeeRate,
+      // TWAP-specific fields
+      twapImpliedApy: twapApy,
+      spotImpliedApy: spotApy,
+      oracleState,
+      twapDuration,
     };
 
     if (staticInfo) {

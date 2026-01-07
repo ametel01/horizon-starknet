@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL-1.1
+// SPDX-License-Identifier: BUSL-1.1
 // TWAP Oracle Library - Pendle OracleLib.sol port for Starknet
 //
 // This library implements a ring buffer of observations for computing

@@ -3,11 +3,11 @@ import type { AccountInterface, ProviderInterface, TypedContractV2 } from 'stark
 import { Contract } from 'starknet';
 import {
   FACTORY_ABI,
-  FAUCET_ABI,
   MARKET_ABI,
   MARKETFACTORY_ABI,
-  MOCKYIELDTOKEN_ABI,
+  PRAGMAINDEXORACLE_ABI,
   PT_ABI,
+  PYLPORACLE_ABI,
   ROUTER_ABI,
   SY_ABI,
   SYWITHREWARDS_ABI,
@@ -27,8 +27,8 @@ export type TypedSY = TypedContractV2<typeof SY_ABI>;
 export type TypedSYWithRewards = TypedContractV2<typeof SYWITHREWARDS_ABI>;
 export type TypedPT = TypedContractV2<typeof PT_ABI>;
 export type TypedYT = TypedContractV2<typeof YT_ABI>;
-export type TypedMockYieldToken = TypedContractV2<typeof MOCKYIELDTOKEN_ABI>;
-export type TypedFaucet = TypedContractV2<typeof FAUCET_ABI>;
+export type TypedPyLpOracle = TypedContractV2<typeof PYLPORACLE_ABI>;
+export type TypedPragmaIndexOracle = TypedContractV2<typeof PRAGMAINDEXORACLE_ABI>;
 
 /**
  * Creates a type-safe contract instance using abi-wan-kanabi types.
@@ -118,24 +118,54 @@ export function getYTContract(address: string, providerOrAccount: ProviderOrAcco
   return new Contract({ abi: YT_ABI, address, providerOrAccount }).typedv2(YT_ABI);
 }
 
-export function getMockYieldTokenContract(
-  address: string,
-  providerOrAccount: ProviderOrAccount
-): TypedMockYieldToken {
-  return new Contract({ abi: MOCKYIELDTOKEN_ABI, address, providerOrAccount }).typedv2(
-    MOCKYIELDTOKEN_ABI
-  );
-}
-
 // ERC20 contract - uses SY_ABI as it includes ERC20 functions
 export function getERC20Contract(address: string, providerOrAccount: ProviderOrAccount): TypedSY {
   return new Contract({ abi: SY_ABI, address, providerOrAccount }).typedv2(SY_ABI);
 }
 
-// Faucet contract for test tokens
-export function getFaucetContract(
+/**
+ * Create a typed PyLpOracle contract instance with explicit address.
+ *
+ * PyLpOracle is a stateless helper that provides TWAP-based pricing
+ * for PT, YT, and LP tokens. Use duration=0 for spot rates.
+ */
+export function getPyLpOracleContract(
   address: string,
   providerOrAccount: ProviderOrAccount
-): TypedFaucet {
-  return new Contract({ abi: FAUCET_ABI, address, providerOrAccount }).typedv2(FAUCET_ABI);
+): TypedPyLpOracle {
+  return new Contract({ abi: PYLPORACLE_ABI, address, providerOrAccount }).typedv2(PYLPORACLE_ABI);
+}
+
+/**
+ * Create a typed PyLpOracle contract instance using network config address.
+ *
+ * Convenience function that looks up the PyLpOracle address from network config.
+ * Returns null if PyLpOracle is not deployed on the network (address is 0x0).
+ */
+export function getPyLpOracleContractForNetwork(
+  providerOrAccount: ProviderOrAccount,
+  network: NetworkId
+): TypedPyLpOracle | null {
+  const addresses = getAddresses(network);
+  // Return null if PyLpOracle is not deployed (placeholder 0x0)
+  if (addresses.pyLpOracle === '0x0') {
+    return null;
+  }
+  return getPyLpOracleContract(addresses.pyLpOracle, providerOrAccount);
+}
+
+/**
+ * Create a typed PragmaIndexOracle contract instance.
+ *
+ * PragmaIndexOracle provides the underlying asset exchange rate from Pragma,
+ * used by SY contracts to calculate yield. It fetches TWAP prices for the
+ * numerator/denominator pair to compute a manipulation-resistant index.
+ */
+export function getPragmaIndexOracleContract(
+  address: string,
+  providerOrAccount: ProviderOrAccount
+): TypedPragmaIndexOracle {
+  return new Contract({ abi: PRAGMAINDEXORACLE_ABI, address, providerOrAccount }).typedv2(
+    PRAGMAINDEXORACLE_ABI
+  );
 }
