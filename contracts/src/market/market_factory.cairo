@@ -259,7 +259,7 @@ pub mod MarketFactory {
 
             // Build Market constructor calldata
             // Market constructor: name, symbol, pt, scalar_root, initial_anchor, ln_fee_rate_root,
-            // reserve_fee_percent, pauser, factory
+            // reserve_fee_percent, pauser, factory, reward_tokens
             let mut calldata: Array<felt252> = array![];
 
             // Name: "PT-SY LP" (simplified)
@@ -295,6 +295,10 @@ pub mod MarketFactory {
 
             // factory address (this contract - for querying fee config and treasury)
             calldata.append(get_contract_address().into());
+
+            // reward_tokens (Span<ContractAddress> = array length + elements)
+            // Pass empty array for now - reward functionality can be added later
+            calldata.append(0); // array length = 0
 
             // Deploy Market contract
             let salt: felt252 = count.low.into();

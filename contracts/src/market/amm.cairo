@@ -26,12 +26,40 @@ pub mod Market {
     use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
-    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component};
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use horizon::components::reward_manager_component::RewardManagerComponent;
+
+    /// Interface for Market LP reward functions
+    #[starknet::interface]
+    pub trait IMarketRewards<TContractState> {
+        /// Get all registered reward tokens
+        fn get_reward_tokens(self: @TContractState) -> Span<ContractAddress>;
+
+        /// Claim all accrued rewards for a user
+        fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
+
+        /// Get user's accrued (unclaimed) rewards for all tokens
+        fn accrued_rewards(self: @TContractState, user: ContractAddress) -> Span<u256>;
+
+        /// Get the current global reward index for a specific token
+        fn reward_index(self: @TContractState, token: ContractAddress) -> u256;
+
+        /// Get user's reward index for a specific token
+        fn user_reward_index(
+            self: @TContractState, user: ContractAddress, token: ContractAddress,
+        ) -> u256;
+
+        /// Check if a token is registered as a reward token
+        fn is_reward_token(self: @TContractState, token: ContractAddress) -> bool;
+
+        /// Get the number of registered reward tokens
+        fn reward_tokens_count(self: @TContractState) -> u32;
+    }
 
     /// Maximum cardinality for TWAP oracle buffer (8760 = 1 year of hourly observations).
     /// Prevents unbounded storage growth while allowing sufficient TWAP history.
@@ -42,6 +70,7 @@ pub mod Market {
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
     component!(path: PausableComponent, storage: pausable, event: PausableEvent);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: RewardManagerComponent, storage: reward_manager, event: RewardManagerEvent);
 
     // ERC20 component for LP token functionality
     #[abi(embed_v0)]
@@ -65,6 +94,10 @@ pub mod Market {
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    // RewardManager - internal implementations
+    impl RewardInternalImpl = RewardManagerComponent::InternalImpl<ContractState>;
+    impl RewardViewImpl = RewardManagerComponent::ViewImpl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -103,6 +136,8 @@ pub mod Market {
         observation_index: u16,
         observation_cardinality: u16,
         observation_cardinality_next: u16,
+        #[substorage(v0)]
+        reward_manager: RewardManagerComponent::Storage,
     }
 
     #[event]
@@ -125,6 +160,8 @@ pub mod Market {
         FeesCollected: FeesCollected,
         ReserveFeeTransferred: ReserveFeeTransferred,
         ScalarRootUpdated: ScalarRootUpdated,
+        #[flat]
+        RewardManagerEvent: RewardManagerComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -260,6 +297,7 @@ pub mod Market {
         reserve_fee_percent: u8,
         pauser: ContractAddress,
         factory: ContractAddress,
+        reward_tokens: Span<ContractAddress>,
     ) {
         // Initialize LP token (ERC20)
         self.erc20.initializer(name, symbol);
@@ -314,6 +352,59 @@ pub mod Market {
         self.observation_index.write(0_u16);
         self.observation_cardinality.write(init_result.cardinality);
         self.observation_cardinality_next.write(init_result.cardinality_next);
+
+        // Initialize RewardManager component (if reward_tokens provided)
+        // LP rewards are optional - pass empty span to disable reward tracking
+        if reward_tokens.len() > 0 {
+            self.reward_manager.initializer(reward_tokens);
+        }
+    }
+
+    /// Custom ERC20 hooks - update rewards on every LP token transfer
+    ///
+    /// This is the key integration point: when LP tokens are transferred, we must
+    /// update both parties' reward state BEFORE the balance changes.
+    ///
+    /// Note: Unlike SYWithRewards, Market doesn't block operations when paused via ERC20 hooks.
+    /// Pausability is enforced at the mint/swap level, not transfer level.
+    impl ERC20HooksImpl of ERC20Component::ERC20HooksTrait<ContractState> {
+        fn before_update(
+            ref self: ERC20Component::ComponentState<ContractState>,
+            from: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) {
+            // Update rewards for both parties BEFORE balance changes
+            // Skip if no rewards configured (reward_tokens_count == 0)
+            let mut contract = self.get_contract_mut();
+            if contract.reward_manager.reward_tokens_count.read() > 0 {
+                contract.reward_manager.update_rewards_for_two(from, recipient);
+            }
+        }
+
+        fn after_update(
+            ref self: ERC20Component::ComponentState<ContractState>,
+            from: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) { // No additional logic needed after update
+        }
+    }
+
+    /// Implement RewardHooksTrait - bridge RewardManager to ERC20 for LP balance info
+    ///
+    /// The RewardManager needs balance information to calculate rewards for LPs.
+    /// These hooks provide that without the component knowing about ERC20 directly.
+    impl RewardHooksImpl of RewardManagerComponent::RewardHooksTrait<ContractState> {
+        /// Get user's LP token balance (for reward calculation)
+        fn user_sy_balance(self: @ContractState, user: ContractAddress) -> u256 {
+            self.erc20.ERC20_balances.read(user)
+        }
+
+        /// Get total LP token supply (for global index calculation)
+        fn total_sy_supply(self: @ContractState) -> u256 {
+            self.erc20.ERC20_total_supply.read()
+        }
     }
 
     #[abi(embed_v0)]
@@ -895,6 +986,60 @@ pub mod Market {
             } else {
                 self.reserve_fee_percent.read()
             }
+        }
+    }
+
+    // Reward functions for LP incentives
+    #[abi(embed_v0)]
+    impl MarketRewardsImpl of IMarketRewards<ContractState> {
+        /// Get all registered reward tokens for LP rewards
+        fn get_reward_tokens(self: @ContractState) -> Span<ContractAddress> {
+            self.reward_manager.get_reward_tokens()
+        }
+
+        /// Claim all accrued LP rewards for a user
+        /// @param user Address to claim rewards for
+        /// @return Array of claimed amounts (one per reward token, in order)
+        fn claim_rewards(ref self: ContractState, user: ContractAddress) -> Span<u256> {
+            self.reward_manager.claim_rewards(user)
+        }
+
+        /// Get user's accrued (unclaimed) LP rewards for all tokens
+        /// Note: Does not include pending rewards from unreflected index updates
+        /// @param user User address to query
+        /// @return Array of accrued amounts (one per reward token, in order)
+        fn accrued_rewards(self: @ContractState, user: ContractAddress) -> Span<u256> {
+            self.reward_manager.accrued_rewards(user)
+        }
+
+        /// Get the current global reward index for a specific token
+        /// @param token Reward token address
+        /// @return Global reward index (scaled by WAD)
+        fn reward_index(self: @ContractState, token: ContractAddress) -> u256 {
+            self.reward_manager.reward_index(token)
+        }
+
+        /// Get user's reward index for a specific token
+        /// @param user User address
+        /// @param token Reward token address
+        /// @return User's last checkpointed reward index
+        fn user_reward_index(
+            self: @ContractState, user: ContractAddress, token: ContractAddress,
+        ) -> u256 {
+            self.reward_manager.user_reward_index(user, token)
+        }
+
+        /// Check if a token is registered as a reward token
+        /// @param token Token address to check
+        /// @return True if token is a registered reward token
+        fn is_reward_token(self: @ContractState, token: ContractAddress) -> bool {
+            self.reward_manager.is_reward_token(token)
+        }
+
+        /// Get the number of registered reward tokens
+        /// @return Count of reward tokens
+        fn reward_tokens_count(self: @ContractState) -> u32 {
+            self.reward_manager.reward_tokens_count()
         }
     }
 

@@ -169,6 +169,7 @@ fn deploy_market(
     calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
     calldata.append(0); // factory (zero address for tests)
+    calldata.append(0); // reward_tokens array length (empty for tests)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
