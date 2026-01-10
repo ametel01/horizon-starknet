@@ -8,4 +8,5 @@
 /// Run with: snforge test router
 
 pub mod test_router;
+pub mod test_router_single_sided_lp;
 pub mod test_router_yt_swaps;
