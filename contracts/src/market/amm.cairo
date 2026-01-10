@@ -9,6 +9,9 @@ pub mod Market {
     use core::num::traits::Zero;
     use horizon::components::reward_manager_component::RewardManagerComponent;
     use horizon::interfaces::i_market::{IMarket, IMarketAdmin, IMarketOracle, OracleState};
+    use horizon::interfaces::i_market_callback::{
+        IMarketSwapCallbackDispatcher, IMarketSwapCallbackDispatcherTrait,
+    };
     use horizon::interfaces::i_market_factory::{
         IMarketFactoryDispatcher, IMarketFactoryDispatcherTrait,
     };
@@ -619,7 +622,6 @@ pub mod Market {
             min_sy_out: u256,
             callback_data: Span<felt252>,
         ) -> u256 {
-            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -668,6 +670,16 @@ pub mod Market {
                     sy_contract, treasury, actual_reserve_fee, caller,
                 );
 
+            // Invoke callback if requested
+            if callback_data.len() > 0 {
+                let callback = IMarketSwapCallbackDispatcher { contract_address: caller };
+                // net_pt_to_account is negative (user sent PT to market)
+                let net_pt = (exact_pt_in, true); // (magnitude, is_negative=true)
+                // net_sy_to_account is positive (market sent SY to receiver)
+                let net_sy = (sy_out, false);
+                callback.swap_callback(net_pt, net_sy, callback_data);
+            }
+
             // Emit event
             self
                 .emit(
@@ -709,7 +721,6 @@ pub mod Market {
             max_sy_in: u256,
             callback_data: Span<felt252>,
         ) -> u256 {
-            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -758,6 +769,16 @@ pub mod Market {
                     sy_contract, treasury, actual_reserve_fee, caller,
                 );
 
+            // Invoke callback if requested
+            if callback_data.len() > 0 {
+                let callback = IMarketSwapCallbackDispatcher { contract_address: caller };
+                // net_pt_to_account is positive (market sent PT to receiver)
+                let net_pt = (exact_pt_out, false);
+                // net_sy_to_account is negative (user sent SY to market)
+                let net_sy = (sy_in, true); // (magnitude, is_negative=true)
+                callback.swap_callback(net_pt, net_sy, callback_data);
+            }
+
             // Emit event
             self
                 .emit(
@@ -799,7 +820,6 @@ pub mod Market {
             min_pt_out: u256,
             callback_data: Span<felt252>,
         ) -> u256 {
-            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -847,6 +867,16 @@ pub mod Market {
                     sy_contract, treasury, actual_reserve_fee, caller,
                 );
 
+            // Invoke callback if requested
+            if callback_data.len() > 0 {
+                let callback = IMarketSwapCallbackDispatcher { contract_address: caller };
+                // net_pt_to_account is positive (market sent PT to receiver)
+                let net_pt = (pt_out, false);
+                // net_sy_to_account is negative (user sent SY to market)
+                let net_sy = (exact_sy_in, true); // (magnitude, is_negative=true)
+                callback.swap_callback(net_pt, net_sy, callback_data);
+            }
+
             // Emit event
             self
                 .emit(
@@ -888,7 +918,6 @@ pub mod Market {
             max_pt_in: u256,
             callback_data: Span<felt252>,
         ) -> u256 {
-            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -935,6 +964,16 @@ pub mod Market {
                 ._transfer_reserve_fee_to_treasury(
                     sy_contract, treasury, actual_reserve_fee, caller,
                 );
+
+            // Invoke callback if requested
+            if callback_data.len() > 0 {
+                let callback = IMarketSwapCallbackDispatcher { contract_address: caller };
+                // net_pt_to_account is negative (user sent PT to market)
+                let net_pt = (pt_in, true); // (magnitude, is_negative=true)
+                // net_sy_to_account is positive (market sent SY to receiver)
+                let net_sy = (exact_sy_out, false);
+                callback.swap_callback(net_pt, net_sy, callback_data);
+            }
 
             // Emit event
             self
