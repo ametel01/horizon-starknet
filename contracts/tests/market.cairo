@@ -12,6 +12,7 @@
 /// Run with: snforge test market
 
 pub mod test_market;
+pub mod test_market_callbacks;
 pub mod test_market_expiry;
 pub mod test_market_factory;
 pub mod test_market_fees;
