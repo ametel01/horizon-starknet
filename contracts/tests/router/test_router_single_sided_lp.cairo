@@ -4,7 +4,7 @@ use horizon::interfaces::i_router::{IRouterDispatcher, IRouterDispatcherTrait};
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
-use horizon::mocks::mock_yield_token::IMockYieldTokenDispatcher;
+use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use openzeppelin_interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
@@ -300,7 +300,7 @@ fn test_single_sided_dust_returned() {
 
     // Add single-sided liquidity
     start_cheat_caller_address(router.contract_address, user);
-    let (sy_used, pt_used, lp_out) = router
+    let (sy_used, _pt_used, lp_out) = router
         .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
     stop_cheat_caller_address(router.contract_address);
 
@@ -330,7 +330,7 @@ fn test_single_sided_optimal_ratio() {
     initialize_pool(underlying, sy, yt, pt, market, user2(), 100 * WAD, 100 * WAD);
 
     // Get initial reserves
-    let (sy_reserve_before, pt_reserve_before) = market.get_reserves();
+    let (sy_reserve_before, _pt_reserve_before) = market.get_reserves();
 
     // Setup user with SY
     setup_user_with_sy(underlying, sy, user, amount_sy);
