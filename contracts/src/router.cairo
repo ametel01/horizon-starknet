@@ -508,13 +508,11 @@ pub mod Router {
             assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
             // 6. Return any dust to caller
-            let sy_dust = sy_for_lp - sy_used;
-            let pt_dust = pt_received - pt_used;
-            if sy_dust > 0 {
-                sy_contract.transfer(caller, sy_dust);
+            if sy_for_lp > sy_used {
+                sy_contract.transfer(caller, sy_for_lp - sy_used);
             }
-            if pt_dust > 0 {
-                pt_contract.transfer(caller, pt_dust);
+            if pt_received > pt_used {
+                pt_contract.transfer(caller, pt_received - pt_used);
             }
 
             // Calculate total SY consumed (swap + LP addition)
@@ -535,6 +533,87 @@ pub mod Router {
 
             self.reentrancy_guard.end();
             (total_sy_used, pt_used, lp_minted)
+        }
+
+        fn add_liquidity_single_pt(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            amount_pt_in: u256,
+            min_lp_out: u256,
+            deadline: u64,
+        ) -> (u256, u256, u256) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(amount_pt_in > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // 1. Transfer all PT from caller to router
+            pt_contract.transfer_from(caller, this, amount_pt_in);
+
+            // 2. Calculate optimal PT amount to swap for SY
+            //    Goal: balance the ratio so add_liquidity uses everything
+            let (reserves_sy, reserves_pt) = market_contract.get_reserves();
+            let optimal_pt_to_swap = self
+                ._calc_optimal_swap_pt_for_lp(amount_pt_in, reserves_sy, reserves_pt);
+
+            // Validate that swap amount doesn't exceed input
+            assert(optimal_pt_to_swap <= amount_pt_in, Errors::MATH_OVERFLOW);
+
+            // 3. Swap optimal PT for SY
+            pt_contract.approve(market, optimal_pt_to_swap);
+            let sy_received = market_contract
+                .swap_exact_pt_for_sy(
+                    this, optimal_pt_to_swap, 0 // No min check here, final slippage check at end
+                );
+
+            // 4. Add liquidity with received SY + remaining PT
+            let pt_for_lp = amount_pt_in - optimal_pt_to_swap;
+            sy_contract.approve(market, sy_received);
+            pt_contract.approve(market, pt_for_lp);
+
+            let (sy_used, pt_used, lp_minted) = market_contract
+                .mint(receiver, sy_received, pt_for_lp);
+
+            // 5. Slippage check
+            assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 6. Return any dust to caller
+            if sy_received > sy_used {
+                sy_contract.transfer(caller, sy_received - sy_used);
+            }
+            if pt_for_lp > pt_used {
+                pt_contract.transfer(caller, pt_for_lp - pt_used);
+            }
+
+            // Calculate total PT consumed (swap + LP addition)
+            let total_pt_used = optimal_pt_to_swap + pt_used;
+
+            // Emit event
+            self
+                .emit(
+                    AddLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_used,
+                        pt_used: total_pt_used,
+                        lp_out: lp_minted,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (sy_used, total_pt_used, lp_minted)
         }
 
         // ============ Market Swap Operations ============
@@ -1087,6 +1166,116 @@ pub mod Router {
             // denominator But for simplicity, given protocol constraints, direct computation should
             // be safe as reserves are bounded by realistic token amounts
             let numerator = reserves_pt * sy_in;
+            numerator / denominator
+        }
+
+        /// Calculate optimal PT amount to swap for SY before adding liquidity
+        /// Uses binary search to find swap amount that fully utilizes all tokens
+        /// @param amount_pt_total Total PT available
+        /// @param reserves_sy Current SY reserves in market
+        /// @param reserves_pt Current PT reserves in market
+        /// @return Optimal amount of PT to swap for SY
+        fn _calc_optimal_swap_pt_for_lp(
+            ref self: ContractState, amount_pt_total: u256, reserves_sy: u256, reserves_pt: u256,
+        ) -> u256 {
+            // Edge case: empty pool, just swap half
+            if reserves_sy == 0 || reserves_pt == 0 {
+                return amount_pt_total / 2;
+            }
+
+            // Edge case: very small amount, just swap half to avoid precision issues
+            if amount_pt_total <= 1 {
+                return amount_pt_total / 2;
+            }
+
+            // Binary search for optimal swap amount
+            let mut low: u256 = 0;
+            let mut high: u256 = amount_pt_total;
+            let max_iterations: u32 = 20; // ~1e-6 precision
+            let mut iteration: u32 = 0;
+
+            while iteration < max_iterations && high > low + 1 {
+                let mid = (low + high) / 2;
+
+                // If mid equals low, we can't make progress, break to avoid infinite loop
+                if mid == low {
+                    break;
+                }
+
+                // Simulate: swap `mid` PT for SY
+                let sy_out = self._estimate_swap_pt_for_sy(mid, reserves_sy, reserves_pt);
+
+                // If sy_out is zero, we can't proceed with this mid value
+                if sy_out == 0 {
+                    // No SY received means we need to swap more (but ensure we make progress)
+                    if mid > low {
+                        low = mid;
+                    }
+                    iteration += 1;
+                    continue;
+                }
+
+                let pt_remaining = amount_pt_total - mid;
+
+                // If we've swapped everything, this is too much
+                if pt_remaining == 0 {
+                    high = mid;
+                    iteration += 1;
+                    continue;
+                }
+
+                // Check if this ratio matches pool ratio
+                // sy_out / pt_remaining should equal reserves_sy / reserves_pt
+                // Cross-multiply to avoid division: sy_out * reserves_pt <=> pt_remaining *
+                // reserves_sy
+                // Note: These multiplications could overflow with very large reserves.
+                // In practice, reserves are bounded by realistic token amounts (< 2^128)
+                // so multiplication fits in u256. For added safety, we could use checked math
+                // but Cairo's default behavior will panic on overflow which is acceptable here.
+                let left = sy_out * reserves_pt;
+                let right = pt_remaining * reserves_sy;
+
+                if left < right {
+                    // Too little SY received, swap more PT
+                    low = mid;
+                } else {
+                    // Too much SY received, swap less PT
+                    high = mid;
+                }
+
+                iteration += 1;
+            }
+
+            low
+        }
+
+        /// Estimate SY received from swapping exact PT (without fees, approximate)
+        /// @param pt_in Amount of PT to swap
+        /// @param reserves_sy Current SY reserves in market
+        /// @param reserves_pt Current PT reserves in market
+        /// @return Estimated SY output
+        fn _estimate_swap_pt_for_sy(
+            ref self: ContractState, pt_in: u256, reserves_sy: u256, reserves_pt: u256,
+        ) -> u256 {
+            // Constant product approximation: (reserves_sy * pt_in) / (reserves_pt + pt_in)
+            // This is simplified; real swap uses logit curve + fees
+            // For optimization purposes, close enough
+            if pt_in == 0 {
+                return 0;
+            }
+
+            // Prevent overflow by checking if multiplication would exceed u256 max
+            // Use the identity: (a * b) / c = a / c * b when possible
+            // Or rearrange to avoid overflow: sy_out = reserves_sy / (1 + reserves_pt/pt_in)
+            let denominator = reserves_pt + pt_in;
+
+            // Guard against potential overflow in numerator
+            // If reserves_sy > u256::MAX / pt_in, we need to be careful
+            // Use checked operations by rearranging:
+            // sy_out = reserves_sy * (pt_in / denominator) + reserves_sy * (pt_in % denominator) /
+            // denominator But for simplicity, given protocol constraints, direct computation should
+            // be safe as reserves are bounded by realistic token amounts
+            let numerator = reserves_sy * pt_in;
             numerator / denominator
         }
     }
