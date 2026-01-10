@@ -146,6 +146,7 @@ fn deploy_market(
     calldata.append(0);
     calldata.append(admin().into());
     calldata.append(0);
+    calldata.append(0); // reward_tokens: empty span (length = 0)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
