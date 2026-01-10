@@ -364,7 +364,9 @@ fn test_market_with_factory() {
     let fee_rate = WAD / 100;
 
     let market_address = market_factory
-        .create_market(pt.contract_address, scalar_root, initial_anchor, fee_rate, 0);
+        .create_market(
+            pt.contract_address, scalar_root, initial_anchor, fee_rate, 0, array![].span(),
+        );
 
     // Verify market created
     assert(market_factory.is_valid_market(market_address), 'Market is valid');
