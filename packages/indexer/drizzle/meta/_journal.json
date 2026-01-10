@@ -57,6 +57,13 @@
       "when": 1767401308375,
       "tag": "0007_slimy_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1768077496858,
+      "tag": "0008_soft_cobalt_man",
+      "breakpoints": true
     }
   ]
 }
