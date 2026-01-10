@@ -38,19 +38,35 @@ pub trait IMarket<TContractState> {
 
     // Swaps
     fn swap_exact_pt_for_sy(
-        ref self: TContractState, receiver: ContractAddress, exact_pt_in: u256, min_sy_out: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        exact_pt_in: u256,
+        min_sy_out: u256,
+        callback_data: Span<felt252>, // Empty span = no callback
     ) -> u256;
 
     fn swap_sy_for_exact_pt(
-        ref self: TContractState, receiver: ContractAddress, exact_pt_out: u256, max_sy_in: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        exact_pt_out: u256,
+        max_sy_in: u256,
+        callback_data: Span<felt252>, // Empty span = no callback
     ) -> u256;
 
     fn swap_exact_sy_for_pt(
-        ref self: TContractState, receiver: ContractAddress, exact_sy_in: u256, min_pt_out: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        exact_sy_in: u256,
+        min_pt_out: u256,
+        callback_data: Span<felt252>, // Empty span = no callback
     ) -> u256;
 
     fn swap_pt_for_exact_sy(
-        ref self: TContractState, receiver: ContractAddress, exact_sy_out: u256, max_pt_in: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        exact_sy_out: u256,
+        max_pt_in: u256,
+        callback_data: Span<felt252>, // Empty span = no callback
     ) -> u256;
 
     // Market state

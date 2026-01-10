@@ -353,7 +353,7 @@ fn test_swap_writes_observation() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Rate should have changed
@@ -402,7 +402,7 @@ fn test_same_block_swap_no_new_observation() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let state_after_swap1 = oracle.get_oracle_state();
@@ -410,7 +410,7 @@ fn test_same_block_swap_no_new_observation() {
 
     // Another swap in same block
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let state_after_swap2 = oracle.get_oracle_state();
@@ -686,7 +686,7 @@ fn test_twap_after_multiple_swaps() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture spot rate at T+1h (start of TWAP window)
@@ -696,7 +696,7 @@ fn test_twap_after_multiple_swaps() {
     start_cheat_block_timestamp_global(INITIAL_TIME + 2 * ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture spot rate at T+2h (mid-point)
@@ -706,7 +706,7 @@ fn test_twap_after_multiple_swaps() {
     start_cheat_block_timestamp_global(INITIAL_TIME + 3 * ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture spot rate at T+3h (end of TWAP window)

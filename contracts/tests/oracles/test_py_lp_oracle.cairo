@@ -305,7 +305,7 @@ fn test_get_pt_to_sy_rate_with_twap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 15 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 15 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture ln_rate at window START (T+30m)
@@ -316,7 +316,7 @@ fn test_get_pt_to_sy_rate_with_twap() {
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture ln_rate at window END (T+60m)
@@ -578,7 +578,7 @@ fn test_get_ln_implied_rate_twap_non_zero_duration() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture rate at window START (T+30m)
@@ -588,7 +588,7 @@ fn test_get_ln_implied_rate_twap_non_zero_duration() {
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture rate at window END (T+60m)
@@ -660,7 +660,7 @@ fn test_pt_plus_yt_equals_wad_with_twap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture ln_rate at window START (T+30m)
@@ -670,7 +670,7 @@ fn test_pt_plus_yt_equals_wad_with_twap() {
     start_cheat_block_timestamp_global(INITIAL_TIME + ONE_HOUR);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Capture ln_rate at window END (T+60m)

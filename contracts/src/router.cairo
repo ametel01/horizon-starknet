@@ -493,7 +493,10 @@ pub mod Router {
             sy_contract.approve(market, optimal_sy_to_swap);
             let pt_received = market_contract
                 .swap_exact_sy_for_pt(
-                    this, optimal_sy_to_swap, 0 // No min check here, final slippage check at end
+                    this,
+                    optimal_sy_to_swap,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
                 );
 
             // 4. Add liquidity with remaining SY + received PT
@@ -574,7 +577,10 @@ pub mod Router {
             pt_contract.approve(market, optimal_pt_to_swap);
             let sy_received = market_contract
                 .swap_exact_pt_for_sy(
-                    this, optimal_pt_to_swap, 0 // No min check here, final slippage check at end
+                    this,
+                    optimal_pt_to_swap,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
                 );
 
             // 4. Add liquidity with received SY + remaining PT
@@ -645,7 +651,8 @@ pub mod Router {
             sy_contract.approve(market, exact_sy_in);
 
             // Swap (market handles slippage internally, but we add extra check)
-            let pt_out = market_contract.swap_exact_sy_for_pt(receiver, exact_sy_in, min_pt_out);
+            let pt_out = market_contract
+                .swap_exact_sy_for_pt(receiver, exact_sy_in, min_pt_out, array![].span());
 
             // Emit event
             self
@@ -692,7 +699,8 @@ pub mod Router {
             pt_contract.approve(market, exact_pt_in);
 
             // Swap
-            let sy_out = market_contract.swap_exact_pt_for_sy(receiver, exact_pt_in, min_sy_out);
+            let sy_out = market_contract
+                .swap_exact_pt_for_sy(receiver, exact_pt_in, min_sy_out, array![].span());
 
             // Emit event
             self
@@ -739,7 +747,8 @@ pub mod Router {
             sy_contract.approve(market, max_sy_in);
 
             // Swap
-            let sy_spent = market_contract.swap_sy_for_exact_pt(receiver, exact_pt_out, max_sy_in);
+            let sy_spent = market_contract
+                .swap_sy_for_exact_pt(receiver, exact_pt_out, max_sy_in, array![].span());
 
             // Return unused SY to caller
             if max_sy_in > sy_spent {
@@ -791,7 +800,8 @@ pub mod Router {
             pt_contract.approve(market, max_pt_in);
 
             // Swap
-            let pt_spent = market_contract.swap_pt_for_exact_sy(receiver, exact_sy_out, max_pt_in);
+            let pt_spent = market_contract
+                .swap_pt_for_exact_sy(receiver, exact_sy_out, max_pt_in, array![].span());
 
             // Return unused PT to caller
             if max_pt_in > pt_spent {
@@ -931,7 +941,8 @@ pub mod Router {
 
             // 3. Sell all PT back to market for SY
             pt_contract.approve(market, pt_minted);
-            let sy_from_pt_sale = market_contract.swap_exact_pt_for_sy(this, pt_minted, 0);
+            let sy_from_pt_sale = market_contract
+                .swap_exact_pt_for_sy(this, pt_minted, 0, array![].span());
 
             // 4. Send YT to receiver
             yt_contract.transfer(receiver, yt_minted);
@@ -1012,7 +1023,7 @@ pub mod Router {
             // Buy exact PT using collateral
             sy_contract.approve(market, max_sy_collateral);
             let sy_spent_on_pt = market_contract
-                .swap_sy_for_exact_pt(this, exact_yt_in, max_sy_collateral);
+                .swap_sy_for_exact_pt(this, exact_yt_in, max_sy_collateral, array![].span());
 
             // 3. Now we have PT and YT - pre-transfer to YT contract, then redeem for SY
             pt_contract.transfer(yt, exact_yt_in);

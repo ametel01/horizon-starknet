@@ -295,7 +295,7 @@ fn test_full_fee_at_one_year() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -331,7 +331,7 @@ fn test_half_fee_at_six_months() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let _sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let _sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -351,7 +351,7 @@ fn test_half_fee_at_six_months() {
     let fees_before_1y = market2.get_total_fees_collected();
 
     start_cheat_caller_address(market2.contract_address, user);
-    let _sy_out_1y = market2.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let _sy_out_1y = market2.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market2.contract_address);
 
     let fees_after_1y = market2.get_total_fees_collected();
@@ -394,7 +394,7 @@ fn test_quarter_fee_at_three_months() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let _sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let _sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -423,7 +423,7 @@ fn test_minimal_fee_near_expiry() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -461,7 +461,7 @@ fn test_zero_fee_at_exact_expiry() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -499,7 +499,7 @@ fn test_fee_collection_by_owner() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_accumulated = market.get_total_fees_collected();
@@ -540,7 +540,7 @@ fn test_fee_collection_by_non_owner_fails() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Non-owner tries to collect fees - should fail
@@ -592,7 +592,7 @@ fn test_fee_accumulation_across_swaps() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_first = market.get_total_fees_collected();
@@ -601,7 +601,7 @@ fn test_fee_accumulation_across_swaps() {
 
     // Second swap
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_second = market.get_total_fees_collected();
@@ -610,7 +610,7 @@ fn test_fee_accumulation_across_swaps() {
 
     // Third swap
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_third = market.get_total_fees_collected();
@@ -639,7 +639,7 @@ fn test_fee_accumulation_both_directions() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_pt_to_sy = market.get_total_fees_collected();
@@ -651,7 +651,7 @@ fn test_fee_accumulation_both_directions() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_sy_for_pt(user, swap_amount, 0);
+    market.swap_exact_sy_for_pt(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_sy_to_pt = market.get_total_fees_collected();
@@ -679,7 +679,7 @@ fn test_fee_accumulation_multiple_users() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user1_addr);
-    market.swap_exact_pt_for_sy(user1_addr, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user1_addr, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_user1 = market.get_total_fees_collected();
@@ -690,7 +690,7 @@ fn test_fee_accumulation_multiple_users() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user2_addr);
-    market.swap_exact_pt_for_sy(user2_addr, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user2_addr, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after_user2 = market.get_total_fees_collected();
@@ -727,7 +727,7 @@ fn test_fee_collection_then_more_swaps() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_first_batch = market.get_total_fees_collected();
@@ -742,7 +742,7 @@ fn test_fee_collection_then_more_swaps() {
 
     // Do more swaps
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_second_batch = market.get_total_fees_collected();
@@ -773,7 +773,7 @@ fn test_fee_decay_over_time() {
     // Swap at 1 year
     let fees_before = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fee_at_1_year = market.get_total_fees_collected() - fees_before;
 
@@ -783,7 +783,7 @@ fn test_fee_decay_over_time() {
     // Swap at 6 months to expiry
     let fees_before_6mo = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fee_at_6_months = market.get_total_fees_collected() - fees_before_6mo;
 
@@ -796,7 +796,7 @@ fn test_fee_decay_over_time() {
     // Swap at 3 months to expiry
     let fees_before_3mo = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fee_at_3_months = market.get_total_fees_collected() - fees_before_3mo;
 
@@ -825,7 +825,7 @@ fn test_exact_output_swap_fees() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in);
+    market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -856,7 +856,7 @@ fn test_fee_with_pt_for_exact_sy() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_pt_for_exact_sy(user, exact_sy_out, max_pt_in);
+    market.swap_pt_for_exact_sy(user, exact_sy_out, max_pt_in, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();

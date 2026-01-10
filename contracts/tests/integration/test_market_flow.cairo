@@ -289,7 +289,7 @@ fn test_complete_market_trading_flow() {
     let bob_pt_before = pt.balance_of(bob());
 
     start_cheat_caller_address(market.contract_address, bob());
-    let pt_received = market.swap_exact_sy_for_pt(bob(), trade_amount, 0);
+    let pt_received = market.swap_exact_sy_for_pt(bob(), trade_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_received > 0, 'Bob received PT');
@@ -307,7 +307,7 @@ fn test_complete_market_trading_flow() {
     let bob_sy_before = sy.balance_of(bob());
 
     start_cheat_caller_address(market.contract_address, bob());
-    let sy_received = market.swap_exact_pt_for_sy(bob(), pt_received, 0);
+    let sy_received = market.swap_exact_pt_for_sy(bob(), pt_received, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_received > 0, 'Bob received SY');
@@ -434,7 +434,7 @@ fn test_multiple_lps_and_traders() {
         stop_cheat_caller_address(sy.contract_address);
 
         start_cheat_caller_address(market.contract_address, charlie());
-        let pt_out = market.swap_exact_sy_for_pt(charlie(), trade_amount, 0);
+        let pt_out = market.swap_exact_sy_for_pt(charlie(), trade_amount, 0, array![].span());
         stop_cheat_caller_address(market.contract_address);
 
         // Swap PT for SY
@@ -443,7 +443,7 @@ fn test_multiple_lps_and_traders() {
         stop_cheat_caller_address(pt.contract_address);
 
         start_cheat_caller_address(market.contract_address, charlie());
-        market.swap_exact_pt_for_sy(charlie(), pt_out, 0);
+        market.swap_exact_pt_for_sy(charlie(), pt_out, 0, array![].span());
         stop_cheat_caller_address(market.contract_address);
     }
 
@@ -563,7 +563,7 @@ fn test_implied_rate_tracking() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    market.swap_exact_sy_for_pt(bob(), trade_amount, 0);
+    market.swap_exact_sy_for_pt(bob(), trade_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Rate should have changed

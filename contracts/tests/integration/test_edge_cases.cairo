@@ -464,7 +464,7 @@ fn test_sequential_swaps_same_user() {
         stop_cheat_caller_address(sy.contract_address);
 
         start_cheat_caller_address(market.contract_address, bob());
-        let pt_out = market.swap_exact_sy_for_pt(bob(), trade_amount, 0);
+        let pt_out = market.swap_exact_sy_for_pt(bob(), trade_amount, 0, array![].span());
         stop_cheat_caller_address(market.contract_address);
 
         total_sy_spent += trade_amount;
@@ -481,7 +481,7 @@ fn test_sequential_swaps_same_user() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    let sy_back = market.swap_exact_pt_for_sy(bob(), total_pt_received, 0);
+    let sy_back = market.swap_exact_pt_for_sy(bob(), total_pt_received, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Should get back less than spent due to fees and slippage
@@ -569,7 +569,7 @@ fn test_mixed_operation_sizes() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    let pt_out = market.swap_exact_sy_for_pt(bob(), small_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(bob(), small_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out > 0, 'Small swap works');
@@ -583,7 +583,7 @@ fn test_mixed_operation_sizes() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, charlie());
-    let pt_out_medium = market.swap_exact_sy_for_pt(charlie(), medium_amount, 0);
+    let pt_out_medium = market.swap_exact_sy_for_pt(charlie(), medium_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out_medium > 0, 'Medium swap works');

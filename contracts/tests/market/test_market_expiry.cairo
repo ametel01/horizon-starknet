@@ -281,7 +281,7 @@ fn test_swap_at_exact_expiry_fails() {
 
     // This swap should fail - market is expired
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_sy_for_pt(user, 10 * WAD, 0);
+    market.swap_exact_sy_for_pt(user, 10 * WAD, 0, array![].span());
     // Should not reach here
 }
 
@@ -327,7 +327,7 @@ fn test_swap_one_second_before_expiry_succeeds() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    let pt_out = market.swap_exact_sy_for_pt(user, 10 * WAD, 0);
+    let pt_out = market.swap_exact_sy_for_pt(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out > 0, 'Should swap before expiry');
@@ -378,7 +378,7 @@ fn test_swap_pt_for_sy_at_exact_expiry_fails() {
 
     // This swap should fail - market is expired
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     // Should not reach here
 }
 

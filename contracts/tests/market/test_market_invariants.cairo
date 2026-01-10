@@ -300,7 +300,7 @@ fn test_invariant_pool_not_empty_after_swap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let (sy_reserve, pt_reserve) = market.get_reserves();
@@ -453,7 +453,7 @@ fn test_invariant_proportion_after_pt_heavy_swap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 50 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 50 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let state = get_market_state(market);
@@ -479,7 +479,7 @@ fn test_invariant_proportion_after_sy_heavy_swap() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_sy_for_pt(user, 10 * WAD, 0);
+    market.swap_exact_sy_for_pt(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let state = get_market_state(market);
@@ -574,7 +574,7 @@ fn test_invariant_exchange_rate_floor_after_swap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 30 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 30 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let state = get_market_state(market);
@@ -637,7 +637,7 @@ fn test_invariant_exchange_rate_floor_with_imbalanced_pool() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_sy_for_pt(user, 10 * WAD, 0);
+    market.swap_exact_sy_for_pt(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let state = get_market_state(market);
@@ -678,7 +678,7 @@ fn test_invariant_fees_non_negative_pt_for_sy() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -702,7 +702,7 @@ fn test_invariant_fees_non_negative_sy_for_pt() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_sy_for_pt(user, 10 * WAD, 0);
+    market.swap_exact_sy_for_pt(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -727,7 +727,7 @@ fn test_invariant_fees_accumulate_correctly() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_1 = market.get_total_fees_collected();
@@ -736,7 +736,7 @@ fn test_invariant_fees_accumulate_correctly() {
 
     // Swap 2
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_2 = market.get_total_fees_collected();
@@ -763,7 +763,7 @@ fn test_invariant_no_free_value_pt_for_sy() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, pt_in, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, pt_in, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // PT trades at a discount to SY (PT < SY), so sy_out should be less than pt_in
@@ -786,7 +786,7 @@ fn test_invariant_no_free_value_sy_for_pt() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    let pt_out = market.swap_exact_sy_for_pt(user, sy_in, 0);
+    let pt_out = market.swap_exact_sy_for_pt(user, sy_in, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Since PT trades at discount, you should get MORE PT for SY
@@ -814,7 +814,7 @@ fn test_invariant_no_free_value_exact_output_swaps() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_spent = market.swap_sy_for_exact_pt(user, exact_pt_out, 100 * WAD);
+    let sy_spent = market.swap_sy_for_exact_pt(user, exact_pt_out, 100 * WAD, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // You should spend positive SY to get PT
@@ -842,7 +842,7 @@ fn test_invariant_no_free_value_pt_for_exact_sy() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    let pt_spent = market.swap_pt_for_exact_sy(user, exact_sy_out, 100 * WAD);
+    let pt_spent = market.swap_pt_for_exact_sy(user, exact_sy_out, 100 * WAD, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // You should spend positive PT to get SY
@@ -875,7 +875,7 @@ fn test_slippage_protection_pt_for_sy() {
     start_cheat_caller_address(market.contract_address, user);
     // Request unreasonably high min_sy_out (should fail)
     // Swapping 10 WAD PT cannot yield 100 WAD SY
-    market.swap_exact_pt_for_sy(user, pt_in, 100 * WAD);
+    market.swap_exact_pt_for_sy(user, pt_in, 100 * WAD, array![].span());
     // Should not reach here
 }
 
@@ -898,7 +898,7 @@ fn test_slippage_protection_sy_for_pt() {
     start_cheat_caller_address(market.contract_address, user);
     // Request unreasonably high min_pt_out (should fail)
     // Swapping 10 WAD SY cannot yield 100 WAD PT
-    market.swap_exact_sy_for_pt(user, sy_in, 100 * WAD);
+    market.swap_exact_sy_for_pt(user, sy_in, 100 * WAD, array![].span());
     // Should not reach here
 }
 
@@ -919,7 +919,7 @@ fn test_slippage_protection_accepts_reasonable_min() {
 
     start_cheat_caller_address(market.contract_address, user);
     // 1 WAD is reasonable since PT trades at discount to SY
-    let sy_out = market.swap_exact_pt_for_sy(user, pt_in, WAD);
+    let sy_out = market.swap_exact_pt_for_sy(user, pt_in, WAD, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_out >= WAD, 'Should meet min_sy_out');
@@ -949,9 +949,9 @@ fn test_compound_invariants_after_multiple_swaps() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
-    market.swap_exact_sy_for_pt(user, 8 * WAD, 0);
-    market.swap_exact_pt_for_sy(user, 5 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
+    market.swap_exact_sy_for_pt(user, 8 * WAD, 0, array![].span());
+    market.swap_exact_pt_for_sy(user, 5 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Check all invariants
@@ -1007,7 +1007,7 @@ fn test_compound_invariants_multi_user_operations() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user1());
-    market.swap_exact_pt_for_sy(user1(), 20 * WAD, 0);
+    market.swap_exact_pt_for_sy(user1(), 20 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // User 2 swaps in opposite direction
@@ -1016,7 +1016,7 @@ fn test_compound_invariants_multi_user_operations() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, user2());
-    market.swap_exact_sy_for_pt(user2(), 15 * WAD, 0);
+    market.swap_exact_sy_for_pt(user2(), 15 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // User 1 removes some liquidity
@@ -1054,7 +1054,7 @@ fn test_compound_invariants_near_expiry() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, 10 * WAD, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Near expiry, PT approaches 1:1 with SY

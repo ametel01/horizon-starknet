@@ -268,7 +268,7 @@ fn test_swap_10_percent_of_reserve_pt_for_sy() {
     let sy_before = sy.balance_of(trader);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Verify trade succeeded
@@ -305,7 +305,7 @@ fn test_swap_10_percent_of_reserve_sy_for_pt() {
     let pt_before = pt.balance_of(trader);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out > 0, 'Should receive PT');
@@ -340,7 +340,7 @@ fn test_swap_50_percent_of_reserve_pt_for_sy() {
     let sy_before = sy.balance_of(trader);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Trade should succeed
@@ -383,7 +383,7 @@ fn test_swap_50_percent_of_reserve_sy_for_pt() {
 
     // With realistic flat curve, 50% trades succeed
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Trade should succeed with significant output
@@ -420,7 +420,7 @@ fn test_swap_90_percent_of_reserve_pt_for_sy() {
     // - SY is being withdrawn (SY reserve decreases)
     // - The check is sy_out_before_fee < sy_reserve (which should fail for 90% output)
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // If we get here, trade succeeded
@@ -459,7 +459,7 @@ fn test_swap_90_percent_of_reserve_sy_for_pt() {
 
     // With flat curve, large trades succeed but with significant price impact
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Trade should succeed
@@ -492,7 +492,7 @@ fn test_swap_exact_sy_exceeds_pt_reserve() {
 
     start_cheat_caller_address(market.contract_address, trader);
     // swap_sy_for_exact_pt should check if exact_pt_out < pt_reserve
-    market.swap_sy_for_exact_pt(trader, exact_pt_wanted, 500 * WAD);
+    market.swap_sy_for_exact_pt(trader, exact_pt_wanted, 500 * WAD, array![].span());
 }
 
 /// Test: Swap exceeds reserve (trying to get more SY than exists)
@@ -520,7 +520,7 @@ fn test_swap_exact_pt_exceeds_sy_reserve() {
 
     start_cheat_caller_address(market.contract_address, trader);
     // swap_pt_for_exact_sy should check if exact_sy_out < sy_reserve
-    market.swap_pt_for_exact_sy(trader, exact_sy_wanted, 500 * WAD);
+    market.swap_pt_for_exact_sy(trader, exact_sy_wanted, 500 * WAD, array![].span());
 }
 
 /// Test: Binary search convergence for large trades
@@ -549,7 +549,7 @@ fn test_binary_search_convergence_large_trade() {
     let pt_before = pt.balance_of(trader);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Convergence check: trade completed successfully
@@ -583,7 +583,7 @@ fn test_binary_search_small_trade_large_pool() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Small trades should still work
@@ -615,7 +615,7 @@ fn test_sequential_large_trades() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_out1 = market.swap_exact_pt_for_sy(trader, swap1, 0);
+    let sy_out1 = market.swap_exact_pt_for_sy(trader, swap1, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_out1 > 0, 'First trade should work');
@@ -628,7 +628,7 @@ fn test_sequential_large_trades() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out2 = market.swap_exact_sy_for_pt(trader, swap2, 0);
+    let pt_out2 = market.swap_exact_sy_for_pt(trader, swap2, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out2 > 0, 'Second trade should work');
@@ -641,7 +641,7 @@ fn test_sequential_large_trades() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_out3 = market.swap_exact_pt_for_sy(trader, swap3, 0);
+    let sy_out3 = market.swap_exact_pt_for_sy(trader, swap3, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_out3 > 0, 'Third trade should work');
@@ -690,7 +690,7 @@ fn test_trade_approaching_max_proportion() {
 
     start_cheat_caller_address(market.contract_address, trader);
     // This should work but with very bad rate due to proportion limits
-    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Trade should succeed but with poor price
@@ -736,7 +736,7 @@ fn test_trade_approaching_min_proportion() {
     let pt_before = pt.balance_of(trader);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // With flat curve, trade succeeds
@@ -779,7 +779,7 @@ fn test_large_pool_no_overflow() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(trader, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_out > 0, 'Large trade should work');
@@ -813,7 +813,7 @@ fn test_exact_output_large_amount() {
     let pt_before = pt.balance_of(trader);
 
     start_cheat_caller_address(market.contract_address, trader);
-    let sy_spent = market.swap_sy_for_exact_pt(trader, exact_pt_out, max_sy_in);
+    let sy_spent = market.swap_sy_for_exact_pt(trader, exact_pt_out, max_sy_in, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Should get exactly the PT requested
@@ -847,5 +847,5 @@ fn test_large_trade_slippage_protection() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, trader);
-    market.swap_exact_pt_for_sy(trader, swap_amount, unrealistic_min);
+    market.swap_exact_pt_for_sy(trader, swap_amount, unrealistic_min, array![].span());
 }

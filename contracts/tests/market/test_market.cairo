@@ -538,7 +538,7 @@ fn test_swap_exact_pt_for_sy() {
     let sy_before = sy.balance_of(user);
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Verify received SY
@@ -580,7 +580,7 @@ fn test_swap_exact_sy_for_pt() {
     let pt_before = pt.balance_of(user);
 
     start_cheat_caller_address(market.contract_address, user);
-    let pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Verify received PT
@@ -620,7 +620,7 @@ fn test_swap_sy_for_exact_pt() {
     let sy_before = sy.balance_of(user);
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_spent = market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in);
+    let sy_spent = market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Verify got exact PT
@@ -664,7 +664,7 @@ fn test_swap_pt_for_exact_sy() {
     let pt_before = pt.balance_of(user);
 
     start_cheat_caller_address(market.contract_address, user);
-    let pt_spent = market.swap_pt_for_exact_sy(user, exact_sy_out, max_pt_in);
+    let pt_spent = market.swap_pt_for_exact_sy(user, exact_sy_out, max_pt_in, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Verify got exact SY
@@ -704,7 +704,7 @@ fn test_swap_slippage_exceeded() {
 
     start_cheat_caller_address(market.contract_address, user);
     // Expect at least 100 WAD SY for 1 WAD PT - should fail
-    market.swap_exact_pt_for_sy(user, WAD, 100 * WAD);
+    market.swap_exact_pt_for_sy(user, WAD, 100 * WAD, array![].span());
 }
 
 // ============ Expiry Tests ============
@@ -739,7 +739,7 @@ fn test_swap_after_expiry() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, WAD, 0);
+    market.swap_exact_pt_for_sy(user, WAD, 0, array![].span());
 }
 
 // ============ Implied Rate Tests ============
@@ -799,7 +799,7 @@ fn test_implied_rate_changes_with_swap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, 20 * WAD, 0);
+    market.swap_exact_pt_for_sy(user, 20 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let rate_after = market.get_ln_implied_rate();
@@ -859,7 +859,7 @@ fn test_multiple_users_swap() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, user2_addr);
-    let sy_out = market.swap_exact_pt_for_sy(user2_addr, 10 * WAD, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user2_addr, 10 * WAD, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_out > 0, 'User2 should get SY');

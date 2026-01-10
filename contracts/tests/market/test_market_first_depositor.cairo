@@ -1039,7 +1039,7 @@ fn test_ln_implied_rate_updates_after_swaps() {
     // Perform a swap: sell SY for PT
     // This reduces PT in pool (proportion decreases), potentially changing rate
     start_cheat_caller_address(market.contract_address, user);
-    let _pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0);
+    let _pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let rate_after_swap = market.get_ln_implied_rate();

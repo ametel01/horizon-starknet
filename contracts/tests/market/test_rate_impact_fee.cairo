@@ -443,7 +443,7 @@ fn test_small_trade_minimal_rate_impact_fee() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, small_swap, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, small_swap, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -479,7 +479,7 @@ fn test_large_trade_higher_rate_impact_fee() {
 
     let fees_before_small = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out_small = market.swap_exact_pt_for_sy(user, small_swap, 0);
+    let sy_out_small = market.swap_exact_pt_for_sy(user, small_swap, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_small = market.get_total_fees_collected();
     let small_trade_fee = fees_after_small - fees_before_small;
@@ -495,7 +495,7 @@ fn test_large_trade_higher_rate_impact_fee() {
     let large_swap = 100 * WAD;
     let fees_before_large = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out_large = market.swap_exact_pt_for_sy(user, large_swap, 0);
+    let sy_out_large = market.swap_exact_pt_for_sy(user, large_swap, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_large = market.get_total_fees_collected();
     let large_trade_fee = fees_after_large - fees_before_large;
@@ -538,7 +538,7 @@ fn test_rate_impact_fee_with_zero_sensitivity() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -578,7 +578,7 @@ fn test_rate_impact_fee_both_swap_directions() {
 
     let fees_before_pt_sy = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    let _sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let _sy_out = market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_pt_sy = market.get_total_fees_collected();
     let pt_to_sy_fee = fees_after_pt_sy - fees_before_pt_sy;
@@ -590,7 +590,7 @@ fn test_rate_impact_fee_both_swap_directions() {
 
     let fees_before_sy_pt = market.get_total_fees_collected();
     start_cheat_caller_address(market.contract_address, user);
-    let _pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0);
+    let _pt_out = market.swap_exact_sy_for_pt(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_sy_pt = market.get_total_fees_collected();
     let sy_to_pt_fee = fees_after_sy_pt - fees_before_sy_pt;
@@ -621,19 +621,19 @@ fn test_rate_impact_fee_accumulates_correctly() {
 
     // Do 3 consecutive swaps
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_1 = market.get_total_fees_collected();
     let fee_1 = fees_after_1 - fees_start;
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_2 = market.get_total_fees_collected();
     let fee_2 = fees_after_2 - fees_after_1;
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
     let fees_after_3 = market.get_total_fees_collected();
     let fee_3 = fees_after_3 - fees_after_2;
@@ -671,7 +671,7 @@ fn test_rate_impact_fee_exact_output_swap() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    let sy_used = market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in);
+    let sy_used = market.swap_sy_for_exact_pt(user, exact_pt_out, max_sy_in, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -705,7 +705,7 @@ fn test_factory_sensitivity_propagates_to_market() {
     let fees_before = market.get_total_fees_collected();
 
     start_cheat_caller_address(market.contract_address, user);
-    market.swap_exact_pt_for_sy(user, swap_amount, 0);
+    market.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     let fees_after = market.get_total_fees_collected();
@@ -744,7 +744,7 @@ fn test_rate_impact_fee_high_sensitivity() {
 
     let fees_before_low = market1.get_total_fees_collected();
     start_cheat_caller_address(market1.contract_address, user);
-    let sy_out_low = market1.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out_low = market1.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market1.contract_address);
     let fees_after_low = market1.get_total_fees_collected();
     let fee_low = fees_after_low - fees_before_low;
@@ -756,7 +756,7 @@ fn test_rate_impact_fee_high_sensitivity() {
 
     let fees_before_high = market2.get_total_fees_collected();
     start_cheat_caller_address(market2.contract_address, user);
-    let sy_out_high = market2.swap_exact_pt_for_sy(user, swap_amount, 0);
+    let sy_out_high = market2.swap_exact_pt_for_sy(user, swap_amount, 0, array![].span());
     stop_cheat_caller_address(market2.contract_address);
     let fees_after_high = market2.get_total_fees_collected();
     let fee_high = fees_after_high - fees_before_high;

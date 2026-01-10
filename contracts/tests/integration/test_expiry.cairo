@@ -499,7 +499,7 @@ fn test_market_no_swaps_after_expiry() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    market.swap_exact_sy_for_pt(bob(), 50 * WAD, 0); // Should panic
+    market.swap_exact_sy_for_pt(bob(), 50 * WAD, 0, array![].span()); // Should panic
 }
 
 #[test]

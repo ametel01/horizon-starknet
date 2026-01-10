@@ -610,10 +610,16 @@ pub mod Market {
         /// @param receiver Address to receive SY
         /// @param exact_pt_in Exact amount of PT to sell
         /// @param min_sy_out Minimum SY to receive (slippage protection)
+        /// @param callback_data Optional callback data (empty span = no callback)
         /// @return Amount of SY received
         fn swap_exact_pt_for_sy(
-            ref self: ContractState, receiver: ContractAddress, exact_pt_in: u256, min_sy_out: u256,
+            ref self: ContractState,
+            receiver: ContractAddress,
+            exact_pt_in: u256,
+            min_sy_out: u256,
+            callback_data: Span<felt252>,
         ) -> u256 {
+            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -694,10 +700,16 @@ pub mod Market {
         /// @param receiver Address to receive PT
         /// @param exact_pt_out Exact amount of PT to buy
         /// @param max_sy_in Maximum SY to spend (slippage protection)
+        /// @param callback_data Optional callback data (empty span = no callback)
         /// @return Amount of SY spent
         fn swap_sy_for_exact_pt(
-            ref self: ContractState, receiver: ContractAddress, exact_pt_out: u256, max_sy_in: u256,
+            ref self: ContractState,
+            receiver: ContractAddress,
+            exact_pt_out: u256,
+            max_sy_in: u256,
+            callback_data: Span<felt252>,
         ) -> u256 {
+            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -778,10 +790,16 @@ pub mod Market {
         /// @param receiver Address to receive PT
         /// @param exact_sy_in Exact amount of SY to sell
         /// @param min_pt_out Minimum PT to receive (slippage protection)
+        /// @param callback_data Optional callback data (empty span = no callback)
         /// @return Amount of PT received
         fn swap_exact_sy_for_pt(
-            ref self: ContractState, receiver: ContractAddress, exact_sy_in: u256, min_pt_out: u256,
+            ref self: ContractState,
+            receiver: ContractAddress,
+            exact_sy_in: u256,
+            min_pt_out: u256,
+            callback_data: Span<felt252>,
         ) -> u256 {
+            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
@@ -861,10 +879,16 @@ pub mod Market {
         /// @param receiver Address to receive SY
         /// @param exact_sy_out Exact amount of SY to buy
         /// @param max_pt_in Maximum PT to spend (slippage protection)
+        /// @param callback_data Optional callback data (empty span = no callback)
         /// @return Amount of PT spent
         fn swap_pt_for_exact_sy(
-            ref self: ContractState, receiver: ContractAddress, exact_sy_out: u256, max_pt_in: u256,
+            ref self: ContractState,
+            receiver: ContractAddress,
+            exact_sy_out: u256,
+            max_pt_in: u256,
+            callback_data: Span<felt252>,
         ) -> u256 {
+            // Note: callback_data is accepted but not yet invoked (next step)
             self.pausable.assert_not_paused();
             assert(!self.is_expired(), Errors::MARKET_EXPIRED);
             assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
