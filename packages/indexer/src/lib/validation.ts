@@ -1,7 +1,7 @@
 /**
  * Zod validation schemas for Starknet event data
  *
- * Provides runtime validation for all 24 event types indexed by Horizon Protocol.
+ * Provides runtime validation for all event types indexed by Horizon Protocol.
  * Validation catches malformed events early, preventing silent data corruption.
  *
  * Schema naming convention: {Contract}{EventName}Schema
@@ -418,7 +418,7 @@ export const ytPyIndexUpdatedSchema = baseEventSchema.extend({
 });
 
 // ============================================================
-// MARKET EVENTS (6 schemas)
+// MARKET EVENTS (8 schemas)
 // ============================================================
 
 /**
@@ -441,6 +441,22 @@ export const marketMintSchema = baseEventSchema.extend({
 export const marketBurnSchema = baseEventSchema.extend({
   keys: z.array(z.string()).min(4, "Burn requires at least 4 keys"),
   data: z.array(z.string()).min(18, "Burn requires at least 18 data elements"),
+});
+
+/**
+ * Market.BurnWithReceivers event
+ * keys: [selector, sender, receiver_sy, receiver_pt]
+ * data: [expiry, sy, pt, lp_amount(u256), sy_amount(u256), pt_amount(u256), exchange_rate(u256),
+ *        implied_rate(u256), sy_reserve_after(u256), pt_reserve_after(u256), total_lp_after(u256), timestamp]
+ * Total: 3 + (8 * 2) + 1 = 20 data elements
+ */
+export const marketBurnWithReceiversSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(4, "BurnWithReceivers requires at least 4 keys"),
+  data: z
+    .array(z.string())
+    .min(20, "BurnWithReceivers requires at least 20 data elements"),
 });
 
 /**
@@ -513,7 +529,53 @@ export const marketReserveFeeTransferredSchema = baseEventSchema.extend({
 });
 
 // ============================================================
-// ROUTER EVENTS (6 schemas)
+// MARKET LP REWARD EVENTS (3 schemas)
+// ============================================================
+
+/**
+ * Market LP RewardsClaimed event (from RewardManager component)
+ * keys: [selector, user, reward_token]
+ * data: [amount(u256), timestamp]
+ */
+export const marketRewardsClaimedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(3, "Market RewardsClaimed requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(3, "Market RewardsClaimed requires at least 3 data elements"),
+});
+
+/**
+ * Market LP RewardIndexUpdated event (from RewardManager component)
+ * keys: [selector, reward_token]
+ * data: [old_index(u256), new_index(u256), rewards_added(u256), total_supply(u256), timestamp]
+ */
+export const marketRewardIndexUpdatedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(2, "Market RewardIndexUpdated requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(9, "Market RewardIndexUpdated requires at least 9 data elements"),
+});
+
+/**
+ * Market LP RewardTokenAdded event (from RewardManager component)
+ * keys: [selector, reward_token]
+ * data: [index, timestamp]
+ */
+export const marketRewardTokenAddedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(2, "Market RewardTokenAdded requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(2, "Market RewardTokenAdded requires at least 2 data elements"),
+});
+
+// ============================================================
+// ROUTER EVENTS (7 schemas)
 // ============================================================
 
 /**
@@ -582,6 +644,18 @@ export const routerSwapYTSchema = baseEventSchema.extend({
   data: z
     .array(z.string())
     .min(10, "SwapYT requires at least 10 data elements"),
+});
+
+/**
+ * Router.RolloverLP event
+ * keys: [selector, sender, receiver]
+ * data: [market_old, market_new, lp_burned(u256), lp_minted(u256)]
+ */
+export const routerRolloverLPSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "RolloverLP requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(6, "RolloverLP requires at least 6 data elements"),
 });
 
 // ============================================================
@@ -741,11 +815,17 @@ export const eventSchemas = {
   // Market
   Mint: marketMintSchema,
   Burn: marketBurnSchema,
+  BurnWithReceivers: marketBurnWithReceiversSchema,
   "Market.Swap": marketSwapSchema,
   ImpliedRateUpdated: marketImpliedRateUpdatedSchema,
   FeesCollected: marketFeesCollectedSchema,
   ScalarRootUpdated: marketScalarRootUpdatedSchema,
   ReserveFeeTransferred: marketReserveFeeTransferredSchema,
+
+  // Market LP Rewards
+  "Market.RewardsClaimed": marketRewardsClaimedSchema,
+  "Market.RewardIndexUpdated": marketRewardIndexUpdatedSchema,
+  "Market.RewardTokenAdded": marketRewardTokenAddedSchema,
 
   // Router
   "Router.MintPY": routerMintPYSchema,
@@ -754,4 +834,5 @@ export const eventSchemas = {
   RemoveLiquidity: routerRemoveLiquiditySchema,
   "Router.Swap": routerSwapSchema,
   SwapYT: routerSwapYTSchema,
+  RolloverLP: routerRolloverLPSchema,
 } as const;
