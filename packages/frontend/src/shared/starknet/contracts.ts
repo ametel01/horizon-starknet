@@ -79,6 +79,18 @@ export function getRouterContract(
 }
 
 // Dynamic contracts (address provided at runtime)
+/**
+ * Creates a typed Market contract instance.
+ *
+ * Market contracts include reward distribution methods:
+ * - get_reward_tokens() - Get list of reward token addresses
+ * - accrued_rewards(user) - Get pending rewards for user
+ * - claim_rewards(user) - Claim rewards for user
+ * - reward_index(token) - Get global reward index for a token
+ * - user_reward_index(user, token) - Get user's reward index
+ * - is_reward_token(token) - Check if token is a reward token
+ * - reward_tokens_count() - Get number of reward tokens
+ */
 export function getMarketContract(
   address: string,
   providerOrAccount: ProviderOrAccount
