@@ -6,7 +6,7 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 44 event tables across 6 contracts
+ * Total: 45 event tables across 6 contracts
  * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
  */
 
@@ -1449,7 +1449,7 @@ export const marketRewardTokenAdded = pgTable(
 );
 
 // ============================================================
-// ROUTER EVENTS (6 tables)
+// ROUTER EVENTS (7 tables)
 // ============================================================
 
 export const routerMintPY = pgTable(
@@ -1627,6 +1627,37 @@ export const routerSwapYT = pgTable(
     index("router_swap_yt_yt_idx").on(table.yt),
     index("router_swap_yt_timestamp_idx").on(table.block_timestamp),
     uniqueIndex("router_swap_yt_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const routerRolloverLp = pgTable(
+  "router_rollover_lp",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    sender: text("sender").notNull(),
+    receiver: text("receiver").notNull(),
+    // Event data
+    market_old: text("market_old").notNull(),
+    market_new: text("market_new").notNull(),
+    lp_burned: numeric("lp_burned", { precision: 78, scale: 0 }).notNull(),
+    lp_minted: numeric("lp_minted", { precision: 78, scale: 0 }).notNull(),
+  },
+  (table) => [
+    index("router_rollover_sender_idx").on(table.sender),
+    index("router_rollover_receiver_idx").on(table.receiver),
+    index("router_rollover_market_old_idx").on(table.market_old),
+    index("router_rollover_market_new_idx").on(table.market_new),
+    index("router_rollover_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_rollover_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index
