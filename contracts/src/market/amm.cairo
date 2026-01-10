@@ -164,6 +164,7 @@ pub mod Market {
         FeesCollected: FeesCollected,
         ReserveFeeTransferred: ReserveFeeTransferred,
         ScalarRootUpdated: ScalarRootUpdated,
+        Skim: Skim,
         #[flat]
         RewardManagerEvent: RewardManagerComponent::Event,
     }
@@ -308,6 +309,20 @@ pub mod Market {
         pub market: ContractAddress,
         pub old_value: u256,
         pub new_value: u256,
+        pub timestamp: u64,
+    }
+
+    /// Event emitted when reserves are reconciled with actual balances via skim()
+    #[derive(Drop, starknet::Event)]
+    pub struct Skim {
+        #[key]
+        pub market: ContractAddress,
+        #[key]
+        pub caller: ContractAddress,
+        pub sy_excess: u256, // SY tokens added to reserves
+        pub pt_excess: u256, // PT tokens added to reserves
+        pub sy_reserve_after: u256,
+        pub pt_reserve_after: u256,
         pub timestamp: u64,
     }
 
@@ -1296,6 +1311,56 @@ pub mod Market {
                         market: get_contract_address(),
                         old_value,
                         new_value: new_scalar_root,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+        }
+
+        /// Reconcile reserve accounting with actual token balances
+        /// If actual balance > stored reserve, the excess is donated to reserves (benefits LPs)
+        /// This recovers tokens that were accidentally sent directly to the contract
+        fn skim(ref self: ContractState) {
+            self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
+
+            let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
+
+            let actual_sy = sy_contract.balance_of(get_contract_address());
+            let actual_pt = pt_contract.balance_of(get_contract_address());
+
+            let stored_sy = self.sy_reserve.read();
+            let stored_pt = self.pt_reserve.read();
+
+            // Calculate excess amounts
+            let sy_excess = if actual_sy > stored_sy {
+                actual_sy - stored_sy
+            } else {
+                0
+            };
+            let pt_excess = if actual_pt > stored_pt {
+                actual_pt - stored_pt
+            } else {
+                0
+            };
+
+            // If actual > stored, donate excess to reserves (benefits LPs)
+            if sy_excess > 0 {
+                self.sy_reserve.write(actual_sy);
+            }
+            if pt_excess > 0 {
+                self.pt_reserve.write(actual_pt);
+            }
+
+            // Emit event for auditability (even if no excess found)
+            self
+                .emit(
+                    Skim {
+                        market: get_contract_address(),
+                        caller: get_caller_address(),
+                        sy_excess,
+                        pt_excess,
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
                         timestamp: get_block_timestamp(),
                     },
                 );

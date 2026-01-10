@@ -1,4 +1,6 @@
-use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
+use horizon::interfaces::i_market::{
+    IMarketAdminDispatcher, IMarketAdminDispatcherTrait, IMarketDispatcher, IMarketDispatcherTrait,
+};
 use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
@@ -1032,4 +1034,121 @@ fn test_multiple_users_swap() {
 
     assert(sy_back > 0, 'User1 should get SY');
     assert(pt_back > 0, 'User1 should get PT');
+}
+
+// ============ Skim Tests ============
+
+#[test]
+fn test_skim() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity first
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Get reserves before accidental transfer
+    let (sy_reserve_before, pt_reserve_before) = market.get_reserves();
+
+    // Simulate accidental transfer of tokens directly to market
+    let extra_sy = 5 * WAD;
+    let extra_pt = 3 * WAD;
+
+    // Transfer SY directly to market (simulating accidental transfer)
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(market.contract_address, extra_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Transfer PT directly to market (simulating accidental transfer)
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.transfer(market.contract_address, extra_pt);
+    stop_cheat_caller_address(pt.contract_address);
+
+    // Reserves should still be the same (not updated)
+    let (sy_reserve_mid, pt_reserve_mid) = market.get_reserves();
+    assert(sy_reserve_mid == sy_reserve_before, 'SY reserve should be unchanged');
+    assert(pt_reserve_mid == pt_reserve_before, 'PT reserve should be unchanged');
+
+    // Admin calls skim to reconcile reserves with actual balances
+    let market_admin = IMarketAdminDispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, admin());
+    market_admin.skim();
+    stop_cheat_caller_address(market.contract_address);
+
+    // Reserves should now reflect the actual balances
+    let (sy_reserve_after, pt_reserve_after) = market.get_reserves();
+    assert(sy_reserve_after == sy_reserve_before + extra_sy, 'SY reserve not updated');
+    assert(pt_reserve_after == pt_reserve_before + extra_pt, 'PT reserve not updated');
+}
+
+#[test]
+fn test_skim_no_excess() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    let (sy_reserve_before, pt_reserve_before) = market.get_reserves();
+
+    // Call skim when there's no excess - should be a no-op
+    let market_admin = IMarketAdminDispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, admin());
+    market_admin.skim();
+    stop_cheat_caller_address(market.contract_address);
+
+    // Reserves should be unchanged
+    let (sy_reserve_after, pt_reserve_after) = market.get_reserves();
+    assert(sy_reserve_after == sy_reserve_before, 'SY reserve should be same');
+    assert(pt_reserve_after == pt_reserve_before, 'PT reserve should be same');
+}
+
+#[test]
+#[should_panic(expected: 'Caller is missing role')]
+fn test_skim_unauthorized() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Non-admin user tries to call skim - should fail
+    let market_admin = IMarketAdminDispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, user);
+    market_admin.skim();
 }

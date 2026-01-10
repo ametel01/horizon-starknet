@@ -119,6 +119,12 @@ pub trait IMarketAdmin<TContractState> {
     /// Typical values: 0.01-0.5 WAD (10^16 to 5*10^17)
     /// @param new_scalar_root New scalar root value in WAD
     fn set_scalar_root(ref self: TContractState, new_scalar_root: u256);
+
+    /// Reconcile reserve accounting with actual token balances
+    /// Recovers tokens accidentally sent to the contract by donating excess to reserves
+    /// This benefits LPs by increasing the value of their LP tokens
+    /// Can only be called by admin (DEFAULT_ADMIN_ROLE)
+    fn skim(ref self: TContractState);
 }
 
 /// TWAP Oracle interface for Market
