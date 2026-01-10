@@ -24,6 +24,7 @@ pub trait IMarketFactory<TContractState> {
     /// @param initial_anchor Initial ln(implied rate) (in WAD)
     /// @param ln_fee_rate_root Log fee rate root (Pendle-style) in WAD
     /// @param reserve_fee_percent Reserve fee in base-100 (0-100), sent to treasury
+    /// @param reward_tokens Span of reward token addresses for LP rewards
     /// @return The address of the created market
     fn create_market(
         ref self: TContractState,
@@ -32,6 +33,7 @@ pub trait IMarketFactory<TContractState> {
         initial_anchor: u256,
         ln_fee_rate_root: u256,
         reserve_fee_percent: u8,
+        reward_tokens: Span<ContractAddress>,
     ) -> ContractAddress;
 
     /// Get the market address for a given PT

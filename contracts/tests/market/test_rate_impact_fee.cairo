@@ -203,7 +203,8 @@ fn setup_with_factory(
             default_scalar_root(),
             default_initial_anchor(),
             default_fee_rate(),
-            0 // reserve_fee_percent
+            0, // reserve_fee_percent
+            array![].span(),
         );
     stop_cheat_caller_address(factory.contract_address);
 

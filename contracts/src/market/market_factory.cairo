@@ -207,6 +207,7 @@ pub mod MarketFactory {
         /// @param initial_anchor Initial ln(implied rate) (in WAD)
         /// @param ln_fee_rate_root Log fee rate root (Pendle-style) in WAD
         /// @param reserve_fee_percent Reserve fee in base-100 (0-100), sent to treasury
+        /// @param reward_tokens Span of reward token addresses for LP rewards
         /// @return The address of the created market
         fn create_market(
             ref self: ContractState,
@@ -215,6 +216,7 @@ pub mod MarketFactory {
             initial_anchor: u256,
             ln_fee_rate_root: u256,
             reserve_fee_percent: u8,
+            reward_tokens: Span<ContractAddress>,
         ) -> ContractAddress {
             // Validate PT address
             assert(!pt.is_zero(), Errors::ZERO_ADDRESS);
@@ -297,8 +299,12 @@ pub mod MarketFactory {
             calldata.append(get_contract_address().into());
 
             // reward_tokens (Span<ContractAddress> = array length + elements)
-            // Pass empty array for now - reward functionality can be added later
-            calldata.append(0); // array length = 0
+            calldata.append(reward_tokens.len().into());
+            let mut i = 0;
+            while i < reward_tokens.len() {
+                calldata.append((*reward_tokens.at(i)).into());
+                i += 1;
+            };
 
             // Deploy Market contract
             let salt: felt252 = count.low.into();
