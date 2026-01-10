@@ -471,7 +471,9 @@ fn test_market_factory_large_parameters() {
     let large_fee = 48_790_164_169_432_000_u256; // ln(1.05) WAD (maximum allowed)
 
     let market_addr = factory
-        .create_market(pt.contract_address, large_scalar, large_anchor, large_fee, 0, array![].span());
+        .create_market(
+            pt.contract_address, large_scalar, large_anchor, large_fee, 0, array![].span(),
+        );
 
     assert(!market_addr.is_zero(), 'Should create market');
     assert(factory.is_valid_market(market_addr), 'Should be valid');
@@ -488,7 +490,9 @@ fn test_market_factory_small_parameters() {
     let small_fee = WAD / 10000; // 0.01% fee (small but valid)
 
     let market_addr = factory
-        .create_market(pt.contract_address, small_scalar, small_anchor, small_fee, 0, array![].span());
+        .create_market(
+            pt.contract_address, small_scalar, small_anchor, small_fee, 0, array![].span(),
+        );
 
     assert(!market_addr.is_zero(), 'Should create market');
     assert(factory.is_valid_market(market_addr), 'Should be valid');

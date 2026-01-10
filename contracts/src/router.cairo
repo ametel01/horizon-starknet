@@ -15,7 +15,6 @@ pub mod Router {
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
-    use horizon::libraries::math::{wad_div, wad_mul, WAD};
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
@@ -494,7 +493,7 @@ pub mod Router {
             sy_contract.approve(market, optimal_sy_to_swap);
             let pt_received = market_contract
                 .swap_exact_sy_for_pt(
-                    this, optimal_sy_to_swap, 0, // No min check here, final slippage check at end
+                    this, optimal_sy_to_swap, 0 // No min check here, final slippage check at end
                 );
 
             // 4. Add liquidity with remaining SY + received PT
@@ -502,7 +501,8 @@ pub mod Router {
             sy_contract.approve(market, sy_for_lp);
             pt_contract.approve(market, pt_received);
 
-            let (sy_used, pt_used, lp_minted) = market_contract.mint(receiver, sy_for_lp, pt_received);
+            let (sy_used, pt_used, lp_minted) = market_contract
+                .mint(receiver, sy_for_lp, pt_received);
 
             // 5. Slippage check
             assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
@@ -981,7 +981,7 @@ pub mod Router {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         /// Calculate optimal SY amount to swap for PT before adding liquidity
-        /// Uses a heuristic based on current reserve ratio
+        /// Uses binary search to find swap amount that fully utilizes all tokens
         /// @param amount_sy_total Total SY available
         /// @param reserves_sy Current SY reserves in market
         /// @param reserves_pt Current PT reserves in market
@@ -989,52 +989,105 @@ pub mod Router {
         fn _calc_optimal_swap_for_lp(
             ref self: ContractState, amount_sy_total: u256, reserves_sy: u256, reserves_pt: u256,
         ) -> u256 {
-            // Simple heuristic: swap approximately half the SY based on current reserves ratio
-            // A more sophisticated approach would use binary search, but this is a reasonable
-            // approximation that avoids excessive gas costs
-
-            // Target: after swap, we want (sy_remaining / pt_received) ≈ (reserves_sy /
-            // reserves_pt)
-            // Let x = amount to swap
-            // After swap: sy_remaining = amount_sy_total - x
-            // pt_received ≈ x * reserves_pt / (reserves_sy + x) (simplified constant product)
-            //
-            // For optimal ratio: (amount_sy_total - x) / pt_received ≈ reserves_sy / reserves_pt
-            // Solving: (amount_sy_total - x) * reserves_pt ≈ pt_received * reserves_sy
-            //
-            // Approximation: swap roughly half, adjusted by reserve ratio
-            // If reserves are balanced (1:1), swap ~50%
-            // If PT is scarce (reserves_pt < reserves_sy), swap less SY to get more PT value
-
+            // Edge case: empty pool, just swap half
             if reserves_sy == 0 || reserves_pt == 0 {
-                // Edge case: empty pool, swap half
                 return amount_sy_total / 2;
             }
 
-            // Calculate ratio = reserves_pt / reserves_sy (in WAD)
-            let ratio = wad_div(reserves_pt, reserves_sy);
-
-            // Optimal swap fraction ≈ 1 / (1 + sqrt(ratio))
-            // Simplified: if ratio = 1 (balanced), swap ~50%
-            // if ratio > 1 (more PT than SY), swap less
-            // if ratio < 1 (more SY than PT), swap more
-
-            // For simplicity, use a linear approximation:
-            // swap_fraction = 0.5 * (2 / (1 + ratio/WAD))
-            // = WAD / (WAD + ratio)
-
-            let denominator = WAD + ratio;
-            let swap_fraction = wad_div(WAD, denominator);
-
-            // optimal_swap = amount_sy_total * swap_fraction
-            let optimal_swap = wad_mul(amount_sy_total, swap_fraction);
-
-            // Ensure we don't swap more than we have
-            if optimal_swap > amount_sy_total {
-                amount_sy_total
-            } else {
-                optimal_swap
+            // Edge case: very small amount, just swap half to avoid precision issues
+            if amount_sy_total <= 1 {
+                return amount_sy_total / 2;
             }
+
+            // Binary search for optimal swap amount
+            let mut low: u256 = 0;
+            let mut high: u256 = amount_sy_total;
+            let max_iterations: u32 = 20; // ~1e-6 precision
+            let mut iteration: u32 = 0;
+
+            while iteration < max_iterations && high > low + 1 {
+                let mid = (low + high) / 2;
+
+                // If mid equals low, we can't make progress, break to avoid infinite loop
+                if mid == low {
+                    break;
+                }
+
+                // Simulate: swap `mid` SY for PT
+                let pt_out = self._estimate_swap_sy_for_pt(mid, reserves_sy, reserves_pt);
+
+                // If pt_out is zero, we can't proceed with this mid value
+                if pt_out == 0 {
+                    // No PT received means we need to swap more (but ensure we make progress)
+                    if mid > low {
+                        low = mid;
+                    }
+                    iteration += 1;
+                    continue;
+                }
+
+                let sy_remaining = amount_sy_total - mid;
+
+                // If we've swapped everything, this is too much
+                if sy_remaining == 0 {
+                    high = mid;
+                    iteration += 1;
+                    continue;
+                }
+
+                // Check if this ratio matches pool ratio
+                // sy_remaining / pt_out should equal reserves_sy / reserves_pt
+                // Cross-multiply to avoid division: sy_remaining * reserves_pt <=> pt_out *
+                // reserves_sy
+                // Note: These multiplications could overflow with very large reserves.
+                // In practice, reserves are bounded by realistic token amounts (< 2^128)
+                // so multiplication fits in u256. For added safety, we could use checked math
+                // but Cairo's default behavior will panic on overflow which is acceptable here.
+                let left = sy_remaining * reserves_pt;
+                let right = pt_out * reserves_sy;
+
+                if left < right {
+                    // Too much PT received, swap less SY
+                    high = mid;
+                } else {
+                    // Too little PT received, swap more SY
+                    low = mid;
+                }
+
+                iteration += 1;
+            }
+
+            low
+        }
+
+        /// Estimate PT received from swapping exact SY (without fees, approximate)
+        /// @param sy_in Amount of SY to swap
+        /// @param reserves_sy Current SY reserves in market
+        /// @param reserves_pt Current PT reserves in market
+        /// @return Estimated PT output
+        fn _estimate_swap_sy_for_pt(
+            ref self: ContractState, sy_in: u256, reserves_sy: u256, reserves_pt: u256,
+        ) -> u256 {
+            // Constant product approximation: (reserves_pt * sy_in) / (reserves_sy + sy_in)
+            // This is simplified; real swap uses logit curve + fees
+            // For optimization purposes, close enough
+            if sy_in == 0 {
+                return 0;
+            }
+
+            // Prevent overflow by checking if multiplication would exceed u256 max
+            // Use the identity: (a * b) / c = a / c * b when possible
+            // Or rearrange to avoid overflow: pt_out = reserves_pt / (1 + reserves_sy/sy_in)
+            let denominator = reserves_sy + sy_in;
+
+            // Guard against potential overflow in numerator
+            // If reserves_pt > u256::MAX / sy_in, we need to be careful
+            // Use checked operations by rearranging:
+            // pt_out = reserves_pt * (sy_in / denominator) + reserves_pt * (sy_in % denominator) /
+            // denominator But for simplicity, given protocol constraints, direct computation should
+            // be safe as reserves are bounded by realistic token amounts
+            let numerator = reserves_pt * sy_in;
+            numerator / denominator
         }
     }
 }

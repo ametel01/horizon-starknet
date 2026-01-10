@@ -304,7 +304,7 @@ pub mod MarketFactory {
             while i < reward_tokens.len() {
                 calldata.append((*reward_tokens.at(i)).into());
                 i += 1;
-            };
+            }
 
             // Deploy Market contract
             let salt: felt252 = count.low.into();

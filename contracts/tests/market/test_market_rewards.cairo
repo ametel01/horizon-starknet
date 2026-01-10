@@ -294,13 +294,13 @@ fn test_reward_initialization() {
     let tokens = market_rewards.get_reward_tokens();
     assert(tokens.len() == 1, 'Should have 1 reward token');
     assert(*tokens.at(0) == reward_token.contract_address, 'Wrong reward token address');
-    assert(
-        market_rewards.is_reward_token(reward_token.contract_address), 'Should be reward token',
-    );
+    assert(market_rewards.is_reward_token(reward_token.contract_address), 'Should be reward token');
     assert(market_rewards.reward_tokens_count() == 1, 'Count should be 1');
 
     // Verify initial reward index is WAD (as per RewardManager design)
-    assert(market_rewards.reward_index(reward_token.contract_address) == WAD, 'Initial index != WAD');
+    assert(
+        market_rewards.reward_index(reward_token.contract_address) == WAD, 'Initial index != WAD',
+    );
 }
 
 #[test]
@@ -310,9 +310,7 @@ fn test_reward_distribution() {
 
     // Setup market with reward token
     let reward_tokens = array![reward_token.contract_address].span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     let user = user1();
     setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
@@ -348,9 +346,7 @@ fn test_reward_accrual() {
 
     // Setup market with reward token
     let reward_tokens = array![reward_token.contract_address].span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     let user = user1();
     setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
@@ -394,9 +390,7 @@ fn test_reward_claiming() {
 
     // Setup market with reward token
     let reward_tokens = array![reward_token.contract_address].span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     let user = user1();
     setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
@@ -435,9 +429,7 @@ fn test_reward_transfer() {
 
     // Setup market with reward token
     let reward_tokens = array![reward_token.contract_address].span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     let user1_addr = user1();
     let user2_addr = user2();
@@ -487,13 +479,9 @@ fn test_multiple_reward_tokens() {
     let reward_token2 = deploy_mock_erc20('REWARD2', 'RWD2');
 
     // Setup market with both reward tokens
-    let reward_tokens = array![
-        reward_token1.contract_address, reward_token2.contract_address,
-    ]
+    let reward_tokens = array![reward_token1.contract_address, reward_token2.contract_address]
         .span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     let user = user1();
     setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
@@ -539,9 +527,7 @@ fn test_no_rewards_before_lp() {
 
     // Setup market with reward token
     let reward_tokens = array![reward_token.contract_address].span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     // Send rewards to market BEFORE any LP is minted
     let reward_amount = 1000 * WAD;
@@ -573,9 +559,7 @@ fn test_claim_zero_rewards() {
 
     // Setup market with reward token
     let reward_tokens = array![reward_token.contract_address].span();
-    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(
-        reward_tokens,
-    );
+    let (underlying, sy, yt, pt, market, market_rewards) = setup_market_with_rewards(reward_tokens);
 
     let user = user1();
     setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
