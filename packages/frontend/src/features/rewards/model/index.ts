@@ -13,6 +13,7 @@ export {
   useMarketAccruedRewards,
   useTotalMarketAccruedRewards,
 } from './useMarketAccruedRewards';
+export { useClaimAllMarketRewards, useMarketClaimRewards } from './useMarketClaimRewards';
 export { useMarketRewardTokens } from './useMarketRewardTokens';
 export { type PortfolioRewards, type SyRewards, usePortfolioRewards } from './usePortfolioRewards';
 // Indexed reward APY calculation
