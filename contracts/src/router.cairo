@@ -86,6 +86,7 @@ pub mod Router {
         RemoveLiquidity: RemoveLiquidity,
         Swap: Swap,
         SwapYT: SwapYT,
+        RolloverLP: RolloverLP,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -172,6 +173,18 @@ pub mod Router {
         pub yt_in: u256,
         pub sy_out: u256,
         pub yt_out: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct RolloverLP {
+        #[key]
+        pub sender: ContractAddress,
+        #[key]
+        pub receiver: ContractAddress,
+        pub market_old: ContractAddress,
+        pub market_new: ContractAddress,
+        pub lp_burned: u256,
+        pub lp_minted: u256,
     }
 
     #[constructor]
@@ -1063,6 +1076,89 @@ pub mod Router {
 
             self.reentrancy_guard.end();
             effective_sy_from_yt
+        }
+
+        // ============ LP Rollover Operations ============
+
+        fn rollover_lp(
+            ref self: ContractState,
+            market_old: ContractAddress,
+            market_new: ContractAddress,
+            lp_to_rollover: u256,
+            min_lp_out: u256,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market_old.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!market_new.is_zero(), Errors::ZERO_ADDRESS);
+            assert(lp_to_rollover > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+
+            // 1. Transfer LP from caller to router
+            let lp_old = IPTDispatcher { contract_address: market_old };
+            lp_old.transfer_from(caller, this, lp_to_rollover);
+
+            // 2. Burn LP in old market (receive SY + PT to router)
+            let market_old_dispatcher = IMarketDispatcher { contract_address: market_old };
+            let (sy_received, pt_old_received) = market_old_dispatcher.burn(this, lp_to_rollover);
+
+            // 3. Validate both markets share the same SY and PT
+            let market_new_dispatcher = IMarketDispatcher { contract_address: market_new };
+            let pt_new = market_new_dispatcher.pt();
+            let pt_old = market_old_dispatcher.pt();
+            let sy_old = market_old_dispatcher.sy();
+            let sy_new = market_new_dispatcher.sy();
+
+            // Both markets must share the same SY (same underlying asset)
+            assert(sy_old == sy_new, Errors::ROUTER_ROLLOVER_SY_MISMATCH);
+
+            // Both markets must share the same PT for this rollover method
+            // Note: This only works for markets with identical PT (e.g., same expiry)
+            // For cross-expiry rollovers, PT must first be redeemed/converted
+            assert(pt_old == pt_new, Errors::ROUTER_ROLLOVER_PT_MISMATCH);
+
+            // 4. Approve new market for SY + PT
+            let sy = sy_new;
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt_contract = IPTDispatcher { contract_address: pt_new };
+
+            sy_contract.approve(market_new, sy_received);
+            pt_contract.approve(market_new, pt_old_received);
+
+            // 5. Add liquidity to new market
+            let (sy_used, pt_used, lp_new) = market_new_dispatcher
+                .mint(caller, sy_received, pt_old_received);
+
+            // 6. Slippage check
+            assert(lp_new >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 7. Return unused tokens to caller
+            if sy_received > sy_used {
+                sy_contract.transfer(caller, sy_received - sy_used);
+            }
+            if pt_old_received > pt_used {
+                pt_contract.transfer(caller, pt_old_received - pt_used);
+            }
+
+            // Emit event
+            self
+                .emit(
+                    RolloverLP {
+                        sender: caller,
+                        receiver: caller,
+                        market_old,
+                        market_new,
+                        lp_burned: lp_to_rollover,
+                        lp_minted: lp_new,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            lp_new
         }
     }
 

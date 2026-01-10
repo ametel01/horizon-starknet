@@ -61,6 +61,8 @@ pub mod Errors {
     // Router errors
     pub const ROUTER_SLIPPAGE_EXCEEDED: felt252 = 'HZN: slippage exceeded';
     pub const ROUTER_DEADLINE_EXCEEDED: felt252 = 'HZN: deadline exceeded';
+    pub const ROUTER_ROLLOVER_PT_MISMATCH: felt252 = 'HZN: rollover PT mismatch';
+    pub const ROUTER_ROLLOVER_SY_MISMATCH: felt252 = 'HZN: rollover SY mismatch';
 
     // Math errors
     pub const MATH_OVERFLOW: felt252 = 'HZN: overflow';

@@ -299,4 +299,26 @@ pub trait IRouter<TContractState> {
         min_sy_out: u256,
         deadline: u64,
     ) -> u256;
+
+    // ============ LP Rollover Operations ============
+
+    /// Rollover LP position from one market to another with the same PT
+    /// Burns LP in old market, uses SY+PT to add liquidity in new market
+    /// Note: Both markets must share the same SY (underlying) and PT
+    /// This is useful for migrating between markets with identical tokens
+    /// For cross-expiry rollovers, PT must first be redeemed/converted separately
+    /// @param market_old Old market address
+    /// @param market_new New market address
+    /// @param lp_to_rollover Amount of LP to migrate
+    /// @param min_lp_out Minimum LP to receive in new market
+    /// @param deadline Transaction deadline
+    /// @return lp_new Amount of LP received in new market
+    fn rollover_lp(
+        ref self: TContractState,
+        market_old: ContractAddress,
+        market_new: ContractAddress,
+        lp_to_rollover: u256,
+        min_lp_out: u256,
+        deadline: u64,
+    ) -> u256;
 }
