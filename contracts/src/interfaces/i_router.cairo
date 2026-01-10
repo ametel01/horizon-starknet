@@ -106,6 +106,22 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> (u256, u256);
 
+    /// Add liquidity using only SY (auto-swaps to balance)
+    /// @param market The market address
+    /// @param receiver Recipient of LP tokens
+    /// @param amount_sy_in Total SY to deposit
+    /// @param min_lp_out Minimum LP tokens to receive (slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return (sy_used, pt_used, lp_minted) - Actual amounts used and LP received
+    fn add_liquidity_single_sy(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        amount_sy_in: u256,
+        min_lp_out: u256,
+        deadline: u64,
+    ) -> (u256, u256, u256);
+
     // ============ Market Swap Operations ============
 
     /// Swap exact SY for PT

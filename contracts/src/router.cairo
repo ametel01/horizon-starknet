@@ -15,6 +15,7 @@ pub mod Router {
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::math::{wad_div, wad_mul, WAD};
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
@@ -454,6 +455,88 @@ pub mod Router {
             (sy_out, pt_out)
         }
 
+        fn add_liquidity_single_sy(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            amount_sy_in: u256,
+            min_lp_out: u256,
+            deadline: u64,
+        ) -> (u256, u256, u256) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(amount_sy_in > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // 1. Transfer all SY from caller to router
+            sy_contract.transfer_from(caller, this, amount_sy_in);
+
+            // 2. Calculate optimal SY amount to swap for PT
+            //    Goal: balance the ratio so add_liquidity uses everything
+            let (reserves_sy, reserves_pt) = market_contract.get_reserves();
+            let optimal_sy_to_swap = self
+                ._calc_optimal_swap_for_lp(amount_sy_in, reserves_sy, reserves_pt);
+
+            // Validate that swap amount doesn't exceed input
+            assert(optimal_sy_to_swap <= amount_sy_in, Errors::MATH_OVERFLOW);
+
+            // 3. Swap optimal SY for PT
+            sy_contract.approve(market, optimal_sy_to_swap);
+            let pt_received = market_contract
+                .swap_exact_sy_for_pt(
+                    this, optimal_sy_to_swap, 0, // No min check here, final slippage check at end
+                );
+
+            // 4. Add liquidity with remaining SY + received PT
+            let sy_for_lp = amount_sy_in - optimal_sy_to_swap;
+            sy_contract.approve(market, sy_for_lp);
+            pt_contract.approve(market, pt_received);
+
+            let (sy_used, pt_used, lp_minted) = market_contract.mint(receiver, sy_for_lp, pt_received);
+
+            // 5. Slippage check
+            assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 6. Return any dust to caller
+            let sy_dust = sy_for_lp - sy_used;
+            let pt_dust = pt_received - pt_used;
+            if sy_dust > 0 {
+                sy_contract.transfer(caller, sy_dust);
+            }
+            if pt_dust > 0 {
+                pt_contract.transfer(caller, pt_dust);
+            }
+
+            // Calculate total SY consumed (swap + LP addition)
+            let total_sy_used = optimal_sy_to_swap + sy_used;
+
+            // Emit event
+            self
+                .emit(
+                    AddLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_used: total_sy_used,
+                        pt_used,
+                        lp_out: lp_minted,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (total_sy_used, pt_used, lp_minted)
+        }
+
         // ============ Market Swap Operations ============
 
         fn swap_exact_sy_for_pt(
@@ -890,6 +973,68 @@ pub mod Router {
 
             self.reentrancy_guard.end();
             effective_sy_from_yt
+        }
+    }
+
+    // ============ Internal Helper Functions ============
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        /// Calculate optimal SY amount to swap for PT before adding liquidity
+        /// Uses a heuristic based on current reserve ratio
+        /// @param amount_sy_total Total SY available
+        /// @param reserves_sy Current SY reserves in market
+        /// @param reserves_pt Current PT reserves in market
+        /// @return Optimal amount of SY to swap for PT
+        fn _calc_optimal_swap_for_lp(
+            ref self: ContractState, amount_sy_total: u256, reserves_sy: u256, reserves_pt: u256,
+        ) -> u256 {
+            // Simple heuristic: swap approximately half the SY based on current reserves ratio
+            // A more sophisticated approach would use binary search, but this is a reasonable
+            // approximation that avoids excessive gas costs
+
+            // Target: after swap, we want (sy_remaining / pt_received) ≈ (reserves_sy /
+            // reserves_pt)
+            // Let x = amount to swap
+            // After swap: sy_remaining = amount_sy_total - x
+            // pt_received ≈ x * reserves_pt / (reserves_sy + x) (simplified constant product)
+            //
+            // For optimal ratio: (amount_sy_total - x) / pt_received ≈ reserves_sy / reserves_pt
+            // Solving: (amount_sy_total - x) * reserves_pt ≈ pt_received * reserves_sy
+            //
+            // Approximation: swap roughly half, adjusted by reserve ratio
+            // If reserves are balanced (1:1), swap ~50%
+            // If PT is scarce (reserves_pt < reserves_sy), swap less SY to get more PT value
+
+            if reserves_sy == 0 || reserves_pt == 0 {
+                // Edge case: empty pool, swap half
+                return amount_sy_total / 2;
+            }
+
+            // Calculate ratio = reserves_pt / reserves_sy (in WAD)
+            let ratio = wad_div(reserves_pt, reserves_sy);
+
+            // Optimal swap fraction ≈ 1 / (1 + sqrt(ratio))
+            // Simplified: if ratio = 1 (balanced), swap ~50%
+            // if ratio > 1 (more PT than SY), swap less
+            // if ratio < 1 (more SY than PT), swap more
+
+            // For simplicity, use a linear approximation:
+            // swap_fraction = 0.5 * (2 / (1 + ratio/WAD))
+            // = WAD / (WAD + ratio)
+
+            let denominator = WAD + ratio;
+            let swap_fraction = wad_div(WAD, denominator);
+
+            // optimal_swap = amount_sy_total * swap_fraction
+            let optimal_swap = wad_mul(amount_sy_total, swap_fraction);
+
+            // Ensure we don't swap more than we have
+            if optimal_swap > amount_sy_total {
+                amount_sy_total
+            } else {
+                optimal_swap
+            }
         }
     }
 }
