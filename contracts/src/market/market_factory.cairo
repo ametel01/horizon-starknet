@@ -508,7 +508,9 @@ pub mod MarketFactory {
             // Get override fee for this router/market pair (0 if not set)
             let ln_fee_rate_root = self.overridden_fee.read((router, market));
 
-            MarketConfig { treasury, ln_fee_rate_root, reserve_fee_percent, rate_impact_sensitivity }
+            MarketConfig {
+                treasury, ln_fee_rate_root, reserve_fee_percent, rate_impact_sensitivity,
+            }
         }
 
         /// Get the treasury address
@@ -594,7 +596,12 @@ pub mod MarketFactory {
             let old_sensitivity = self.default_rate_impact_sensitivity.read();
             self.default_rate_impact_sensitivity.write(sensitivity);
 
-            self.emit(DefaultRateImpactSensitivityUpdated { old_sensitivity, new_sensitivity: sensitivity });
+            self
+                .emit(
+                    DefaultRateImpactSensitivityUpdated {
+                        old_sensitivity, new_sensitivity: sensitivity,
+                    },
+                );
         }
     }
 }

@@ -1041,9 +1041,7 @@ pub fn set_initial_ln_implied_rate(state: @MarketState, time_to_expiry: u64) -> 
 /// - Returns WAD (1.0) if rate_before is 0 (prevents division by zero)
 /// - Handles overflow by using safe WAD arithmetic
 /// - Handles underflow by using abs_diff for rate changes
-pub fn calc_rate_impact_multiplier(
-    rate_before: u256, rate_after: u256, sensitivity: u256,
-) -> u256 {
+pub fn calc_rate_impact_multiplier(rate_before: u256, rate_after: u256, sensitivity: u256) -> u256 {
     // Guard against division by zero - if rate_before is 0, return no multiplier
     if rate_before == 0 {
         return WAD;

@@ -7,6 +7,7 @@
 #[starknet::contract]
 pub mod Market {
     use core::num::traits::Zero;
+    use horizon::components::reward_manager_component::RewardManagerComponent;
     use horizon::interfaces::i_market::{IMarket, IMarketAdmin, IMarketOracle, OracleState};
     use horizon::interfaces::i_market_factory::{
         IMarketFactoryDispatcher, IMarketFactoryDispatcherTrait,
@@ -32,7 +33,6 @@ pub mod Market {
         StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use horizon::components::reward_manager_component::RewardManagerComponent;
 
     /// Interface for Market LP reward functions
     #[starknet::interface]
@@ -398,12 +398,14 @@ pub mod Market {
     impl RewardHooksImpl of RewardManagerComponent::RewardHooksTrait<ContractState> {
         /// Get user's LP token balance (for reward calculation)
         fn user_sy_balance(self: @ContractState, user: ContractAddress) -> u256 {
-            self.erc20.ERC20_balances.read(user)
+            // LP token balance (Market IS the LP token)
+            self.erc20.balance_of(user)
         }
 
         /// Get total LP token supply (for global index calculation)
         fn total_sy_supply(self: @ContractState) -> u256 {
-            self.erc20.ERC20_total_supply.read()
+            // Total LP supply
+            self.erc20.total_supply()
         }
     }
 
@@ -441,7 +443,7 @@ pub mod Market {
 
         /// Get total LP token supply
         fn total_lp_supply(self: @ContractState) -> u256 {
-            self.erc20.ERC20_total_supply.read()
+            self.erc20.total_supply()
         }
 
         /// Add liquidity to the pool
@@ -527,7 +529,7 @@ pub mod Market {
                         implied_rate: self.last_ln_implied_rate.read(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
-                        total_lp_after: self.erc20.ERC20_total_supply.read(),
+                        total_lp_after: self.erc20.total_supply(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -596,7 +598,7 @@ pub mod Market {
                         implied_rate: self.last_ln_implied_rate.read(),
                         sy_reserve_after: self.sy_reserve.read(),
                         pt_reserve_after: self.pt_reserve.read(),
-                        total_lp_after: self.erc20.ERC20_total_supply.read(),
+                        total_lp_after: self.erc20.total_supply(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -1267,7 +1269,7 @@ pub mod Market {
             MarketState {
                 sy_reserve: self.sy_reserve.read(),
                 pt_reserve: self.pt_reserve.read(),
-                total_lp: self.erc20.ERC20_total_supply.read(),
+                total_lp: self.erc20.total_supply(),
                 scalar_root: self.scalar_root.read(),
                 initial_anchor: self.initial_anchor.read(),
                 ln_fee_rate_root: self.ln_fee_rate_root.read(),
@@ -1275,7 +1277,7 @@ pub mod Market {
                 expiry: self.expiry.read(),
                 last_ln_implied_rate: self.last_ln_implied_rate.read(),
                 py_index,
-                rate_impact_sensitivity: 0, // Not used for non-swap operations
+                rate_impact_sensitivity: 0 // Not used for non-swap operations
             }
         }
 
@@ -1291,7 +1293,7 @@ pub mod Market {
             MarketState {
                 sy_reserve: self.sy_reserve.read(),
                 pt_reserve: self.pt_reserve.read(),
-                total_lp: self.erc20.ERC20_total_supply.read(),
+                total_lp: self.erc20.total_supply(),
                 scalar_root: self.scalar_root.read(),
                 initial_anchor: self.initial_anchor.read(),
                 ln_fee_rate_root: self.ln_fee_rate_root.read(),
@@ -1299,7 +1301,7 @@ pub mod Market {
                 expiry: self.expiry.read(),
                 last_ln_implied_rate: self.last_ln_implied_rate.read(),
                 py_index,
-                rate_impact_sensitivity: 0, // Not used for view functions
+                rate_impact_sensitivity: 0 // Not used for view functions
             }
         }
 
@@ -1320,7 +1322,9 @@ pub mod Market {
             // Query factory for effective fee config
             let factory = self.factory.read();
             let (
-                effective_ln_fee_rate_root, effective_reserve_fee_percent, effective_rate_impact_sensitivity,
+                effective_ln_fee_rate_root,
+                effective_reserve_fee_percent,
+                effective_rate_impact_sensitivity,
             ) =
                 if !factory
                 .is_zero() {
@@ -1345,7 +1349,7 @@ pub mod Market {
             MarketState {
                 sy_reserve: self.sy_reserve.read(),
                 pt_reserve: self.pt_reserve.read(),
-                total_lp: self.erc20.ERC20_total_supply.read(),
+                total_lp: self.erc20.total_supply(),
                 scalar_root: self.scalar_root.read(),
                 initial_anchor: self.initial_anchor.read(),
                 ln_fee_rate_root: effective_ln_fee_rate_root,
@@ -1480,7 +1484,7 @@ pub mod Market {
                             exchange_rate: sy_contract.exchange_rate(),
                             sy_reserve: self.sy_reserve.read(),
                             pt_reserve: self.pt_reserve.read(),
-                            total_lp: self.erc20.ERC20_total_supply.read(),
+                            total_lp: self.erc20.total_supply(),
                         },
                     );
             }
@@ -1535,7 +1539,7 @@ pub mod Market {
                         exchange_rate: sy_contract.exchange_rate(),
                         sy_reserve: self.sy_reserve.read(),
                         pt_reserve: self.pt_reserve.read(),
-                        total_lp: self.erc20.ERC20_total_supply.read(),
+                        total_lp: self.erc20.total_supply(),
                     },
                 );
         }

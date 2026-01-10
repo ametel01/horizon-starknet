@@ -46,7 +46,7 @@ fn create_large_trade_market() -> MarketState {
         expiry: 31_536_000 + 1000,
         last_ln_implied_rate: WAD / 2, // 50% implied rate -> exp(0.5) ≈ 1.65 exchange rate
         py_index: WAD,
-        rate_impact_sensitivity: 0, // No dynamic fee for stress tests
+        rate_impact_sensitivity: 0 // No dynamic fee for stress tests
     }
 }
 
@@ -1003,7 +1003,7 @@ fn create_dynamic_fee_market() -> MarketState {
         expiry: 31_536_000 + 1000,
         last_ln_implied_rate: WAD / 5, // 20% implied rate
         py_index: WAD,
-        rate_impact_sensitivity: WAD, // 100% sensitivity
+        rate_impact_sensitivity: WAD // 100% sensitivity
     }
 }
 
@@ -1017,7 +1017,9 @@ fn test_dynamic_fee_small_trade_minimal_impact() {
     // Small trade: 0.1% of reserves
     let small_pt_in = 1_000 * WAD;
 
-    let result_no_dynamic = calc_swap_exact_pt_for_sy(@state_no_dynamic, small_pt_in, time_to_expiry);
+    let result_no_dynamic = calc_swap_exact_pt_for_sy(
+        @state_no_dynamic, small_pt_in, time_to_expiry,
+    );
     let result_dynamic = calc_swap_exact_pt_for_sy(@state_dynamic, small_pt_in, time_to_expiry);
 
     // Small trades should have very similar fees (minimal rate impact)
@@ -1040,7 +1042,9 @@ fn test_dynamic_fee_large_trade_significant_impact() {
     // Large trade: 10% of reserves
     let large_pt_in = 100_000 * WAD;
 
-    let result_no_dynamic = calc_swap_exact_pt_for_sy(@state_no_dynamic, large_pt_in, time_to_expiry);
+    let result_no_dynamic = calc_swap_exact_pt_for_sy(
+        @state_no_dynamic, large_pt_in, time_to_expiry,
+    );
     let result_dynamic = calc_swap_exact_pt_for_sy(@state_dynamic, large_pt_in, time_to_expiry);
 
     // Dynamic fee should be noticeably higher for large trades
@@ -1109,8 +1113,5 @@ fn test_dynamic_fee_high_sensitivity() {
     assert(result_high.net_sy_fee > result_low.net_sy_fee, 'high sens > low sens fee');
 
     // Higher sensitivity means less SY received
-    assert(
-        result_high.net_sy_to_account < result_low.net_sy_to_account,
-        'high sens less SY out',
-    );
+    assert(result_high.net_sy_to_account < result_low.net_sy_to_account, 'high sens less SY out');
 }
