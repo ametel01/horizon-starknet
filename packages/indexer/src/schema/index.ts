@@ -6,8 +6,8 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 33 event tables across 6 contracts
- * (includes 4 new AMM fee tables for reserve fee tracking)
+ * Total: 43 event tables across 6 contracts
+ * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
  */
 
 import {
@@ -1282,6 +1282,110 @@ export const marketReserveFeeTransferred = pgTable(
     index("market_rft_caller_idx").on(table.caller),
     index("market_rft_expiry_idx").on(table.expiry),
     uniqueIndex("market_rft_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// ============================================================
+// MARKET LP REWARD EVENTS (3 tables)
+// ============================================================
+
+// Market LP Rewards Claimed
+// Source: contracts/src/components/reward_manager_component.cairo:85-94
+export const marketRewardsClaimed = pgTable(
+  "market_rewards_claimed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    user: text("user").notNull(),
+    reward_token: text("reward_token").notNull(),
+    // Market contract (derived from event source)
+    market: text("market").notNull(),
+    // Event data
+    amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_rc_user_idx").on(table.user),
+    index("market_rc_market_idx").on(table.market),
+    index("market_rc_token_idx").on(table.reward_token),
+    index("market_rc_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_rc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Market LP Reward Index Updated (for APY calculation)
+// Source: contracts/src/components/reward_manager_component.cairo:96-106
+export const marketRewardIndexUpdated = pgTable(
+  "market_reward_index_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // Market contract (derived from event source)
+    market: text("market").notNull(),
+    // Event data
+    old_index: numeric("old_index", { precision: 78, scale: 0 }).notNull(),
+    new_index: numeric("new_index", { precision: 78, scale: 0 }).notNull(),
+    rewards_added: numeric("rewards_added", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_supply: numeric("total_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_riu_market_idx").on(table.market),
+    index("market_riu_token_idx").on(table.reward_token),
+    index("market_riu_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_riu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Market LP Reward Token Added (registry)
+// Source: contracts/src/components/reward_manager_component.cairo:108-115
+export const marketRewardTokenAdded = pgTable(
+  "market_reward_token_added",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // Market contract (derived from event source)
+    market: text("market").notNull(),
+    // Event data
+    token_index: integer("token_index").notNull(), // Index in reward tokens array
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_rta_market_idx").on(table.market),
+    index("market_rta_token_idx").on(table.reward_token),
+    uniqueIndex("market_rta_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index

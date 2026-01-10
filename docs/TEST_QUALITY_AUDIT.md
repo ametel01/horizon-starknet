@@ -1,7 +1,7 @@
 # Test Quality Audit Report
 
 **Date**: 2026-01-10
-**Scope**: `/contracts/tests/` (52 test files)
+**Scope**: `/contracts/tests/` (53 test files)
 **Auditor**: Automated Review
 
 ## Executive Summary
@@ -23,7 +23,7 @@ However, several violations of testing best practices were identified that shoul
 
 ### 1. DETERMINISM - Approximate Equality Checks
 
-**Files**: `test_market.cairo:14-29`, multiple locations
+**Files**: `test_market.cairo:17-31`, multiple locations
 
 **Issue**: Tests use `assert_approx_eq` helper with 1% tolerance, introducing non-determinism.
 
@@ -38,9 +38,9 @@ fn assert_approx_eq(actual: u256, expected: u256, msg: felt252) {
 ```
 
 **Locations**:
-- `test_market.cairo:351` - LP ratio check
-- `test_market.cairo:421-422` - Burn return values
-- `test_market.cairo:465-466` - Partial burn amounts
+- `test_market.cairo:353` - LP ratio check
+- `test_market.cairo:423-424` - Burn return values
+- `test_market.cairo:467-468` - Partial burn amounts
 
 **Impact**: Tests may pass/fail inconsistently due to fixed-point rounding variations.
 
@@ -94,7 +94,7 @@ fn get_market_state(market: IMarketDispatcher) -> MarketState {
 
 **Problem Code**:
 ```cairo
-// test_market.cairo:199-218
+// test_market.cairo:201-220
 fn setup() -> (...) {
     start_cheat_block_timestamp_global(1000); // Global state modification!
     let (_, underlying) = deploy_yield_token_stack();
@@ -126,7 +126,7 @@ fn setup() -> (...) {
 
 ### 4. SINGLE_FAILURE_CAUSE - Multi-Behavior Tests
 
-**File**: `test_full_flow.cairo:168-291`
+**File**: `test_full_flow.cairo:168-292`
 
 **Issue**: Single test function validates entire protocol lifecycle with 9+ distinct assertions.
 
@@ -164,13 +164,13 @@ fn test_full_yield_tokenization_flow() {
 
 **Examples**:
 ```cairo
-// test_router.cairo:256
+// test_router.cairo:254
 assert(pt_out > 0, 'Should receive PT');
 
 // test_yt.cairo:110
 assert(pt_minted == amount, 'Wrong PT amount');
 
-// test_market.cairo:705
+// test_market.cairo:707
 assert(sy_out > 0, 'Should receive SY');
 ```
 
@@ -389,7 +389,8 @@ contracts/tests/
 │   ├── test_market_invariants.cairo
 │   ├── test_market_large_trades.cairo
 │   ├── test_market_oracle.cairo
-│   └── test_market_rewards.cairo
+│   ├── test_market_rewards.cairo
+│   └── test_rate_impact_fee.cairo
 ├── math/
 │   ├── test_market_math.cairo
 │   ├── test_market_math_fp.cairo
