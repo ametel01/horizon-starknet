@@ -42,6 +42,16 @@ export const MARKETFACTORY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
     type: 'enum',
     name: 'core::bool',
     variants: [
@@ -70,6 +80,10 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'reserve_fee_percent',
         type: 'core::integer::u8',
+      },
+      {
+        name: 'rate_impact_sensitivity',
+        type: 'core::integer::u256',
       },
     ],
   },
@@ -100,6 +114,10 @@ export const MARKETFACTORY_ABI = [
           {
             name: 'reserve_fee_percent',
             type: 'core::integer::u8',
+          },
+          {
+            name: 'reward_tokens',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
           },
         ],
         outputs: [
@@ -329,6 +347,29 @@ export const MARKETFACTORY_ABI = [
           },
           {
             name: 'ln_fee_rate_root',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_default_rate_impact_sensitivity',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_default_rate_impact_sensitivity',
+        inputs: [
+          {
+            name: 'sensitivity',
             type: 'core::integer::u256',
           },
         ],
@@ -662,6 +703,23 @@ export const MARKETFACTORY_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::market::market_factory::MarketFactory::DefaultRateImpactSensitivityUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_sensitivity',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_sensitivity',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferred',
     kind: 'struct',
     members: [
@@ -889,6 +947,11 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'OverrideFeeSet',
         type: 'horizon::market::market_factory::MarketFactory::OverrideFeeSet',
+        kind: 'nested',
+      },
+      {
+        name: 'DefaultRateImpactSensitivityUpdated',
+        type: 'horizon::market::market_factory::MarketFactory::DefaultRateImpactSensitivityUpdated',
         kind: 'nested',
       },
       {

@@ -244,5 +244,42 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::router::Router::RolloverLP",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "market_old",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "market_new",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "lp_burned",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "lp_minted",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
   }
 ]

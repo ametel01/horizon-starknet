@@ -169,6 +169,88 @@
   },
   {
     "type": "event",
+    "name": "horizon::market::amm::Market::BurnWithReceivers",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver_sy",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver_pt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "expiry",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "sy",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "pt",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "lp_amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy_amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "exchange_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "implied_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy_reserve_after",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "pt_reserve_after",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_lp_after",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
     "name": "horizon::market::amm::Market::Swap",
     "kind": "struct",
     "members": [
@@ -418,6 +500,92 @@
       {
         "name": "new_value",
         "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "reward_token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "reward_token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "old_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "rewards_added",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_supply",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "reward_token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "index",
+        "type": "core::integer::u32",
         "kind": "data"
       },
       {

@@ -185,5 +185,22 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::DefaultRateImpactSensitivityUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_sensitivity",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_sensitivity",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
   }
 ]

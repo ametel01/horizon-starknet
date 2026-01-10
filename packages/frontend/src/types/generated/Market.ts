@@ -33,6 +33,16 @@ export const MARKET_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::felt252>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::felt252>',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_market::IMarket',
     items: [
@@ -159,6 +169,30 @@ export const MARKET_ABI = [
       },
       {
         type: 'function',
+        name: 'burn_with_receivers',
+        inputs: [
+          {
+            name: 'receiver_sy',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver_pt',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'lp_to_burn',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'swap_exact_pt_for_sy',
         inputs: [
           {
@@ -172,6 +206,10 @@ export const MARKET_ABI = [
           {
             name: 'min_sy_out',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'callback_data',
+            type: 'core::array::Span::<core::felt252>',
           },
         ],
         outputs: [
@@ -197,6 +235,10 @@ export const MARKET_ABI = [
             name: 'max_sy_in',
             type: 'core::integer::u256',
           },
+          {
+            name: 'callback_data',
+            type: 'core::array::Span::<core::felt252>',
+          },
         ],
         outputs: [
           {
@@ -221,6 +263,10 @@ export const MARKET_ABI = [
             name: 'min_pt_out',
             type: 'core::integer::u256',
           },
+          {
+            name: 'callback_data',
+            type: 'core::array::Span::<core::felt252>',
+          },
         ],
         outputs: [
           {
@@ -244,6 +290,10 @@ export const MARKET_ABI = [
           {
             name: 'max_pt_in',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'callback_data',
+            type: 'core::array::Span::<core::felt252>',
           },
         ],
         outputs: [
@@ -334,6 +384,143 @@ export const MARKET_ABI = [
   },
   {
     type: 'impl',
+    name: 'MarketRewardsImpl',
+    interface_name: 'horizon::market::amm::Market::IMarketRewards',
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::integer::u256>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::integer::u256>',
+      },
+    ],
+  },
+  {
+    type: 'interface',
+    name: 'horizon::market::amm::Market::IMarketRewards',
+    items: [
+      {
+        type: 'function',
+        name: 'get_reward_tokens',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'claim_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'accrued_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'reward_index',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'user_reward_index',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'is_reward_token',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'reward_tokens_count',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u32',
+          },
+        ],
+        state_mutability: 'view',
+      },
+    ],
+  },
+  {
+    type: 'impl',
     name: 'MarketAdminImpl',
     interface_name: 'horizon::interfaces::i_market::IMarketAdmin',
   },
@@ -380,6 +567,13 @@ export const MARKET_ABI = [
             type: 'core::integer::u256',
           },
         ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'skim',
+        inputs: [],
         outputs: [],
         state_mutability: 'external',
       },
@@ -855,6 +1049,10 @@ export const MARKET_ABI = [
         name: 'factory',
         type: 'core::starknet::contract_address::ContractAddress',
       },
+      {
+        name: 'reward_tokens',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+      },
     ],
   },
   {
@@ -1292,6 +1490,88 @@ export const MARKET_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::market::amm::Market::BurnWithReceivers',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sender',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver_sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver_pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'lp_amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'exchange_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'implied_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_lp_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::market::amm::Market::Swap',
     kind: 'struct',
     members: [
@@ -1552,6 +1832,114 @@ export const MARKET_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
+    kind: 'struct',
+    members: [
+      {
+        name: 'user',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'old_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'rewards_added',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_supply',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded',
+    kind: 'struct',
+    members: [
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'index',
+        type: 'core::integer::u32',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'RewardsClaimed',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardIndexUpdated',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardTokenAdded',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded',
+        kind: 'nested',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::market::amm::Market::Event',
     kind: 'enum',
     variants: [
@@ -1591,6 +1979,11 @@ export const MARKET_ABI = [
         kind: 'nested',
       },
       {
+        name: 'BurnWithReceivers',
+        type: 'horizon::market::amm::Market::BurnWithReceivers',
+        kind: 'nested',
+      },
+      {
         name: 'Swap',
         type: 'horizon::market::amm::Market::Swap',
         kind: 'nested',
@@ -1614,6 +2007,11 @@ export const MARKET_ABI = [
         name: 'ScalarRootUpdated',
         type: 'horizon::market::amm::Market::ScalarRootUpdated',
         kind: 'nested',
+      },
+      {
+        name: 'RewardManagerEvent',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::Event',
+        kind: 'flat',
       },
     ],
   },

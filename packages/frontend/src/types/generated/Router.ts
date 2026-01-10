@@ -236,6 +236,70 @@ export const ROUTER_ABI = [
       },
       {
         type: 'function',
+        name: 'add_liquidity_single_sy',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'amount_sy_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_lp_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'add_liquidity_single_pt',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'amount_pt_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_lp_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'swap_exact_sy_for_pt',
         inputs: [
           {
@@ -524,6 +588,38 @@ export const ROUTER_ABI = [
           },
           {
             name: 'min_sy_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'rollover_lp',
+        inputs: [
+          {
+            name: 'market_old',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'market_new',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'lp_to_rollover',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_lp_out',
             type: 'core::integer::u256',
           },
           {
@@ -956,6 +1052,43 @@ export const ROUTER_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::router::Router::RolloverLP',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sender',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'market_old',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'market_new',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'lp_burned',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'lp_minted',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'openzeppelin_access::ownable::ownable::OwnableComponent::OwnershipTransferred',
     kind: 'struct',
     members: [
@@ -1235,6 +1368,11 @@ export const ROUTER_ABI = [
       {
         name: 'SwapYT',
         type: 'horizon::router::Router::SwapYT',
+        kind: 'nested',
+      },
+      {
+        name: 'RolloverLP',
+        type: 'horizon::router::Router::RolloverLP',
         kind: 'nested',
       },
       {
