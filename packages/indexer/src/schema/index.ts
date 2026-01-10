@@ -6,7 +6,7 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 43 event tables across 6 contracts
+ * Total: 44 event tables across 6 contracts
  * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
  */
 
@@ -996,8 +996,8 @@ export const ytRedeemPYWithInterest = pgTable(
 );
 
 // ============================================================
-// MARKET (AMM) EVENTS (7 tables)
-// 6 core + 1 reserve fee transfer table
+// MARKET (AMM) EVENTS (8 tables)
+// 7 core + 1 reserve fee transfer table
 // ============================================================
 
 export const marketMint = pgTable(
@@ -1099,6 +1099,61 @@ export const marketBurn = pgTable(
     index("market_burn_expiry_idx").on(table.expiry),
     index("market_burn_market_idx").on(table.market),
     uniqueIndex("market_burn_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketBurnWithReceivers = pgTable(
+  "market_burn_with_receivers",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    sender: text("sender").notNull(),
+    receiver_sy: text("receiver_sy").notNull(),
+    receiver_pt: text("receiver_pt").notNull(),
+    // Event data
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    market: text("market").notNull(),
+    sy: text("sy").notNull(),
+    pt: text("pt").notNull(),
+    lp_amount: numeric("lp_amount", { precision: 78, scale: 0 }).notNull(),
+    sy_amount: numeric("sy_amount", { precision: 78, scale: 0 }).notNull(),
+    pt_amount: numeric("pt_amount", { precision: 78, scale: 0 }).notNull(),
+    exchange_rate: numeric("exchange_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    implied_rate: numeric("implied_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    sy_reserve_after: numeric("sy_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    pt_reserve_after: numeric("pt_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_lp_after: numeric("total_lp_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("market_burn_with_receivers_sender_idx").on(table.sender),
+    index("market_burn_with_receivers_receiver_sy_idx").on(table.receiver_sy),
+    index("market_burn_with_receivers_receiver_pt_idx").on(table.receiver_pt),
+    index("market_burn_with_receivers_expiry_idx").on(table.expiry),
+    index("market_burn_with_receivers_market_idx").on(table.market),
+    uniqueIndex("market_burn_with_receivers_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index
