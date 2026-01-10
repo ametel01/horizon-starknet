@@ -7,6 +7,7 @@
 /// - Expiry behavior
 /// - Edge cases (first depositor, large trades, invariants)
 /// - TWAP oracle integration
+/// - LP reward distribution
 ///
 /// Run with: snforge test market
 
@@ -18,4 +19,5 @@ pub mod test_market_first_depositor;
 pub mod test_market_invariants;
 pub mod test_market_large_trades;
 pub mod test_market_oracle;
+pub mod test_market_rewards;
 pub mod test_rate_impact_fee;
