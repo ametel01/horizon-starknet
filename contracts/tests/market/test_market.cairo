@@ -507,6 +507,166 @@ fn test_market_burn_after_expiry() {
     assert_approx_eq(pt_out, 100 * WAD, 'Should get PT back');
 }
 
+#[test]
+fn test_burn_with_receivers() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+    let receiver_sy = user2();
+    let receiver_pt = treasury();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+
+    // Get balances before burn
+    let sy_receiver_before = sy.balance_of(receiver_sy);
+    let pt_receiver_before = pt.balance_of(receiver_pt);
+
+    // Remove liquidity with separate receivers
+    let (sy_out, pt_out) = market.burn_with_receivers(receiver_sy, receiver_pt, lp_minted);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify SY went to receiver_sy
+    assert_approx_eq(
+        sy.balance_of(receiver_sy), sy_receiver_before + sy_out, 'Wrong SY receiver balance',
+    );
+
+    // Verify PT went to receiver_pt
+    assert_approx_eq(
+        pt.balance_of(receiver_pt), pt_receiver_before + pt_out, 'Wrong PT receiver balance',
+    );
+
+    // Verify amounts are correct
+    assert_approx_eq(sy_out, 100 * WAD, 'Wrong SY returned');
+    assert_approx_eq(pt_out, 100 * WAD, 'Wrong PT returned');
+
+    // Verify reserves are nearly empty
+    let (sy_reserve, pt_reserve) = market.get_reserves();
+    assert(sy_reserve <= 1200, 'SY reserve should be minimal');
+    assert(pt_reserve <= 1200, 'PT reserve should be minimal');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_burn_with_receivers_zero_sy_receiver() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+
+    // Should fail with zero receiver_sy
+    market.burn_with_receivers(zero_address(), user, lp_minted);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_burn_with_receivers_zero_pt_receiver() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+
+    // Should fail with zero receiver_pt
+    market.burn_with_receivers(user, zero_address(), lp_minted);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero amount')]
+fn test_burn_with_receivers_zero_amount() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    market.mint(user, 100 * WAD, 100 * WAD);
+
+    // Should fail with zero lp_to_burn
+    market.burn_with_receivers(user, user, 0);
+}
+
+#[test]
+fn test_burn_with_receivers_after_expiry() {
+    let (underlying, sy, yt, pt, market) = setup();
+    let user = user1();
+    let receiver_sy = user2();
+    let receiver_pt = treasury();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+
+    // Add liquidity
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(sy.contract_address);
+
+    start_cheat_caller_address(pt.contract_address, user);
+    pt.approve(market.contract_address, 100 * WAD);
+    stop_cheat_caller_address(pt.contract_address);
+
+    start_cheat_caller_address(market.contract_address, user);
+    let (_, _, lp_minted) = market.mint(user, 100 * WAD, 100 * WAD);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Fast forward past expiry
+    start_cheat_block_timestamp_global(market.expiry() + 1);
+
+    // Should still be able to burn with receivers after expiry
+    start_cheat_caller_address(market.contract_address, user);
+    let (sy_out, pt_out) = market.burn_with_receivers(receiver_sy, receiver_pt, lp_minted);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Verify amounts are correct
+    assert_approx_eq(sy_out, 100 * WAD, 'Should get SY back');
+    assert_approx_eq(pt_out, 100 * WAD, 'Should get PT back');
+
+    // Verify tokens went to correct receivers
+    assert_approx_eq(sy.balance_of(receiver_sy), sy_out, 'Wrong SY receiver balance');
+    assert_approx_eq(pt.balance_of(receiver_pt), pt_out, 'Wrong PT receiver balance');
+}
+
 // ============ Swap Tests ============
 
 #[test]

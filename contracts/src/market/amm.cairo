@@ -158,6 +158,7 @@ pub mod Market {
         OwnableEvent: OwnableComponent::Event,
         Mint: Mint,
         Burn: Burn,
+        BurnWithReceivers: BurnWithReceivers,
         Swap: Swap,
         ImpliedRateUpdated: ImpliedRateUpdated,
         FeesCollected: FeesCollected,
@@ -195,6 +196,28 @@ pub mod Market {
         #[key]
         pub receiver: ContractAddress,
         #[key]
+        pub expiry: u64,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
+        pub lp_amount: u256,
+        pub sy_amount: u256,
+        pub pt_amount: u256,
+        pub exchange_rate: u256,
+        pub implied_rate: u256,
+        pub sy_reserve_after: u256,
+        pub pt_reserve_after: u256,
+        pub total_lp_after: u256,
+        pub timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct BurnWithReceivers {
+        #[key]
+        pub sender: ContractAddress,
+        #[key]
+        pub receiver_sy: ContractAddress,
+        #[key]
+        pub receiver_pt: ContractAddress,
         pub expiry: u64,
         pub sy: ContractAddress,
         pub pt: ContractAddress,
@@ -591,6 +614,81 @@ pub mod Market {
                     Burn {
                         sender: caller,
                         receiver,
+                        expiry: self.expiry.read(),
+                        sy: sy_addr,
+                        pt: pt_addr,
+                        lp_amount: lp_to_burn,
+                        sy_amount: sy_out,
+                        pt_amount: pt_out,
+                        exchange_rate: sy_contract.exchange_rate(),
+                        implied_rate: self.last_ln_implied_rate.read(),
+                        sy_reserve_after: self.sy_reserve.read(),
+                        pt_reserve_after: self.pt_reserve.read(),
+                        total_lp_after: self.erc20.total_supply(),
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            (sy_out, pt_out)
+        }
+
+        /// Remove liquidity from the pool with separate receivers for SY and PT
+        /// @param receiver_sy Address to receive SY tokens
+        /// @param receiver_pt Address to receive PT tokens
+        /// @param lp_to_burn Amount of LP tokens to burn
+        /// @return (sy_out, pt_out) Amounts sent to receivers
+        fn burn_with_receivers(
+            ref self: ContractState,
+            receiver_sy: ContractAddress,
+            receiver_pt: ContractAddress,
+            lp_to_burn: u256,
+        ) -> (u256, u256) {
+            // Can burn even after expiry
+            assert(!receiver_sy.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver_pt.is_zero(), Errors::ZERO_ADDRESS);
+            assert(lp_to_burn > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let state = self._get_market_state();
+
+            // Calculate tokens to return
+            let (sy_out, pt_out) = calc_burn_lp(@state, lp_to_burn);
+            assert(sy_out > 0 || pt_out > 0, Errors::MARKET_ZERO_LIQUIDITY);
+
+            // Burn LP tokens from caller
+            self.erc20.burn(caller, lp_to_burn);
+
+            // Update reserves
+            self.sy_reserve.write(self.sy_reserve.read() - sy_out);
+            self.pt_reserve.write(self.pt_reserve.read() - pt_out);
+
+            // Transfer tokens to separate receivers
+            if sy_out > 0 {
+                let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+                assert(sy_contract.transfer(receiver_sy, sy_out), Errors::MARKET_TRANSFER_FAILED);
+            }
+            if pt_out > 0 {
+                let pt_contract = IPTDispatcher { contract_address: self.pt.read() };
+                assert(pt_contract.transfer(receiver_pt, pt_out), Errors::MARKET_TRANSFER_FAILED);
+            }
+
+            // Update implied rate cache (if not expired)
+            if !self.is_expired() {
+                self._update_implied_rate();
+            }
+
+            // Get current state for event
+            let sy_addr = self.sy.read();
+            let pt_addr = self.pt.read();
+            let sy_contract = ISYDispatcher { contract_address: sy_addr };
+
+            // Emit event
+            self
+                .emit(
+                    BurnWithReceivers {
+                        sender: caller,
+                        receiver_sy,
+                        receiver_pt,
                         expiry: self.expiry.read(),
                         sy: sy_addr,
                         pt: pt_addr,

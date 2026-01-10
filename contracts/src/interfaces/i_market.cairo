@@ -36,6 +36,18 @@ pub trait IMarket<TContractState> {
         ref self: TContractState, receiver: ContractAddress, lp_to_burn: u256,
     ) -> (u256, u256); // (sy_out, pt_out)
 
+    /// Burn LP tokens with separate receivers for SY and PT
+    /// @param receiver_sy Address to receive SY
+    /// @param receiver_pt Address to receive PT
+    /// @param lp_to_burn Amount of LP tokens to burn
+    /// @return (sy_out, pt_out) Amounts sent to receivers
+    fn burn_with_receivers(
+        ref self: TContractState,
+        receiver_sy: ContractAddress,
+        receiver_pt: ContractAddress,
+        lp_to_burn: u256,
+    ) -> (u256, u256);
+
     // Swaps
     fn swap_exact_pt_for_sy(
         ref self: TContractState,
