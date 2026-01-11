@@ -2314,3 +2314,22 @@ export const redeemWithInterestAnalytics = pgView(
     underlying_symbol: text("underlying_symbol"),
   }
 ).existing();
+
+// ============================================================
+// PHASE 6: MARKET LP REWARDS VIEWS (1 view)
+// Views for Market LP reward analytics
+// ============================================================
+
+/**
+ * Market Rewards Summary View
+ * Aggregates Market LP reward claims per user per market per reward token
+ * Use for: Portfolio page, LP reward claim history
+ */
+export const marketRewardsSummary = pgView("market_rewards_summary", {
+  user: text("user"),
+  market: text("market"),
+  reward_token: text("reward_token"),
+  total_claimed: numeric("total_claimed", { precision: 78, scale: 0 }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+  last_claim_timestamp: timestamp("last_claim_timestamp"),
+}).existing();

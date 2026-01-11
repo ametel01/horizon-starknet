@@ -25,6 +25,9 @@ DROP MATERIALIZED VIEW IF EXISTS treasury_yield_summary CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS batch_operations_summary CASCADE;
 DROP VIEW IF EXISTS redeem_with_interest_analytics CASCADE;
 
+-- Drop Market LP Rewards views (Phase 6)
+DROP MATERIALIZED VIEW IF EXISTS market_rewards_summary CASCADE;
+
 -- Drop enriched router views
 DROP VIEW IF EXISTS enriched_router_swap CASCADE;
 DROP VIEW IF EXISTS enriched_router_swap_yt CASCADE;
@@ -802,6 +805,27 @@ LEFT JOIN factory_yield_contracts_created ycc ON r.yt = ycc.yt
 ORDER BY r.block_timestamp DESC;
 
 -- ============================================================================
+-- MARKET LP REWARDS VIEWS (Phase 6)
+-- Views for Market LP reward analytics
+-- ============================================================================
+
+-- Market Rewards Summary
+-- Aggregates Market LP reward claims per user per market per reward token
+CREATE MATERIALIZED VIEW IF NOT EXISTS market_rewards_summary AS
+SELECT
+  "user",
+  market,
+  reward_token,
+  SUM(amount) as total_claimed,
+  COUNT(*) as claim_count,
+  MAX(block_timestamp) as last_claim_timestamp
+FROM market_rewards_claimed
+GROUP BY "user", market, reward_token;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_market_rewards_summary_user_market_token
+  ON market_rewards_summary("user", market, reward_token);
+
+-- ============================================================================
 -- ENRICHED ROUTER VIEWS (6 views)
 -- Regular views that join router events with underlying contract events
 -- for transaction history display
@@ -1019,6 +1043,8 @@ BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY yt_fee_analytics;
   REFRESH MATERIALIZED VIEW CONCURRENTLY treasury_yield_summary;
   REFRESH MATERIALIZED VIEW CONCURRENTLY batch_operations_summary;
+  -- Market LP Rewards views (Phase 6)
+  REFRESH MATERIALIZED VIEW CONCURRENTLY market_rewards_summary;
 END;
 $$ LANGUAGE plpgsql;
 
