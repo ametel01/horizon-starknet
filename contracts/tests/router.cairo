@@ -7,6 +7,7 @@
 ///
 /// Run with: snforge test router
 
+pub mod test_batch_operations;
 pub mod test_router;
 pub mod test_router_rollover;
 pub mod test_router_single_sided_lp;

@@ -16,6 +16,7 @@ pub mod Router {
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
+    use horizon::market::amm::Market::{IMarketRewardsDispatcher, IMarketRewardsDispatcherTrait};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_interfaces::upgrades::IUpgradeable;
@@ -227,7 +228,7 @@ pub mod Router {
                 )
                     .expect(Errors::ROUTER_MULTICALL_FAILED);
                 results.append(result);
-            };
+            }
 
             self.reentrancy_guard.end();
             results
@@ -1317,6 +1318,41 @@ pub mod Router {
 
             self.reentrancy_guard.end();
             lp_new
+        }
+
+        // ============ Batch Operations ============
+
+        fn redeem_due_interest_and_rewards(
+            ref self: ContractState,
+            user: ContractAddress,
+            yts: Span<ContractAddress>,
+            markets: Span<ContractAddress>,
+        ) -> (u256, Array<Span<u256>>) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(!user.is_zero(), Errors::ZERO_ADDRESS);
+
+            let mut total_interest: u256 = 0;
+            let mut all_rewards: Array<Span<u256>> = array![];
+
+            // Claim interest from all YT contracts
+            for yt_addr in yts {
+                assert(!(*yt_addr).is_zero(), Errors::ZERO_ADDRESS);
+                let yt_contract = IYTDispatcher { contract_address: *yt_addr };
+                let interest = yt_contract.redeem_due_interest(user);
+                total_interest += interest;
+            }
+
+            // Claim rewards from all market contracts
+            for market_addr in markets {
+                assert(!(*market_addr).is_zero(), Errors::ZERO_ADDRESS);
+                let market_rewards = IMarketRewardsDispatcher { contract_address: *market_addr };
+                let rewards = market_rewards.claim_rewards(user);
+                all_rewards.append(rewards);
+            }
+
+            self.reentrancy_guard.end();
+            (total_interest, all_rewards)
         }
     }
 

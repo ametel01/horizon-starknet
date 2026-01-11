@@ -372,4 +372,19 @@ pub trait IRouter<TContractState> {
         min_lp_out: u256,
         deadline: u64,
     ) -> u256;
+
+    // ============ Batch Operations ============
+
+    /// Claim all pending interest from YT tokens and rewards from markets
+    /// Iterates through provided YT and market arrays, claiming for the user
+    /// @param user Address to claim interest and rewards for
+    /// @param yts Array of YT contract addresses to claim interest from
+    /// @param markets Array of market addresses to claim rewards from
+    /// @return (total_interest, rewards_per_market) - Total SY interest claimed and rewards array
+    fn redeem_due_interest_and_rewards(
+        ref self: TContractState,
+        user: ContractAddress,
+        yts: Span<ContractAddress>,
+        markets: Span<ContractAddress>,
+    ) -> (u256, Array<Span<u256>>);
 }
