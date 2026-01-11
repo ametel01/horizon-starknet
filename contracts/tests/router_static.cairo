@@ -7,4 +7,5 @@
 ///
 /// Run with: snforge test router_static
 
+pub mod test_router_static_liquidity_preview;
 pub mod test_router_static_swap_preview;

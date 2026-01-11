@@ -13,44 +13,44 @@ use snforge_std::{
 use starknet::{ContractAddress, SyscallResultTrait};
 
 // Test addresses
-fn admin() -> ContractAddress {
+pub fn admin() -> ContractAddress {
     'admin'.try_into().unwrap()
 }
 
-fn user1() -> ContractAddress {
+pub fn user1() -> ContractAddress {
     'user1'.try_into().unwrap()
 }
 
-fn treasury() -> ContractAddress {
+pub fn treasury() -> ContractAddress {
     'treasury'.try_into().unwrap()
 }
 
-fn zero_address() -> ContractAddress {
+pub fn zero_address() -> ContractAddress {
     0.try_into().unwrap()
 }
 
 // Helper to serialize ByteArray for calldata
-fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
+pub fn append_bytearray(ref calldata: Array<felt252>, value: felt252, len: u32) {
     calldata.append(0); // data array length
     calldata.append(value); // pending_word
     calldata.append(len.into()); // pending_word_len
 }
 
 // Default market parameters
-fn default_scalar_root() -> u256 {
+pub fn default_scalar_root() -> u256 {
     50 * WAD // Controls rate sensitivity
 }
 
-fn default_initial_anchor() -> u256 {
+pub fn default_initial_anchor() -> u256 {
     WAD / 10 // 0.1 WAD = ~10% APY
 }
 
-fn default_fee_rate() -> u256 {
+pub fn default_fee_rate() -> u256 {
     WAD / 100 // 1% fee
 }
 
 // Deploy mock ERC20
-fn deploy_mock_erc20() -> IMockERC20Dispatcher {
+pub fn deploy_mock_erc20() -> IMockERC20Dispatcher {
     let contract = declare("MockERC20").unwrap_syscall().contract_class();
     let mut calldata = array![];
     append_bytearray(ref calldata, 'MockERC20', 9);
@@ -60,7 +60,7 @@ fn deploy_mock_erc20() -> IMockERC20Dispatcher {
 }
 
 // Deploy mock yield token
-fn deploy_mock_yield_token(
+pub fn deploy_mock_yield_token(
     underlying: ContractAddress, admin_addr: ContractAddress,
 ) -> IMockYieldTokenDispatcher {
     let contract = declare("MockYieldToken").unwrap_syscall().contract_class();
@@ -74,14 +74,14 @@ fn deploy_mock_yield_token(
 }
 
 // Deploy yield token stack (MockERC20 -> MockYieldToken)
-fn deploy_yield_token_stack() -> (IMockERC20Dispatcher, IMockYieldTokenDispatcher) {
+pub fn deploy_yield_token_stack() -> (IMockERC20Dispatcher, IMockYieldTokenDispatcher) {
     let underlying = deploy_mock_erc20();
     let yield_token = deploy_mock_yield_token(underlying.contract_address, admin());
     (underlying, yield_token)
 }
 
 // Deploy SY token
-fn deploy_sy(
+pub fn deploy_sy(
     underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
 ) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
@@ -111,7 +111,7 @@ fn deploy_sy(
 }
 
 // Deploy YT (which deploys PT internally)
-fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
+pub fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     let pt_class = declare("PT").unwrap_syscall().contract_class();
     let yt_class = declare("YT").unwrap_syscall().contract_class();
 
@@ -130,7 +130,7 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
 }
 
 // Deploy Market
-fn deploy_market(
+pub fn deploy_market(
     pt: ContractAddress, scalar_root: u256, initial_anchor: u256, fee_rate: u256,
 ) -> IMarketDispatcher {
     let contract = declare("Market").unwrap_syscall().contract_class();
@@ -154,7 +154,7 @@ fn deploy_market(
 }
 
 // Deploy RouterStatic
-fn deploy_router_static() -> IRouterStaticDispatcher {
+pub fn deploy_router_static() -> IRouterStaticDispatcher {
     let contract = declare("RouterStatic").unwrap_syscall().contract_class();
     let calldata = array![];
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
@@ -162,7 +162,7 @@ fn deploy_router_static() -> IRouterStaticDispatcher {
 }
 
 // Helper: Mint yield token shares to user as admin
-fn mint_yield_token_to_user(
+pub fn mint_yield_token_to_user(
     yield_token: IMockYieldTokenDispatcher, user: ContractAddress, amount: u256,
 ) {
     start_cheat_caller_address(yield_token.contract_address, admin());
@@ -171,7 +171,7 @@ fn mint_yield_token_to_user(
 }
 
 // Full setup: underlying -> SY -> YT/PT -> Market -> RouterStatic
-fn setup() -> (
+pub fn setup() -> (
     IMockYieldTokenDispatcher,
     ISYDispatcher,
     IYTDispatcher,
@@ -200,7 +200,7 @@ fn setup() -> (
 }
 
 // Helper: Setup user with SY and PT tokens
-fn setup_user_with_tokens(
+pub fn setup_user_with_tokens(
     underlying: IMockYieldTokenDispatcher,
     sy: ISYDispatcher,
     yt: IYTDispatcher,
@@ -230,7 +230,7 @@ fn setup_user_with_tokens(
 }
 
 // Helper: Add liquidity to market
-fn add_liquidity(
+pub fn add_liquidity(
     sy: ISYDispatcher,
     pt: IPTDispatcher,
     market: IMarketDispatcher,
@@ -509,20 +509,21 @@ fn test_preview_changes_with_time() {
     let sy_in = 10 * WAD;
 
     // Preview at current time (1 year to expiry)
-    let pt_preview_early = router_static.preview_swap_exact_sy_for_pt(market.contract_address, sy_in);
+    let pt_preview_early = router_static
+        .preview_swap_exact_sy_for_pt(market.contract_address, sy_in);
 
     // Move time forward (6 months closer to expiry)
     start_cheat_block_timestamp_global(1000 + 180 * 24 * 60 * 60);
 
     // Preview with less time to expiry
-    let pt_preview_later = router_static.preview_swap_exact_sy_for_pt(market.contract_address, sy_in);
+    let pt_preview_later = router_static
+        .preview_swap_exact_sy_for_pt(market.contract_address, sy_in);
 
     // Both should be positive
     assert(pt_preview_early > 0, 'Early preview should work');
     assert(pt_preview_later > 0, 'Later preview should work');
-
     // The preview amounts may differ as time to expiry affects pricing
-    // (PT price approaches 1 as expiry nears)
+// (PT price approaches 1 as expiry nears)
 }
 
 // ============ Large Amount Tests ============
@@ -544,7 +545,8 @@ fn test_preview_large_swap() {
     assert(pt_preview > 0, 'Large swap should work');
 
     // Price impact should be visible - output per unit should be lower for large swaps
-    let small_preview = router_static.preview_swap_exact_sy_for_pt(market.contract_address, 1 * WAD);
+    let small_preview = router_static
+        .preview_swap_exact_sy_for_pt(market.contract_address, 1 * WAD);
 
     // Large swap should have worse rate (less PT per SY) due to price impact
     // Compare: pt_preview / sy_in vs small_preview / 1*WAD
