@@ -34,6 +34,12 @@ pub trait IRouterStatic<TContractState> {
     /// @return LP value in SY terms (WAD scaled)
     fn get_lp_to_sy_rate(self: @TContractState, market: ContractAddress) -> u256;
 
+    /// Get the LP token value in PT terms
+    /// This calculates how much PT each LP token represents when all value is converted to PT
+    /// @param market The market address to query
+    /// @return LP value in PT terms (WAD scaled)
+    fn get_lp_to_pt_rate(self: @TContractState, market: ContractAddress) -> u256;
+
     /// Preview the PT output for an exact SY input swap
     /// @param market The market address
     /// @param sy_in Amount of SY to swap

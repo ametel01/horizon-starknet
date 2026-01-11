@@ -22,7 +22,7 @@ pub mod RouterStatic {
     struct Storage {}
 
     #[constructor]
-    fn constructor(ref self: ContractState) {// Stateless contract - no initialization needed
+    fn constructor(ref self: ContractState) { // Stateless contract - no initialization needed
     }
 
     #[abi(embed_v0)]
@@ -74,6 +74,45 @@ pub mod RouterStatic {
             let total_value = sy_reserve + pt_value_in_sy;
 
             // LP value = total_value / total_lp
+            wad_div(total_value, total_lp)
+        }
+
+        /// Get the LP token value in PT terms
+        /// This calculates how much PT each LP token represents when all value is converted to PT
+        /// @param market The market address to query
+        /// @return LP value in PT terms (WAD scaled)
+        fn get_lp_to_pt_rate(self: @ContractState, market: ContractAddress) -> u256 {
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let total_lp = market_contract.total_lp_supply();
+
+            if total_lp == 0 {
+                return 0;
+            }
+
+            let (sy_reserve, pt_reserve) = market_contract.get_reserves();
+            let state = self._get_market_state_view(market);
+            let time_to_expiry = get_time_to_expiry(
+                market_contract.expiry(), get_block_timestamp(),
+            );
+
+            // Get PT price in SY terms
+            let ln_implied_rate = get_ln_implied_rate(@state, time_to_expiry);
+            let pt_price = get_pt_price(ln_implied_rate, time_to_expiry);
+
+            // Avoid division by zero if pt_price is 0
+            if pt_price == 0 {
+                return 0;
+            }
+
+            // Convert SY to PT equivalent: sy_in_pt = sy_reserve / pt_price
+            let sy_value_in_pt = wad_div(sy_reserve, pt_price);
+
+            // Total value in PT = pt_reserve + sy_value_in_pt
+            let total_value = pt_reserve + sy_value_in_pt;
+
+            // LP value in PT = total_value / total_lp
             wad_div(total_value, total_lp)
         }
 
