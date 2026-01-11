@@ -635,6 +635,72 @@ pub mod Router {
             (sy_used, total_pt_used, lp_minted)
         }
 
+        fn remove_liquidity_single_sy(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            lp_to_burn: u256,
+            min_sy_out: u256,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(lp_to_burn > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // 1. Transfer LP from caller to router
+            let lp_token = IPTDispatcher { contract_address: market };
+            lp_token.transfer_from(caller, this, lp_to_burn);
+
+            // 2. Burn LP tokens to receive SY and PT (to router)
+            let (sy_from_burn, pt_from_burn) = market_contract.burn(this, lp_to_burn);
+
+            // 3. Swap all PT for SY
+            pt_contract.approve(market, pt_from_burn);
+            let sy_from_swap = market_contract
+                .swap_exact_pt_for_sy(
+                    this,
+                    pt_from_burn,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
+                );
+
+            // 4. Calculate total SY out
+            let total_sy_out = sy_from_burn + sy_from_swap;
+
+            // 5. Slippage check
+            assert(total_sy_out >= min_sy_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 6. Transfer all SY to receiver
+            sy_contract.transfer(receiver, total_sy_out);
+
+            // Emit event
+            self
+                .emit(
+                    RemoveLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        lp_in: lp_to_burn,
+                        sy_out: total_sy_out,
+                        pt_out: 0, // All PT was swapped to SY
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            total_sy_out
+        }
+
         // ============ Market Swap Operations ============
 
         fn swap_exact_sy_for_pt(

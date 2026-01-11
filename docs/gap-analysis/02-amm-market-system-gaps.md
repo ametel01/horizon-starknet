@@ -165,7 +165,7 @@ The Market TWAP Oracle is implemented in three key files:
 | increase_observations_cardinality_next() | ✅ | `amm.cairo:1066-1083` |
 | get_oracle_state() | ✅ | `amm.cairo:1097-1104` |
 | get_observation() | ✅ | `amm.cairo:1088-1093` |
-| MAX_CARDINALITY = 8760 | ✅ | `amm.cairo:38` |
+| MAX_CARDINALITY = 8760 | ✅ | `amm.cairo:69` |
 | PyLpOracle.get_pt_to_sy_rate() | ✅ | `py_lp_oracle.cairo:47-75` |
 | PyLpOracle.get_yt_to_sy_rate() | ✅ | `py_lp_oracle.cairo:77-100` |
 | PyLpOracle.get_lp_to_sy_rate() | ✅ | `py_lp_oracle.cairo:102-140` |
@@ -215,16 +215,16 @@ self._transfer_reserve_fee_to_treasury(sy_contract, treasury, actual_reserve_fee
 **Result:** LP fees compound automatically. When LPs burn LP tokens, they receive a proportional
 share of the grown reserves (including accumulated LP fees).
 
-**Note:** The `collect_fees()` function at `amm.cairo:922` is for **analytics only** - it resets
+**Note:** The `collect_fees()` function at `amm.cairo:1245` is for **analytics only** - it resets
 a counter and emits an event but does NOT transfer funds. LP fees are already embedded in reserves.
 
-**Test Evidence:** `test_market_fees.cairo:520-522` verifies LP fees stay in pool (receiver balance unchanged).
+**Test Evidence:** `test_market_fees.cairo:521-523` verifies LP fees stay in pool (receiver balance unchanged).
 
 ---
 
 ## 2.4 LP Token & Liquidity Operations
 
-**Implementation Status: 75%**
+**Implementation Status: 100%**
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
@@ -232,15 +232,15 @@ a counter and emits an event but does NOT transfer funds. LP fees are already em
 | MINIMUM_LIQUIDITY | 1000 | 1000 | ✅ |
 | First depositor protection | Stored reserves | Stored reserves | ✅ |
 | Add/remove liquidity | Both tokens | Both tokens | ✅ |
-| Single-sided add | Via router | ❌ Missing | 🟡 MEDIUM |
-| Transfer liquidity | Between markets | ❌ Missing | 🟡 MEDIUM |
-| Rollover PT | Old market → new | ❌ Missing | 🟡 MEDIUM |
+| Single-sided add | Via router | ✅ add_liquidity_single_sy/pt (router.cairo:470, 554) | ✅ |
+| Transfer liquidity | Between markets | ✅ See rollover_lp | ✅ |
+| Rollover LP | Old market → new | ✅ rollover_lp() (router.cairo:1149) | ✅ |
 
 ---
 
 ## 2.5 Market Contract (PendleMarketV6)
 
-**Implementation Status: 85%** (Core liquidity/swap works + TWAP oracle implemented; remaining: RewardManager/PendleGauge, flash callbacks)
+**Implementation Status: 95%** (Core liquidity/swap works + TWAP oracle + RewardManager + flash callbacks all implemented)
 
 **Reference (Pendle V2 code):** [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) (market contract) and [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) (TWAP observations)
 
@@ -258,13 +258,13 @@ a counter and emits an event but does NOT transfer funds. LP fees are already em
 | TWAP observation buffer | `OracleLib.Observation[65_535]` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `oracle_lib::Observation` + `Map<u16, Observation>` (8,760 slots) | ✅ |
 | observe(secondsAgos[]) | `observations.observe` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `IMarketOracle::observe()` | ✅ |
 | increaseObservationsCardinalityNext | `observations.grow` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `increase_observations_cardinality_next()` | ✅ |
-| RewardManager integration | Via PendleGauge parent | ❌ None | 🔴 HIGH |
-| redeemRewards(user) | ✅ | ❌ None | 🔴 HIGH |
-| getRewardTokens() | ✅ | ❌ None | 🔴 HIGH |
-| Swap callback hook | `IPMarketSwapCallback` via `bytes data` | ❌ None (transfer_from + direct transfer) | 🟡 MEDIUM |
-| skim() balance reconciliation | ✅ | ❌ None | 🟡 MEDIUM |
+| RewardManager integration | Via PendleGauge parent | ✅ RewardManagerComponent | ✅ |
+| redeemRewards(user) | ✅ | ✅ claim_rewards() (amm.cairo:1181) | ✅ |
+| getRewardTokens() | ✅ | ✅ get_reward_tokens() (amm.cairo:1174) | ✅ |
+| Swap callback hook | `IPMarketSwapCallback` via `bytes data` | ✅ IMarketSwapCallback via Span<felt252> | ✅ |
+| skim() balance reconciliation | ✅ | ✅ Implemented | ✅ |
 | Token transfer pattern | Pre-transfer + balance checks | Pulls via `transfer_from` | 🟡 MEDIUM |
-| Separate burn receivers | (receiverSy, receiverPt) | Single receiver | 🟡 MEDIUM |
+| Separate burn receivers | (receiverSy, receiverPt) | ✅ burn_with_receivers() | ✅ |
 | Storage packing | int128/uint96/uint16 | u256 per field | 🟡 MEDIUM (gas) |
 | Fee config from factory | getMarketConfig() | Stored in contract | 🟡 MEDIUM |
 | notExpired modifier | ✅ Modifier pattern | assert(!is_expired()) | ✅ Equivalent |
@@ -327,123 +327,100 @@ trait IMarketOracle<TContractState> {
 
 ---
 
-**Gap Detail - RewardManager/PendleGauge Integration (HIGH):**
+**~~Gap Detail - RewardManager/PendleGauge Integration (HIGH):~~** ✅ IMPLEMENTED
 
-Pendle's Market inherits from PendleGauge for LP reward distribution:
-```solidity
-// Pendle - Market inherits reward functionality
-contract PendleMarketV6 is PendleGauge, ... {
-    function redeemRewards(address user)
-        external returns (uint256[] memory rewardAmounts) {
-        // Inherited from PendleGauge
-        _updateAndDistributeRewards(user);
-        return _doTransferOutRewards(user, user);
-    }
-
-    function getRewardTokens() external view returns (address[] memory) {
-        return _getRewardTokens();
-    }
-}
-```
-
-Horizon has no reward infrastructure:
+Pendle's Market inherits from PendleGauge for LP reward distribution, and Horizon implements the same via component:
 ```cairo
-// Horizon - no reward tracking in Market
-// LPs cannot earn external incentives
-impl MarketImpl of IMarket<ContractState> {
-    // Only trading functions, no reward claiming
+// Horizon - RewardManager component integration (amm.cairo:76, 1174-1222)
+component!(path: RewardManagerComponent, storage: reward_manager, event: RewardManagerEvent);
+
+impl MarketRewardsImpl of IMarketRewards<ContractState> {
+    fn get_reward_tokens(self: @ContractState) -> Span<ContractAddress> {
+        self.reward_manager.get_reward_tokens()
+    }
+
+    fn claim_rewards(ref self: ContractState, user: ContractAddress) -> Span<u256> {
+        self.reward_manager.claim_rewards(user)
+    }
+
+    fn accrued_rewards(self: @ContractState, user: ContractAddress) -> Span<u256> {
+        self.reward_manager.accrued_rewards(user)
+    }
+    // ... additional reward tracking functions
 }
 ```
 
-**Impact:** Cannot run LP incentive programs (PENDLE-style emissions), partner reward distribution, or multi-token yield farming.
+**Result:** Horizon supports LP incentive programs, partner reward distribution, and multi-token yield farming via the RewardManagerComponent. The component integrates with LP balances through reward hooks.
 
 ---
 
-**Gap Detail - Flash Swap Callback (MEDIUM):**
+**~~Gap Detail - Flash Swap Callback (MEDIUM):~~** ✅ IMPLEMENTED
 
-Pendle swaps support a callback pattern for flash operations:
-```solidity
-// Pendle - callback for flash swaps
-function swapExactPtForSy(
-    address receiver,
-    uint256 exactPtIn,
-    bytes calldata data  // ← Callback data
-) external nonReentrant notExpired returns (uint256 netSyOut, uint256 netSyFee) {
-    // ... execute swap ...
-    if (data.length > 0) {
-        IPSwapCallback(msg.sender).swapCallback(
-            netPtToAccount, netSyToAccount, data
-        );
-    }
-}
-```
-
-Horizon uses direct transfers:
+Pendle swaps support a callback pattern for flash operations, and Horizon implements the same:
 ```cairo
-// Horizon - direct transfer pattern
+// Horizon - callback support (amm.cairo:731, 830, 929, 1027)
 fn swap_exact_pt_for_sy(
     ref self: ContractState,
     receiver: ContractAddress,
     exact_pt_in: u256,
-    min_sy_out: u256,  // No callback data
+    min_sy_out: u256,
+    callback_data: Span<felt252>,  // ← Callback data
 ) -> u256 {
-    // Transfer PT from caller first
-    pt_contract.transfer_from(caller, get_contract_address(), exact_pt_in);
-    // Then transfer SY to receiver
-    sy_contract.transfer(receiver, sy_out);
+    // ... execute swap ...
+
+    // Invoke callback if data provided
+    if callback_data.len() > 0 {
+        let callback = IMarketSwapCallbackDispatcher { contract_address: caller };
+        callback.swap_callback(net_pt, net_sy, callback_data);
+    }
 }
 ```
 
-**Impact:** Cannot implement atomic arbitrage strategies, composable flash swaps, or callback-based integrations. Horizon's 4 explicit swap functions mitigate this by covering all input/output combinations.
+**Result:** Horizon supports callback-based integrations for all 4 swap functions, enabling atomic arbitrage strategies, composable flash swaps, and callback-based integrations like Pendle.
 
 ---
 
-**Gap Detail - skim() Balance Reconciliation (MEDIUM):**
+**~~Gap Detail - skim() Balance Reconciliation (MEDIUM):~~** ✅ IMPLEMENTED
 
-Pendle has skim() to handle unexpected token deposits:
-```solidity
-// Pendle - force-sync reserves with actual balances
-function skim() external nonReentrant {
-    // Reconcile any "donated" or accidentally sent tokens
-    (uint256 syBalance, uint256 ptBalance) = _getBalances();
-    // Update reserves to match actual balances
+Pendle has skim() to handle unexpected token deposits, and Horizon now implements the same:
+```cairo
+// Horizon - skim() implementation (amm.cairo:1322)
+fn skim(ref self: ContractState) {
+    self.access_control.assert_only_role(DEFAULT_ADMIN_ROLE);
+
+    // Get actual vs stored balances
+    let actual_sy = sy_contract.balance_of(get_contract_address());
+    let actual_pt = pt_contract.balance_of(get_contract_address());
+
+    // Calculate excess and transfer to treasury
+    // ...
 }
 ```
 
-Horizon relies on exact accounting:
-```cairo
-// Horizon - no skim, relies on tracked reserves
-self.sy_reserve.write(self.sy_reserve.read() + sy_used);
-self.pt_reserve.write(self.pt_reserve.read() + pt_used);
-// If someone transfers tokens directly, they're lost
-```
-
-**Impact:** Tokens accidentally sent to the contract cannot be recovered or accounted for. Minor concern for protocol operation but affects edge cases.
+**Result:** Tokens accidentally sent to the contract can now be recovered by admin and transferred to treasury.
 
 ---
 
-**Gap Detail - Separate Burn Receivers (MEDIUM):**
+**~~Gap Detail - Separate Burn Receivers (MEDIUM):~~** ✅ IMPLEMENTED
 
-Pendle allows different receivers for SY and PT when removing liquidity:
-```solidity
-// Pendle - separate receivers
-function burn(
-    address receiverSy,   // SY goes here
-    address receiverPt,   // PT goes here
-    uint256 netLpToBurn
-) external returns (uint256 netSyOut, uint256 netPtOut);
-```
-
-Horizon uses single receiver:
+Pendle allows different receivers for SY and PT when removing liquidity, and Horizon now provides both options:
 ```cairo
-// Horizon - single receiver for both
+// Horizon - single receiver convenience function (amm.cairo:585)
 fn burn(
     ref self: ContractState,
     receiver: ContractAddress,  // Both SY and PT go here
     lp_to_burn: u256,
 ) -> (u256, u256)
+
+// Horizon - separate receivers (amm.cairo:655)
+fn burn_with_receivers(
+    ref self: ContractState,
+    receiver_sy: ContractAddress,   // SY goes here
+    receiver_pt: ContractAddress,   // PT goes here
+    lp_to_burn: u256,
+) -> (u256, u256)
 ```
 
-**Impact:** More complex LP exit strategies (e.g., send PT to one wallet, SY to another) require additional transactions.
+**Result:** Horizon supports both single-receiver convenience and separate-receiver flexibility patterns. The `burn_with_receivers()` function matches Pendle's separate receiver capability.
 
 ---
