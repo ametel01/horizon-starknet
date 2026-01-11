@@ -11,7 +11,7 @@ pub mod Router {
     use core::num::traits::Zero;
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-    use horizon::interfaces::i_router::IRouter;
+    use horizon::interfaces::i_router::{Call, IRouter};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
@@ -207,6 +207,32 @@ pub mod Router {
 
     #[abi(embed_v0)]
     impl RouterImpl of IRouter<ContractState> {
+        // ============ Multicall ============
+
+        /// Execute multiple calls to this router in a single transaction
+        /// SECURITY: Only allows calls to self (this router) to prevent arbitrary external calls
+        fn multicall(ref self: ContractState, calls: Span<Call>) -> Array<Span<felt252>> {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+
+            let this = get_contract_address();
+            let mut results: Array<Span<felt252>> = array![];
+
+            for call in calls {
+                // Security: Only allow calls to this router contract
+                assert(*call.to == this, Errors::ROUTER_MULTICALL_INVALID_TARGET);
+
+                let result = starknet::syscalls::call_contract_syscall(
+                    *call.to, *call.selector, *call.calldata,
+                )
+                    .expect(Errors::ROUTER_MULTICALL_FAILED);
+                results.append(result);
+            };
+
+            self.reentrancy_guard.end();
+            results
+        }
+
         // ============ Admin Functions ============
 
         /// Pause all router operations (PAUSER_ROLE only)

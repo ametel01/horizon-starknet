@@ -63,6 +63,8 @@ pub mod Errors {
     pub const ROUTER_DEADLINE_EXCEEDED: felt252 = 'HZN: deadline exceeded';
     pub const ROUTER_ROLLOVER_PT_MISMATCH: felt252 = 'HZN: rollover PT mismatch';
     pub const ROUTER_ROLLOVER_SY_MISMATCH: felt252 = 'HZN: rollover SY mismatch';
+    pub const ROUTER_MULTICALL_INVALID_TARGET: felt252 = 'HZN: multicall invalid target';
+    pub const ROUTER_MULTICALL_FAILED: felt252 = 'HZN: multicall call failed';
 
     // Math errors
     pub const MATH_OVERFLOW: felt252 = 'HZN: overflow';

@@ -1,5 +1,16 @@
 use starknet::ContractAddress;
 
+/// Represents a single call in a multicall batch
+/// @param to Target contract address
+/// @param selector Function selector to call
+/// @param calldata Serialized function arguments
+#[derive(Drop, Serde)]
+pub struct Call {
+    pub to: ContractAddress,
+    pub selector: felt252,
+    pub calldata: Span<felt252>,
+}
+
 /// Router interface - user-friendly entry point for all protocol operations
 /// Handles approvals, slippage protection, and multi-hop operations
 ///
@@ -7,6 +18,14 @@ use starknet::ContractAddress;
 /// from executing at unfavorable prices after market conditions change.
 #[starknet::interface]
 pub trait IRouter<TContractState> {
+    // ============ Multicall ============
+
+    /// Execute multiple calls to this router in a single transaction
+    /// SECURITY: Only allows calls to self (this router) to prevent arbitrary external calls
+    /// @param calls Array of calls to execute (all must target this router)
+    /// @return Array of return data from each call
+    fn multicall(ref self: TContractState, calls: Span<Call>) -> Array<Span<felt252>>;
+
     // ============ Admin Functions ============
 
     /// Pause all router operations (PAUSER_ROLE only)
