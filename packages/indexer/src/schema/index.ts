@@ -2333,3 +2333,38 @@ export const marketRewardsSummary = pgView("market_rewards_summary", {
   claim_count: bigint("claim_count", { mode: "number" }),
   last_claim_timestamp: timestamp("last_claim_timestamp"),
 }).existing();
+
+// ============================================================
+// PHASE 7: LP ROLLOVER VIEWS (1 view)
+// Views for LP rollover analytics and migration tracking
+// ============================================================
+
+/**
+ * Rollover Activity View
+ * Enriched LP rollover events with market metadata for both old and new markets
+ * Use for: LP rollover analytics, migration tracking
+ */
+export const rolloverActivity = pgView("rollover_activity", {
+  _id: uuid("_id"),
+  block_number: bigint("block_number", { mode: "number" }),
+  block_timestamp: timestamp("block_timestamp"),
+  transaction_hash: text("transaction_hash"),
+  event_index: integer("event_index"),
+  sender: text("sender"),
+  receiver: text("receiver"),
+  // Old market data
+  market_old: text("market_old"),
+  market_old_expiry: bigint("market_old_expiry", { mode: "number" }),
+  market_old_sy: text("market_old_sy"),
+  market_old_pt: text("market_old_pt"),
+  market_old_yt: text("market_old_yt"),
+  // New market data
+  market_new: text("market_new"),
+  market_new_expiry: bigint("market_new_expiry", { mode: "number" }),
+  market_new_sy: text("market_new_sy"),
+  market_new_pt: text("market_new_pt"),
+  market_new_yt: text("market_new_yt"),
+  // Rollover amounts
+  lp_burned: numeric("lp_burned", { precision: 78, scale: 0 }),
+  lp_minted: numeric("lp_minted", { precision: 78, scale: 0 }),
+}).existing();
