@@ -154,6 +154,22 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> u256;
 
+    /// Remove liquidity and receive only PT (auto-swaps SY to PT)
+    /// @param market The market address
+    /// @param receiver Address to receive PT tokens
+    /// @param lp_to_burn Amount of LP tokens to burn
+    /// @param min_pt_out Minimum PT to receive (slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return Amount of PT received
+    fn remove_liquidity_single_pt(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        lp_to_burn: u256,
+        min_pt_out: u256,
+        deadline: u64,
+    ) -> u256;
+
     // ============ Market Swap Operations ============
 
     /// Swap exact SY for PT

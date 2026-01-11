@@ -701,6 +701,72 @@ pub mod Router {
             total_sy_out
         }
 
+        fn remove_liquidity_single_pt(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            lp_to_burn: u256,
+            min_pt_out: u256,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(lp_to_burn > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // 1. Transfer LP from caller to router
+            let lp_token = IPTDispatcher { contract_address: market };
+            lp_token.transfer_from(caller, this, lp_to_burn);
+
+            // 2. Burn LP tokens to receive SY and PT (to router)
+            let (sy_from_burn, pt_from_burn) = market_contract.burn(this, lp_to_burn);
+
+            // 3. Swap all SY for PT
+            sy_contract.approve(market, sy_from_burn);
+            let pt_from_swap = market_contract
+                .swap_exact_sy_for_pt(
+                    this,
+                    sy_from_burn,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
+                );
+
+            // 4. Calculate total PT out
+            let total_pt_out = pt_from_burn + pt_from_swap;
+
+            // 5. Slippage check
+            assert(total_pt_out >= min_pt_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 6. Transfer all PT to receiver
+            pt_contract.transfer(receiver, total_pt_out);
+
+            // Emit event
+            self
+                .emit(
+                    RemoveLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        lp_in: lp_to_burn,
+                        sy_out: 0, // All SY was swapped to PT
+                        pt_out: total_pt_out,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            total_pt_out
+        }
+
         // ============ Market Swap Operations ============
 
         fn swap_exact_sy_for_pt(
