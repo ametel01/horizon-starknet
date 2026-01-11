@@ -855,4 +855,479 @@ These CSS recommendations maintain the existing dark theme and orange accent col
  
  .position-row--variable .position-label::before {
    content: '📈';
-   margin-right:
+   margin-right: 8px;
+   font-size: 0.875rem;
+}
+
+
+Styling Review: Horizon Protocol /analytics Page
+This is a data-rich analytics dashboard with multiple charts, metrics, and visualizations. The page has good content but several styling improvements would enhance readability and visual polish.
+
+Current Strengths
+
+Consistent section organization with clear headings (YIELD CURVE, PT CONVERGENCE, MARKET DEPTH, etc.)
+Good use of cards to separate different metric sections
+Effective color coding for positive (green-ish orange) and key values (orange accent)
+Chart consistency with the orange brand color throughout
+Informative tooltips/explanations at the bottom of each chart section
+
+
+General Recommendations
+1. Page Header & Summary Stats
+Issue: The header area (Analytics title + TVL summary cards on the right) has a lot of empty space on the left. The TVL summary cards stack vertically and create an imbalanced layout.
+Recommendations:
+
+Create a more prominent header with inline summary stats
+Add a date/time selector for filtering analytics data
+Include a refresh indicator or last-updated timestamp
+Consider a horizontal layout for the key metrics
+
+2. Chart Cards Layout
+Issue: The charts are well-organized but visually monotonous. All cards look identical with the same dark background and minimal differentiation.
+Recommendations:
+
+Add subtle gradient variations to different card types
+Include hover states that reveal more details
+Add more prominent section dividers between major categories
+Consider using card shadows or borders to create depth hierarchy
+
+3. Line Charts (Yield Curve, PT Convergence, Implied vs Realized APY)
+Issue: The charts are functional but lack interactivity indicators. The "Live" badge is small and easily missed. The dashed reference line (Par 1.0) is subtle.
+Recommendations:
+
+Add animated tooltips on hover
+Make the "Live" indicator pulse or animate
+Add gradient fills under the line for better visual impact
+Increase the contrast of reference lines and labels
+Add crosshair interactions on hover
+
+4. Bar Chart (Liquidity Health)
+Issue: The large solid orange bar is visually heavy and lacks detail. The "99" health score badge could be more prominent.
+Recommendations:
+
+Add gradient to the bar instead of solid fill
+Consider showing comparison bars (e.g., protocol average)
+Make the health score badge larger or add animation
+Add hover state to show detailed breakdown
+
+5. Metrics Display (Stats below charts)
+Issue: The metric boxes (Current Price, Discount to Par, Implied APY, Days to Expiry) are quite plain and the orange values don't stand out enough against the dark background.
+Recommendations:
+
+Add subtle background color to metric boxes
+Increase font size for key values
+Add trend indicators (up/down arrows)
+Consider sparklines for historical context
+
+6. Dropdown Selectors (Market selector, time period)
+Issue: The dropdown selectors are functional but blend too much with the background. The "90" and "30" day selectors are small and unclear.
+Recommendations:
+
+Add more visible borders or backgrounds
+Include descriptive labels ("90 days", "30 days")
+Add hover states
+Consider button group styling for common time selections
+
+7. Explanation Boxes
+Issue: The explanatory text at the bottom of each chart (e.g., "PT Convergence: Principal Tokens trade at a discount...") is helpful but visually undistinguished.
+Recommendations:
+
+Add a subtle left border or icon to indicate these are informational
+Use a slightly different background color
+Add expand/collapse functionality for longer explanations
+
+8. Advanced Analytics Accordion
+Issue: The "Advanced Analytics" expandable section is functional but the expand/collapse state isn't immediately clear.
+Recommendations:
+
+Add rotation animation to the chevron icon
+Include a preview of what's inside when collapsed
+Add a subtle background change on hover
+
+
+Detailed CSS Recommendations
+1. Page Header & Stats Bar
+```css
+/* Analytics header with inline stats */
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 0 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 32px;
+}
+
+.analytics-title-section {
+  flex: 1;
+}
+
+.analytics-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.analytics-subtitle {
+  color: #888;
+  font-size: 1rem;
+  margin-top: 8px;
+}
+
+/* Last updated indicator */
+.last-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 0.875rem;
+  margin-top: 12px;
+}
+
+.last-updated-dot {
+  width: 8px;
+  height: 8px;
+  background: #4ecdc4;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Summary stats row */
+.analytics-stats-row {
+  display: flex;
+  gap: 16px;
+}
+
+.analytics-stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 140px;
+  transition: all 0.3s ease;
+}
+
+.analytics-stat-card:hover {
+  border-color: rgba(255, 107, 0, 0.3);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.analytics-stat-label {
+  color: #888;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.analytics-stat-value {
+  color: #ff6b00;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+```
+
+2. Chart Cards Layout
+```css
+/* Chart card variations */
+.chart-card {
+  background: linear-gradient(
+    180deg,
+    rgba(30, 30, 30, 0.9) 0%,
+    rgba(20, 20, 20, 0.95) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.chart-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Section dividers */
+.analytics-section {
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.analytics-section:last-child {
+  border-bottom: none;
+}
+```
+
+3. Line Charts Enhancement
+```css
+/* Live indicator */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(78, 205, 196, 0.15);
+  color: #4ecdc4;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.live-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #4ecdc4;
+  border-radius: 50%;
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.8);
+  }
+}
+
+/* Reference line styling */
+.chart-reference-line {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.chart-reference-label {
+  fill: #888;
+  font-size: 0.75rem;
+}
+```
+
+4. Bar Chart (Liquidity Health)
+```css
+/* Health score badge */
+.health-score-badge {
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8533 100%);
+  color: #000;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(255, 107, 0, 0.3);
+}
+
+/* Gradient bar */
+.health-bar {
+  background: linear-gradient(90deg, #ff6b00 0%, #ff8533 50%, #ffab00 100%);
+  border-radius: 8px;
+  height: 24px;
+  transition: width 0.5s ease;
+}
+
+.health-bar-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px;
+}
+```
+
+5. Metrics Display
+```css
+/* Metric boxes */
+.metric-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.metric-box:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.metric-label {
+  color: #888;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  color: #ff6b00;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Trend indicator */
+.metric-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
+.metric-trend--up {
+  color: #4ecdc4;
+}
+
+.metric-trend--down {
+  color: #ff6b6b;
+}
+```
+
+6. Dropdown Selectors
+```css
+/* Time period selector */
+.time-selector {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.time-selector-button {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.time-selector-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.time-selector-button--active {
+  background: #ff6b00;
+  color: #000;
+  font-weight: 600;
+}
+
+/* Market dropdown */
+.market-dropdown {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.market-dropdown:hover {
+  border-color: rgba(255, 107, 0, 0.4);
+}
+```
+
+7. Explanation Boxes
+```css
+/* Info/explanation box */
+.explanation-box {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 3px solid rgba(255, 107, 0, 0.5);
+  padding: 12px 16px;
+  margin-top: 16px;
+  border-radius: 0 8px 8px 0;
+}
+
+.explanation-box-text {
+  color: #888;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.explanation-box-icon {
+  color: #ff6b00;
+  margin-right: 8px;
+}
+```
+
+8. Advanced Analytics Accordion
+```css
+/* Accordion header */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.accordion-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.accordion-header[aria-expanded="true"] {
+  border-radius: 12px 12px 0 0;
+  border-bottom-color: transparent;
+}
+
+.accordion-title {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.accordion-chevron {
+  color: #888;
+  font-size: 1.25rem;
+  transition: transform 0.3s ease;
+}
+
+.accordion-header[aria-expanded="true"] .accordion-chevron {
+  transform: rotate(180deg);
+  color: #ff6b00;
+}
+
+/* Accordion content */
+.accordion-content {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 20px;
+  animation: accordion-open 0.3s ease;
+}
+
+@keyframes accordion-open {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+```
+
+These CSS recommendations maintain the existing dark theme and orange accent color while adding interactivity, better visual hierarchy, and polish to the analytics dashboard.
