@@ -693,7 +693,7 @@ pub mod Router {
                         market,
                         lp_in: lp_to_burn,
                         sy_out: total_sy_out,
-                        pt_out: 0, // All PT was swapped to SY
+                        pt_out: 0 // All PT was swapped to SY
                     },
                 );
 

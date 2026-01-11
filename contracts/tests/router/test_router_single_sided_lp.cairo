@@ -416,3 +416,273 @@ fn test_single_sided_deadline() {
         ); // deadline: 1500 < current: 2000
     stop_cheat_caller_address(router.contract_address);
 }
+
+// ============ Remove Liquidity Single-Sided Tests ============
+
+#[test]
+fn test_remove_liquidity_single_pt() {
+    let (underlying, sy, yt, pt, market, router) = deploy_test_stack();
+    let user = user1();
+
+    // Initialize pool with liquidity first
+    initialize_pool(underlying, sy, yt, pt, market, user2(), 100 * WAD, 100 * WAD);
+
+    // Setup user with SY and add liquidity to get LP tokens
+    let amount_sy = 50 * WAD;
+    setup_user_with_sy(underlying, sy, user, amount_sy);
+
+    // Approve router to spend SY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, amount_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Add single-sided liquidity to get LP tokens
+    start_cheat_caller_address(router.contract_address, user);
+    let (_sy_used, _pt_used, lp_out) = router
+        .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    assert(lp_out > 0, 'No LP minted');
+
+    // Get initial balances before remove liquidity
+    let lp_token = IERC20Dispatcher { contract_address: market.contract_address };
+    let lp_balance_before = lp_token.balance_of(user);
+    let pt_balance_before = pt.balance_of(user);
+
+    // Approve router to spend LP tokens
+    start_cheat_caller_address(market.contract_address, user);
+    lp_token.approve(router.contract_address, lp_out);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Remove liquidity single-sided to PT
+    start_cheat_caller_address(router.contract_address, user);
+    let total_pt_out = router
+        .remove_liquidity_single_pt(market.contract_address, user, lp_out, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Verify PT received
+    assert(total_pt_out > 0, 'No PT received');
+
+    // Verify LP tokens were burned
+    let lp_balance_after = lp_token.balance_of(user);
+    assert(lp_balance_after == lp_balance_before - lp_out, 'LP not burned');
+
+    // Verify PT balance increased
+    let pt_balance_after = pt.balance_of(user);
+    assert(pt_balance_after == pt_balance_before + total_pt_out, 'PT balance mismatch');
+}
+
+#[test]
+#[should_panic(expected: ('HZN: slippage exceeded',))]
+fn test_remove_liquidity_single_pt_slippage() {
+    let (underlying, sy, yt, _pt, market, router) = deploy_test_stack();
+    let user = user1();
+
+    // Initialize pool with liquidity first
+    initialize_pool(underlying, sy, yt, _pt, market, user2(), 100 * WAD, 100 * WAD);
+
+    // Setup user with SY and add liquidity to get LP tokens
+    let amount_sy = 50 * WAD;
+    setup_user_with_sy(underlying, sy, user, amount_sy);
+
+    // Approve router to spend SY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, amount_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Add single-sided liquidity to get LP tokens
+    start_cheat_caller_address(router.contract_address, user);
+    let (_sy_used, _pt_used, lp_out) = router
+        .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Approve router to spend LP tokens
+    let lp_token = IERC20Dispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, user);
+    lp_token.approve(router.contract_address, lp_out);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Try to remove liquidity with unrealistically high min_pt_out (should fail)
+    start_cheat_caller_address(router.contract_address, user);
+    router
+        .remove_liquidity_single_pt(
+            market.contract_address, user, lp_out, lp_out * 1000, DEFAULT_DEADLINE,
+        );
+    stop_cheat_caller_address(router.contract_address);
+}
+
+#[test]
+fn test_remove_liquidity_single_sy() {
+    let (underlying, sy, yt, pt, market, router) = deploy_test_stack();
+    let user = user1();
+
+    // Initialize pool with liquidity first
+    initialize_pool(underlying, sy, yt, pt, market, user2(), 100 * WAD, 100 * WAD);
+
+    // Setup user with SY and add liquidity to get LP tokens
+    let amount_sy = 50 * WAD;
+    setup_user_with_sy(underlying, sy, user, amount_sy);
+
+    // Approve router to spend SY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, amount_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Add single-sided liquidity to get LP tokens
+    start_cheat_caller_address(router.contract_address, user);
+    let (_sy_used, _pt_used, lp_out) = router
+        .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    assert(lp_out > 0, 'No LP minted');
+
+    // Get initial balances before remove liquidity
+    let lp_token = IERC20Dispatcher { contract_address: market.contract_address };
+    let lp_balance_before = lp_token.balance_of(user);
+    let sy_balance_before = sy.balance_of(user);
+
+    // Approve router to spend LP tokens
+    start_cheat_caller_address(market.contract_address, user);
+    lp_token.approve(router.contract_address, lp_out);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Remove liquidity single-sided to SY
+    start_cheat_caller_address(router.contract_address, user);
+    let total_sy_out = router
+        .remove_liquidity_single_sy(market.contract_address, user, lp_out, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Verify SY received
+    assert(total_sy_out > 0, 'No SY received');
+
+    // Verify LP tokens were burned
+    let lp_balance_after = lp_token.balance_of(user);
+    assert(lp_balance_after == lp_balance_before - lp_out, 'LP not burned');
+
+    // Verify SY balance increased
+    let sy_balance_after = sy.balance_of(user);
+    assert(sy_balance_after == sy_balance_before + total_sy_out, 'SY balance mismatch');
+}
+
+#[test]
+#[should_panic(expected: ('HZN: slippage exceeded',))]
+fn test_remove_liquidity_single_sy_slippage() {
+    let (underlying, sy, yt, pt, market, router) = deploy_test_stack();
+    let user = user1();
+
+    // Initialize pool with liquidity first
+    initialize_pool(underlying, sy, yt, pt, market, user2(), 100 * WAD, 100 * WAD);
+
+    // Setup user with SY and add liquidity to get LP tokens
+    let amount_sy = 50 * WAD;
+    setup_user_with_sy(underlying, sy, user, amount_sy);
+
+    // Approve router to spend SY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, amount_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Add single-sided liquidity to get LP tokens
+    start_cheat_caller_address(router.contract_address, user);
+    let (_sy_used, _pt_used, lp_out) = router
+        .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Approve router to spend LP tokens
+    let lp_token = IERC20Dispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, user);
+    lp_token.approve(router.contract_address, lp_out);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Try to remove liquidity with unrealistically high min_sy_out (should fail)
+    start_cheat_caller_address(router.contract_address, user);
+    router
+        .remove_liquidity_single_sy(
+            market.contract_address, user, lp_out, lp_out * 1000, DEFAULT_DEADLINE,
+        );
+    stop_cheat_caller_address(router.contract_address);
+}
+
+#[test]
+#[should_panic(expected: ('HZN: deadline exceeded',))]
+fn test_remove_liquidity_single_pt_deadline() {
+    let (underlying, sy, yt, pt, market, router) = deploy_test_stack();
+    let user = user1();
+
+    // Initialize pool with liquidity first
+    initialize_pool(underlying, sy, yt, pt, market, user2(), 100 * WAD, 100 * WAD);
+
+    // Setup user with SY and add liquidity to get LP tokens
+    let amount_sy = 50 * WAD;
+    setup_user_with_sy(underlying, sy, user, amount_sy);
+
+    // Approve router to spend SY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, amount_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Add single-sided liquidity to get LP tokens
+    start_cheat_caller_address(router.contract_address, user);
+    let (_sy_used, _pt_used, lp_out) = router
+        .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Approve router to spend LP tokens
+    let lp_token = IERC20Dispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, user);
+    lp_token.approve(router.contract_address, lp_out);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Advance time past deadline
+    start_cheat_block_timestamp_global(2000);
+
+    // Try to remove liquidity with expired deadline (should fail)
+    start_cheat_caller_address(router.contract_address, user);
+    router
+        .remove_liquidity_single_pt(
+            market.contract_address, user, lp_out, 0, 1500,
+        ); // deadline: 1500 < current: 2000
+    stop_cheat_caller_address(router.contract_address);
+}
+
+#[test]
+#[should_panic(expected: ('HZN: deadline exceeded',))]
+fn test_remove_liquidity_single_sy_deadline() {
+    let (underlying, sy, yt, pt, market, router) = deploy_test_stack();
+    let user = user1();
+
+    // Initialize pool with liquidity first
+    initialize_pool(underlying, sy, yt, pt, market, user2(), 100 * WAD, 100 * WAD);
+
+    // Setup user with SY and add liquidity to get LP tokens
+    let amount_sy = 50 * WAD;
+    setup_user_with_sy(underlying, sy, user, amount_sy);
+
+    // Approve router to spend SY
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.approve(router.contract_address, amount_sy);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Add single-sided liquidity to get LP tokens
+    start_cheat_caller_address(router.contract_address, user);
+    let (_sy_used, _pt_used, lp_out) = router
+        .add_liquidity_single_sy(market.contract_address, user, amount_sy, 0, DEFAULT_DEADLINE);
+    stop_cheat_caller_address(router.contract_address);
+
+    // Approve router to spend LP tokens
+    let lp_token = IERC20Dispatcher { contract_address: market.contract_address };
+    start_cheat_caller_address(market.contract_address, user);
+    lp_token.approve(router.contract_address, lp_out);
+    stop_cheat_caller_address(market.contract_address);
+
+    // Advance time past deadline
+    start_cheat_block_timestamp_global(2000);
+
+    // Try to remove liquidity with expired deadline (should fail)
+    start_cheat_caller_address(router.contract_address, user);
+    router
+        .remove_liquidity_single_sy(
+            market.contract_address, user, lp_out, 0, 1500,
+        ); // deadline: 1500 < current: 2000
+    stop_cheat_caller_address(router.contract_address);
+}
