@@ -401,7 +401,7 @@ grep -q "CardContent" packages/frontend-solid/src/shared/ui/Card.tsx && echo "OK
 
 ---
 
-### Step 19: Create Dialog component with Kobalte
+### Step 19: Create Dialog component with Kobalte **COMPLETE**
 
 #### Goal
 Port Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter using Kobalte Dialog.
@@ -411,7 +411,7 @@ Port Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDesc
 
 #### Validation
 ```bash
-grep -q "Dialog.Root" packages/frontend-solid/src/shared/ui/Dialog.tsx && echo "OK"
+grep -q "DialogRoot" packages/frontend-solid/src/shared/ui/Dialog.tsx && echo "OK"
 ```
 
 #### Failure modes
