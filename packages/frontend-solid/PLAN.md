@@ -184,7 +184,7 @@ grep -q "getRouterContract" packages/frontend-solid/src/shared/starknet/contract
 
 ---
 
-### Step 9: Copy generated contract types
+### Step 9: Copy generated contract types **COMPLETE**
 
 #### Goal
 Copy ABI-generated TypeScript types for all contracts (Router, Market, SY, PT, YT, etc.).
