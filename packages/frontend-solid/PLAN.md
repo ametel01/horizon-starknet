@@ -1161,7 +1161,7 @@ grep -q "export default" packages/frontend-solid/src/routes/pools.tsx && echo "O
 
 ---
 
-### Step 57: Create portfolio page route
+### Step 57: Create portfolio page route **COMPLETE**
 
 #### Goal
 Create /portfolio route with user positions.
