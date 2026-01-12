@@ -1279,7 +1279,7 @@ grep -q "GET" packages/frontend-solid/src/routes/api/health.ts && echo "OK"
 
 ---
 
-## Phase 12: Additional Features
+## Phase 12: Additional Features **COMPLETE**
 
 Port remaining features.
 
@@ -1400,7 +1400,7 @@ Port domain entity components.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 68: Create market entity components
+### Step 68: Create market entity components **COMPLETE**
 
 #### Goal
 Port MarketCard, MarketList, AssetTypeBadge, StatsOverview.
