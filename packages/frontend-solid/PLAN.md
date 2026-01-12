@@ -1446,7 +1446,7 @@ grep -q "EnhancedPositionCard" packages/frontend-solid/src/entities/position/ind
 
 ---
 
-### Step 70: Create token entity components
+### Step 70: Create token entity components **COMPLETE**
 
 #### Goal
 Port TokenAmount display component.
