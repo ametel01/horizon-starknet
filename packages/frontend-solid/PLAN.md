@@ -736,7 +736,7 @@ grep -q "useAccount" packages/frontend-solid/src/features/wallet/index.ts && ech
 
 ---
 
-## Phase 6: Markets Feature
+## Phase 6: Markets Feature **COMPLETE**
 
 Port market data fetching and display.
 
@@ -826,7 +826,7 @@ Port the core trading functionality.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 40: Create useSwap mutation hook
+### Step 40: Create useSwap mutation hook **COMPLETE**
 
 #### Goal
 Port useSwap hook using createMutation with optimistic updates for balance changes.
