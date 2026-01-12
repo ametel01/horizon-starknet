@@ -1,8 +1,8 @@
-import { type Accessor, createEffect, createMemo, createSignal, on, type JSX, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, on, type JSX, Show } from 'solid-js';
 
 import { type MarketData } from '@/features/markets';
-import { useAccount, useStarknet } from '@/features/wallet';
-import { getAddresses, getMarketParams } from '@shared/config/addresses';
+import { useStarknet } from '@/features/wallet';
+import { getMarketParams } from '@shared/config/addresses';
 import { cn } from '@shared/lib/utils';
 import { type MarketState as AmmMarketState, getImpliedApy } from '@shared/math/amm';
 import { formatWad, fromWad, parseWad } from '@shared/math/wad';
@@ -28,13 +28,12 @@ import {
   deriveSwapDirection,
   deriveSwapFormUiState,
   deriveTokenLabels,
-  getInputTokenAddress,
   getTokenTypeDescription,
   isValidBuySell,
   isValidTokenType,
   type TokenType,
 } from '../lib/swapFormLogic';
-import { calculateMinOutput, type SwapDirection, useSwap } from '../model/useSwap';
+import { calculateMinOutput, useSwap } from '../model/useSwap';
 
 export interface SwapFormProps {
   market: MarketData;
@@ -84,8 +83,6 @@ function ArrowUpDownIcon(props: JSX.SvgSVGAttributes<SVGSVGElement>): JSX.Elemen
  */
 export function SwapForm(props: SwapFormProps): JSX.Element {
   const { isConnected, network } = useStarknet();
-  const { address } = useAccount();
-  const addresses = () => getAddresses(network);
 
   // Form state signals
   const [tokenType, setTokenType] = createSignal<TokenType>('PT');
@@ -107,10 +104,9 @@ export function SwapForm(props: SwapFormProps): JSX.Element {
     reset: resetSwap,
   } = useSwap();
 
-  // Derive token labels and addresses using pure functions
+  // Derive token labels using pure functions
   const tokenSymbol = () => props.market.metadata?.yieldTokenSymbol ?? 'Token';
   const tokenLabels = createMemo(() => deriveTokenLabels(tokenSymbol(), tokenType(), isBuying()));
-  const inputToken = createMemo(() => getInputTokenAddress(props.market, tokenType(), isBuying()));
   const inputLabel = () => tokenLabels().input;
   const outputLabel = () => tokenLabels().output;
   const syLabel = () => tokenLabels().sy;

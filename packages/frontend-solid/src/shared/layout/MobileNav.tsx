@@ -246,7 +246,7 @@ export function MobileNav(): JSX.Element {
                 icon={item.icon}
                 label={isSimple() && item.simpleLabel ? item.simpleLabel : item.label}
                 isActive={isActive(item.href)}
-                primary={item.primary}
+                primary={item.primary ?? false}
               />
             )}
           </For>
