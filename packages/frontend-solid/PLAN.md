@@ -1143,7 +1143,7 @@ grep -q "export default" packages/frontend-solid/src/routes/mint.tsx && echo "OK
 
 ---
 
-### Step 56: Create pools page route
+### Step 56: Create pools page route **COMPLETE**
 
 #### Goal
 Create /pools route with liquidity forms.
