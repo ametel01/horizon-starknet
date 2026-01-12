@@ -646,7 +646,7 @@ grep -q "useContext" packages/frontend-solid/src/features/wallet/model/useStarkn
 
 ---
 
-### Step 31: Create useAccount hook
+### Step 31: Create useAccount hook **COMPLETE**
 
 #### Goal
 Create useAccount hook that derives account state from wallet context.
