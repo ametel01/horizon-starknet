@@ -263,7 +263,7 @@ grep -q "QueryClientProvider" packages/frontend-solid/src/providers/QueryProvide
 
 ---
 
-### Step 12: Create StarknetProvider with SolidJS signals
+### Step 12: Create StarknetProvider with SolidJS signals **COMPLETE**
 
 #### Goal
 Port StarknetProvider replacing useState with createSignal, useEffect with createEffect, useCallback with regular functions, and useMemo with createMemo.
