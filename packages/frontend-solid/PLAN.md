@@ -700,7 +700,7 @@ grep -q "connect" packages/frontend-solid/src/features/wallet/ui/ConnectButton.t
 
 ---
 
-### Step 34: Create DisclaimerDialog component
+### Step 34: Create DisclaimerDialog component **COMPLETE**
 
 #### Goal
 Port DisclaimerDialog with terms acceptance before connecting.
