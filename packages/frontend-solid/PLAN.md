@@ -511,7 +511,7 @@ grep -q "MarketCardSkeleton" packages/frontend-solid/src/shared/ui/Skeleton.tsx 
 
 ---
 
-### Step 25: Create Toast component with Kobalte
+### Step 25: Create Toast component with Kobalte **COMPLETE**
 
 #### Goal
 Port Toaster using Kobalte Toast with sonner-like API for notifications.
