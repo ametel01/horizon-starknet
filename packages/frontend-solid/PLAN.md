@@ -918,7 +918,7 @@ grep -q "useSwap" packages/frontend-solid/src/features/swap/index.ts && echo "OK
 
 ---
 
-## Phase 8: Transaction Settings Feature
+## Phase 8: Transaction Settings Feature **COMPLETE**
 
 Port slippage and deadline configuration.
 
@@ -990,7 +990,7 @@ Port header, footer, and navigation.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 48: Create Header component
+### Step 48: Create Header component **COMPLETE**
 
 #### Goal
 Port Header with logo, navigation links, connect button, and theme toggle.
