@@ -1125,7 +1125,7 @@ grep -q "SwapForm" packages/frontend-solid/src/routes/trade.tsx && echo "OK"
 
 ---
 
-### Step 55: Create mint page route
+### Step 55: Create mint page route **COMPLETE**
 
 #### Goal
 Create /mint route with mint form.
