@@ -1197,7 +1197,7 @@ grep -q "export default" packages/frontend-solid/src/routes/analytics.tsx && ech
 
 ---
 
-### Step 59: Create faucet page route
+### Step 59: Create faucet page route **COMPLETE**
 
 #### Goal
 Create /faucet route with token faucet form.
