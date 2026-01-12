@@ -235,7 +235,7 @@ grep -q "twMerge" packages/frontend-solid/src/shared/lib/utils.ts && echo "OK"
 
 ---
 
-## Phase 3: Core Providers
+## Phase 3: Core Providers **COMPLETE**
 
 Port React context providers to SolidJS contexts with signals.
 
@@ -364,7 +364,7 @@ Port shadcn/ui components to Kobalte equivalents with identical Tailwind styling
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 17: Create Button component
+### Step 17: Create Button component **COMPLETE**
 
 #### Goal
 Port Button component with CVA variants, loading state, and all size/variant combinations using Kobalte Button primitive.
