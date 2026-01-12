@@ -664,7 +664,7 @@ grep -q "useStarknet" packages/frontend-solid/src/features/wallet/model/useAccou
 
 ---
 
-### Step 32: Create useContracts hook
+### Step 32: Create useContracts hook **COMPLETE**
 
 #### Goal
 Create useContracts hook that provides typed contract instances.
