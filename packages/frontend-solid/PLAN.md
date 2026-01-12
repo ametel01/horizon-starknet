@@ -411,7 +411,7 @@ Port Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDesc
 
 #### Validation
 ```bash
-grep -q "DialogRoot" packages/frontend-solid/src/shared/ui/Dialog.tsx && echo "OK"
+grep -q "Dialog.Root" packages/frontend-solid/src/shared/ui/Dialog.tsx && echo "OK"
 ```
 
 #### Failure modes
@@ -420,7 +420,7 @@ grep -q "DialogRoot" packages/frontend-solid/src/shared/ui/Dialog.tsx && echo "O
 
 ---
 
-### Step 20: Create Select component with Kobalte
+### Step 20: Create Select component with Kobalte **COMPLETE**
 
 #### Goal
 Port Select, SelectTrigger, SelectContent, SelectItem, SelectValue using Kobalte Select.
@@ -430,7 +430,7 @@ Port Select, SelectTrigger, SelectContent, SelectItem, SelectValue using Kobalte
 
 #### Validation
 ```bash
-grep -q "Select.Root" packages/frontend-solid/src/shared/ui/Select.tsx && echo "OK"
+grep -q "SelectRoot" packages/frontend-solid/src/shared/ui/Select.tsx && echo "OK"
 ```
 
 #### Failure modes
