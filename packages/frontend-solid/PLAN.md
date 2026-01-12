@@ -355,7 +355,7 @@ grep -q "ThemeProvider" packages/frontend-solid/src/providers/index.tsx && grep 
 
 ---
 
-## Phase 4: Base UI Components (Kobalte)
+## Phase 4: Base UI Components (Kobalte) **COMPLETE**
 
 Port shadcn/ui components to Kobalte equivalents with identical Tailwind styling.
 
@@ -628,7 +628,7 @@ Port wallet connection feature with SolidJS patterns.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 30: Create useStarknet hook
+### Step 30: Create useStarknet hook **COMPLETE**
 
 #### Goal
 Create useStarknet hook that accesses StarknetContext using SolidJS useContext.
