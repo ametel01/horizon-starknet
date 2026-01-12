@@ -817,7 +817,7 @@ grep -q "useMarkets" packages/frontend-solid/src/features/markets/index.ts && ec
 
 ---
 
-## Phase 7: Swap Feature
+## Phase 7: Swap Feature **COMPLETE**
 
 Port the core trading functionality.
 
@@ -927,7 +927,7 @@ Port slippage and deadline configuration.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 45: Create useTransactionSettings hook
+### Step 45: Create useTransactionSettings hook **COMPLETE**
 
 #### Goal
 Create useTransactionSettings hook that accesses TransactionSettingsContext.
