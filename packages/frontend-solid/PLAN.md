@@ -1308,7 +1308,7 @@ grep -q "createMutation" packages/frontend-solid/src/features/mint/model/useMint
 
 ---
 
-### Step 64: Create liquidity feature
+### Step 64: Create liquidity feature **COMPLETE**
 
 #### Goal
 Port useLiquidity, AddLiquidityForm, RemoveLiquidityForm.
