@@ -619,7 +619,7 @@ grep -c "export" packages/frontend-solid/src/shared/ui/index.ts | grep -q "[4-9]
 
 ---
 
-## Phase 5: Wallet Feature
+## Phase 5: Wallet Feature **COMPLETE**
 
 Port wallet connection feature with SolidJS patterns.
 
@@ -745,7 +745,7 @@ Port market data fetching and display.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 36: Create useMarkets query hook
+### Step 36: Create useMarkets query hook **COMPLETE**
 
 #### Goal
 Port useMarkets hook using @tanstack/solid-query createQuery to fetch market list.
