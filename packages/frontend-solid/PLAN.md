@@ -1242,7 +1242,7 @@ grep -q "POST" packages/frontend-solid/src/routes/api/rpc.ts && echo "OK"
 
 ---
 
-### Step 61: Create markets API routes
+### Step 61: Create markets API routes **COMPLETE**
 
 #### Goal
 Create /api/markets and /api/markets/[address] routes.
