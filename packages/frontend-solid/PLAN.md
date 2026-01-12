@@ -430,7 +430,7 @@ Port Select, SelectTrigger, SelectContent, SelectItem, SelectValue using Kobalte
 
 #### Validation
 ```bash
-grep -q "SelectRoot" packages/frontend-solid/src/shared/ui/Select.tsx && echo "OK"
+grep -q "Select.Root" packages/frontend-solid/src/shared/ui/Select.tsx && echo "OK"
 ```
 
 #### Failure modes
@@ -467,7 +467,7 @@ Port Tabs, TabsList, TabsTrigger, TabsContent using Kobalte Tabs.
 
 #### Validation
 ```bash
-grep -q "TabsRoot" packages/frontend-solid/src/shared/ui/Tabs.tsx && echo "OK"
+grep -q "Tabs.Root" packages/frontend-solid/src/shared/ui/Tabs.tsx && echo "OK"
 ```
 
 #### Failure modes
@@ -475,7 +475,7 @@ grep -q "TabsRoot" packages/frontend-solid/src/shared/ui/Tabs.tsx && echo "OK"
 
 ---
 
-### Step 23: Create Badge component
+### Step 23: Create Badge component **COMPLETE**
 
 #### Goal
 Port Badge component with all variant styles.
