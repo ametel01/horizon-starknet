@@ -1215,7 +1215,7 @@ grep -q "export default" packages/frontend-solid/src/routes/faucet.tsx && echo "
 
 ---
 
-## Phase 11: API Routes
+## Phase 11: API Routes **COMPLETE**
 
 Create server-side API endpoints.
 
@@ -1288,7 +1288,7 @@ Port remaining features.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 63: Create mint feature
+### Step 63: Create mint feature **COMPLETE**
 
 #### Goal
 Port useMint hook and MintForm component.
