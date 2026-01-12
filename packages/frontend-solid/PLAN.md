@@ -900,7 +900,7 @@ grep -q "priceImpact" packages/frontend-solid/src/features/swap/ui/SwapDetails.t
 
 ---
 
-### Step 44: Create swap feature barrel export
+### Step 44: Create swap feature barrel export **COMPLETE**
 
 #### Goal
 Create index.ts with all swap feature exports.
