@@ -1,6 +1,6 @@
 # SolidJS Frontend Port - Implementation Plan
 
-## Phase 1: Project Scaffolding
+## Phase 1: Project Scaffolding **COMPLETE**
 
 Initialize Solid Start project with TypeScript, Tailwind CSS 4, and essential tooling.
 
@@ -117,7 +117,7 @@ Copy framework-agnostic utilities that require no modification.
 cd packages/frontend-solid && bun run tsc --noEmit
 ```
 
-### Step 6: Copy math utilities
+### Step 6: Copy math utilities **COMPLETE**
 
 #### Goal
 Copy WAD fixed-point math utilities (wad.ts, fp.ts, amm.ts, yield.ts, apy-breakdown.ts) that have no React dependencies.

@@ -1,0 +1,1 @@
+import{x as t,y as e}from"./web-Cf_pDni-.js";var o=e('<main class="flex min-h-screen flex-col items-center justify-center bg-background"><div class=text-center><h1 class=text-gradient-primary>Horizon Protocol</h1><p class="mt-4 text-muted-foreground">Yield tokenization protocol on Starknet');function n(){return t(o)}export{n as default};
