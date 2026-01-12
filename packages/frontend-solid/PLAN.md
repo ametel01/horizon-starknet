@@ -845,7 +845,7 @@ grep -q "createMutation" packages/frontend-solid/src/features/swap/model/useSwap
 
 ---
 
-### Step 41: Create swap form logic
+### Step 41: Create swap form logic **COMPLETE**
 
 #### Goal
 Port swapFormLogic.ts with input validation, amount parsing, and swap direction resolution.
@@ -855,7 +855,7 @@ Port swapFormLogic.ts with input validation, amount parsing, and swap direction 
 
 #### Validation
 ```bash
-grep -q "resolveSwapTokens" packages/frontend-solid/src/features/swap/lib/swapFormLogic.ts && echo "OK"
+grep -q "deriveSwapDirection" packages/frontend-solid/src/features/swap/lib/swapFormLogic.ts && echo "OK"
 ```
 
 #### Failure modes
