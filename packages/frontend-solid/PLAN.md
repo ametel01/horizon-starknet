@@ -161,7 +161,7 @@ grep -q "getAddresses" packages/frontend-solid/src/shared/config/addresses.ts &&
 
 ---
 
-### Step 8: Copy Starknet contract utilities
+### Step 8: Copy Starknet contract utilities **COMPLETE**
 
 #### Goal
 Copy contract factory functions (contracts.ts), provider setup, and wallet utilities.
