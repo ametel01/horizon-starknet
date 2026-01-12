@@ -882,7 +882,7 @@ grep -q "useSwap" packages/frontend-solid/src/features/swap/ui/SwapForm.tsx && e
 
 ---
 
-### Step 43: Create SwapDetails component
+### Step 43: Create SwapDetails component **COMPLETE**
 
 #### Goal
 Port SwapDetails showing price impact, minimum received, fees, and exchange rate.
