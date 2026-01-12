@@ -963,7 +963,7 @@ grep -q "SLIPPAGE_OPTIONS" packages/frontend-solid/src/features/tx-settings/ui/T
 
 ---
 
-### Step 47: Create tx-settings feature barrel export
+### Step 47: Create tx-settings feature barrel export **COMPLETE**
 
 #### Goal
 Create index.ts with all tx-settings exports.
