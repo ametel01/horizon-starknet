@@ -1371,7 +1371,7 @@ grep -q "createQuery" packages/frontend-solid/src/features/portfolio/model/usePo
 
 ---
 
-### Step 67: Create faucet feature
+### Step 67: Create faucet feature **COMPLETE**
 
 #### Goal
 Port useFaucet mutation hook and FaucetForm component.
