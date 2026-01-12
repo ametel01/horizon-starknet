@@ -108,7 +108,7 @@ sleep 5 && curl -s http://localhost:3000 | grep -q "html" && echo "OK"
 
 ---
 
-## Phase 2: Shared Utilities (Pure Functions)
+## Phase 2: Shared Utilities (Pure Functions) **COMPLETE**
 
 Copy framework-agnostic utilities that require no modification.
 
@@ -244,7 +244,7 @@ Port React context providers to SolidJS contexts with signals.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 11: Create QueryProvider with @tanstack/solid-query
+### Step 11: Create QueryProvider with @tanstack/solid-query **COMPLETE**
 
 #### Goal
 Port QueryProvider to use @tanstack/solid-query's QueryClientProvider with identical configuration (staleTime: 1 minute, structuralSharing: false).
