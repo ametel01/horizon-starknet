@@ -1329,7 +1329,7 @@ grep -q "createMutation" packages/frontend-solid/src/features/liquidity/model/us
 
 ---
 
-### Step 65: Create yield feature
+### Step 65: Create yield feature **COMPLETE**
 
 #### Goal
 Port yield calculation hooks (useYield, useApyBreakdown, useUserYield).
