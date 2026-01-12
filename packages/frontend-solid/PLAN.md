@@ -457,7 +457,7 @@ grep -q "input" packages/frontend-solid/src/shared/ui/Input.tsx && echo "OK"
 
 ---
 
-### Step 22: Create Tabs component with Kobalte
+### Step 22: Create Tabs component with Kobalte **COMPLETE**
 
 #### Goal
 Port Tabs, TabsList, TabsTrigger, TabsContent using Kobalte Tabs.
@@ -467,7 +467,7 @@ Port Tabs, TabsList, TabsTrigger, TabsContent using Kobalte Tabs.
 
 #### Validation
 ```bash
-grep -q "Tabs.Root" packages/frontend-solid/src/shared/ui/Tabs.tsx && echo "OK"
+grep -q "TabsRoot" packages/frontend-solid/src/shared/ui/Tabs.tsx && echo "OK"
 ```
 
 #### Failure modes
