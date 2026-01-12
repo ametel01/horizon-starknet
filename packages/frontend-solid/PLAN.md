@@ -799,7 +799,7 @@ grep -q "createQuery" packages/frontend-solid/src/features/markets/model/useMark
 
 ---
 
-### Step 39: Create markets feature barrel export
+### Step 39: Create markets feature barrel export **COMPLETE**
 
 #### Goal
 Create index.ts with all markets feature exports.
