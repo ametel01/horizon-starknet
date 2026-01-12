@@ -718,7 +718,7 @@ grep -q "Dialog" packages/frontend-solid/src/features/wallet/ui/DisclaimerDialog
 
 ---
 
-### Step 35: Create wallet feature barrel export
+### Step 35: Create wallet feature barrel export **COMPLETE**
 
 #### Goal
 Create index.ts with all wallet feature exports.
