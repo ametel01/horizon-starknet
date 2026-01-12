@@ -855,7 +855,7 @@ Port swapFormLogic.ts with input validation, amount parsing, and swap direction 
 
 #### Validation
 ```bash
-grep -q "deriveSwapDirection" packages/frontend-solid/src/features/swap/lib/swapFormLogic.ts && echo "OK"
+grep -q "resolveSwapTokens" packages/frontend-solid/src/features/swap/lib/swapFormLogic.ts && echo "OK"
 ```
 
 #### Failure modes
@@ -945,7 +945,7 @@ grep -q "useContext" packages/frontend-solid/src/features/tx-settings/model/useT
 
 ---
 
-### Step 46: Create TransactionSettingsPanel component
+### Step 46: Create TransactionSettingsPanel component **COMPLETE**
 
 #### Goal
 Port TransactionSettingsPanel with slippage presets, custom input, and deadline selector.
