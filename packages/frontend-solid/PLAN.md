@@ -530,7 +530,7 @@ grep -q "Toast" packages/frontend-solid/src/shared/ui/Toast.tsx && echo "OK"
 
 ---
 
-### Step 26: Create remaining UI primitives
+### Step 26: Create remaining UI primitives **COMPLETE**
 
 #### Goal
 Port Alert, Progress, Slider, Switch, Toggle, ToggleGroup, Label, Separator, Collapsible, DropdownMenu, HoverCard.
