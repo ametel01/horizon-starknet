@@ -781,7 +781,7 @@ grep -q "createQuery" packages/frontend-solid/src/features/markets/model/useMark
 
 ---
 
-### Step 38: Create useMarketRates query hook
+### Step 38: Create useMarketRates query hook **COMPLETE**
 
 #### Goal
 Port useMarketRates hook for implied rate history.
