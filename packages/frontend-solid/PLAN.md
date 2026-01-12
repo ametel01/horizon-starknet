@@ -981,7 +981,7 @@ grep -q "TransactionSettingsPanel" packages/frontend-solid/src/features/tx-setti
 
 ---
 
-## Phase 9: Layout Components
+## Phase 9: Layout Components **COMPLETE**
 
 Port header, footer, and navigation.
 
@@ -1089,7 +1089,7 @@ Create Solid Start file-based routes.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 53: Create home page route
+### Step 53: Create home page route **COMPLETE**
 
 #### Goal
 Create index route (/) with hero section and market list.
