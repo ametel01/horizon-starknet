@@ -763,7 +763,7 @@ grep -q "createQuery" packages/frontend-solid/src/features/markets/model/useMark
 
 ---
 
-### Step 37: Create useMarket query hook
+### Step 37: Create useMarket query hook **COMPLETE**
 
 #### Goal
 Port useMarket hook for single market details with createQuery.

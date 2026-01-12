@@ -1,9 +1,4 @@
-import {
-  getAddresses,
-  getMarketInfoByAddress,
-  getMarketInfos,
-  type MarketInfo as ConfigMarketInfo,
-} from '@shared/config/addresses';
+import { getAddresses, getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
 import { TWAP_DEFAULT_DURATION, TWAP_DURATIONS } from '@shared/config/twap';
 import { calculateAnnualFeeRate } from '@shared/lib/fees';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
