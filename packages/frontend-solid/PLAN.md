@@ -1351,7 +1351,7 @@ grep -q "createQuery" packages/frontend-solid/src/features/yield/model/useYield.
 
 ---
 
-### Step 66: Create portfolio feature
+### Step 66: Create portfolio feature **COMPLETE**
 
 #### Goal
 Port usePortfolio, usePositions hooks and position display components.
