@@ -588,7 +588,7 @@ const defuFn = createDefu((object, key, currentValue) => {
   }
 });
 
-function o(n){throw new Error(`${n} is not implemented yet!`)}class i extends EventEmitter{__unenv__={};readableEncoding=null;readableEnded=true;readableFlowing=false;readableHighWaterMark=0;readableLength=0;readableObjectMode=false;readableAborted=false;readableDidRead=false;closed=false;errored=null;readable=false;destroyed=false;static from(e,t){return new i(t)}constructor(e){super();}_read(e){}read(e){}setEncoding(e){return this}pause(){return this}resume(){return this}isPaused(){return  true}unpipe(e){return this}unshift(e,t){}wrap(e){return this}push(e,t){return  false}_destroy(e,t){this.removeAllListeners();}destroy(e){return this.destroyed=true,this._destroy(e),this}pipe(e,t){return {}}compose(e,t){throw new Error("Method not implemented.")}[Symbol.asyncDispose](){return this.destroy(),Promise.resolve()}async*[Symbol.asyncIterator](){throw o("Readable.asyncIterator")}iterator(e){throw o("Readable.iterator")}map(e,t){throw o("Readable.map")}filter(e,t){throw o("Readable.filter")}forEach(e,t){throw o("Readable.forEach")}reduce(e,t,r){throw o("Readable.reduce")}find(e,t){throw o("Readable.find")}findIndex(e,t){throw o("Readable.findIndex")}some(e,t){throw o("Readable.some")}toArray(e){throw o("Readable.toArray")}every(e,t){throw o("Readable.every")}flatMap(e,t){throw o("Readable.flatMap")}drop(e,t){throw o("Readable.drop")}take(e,t){throw o("Readable.take")}asIndexedPairs(e){throw o("Readable.asIndexedPairs")}}class l extends EventEmitter{__unenv__={};writable=true;writableEnded=false;writableFinished=false;writableHighWaterMark=0;writableLength=0;writableObjectMode=false;writableCorked=0;closed=false;errored=null;writableNeedDrain=false;writableAborted=false;destroyed=false;_data;_encoding="utf8";constructor(e){super();}pipe(e,t){return {}}_write(e,t,r){if(this.writableEnded){r&&r();return}if(this._data===void 0)this._data=e;else {const s=typeof this._data=="string"?Buffer$1.from(this._data,this._encoding||t||"utf8"):this._data,a=typeof e=="string"?Buffer$1.from(e,t||this._encoding||"utf8"):e;this._data=Buffer$1.concat([s,a]);}this._encoding=t,r&&r();}_writev(e,t){}_destroy(e,t){}_final(e){}write(e,t,r){const s=typeof t=="string"?this._encoding:"utf8",a=typeof t=="function"?t:typeof r=="function"?r:void 0;return this._write(e,s,a),true}setDefaultEncoding(e){return this}end(e,t,r){const s=typeof e=="function"?e:typeof t=="function"?t:typeof r=="function"?r:void 0;if(this.writableEnded)return s&&s(),this;const a=e===s?void 0:e;if(a){const u=t===s?void 0:t;this.write(a,u,s);}return this.writableEnded=true,this.writableFinished=true,this.emit("close"),this.emit("finish"),this}cork(){}uncork(){}destroy(e){return this.destroyed=true,delete this._data,this.removeAllListeners(),this}compose(e,t){throw new Error("Method not implemented.")}[Symbol.asyncDispose](){return Promise.resolve()}}const c=class{allowHalfOpen=true;_destroy;constructor(e=new i,t=new l){Object.assign(this,e),Object.assign(this,t),this._destroy=m(e._destroy,t._destroy);}};function _$1(){return Object.assign(c.prototype,i.prototype),Object.assign(c.prototype,l.prototype),c}function m(...n){return function(...e){for(const t of n)t(...e);}}const g=_$1();class A extends g{__unenv__={};bufferSize=0;bytesRead=0;bytesWritten=0;connecting=false;destroyed=false;pending=false;localAddress="";localPort=0;remoteAddress="";remoteFamily="";remotePort=0;autoSelectFamilyAttemptedAddresses=[];readyState="readOnly";constructor(e){super();}write(e,t,r){return  false}connect(e,t,r){return this}end(e,t,r){return this}setEncoding(e){return this}pause(){return this}resume(){return this}setTimeout(e,t){return this}setNoDelay(e){return this}setKeepAlive(e,t){return this}address(){return {}}unref(){return this}ref(){return this}destroySoon(){this.destroy();}resetAndDestroy(){const e=new Error("ERR_SOCKET_CLOSED");return e.code="ERR_SOCKET_CLOSED",this.destroy(e),this}}let y$2 = class y extends i{aborted=false;httpVersion="1.1";httpVersionMajor=1;httpVersionMinor=1;complete=true;connection;socket;headers={};trailers={};method="GET";url="/";statusCode=200;statusMessage="";closed=false;errored=null;readable=false;constructor(e){super(),this.socket=this.connection=e||new A;}get rawHeaders(){const e=this.headers,t=[];for(const r in e)if(Array.isArray(e[r]))for(const s of e[r])t.push(r,s);else t.push(r,e[r]);return t}get rawTrailers(){return []}setTimeout(e,t){return this}get headersDistinct(){return p(this.headers)}get trailersDistinct(){return p(this.trailers)}};function p(n){const e={};for(const[t,r]of Object.entries(n))t&&(e[t]=(Array.isArray(r)?r:[r]).filter(Boolean));return e}let w$1 = class w extends l{statusCode=200;statusMessage="";upgrading=false;chunkedEncoding=false;shouldKeepAlive=false;useChunkedEncodingByDefault=false;sendDate=false;finished=false;headersSent=false;strictContentLength=false;connection=null;socket=null;req;_headers={};constructor(e){super(),this.req=e;}assignSocket(e){e._httpMessage=this,this.socket=e,this.connection=e,this.emit("socket",e),this._flush();}_flush(){this.flushHeaders();}detachSocket(e){}writeContinue(e){}writeHead(e,t,r){e&&(this.statusCode=e),typeof t=="string"&&(this.statusMessage=t,t=void 0);const s=r||t;if(s&&!Array.isArray(s))for(const a in s)this.setHeader(a,s[a]);return this.headersSent=true,this}writeProcessing(){}setTimeout(e,t){return this}appendHeader(e,t){e=e.toLowerCase();const r=this._headers[e],s=[...Array.isArray(r)?r:[r],...Array.isArray(t)?t:[t]].filter(Boolean);return this._headers[e]=s.length>1?s:s[0],this}setHeader(e,t){return this._headers[e.toLowerCase()]=t,this}setHeaders(e){for(const[t,r]of Object.entries(e))this.setHeader(t,r);return this}getHeader(e){return this._headers[e.toLowerCase()]}getHeaders(){return this._headers}getHeaderNames(){return Object.keys(this._headers)}hasHeader(e){return e.toLowerCase()in this._headers}removeHeader(e){delete this._headers[e.toLowerCase()];}addTrailers(e){}flushHeaders(){}writeEarlyHints(e,t){typeof t=="function"&&t();}};const E$1=(()=>{const n=function(){};return n.prototype=Object.create(null),n})();function R$2(n={}){const e=new E$1,t=Array.isArray(n)||H$1(n)?n:Object.entries(n);for(const[r,s]of t)if(s){if(e[r]===void 0){e[r]=s;continue}e[r]=[...Array.isArray(e[r])?e[r]:[e[r]],...Array.isArray(s)?s:[s]];}return e}function H$1(n){return typeof n?.entries=="function"}function v(n={}){if(n instanceof Headers)return n;const e=new Headers;for(const[t,r]of Object.entries(n))if(r!==void 0){if(Array.isArray(r)){for(const s of r)e.append(t,String(s));continue}e.set(t,String(r));}return e}const S$1=new Set([101,204,205,304]);async function b$1(n,e){const t=new y$2,r=new w$1(t);t.url=e.url?.toString()||"/";let s;if(!t.url.startsWith("/")){const d=new URL(t.url);s=d.host,t.url=d.pathname+d.search+d.hash;}t.method=e.method||"GET",t.headers=R$2(e.headers||{}),t.headers.host||(t.headers.host=e.host||s||"localhost"),t.connection.encrypted=t.connection.encrypted||e.protocol==="https",t.body=e.body||null,t.__unenv__=e.context,await n(t,r);let a=r._data;(S$1.has(r.statusCode)||t.method.toUpperCase()==="HEAD")&&(a=null,delete r._headers["content-length"]);const u={status:r.statusCode,statusText:r.statusMessage,headers:r._headers,body:a};return t.destroy(),r.destroy(),u}async function C(n,e,t={}){try{const r=await b$1(n,{url:e,...t});return new Response(r.body,{status:r.status,statusText:r.statusText,headers:v(r.headers)})}catch(r){return new Response(r.toString(),{status:Number.parseInt(r.statusCode||r.code)||500,statusText:r.statusText})}}
+function o(n){throw new Error(`${n} is not implemented yet!`)}class i extends EventEmitter{__unenv__={};readableEncoding=null;readableEnded=true;readableFlowing=false;readableHighWaterMark=0;readableLength=0;readableObjectMode=false;readableAborted=false;readableDidRead=false;closed=false;errored=null;readable=false;destroyed=false;static from(e,t){return new i(t)}constructor(e){super();}_read(e){}read(e){}setEncoding(e){return this}pause(){return this}resume(){return this}isPaused(){return  true}unpipe(e){return this}unshift(e,t){}wrap(e){return this}push(e,t){return  false}_destroy(e,t){this.removeAllListeners();}destroy(e){return this.destroyed=true,this._destroy(e),this}pipe(e,t){return {}}compose(e,t){throw new Error("Method not implemented.")}[Symbol.asyncDispose](){return this.destroy(),Promise.resolve()}async*[Symbol.asyncIterator](){throw o("Readable.asyncIterator")}iterator(e){throw o("Readable.iterator")}map(e,t){throw o("Readable.map")}filter(e,t){throw o("Readable.filter")}forEach(e,t){throw o("Readable.forEach")}reduce(e,t,r){throw o("Readable.reduce")}find(e,t){throw o("Readable.find")}findIndex(e,t){throw o("Readable.findIndex")}some(e,t){throw o("Readable.some")}toArray(e){throw o("Readable.toArray")}every(e,t){throw o("Readable.every")}flatMap(e,t){throw o("Readable.flatMap")}drop(e,t){throw o("Readable.drop")}take(e,t){throw o("Readable.take")}asIndexedPairs(e){throw o("Readable.asIndexedPairs")}}class l extends EventEmitter{__unenv__={};writable=true;writableEnded=false;writableFinished=false;writableHighWaterMark=0;writableLength=0;writableObjectMode=false;writableCorked=0;closed=false;errored=null;writableNeedDrain=false;writableAborted=false;destroyed=false;_data;_encoding="utf8";constructor(e){super();}pipe(e,t){return {}}_write(e,t,r){if(this.writableEnded){r&&r();return}if(this._data===void 0)this._data=e;else {const s=typeof this._data=="string"?Buffer$1.from(this._data,this._encoding||t||"utf8"):this._data,a=typeof e=="string"?Buffer$1.from(e,t||this._encoding||"utf8"):e;this._data=Buffer$1.concat([s,a]);}this._encoding=t,r&&r();}_writev(e,t){}_destroy(e,t){}_final(e){}write(e,t,r){const s=typeof t=="string"?this._encoding:"utf8",a=typeof t=="function"?t:typeof r=="function"?r:void 0;return this._write(e,s,a),true}setDefaultEncoding(e){return this}end(e,t,r){const s=typeof e=="function"?e:typeof t=="function"?t:typeof r=="function"?r:void 0;if(this.writableEnded)return s&&s(),this;const a=e===s?void 0:e;if(a){const u=t===s?void 0:t;this.write(a,u,s);}return this.writableEnded=true,this.writableFinished=true,this.emit("close"),this.emit("finish"),this}cork(){}uncork(){}destroy(e){return this.destroyed=true,delete this._data,this.removeAllListeners(),this}compose(e,t){throw new Error("Method not implemented.")}[Symbol.asyncDispose](){return Promise.resolve()}}const c=class{allowHalfOpen=true;_destroy;constructor(e=new i,t=new l){Object.assign(this,e),Object.assign(this,t),this._destroy=m(e._destroy,t._destroy);}};function _$1(){return Object.assign(c.prototype,i.prototype),Object.assign(c.prototype,l.prototype),c}function m(...n){return function(...e){for(const t of n)t(...e);}}const g=_$1();class A extends g{__unenv__={};bufferSize=0;bytesRead=0;bytesWritten=0;connecting=false;destroyed=false;pending=false;localAddress="";localPort=0;remoteAddress="";remoteFamily="";remotePort=0;autoSelectFamilyAttemptedAddresses=[];readyState="readOnly";constructor(e){super();}write(e,t,r){return  false}connect(e,t,r){return this}end(e,t,r){return this}setEncoding(e){return this}pause(){return this}resume(){return this}setTimeout(e,t){return this}setNoDelay(e){return this}setKeepAlive(e,t){return this}address(){return {}}unref(){return this}ref(){return this}destroySoon(){this.destroy();}resetAndDestroy(){const e=new Error("ERR_SOCKET_CLOSED");return e.code="ERR_SOCKET_CLOSED",this.destroy(e),this}}let y$2 = class y extends i{aborted=false;httpVersion="1.1";httpVersionMajor=1;httpVersionMinor=1;complete=true;connection;socket;headers={};trailers={};method="GET";url="/";statusCode=200;statusMessage="";closed=false;errored=null;readable=false;constructor(e){super(),this.socket=this.connection=e||new A;}get rawHeaders(){const e=this.headers,t=[];for(const r in e)if(Array.isArray(e[r]))for(const s of e[r])t.push(r,s);else t.push(r,e[r]);return t}get rawTrailers(){return []}setTimeout(e,t){return this}get headersDistinct(){return p(this.headers)}get trailersDistinct(){return p(this.trailers)}};function p(n){const e={};for(const[t,r]of Object.entries(n))t&&(e[t]=(Array.isArray(r)?r:[r]).filter(Boolean));return e}class w extends l{statusCode=200;statusMessage="";upgrading=false;chunkedEncoding=false;shouldKeepAlive=false;useChunkedEncodingByDefault=false;sendDate=false;finished=false;headersSent=false;strictContentLength=false;connection=null;socket=null;req;_headers={};constructor(e){super(),this.req=e;}assignSocket(e){e._httpMessage=this,this.socket=e,this.connection=e,this.emit("socket",e),this._flush();}_flush(){this.flushHeaders();}detachSocket(e){}writeContinue(e){}writeHead(e,t,r){e&&(this.statusCode=e),typeof t=="string"&&(this.statusMessage=t,t=void 0);const s=r||t;if(s&&!Array.isArray(s))for(const a in s)this.setHeader(a,s[a]);return this.headersSent=true,this}writeProcessing(){}setTimeout(e,t){return this}appendHeader(e,t){e=e.toLowerCase();const r=this._headers[e],s=[...Array.isArray(r)?r:[r],...Array.isArray(t)?t:[t]].filter(Boolean);return this._headers[e]=s.length>1?s:s[0],this}setHeader(e,t){return this._headers[e.toLowerCase()]=t,this}setHeaders(e){for(const[t,r]of Object.entries(e))this.setHeader(t,r);return this}getHeader(e){return this._headers[e.toLowerCase()]}getHeaders(){return this._headers}getHeaderNames(){return Object.keys(this._headers)}hasHeader(e){return e.toLowerCase()in this._headers}removeHeader(e){delete this._headers[e.toLowerCase()];}addTrailers(e){}flushHeaders(){}writeEarlyHints(e,t){typeof t=="function"&&t();}}const E$1=(()=>{const n=function(){};return n.prototype=Object.create(null),n})();function R$2(n={}){const e=new E$1,t=Array.isArray(n)||H$1(n)?n:Object.entries(n);for(const[r,s]of t)if(s){if(e[r]===void 0){e[r]=s;continue}e[r]=[...Array.isArray(e[r])?e[r]:[e[r]],...Array.isArray(s)?s:[s]];}return e}function H$1(n){return typeof n?.entries=="function"}function v(n={}){if(n instanceof Headers)return n;const e=new Headers;for(const[t,r]of Object.entries(n))if(r!==void 0){if(Array.isArray(r)){for(const s of r)e.append(t,String(s));continue}e.set(t,String(r));}return e}const S$1=new Set([101,204,205,304]);async function b$1(n,e){const t=new y$2,r=new w(t);t.url=e.url?.toString()||"/";let s;if(!t.url.startsWith("/")){const d=new URL(t.url);s=d.host,t.url=d.pathname+d.search+d.hash;}t.method=e.method||"GET",t.headers=R$2(e.headers||{}),t.headers.host||(t.headers.host=e.host||s||"localhost"),t.connection.encrypted=t.connection.encrypted||e.protocol==="https",t.body=e.body||null,t.__unenv__=e.context,await n(t,r);let a=r._data;(S$1.has(r.statusCode)||t.method.toUpperCase()==="HEAD")&&(a=null,delete r._headers["content-length"]);const u={status:r.statusCode,statusText:r.statusMessage,headers:r._headers,body:a};return t.destroy(),r.destroy(),u}async function C(n,e,t={}){try{const r=await b$1(n,{url:e,...t});return new Response(r.body,{status:r.status,statusText:r.statusText,headers:v(r.headers)})}catch(r){return new Response(r.toString(),{status:Number.parseInt(r.statusCode||r.code)||500,statusText:r.statusText})}}
 
 function hasProp$1(obj, prop) {
   try {
@@ -4235,7 +4235,7 @@ async function errorHandler(error, event) {
 }
 
 const appConfig = {"name":"vinxi","routers":[{"name":"public","type":"static","base":"/","dir":"./public","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","order":0,"outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/public"},{"name":"ssr","type":"http","link":{"client":"client"},"handler":"src/entry-server.tsx","extensions":["js","jsx","ts","tsx"],"target":"server","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","base":"/","outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/ssr","order":1},{"name":"client","type":"client","base":"/_build","handler":"src/entry-client.tsx","extensions":["js","jsx","ts","tsx"],"target":"browser","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/client","order":2},{"name":"server-fns","type":"http","base":"/_server","handler":"node_modules/@solidjs/start/dist/runtime/server-handler.js","target":"server","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/server-fns","order":3}],"server":{"compressPublicAssets":{"brotli":true},"routeRules":{"/_build/assets/**":{"headers":{"cache-control":"public, immutable, max-age=31536000"}}},"experimental":{"asyncContext":true},"preset":"bun"},"root":"/home/ametel/source/horizon-starknet/packages/frontend-solid"};
-					const buildManifest = {"ssr":{"_AnimatedNumber-RzJT83Eu.js":{"file":"assets/AnimatedNumber-RzJT83Eu.js","name":"AnimatedNumber","imports":["_Skeleton-CWiI3ofU.js"]},"_QZDH5R5B-DTDcQMOs.js":{"file":"assets/QZDH5R5B-DTDcQMOs.js","name":"QZDH5R5B","imports":["_Skeleton-CWiI3ofU.js"]},"_Select-Zg4Aym1Q.js":{"file":"assets/Select-Zg4Aym1Q.js","name":"Select","imports":["_QZDH5R5B-DTDcQMOs.js","_Skeleton-CWiI3ofU.js"]},"_Skeleton-CWiI3ofU.js":{"file":"assets/Skeleton-CWiI3ofU.js","name":"Skeleton"},"_Tabs-hGZ30XyN.js":{"file":"assets/Tabs-hGZ30XyN.js","name":"Tabs","imports":["_QZDH5R5B-DTDcQMOs.js","_Skeleton-CWiI3ofU.js"]},"_components-D9GQto5d.js":{"file":"assets/components-D9GQto5d.js","name":"components","imports":["_routing-_VU7kOBo.js"]},"_routing-_VU7kOBo.js":{"file":"assets/routing-_VU7kOBo.js","name":"routing"},"_useMarketRates-ChWdchRU.js":{"file":"assets/useMarketRates-ChWdchRU.js","name":"useMarketRates","imports":["_Skeleton-CWiI3ofU.js"]},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_AnimatedNumber-RzJT83Eu.js","_components-D9GQto5d.js","_routing-_VU7kOBo.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_AnimatedNumber-RzJT83Eu.js","_components-D9GQto5d.js","_routing-_VU7kOBo.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_Select-Zg4Aym1Q.js","_routing-_VU7kOBo.js","_QZDH5R5B-DTDcQMOs.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_Select-Zg4Aym1Q.js","_Tabs-hGZ30XyN.js","_routing-_VU7kOBo.js","_QZDH5R5B-DTDcQMOs.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-CWiI3ofU.js","_Tabs-hGZ30XyN.js","_components-D9GQto5d.js","_QZDH5R5B-DTDcQMOs.js","_routing-_VU7kOBo.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_AnimatedNumber-RzJT83Eu.js","_Select-Zg4Aym1Q.js","_QZDH5R5B-DTDcQMOs.js","_routing-_VU7kOBo.js"]},"virtual:$vinxi/handler/ssr":{"file":"ssr.js","name":"ssr","src":"virtual:$vinxi/handler/ssr","isEntry":true,"imports":["_routing-_VU7kOBo.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/ssr-Ccl0-de5.css"]}},"client":{"_AnimatedNumber-8qFdYZUa.js":{"file":"assets/AnimatedNumber-8qFdYZUa.js","name":"AnimatedNumber","imports":["_routing-B7jzI0cA.js","_Skeleton-C1xzzMRx.js"]},"_Button-BR5GwXUA.js":{"file":"assets/Button-BR5GwXUA.js","name":"Button","imports":["_routing-B7jzI0cA.js","_UKTBL2JL-BCNO-nq3.js","_Skeleton-C1xzzMRx.js"]},"_QZDH5R5B-6uz7kdzU.js":{"file":"assets/QZDH5R5B-6uz7kdzU.js","name":"QZDH5R5B","imports":["_routing-B7jzI0cA.js","_UKTBL2JL-BCNO-nq3.js"]},"_Select-Dp1oBAXh.js":{"file":"assets/Select-Dp1oBAXh.js","name":"Select","imports":["_routing-B7jzI0cA.js","_QZDH5R5B-6uz7kdzU.js","_UKTBL2JL-BCNO-nq3.js","_Skeleton-C1xzzMRx.js"]},"_Skeleton-C1xzzMRx.js":{"file":"assets/Skeleton-C1xzzMRx.js","name":"Skeleton","imports":["_routing-B7jzI0cA.js"]},"_Tabs-CauV3yCf.js":{"file":"assets/Tabs-CauV3yCf.js","name":"Tabs","imports":["_routing-B7jzI0cA.js","_QZDH5R5B-6uz7kdzU.js","_UKTBL2JL-BCNO-nq3.js","_Skeleton-C1xzzMRx.js","_Button-BR5GwXUA.js"]},"_UKTBL2JL-BCNO-nq3.js":{"file":"assets/UKTBL2JL-BCNO-nq3.js","name":"UKTBL2JL","imports":["_routing-B7jzI0cA.js"]},"_components-BgplmNaN.js":{"file":"assets/components-BgplmNaN.js","name":"components","imports":["_routing-B7jzI0cA.js"]},"_routing-B7jzI0cA.js":{"file":"assets/routing-B7jzI0cA.js","name":"routing"},"_useMarketRates-JgGS7IfJ.js":{"file":"assets/useMarketRates-JgGS7IfJ.js","name":"useMarketRates","imports":["_routing-B7jzI0cA.js"]},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"assets/analytics-CAdTNQ9l.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_routing-B7jzI0cA.js","_useMarketRates-JgGS7IfJ.js","_Skeleton-C1xzzMRx.js","_AnimatedNumber-8qFdYZUa.js","_components-BgplmNaN.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"assets/index-3yf9nt2z.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_routing-B7jzI0cA.js","_useMarketRates-JgGS7IfJ.js","_Button-BR5GwXUA.js","_Skeleton-C1xzzMRx.js","_AnimatedNumber-8qFdYZUa.js","_components-BgplmNaN.js","_UKTBL2JL-BCNO-nq3.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"assets/mint-Mv_X6gBQ.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_routing-B7jzI0cA.js","_useMarketRates-JgGS7IfJ.js","_Skeleton-C1xzzMRx.js","_Select-Dp1oBAXh.js","_QZDH5R5B-6uz7kdzU.js","_UKTBL2JL-BCNO-nq3.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"assets/pools-DZRnuoXb.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_routing-B7jzI0cA.js","_useMarketRates-JgGS7IfJ.js","_Button-BR5GwXUA.js","_Skeleton-C1xzzMRx.js","_Select-Dp1oBAXh.js","_Tabs-CauV3yCf.js","_UKTBL2JL-BCNO-nq3.js","_QZDH5R5B-6uz7kdzU.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"assets/portfolio-DqHf-upH.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_routing-B7jzI0cA.js","_Skeleton-C1xzzMRx.js","_Button-BR5GwXUA.js","_Tabs-CauV3yCf.js","_components-BgplmNaN.js","_UKTBL2JL-BCNO-nq3.js","_QZDH5R5B-6uz7kdzU.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"assets/trade-CjMEDKob.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_routing-B7jzI0cA.js","_useMarketRates-JgGS7IfJ.js","_Skeleton-C1xzzMRx.js","_Button-BR5GwXUA.js","_AnimatedNumber-8qFdYZUa.js","_Select-Dp1oBAXh.js","_QZDH5R5B-6uz7kdzU.js","_UKTBL2JL-BCNO-nq3.js"]},"virtual:$vinxi/handler/client":{"file":"assets/client-BxQ0zOuJ.js","name":"client","src":"virtual:$vinxi/handler/client","isEntry":true,"imports":["_routing-B7jzI0cA.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/client-Ccl0-de5.css"]}},"server-fns":{"_AnimatedNumber-RzJT83Eu.js":{"file":"assets/AnimatedNumber-RzJT83Eu.js","name":"AnimatedNumber","imports":["_Skeleton-CWiI3ofU.js"]},"_QZDH5R5B-DTDcQMOs.js":{"file":"assets/QZDH5R5B-DTDcQMOs.js","name":"QZDH5R5B","imports":["_Skeleton-CWiI3ofU.js"]},"_Select-Zg4Aym1Q.js":{"file":"assets/Select-Zg4Aym1Q.js","name":"Select","imports":["_QZDH5R5B-DTDcQMOs.js","_Skeleton-CWiI3ofU.js"]},"_Skeleton-CWiI3ofU.js":{"file":"assets/Skeleton-CWiI3ofU.js","name":"Skeleton"},"_Tabs-hGZ30XyN.js":{"file":"assets/Tabs-hGZ30XyN.js","name":"Tabs","imports":["_QZDH5R5B-DTDcQMOs.js","_Skeleton-CWiI3ofU.js"]},"_components-DqrvAkuN.js":{"file":"assets/components-DqrvAkuN.js","name":"components","imports":["_routing-DHl2GUl2.js"]},"_routing-DHl2GUl2.js":{"file":"assets/routing-DHl2GUl2.js","name":"routing"},"_server-fns-C_hEhTKM.js":{"file":"assets/server-fns-C_hEhTKM.js","name":"server-fns","dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/app.tsx"]},"_useMarketRates-ChWdchRU.js":{"file":"assets/useMarketRates-ChWdchRU.js","name":"useMarketRates","imports":["_Skeleton-CWiI3ofU.js"]},"src/app.tsx":{"file":"assets/app-X_878gml.js","name":"app","src":"src/app.tsx","isDynamicEntry":true,"imports":["_server-fns-C_hEhTKM.js","_routing-DHl2GUl2.js"],"css":["assets/app-Ccl0-de5.css"]},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_AnimatedNumber-RzJT83Eu.js","_components-DqrvAkuN.js","_routing-DHl2GUl2.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_AnimatedNumber-RzJT83Eu.js","_components-DqrvAkuN.js","_routing-DHl2GUl2.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_Select-Zg4Aym1Q.js","_routing-DHl2GUl2.js","_QZDH5R5B-DTDcQMOs.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_Select-Zg4Aym1Q.js","_Tabs-hGZ30XyN.js","_routing-DHl2GUl2.js","_QZDH5R5B-DTDcQMOs.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-CWiI3ofU.js","_Tabs-hGZ30XyN.js","_components-DqrvAkuN.js","_QZDH5R5B-DTDcQMOs.js","_routing-DHl2GUl2.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-ChWdchRU.js","_Skeleton-CWiI3ofU.js","_AnimatedNumber-RzJT83Eu.js","_Select-Zg4Aym1Q.js","_QZDH5R5B-DTDcQMOs.js","_routing-DHl2GUl2.js"]},"virtual:$vinxi/handler/server-fns":{"file":"server-fns.js","name":"server-fns","src":"virtual:$vinxi/handler/server-fns","isEntry":true,"imports":["_server-fns-C_hEhTKM.js"]}}};
+					const buildManifest = {"ssr":{"_AnimatedNumber-MVMTghX7.js":{"file":"assets/AnimatedNumber-MVMTghX7.js","name":"AnimatedNumber","imports":["_Card-DIY1xhm3.js"]},"_Card-DIY1xhm3.js":{"file":"assets/Card-DIY1xhm3.js","name":"Card"},"_QZDH5R5B-BkcYwWOp.js":{"file":"assets/QZDH5R5B-BkcYwWOp.js","name":"QZDH5R5B","imports":["_Card-DIY1xhm3.js"]},"_Select-CvlpjCeG.js":{"file":"assets/Select-CvlpjCeG.js","name":"Select","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_Skeleton-Df4Cx_x0.js":{"file":"assets/Skeleton-Df4Cx_x0.js","name":"Skeleton","imports":["_Card-DIY1xhm3.js"]},"_Tabs-DkcVhKHk.js":{"file":"assets/Tabs-DkcVhKHk.js","name":"Tabs","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_components-D9GQto5d.js":{"file":"assets/components-D9GQto5d.js","name":"components","imports":["_routing-_VU7kOBo.js"]},"_routing-_VU7kOBo.js":{"file":"assets/routing-_VU7kOBo.js","name":"routing"},"_useAccount-DvnSQ5kx.js":{"file":"assets/useAccount-DvnSQ5kx.js","name":"useAccount","imports":["_useStarknet-CfTQugTo.js"]},"_useMarketRates-BiLc0097.js":{"file":"assets/useMarketRates-BiLc0097.js","name":"useMarketRates","imports":["_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js"]},"_useStarknet-CfTQugTo.js":{"file":"assets/useStarknet-CfTQugTo.js","name":"useStarknet"},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-D9GQto5d.js","_routing-_VU7kOBo.js"]},"src/routes/api/rpc.ts?pick=POST":{"file":"rpc.js","name":"rpc","src":"src/routes/api/rpc.ts?pick=POST","isEntry":true,"isDynamicEntry":true},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"faucet.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useStarknet-CfTQugTo.js","_useAccount-DvnSQ5kx.js","_Card-DIY1xhm3.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-D9GQto5d.js","_routing-_VU7kOBo.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_routing-_VU7kOBo.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_Tabs-DkcVhKHk.js","_routing-_VU7kOBo.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-Df4Cx_x0.js","_Card-DIY1xhm3.js","_Tabs-DkcVhKHk.js","_components-D9GQto5d.js","_QZDH5R5B-BkcYwWOp.js","_routing-_VU7kOBo.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_AnimatedNumber-MVMTghX7.js","_Select-CvlpjCeG.js","_QZDH5R5B-BkcYwWOp.js","_useAccount-DvnSQ5kx.js","_Skeleton-Df4Cx_x0.js","_routing-_VU7kOBo.js"]},"virtual:$vinxi/handler/ssr":{"file":"ssr.js","name":"ssr","src":"virtual:$vinxi/handler/ssr","isEntry":true,"imports":["_routing-_VU7kOBo.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/api/rpc.ts?pick=POST","src/routes/api/rpc.ts?pick=POST","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/ssr-CCo7mTVC.css"]}},"client":{"_AnimatedNumber-DOsjBCgV.js":{"file":"assets/AnimatedNumber-DOsjBCgV.js","name":"AnimatedNumber","imports":["_web-Cp7SlEtS.js","_Card-BsHHyVDc.js"]},"_Button-C4r4Bxue.js":{"file":"assets/Button-C4r4Bxue.js","name":"Button","imports":["_web-Cp7SlEtS.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js"]},"_Card-BsHHyVDc.js":{"file":"assets/Card-BsHHyVDc.js","name":"Card","imports":["_web-Cp7SlEtS.js"]},"_QZDH5R5B-CESpOJLJ.js":{"file":"assets/QZDH5R5B-CESpOJLJ.js","name":"QZDH5R5B","imports":["_web-Cp7SlEtS.js","_UKTBL2JL-BxipwWHR.js"]},"_Select-BZZGaJT2.js":{"file":"assets/Select-BZZGaJT2.js","name":"Select","imports":["_web-Cp7SlEtS.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js"]},"_Skeleton-C5ntl6fs.js":{"file":"assets/Skeleton-C5ntl6fs.js","name":"Skeleton","imports":["_web-Cp7SlEtS.js","_Card-BsHHyVDc.js"]},"_Tabs-Bx1x2wmT.js":{"file":"assets/Tabs-Bx1x2wmT.js","name":"Tabs","imports":["_web-Cp7SlEtS.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js","_Button-C4r4Bxue.js"]},"_UKTBL2JL-BxipwWHR.js":{"file":"assets/UKTBL2JL-BxipwWHR.js","name":"UKTBL2JL","imports":["_web-Cp7SlEtS.js"]},"_components-C6uahRJb.js":{"file":"assets/components-C6uahRJb.js","name":"components","imports":["_web-Cp7SlEtS.js","_routing-BSuJdqCI.js"]},"_routing-BSuJdqCI.js":{"file":"assets/routing-BSuJdqCI.js","name":"routing","imports":["_web-Cp7SlEtS.js"]},"_useAccount-BvqtcMl3.js":{"file":"assets/useAccount-BvqtcMl3.js","name":"useAccount","imports":["_web-Cp7SlEtS.js","_useStarknet-cGeIN0U1.js"]},"_useMarketRates-DWopi9e-.js":{"file":"assets/useMarketRates-DWopi9e-.js","name":"useMarketRates","imports":["_useStarknet-cGeIN0U1.js","_web-Cp7SlEtS.js"]},"_useStarknet-cGeIN0U1.js":{"file":"assets/useStarknet-cGeIN0U1.js","name":"useStarknet","imports":["_web-Cp7SlEtS.js"]},"_web-Cp7SlEtS.js":{"file":"assets/web-Cp7SlEtS.js","name":"web"},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"assets/analytics-qd6PgYg3.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_AnimatedNumber-DOsjBCgV.js","_components-C6uahRJb.js","_routing-BSuJdqCI.js"]},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"assets/faucet-3OYqo7C1.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useStarknet-cGeIN0U1.js","_useAccount-BvqtcMl3.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_UKTBL2JL-BxipwWHR.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"assets/index-DCEe8Zza.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_AnimatedNumber-DOsjBCgV.js","_components-C6uahRJb.js","_UKTBL2JL-BxipwWHR.js","_routing-BSuJdqCI.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"assets/mint-sf87tZif.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_Select-BZZGaJT2.js","_routing-BSuJdqCI.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"assets/pools-Cy0ALQxQ.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_Select-BZZGaJT2.js","_Tabs-Bx1x2wmT.js","_routing-BSuJdqCI.js","_UKTBL2JL-BxipwWHR.js","_QZDH5R5B-CESpOJLJ.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"assets/portfolio-DduW7rue.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_Skeleton-C5ntl6fs.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Tabs-Bx1x2wmT.js","_components-C6uahRJb.js","_UKTBL2JL-BxipwWHR.js","_QZDH5R5B-CESpOJLJ.js","_routing-BSuJdqCI.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"assets/trade-DjZxkzWB.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Button-C4r4Bxue.js","_AnimatedNumber-DOsjBCgV.js","_Select-BZZGaJT2.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_useAccount-BvqtcMl3.js","_Skeleton-C5ntl6fs.js","_routing-BSuJdqCI.js"]},"virtual:$vinxi/handler/client":{"file":"assets/client-C0d1f3lB.js","name":"client","src":"virtual:$vinxi/handler/client","isEntry":true,"imports":["_web-Cp7SlEtS.js","_routing-BSuJdqCI.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/client-CCo7mTVC.css"]}},"server-fns":{"_AnimatedNumber-MVMTghX7.js":{"file":"assets/AnimatedNumber-MVMTghX7.js","name":"AnimatedNumber","imports":["_Card-DIY1xhm3.js"]},"_Card-DIY1xhm3.js":{"file":"assets/Card-DIY1xhm3.js","name":"Card"},"_QZDH5R5B-BkcYwWOp.js":{"file":"assets/QZDH5R5B-BkcYwWOp.js","name":"QZDH5R5B","imports":["_Card-DIY1xhm3.js"]},"_Select-CvlpjCeG.js":{"file":"assets/Select-CvlpjCeG.js","name":"Select","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_Skeleton-Df4Cx_x0.js":{"file":"assets/Skeleton-Df4Cx_x0.js","name":"Skeleton","imports":["_Card-DIY1xhm3.js"]},"_Tabs-DkcVhKHk.js":{"file":"assets/Tabs-DkcVhKHk.js","name":"Tabs","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_components-DqrvAkuN.js":{"file":"assets/components-DqrvAkuN.js","name":"components","imports":["_routing-DHl2GUl2.js"]},"_routing-DHl2GUl2.js":{"file":"assets/routing-DHl2GUl2.js","name":"routing"},"_server-fns-BexvJxsF.js":{"file":"assets/server-fns-BexvJxsF.js","name":"server-fns","dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/api/rpc.ts?pick=POST","src/routes/api/rpc.ts?pick=POST","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/app.tsx"]},"_useAccount-DvnSQ5kx.js":{"file":"assets/useAccount-DvnSQ5kx.js","name":"useAccount","imports":["_useStarknet-CfTQugTo.js"]},"_useMarketRates-BiLc0097.js":{"file":"assets/useMarketRates-BiLc0097.js","name":"useMarketRates","imports":["_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js"]},"_useStarknet-CfTQugTo.js":{"file":"assets/useStarknet-CfTQugTo.js","name":"useStarknet"},"src/app.tsx":{"file":"assets/app-DWU6Z7KW.js","name":"app","src":"src/app.tsx","isDynamicEntry":true,"imports":["_server-fns-BexvJxsF.js","_routing-DHl2GUl2.js"],"css":["assets/app-CCo7mTVC.css"]},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-DqrvAkuN.js","_routing-DHl2GUl2.js"]},"src/routes/api/rpc.ts?pick=POST":{"file":"rpc.js","name":"rpc","src":"src/routes/api/rpc.ts?pick=POST","isEntry":true,"isDynamicEntry":true},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"faucet.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useStarknet-CfTQugTo.js","_useAccount-DvnSQ5kx.js","_Card-DIY1xhm3.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-DqrvAkuN.js","_routing-DHl2GUl2.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_routing-DHl2GUl2.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_Tabs-DkcVhKHk.js","_routing-DHl2GUl2.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-Df4Cx_x0.js","_Card-DIY1xhm3.js","_Tabs-DkcVhKHk.js","_components-DqrvAkuN.js","_QZDH5R5B-BkcYwWOp.js","_routing-DHl2GUl2.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_AnimatedNumber-MVMTghX7.js","_Select-CvlpjCeG.js","_QZDH5R5B-BkcYwWOp.js","_useAccount-DvnSQ5kx.js","_Skeleton-Df4Cx_x0.js","_routing-DHl2GUl2.js"]},"virtual:$vinxi/handler/server-fns":{"file":"server-fns.js","name":"server-fns","src":"virtual:$vinxi/handler/server-fns","isEntry":true,"imports":["_server-fns-BexvJxsF.js"]}}};
 
 					const routeManifest = {"ssr":{},"client":{},"server-fns":{}};
 
@@ -4498,489 +4498,575 @@ const assets = {
   "/_build/.vite/manifest.json": {
     "type": "application/json",
     "encoding": null,
-    "etag": "\"1492-IGg0Q0esWiy/RGE7F5s+LHq5jXM\"",
-    "mtime": "2026-01-12T22:46:13.063Z",
-    "size": 5266,
+    "etag": "\"1b2a-pyUzJt9HB1wOpXVXFzg7URQpWo0\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 6954,
     "path": "../public/_build/.vite/manifest.json"
   },
-  "/assets/ssr-Ccl0-de5.css.br": {
-    "type": "text/css; charset=utf-8",
-    "encoding": "br",
-    "etag": "\"399b-SGpyaDWAITNm2fpyCmgdPdTaEBs\"",
-    "mtime": "2026-01-12T22:46:13.212Z",
-    "size": 14747,
-    "path": "../public/assets/ssr-Ccl0-de5.css.br"
-  },
-  "/assets/ssr-Ccl0-de5.css.gz": {
+  "/assets/ssr-CCo7mTVC.css.gz": {
     "type": "text/css; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"4429-2QqBEfZENAEcfOuiyl1rIEFIADw\"",
-    "mtime": "2026-01-12T22:46:13.104Z",
-    "size": 17449,
-    "path": "../public/assets/ssr-Ccl0-de5.css.gz"
+    "etag": "\"48a5-f0ZW0fh84Yss774/GqAhCJJM1xk\"",
+    "mtime": "2026-01-12T22:53:19.290Z",
+    "size": 18597,
+    "path": "../public/assets/ssr-CCo7mTVC.css.gz"
+  },
+  "/assets/ssr-CCo7mTVC.css.br": {
+    "type": "text/css; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"3cec-IZwZUG4EyOyPdzYZjj5USfTe5TM\"",
+    "mtime": "2026-01-12T22:53:19.402Z",
+    "size": 15596,
+    "path": "../public/assets/ssr-CCo7mTVC.css.br"
   },
   "/_build/.vite/manifest.json.br": {
     "type": "application/json",
     "encoding": "br",
-    "etag": "\"2ab-e35GgmFWZZTeYj9NSpsTOYV3AbQ\"",
-    "mtime": "2026-01-12T22:46:13.104Z",
-    "size": 683,
+    "etag": "\"351-2wHjfPb+fv52+3cMtqcgVDpTrcQ\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 849,
     "path": "../public/_build/.vite/manifest.json.br"
   },
   "/_build/.vite/manifest.json.gz": {
     "type": "application/json",
     "encoding": "gzip",
-    "etag": "\"2fd-D3M+qS6w7VEmsnnESm+976Of3+M\"",
-    "mtime": "2026-01-12T22:46:13.104Z",
-    "size": 765,
+    "etag": "\"3b4-PpVXIZ1RGvQiHaqJwvc8ihMArGY\"",
+    "mtime": "2026-01-12T22:53:19.320Z",
+    "size": 948,
     "path": "../public/_build/.vite/manifest.json.gz"
   },
-  "/assets/ssr-Ccl0-de5.css": {
+  "/assets/ssr-CCo7mTVC.css": {
     "type": "text/css; charset=utf-8",
     "encoding": null,
-    "etag": "\"1b650-KK/uadPO1pqfImTqoDrvvn7PU6s\"",
-    "mtime": "2026-01-12T22:46:13.057Z",
-    "size": 112208,
-    "path": "../public/assets/ssr-Ccl0-de5.css"
+    "etag": "\"1dee9-AXH5mr0kXDoHbdgGNsFz51i/Idg\"",
+    "mtime": "2026-01-12T22:53:19.247Z",
+    "size": 122601,
+    "path": "../public/assets/ssr-CCo7mTVC.css"
   },
-  "/_server/assets/app-Ccl0-de5.css.br": {
+  "/_server/assets/app-CCo7mTVC.css.br": {
     "type": "text/css; charset=utf-8",
     "encoding": "br",
-    "etag": "\"399b-SGpyaDWAITNm2fpyCmgdPdTaEBs\"",
-    "mtime": "2026-01-12T22:46:13.375Z",
-    "size": 14747,
-    "path": "../public/_server/assets/app-Ccl0-de5.css.br"
+    "etag": "\"3cec-IZwZUG4EyOyPdzYZjj5USfTe5TM\"",
+    "mtime": "2026-01-12T22:53:19.604Z",
+    "size": 15596,
+    "path": "../public/_server/assets/app-CCo7mTVC.css.br"
   },
-  "/_build/assets/AnimatedNumber-8qFdYZUa.js": {
+  "/_build/assets/AnimatedNumber-DOsjBCgV.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"5d0-gz14gdoRlLxlAuS36vmU+S3B9es\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 1488,
-    "path": "../public/_build/assets/AnimatedNumber-8qFdYZUa.js"
+    "etag": "\"5cd-JOL3TBlf2Hb3euDgC5FmZo3OJ1M\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 1485,
+    "path": "../public/_build/assets/AnimatedNumber-DOsjBCgV.js"
   },
-  "/_server/assets/app-Ccl0-de5.css.gz": {
+  "/_server/assets/app-CCo7mTVC.css.gz": {
     "type": "text/css; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"4429-2QqBEfZENAEcfOuiyl1rIEFIADw\"",
-    "mtime": "2026-01-12T22:46:13.290Z",
-    "size": 17449,
-    "path": "../public/_server/assets/app-Ccl0-de5.css.gz"
+    "etag": "\"48a5-f0ZW0fh84Yss774/GqAhCJJM1xk\"",
+    "mtime": "2026-01-12T22:53:19.528Z",
+    "size": 18597,
+    "path": "../public/_server/assets/app-CCo7mTVC.css.gz"
   },
-  "/_build/assets/AnimatedNumber-8qFdYZUa.js.br": {
+  "/_build/assets/AnimatedNumber-DOsjBCgV.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"2e0-4D/hsAqrWypPkxsCcsTegG4sDY0\"",
-    "mtime": "2026-01-12T22:46:13.107Z",
-    "size": 736,
-    "path": "../public/_build/assets/AnimatedNumber-8qFdYZUa.js.br"
+    "etag": "\"2db-0y/LuCu8OH0MuubumEkwkekH62E\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 731,
+    "path": "../public/_build/assets/AnimatedNumber-DOsjBCgV.js.br"
   },
-  "/_build/assets/AnimatedNumber-8qFdYZUa.js.gz": {
+  "/_build/assets/AnimatedNumber-DOsjBCgV.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"324-M6h2OO61ViQrrYIy9nBCXOj8GcI\"",
-    "mtime": "2026-01-12T22:46:13.107Z",
-    "size": 804,
-    "path": "../public/_build/assets/AnimatedNumber-8qFdYZUa.js.gz"
+    "etag": "\"320-bGO+5bz7kI8pWfD9B2/U0UBrc98\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 800,
+    "path": "../public/_build/assets/AnimatedNumber-DOsjBCgV.js.gz"
   },
-  "/_build/assets/Button-BR5GwXUA.js": {
+  "/_build/assets/Button-C4r4Bxue.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"1135-jTOLiFjC8oId0/Lsox0YnSeeMCI\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 4405,
-    "path": "../public/_build/assets/Button-BR5GwXUA.js"
+    "etag": "\"112d-4k8N4/DuMj61ekYLMXITdzoijv0\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 4397,
+    "path": "../public/_build/assets/Button-C4r4Bxue.js"
   },
-  "/_server/assets/app-Ccl0-de5.css": {
+  "/_build/assets/Button-C4r4Bxue.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"60b-NFxh6jo2xvV+LySYiNuF8tgCiCs\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 1547,
+    "path": "../public/_build/assets/Button-C4r4Bxue.js.br"
+  },
+  "/_server/assets/app-CCo7mTVC.css": {
     "type": "text/css; charset=utf-8",
     "encoding": null,
-    "etag": "\"1b650-KK/uadPO1pqfImTqoDrvvn7PU6s\"",
-    "mtime": "2026-01-12T22:46:13.067Z",
-    "size": 112208,
-    "path": "../public/_server/assets/app-Ccl0-de5.css"
+    "etag": "\"1dee9-AXH5mr0kXDoHbdgGNsFz51i/Idg\"",
+    "mtime": "2026-01-12T22:53:19.255Z",
+    "size": 122601,
+    "path": "../public/_server/assets/app-CCo7mTVC.css"
   },
-  "/_build/assets/Button-BR5GwXUA.js.br": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "br",
-    "etag": "\"612-LlrMawL349tkS5gDV9hOjjAm918\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 1554,
-    "path": "../public/_build/assets/Button-BR5GwXUA.js.br"
-  },
-  "/_build/assets/Button-BR5GwXUA.js.gz": {
+  "/_build/assets/Button-C4r4Bxue.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"6d5-hq6D1UG2pikEfkWzECWr00TWKwY\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 1749,
-    "path": "../public/_build/assets/Button-BR5GwXUA.js.gz"
+    "etag": "\"6ce-HcDnhrBRPOMOLff84lMgLqAGdJ8\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 1742,
+    "path": "../public/_build/assets/Button-C4r4Bxue.js.gz"
   },
-  "/_build/assets/QZDH5R5B-6uz7kdzU.js": {
+  "/_build/assets/Card-BsHHyVDc.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"43cf-GxyAMZk5r1O5sg2Cn+C7ez23QBY\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
+    "etag": "\"6ba6-ceDB05snYGYvh9Z/V4KeR4Id/MA\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 27558,
+    "path": "../public/_build/assets/Card-BsHHyVDc.js"
+  },
+  "/_build/assets/Card-BsHHyVDc.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"1e5c-BjeJMpudCaDQHMvD0H6VA4x9FMI\"",
+    "mtime": "2026-01-12T22:53:19.356Z",
+    "size": 7772,
+    "path": "../public/_build/assets/Card-BsHHyVDc.js.br"
+  },
+  "/_build/assets/Card-BsHHyVDc.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"2290-CDO9IeRkOESxw0wRUW6wFCyx5ew\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 8848,
+    "path": "../public/_build/assets/Card-BsHHyVDc.js.gz"
+  },
+  "/_build/assets/QZDH5R5B-CESpOJLJ.js": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": null,
+    "etag": "\"43cf-YgNHt396UB26/7AY1Q9uUe4ufNc\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
     "size": 17359,
-    "path": "../public/_build/assets/QZDH5R5B-6uz7kdzU.js"
+    "path": "../public/_build/assets/QZDH5R5B-CESpOJLJ.js"
   },
-  "/_build/assets/QZDH5R5B-6uz7kdzU.js.br": {
+  "/_build/assets/QZDH5R5B-CESpOJLJ.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"1453-0Re79JhX+vGQ4dmKiYo0vY2f708\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 5203,
-    "path": "../public/_build/assets/QZDH5R5B-6uz7kdzU.js.br"
+    "etag": "\"144b-fmOuj89IG614KCZ3DQSPMG6E9Wo\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 5195,
+    "path": "../public/_build/assets/QZDH5R5B-CESpOJLJ.js.br"
   },
-  "/_build/assets/QZDH5R5B-6uz7kdzU.js.gz": {
+  "/_build/assets/QZDH5R5B-CESpOJLJ.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"164d-IRBvUfbC/jTnrr8udzkyc+mwjwE\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 5709,
-    "path": "../public/_build/assets/QZDH5R5B-6uz7kdzU.js.gz"
+    "etag": "\"1645-QfBsIqNN9eUwm+wkL1rjJHB1lbc\"",
+    "mtime": "2026-01-12T22:53:19.339Z",
+    "size": 5701,
+    "path": "../public/_build/assets/QZDH5R5B-CESpOJLJ.js.gz"
   },
-  "/_build/assets/Select-Dp1oBAXh.js": {
+  "/_build/assets/Select-BZZGaJT2.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"fbc7-zTSUYzQ/j4ZRez8IWDUcld/3y7Y\"",
-    "mtime": "2026-01-12T22:46:13.063Z",
-    "size": 64455,
-    "path": "../public/_build/assets/Select-Dp1oBAXh.js"
+    "etag": "\"fbbb-PrGAZzWz0+lqy1ynpI2/W3uTiKU\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 64443,
+    "path": "../public/_build/assets/Select-BZZGaJT2.js"
   },
-  "/_build/assets/Select-Dp1oBAXh.js.br": {
+  "/_build/assets/Select-BZZGaJT2.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"4cbd-zQezWu8BUlagV6duiaBK0/yQjME\"",
-    "mtime": "2026-01-12T22:46:13.181Z",
-    "size": 19645,
-    "path": "../public/_build/assets/Select-Dp1oBAXh.js.br"
+    "etag": "\"4cb1-XN1CL0y3YaurDaDoaeuzo393Zr0\"",
+    "mtime": "2026-01-12T22:53:19.403Z",
+    "size": 19633,
+    "path": "../public/_build/assets/Select-BZZGaJT2.js.br"
   },
-  "/_build/assets/Select-Dp1oBAXh.js.gz": {
+  "/_build/assets/Select-BZZGaJT2.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"55e0-6tU2oD9KCN9+o+7dgD1dbNqVX0E\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 21984,
-    "path": "../public/_build/assets/Select-Dp1oBAXh.js.gz"
+    "etag": "\"55cd-pACE3g9P1qlWQTfD3vhSkhk/TOk\"",
+    "mtime": "2026-01-12T22:53:19.356Z",
+    "size": 21965,
+    "path": "../public/_build/assets/Select-BZZGaJT2.js.gz"
   },
-  "/_build/assets/Skeleton-C1xzzMRx.js": {
+  "/_build/assets/Skeleton-C5ntl6fs.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"26a-WyE5GQsi04SdH+lzGiW0fw4jiNs\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 618,
+    "path": "../public/_build/assets/Skeleton-C5ntl6fs.js"
+  },
+  "/_build/assets/Tabs-Bx1x2wmT.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"6cd3-Zf2TBNDlwmNAaSaZNRrjX81vC4Y\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 27859,
-    "path": "../public/_build/assets/Skeleton-C1xzzMRx.js"
+    "etag": "\"3297-vsk29mX634wMN6xwl/HMbUcLoLk\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 12951,
+    "path": "../public/_build/assets/Tabs-Bx1x2wmT.js"
   },
-  "/_build/assets/Skeleton-C1xzzMRx.js.br": {
+  "/_build/assets/Tabs-Bx1x2wmT.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"1ed9-ODytOL2WucrwLyle8afgO76o+dE\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 7897,
-    "path": "../public/_build/assets/Skeleton-C1xzzMRx.js.br"
+    "etag": "\"fe9-UGg67yY4B09hBiHm9GVkWNiD2oE\"",
+    "mtime": "2026-01-12T22:53:19.356Z",
+    "size": 4073,
+    "path": "../public/_build/assets/Tabs-Bx1x2wmT.js.br"
   },
-  "/_build/assets/Skeleton-C1xzzMRx.js.gz": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"233a-gBPeTeMAXoyXkZ3qLHYJIQ9J4yE\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 9018,
-    "path": "../public/_build/assets/Skeleton-C1xzzMRx.js.gz"
-  },
-  "/_build/assets/Tabs-CauV3yCf.js": {
+  "/_build/assets/UKTBL2JL-BxipwWHR.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"329f-mV+T+Q9hnM7xbF73VtKQhdo9FkE\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 12959,
-    "path": "../public/_build/assets/Tabs-CauV3yCf.js"
+    "etag": "\"1e35-/zPp5XB4agsUwE4RCK0LyjuNHeQ\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 7733,
+    "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js"
   },
-  "/_build/assets/Tabs-CauV3yCf.js.br": {
+  "/_build/assets/Tabs-Bx1x2wmT.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"1175-zARIPVm99zjUoYQeuuq7d2MaXgc\"",
+    "mtime": "2026-01-12T22:53:19.356Z",
+    "size": 4469,
+    "path": "../public/_build/assets/Tabs-Bx1x2wmT.js.gz"
+  },
+  "/_build/assets/UKTBL2JL-BxipwWHR.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"ff6-XJ51pzf8EHE47XcFoHmzT0SlvtA\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 4086,
-    "path": "../public/_build/assets/Tabs-CauV3yCf.js.br"
+    "etag": "\"b63-EXkkeX4Eg+04zws2ZS+UFK+ULao\"",
+    "mtime": "2026-01-12T22:53:19.386Z",
+    "size": 2915,
+    "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js.br"
   },
-  "/_build/assets/UKTBL2JL-BCNO-nq3.js": {
+  "/_build/assets/UKTBL2JL-BxipwWHR.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"cf0-D17hluiBgrAxKKKn3ya2MqyP+6A\"",
+    "mtime": "2026-01-12T22:53:19.386Z",
+    "size": 3312,
+    "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js.gz"
+  },
+  "/_build/assets/analytics-qd6PgYg3.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"1e3a-qIebYgfMLmoA/pd33bQkNn9JrXQ\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 7738,
-    "path": "../public/_build/assets/UKTBL2JL-BCNO-nq3.js"
+    "etag": "\"26fa-s1A8gVLIzGSfOsidiu8ry8k4VvA\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 9978,
+    "path": "../public/_build/assets/analytics-qd6PgYg3.js"
   },
-  "/_build/assets/Tabs-CauV3yCf.js.gz": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"117b-7XFy4dJf8n+nU957/Rvibp1+rlo\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 4475,
-    "path": "../public/_build/assets/Tabs-CauV3yCf.js.gz"
-  },
-  "/_build/assets/UKTBL2JL-BCNO-nq3.js.br": {
+  "/_build/assets/analytics-qd6PgYg3.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"b6e-hCzzZZ3UHt5zWGMdfgIP6JRf6zc\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 2926,
-    "path": "../public/_build/assets/UKTBL2JL-BCNO-nq3.js.br"
+    "etag": "\"a6d-Btp9RDnhDqBY8YHmR2Sxj37pbps\"",
+    "mtime": "2026-01-12T22:53:19.386Z",
+    "size": 2669,
+    "path": "../public/_build/assets/analytics-qd6PgYg3.js.br"
   },
-  "/_build/assets/UKTBL2JL-BCNO-nq3.js.gz": {
+  "/_build/assets/analytics-qd6PgYg3.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"cf3-gu1208XuzXKPdG9temNKwwPNtUA\"",
-    "mtime": "2026-01-12T22:46:13.174Z",
-    "size": 3315,
-    "path": "../public/_build/assets/UKTBL2JL-BCNO-nq3.js.gz"
+    "etag": "\"bb5-uA6yaf9t66hBfmgbqsau74jbkD4\"",
+    "mtime": "2026-01-12T22:53:19.386Z",
+    "size": 2997,
+    "path": "../public/_build/assets/analytics-qd6PgYg3.js.gz"
   },
-  "/_build/assets/analytics-CAdTNQ9l.js": {
+  "/_build/assets/client-C0d1f3lB.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"2699-7lTHuppBlrinsjHQ3v0TEvTeSoU\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 9881,
-    "path": "../public/_build/assets/analytics-CAdTNQ9l.js"
+    "etag": "\"4b6b-vQZFSRkI7/G3KEdC58T9N8aY+Ik\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 19307,
+    "path": "../public/_build/assets/client-C0d1f3lB.js"
   },
-  "/_build/assets/analytics-CAdTNQ9l.js.br": {
+  "/_build/assets/client-C0d1f3lB.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"a3e-AljdkPBDGhIKcu6duejt5JamvhU\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 2622,
-    "path": "../public/_build/assets/analytics-CAdTNQ9l.js.br"
+    "etag": "\"19dc-rxYLuRPFeI4bs1JSwFzHxqNP4lU\"",
+    "mtime": "2026-01-12T22:53:19.386Z",
+    "size": 6620,
+    "path": "../public/_build/assets/client-C0d1f3lB.js.br"
   },
-  "/_build/assets/analytics-CAdTNQ9l.js.gz": {
+  "/_build/assets/client-C0d1f3lB.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"b90-rzfi3/GuVJDBZ/JJdTwZuzBnmYw\"",
-    "mtime": "2026-01-12T22:46:13.180Z",
-    "size": 2960,
-    "path": "../public/_build/assets/analytics-CAdTNQ9l.js.gz"
+    "etag": "\"1cb0-ErYH9mkZAjSXw5Hti77HsvmYzCQ\"",
+    "mtime": "2026-01-12T22:53:19.386Z",
+    "size": 7344,
+    "path": "../public/_build/assets/client-C0d1f3lB.js.gz"
   },
-  "/_build/assets/client-BxQ0zOuJ.js": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": null,
-    "etag": "\"4909-N8JQ4XEaG/8DYOU5uqTCReuDn2Q\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 18697,
-    "path": "../public/_build/assets/client-BxQ0zOuJ.js"
-  },
-  "/_build/assets/client-BxQ0zOuJ.js.br": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "br",
-    "etag": "\"196a-rtxbl/dKo1OccBVVLhc9VG3V3Zw\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 6506,
-    "path": "../public/_build/assets/client-BxQ0zOuJ.js.br"
-  },
-  "/_build/assets/client-BxQ0zOuJ.js.gz": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"1c3e-1033240Un1oB6vKiml7LFZtLTOA\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 7230,
-    "path": "../public/_build/assets/client-BxQ0zOuJ.js.gz"
-  },
-  "/_build/assets/client-Ccl0-de5.css.br": {
+  "/_build/assets/client-CCo7mTVC.css.br": {
     "type": "text/css; charset=utf-8",
     "encoding": "br",
-    "etag": "\"399b-SGpyaDWAITNm2fpyCmgdPdTaEBs\"",
-    "mtime": "2026-01-12T22:46:13.280Z",
-    "size": 14747,
-    "path": "../public/_build/assets/client-Ccl0-de5.css.br"
+    "etag": "\"3cec-IZwZUG4EyOyPdzYZjj5USfTe5TM\"",
+    "mtime": "2026-01-12T22:53:19.494Z",
+    "size": 15596,
+    "path": "../public/_build/assets/client-CCo7mTVC.css.br"
   },
-  "/_build/assets/client-Ccl0-de5.css.gz": {
-    "type": "text/css; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"4429-2QqBEfZENAEcfOuiyl1rIEFIADw\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 17449,
-    "path": "../public/_build/assets/client-Ccl0-de5.css.gz"
-  },
-  "/_build/assets/components-BgplmNaN.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"329-DH+TFBMYgTCFT97hz0MTtqCz468\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 809,
-    "path": "../public/_build/assets/components-BgplmNaN.js"
-  },
-  "/_build/assets/index-3yf9nt2z.js": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": null,
-    "etag": "\"327a-ZZktEHoBdyCUHkY54WryINrjQ3M\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 12922,
-    "path": "../public/_build/assets/index-3yf9nt2z.js"
-  },
-  "/_build/assets/client-Ccl0-de5.css": {
+  "/_build/assets/client-CCo7mTVC.css": {
     "type": "text/css; charset=utf-8",
     "encoding": null,
-    "etag": "\"1b650-KK/uadPO1pqfImTqoDrvvn7PU6s\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 112208,
-    "path": "../public/_build/assets/client-Ccl0-de5.css"
+    "etag": "\"1dee9-AXH5mr0kXDoHbdgGNsFz51i/Idg\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 122601,
+    "path": "../public/_build/assets/client-CCo7mTVC.css"
   },
-  "/_build/assets/index-3yf9nt2z.js.br": {
+  "/_build/assets/components-C6uahRJb.js": {
     "type": "text/javascript; charset=utf-8",
-    "encoding": "br",
-    "etag": "\"ef1-UP2EEqBgG1LXpBLs2J8ts6JFfqU\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 3825,
-    "path": "../public/_build/assets/index-3yf9nt2z.js.br"
+    "etag": "\"343-Q+WUZHDLr8F3g2BkDgkAZZ2tfzo\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 835,
+    "path": "../public/_build/assets/components-C6uahRJb.js"
   },
-  "/_build/assets/index-3yf9nt2z.js.gz": {
-    "type": "text/javascript; charset=utf-8",
+  "/_build/assets/client-CCo7mTVC.css.gz": {
+    "type": "text/css; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"113d-gcyrQ4gie0/MFSzI60/heuWd8HQ\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 4413,
-    "path": "../public/_build/assets/index-3yf9nt2z.js.gz"
+    "etag": "\"48a5-f0ZW0fh84Yss774/GqAhCJJM1xk\"",
+    "mtime": "2026-01-12T22:53:19.387Z",
+    "size": 18597,
+    "path": "../public/_build/assets/client-CCo7mTVC.css.gz"
   },
-  "/_build/assets/mint-Mv_X6gBQ.js": {
+  "/_build/assets/faucet-3OYqo7C1.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"25e0-l1KwFg8pdvxdTYwkFOQrCkZHDzA\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 9696,
-    "path": "../public/_build/assets/mint-Mv_X6gBQ.js"
+    "etag": "\"1c33-MIrmgOOp7cJ1wuO3w4gpjmSA0HY\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 7219,
+    "path": "../public/_build/assets/faucet-3OYqo7C1.js"
   },
-  "/_build/assets/mint-Mv_X6gBQ.js.br": {
+  "/_build/assets/faucet-3OYqo7C1.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"ac7-FZw1fMn67anHOWZAyA1i3GO1RdM\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 2759,
-    "path": "../public/_build/assets/mint-Mv_X6gBQ.js.br"
+    "etag": "\"9a0-5Vr+oLiOWFDfQ2rltWIEJWYQEYk\"",
+    "mtime": "2026-01-12T22:53:19.402Z",
+    "size": 2464,
+    "path": "../public/_build/assets/faucet-3OYqo7C1.js.br"
   },
-  "/_build/assets/mint-Mv_X6gBQ.js.gz": {
+  "/_build/assets/faucet-3OYqo7C1.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"c32-Lmc+Hl3vxFoYJAwFKTSDNVxjWlk\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 3122,
-    "path": "../public/_build/assets/mint-Mv_X6gBQ.js.gz"
+    "etag": "\"b0e-HK9WFfsvsiQjavByUHuEEH67ssg\"",
+    "mtime": "2026-01-12T22:53:19.402Z",
+    "size": 2830,
+    "path": "../public/_build/assets/faucet-3OYqo7C1.js.gz"
   },
-  "/_build/assets/pools-DZRnuoXb.js": {
+  "/_build/assets/index-DCEe8Zza.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"37f3-124Y6deK5UlUG99XULwd5yFNHPM\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 14323,
-    "path": "../public/_build/assets/pools-DZRnuoXb.js"
+    "etag": "\"32d6-IZZcNTmjfNoPkfox+AYAmM1syMg\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 13014,
+    "path": "../public/_build/assets/index-DCEe8Zza.js"
   },
-  "/_build/assets/pools-DZRnuoXb.js.br": {
+  "/_build/assets/index-DCEe8Zza.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"d09-ATnOdICUQaKzSbhj53tVfPmn8l0\"",
-    "mtime": "2026-01-12T22:46:13.258Z",
-    "size": 3337,
-    "path": "../public/_build/assets/pools-DZRnuoXb.js.br"
+    "etag": "\"f2d-BLbFnihJITJB/3EcZnwiVE+piTw\"",
+    "mtime": "2026-01-12T22:53:19.409Z",
+    "size": 3885,
+    "path": "../public/_build/assets/index-DCEe8Zza.js.br"
   },
-  "/_build/assets/pools-DZRnuoXb.js.gz": {
+  "/_build/assets/index-DCEe8Zza.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"ecc-IaXrIVkeorD34tZkhvONzMQMnoI\"",
-    "mtime": "2026-01-12T22:46:13.205Z",
-    "size": 3788,
-    "path": "../public/_build/assets/pools-DZRnuoXb.js.gz"
+    "etag": "\"1161-TPnklPvhznz5XPAnLwJ9tC+Mj/o\"",
+    "mtime": "2026-01-12T22:53:19.402Z",
+    "size": 4449,
+    "path": "../public/_build/assets/index-DCEe8Zza.js.gz"
   },
-  "/_build/assets/portfolio-DqHf-upH.js": {
+  "/_build/assets/mint-sf87tZif.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"1d8f-Uq+Pna3wKKOZSxrLJo4uF7108Kw\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 7567,
-    "path": "../public/_build/assets/portfolio-DqHf-upH.js"
+    "etag": "\"2641-5JkVbmAKga+OLviv/5IJxflp0l8\"",
+    "mtime": "2026-01-12T22:53:19.252Z",
+    "size": 9793,
+    "path": "../public/_build/assets/mint-sf87tZif.js"
   },
-  "/_build/assets/portfolio-DqHf-upH.js.br": {
+  "/_build/assets/mint-sf87tZif.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"836-VnyEdOn2ET/TNCElt/yoibsa48Q\"",
-    "mtime": "2026-01-12T22:46:13.212Z",
-    "size": 2102,
-    "path": "../public/_build/assets/portfolio-DqHf-upH.js.br"
+    "etag": "\"af6-ywQPnHFEVBRphTEr9KCogc1yVsk\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 2806,
+    "path": "../public/_build/assets/mint-sf87tZif.js.br"
   },
-  "/_build/assets/portfolio-DqHf-upH.js.gz": {
+  "/_build/assets/mint-sf87tZif.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"92e-r8CSmiOqg7DKMiNNzJJTiwq1tAA\"",
-    "mtime": "2026-01-12T22:46:13.212Z",
-    "size": 2350,
-    "path": "../public/_build/assets/portfolio-DqHf-upH.js.gz"
+    "etag": "\"c59-iEN7dE/7dN9TGpnXzd8eLq/nHzY\"",
+    "mtime": "2026-01-12T22:53:19.402Z",
+    "size": 3161,
+    "path": "../public/_build/assets/mint-sf87tZif.js.gz"
   },
-  "/_build/assets/routing-B7jzI0cA.js": {
+  "/_build/assets/pools-Cy0ALQxQ.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"90c6-y1BqFAgFv2TYJGtZtjfIuw8PIFM\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 37062,
-    "path": "../public/_build/assets/routing-B7jzI0cA.js"
+    "etag": "\"3859-MS9ASN3r4vmbMuMUr8C6lE2mpnM\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 14425,
+    "path": "../public/_build/assets/pools-Cy0ALQxQ.js"
   },
-  "/_build/assets/routing-B7jzI0cA.js.br": {
+  "/_build/assets/pools-Cy0ALQxQ.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"33a2-yrpTLtEoKnbKMlpKHkuq8BuYfRU\"",
-    "mtime": "2026-01-12T22:46:13.259Z",
-    "size": 13218,
-    "path": "../public/_build/assets/routing-B7jzI0cA.js.br"
+    "etag": "\"d38-2fyH7CJdAAKgJ0S06o2eMFDKWUQ\"",
+    "mtime": "2026-01-12T22:53:19.457Z",
+    "size": 3384,
+    "path": "../public/_build/assets/pools-Cy0ALQxQ.js.br"
   },
-  "/_build/assets/routing-B7jzI0cA.js.gz": {
+  "/_build/assets/pools-Cy0ALQxQ.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"38ac-SgnoHnEqC41+NXBV6iZRA9jI9yQ\"",
-    "mtime": "2026-01-12T22:46:13.212Z",
-    "size": 14508,
-    "path": "../public/_build/assets/routing-B7jzI0cA.js.gz"
+    "etag": "\"ef2-UYPqYtxc0BOi6Z2/n1ExhEQcwTI\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 3826,
+    "path": "../public/_build/assets/pools-Cy0ALQxQ.js.gz"
   },
-  "/_build/assets/trade-CjMEDKob.js.br": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "br",
-    "etag": "\"368e-yB7HQX7icAprzALqblC51iFNpBw\"",
-    "mtime": "2026-01-12T22:46:13.259Z",
-    "size": 13966,
-    "path": "../public/_build/assets/trade-CjMEDKob.js.br"
-  },
-  "/_build/assets/trade-CjMEDKob.js.gz": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"3e36-J8+BNgKnW2ajN8mF4CB9HAHWSYM\"",
-    "mtime": "2026-01-12T22:46:13.258Z",
-    "size": 15926,
-    "path": "../public/_build/assets/trade-CjMEDKob.js.gz"
-  },
-  "/_build/assets/trade-CjMEDKob.js": {
+  "/_build/assets/portfolio-DduW7rue.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"da71-7YDnkJeCMjs+/h4AGZ284oGFxwI\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 55921,
-    "path": "../public/_build/assets/trade-CjMEDKob.js"
+    "etag": "\"1dc9-7X2EIngbkpF89b2OzFRKy4wjzhQ\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 7625,
+    "path": "../public/_build/assets/portfolio-DduW7rue.js"
   },
-  "/_build/assets/useMarketRates-JgGS7IfJ.js.br": {
+  "/_build/assets/portfolio-DduW7rue.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
-    "etag": "\"21487-dOF5qLHmx15BCSfBfrRgAJVeHtw\"",
-    "mtime": "2026-01-12T22:46:13.851Z",
-    "size": 136327,
-    "path": "../public/_build/assets/useMarketRates-JgGS7IfJ.js.br"
+    "etag": "\"84d-mkqcF7H+GsJuhTsxHeguh1DfsNc\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 2125,
+    "path": "../public/_build/assets/portfolio-DduW7rue.js.br"
   },
-  "/_build/assets/useMarketRates-JgGS7IfJ.js.gz": {
+  "/_build/assets/portfolio-DduW7rue.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"27aed-vPWSW8IJhTr6csBqH+06P4z9cbo\"",
-    "mtime": "2026-01-12T22:46:13.290Z",
-    "size": 162541,
-    "path": "../public/_build/assets/useMarketRates-JgGS7IfJ.js.gz"
+    "etag": "\"945-QiyYFzYtgld1CUji1vNdIEi/VBM\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 2373,
+    "path": "../public/_build/assets/portfolio-DduW7rue.js.gz"
   },
-  "/_build/assets/useMarketRates-JgGS7IfJ.js": {
+  "/_build/assets/routing-BSuJdqCI.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
-    "etag": "\"94250-HXWNf6TabIUrK4FqguMfUVFxEWw\"",
-    "mtime": "2026-01-12T22:46:13.064Z",
-    "size": 606800,
-    "path": "../public/_build/assets/useMarketRates-JgGS7IfJ.js"
+    "etag": "\"1eb0-28oGxcEY1LxLmDYjffuM/ASDL4c\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 7856,
+    "path": "../public/_build/assets/routing-BSuJdqCI.js"
+  },
+  "/_build/assets/routing-BSuJdqCI.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"d0c-oPfkadmj7+aaXAbo2fn+2tRGvK8\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 3340,
+    "path": "../public/_build/assets/routing-BSuJdqCI.js.br"
+  },
+  "/_build/assets/routing-BSuJdqCI.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"e4a-Z0P68ZjI1JT/S2tELtkmMcuIlTE\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 3658,
+    "path": "../public/_build/assets/routing-BSuJdqCI.js.gz"
+  },
+  "/_build/assets/trade-DjZxkzWB.js": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": null,
+    "etag": "\"d982-V1YdBI7io2xLsRJqvcKRACJtnPQ\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 55682,
+    "path": "../public/_build/assets/trade-DjZxkzWB.js"
+  },
+  "/_build/assets/trade-DjZxkzWB.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"3627-rm5LAlRUy2j2VaDjfbztpzbWMT4\"",
+    "mtime": "2026-01-12T22:53:19.457Z",
+    "size": 13863,
+    "path": "../public/_build/assets/trade-DjZxkzWB.js.br"
+  },
+  "/_build/assets/useAccount-BvqtcMl3.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1ed-X/5Kq6et9mWfcgAVVmb1iAX84iY\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 493,
+    "path": "../public/_build/assets/useAccount-BvqtcMl3.js"
+  },
+  "/_build/assets/trade-DjZxkzWB.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"3dc6-rRqlMMq/Hza7AvGaHdKpIvkfanE\"",
+    "mtime": "2026-01-12T22:53:19.410Z",
+    "size": 15814,
+    "path": "../public/_build/assets/trade-DjZxkzWB.js.gz"
+  },
+  "/_build/assets/useMarketRates-DWopi9e-.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"380a-jpcb8DpoX6KMvrYxKUzZrGSxSsY\"",
+    "mtime": "2026-01-12T22:53:19.501Z",
+    "size": 14346,
+    "path": "../public/_build/assets/useMarketRates-DWopi9e-.js.br"
+  },
+  "/_build/assets/useMarketRates-DWopi9e-.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"4209-JppEWaa7faaKTkRnDi1A93oMyPA\"",
+    "mtime": "2026-01-12T22:53:19.480Z",
+    "size": 16905,
+    "path": "../public/_build/assets/useMarketRates-DWopi9e-.js.gz"
+  },
+  "/_build/assets/useMarketRates-DWopi9e-.js": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": null,
+    "etag": "\"1bc09-eB3A6qINckSNP1dHGZIZpAzkgi8\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 113673,
+    "path": "../public/_build/assets/useMarketRates-DWopi9e-.js"
+  },
+  "/_build/assets/web-Cp7SlEtS.js": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": null,
+    "etag": "\"7263-H2lsAKgSKDdRXr9MCwprbRmDbU4\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 29283,
+    "path": "../public/_build/assets/web-Cp7SlEtS.js"
+  },
+  "/_build/assets/web-Cp7SlEtS.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"2837-OPIV/gGnY5WLMCK3RD/vXQhHqio\"",
+    "mtime": "2026-01-12T22:53:19.495Z",
+    "size": 10295,
+    "path": "../public/_build/assets/web-Cp7SlEtS.js.br"
+  },
+  "/_build/assets/web-Cp7SlEtS.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"2c33-vUcyTyV7V6nROOm+Z7sixVvlIiU\"",
+    "mtime": "2026-01-12T22:53:19.494Z",
+    "size": 11315,
+    "path": "../public/_build/assets/web-Cp7SlEtS.js.gz"
+  },
+  "/_build/assets/useStarknet-cGeIN0U1.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"23790-76onj6OoqR45Qqih5hkHVw2wNn0\"",
+    "mtime": "2026-01-12T22:53:19.501Z",
+    "size": 145296,
+    "path": "../public/_build/assets/useStarknet-cGeIN0U1.js.gz"
+  },
+  "/_build/assets/useStarknet-cGeIN0U1.js.br": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"1dd16-nLI/ubx6z/+UcgohkFWee4QJtFU\"",
+    "mtime": "2026-01-12T22:53:19.939Z",
+    "size": 122134,
+    "path": "../public/_build/assets/useStarknet-cGeIN0U1.js.br"
+  },
+  "/_build/assets/useStarknet-cGeIN0U1.js": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": null,
+    "etag": "\"770af-M9Z7HwRhKGg4qZERc/s5SlBO20M\"",
+    "mtime": "2026-01-12T22:53:19.253Z",
+    "size": 487599,
+    "path": "../public/_build/assets/useStarknet-cGeIN0U1.js"
   }
 };
 
@@ -6074,10 +6160,10 @@ var __defProp$1 = Object.defineProperty;
 var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$1 = (obj, key, value) => __defNormalProp$1(obj, typeof key !== "symbol" ? key + "" : key, value);
 function Ce$1(e) {
-  let s;
+  let r;
   const t = G$1(e), n = { duplex: "half", method: e.method, headers: e.headers };
   return e.node.req.body instanceof ArrayBuffer ? new Request(t, { ...n, body: e.node.req.body }) : new Request(t, { ...n, get body() {
-    return s || (s = We$1(e), s);
+    return r || (r = ze$1(e), r);
   } });
 }
 function Ae$1(e) {
@@ -6092,19 +6178,19 @@ function Le$1(e) {
   return typeof e == "object" && (e instanceof H3Event || (e == null ? void 0 : e[J$1]) instanceof H3Event || (e == null ? void 0 : e.__is_event__) === true);
 }
 function u(e) {
-  return function(...s) {
+  return function(...r) {
     var _a;
-    let t = s[0];
-    if (Le$1(t)) s[0] = t instanceof H3Event || t.__is_event__ ? t : t[J$1];
+    let t = r[0];
+    if (Le$1(t)) r[0] = t instanceof H3Event || t.__is_event__ ? t : t[J$1];
     else {
       if (!((_a = globalThis.app.config.server.experimental) == null ? void 0 : _a.asyncContext)) throw new Error("AsyncLocalStorage was not enabled. Use the `server.experimental.asyncContext: true` option in your app configuration to enable it. Or, pass the instance of HTTPEvent that you have as the first argument to the function.");
       if (t = Fe$1(), !t) throw new Error("No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.");
-      s.unshift(t);
+      r.unshift(t);
     }
-    return e(...s);
+    return e(...r);
   };
 }
-const G$1 = u(getRequestURL), Oe$1 = u(getRequestIP), S = u(setResponseStatus), _ = u(getResponseStatus), Ie$1 = u(getResponseStatusText), y$1 = u(getResponseHeaders), j$1 = u(getResponseHeader), Ue$1 = u(setResponseHeader), K$1 = u(appendResponseHeader), _e$1 = u(parseCookies), je$1 = u(getCookie), Me$1 = u(setCookie), R$1 = u(setHeader), We$1 = u(getRequestWebStream), Ne = u(removeResponseHeader), ze$1 = u(Ae$1);
+const G$1 = u(getRequestURL), Oe$1 = u(getRequestIP), S = u(setResponseStatus), _ = u(getResponseStatus), Ie$1 = u(getResponseStatusText), y$1 = u(getResponseHeaders), j$1 = u(getResponseHeader), Ue$1 = u(setResponseHeader), K$1 = u(appendResponseHeader), _e$1 = u(parseCookies), je$1 = u(getCookie), Me$1 = u(setCookie), R$1 = u(setHeader), ze$1 = u(getRequestWebStream), We$1 = u(removeResponseHeader), Ne = u(Ae$1);
 function Be$1() {
   var _a;
   return getContext("nitro-app", { asyncContext: !!((_a = globalThis.app.config.server.experimental) == null ? void 0 : _a.asyncContext), AsyncLocalStorage: AsyncLocalStorage });
@@ -6112,73 +6198,73 @@ function Be$1() {
 function De$1() {
   return Be$1().use().event;
 }
-const w = "Invariant Violation", { setPrototypeOf: Xe = function(e, s) {
-  return e.__proto__ = s, e;
+const k$1 = "Invariant Violation", { setPrototypeOf: Xe = function(e, r) {
+  return e.__proto__ = r, e;
 } } = Object;
 let L$1 = class L extends Error {
-  constructor(s = w) {
-    super(typeof s == "number" ? `${w}: ${s} (see https://github.com/apollographql/invariant-packages)` : s);
+  constructor(r = k$1) {
+    super(typeof r == "number" ? `${k$1}: ${r} (see https://github.com/apollographql/invariant-packages)` : r);
     __publicField$1(this, "framesToPop", 1);
-    __publicField$1(this, "name", w);
+    __publicField$1(this, "name", k$1);
     Xe(this, L.prototype);
   }
 };
-function Je(e, s) {
-  if (!e) throw new L$1(s);
+function Je(e, r) {
+  if (!e) throw new L$1(r);
 }
-const b = "solidFetchEvent";
+const $$1 = "solidFetchEvent";
 function Ge(e) {
-  return { request: ze$1(e), response: Ye(e), clientAddress: Oe$1(e), locals: {}, nativeEvent: e };
+  return { request: Ne(e), response: Ye(e), clientAddress: Oe$1(e), locals: {}, nativeEvent: e };
 }
 function Ke$1(e) {
   return { ...e };
 }
 function Ve(e) {
-  if (!e.context[b]) {
-    const s = Ge(e);
-    e.context[b] = s;
+  if (!e.context[$$1]) {
+    const r = Ge(e);
+    e.context[$$1] = r;
   }
-  return e.context[b];
+  return e.context[$$1];
 }
-function M$2(e, s) {
-  for (const [t, n] of s.entries()) K$1(e, t, n);
+function M$2(e, r) {
+  for (const [t, n] of r.entries()) K$1(e, t, n);
 }
 class Qe {
-  constructor(s) {
+  constructor(r) {
     __publicField$1(this, "event");
-    this.event = s;
+    this.event = r;
   }
-  get(s) {
-    const t = j$1(this.event, s);
+  get(r) {
+    const t = j$1(this.event, r);
     return Array.isArray(t) ? t.join(", ") : t || null;
   }
-  has(s) {
-    return this.get(s) !== null;
+  has(r) {
+    return this.get(r) !== null;
   }
-  set(s, t) {
-    return Ue$1(this.event, s, t);
+  set(r, t) {
+    return Ue$1(this.event, r, t);
   }
-  delete(s) {
-    return Ne(this.event, s);
+  delete(r) {
+    return We$1(this.event, r);
   }
-  append(s, t) {
-    K$1(this.event, s, t);
+  append(r, t) {
+    K$1(this.event, r, t);
   }
   getSetCookie() {
-    const s = j$1(this.event, "Set-Cookie");
-    return Array.isArray(s) ? s : [s];
+    const r = j$1(this.event, "Set-Cookie");
+    return Array.isArray(r) ? r : [r];
   }
-  forEach(s) {
-    return Object.entries(y$1(this.event)).forEach(([t, n]) => s(Array.isArray(n) ? n.join(", ") : n, t, this));
+  forEach(r) {
+    return Object.entries(y$1(this.event)).forEach(([t, n]) => r(Array.isArray(n) ? n.join(", ") : n, t, this));
   }
   entries() {
-    return Object.entries(y$1(this.event)).map(([s, t]) => [s, Array.isArray(t) ? t.join(", ") : t])[Symbol.iterator]();
+    return Object.entries(y$1(this.event)).map(([r, t]) => [r, Array.isArray(t) ? t.join(", ") : t])[Symbol.iterator]();
   }
   keys() {
     return Object.keys(y$1(this.event))[Symbol.iterator]();
   }
   values() {
-    return Object.values(y$1(this.event)).map((s) => Array.isArray(s) ? s.join(", ") : s)[Symbol.iterator]();
+    return Object.values(y$1(this.event)).map((r) => Array.isArray(r) ? r.join(", ") : r)[Symbol.iterator]();
   }
   [Symbol.iterator]() {
     return this.entries()[Symbol.iterator]();
@@ -6187,45 +6273,45 @@ class Qe {
 function Ye(e) {
   return { get status() {
     return _(e);
-  }, set status(s) {
-    S(e, s);
+  }, set status(r) {
+    S(e, r);
   }, get statusText() {
     return Ie$1(e);
-  }, set statusText(s) {
-    S(e, _(e), s);
+  }, set statusText(r) {
+    S(e, _(e), r);
   }, headers: new Qe(e) };
 }
-const V$1 = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics.mjs'), import: () => import('./chunks/build/analytics.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index.mjs'), import: () => import('./chunks/build/index.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint.mjs'), import: () => import('./chunks/build/mint.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools.mjs'), import: () => import('./chunks/build/pools.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio.mjs'), import: () => import('./chunks/build/portfolio.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade.mjs'), import: () => import('./chunks/build/trade.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Ze = et(V$1.filter((e) => e.page));
+const V$1 = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics.mjs'), import: () => import('./chunks/build/analytics.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: false, $POST: { src: "src/routes/api/rpc.ts?pick=POST", build: () => import('./chunks/build/rpc.mjs'), import: () => import('./chunks/build/rpc.mjs') }, path: "/api/rpc", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/rpc.ts" }, { page: true, $component: { src: "src/routes/faucet.tsx?pick=default&pick=$css", build: () => import('./chunks/build/faucet.mjs'), import: () => import('./chunks/build/faucet.mjs') }, path: "/faucet", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/faucet.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index.mjs'), import: () => import('./chunks/build/index.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint.mjs'), import: () => import('./chunks/build/mint.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools.mjs'), import: () => import('./chunks/build/pools.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio.mjs'), import: () => import('./chunks/build/portfolio.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade.mjs'), import: () => import('./chunks/build/trade.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Ze = et(V$1.filter((e) => e.page));
 function et(e) {
-  function s(t, n, o, a) {
+  function r(t, n, o, a) {
     const i = Object.values(t).find((c) => o.startsWith(c.id + "/"));
-    return i ? (s(i.children || (i.children = []), n, o.slice(i.id.length)), t) : (t.push({ ...n, id: o, path: o.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/") }), t);
+    return i ? (r(i.children || (i.children = []), n, o.slice(i.id.length)), t) : (t.push({ ...n, id: o, path: o.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/") }), t);
   }
-  return e.sort((t, n) => t.path.length - n.path.length).reduce((t, n) => s(t, n, n.path, n.path), []);
+  return e.sort((t, n) => t.path.length - n.path.length).reduce((t, n) => r(t, n, n.path, n.path), []);
 }
 function tt(e) {
   return e.$HEAD || e.$GET || e.$POST || e.$PUT || e.$PATCH || e.$DELETE;
 }
-createRouter$1({ routes: V$1.reduce((e, s) => {
-  if (!tt(s)) return e;
-  let t = s.path.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/").replace(/\*([^/]*)/g, (n, o) => `**:${o}`).split("/").map((n) => n.startsWith(":") || n.startsWith("*") ? n : encodeURIComponent(n)).join("/");
+createRouter$1({ routes: V$1.reduce((e, r) => {
+  if (!tt(r)) return e;
+  let t = r.path.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/").replace(/\*([^/]*)/g, (n, o) => `**:${o}`).split("/").map((n) => n.startsWith(":") || n.startsWith("*") ? n : encodeURIComponent(n)).join("/");
   if (/:[^/]*\?/g.test(t)) throw new Error(`Optional parameters are not supported in API routes: ${t}`);
-  if (e[t]) throw new Error(`Duplicate API routes for "${t}" found at "${e[t].route.path}" and "${s.path}"`);
-  return e[t] = { route: s }, e;
+  if (e[t]) throw new Error(`Duplicate API routes for "${t}" found at "${e[t].route.path}" and "${r.path}"`);
+  return e[t] = { route: r }, e;
 }, {}) });
-var rt = " ";
+var st = " ";
 const nt = { style: (e) => ssrElement("style", e.attrs, () => e.children, true), link: (e) => ssrElement("link", e.attrs, void 0, true), script: (e) => e.attrs.src ? ssrElement("script", mergeProps(() => e.attrs, { get id() {
   return e.key;
-} }), () => ssr(rt), true) : null, noscript: (e) => ssrElement("noscript", e.attrs, () => escape(e.children), true) };
-function ot(e, s) {
+} }), () => ssr(st), true) : null, noscript: (e) => ssrElement("noscript", e.attrs, () => escape(e.children), true) };
+function ot(e, r) {
   let { tag: t, attrs: { key: n, ...o } = { key: void 0 }, children: a } = e;
-  return nt[t]({ attrs: { ...o, nonce: s }, key: n, children: a });
+  return nt[t]({ attrs: { ...o, nonce: r }, key: n, children: a });
 }
-function at(e, s, t, n = "default") {
+function at(e, r, t, n = "default") {
   return lazy(async () => {
     var _a;
     {
-      const a = (await e.import())[n], c = (await ((_a = s.inputs) == null ? void 0 : _a[e.src].assets())).filter((p) => p.tag === "style" || p.attrs.rel === "stylesheet");
+      const a = (await e.import())[n], c = (await ((_a = r.inputs) == null ? void 0 : _a[e.src].assets())).filter((p) => p.tag === "style" || p.attrs.rel === "stylesheet");
       return { default: (p) => [...c.map((h) => ot(h)), createComponent(a, p)] };
     }
   });
@@ -6236,12 +6322,12 @@ function Q$1() {
   }
   return Ze.map(e);
 }
-let W$1;
-const xt$1 = isServer ? () => getRequestEvent().routes : () => W$1 || (W$1 = Q$1());
+let z;
+const xt$1 = isServer ? () => getRequestEvent().routes : () => z || (z = Q$1());
 function it(e) {
-  const s = je$1(e.nativeEvent, "flash");
-  if (s) try {
-    let t = JSON.parse(s);
+  const r = je$1(e.nativeEvent, "flash");
+  if (r) try {
+    let t = JSON.parse(r);
     if (!t || !t.result) return;
     const n = [...t.input.slice(0, -1), new Map(t.input[t.input.length - 1])], o = t.error ? new Error(t.result) : t.result;
     return { input: n, url: t.url, pending: false, result: t.thrown ? void 0 : o, error: t.thrown ? o : void 0 };
@@ -6252,8 +6338,8 @@ function it(e) {
   }
 }
 async function ct(e) {
-  const s = globalThis.MANIFEST.client;
-  return globalThis.MANIFEST.ssr, e.response.headers.set("Content-Type", "text/html"), Object.assign(e, { manifest: await s.json(), assets: [...await s.inputs[s.handler].assets()], router: { submission: it(e) }, routes: Q$1(), complete: false, $islands: /* @__PURE__ */ new Set() });
+  const r = globalThis.MANIFEST.client;
+  return globalThis.MANIFEST.ssr, e.response.headers.set("Content-Type", "text/html"), Object.assign(e, { manifest: await r.json(), assets: [...await r.inputs[r.handler].assets()], router: { submission: it(e) }, routes: Q$1(), complete: false, $islands: /* @__PURE__ */ new Set() });
 }
 const ut = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
 function lt$1(e) {
@@ -6261,12 +6347,12 @@ function lt$1(e) {
 }
 const pt$1 = {};
 function dt$1(e) {
-  const s = new TextEncoder().encode(e), t = s.length, n = t.toString(16), o = "00000000".substring(0, 8 - n.length) + n, a = new TextEncoder().encode(`;0x${o};`), i = new Uint8Array(12 + t);
-  return i.set(a), i.set(s, 12), i;
+  const r = new TextEncoder().encode(e), t = r.length, n = t.toString(16), o = "00000000".substring(0, 8 - n.length) + n, a = new TextEncoder().encode(`;0x${o};`), i = new Uint8Array(12 + t);
+  return i.set(a), i.set(r, 12), i;
 }
-function N(e, s) {
+function W$1(e, r) {
   return new ReadableStream({ start(t) {
-    crossSerializeStream(s, { scopeId: e, plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin], onSerialize(n, o) {
+    crossSerializeStream(r, { scopeId: e, plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin], onSerialize(n, o) {
       t.enqueue(dt$1(o ? `(${getCrossReferenceHeader(e)},${n})` : n));
     }, onDone() {
       t.close();
@@ -6276,7 +6362,7 @@ function N(e, s) {
   } });
 }
 async function ft$1(e) {
-  const s = Ve(e), t = s.request, n = t.headers.get("X-Server-Id"), o = t.headers.get("X-Server-Instance"), a = t.headers.has("X-Single-Flight"), i = new URL(t.url);
+  const r = Ve(e), t = r.request, n = t.headers.get("X-Server-Id"), o = t.headers.get("X-Server-Instance"), a = t.headers.has("X-Single-Flight"), i = new URL(t.url);
   let c, d;
   if (n) Je(typeof n == "string", "Invalid server function"), [c, d] = n.split("#");
   else if (c = i.searchParams.get("id"), d = i.searchParams.get("name"), !c || !d) return new Response(null, { status: 404 });
@@ -6287,46 +6373,46 @@ async function ft$1(e) {
   const Y = h[p.functionName];
   let f = [];
   if (!o || e.method === "GET") {
-    const r = i.searchParams.get("args");
-    if (r) {
-      const l = JSON.parse(r);
+    const s = i.searchParams.get("args");
+    if (s) {
+      const l = JSON.parse(s);
       (l.t ? fromJSON(l, { plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin] }) : l).forEach((m) => f.push(m));
     }
   }
   if (e.method === "POST") {
-    const r = t.headers.get("content-type"), l = e.node.req, m = l instanceof ReadableStream, Z = l.body instanceof ReadableStream, O = m && l.locked || Z && l.body.locked, I = m ? l : l.body;
-    if ((r == null ? void 0 : r.startsWith("multipart/form-data")) || (r == null ? void 0 : r.startsWith("application/x-www-form-urlencoded"))) f.push(await (O ? t : new Request(t, { ...t, body: I })).formData());
-    else if (r == null ? void 0 : r.startsWith("application/json")) {
+    const s = t.headers.get("content-type"), l = e.node.req, m = l instanceof ReadableStream, Z = l.body instanceof ReadableStream, O = m && l.locked || Z && l.body.locked, I = m ? l : l.body;
+    if ((s == null ? void 0 : s.startsWith("multipart/form-data")) || (s == null ? void 0 : s.startsWith("application/x-www-form-urlencoded"))) f.push(await (O ? t : new Request(t, { ...t, body: I })).formData());
+    else if (s == null ? void 0 : s.startsWith("application/json")) {
       const ee = O ? t : new Request(t, { ...t, body: I });
       f = fromJSON(await ee.json(), { plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin] });
     }
   }
   try {
-    let r = await provideRequestEvent(s, async () => (sharedConfig.context = { event: s }, s.locals.serverFunctionMeta = { id: c + "#" + d }, Y(...f)));
-    if (a && o && (r = await B(s, r)), r instanceof Response) {
-      if (r.headers && r.headers.has("X-Content-Raw")) return r;
-      o && (r.headers && M$2(e, r.headers), r.status && (r.status < 300 || r.status >= 400) && S(e, r.status), r.customBody ? r = await r.customBody() : r.body == null && (r = null));
+    let s = await provideRequestEvent(r, async () => (sharedConfig.context = { event: r }, r.locals.serverFunctionMeta = { id: c + "#" + d }, Y(...f)));
+    if (a && o && (s = await B(r, s)), s instanceof Response) {
+      if (s.headers && s.headers.has("X-Content-Raw")) return s;
+      o && (s.headers && M$2(e, s.headers), s.status && (s.status < 300 || s.status >= 400) && S(e, s.status), s.customBody ? s = await s.customBody() : s.body == null && (s = null));
     }
-    return o ? (R$1(e, "content-type", "text/javascript"), N(o, r)) : z(r, t, f);
-  } catch (r) {
-    if (r instanceof Response) a && o && (r = await B(s, r)), r.headers && M$2(e, r.headers), r.status && (!o || r.status < 300 || r.status >= 400) && S(e, r.status), r.customBody ? r = r.customBody() : r.body == null && (r = null), R$1(e, "X-Error", "true");
+    return o ? (R$1(e, "content-type", "text/javascript"), W$1(o, s)) : N(s, t, f);
+  } catch (s) {
+    if (s instanceof Response) a && o && (s = await B(r, s)), s.headers && M$2(e, s.headers), s.status && (!o || s.status < 300 || s.status >= 400) && S(e, s.status), s.customBody ? s = s.customBody() : s.body == null && (s = null), R$1(e, "X-Error", "true");
     else if (o) {
-      const l = r instanceof Error ? r.message : typeof r == "string" ? r : "true";
+      const l = s instanceof Error ? s.message : typeof s == "string" ? s : "true";
       R$1(e, "X-Error", l.replace(/[\r\n]+/g, ""));
-    } else r = z(r, t, f, true);
-    return o ? (R$1(e, "content-type", "text/javascript"), N(o, r)) : r;
+    } else s = N(s, t, f, true);
+    return o ? (R$1(e, "content-type", "text/javascript"), W$1(o, s)) : s;
   }
 }
-function z(e, s, t, n) {
-  const o = new URL(s.url), a = e instanceof Error;
+function N(e, r, t, n) {
+  const o = new URL(r.url), a = e instanceof Error;
   let i = 302, c;
-  return e instanceof Response ? (c = new Headers(e.headers), e.headers.has("Location") && (c.set("Location", new URL(e.headers.get("Location"), o.origin + "").toString()), i = lt$1(e))) : c = new Headers({ Location: new URL(s.headers.get("referer")).toString() }), e && c.append("Set-Cookie", `flash=${encodeURIComponent(JSON.stringify({ url: o.pathname + o.search, result: a ? e.message : e, thrown: n, error: a, input: [...t.slice(0, -1), [...t[t.length - 1].entries()]] }))}; Secure; HttpOnly;`), new Response(null, { status: i, headers: c });
+  return e instanceof Response ? (c = new Headers(e.headers), e.headers.has("Location") && (c.set("Location", new URL(e.headers.get("Location"), o.origin + "").toString()), i = lt$1(e))) : c = new Headers({ Location: new URL(r.headers.get("referer")).toString() }), e && c.append("Set-Cookie", `flash=${encodeURIComponent(JSON.stringify({ url: o.pathname + o.search, result: a ? e.message : e, thrown: n, error: a, input: [...t.slice(0, -1), [...t[t.length - 1].entries()]] }))}; Secure; HttpOnly;`), new Response(null, { status: i, headers: c });
 }
-let $$1;
+let b;
 function ht$1(e) {
   var _a;
-  const s = new Headers(e.request.headers), t = _e$1(e.nativeEvent), n = e.response.headers.getSetCookie();
-  s.delete("cookie");
+  const r = new Headers(e.request.headers), t = _e$1(e.nativeEvent), n = e.response.headers.getSetCookie();
+  r.delete("cookie");
   let o = false;
   return ((_a = e.nativeEvent.node) == null ? void 0 : _a.req) && (o = true, e.nativeEvent.node.req.headers.cookie = ""), n.forEach((a) => {
     if (!a) return;
@@ -6341,30 +6427,30 @@ function ht$1(e) {
     }
     t[d] = p;
   }), Object.entries(t).forEach(([a, i]) => {
-    s.append("cookie", `${a}=${i}`), o && (e.nativeEvent.node.req.headers.cookie += `${a}=${i};`);
-  }), s;
+    r.append("cookie", `${a}=${i}`), o && (e.nativeEvent.node.req.headers.cookie += `${a}=${i};`);
+  }), r;
 }
-async function B(e, s) {
+async function B(e, r) {
   let t, n = new URL(e.request.headers.get("referer")).toString();
-  s instanceof Response && (s.headers.has("X-Revalidate") && (t = s.headers.get("X-Revalidate").split(",")), s.headers.has("Location") && (n = new URL(s.headers.get("Location"), new URL(e.request.url).origin + "").toString()));
+  r instanceof Response && (r.headers.has("X-Revalidate") && (t = r.headers.get("X-Revalidate").split(",")), r.headers.has("Location") && (n = new URL(r.headers.get("Location"), new URL(e.request.url).origin + "").toString()));
   const o = Ke$1(e);
   return o.request = new Request(n, { headers: ht$1(e) }), await provideRequestEvent(o, async () => {
-    await ct(o), $$1 || ($$1 = (await import('./chunks/build/app-X_878gml.mjs')).default), o.router.dataOnly = t || true, o.router.previousUrl = e.request.headers.get("referer");
+    await ct(o), b || (b = (await import('./chunks/build/app-DWU6Z7KW.mjs')).default), o.router.dataOnly = t || true, o.router.previousUrl = e.request.headers.get("referer");
     try {
       renderToString(() => {
-        sharedConfig.context.event = o, $$1();
+        sharedConfig.context.event = o, b();
       });
     } catch (c) {
       console.log(c);
     }
     const a = o.router.data;
-    if (!a) return s;
+    if (!a) return r;
     let i = false;
     for (const c in a) a[c] === void 0 ? delete a[c] : i = true;
-    return i && (s instanceof Response ? s.customBody && (a._$value = s.customBody()) : (a._$value = s, s = new Response(null, { status: 200 })), s.customBody = () => a, s.headers.set("X-Single-Flight", "true")), s;
+    return i && (r instanceof Response ? r.customBody && (a._$value = r.customBody()) : (a._$value = r, r = new Response(null, { status: 200 })), r.customBody = () => a, r.headers.set("X-Single-Flight", "true")), r;
   });
 }
-const qt$1 = eventHandler(ft$1);
+const Pt$1 = eventHandler(ft$1);
 
 function ge() {
   let t = /* @__PURE__ */ new Set();
@@ -6666,7 +6752,7 @@ function dt(e) {
   return (_a = e.web) != null ? _a : e.web = { request: lt(e), url: oe(e) }, e.web.request;
 }
 function pt() {
-  return Tt();
+  return kt();
 }
 const ne = /* @__PURE__ */ Symbol("$HTTPEvent");
 function ht(e) {
@@ -6685,15 +6771,15 @@ function y(e) {
     return e(...r);
   };
 }
-const oe = y(getRequestURL), ft = y(getRequestIP), I = y(setResponseStatus), K = y(getResponseStatus), mt = y(getResponseStatusText), H = y(getResponseHeaders), J = y(getResponseHeader), gt = y(setResponseHeader), yt = y(appendResponseHeader), G = y(sendRedirect), wt = y(getCookie), bt = y(setCookie), vt = y(setHeader), Rt = y(getRequestWebStream), St = y(removeResponseHeader), $t = y(dt);
+const oe = y(getRequestURL), ft = y(getRequestIP), I = y(setResponseStatus), K = y(getResponseStatus), mt = y(getResponseStatusText), H = y(getResponseHeaders), J = y(getResponseHeader), gt = y(setResponseHeader), yt = y(appendResponseHeader), G = y(sendRedirect), wt = y(getCookie), bt = y(setCookie), vt = y(setHeader), Rt = y(getRequestWebStream), $t = y(removeResponseHeader), St = y(dt);
 function Et() {
   var _a;
   return getContext("nitro-app", { asyncContext: !!((_a = globalThis.app.config.server.experimental) == null ? void 0 : _a.asyncContext), AsyncLocalStorage: AsyncLocalStorage });
 }
-function Tt() {
+function kt() {
   return Et().use().event;
 }
-const se = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics2.mjs'), import: () => import('./chunks/build/analytics2.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index2.mjs'), import: () => import('./chunks/build/index2.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint2.mjs'), import: () => import('./chunks/build/mint2.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools2.mjs'), import: () => import('./chunks/build/pools2.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio2.mjs'), import: () => import('./chunks/build/portfolio2.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade2.mjs'), import: () => import('./chunks/build/trade2.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], kt = At(se.filter((e) => e.page));
+const se = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics2.mjs'), import: () => import('./chunks/build/analytics2.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: false, $POST: { src: "src/routes/api/rpc.ts?pick=POST", build: () => import('./chunks/build/rpc2.mjs'), import: () => import('./chunks/build/rpc2.mjs') }, path: "/api/rpc", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/rpc.ts" }, { page: true, $component: { src: "src/routes/faucet.tsx?pick=default&pick=$css", build: () => import('./chunks/build/faucet2.mjs'), import: () => import('./chunks/build/faucet2.mjs') }, path: "/faucet", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/faucet.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index2.mjs'), import: () => import('./chunks/build/index2.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint2.mjs'), import: () => import('./chunks/build/mint2.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools2.mjs'), import: () => import('./chunks/build/pools2.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio2.mjs'), import: () => import('./chunks/build/portfolio2.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade2.mjs'), import: () => import('./chunks/build/trade2.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Tt = At(se.filter((e) => e.page));
 function At(e) {
   function r(t, n, o, s) {
     const a = Object.values(t).find((i) => o.startsWith(i.id + "/"));
@@ -6721,7 +6807,7 @@ const Pt = createRouter$1({ routes: se.reduce((e, r) => {
   return e[t] = { route: r }, e;
 }, {}) }), O = "solidFetchEvent";
 function Ht(e) {
-  return { request: $t(e), response: Ot(e), clientAddress: ft(e), locals: {}, nativeEvent: e };
+  return { request: St(e), response: Ot(e), clientAddress: ft(e), locals: {}, nativeEvent: e };
 }
 function Lt(e) {
   if (!e.context[O]) {
@@ -6746,7 +6832,7 @@ class qt {
     return gt(this.event, r, t);
   }
   delete(r) {
-    return St(this.event, r);
+    return $t(this.event, r);
   }
   append(r, t) {
     yt(this.event, r, t);
@@ -6803,7 +6889,7 @@ function ae() {
   function e(t) {
     return { ...t, ...t.$$route ? t.$$route.require().route : void 0, info: { ...t.$$route ? t.$$route.require().route.info : {}, filesystem: true }, component: t.$component && jt(t.$component, globalThis.MANIFEST.client, globalThis.MANIFEST.ssr), children: t.children ? t.children.map(e) : void 0 };
   }
-  return kt.map(e);
+  return Tt.map(e);
 }
 let V;
 const Ft = isServer ? () => getRequestEvent().routes : () => V || (V = ae());
@@ -6824,11 +6910,11 @@ async function _t(e) {
   const r = globalThis.MANIFEST.client;
   return globalThis.MANIFEST.ssr, e.response.headers.set("Content-Type", "text/html"), Object.assign(e, { manifest: await r.json(), assets: [...await r.inputs[r.handler].assets()], router: { submission: Ut(e) }, routes: ae(), complete: false, $islands: /* @__PURE__ */ new Set() });
 }
-const Bt = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
+const zt = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
 function j(e) {
-  return e.status && Bt.has(e.status) ? e.status : 302;
+  return e.status && zt.has(e.status) ? e.status : 302;
 }
-function Wt(e, r, t = {}, n) {
+function Bt(e, r, t = {}, n) {
   return eventHandler({ handler: (o) => {
     const s = Lt(o);
     return provideRequestEvent(s, async () => {
@@ -6868,8 +6954,8 @@ function Wt(e, r, t = {}, n) {
         return G(o, i.response.headers.get("Location"), m);
       }
       if (u === "async") return f;
-      const { writable: S, readable: R } = new TransformStream();
-      return f.pipeTo(S), R;
+      const { writable: $, readable: R } = new TransformStream();
+      return f.pipeTo($), R;
     });
   } });
 }
@@ -6888,8 +6974,8 @@ function Q(e) {
     t && r(`<script>window.location="${t}"<\/script>`);
   };
 }
-function zt(e, r, t) {
-  return Wt(e, _t, r);
+function Wt(e, r, t) {
+  return Bt(e, _t, r);
 }
 const ie = createContext$1(), ce = ["title", "meta"], F = [], U = ["name", "http-equiv", "content", "charset", "media"].concat(["property"]), L = (e, r) => {
   const t = Object.fromEntries(Object.entries(e.props).filter(([n]) => r.includes(n)).sort());
@@ -7017,8 +7103,8 @@ function Zt(e) {
     let i = s && o.length === s.length;
     const c = [];
     for (let u = 0, f = o.length; u < f; u++) {
-      const S = s && s[u], R = o[u];
-      a && S && R.route.key === S.route.key ? c[u] = a[u] : (i = false, r[u] && r[u](), createRoot((m) => {
+      const $ = s && s[u], R = o[u];
+      a && $ && R.route.key === $.route.key ? c[u] = a[u] : (i = false, r[u] && r[u](), createRoot((m) => {
         r[u] = m, c[u] = Ke(e.routerState, c[u - 1] || e.routerState.base, X(() => n()[u + 1]), () => {
           var _a;
           const w = e.routerState.matches();
@@ -7079,20 +7165,20 @@ function cr(e = true, r = false, t = "/_server", n) {
     }
     function f(l) {
       if (l.defaultPrevented || l.button !== 0 || l.metaKey || l.altKey || l.ctrlKey || l.shiftKey) return;
-      const d = l.composedPath().find((W) => W instanceof Node && W.nodeName.toUpperCase() === "A");
+      const d = l.composedPath().find((B) => B instanceof Node && B.nodeName.toUpperCase() === "A");
       if (!d || r && !d.hasAttribute("link")) return;
       const g = u(d), h = g ? d.href.baseVal : d.href;
       if ((g ? d.target.baseVal : d.target) || !h && !d.hasAttribute("state")) return;
-      const k = (d.getAttribute("rel") || "").split(/\s+/);
-      if (d.hasAttribute("download") || k && k.includes("external")) return;
+      const T = (d.getAttribute("rel") || "").split(/\s+/);
+      if (d.hasAttribute("download") || T && T.includes("external")) return;
       const C = g ? new URL(h, document.baseURI) : new URL(h);
       if (!(C.origin !== window.location.origin || s && C.pathname && !C.pathname.toLowerCase().startsWith(s.toLowerCase()))) return [d, C];
     }
-    function S(l) {
+    function $(l) {
       const d = f(l);
       if (!d) return;
-      const [g, h] = d, B = o.parsePath(h.pathname + h.search + h.hash), k = g.getAttribute("state");
-      l.preventDefault(), a(B, { resolve: false, replace: g.hasAttribute("replace"), scroll: !g.hasAttribute("noscroll"), state: k ? JSON.parse(k) : void 0 });
+      const [g, h] = d, z = o.parsePath(h.pathname + h.search + h.hash), T = g.getAttribute("state");
+      l.preventDefault(), a(z, { resolve: false, replace: g.hasAttribute("replace"), scroll: !g.hasAttribute("noscroll"), state: T ? JSON.parse(T) : void 0 });
     }
     function R(l) {
       const d = f(l);
@@ -7125,8 +7211,8 @@ function cr(e = true, r = false, t = "/_server", n) {
         g.call({ r: o, f: l.target }, l.target.enctype === "multipart/form-data" ? h : new URLSearchParams(h));
       }
     }
-    delegateEvents(["click", "submit"]), document.addEventListener("click", S), e && (document.addEventListener("mousemove", m, { passive: true }), document.addEventListener("focusin", R, { passive: true }), document.addEventListener("touchstart", R, { passive: true })), document.addEventListener("submit", w), onCleanup(() => {
-      document.removeEventListener("click", S), e && (document.removeEventListener("mousemove", m), document.removeEventListener("focusin", R), document.removeEventListener("touchstart", R)), document.removeEventListener("submit", w);
+    delegateEvents(["click", "submit"]), document.addEventListener("click", $), e && (document.addEventListener("mousemove", m, { passive: true }), document.addEventListener("focusin", R, { passive: true }), document.addEventListener("touchstart", R, { passive: true })), document.addEventListener("submit", w), onCleanup(() => {
+      document.removeEventListener("click", $), e && (document.removeEventListener("mousemove", m), document.removeEventListener("focusin", R), document.removeEventListener("touchstart", R)), document.removeEventListener("submit", w);
     });
   };
 }
@@ -7221,13 +7307,13 @@ function wr(e) {
   } });
 }
 var br = ['<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Yield tokenization protocol on Starknet"><link rel="icon" href="/favicon.ico"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">', "</head>"], vr = ["<html", ' lang="en" class="dark">', '<body class="font-sans antialiased"><div id="app">', "</div><!--$-->", "<!--/--></body></html>"];
-const xr = zt(() => createComponent$1(wr, { document: ({ assets: e, children: r, scripts: t }) => ssr(vr, ssrHydrationKey(), createComponent$1(NoHydration, { get children() {
+const xr = Wt(() => createComponent$1(wr, { document: ({ assets: e, children: r, scripts: t }) => ssr(vr, ssrHydrationKey(), createComponent$1(NoHydration, { get children() {
   return ssr(br, escape(e));
 } }), escape(r), escape(t)) }));
 
 const handlers = [
   { route: '', handler: _5h9zpK, lazy: false, middleware: true, method: undefined },
-  { route: '/_server', handler: qt$1, lazy: false, middleware: true, method: undefined },
+  { route: '/_server', handler: Pt$1, lazy: false, middleware: true, method: undefined },
   { route: '/', handler: xr, lazy: false, middleware: true, method: undefined }
 ];
 

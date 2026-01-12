@@ -1080,7 +1080,7 @@ grep -q "Header" packages/frontend-solid/src/shared/layout/index.ts && echo "OK"
 
 ---
 
-## Phase 10: Route Pages
+## Phase 10: Route Pages **COMPLETE**
 
 Create Solid Start file-based routes.
 
@@ -1224,7 +1224,7 @@ Create server-side API endpoints.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 60: Create RPC proxy route
+### Step 60: Create RPC proxy route **COMPLETE**
 
 #### Goal
 Create /api/rpc route that proxies Starknet RPC calls, keeping API keys server-side.
