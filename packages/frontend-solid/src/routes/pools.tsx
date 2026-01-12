@@ -452,7 +452,7 @@ function PoolInfoCard(props: PoolInfoCardProps): JSX.Element {
   });
 
   const totalLp = createMemo(() => {
-    const value = Number(fromWad(props.market.state.totalLp));
+    const value = Number(fromWad(props.market.state.totalLpSupply));
     return formatCompact(value);
   });
 
