@@ -282,7 +282,7 @@ grep -q "createSignal" packages/frontend-solid/src/providers/StarknetProvider.ts
 
 ---
 
-### Step 13: Create ThemeProvider with CSS class-based dark mode
+### Step 13: Create ThemeProvider with CSS class-based dark mode **COMPLETE**
 
 #### Goal
 Create ThemeProvider that manages dark mode via CSS class on document element, using createSignal and localStorage persistence.
