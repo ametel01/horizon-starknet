@@ -1514,7 +1514,7 @@ grep -q "TvlChart" packages/frontend-solid/src/widgets/analytics/index.ts && ech
 
 ---
 
-### Step 73: Create portfolio widgets
+### Step 73: Create portfolio widgets **COMPLETE**
 
 #### Goal
 Port portfolio widgets (PositionPnlTimeline, PortfolioValueChart).
