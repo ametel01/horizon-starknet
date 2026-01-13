@@ -1466,7 +1466,7 @@ grep -q "TokenAmount" packages/frontend-solid/src/entities/token/index.ts && ech
 
 ---
 
-## Phase 14: Widgets
+## Phase 14: Widgets **COMPLETE**
 
 Port page-level compositions.
 
@@ -1543,7 +1543,7 @@ Add tests and final polish.
 cd packages/frontend-solid && bun run test && bun run build
 ```
 
-### Step 74: Create test setup
+### Step 74: Create test setup **COMPLETE**
 
 #### Goal
 Set up testing infrastructure with Vitest and @solidjs/testing-library.
