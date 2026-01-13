@@ -238,7 +238,7 @@
     ]
   },
   "virtual:$vinxi/handler/client": {
-    "file": "assets/client-C0d1f3lB.js",
+    "file": "assets/client-DVWdvbDB.js",
     "name": "client",
     "src": "virtual:$vinxi/handler/client",
     "isEntry": true,
@@ -256,7 +256,7 @@
       "src/routes/trade.tsx?pick=default&pick=$css"
     ],
     "css": [
-      "assets/client-CCo7mTVC.css"
+      "assets/client-BPH5B18S.css"
     ]
   }
 }

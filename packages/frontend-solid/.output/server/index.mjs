@@ -4235,7 +4235,7 @@ async function errorHandler(error, event) {
 }
 
 const appConfig = {"name":"vinxi","routers":[{"name":"public","type":"static","base":"/","dir":"./public","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","order":0,"outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/public"},{"name":"ssr","type":"http","link":{"client":"client"},"handler":"src/entry-server.tsx","extensions":["js","jsx","ts","tsx"],"target":"server","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","base":"/","outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/ssr","order":1},{"name":"client","type":"client","base":"/_build","handler":"src/entry-client.tsx","extensions":["js","jsx","ts","tsx"],"target":"browser","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/client","order":2},{"name":"server-fns","type":"http","base":"/_server","handler":"node_modules/@solidjs/start/dist/runtime/server-handler.js","target":"server","root":"/home/ametel/source/horizon-starknet/packages/frontend-solid","outDir":"/home/ametel/source/horizon-starknet/packages/frontend-solid/.vinxi/build/server-fns","order":3}],"server":{"compressPublicAssets":{"brotli":true},"routeRules":{"/_build/assets/**":{"headers":{"cache-control":"public, immutable, max-age=31536000"}}},"experimental":{"asyncContext":true},"preset":"bun"},"root":"/home/ametel/source/horizon-starknet/packages/frontend-solid"};
-					const buildManifest = {"ssr":{"_AnimatedNumber-MVMTghX7.js":{"file":"assets/AnimatedNumber-MVMTghX7.js","name":"AnimatedNumber","imports":["_Card-DIY1xhm3.js"]},"_Card-DIY1xhm3.js":{"file":"assets/Card-DIY1xhm3.js","name":"Card"},"_QZDH5R5B-BkcYwWOp.js":{"file":"assets/QZDH5R5B-BkcYwWOp.js","name":"QZDH5R5B","imports":["_Card-DIY1xhm3.js"]},"_Select-CvlpjCeG.js":{"file":"assets/Select-CvlpjCeG.js","name":"Select","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_Skeleton-Df4Cx_x0.js":{"file":"assets/Skeleton-Df4Cx_x0.js","name":"Skeleton","imports":["_Card-DIY1xhm3.js"]},"_Tabs-DkcVhKHk.js":{"file":"assets/Tabs-DkcVhKHk.js","name":"Tabs","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_components-D9GQto5d.js":{"file":"assets/components-D9GQto5d.js","name":"components","imports":["_routing-_VU7kOBo.js"]},"_routing-_VU7kOBo.js":{"file":"assets/routing-_VU7kOBo.js","name":"routing"},"_useAccount-DvnSQ5kx.js":{"file":"assets/useAccount-DvnSQ5kx.js","name":"useAccount","imports":["_useStarknet-CfTQugTo.js"]},"_useMarketRates-BiLc0097.js":{"file":"assets/useMarketRates-BiLc0097.js","name":"useMarketRates","imports":["_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js"]},"_useStarknet-CfTQugTo.js":{"file":"assets/useStarknet-CfTQugTo.js","name":"useStarknet"},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-D9GQto5d.js","_routing-_VU7kOBo.js"]},"src/routes/api/rpc.ts?pick=POST":{"file":"rpc.js","name":"rpc","src":"src/routes/api/rpc.ts?pick=POST","isEntry":true,"isDynamicEntry":true},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"faucet.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useStarknet-CfTQugTo.js","_useAccount-DvnSQ5kx.js","_Card-DIY1xhm3.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-D9GQto5d.js","_routing-_VU7kOBo.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_routing-_VU7kOBo.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_Tabs-DkcVhKHk.js","_routing-_VU7kOBo.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-Df4Cx_x0.js","_Card-DIY1xhm3.js","_Tabs-DkcVhKHk.js","_components-D9GQto5d.js","_QZDH5R5B-BkcYwWOp.js","_routing-_VU7kOBo.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_AnimatedNumber-MVMTghX7.js","_Select-CvlpjCeG.js","_QZDH5R5B-BkcYwWOp.js","_useAccount-DvnSQ5kx.js","_Skeleton-Df4Cx_x0.js","_routing-_VU7kOBo.js"]},"virtual:$vinxi/handler/ssr":{"file":"ssr.js","name":"ssr","src":"virtual:$vinxi/handler/ssr","isEntry":true,"imports":["_routing-_VU7kOBo.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/api/rpc.ts?pick=POST","src/routes/api/rpc.ts?pick=POST","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/ssr-CCo7mTVC.css"]}},"client":{"_AnimatedNumber-DOsjBCgV.js":{"file":"assets/AnimatedNumber-DOsjBCgV.js","name":"AnimatedNumber","imports":["_web-Cp7SlEtS.js","_Card-BsHHyVDc.js"]},"_Button-C4r4Bxue.js":{"file":"assets/Button-C4r4Bxue.js","name":"Button","imports":["_web-Cp7SlEtS.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js"]},"_Card-BsHHyVDc.js":{"file":"assets/Card-BsHHyVDc.js","name":"Card","imports":["_web-Cp7SlEtS.js"]},"_QZDH5R5B-CESpOJLJ.js":{"file":"assets/QZDH5R5B-CESpOJLJ.js","name":"QZDH5R5B","imports":["_web-Cp7SlEtS.js","_UKTBL2JL-BxipwWHR.js"]},"_Select-BZZGaJT2.js":{"file":"assets/Select-BZZGaJT2.js","name":"Select","imports":["_web-Cp7SlEtS.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js"]},"_Skeleton-C5ntl6fs.js":{"file":"assets/Skeleton-C5ntl6fs.js","name":"Skeleton","imports":["_web-Cp7SlEtS.js","_Card-BsHHyVDc.js"]},"_Tabs-Bx1x2wmT.js":{"file":"assets/Tabs-Bx1x2wmT.js","name":"Tabs","imports":["_web-Cp7SlEtS.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js","_Button-C4r4Bxue.js"]},"_UKTBL2JL-BxipwWHR.js":{"file":"assets/UKTBL2JL-BxipwWHR.js","name":"UKTBL2JL","imports":["_web-Cp7SlEtS.js"]},"_components-C6uahRJb.js":{"file":"assets/components-C6uahRJb.js","name":"components","imports":["_web-Cp7SlEtS.js","_routing-BSuJdqCI.js"]},"_routing-BSuJdqCI.js":{"file":"assets/routing-BSuJdqCI.js","name":"routing","imports":["_web-Cp7SlEtS.js"]},"_useAccount-BvqtcMl3.js":{"file":"assets/useAccount-BvqtcMl3.js","name":"useAccount","imports":["_web-Cp7SlEtS.js","_useStarknet-cGeIN0U1.js"]},"_useMarketRates-DWopi9e-.js":{"file":"assets/useMarketRates-DWopi9e-.js","name":"useMarketRates","imports":["_useStarknet-cGeIN0U1.js","_web-Cp7SlEtS.js"]},"_useStarknet-cGeIN0U1.js":{"file":"assets/useStarknet-cGeIN0U1.js","name":"useStarknet","imports":["_web-Cp7SlEtS.js"]},"_web-Cp7SlEtS.js":{"file":"assets/web-Cp7SlEtS.js","name":"web"},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"assets/analytics-qd6PgYg3.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_AnimatedNumber-DOsjBCgV.js","_components-C6uahRJb.js","_routing-BSuJdqCI.js"]},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"assets/faucet-3OYqo7C1.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useStarknet-cGeIN0U1.js","_useAccount-BvqtcMl3.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_UKTBL2JL-BxipwWHR.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"assets/index-DCEe8Zza.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_AnimatedNumber-DOsjBCgV.js","_components-C6uahRJb.js","_UKTBL2JL-BxipwWHR.js","_routing-BSuJdqCI.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"assets/mint-sf87tZif.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_Select-BZZGaJT2.js","_routing-BSuJdqCI.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"assets/pools-Cy0ALQxQ.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_Select-BZZGaJT2.js","_Tabs-Bx1x2wmT.js","_routing-BSuJdqCI.js","_UKTBL2JL-BxipwWHR.js","_QZDH5R5B-CESpOJLJ.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"assets/portfolio-DduW7rue.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_Skeleton-C5ntl6fs.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Tabs-Bx1x2wmT.js","_components-C6uahRJb.js","_UKTBL2JL-BxipwWHR.js","_QZDH5R5B-CESpOJLJ.js","_routing-BSuJdqCI.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"assets/trade-DjZxkzWB.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Button-C4r4Bxue.js","_AnimatedNumber-DOsjBCgV.js","_Select-BZZGaJT2.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_useAccount-BvqtcMl3.js","_Skeleton-C5ntl6fs.js","_routing-BSuJdqCI.js"]},"virtual:$vinxi/handler/client":{"file":"assets/client-C0d1f3lB.js","name":"client","src":"virtual:$vinxi/handler/client","isEntry":true,"imports":["_web-Cp7SlEtS.js","_routing-BSuJdqCI.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/client-CCo7mTVC.css"]}},"server-fns":{"_AnimatedNumber-MVMTghX7.js":{"file":"assets/AnimatedNumber-MVMTghX7.js","name":"AnimatedNumber","imports":["_Card-DIY1xhm3.js"]},"_Card-DIY1xhm3.js":{"file":"assets/Card-DIY1xhm3.js","name":"Card"},"_QZDH5R5B-BkcYwWOp.js":{"file":"assets/QZDH5R5B-BkcYwWOp.js","name":"QZDH5R5B","imports":["_Card-DIY1xhm3.js"]},"_Select-CvlpjCeG.js":{"file":"assets/Select-CvlpjCeG.js","name":"Select","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_Skeleton-Df4Cx_x0.js":{"file":"assets/Skeleton-Df4Cx_x0.js","name":"Skeleton","imports":["_Card-DIY1xhm3.js"]},"_Tabs-DkcVhKHk.js":{"file":"assets/Tabs-DkcVhKHk.js","name":"Tabs","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_components-DqrvAkuN.js":{"file":"assets/components-DqrvAkuN.js","name":"components","imports":["_routing-DHl2GUl2.js"]},"_routing-DHl2GUl2.js":{"file":"assets/routing-DHl2GUl2.js","name":"routing"},"_server-fns-BexvJxsF.js":{"file":"assets/server-fns-BexvJxsF.js","name":"server-fns","dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/api/rpc.ts?pick=POST","src/routes/api/rpc.ts?pick=POST","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/app.tsx"]},"_useAccount-DvnSQ5kx.js":{"file":"assets/useAccount-DvnSQ5kx.js","name":"useAccount","imports":["_useStarknet-CfTQugTo.js"]},"_useMarketRates-BiLc0097.js":{"file":"assets/useMarketRates-BiLc0097.js","name":"useMarketRates","imports":["_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js"]},"_useStarknet-CfTQugTo.js":{"file":"assets/useStarknet-CfTQugTo.js","name":"useStarknet"},"src/app.tsx":{"file":"assets/app-DWU6Z7KW.js","name":"app","src":"src/app.tsx","isDynamicEntry":true,"imports":["_server-fns-BexvJxsF.js","_routing-DHl2GUl2.js"],"css":["assets/app-CCo7mTVC.css"]},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-DqrvAkuN.js","_routing-DHl2GUl2.js"]},"src/routes/api/rpc.ts?pick=POST":{"file":"rpc.js","name":"rpc","src":"src/routes/api/rpc.ts?pick=POST","isEntry":true,"isDynamicEntry":true},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"faucet.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useStarknet-CfTQugTo.js","_useAccount-DvnSQ5kx.js","_Card-DIY1xhm3.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-DqrvAkuN.js","_routing-DHl2GUl2.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_routing-DHl2GUl2.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_Tabs-DkcVhKHk.js","_routing-DHl2GUl2.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-Df4Cx_x0.js","_Card-DIY1xhm3.js","_Tabs-DkcVhKHk.js","_components-DqrvAkuN.js","_QZDH5R5B-BkcYwWOp.js","_routing-DHl2GUl2.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BiLc0097.js","_useStarknet-CfTQugTo.js","_Card-DIY1xhm3.js","_AnimatedNumber-MVMTghX7.js","_Select-CvlpjCeG.js","_QZDH5R5B-BkcYwWOp.js","_useAccount-DvnSQ5kx.js","_Skeleton-Df4Cx_x0.js","_routing-DHl2GUl2.js"]},"virtual:$vinxi/handler/server-fns":{"file":"server-fns.js","name":"server-fns","src":"virtual:$vinxi/handler/server-fns","isEntry":true,"imports":["_server-fns-BexvJxsF.js"]}}};
+					const buildManifest = {"ssr":{"_AnimatedNumber-MVMTghX7.js":{"file":"assets/AnimatedNumber-MVMTghX7.js","name":"AnimatedNumber","imports":["_Card-DIY1xhm3.js"]},"_Card-DIY1xhm3.js":{"file":"assets/Card-DIY1xhm3.js","name":"Card"},"_QZDH5R5B-BkcYwWOp.js":{"file":"assets/QZDH5R5B-BkcYwWOp.js","name":"QZDH5R5B","imports":["_Card-DIY1xhm3.js"]},"_Select-CvlpjCeG.js":{"file":"assets/Select-CvlpjCeG.js","name":"Select","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_Skeleton-Df4Cx_x0.js":{"file":"assets/Skeleton-Df4Cx_x0.js","name":"Skeleton","imports":["_Card-DIY1xhm3.js"]},"_Tabs-DkcVhKHk.js":{"file":"assets/Tabs-DkcVhKHk.js","name":"Tabs","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_addresses-BOPbEz7h.js":{"file":"assets/addresses-BOPbEz7h.js","name":"addresses"},"_components-D9GQto5d.js":{"file":"assets/components-D9GQto5d.js","name":"components","imports":["_routing-_VU7kOBo.js"]},"_contracts-DyjIWvgY.js":{"file":"assets/contracts-DyjIWvgY.js","name":"contracts","imports":["_addresses-BOPbEz7h.js"]},"_logger-DnXYeyUD.js":{"file":"assets/logger-DnXYeyUD.js","name":"logger"},"_provider-CqwKmoLj.js":{"file":"assets/provider-CqwKmoLj.js","name":"provider"},"_routing-_VU7kOBo.js":{"file":"assets/routing-_VU7kOBo.js","name":"routing"},"_useAccount-D27TcPLP.js":{"file":"assets/useAccount-D27TcPLP.js","name":"useAccount","imports":["_useStarknet-BeA5R3YV.js"]},"_useMarketRates-BXM6DzVo.js":{"file":"assets/useMarketRates-BXM6DzVo.js","name":"useMarketRates","imports":["_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_Card-DIY1xhm3.js"]},"_useStarknet-BeA5R3YV.js":{"file":"assets/useStarknet-BeA5R3YV.js","name":"useStarknet"},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-D9GQto5d.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_routing-_VU7kOBo.js"]},"src/routes/api/health.ts?pick=GET":{"file":"health.js","name":"health","src":"src/routes/api/health.ts?pick=GET","isEntry":true,"isDynamicEntry":true,"imports":["_provider-CqwKmoLj.js","_logger-DnXYeyUD.js"]},"src/routes/api/markets/[address].ts?pick=GET":{"file":"_address_.js","name":"_address_","src":"src/routes/api/markets/[address].ts?pick=GET","isEntry":true,"isDynamicEntry":true,"imports":["_addresses-BOPbEz7h.js","_provider-CqwKmoLj.js","_contracts-DyjIWvgY.js","_logger-DnXYeyUD.js"]},"src/routes/api/markets/index.ts?pick=GET":{"file":"index.js","name":"index","src":"src/routes/api/markets/index.ts?pick=GET","isEntry":true,"isDynamicEntry":true,"imports":["_addresses-BOPbEz7h.js","_provider-CqwKmoLj.js","_contracts-DyjIWvgY.js","_logger-DnXYeyUD.js"]},"src/routes/api/rpc.ts?pick=POST":{"file":"rpc.js","name":"rpc","src":"src/routes/api/rpc.ts?pick=POST","isEntry":true,"isDynamicEntry":true},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"faucet.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useStarknet-BeA5R3YV.js","_useAccount-D27TcPLP.js","_addresses-BOPbEz7h.js","_Card-DIY1xhm3.js","_provider-CqwKmoLj.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index2.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-D9GQto5d.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_routing-_VU7kOBo.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_routing-_VU7kOBo.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_Tabs-DkcVhKHk.js","_routing-_VU7kOBo.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-Df4Cx_x0.js","_Card-DIY1xhm3.js","_Tabs-DkcVhKHk.js","_components-D9GQto5d.js","_QZDH5R5B-BkcYwWOp.js","_routing-_VU7kOBo.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_AnimatedNumber-MVMTghX7.js","_Select-CvlpjCeG.js","_QZDH5R5B-BkcYwWOp.js","_contracts-DyjIWvgY.js","_useAccount-D27TcPLP.js","_Skeleton-Df4Cx_x0.js","_routing-_VU7kOBo.js","_logger-DnXYeyUD.js"]},"virtual:$vinxi/handler/ssr":{"file":"ssr.js","name":"ssr","src":"virtual:$vinxi/handler/ssr","isEntry":true,"imports":["_routing-_VU7kOBo.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/api/health.ts?pick=GET","src/routes/api/health.ts?pick=GET","src/routes/api/health.ts?pick=GET","src/routes/api/health.ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/rpc.ts?pick=POST","src/routes/api/rpc.ts?pick=POST","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/ssr-BPH5B18S.css"]}},"client":{"_AnimatedNumber-DOsjBCgV.js":{"file":"assets/AnimatedNumber-DOsjBCgV.js","name":"AnimatedNumber","imports":["_web-Cp7SlEtS.js","_Card-BsHHyVDc.js"]},"_Button-C4r4Bxue.js":{"file":"assets/Button-C4r4Bxue.js","name":"Button","imports":["_web-Cp7SlEtS.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js"]},"_Card-BsHHyVDc.js":{"file":"assets/Card-BsHHyVDc.js","name":"Card","imports":["_web-Cp7SlEtS.js"]},"_QZDH5R5B-CESpOJLJ.js":{"file":"assets/QZDH5R5B-CESpOJLJ.js","name":"QZDH5R5B","imports":["_web-Cp7SlEtS.js","_UKTBL2JL-BxipwWHR.js"]},"_Select-BZZGaJT2.js":{"file":"assets/Select-BZZGaJT2.js","name":"Select","imports":["_web-Cp7SlEtS.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js"]},"_Skeleton-C5ntl6fs.js":{"file":"assets/Skeleton-C5ntl6fs.js","name":"Skeleton","imports":["_web-Cp7SlEtS.js","_Card-BsHHyVDc.js"]},"_Tabs-Bx1x2wmT.js":{"file":"assets/Tabs-Bx1x2wmT.js","name":"Tabs","imports":["_web-Cp7SlEtS.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_Card-BsHHyVDc.js","_Button-C4r4Bxue.js"]},"_UKTBL2JL-BxipwWHR.js":{"file":"assets/UKTBL2JL-BxipwWHR.js","name":"UKTBL2JL","imports":["_web-Cp7SlEtS.js"]},"_components-C6uahRJb.js":{"file":"assets/components-C6uahRJb.js","name":"components","imports":["_web-Cp7SlEtS.js","_routing-BSuJdqCI.js"]},"_routing-BSuJdqCI.js":{"file":"assets/routing-BSuJdqCI.js","name":"routing","imports":["_web-Cp7SlEtS.js"]},"_useAccount-BvqtcMl3.js":{"file":"assets/useAccount-BvqtcMl3.js","name":"useAccount","imports":["_web-Cp7SlEtS.js","_useStarknet-cGeIN0U1.js"]},"_useMarketRates-DWopi9e-.js":{"file":"assets/useMarketRates-DWopi9e-.js","name":"useMarketRates","imports":["_useStarknet-cGeIN0U1.js","_web-Cp7SlEtS.js"]},"_useStarknet-cGeIN0U1.js":{"file":"assets/useStarknet-cGeIN0U1.js","name":"useStarknet","imports":["_web-Cp7SlEtS.js"]},"_web-Cp7SlEtS.js":{"file":"assets/web-Cp7SlEtS.js","name":"web"},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"assets/analytics-qd6PgYg3.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_AnimatedNumber-DOsjBCgV.js","_components-C6uahRJb.js","_routing-BSuJdqCI.js"]},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"assets/faucet-3OYqo7C1.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useStarknet-cGeIN0U1.js","_useAccount-BvqtcMl3.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_UKTBL2JL-BxipwWHR.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"assets/index-DCEe8Zza.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_AnimatedNumber-DOsjBCgV.js","_components-C6uahRJb.js","_UKTBL2JL-BxipwWHR.js","_routing-BSuJdqCI.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"assets/mint-sf87tZif.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_Select-BZZGaJT2.js","_routing-BSuJdqCI.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"assets/pools-Cy0ALQxQ.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Skeleton-C5ntl6fs.js","_Select-BZZGaJT2.js","_Tabs-Bx1x2wmT.js","_routing-BSuJdqCI.js","_UKTBL2JL-BxipwWHR.js","_QZDH5R5B-CESpOJLJ.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"assets/portfolio-DduW7rue.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_Skeleton-C5ntl6fs.js","_Button-C4r4Bxue.js","_Card-BsHHyVDc.js","_Tabs-Bx1x2wmT.js","_components-C6uahRJb.js","_UKTBL2JL-BxipwWHR.js","_QZDH5R5B-CESpOJLJ.js","_routing-BSuJdqCI.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"assets/trade-DjZxkzWB.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_web-Cp7SlEtS.js","_useMarketRates-DWopi9e-.js","_useStarknet-cGeIN0U1.js","_Card-BsHHyVDc.js","_Button-C4r4Bxue.js","_AnimatedNumber-DOsjBCgV.js","_Select-BZZGaJT2.js","_QZDH5R5B-CESpOJLJ.js","_UKTBL2JL-BxipwWHR.js","_useAccount-BvqtcMl3.js","_Skeleton-C5ntl6fs.js","_routing-BSuJdqCI.js"]},"virtual:$vinxi/handler/client":{"file":"assets/client-DVWdvbDB.js","name":"client","src":"virtual:$vinxi/handler/client","isEntry":true,"imports":["_web-Cp7SlEtS.js","_routing-BSuJdqCI.js"],"dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css"],"css":["assets/client-BPH5B18S.css"]}},"server-fns":{"_AnimatedNumber-MVMTghX7.js":{"file":"assets/AnimatedNumber-MVMTghX7.js","name":"AnimatedNumber","imports":["_Card-DIY1xhm3.js"]},"_Card-DIY1xhm3.js":{"file":"assets/Card-DIY1xhm3.js","name":"Card"},"_QZDH5R5B-BkcYwWOp.js":{"file":"assets/QZDH5R5B-BkcYwWOp.js","name":"QZDH5R5B","imports":["_Card-DIY1xhm3.js"]},"_Select-CvlpjCeG.js":{"file":"assets/Select-CvlpjCeG.js","name":"Select","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_Skeleton-Df4Cx_x0.js":{"file":"assets/Skeleton-Df4Cx_x0.js","name":"Skeleton","imports":["_Card-DIY1xhm3.js"]},"_Tabs-DkcVhKHk.js":{"file":"assets/Tabs-DkcVhKHk.js","name":"Tabs","imports":["_QZDH5R5B-BkcYwWOp.js","_Card-DIY1xhm3.js"]},"_addresses-BOPbEz7h.js":{"file":"assets/addresses-BOPbEz7h.js","name":"addresses"},"_components-DqrvAkuN.js":{"file":"assets/components-DqrvAkuN.js","name":"components","imports":["_routing-DHl2GUl2.js"]},"_contracts-DyjIWvgY.js":{"file":"assets/contracts-DyjIWvgY.js","name":"contracts","imports":["_addresses-BOPbEz7h.js"]},"_logger-DnXYeyUD.js":{"file":"assets/logger-DnXYeyUD.js","name":"logger"},"_provider-CqwKmoLj.js":{"file":"assets/provider-CqwKmoLj.js","name":"provider"},"_routing-DHl2GUl2.js":{"file":"assets/routing-DHl2GUl2.js","name":"routing"},"_server-fns-C4laxcr8.js":{"file":"assets/server-fns-C4laxcr8.js","name":"server-fns","dynamicImports":["src/routes/analytics.tsx?pick=default&pick=$css","src/routes/analytics.tsx?pick=default&pick=$css","src/routes/api/health.ts?pick=GET","src/routes/api/health.ts?pick=GET","src/routes/api/health.ts?pick=GET","src/routes/api/health.ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/[address].ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/markets/index.ts?pick=GET","src/routes/api/rpc.ts?pick=POST","src/routes/api/rpc.ts?pick=POST","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/faucet.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/index.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/mint.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/pools.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/portfolio.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/routes/trade.tsx?pick=default&pick=$css","src/app.tsx"]},"_useAccount-D27TcPLP.js":{"file":"assets/useAccount-D27TcPLP.js","name":"useAccount","imports":["_useStarknet-BeA5R3YV.js"]},"_useMarketRates-BXM6DzVo.js":{"file":"assets/useMarketRates-BXM6DzVo.js","name":"useMarketRates","imports":["_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_Card-DIY1xhm3.js"]},"_useStarknet-BeA5R3YV.js":{"file":"assets/useStarknet-BeA5R3YV.js","name":"useStarknet"},"src/app.tsx":{"file":"assets/app-BVqHhzbA.js","name":"app","src":"src/app.tsx","isDynamicEntry":true,"imports":["_server-fns-C4laxcr8.js","_routing-DHl2GUl2.js"],"css":["assets/app-BPH5B18S.css"]},"src/routes/analytics.tsx?pick=default&pick=$css":{"file":"analytics.js","name":"analytics","src":"src/routes/analytics.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-DqrvAkuN.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_routing-DHl2GUl2.js"]},"src/routes/api/health.ts?pick=GET":{"file":"health.js","name":"health","src":"src/routes/api/health.ts?pick=GET","isEntry":true,"isDynamicEntry":true,"imports":["_provider-CqwKmoLj.js","_logger-DnXYeyUD.js"]},"src/routes/api/markets/[address].ts?pick=GET":{"file":"_address_.js","name":"_address_","src":"src/routes/api/markets/[address].ts?pick=GET","isEntry":true,"isDynamicEntry":true,"imports":["_addresses-BOPbEz7h.js","_provider-CqwKmoLj.js","_contracts-DyjIWvgY.js","_logger-DnXYeyUD.js"]},"src/routes/api/markets/index.ts?pick=GET":{"file":"index.js","name":"index","src":"src/routes/api/markets/index.ts?pick=GET","isEntry":true,"isDynamicEntry":true,"imports":["_addresses-BOPbEz7h.js","_provider-CqwKmoLj.js","_contracts-DyjIWvgY.js","_logger-DnXYeyUD.js"]},"src/routes/api/rpc.ts?pick=POST":{"file":"rpc.js","name":"rpc","src":"src/routes/api/rpc.ts?pick=POST","isEntry":true,"isDynamicEntry":true},"src/routes/faucet.tsx?pick=default&pick=$css":{"file":"faucet.js","name":"faucet","src":"src/routes/faucet.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useStarknet-BeA5R3YV.js","_useAccount-D27TcPLP.js","_addresses-BOPbEz7h.js","_Card-DIY1xhm3.js","_provider-CqwKmoLj.js"]},"src/routes/index.tsx?pick=default&pick=$css":{"file":"index2.js","name":"index","src":"src/routes/index.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_AnimatedNumber-MVMTghX7.js","_components-DqrvAkuN.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_routing-DHl2GUl2.js"]},"src/routes/mint.tsx?pick=default&pick=$css":{"file":"mint.js","name":"mint","src":"src/routes/mint.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_routing-DHl2GUl2.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/pools.tsx?pick=default&pick=$css":{"file":"pools.js","name":"pools","src":"src/routes/pools.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_Skeleton-Df4Cx_x0.js","_Select-CvlpjCeG.js","_Tabs-DkcVhKHk.js","_routing-DHl2GUl2.js","_logger-DnXYeyUD.js","_contracts-DyjIWvgY.js","_QZDH5R5B-BkcYwWOp.js"]},"src/routes/portfolio.tsx?pick=default&pick=$css":{"file":"portfolio.js","name":"portfolio","src":"src/routes/portfolio.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_Skeleton-Df4Cx_x0.js","_Card-DIY1xhm3.js","_Tabs-DkcVhKHk.js","_components-DqrvAkuN.js","_QZDH5R5B-BkcYwWOp.js","_routing-DHl2GUl2.js"]},"src/routes/trade.tsx?pick=default&pick=$css":{"file":"trade.js","name":"trade","src":"src/routes/trade.tsx?pick=default&pick=$css","isEntry":true,"isDynamicEntry":true,"imports":["_useMarketRates-BXM6DzVo.js","_addresses-BOPbEz7h.js","_useStarknet-BeA5R3YV.js","_Card-DIY1xhm3.js","_AnimatedNumber-MVMTghX7.js","_Select-CvlpjCeG.js","_QZDH5R5B-BkcYwWOp.js","_contracts-DyjIWvgY.js","_useAccount-D27TcPLP.js","_Skeleton-Df4Cx_x0.js","_routing-DHl2GUl2.js","_logger-DnXYeyUD.js"]},"virtual:$vinxi/handler/server-fns":{"file":"server-fns.js","name":"server-fns","src":"virtual:$vinxi/handler/server-fns","isEntry":true,"imports":["_server-fns-C4laxcr8.js"]}}};
 
 					const routeManifest = {"ssr":{},"client":{},"server-fns":{}};
 
@@ -4498,80 +4498,80 @@ const assets = {
   "/_build/.vite/manifest.json": {
     "type": "application/json",
     "encoding": null,
-    "etag": "\"1b2a-pyUzJt9HB1wOpXVXFzg7URQpWo0\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "etag": "\"1b2a-PYkoeHKFCYSJjnntVvthvUlBeKA\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 6954,
     "path": "../public/_build/.vite/manifest.json"
   },
-  "/assets/ssr-CCo7mTVC.css.gz": {
-    "type": "text/css; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"48a5-f0ZW0fh84Yss774/GqAhCJJM1xk\"",
-    "mtime": "2026-01-12T22:53:19.290Z",
-    "size": 18597,
-    "path": "../public/assets/ssr-CCo7mTVC.css.gz"
-  },
-  "/assets/ssr-CCo7mTVC.css.br": {
+  "/assets/ssr-BPH5B18S.css.br": {
     "type": "text/css; charset=utf-8",
     "encoding": "br",
-    "etag": "\"3cec-IZwZUG4EyOyPdzYZjj5USfTe5TM\"",
-    "mtime": "2026-01-12T22:53:19.402Z",
-    "size": 15596,
-    "path": "../public/assets/ssr-CCo7mTVC.css.br"
+    "etag": "\"3ea9-JD7L4+gBSFNj5PJX+JQiDs01kf4\"",
+    "mtime": "2026-01-13T03:31:06.077Z",
+    "size": 16041,
+    "path": "../public/assets/ssr-BPH5B18S.css.br"
+  },
+  "/assets/ssr-BPH5B18S.css.gz": {
+    "type": "text/css; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"4b68-RnfA+EgNg+1C4dnX6QV10OlRWkM\"",
+    "mtime": "2026-01-13T03:31:05.972Z",
+    "size": 19304,
+    "path": "../public/assets/ssr-BPH5B18S.css.gz"
   },
   "/_build/.vite/manifest.json.br": {
     "type": "application/json",
     "encoding": "br",
-    "etag": "\"351-2wHjfPb+fv52+3cMtqcgVDpTrcQ\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "etag": "\"351-fWO+whV4dsRhTame2cd3UAM+HJk\"",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 849,
     "path": "../public/_build/.vite/manifest.json.br"
   },
   "/_build/.vite/manifest.json.gz": {
     "type": "application/json",
     "encoding": "gzip",
-    "etag": "\"3b4-PpVXIZ1RGvQiHaqJwvc8ihMArGY\"",
-    "mtime": "2026-01-12T22:53:19.320Z",
-    "size": 948,
+    "etag": "\"3b6-cDmY5RK0Tsrz9pCqHM4PPAh9yII\"",
+    "mtime": "2026-01-13T03:31:05.984Z",
+    "size": 950,
     "path": "../public/_build/.vite/manifest.json.gz"
   },
-  "/assets/ssr-CCo7mTVC.css": {
-    "type": "text/css; charset=utf-8",
-    "encoding": null,
-    "etag": "\"1dee9-AXH5mr0kXDoHbdgGNsFz51i/Idg\"",
-    "mtime": "2026-01-12T22:53:19.247Z",
-    "size": 122601,
-    "path": "../public/assets/ssr-CCo7mTVC.css"
-  },
-  "/_server/assets/app-CCo7mTVC.css.br": {
+  "/_server/assets/app-BPH5B18S.css.br": {
     "type": "text/css; charset=utf-8",
     "encoding": "br",
-    "etag": "\"3cec-IZwZUG4EyOyPdzYZjj5USfTe5TM\"",
-    "mtime": "2026-01-12T22:53:19.604Z",
-    "size": 15596,
-    "path": "../public/_server/assets/app-CCo7mTVC.css.br"
+    "etag": "\"3ea9-JD7L4+gBSFNj5PJX+JQiDs01kf4\"",
+    "mtime": "2026-01-13T03:31:06.278Z",
+    "size": 16041,
+    "path": "../public/_server/assets/app-BPH5B18S.css.br"
   },
   "/_build/assets/AnimatedNumber-DOsjBCgV.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"5cd-JOL3TBlf2Hb3euDgC5FmZo3OJ1M\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 1485,
     "path": "../public/_build/assets/AnimatedNumber-DOsjBCgV.js"
   },
-  "/_server/assets/app-CCo7mTVC.css.gz": {
+  "/_server/assets/app-BPH5B18S.css.gz": {
     "type": "text/css; charset=utf-8",
     "encoding": "gzip",
-    "etag": "\"48a5-f0ZW0fh84Yss774/GqAhCJJM1xk\"",
-    "mtime": "2026-01-12T22:53:19.528Z",
-    "size": 18597,
-    "path": "../public/_server/assets/app-CCo7mTVC.css.gz"
+    "etag": "\"4b68-RnfA+EgNg+1C4dnX6QV10OlRWkM\"",
+    "mtime": "2026-01-13T03:31:06.187Z",
+    "size": 19304,
+    "path": "../public/_server/assets/app-BPH5B18S.css.gz"
+  },
+  "/assets/ssr-BPH5B18S.css": {
+    "type": "text/css; charset=utf-8",
+    "encoding": null,
+    "etag": "\"1fb25-yQWEXIyRxQV25+ou0D7p4P+/thI\"",
+    "mtime": "2026-01-13T03:31:05.931Z",
+    "size": 129829,
+    "path": "../public/assets/ssr-BPH5B18S.css"
   },
   "/_build/assets/AnimatedNumber-DOsjBCgV.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"2db-0y/LuCu8OH0MuubumEkwkekH62E\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 731,
     "path": "../public/_build/assets/AnimatedNumber-DOsjBCgV.js.br"
   },
@@ -4579,7 +4579,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"320-bGO+5bz7kI8pWfD9B2/U0UBrc98\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 800,
     "path": "../public/_build/assets/AnimatedNumber-DOsjBCgV.js.gz"
   },
@@ -4587,31 +4587,31 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"112d-4k8N4/DuMj61ekYLMXITdzoijv0\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 4397,
     "path": "../public/_build/assets/Button-C4r4Bxue.js"
+  },
+  "/_server/assets/app-BPH5B18S.css": {
+    "type": "text/css; charset=utf-8",
+    "encoding": null,
+    "etag": "\"1fb25-yQWEXIyRxQV25+ou0D7p4P+/thI\"",
+    "mtime": "2026-01-13T03:31:05.938Z",
+    "size": 129829,
+    "path": "../public/_server/assets/app-BPH5B18S.css"
   },
   "/_build/assets/Button-C4r4Bxue.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"60b-NFxh6jo2xvV+LySYiNuF8tgCiCs\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 1547,
     "path": "../public/_build/assets/Button-C4r4Bxue.js.br"
-  },
-  "/_server/assets/app-CCo7mTVC.css": {
-    "type": "text/css; charset=utf-8",
-    "encoding": null,
-    "etag": "\"1dee9-AXH5mr0kXDoHbdgGNsFz51i/Idg\"",
-    "mtime": "2026-01-12T22:53:19.255Z",
-    "size": 122601,
-    "path": "../public/_server/assets/app-CCo7mTVC.css"
   },
   "/_build/assets/Button-C4r4Bxue.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"6ce-HcDnhrBRPOMOLff84lMgLqAGdJ8\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 1742,
     "path": "../public/_build/assets/Button-C4r4Bxue.js.gz"
   },
@@ -4619,7 +4619,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"6ba6-ceDB05snYGYvh9Z/V4KeR4Id/MA\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 27558,
     "path": "../public/_build/assets/Card-BsHHyVDc.js"
   },
@@ -4627,31 +4627,31 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"1e5c-BjeJMpudCaDQHMvD0H6VA4x9FMI\"",
-    "mtime": "2026-01-12T22:53:19.356Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 7772,
     "path": "../public/_build/assets/Card-BsHHyVDc.js.br"
-  },
-  "/_build/assets/Card-BsHHyVDc.js.gz": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"2290-CDO9IeRkOESxw0wRUW6wFCyx5ew\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
-    "size": 8848,
-    "path": "../public/_build/assets/Card-BsHHyVDc.js.gz"
   },
   "/_build/assets/QZDH5R5B-CESpOJLJ.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"43cf-YgNHt396UB26/7AY1Q9uUe4ufNc\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 17359,
     "path": "../public/_build/assets/QZDH5R5B-CESpOJLJ.js"
+  },
+  "/_build/assets/Card-BsHHyVDc.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"2290-CDO9IeRkOESxw0wRUW6wFCyx5ew\"",
+    "mtime": "2026-01-13T03:31:06.013Z",
+    "size": 8848,
+    "path": "../public/_build/assets/Card-BsHHyVDc.js.gz"
   },
   "/_build/assets/QZDH5R5B-CESpOJLJ.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"144b-fmOuj89IG614KCZ3DQSPMG6E9Wo\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 5195,
     "path": "../public/_build/assets/QZDH5R5B-CESpOJLJ.js.br"
   },
@@ -4659,46 +4659,46 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"1645-QfBsIqNN9eUwm+wkL1rjJHB1lbc\"",
-    "mtime": "2026-01-12T22:53:19.339Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 5701,
     "path": "../public/_build/assets/QZDH5R5B-CESpOJLJ.js.gz"
-  },
-  "/_build/assets/Select-BZZGaJT2.js": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": null,
-    "etag": "\"fbbb-PrGAZzWz0+lqy1ynpI2/W3uTiKU\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
-    "size": 64443,
-    "path": "../public/_build/assets/Select-BZZGaJT2.js"
   },
   "/_build/assets/Select-BZZGaJT2.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"4cb1-XN1CL0y3YaurDaDoaeuzo393Zr0\"",
-    "mtime": "2026-01-12T22:53:19.403Z",
+    "mtime": "2026-01-13T03:31:06.066Z",
     "size": 19633,
     "path": "../public/_build/assets/Select-BZZGaJT2.js.br"
+  },
+  "/_build/assets/Skeleton-C5ntl6fs.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"26a-WyE5GQsi04SdH+lzGiW0fw4jiNs\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
+    "size": 618,
+    "path": "../public/_build/assets/Skeleton-C5ntl6fs.js"
   },
   "/_build/assets/Select-BZZGaJT2.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"55cd-pACE3g9P1qlWQTfD3vhSkhk/TOk\"",
-    "mtime": "2026-01-12T22:53:19.356Z",
+    "mtime": "2026-01-13T03:31:06.013Z",
     "size": 21965,
     "path": "../public/_build/assets/Select-BZZGaJT2.js.gz"
   },
-  "/_build/assets/Skeleton-C5ntl6fs.js": {
+  "/_build/assets/Select-BZZGaJT2.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"26a-WyE5GQsi04SdH+lzGiW0fw4jiNs\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
-    "size": 618,
-    "path": "../public/_build/assets/Skeleton-C5ntl6fs.js"
+    "encoding": null,
+    "etag": "\"fbbb-PrGAZzWz0+lqy1ynpI2/W3uTiKU\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
+    "size": 64443,
+    "path": "../public/_build/assets/Select-BZZGaJT2.js"
   },
   "/_build/assets/Tabs-Bx1x2wmT.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"3297-vsk29mX634wMN6xwl/HMbUcLoLk\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 12951,
     "path": "../public/_build/assets/Tabs-Bx1x2wmT.js"
   },
@@ -4706,31 +4706,31 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"fe9-UGg67yY4B09hBiHm9GVkWNiD2oE\"",
-    "mtime": "2026-01-12T22:53:19.356Z",
+    "mtime": "2026-01-13T03:31:06.055Z",
     "size": 4073,
     "path": "../public/_build/assets/Tabs-Bx1x2wmT.js.br"
-  },
-  "/_build/assets/UKTBL2JL-BxipwWHR.js": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": null,
-    "etag": "\"1e35-/zPp5XB4agsUwE4RCK0LyjuNHeQ\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
-    "size": 7733,
-    "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js"
   },
   "/_build/assets/Tabs-Bx1x2wmT.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"1175-zARIPVm99zjUoYQeuuq7d2MaXgc\"",
-    "mtime": "2026-01-12T22:53:19.356Z",
+    "mtime": "2026-01-13T03:31:06.024Z",
     "size": 4469,
     "path": "../public/_build/assets/Tabs-Bx1x2wmT.js.gz"
+  },
+  "/_build/assets/UKTBL2JL-BxipwWHR.js": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": null,
+    "etag": "\"1e35-/zPp5XB4agsUwE4RCK0LyjuNHeQ\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
+    "size": 7733,
+    "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js"
   },
   "/_build/assets/UKTBL2JL-BxipwWHR.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"b63-EXkkeX4Eg+04zws2ZS+UFK+ULao\"",
-    "mtime": "2026-01-12T22:53:19.386Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 2915,
     "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js.br"
   },
@@ -4738,7 +4738,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"cf0-D17hluiBgrAxKKKn3ya2MqyP+6A\"",
-    "mtime": "2026-01-12T22:53:19.386Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 3312,
     "path": "../public/_build/assets/UKTBL2JL-BxipwWHR.js.gz"
   },
@@ -4746,7 +4746,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"26fa-s1A8gVLIzGSfOsidiu8ry8k4VvA\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 9978,
     "path": "../public/_build/assets/analytics-qd6PgYg3.js"
   },
@@ -4754,7 +4754,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"a6d-Btp9RDnhDqBY8YHmR2Sxj37pbps\"",
-    "mtime": "2026-01-12T22:53:19.386Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 2669,
     "path": "../public/_build/assets/analytics-qd6PgYg3.js.br"
   },
@@ -4762,70 +4762,70 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"bb5-uA6yaf9t66hBfmgbqsau74jbkD4\"",
-    "mtime": "2026-01-12T22:53:19.386Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 2997,
     "path": "../public/_build/assets/analytics-qd6PgYg3.js.gz"
   },
-  "/_build/assets/client-C0d1f3lB.js": {
+  "/_build/assets/client-BPH5B18S.css.br": {
+    "type": "text/css; charset=utf-8",
+    "encoding": "br",
+    "etag": "\"3ea9-JD7L4+gBSFNj5PJX+JQiDs01kf4\"",
+    "mtime": "2026-01-13T03:31:06.161Z",
+    "size": 16041,
+    "path": "../public/_build/assets/client-BPH5B18S.css.br"
+  },
+  "/_build/assets/client-BPH5B18S.css.gz": {
+    "type": "text/css; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"4b68-RnfA+EgNg+1C4dnX6QV10OlRWkM\"",
+    "mtime": "2026-01-13T03:31:06.056Z",
+    "size": 19304,
+    "path": "../public/_build/assets/client-BPH5B18S.css.gz"
+  },
+  "/_build/assets/client-BPH5B18S.css": {
+    "type": "text/css; charset=utf-8",
+    "encoding": null,
+    "etag": "\"1fb25-yQWEXIyRxQV25+ou0D7p4P+/thI\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
+    "size": 129829,
+    "path": "../public/_build/assets/client-BPH5B18S.css"
+  },
+  "/_build/assets/client-DVWdvbDB.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"4b6b-vQZFSRkI7/G3KEdC58T9N8aY+Ik\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 19307,
-    "path": "../public/_build/assets/client-C0d1f3lB.js"
+    "path": "../public/_build/assets/client-DVWdvbDB.js"
   },
-  "/_build/assets/client-C0d1f3lB.js.br": {
+  "/_build/assets/client-DVWdvbDB.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"19dc-rxYLuRPFeI4bs1JSwFzHxqNP4lU\"",
-    "mtime": "2026-01-12T22:53:19.386Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 6620,
-    "path": "../public/_build/assets/client-C0d1f3lB.js.br"
+    "path": "../public/_build/assets/client-DVWdvbDB.js.br"
   },
-  "/_build/assets/client-C0d1f3lB.js.gz": {
+  "/_build/assets/client-DVWdvbDB.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"1cb0-ErYH9mkZAjSXw5Hti77HsvmYzCQ\"",
-    "mtime": "2026-01-12T22:53:19.386Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 7344,
-    "path": "../public/_build/assets/client-C0d1f3lB.js.gz"
-  },
-  "/_build/assets/client-CCo7mTVC.css.br": {
-    "type": "text/css; charset=utf-8",
-    "encoding": "br",
-    "etag": "\"3cec-IZwZUG4EyOyPdzYZjj5USfTe5TM\"",
-    "mtime": "2026-01-12T22:53:19.494Z",
-    "size": 15596,
-    "path": "../public/_build/assets/client-CCo7mTVC.css.br"
-  },
-  "/_build/assets/client-CCo7mTVC.css": {
-    "type": "text/css; charset=utf-8",
-    "encoding": null,
-    "etag": "\"1dee9-AXH5mr0kXDoHbdgGNsFz51i/Idg\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
-    "size": 122601,
-    "path": "../public/_build/assets/client-CCo7mTVC.css"
+    "path": "../public/_build/assets/client-DVWdvbDB.js.gz"
   },
   "/_build/assets/components-C6uahRJb.js": {
     "type": "text/javascript; charset=utf-8",
     "etag": "\"343-Q+WUZHDLr8F3g2BkDgkAZZ2tfzo\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 835,
     "path": "../public/_build/assets/components-C6uahRJb.js"
-  },
-  "/_build/assets/client-CCo7mTVC.css.gz": {
-    "type": "text/css; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"48a5-f0ZW0fh84Yss774/GqAhCJJM1xk\"",
-    "mtime": "2026-01-12T22:53:19.387Z",
-    "size": 18597,
-    "path": "../public/_build/assets/client-CCo7mTVC.css.gz"
   },
   "/_build/assets/faucet-3OYqo7C1.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"1c33-MIrmgOOp7cJ1wuO3w4gpjmSA0HY\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 7219,
     "path": "../public/_build/assets/faucet-3OYqo7C1.js"
   },
@@ -4833,7 +4833,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"9a0-5Vr+oLiOWFDfQ2rltWIEJWYQEYk\"",
-    "mtime": "2026-01-12T22:53:19.402Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 2464,
     "path": "../public/_build/assets/faucet-3OYqo7C1.js.br"
   },
@@ -4841,7 +4841,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"b0e-HK9WFfsvsiQjavByUHuEEH67ssg\"",
-    "mtime": "2026-01-12T22:53:19.402Z",
+    "mtime": "2026-01-13T03:31:06.056Z",
     "size": 2830,
     "path": "../public/_build/assets/faucet-3OYqo7C1.js.gz"
   },
@@ -4849,7 +4849,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"32d6-IZZcNTmjfNoPkfox+AYAmM1syMg\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 13014,
     "path": "../public/_build/assets/index-DCEe8Zza.js"
   },
@@ -4857,7 +4857,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"f2d-BLbFnihJITJB/3EcZnwiVE+piTw\"",
-    "mtime": "2026-01-12T22:53:19.409Z",
+    "mtime": "2026-01-13T03:31:06.067Z",
     "size": 3885,
     "path": "../public/_build/assets/index-DCEe8Zza.js.br"
   },
@@ -4865,7 +4865,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"1161-TPnklPvhznz5XPAnLwJ9tC+Mj/o\"",
-    "mtime": "2026-01-12T22:53:19.402Z",
+    "mtime": "2026-01-13T03:31:06.066Z",
     "size": 4449,
     "path": "../public/_build/assets/index-DCEe8Zza.js.gz"
   },
@@ -4873,7 +4873,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"2641-5JkVbmAKga+OLviv/5IJxflp0l8\"",
-    "mtime": "2026-01-12T22:53:19.252Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 9793,
     "path": "../public/_build/assets/mint-sf87tZif.js"
   },
@@ -4881,7 +4881,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"af6-ywQPnHFEVBRphTEr9KCogc1yVsk\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.066Z",
     "size": 2806,
     "path": "../public/_build/assets/mint-sf87tZif.js.br"
   },
@@ -4889,7 +4889,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"c59-iEN7dE/7dN9TGpnXzd8eLq/nHzY\"",
-    "mtime": "2026-01-12T22:53:19.402Z",
+    "mtime": "2026-01-13T03:31:06.066Z",
     "size": 3161,
     "path": "../public/_build/assets/mint-sf87tZif.js.gz"
   },
@@ -4897,7 +4897,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"3859-MS9ASN3r4vmbMuMUr8C6lE2mpnM\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 14425,
     "path": "../public/_build/assets/pools-Cy0ALQxQ.js"
   },
@@ -4905,7 +4905,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"d38-2fyH7CJdAAKgJ0S06o2eMFDKWUQ\"",
-    "mtime": "2026-01-12T22:53:19.457Z",
+    "mtime": "2026-01-13T03:31:06.077Z",
     "size": 3384,
     "path": "../public/_build/assets/pools-Cy0ALQxQ.js.br"
   },
@@ -4913,7 +4913,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"ef2-UYPqYtxc0BOi6Z2/n1ExhEQcwTI\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.077Z",
     "size": 3826,
     "path": "../public/_build/assets/pools-Cy0ALQxQ.js.gz"
   },
@@ -4921,7 +4921,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"1dc9-7X2EIngbkpF89b2OzFRKy4wjzhQ\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 7625,
     "path": "../public/_build/assets/portfolio-DduW7rue.js"
   },
@@ -4929,7 +4929,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"84d-mkqcF7H+GsJuhTsxHeguh1DfsNc\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.077Z",
     "size": 2125,
     "path": "../public/_build/assets/portfolio-DduW7rue.js.br"
   },
@@ -4937,7 +4937,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"945-QiyYFzYtgld1CUji1vNdIEi/VBM\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.077Z",
     "size": 2373,
     "path": "../public/_build/assets/portfolio-DduW7rue.js.gz"
   },
@@ -4945,7 +4945,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"1eb0-28oGxcEY1LxLmDYjffuM/ASDL4c\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 7856,
     "path": "../public/_build/assets/routing-BSuJdqCI.js"
   },
@@ -4953,7 +4953,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"d0c-oPfkadmj7+aaXAbo2fn+2tRGvK8\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.079Z",
     "size": 3340,
     "path": "../public/_build/assets/routing-BSuJdqCI.js.br"
   },
@@ -4961,46 +4961,46 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"e4a-Z0P68ZjI1JT/S2tELtkmMcuIlTE\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.077Z",
     "size": 3658,
     "path": "../public/_build/assets/routing-BSuJdqCI.js.gz"
-  },
-  "/_build/assets/trade-DjZxkzWB.js": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": null,
-    "etag": "\"d982-V1YdBI7io2xLsRJqvcKRACJtnPQ\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
-    "size": 55682,
-    "path": "../public/_build/assets/trade-DjZxkzWB.js"
   },
   "/_build/assets/trade-DjZxkzWB.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"3627-rm5LAlRUy2j2VaDjfbztpzbWMT4\"",
-    "mtime": "2026-01-12T22:53:19.457Z",
+    "mtime": "2026-01-13T03:31:06.142Z",
     "size": 13863,
     "path": "../public/_build/assets/trade-DjZxkzWB.js.br"
   },
-  "/_build/assets/useAccount-BvqtcMl3.js": {
+  "/_build/assets/trade-DjZxkzWB.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1ed-X/5Kq6et9mWfcgAVVmb1iAX84iY\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
-    "size": 493,
-    "path": "../public/_build/assets/useAccount-BvqtcMl3.js"
+    "encoding": null,
+    "etag": "\"d982-V1YdBI7io2xLsRJqvcKRACJtnPQ\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
+    "size": 55682,
+    "path": "../public/_build/assets/trade-DjZxkzWB.js"
   },
   "/_build/assets/trade-DjZxkzWB.js.gz": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"3dc6-rRqlMMq/Hza7AvGaHdKpIvkfanE\"",
-    "mtime": "2026-01-12T22:53:19.410Z",
+    "mtime": "2026-01-13T03:31:06.077Z",
     "size": 15814,
     "path": "../public/_build/assets/trade-DjZxkzWB.js.gz"
+  },
+  "/_build/assets/useAccount-BvqtcMl3.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1ed-X/5Kq6et9mWfcgAVVmb1iAX84iY\"",
+    "mtime": "2026-01-13T03:31:05.935Z",
+    "size": 493,
+    "path": "../public/_build/assets/useAccount-BvqtcMl3.js"
   },
   "/_build/assets/useMarketRates-DWopi9e-.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"380a-jpcb8DpoX6KMvrYxKUzZrGSxSsY\"",
-    "mtime": "2026-01-12T22:53:19.501Z",
+    "mtime": "2026-01-13T03:31:06.162Z",
     "size": 14346,
     "path": "../public/_build/assets/useMarketRates-DWopi9e-.js.br"
   },
@@ -5008,7 +5008,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"4209-JppEWaa7faaKTkRnDi1A93oMyPA\"",
-    "mtime": "2026-01-12T22:53:19.480Z",
+    "mtime": "2026-01-13T03:31:06.145Z",
     "size": 16905,
     "path": "../public/_build/assets/useMarketRates-DWopi9e-.js.gz"
   },
@@ -5016,7 +5016,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"1bc09-eB3A6qINckSNP1dHGZIZpAzkgi8\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 113673,
     "path": "../public/_build/assets/useMarketRates-DWopi9e-.js"
   },
@@ -5024,7 +5024,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"7263-H2lsAKgSKDdRXr9MCwprbRmDbU4\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 29283,
     "path": "../public/_build/assets/web-Cp7SlEtS.js"
   },
@@ -5032,7 +5032,7 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"2837-OPIV/gGnY5WLMCK3RD/vXQhHqio\"",
-    "mtime": "2026-01-12T22:53:19.495Z",
+    "mtime": "2026-01-13T03:31:06.142Z",
     "size": 10295,
     "path": "../public/_build/assets/web-Cp7SlEtS.js.br"
   },
@@ -5040,31 +5040,31 @@ const assets = {
     "type": "text/javascript; charset=utf-8",
     "encoding": "gzip",
     "etag": "\"2c33-vUcyTyV7V6nROOm+Z7sixVvlIiU\"",
-    "mtime": "2026-01-12T22:53:19.494Z",
+    "mtime": "2026-01-13T03:31:06.142Z",
     "size": 11315,
     "path": "../public/_build/assets/web-Cp7SlEtS.js.gz"
-  },
-  "/_build/assets/useStarknet-cGeIN0U1.js.gz": {
-    "type": "text/javascript; charset=utf-8",
-    "encoding": "gzip",
-    "etag": "\"23790-76onj6OoqR45Qqih5hkHVw2wNn0\"",
-    "mtime": "2026-01-12T22:53:19.501Z",
-    "size": 145296,
-    "path": "../public/_build/assets/useStarknet-cGeIN0U1.js.gz"
   },
   "/_build/assets/useStarknet-cGeIN0U1.js.br": {
     "type": "text/javascript; charset=utf-8",
     "encoding": "br",
     "etag": "\"1dd16-nLI/ubx6z/+UcgohkFWee4QJtFU\"",
-    "mtime": "2026-01-12T22:53:19.939Z",
+    "mtime": "2026-01-13T03:31:06.610Z",
     "size": 122134,
     "path": "../public/_build/assets/useStarknet-cGeIN0U1.js.br"
+  },
+  "/_build/assets/useStarknet-cGeIN0U1.js.gz": {
+    "type": "text/javascript; charset=utf-8",
+    "encoding": "gzip",
+    "etag": "\"23790-76onj6OoqR45Qqih5hkHVw2wNn0\"",
+    "mtime": "2026-01-13T03:31:06.188Z",
+    "size": 145296,
+    "path": "../public/_build/assets/useStarknet-cGeIN0U1.js.gz"
   },
   "/_build/assets/useStarknet-cGeIN0U1.js": {
     "type": "text/javascript; charset=utf-8",
     "encoding": null,
     "etag": "\"770af-M9Z7HwRhKGg4qZERc/s5SlBO20M\"",
-    "mtime": "2026-01-12T22:53:19.253Z",
+    "mtime": "2026-01-13T03:31:05.935Z",
     "size": 487599,
     "path": "../public/_build/assets/useStarknet-cGeIN0U1.js"
   }
@@ -6161,27 +6161,27 @@ var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, 
 var __publicField$1 = (obj, key, value) => __defNormalProp$1(obj, typeof key !== "symbol" ? key + "" : key, value);
 function Ce$1(e) {
   let r;
-  const t = G$1(e), n = { duplex: "half", method: e.method, headers: e.headers };
+  const t = J$1(e), n = { duplex: "half", method: e.method, headers: e.headers };
   return e.node.req.body instanceof ArrayBuffer ? new Request(t, { ...n, body: e.node.req.body }) : new Request(t, { ...n, get body() {
-    return r || (r = ze$1(e), r);
+    return r || (r = Me$1(e), r);
   } });
 }
 function Ae$1(e) {
   var _a;
-  return (_a = e.web) != null ? _a : e.web = { request: Ce$1(e), url: G$1(e) }, e.web.request;
+  return (_a = e.web) != null ? _a : e.web = { request: Ce$1(e), url: J$1(e) }, e.web.request;
 }
 function Fe$1() {
-  return De$1();
+  return Ge();
 }
-const J$1 = /* @__PURE__ */ Symbol("$HTTPEvent");
+const X$1 = /* @__PURE__ */ Symbol("$HTTPEvent");
 function Le$1(e) {
-  return typeof e == "object" && (e instanceof H3Event || (e == null ? void 0 : e[J$1]) instanceof H3Event || (e == null ? void 0 : e.__is_event__) === true);
+  return typeof e == "object" && (e instanceof H3Event || (e == null ? void 0 : e[X$1]) instanceof H3Event || (e == null ? void 0 : e.__is_event__) === true);
 }
 function u(e) {
   return function(...r) {
     var _a;
     let t = r[0];
-    if (Le$1(t)) r[0] = t instanceof H3Event || t.__is_event__ ? t : t[J$1];
+    if (Le$1(t)) r[0] = t instanceof H3Event || t.__is_event__ ? t : t[X$1];
     else {
       if (!((_a = globalThis.app.config.server.experimental) == null ? void 0 : _a.asyncContext)) throw new Error("AsyncLocalStorage was not enabled. Use the `server.experimental.asyncContext: true` option in your app configuration to enable it. Or, pass the instance of HTTPEvent that you have as the first argument to the function.");
       if (t = Fe$1(), !t) throw new Error("No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.");
@@ -6190,43 +6190,43 @@ function u(e) {
     return e(...r);
   };
 }
-const G$1 = u(getRequestURL), Oe$1 = u(getRequestIP), S = u(setResponseStatus), _ = u(getResponseStatus), Ie$1 = u(getResponseStatusText), y$1 = u(getResponseHeaders), j$1 = u(getResponseHeader), Ue$1 = u(setResponseHeader), K$1 = u(appendResponseHeader), _e$1 = u(parseCookies), je$1 = u(getCookie), Me$1 = u(setCookie), R$1 = u(setHeader), ze$1 = u(getRequestWebStream), We$1 = u(removeResponseHeader), Ne = u(Ae$1);
-function Be$1() {
+const J$1 = u(getRequestURL), Oe$1 = u(getRequestIP), k$1 = u(setResponseStatus), _ = u(getResponseStatus), Ie$1 = u(getResponseStatusText), y$1 = u(getResponseHeaders), j$1 = u(getResponseHeader), Ue$1 = u(setResponseHeader), K$1 = u(appendResponseHeader), _e$1 = u(parseCookies), je$1 = u(getCookie), ze$1 = u(setCookie), R$1 = u(setHeader), Me$1 = u(getRequestWebStream), We$1 = u(removeResponseHeader), De$1 = u(Ae$1);
+function Ne() {
   var _a;
   return getContext("nitro-app", { asyncContext: !!((_a = globalThis.app.config.server.experimental) == null ? void 0 : _a.asyncContext), AsyncLocalStorage: AsyncLocalStorage });
 }
-function De$1() {
-  return Be$1().use().event;
+function Ge() {
+  return Ne().use().event;
 }
-const k$1 = "Invariant Violation", { setPrototypeOf: Xe = function(e, r) {
+const S = "Invariant Violation", { setPrototypeOf: Be$1 = function(e, r) {
   return e.__proto__ = r, e;
 } } = Object;
 let L$1 = class L extends Error {
-  constructor(r = k$1) {
-    super(typeof r == "number" ? `${k$1}: ${r} (see https://github.com/apollographql/invariant-packages)` : r);
+  constructor(r = S) {
+    super(typeof r == "number" ? `${S}: ${r} (see https://github.com/apollographql/invariant-packages)` : r);
     __publicField$1(this, "framesToPop", 1);
-    __publicField$1(this, "name", k$1);
-    Xe(this, L.prototype);
+    __publicField$1(this, "name", S);
+    Be$1(this, L.prototype);
   }
 };
-function Je(e, r) {
+function Xe(e, r) {
   if (!e) throw new L$1(r);
 }
 const $$1 = "solidFetchEvent";
-function Ge(e) {
-  return { request: Ne(e), response: Ye(e), clientAddress: Oe$1(e), locals: {}, nativeEvent: e };
+function Je(e) {
+  return { request: De$1(e), response: Ye(e), clientAddress: Oe$1(e), locals: {}, nativeEvent: e };
 }
 function Ke$1(e) {
   return { ...e };
 }
 function Ve(e) {
   if (!e.context[$$1]) {
-    const r = Ge(e);
+    const r = Je(e);
     e.context[$$1] = r;
   }
   return e.context[$$1];
 }
-function M$2(e, r) {
+function z(e, r) {
   for (const [t, n] of r.entries()) K$1(e, t, n);
 }
 class Qe {
@@ -6274,14 +6274,14 @@ function Ye(e) {
   return { get status() {
     return _(e);
   }, set status(r) {
-    S(e, r);
+    k$1(e, r);
   }, get statusText() {
     return Ie$1(e);
   }, set statusText(r) {
-    S(e, _(e), r);
+    k$1(e, _(e), r);
   }, headers: new Qe(e) };
 }
-const V$1 = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics.mjs'), import: () => import('./chunks/build/analytics.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: false, $POST: { src: "src/routes/api/rpc.ts?pick=POST", build: () => import('./chunks/build/rpc.mjs'), import: () => import('./chunks/build/rpc.mjs') }, path: "/api/rpc", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/rpc.ts" }, { page: true, $component: { src: "src/routes/faucet.tsx?pick=default&pick=$css", build: () => import('./chunks/build/faucet.mjs'), import: () => import('./chunks/build/faucet.mjs') }, path: "/faucet", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/faucet.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index.mjs'), import: () => import('./chunks/build/index.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint.mjs'), import: () => import('./chunks/build/mint.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools.mjs'), import: () => import('./chunks/build/pools.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio.mjs'), import: () => import('./chunks/build/portfolio.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade.mjs'), import: () => import('./chunks/build/trade.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Ze = et(V$1.filter((e) => e.page));
+const V$1 = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics.mjs'), import: () => import('./chunks/build/analytics.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: false, $GET: { src: "src/routes/api/health.ts?pick=GET", build: () => import('./chunks/build/health.mjs'), import: () => import('./chunks/build/health.mjs') }, $HEAD: { src: "src/routes/api/health.ts?pick=GET", build: () => import('./chunks/build/health.mjs'), import: () => import('./chunks/build/health.mjs') }, path: "/api/health", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/health.ts" }, { page: false, $GET: { src: "src/routes/api/markets/[address].ts?pick=GET", build: () => import('./chunks/build/_address_.mjs'), import: () => import('./chunks/build/_address_.mjs') }, $HEAD: { src: "src/routes/api/markets/[address].ts?pick=GET", build: () => import('./chunks/build/_address_.mjs'), import: () => import('./chunks/build/_address_.mjs') }, path: "/api/markets/:address", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/markets/[address].ts" }, { page: false, $GET: { src: "src/routes/api/markets/index.ts?pick=GET", build: () => import('./chunks/build/index.mjs'), import: () => import('./chunks/build/index.mjs') }, $HEAD: { src: "src/routes/api/markets/index.ts?pick=GET", build: () => import('./chunks/build/index.mjs'), import: () => import('./chunks/build/index.mjs') }, path: "/api/markets/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/markets/index.ts" }, { page: false, $POST: { src: "src/routes/api/rpc.ts?pick=POST", build: () => import('./chunks/build/rpc.mjs'), import: () => import('./chunks/build/rpc.mjs') }, path: "/api/rpc", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/rpc.ts" }, { page: true, $component: { src: "src/routes/faucet.tsx?pick=default&pick=$css", build: () => import('./chunks/build/faucet.mjs'), import: () => import('./chunks/build/faucet.mjs') }, path: "/faucet", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/faucet.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index2.mjs'), import: () => import('./chunks/build/index2.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint.mjs'), import: () => import('./chunks/build/mint.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools.mjs'), import: () => import('./chunks/build/pools.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio.mjs'), import: () => import('./chunks/build/portfolio.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade.mjs'), import: () => import('./chunks/build/trade.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Ze = et(V$1.filter((e) => e.page));
 function et(e) {
   function r(t, n, o, a) {
     const i = Object.values(t).find((c) => o.startsWith(c.id + "/"));
@@ -6311,8 +6311,8 @@ function at(e, r, t, n = "default") {
   return lazy(async () => {
     var _a;
     {
-      const a = (await e.import())[n], c = (await ((_a = r.inputs) == null ? void 0 : _a[e.src].assets())).filter((p) => p.tag === "style" || p.attrs.rel === "stylesheet");
-      return { default: (p) => [...c.map((h) => ot(h)), createComponent(a, p)] };
+      const a = (await e.import())[n], c = (await ((_a = r.inputs) == null ? void 0 : _a[e.src].assets())).filter((l) => l.tag === "style" || l.attrs.rel === "stylesheet");
+      return { default: (l) => [...c.map((h) => ot(h)), createComponent(a, l)] };
     }
   });
 }
@@ -6322,8 +6322,8 @@ function Q$1() {
   }
   return Ze.map(e);
 }
-let z;
-const xt$1 = isServer ? () => getRequestEvent().routes : () => z || (z = Q$1());
+let M$2;
+const xt$1 = isServer ? () => getRequestEvent().routes : () => M$2 || (M$2 = Q$1());
 function it(e) {
   const r = je$1(e.nativeEvent, "flash");
   if (r) try {
@@ -6334,7 +6334,7 @@ function it(e) {
   } catch (t) {
     console.error(t);
   } finally {
-    Me$1(e.nativeEvent, "flash", "", { maxAge: 0 });
+    ze$1(e.nativeEvent, "flash", "", { maxAge: 0 });
   }
 }
 async function ct(e) {
@@ -6342,15 +6342,15 @@ async function ct(e) {
   return globalThis.MANIFEST.ssr, e.response.headers.set("Content-Type", "text/html"), Object.assign(e, { manifest: await r.json(), assets: [...await r.inputs[r.handler].assets()], router: { submission: it(e) }, routes: Q$1(), complete: false, $islands: /* @__PURE__ */ new Set() });
 }
 const ut = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
-function lt$1(e) {
+function pt$1(e) {
   return e.status && ut.has(e.status) ? e.status : 302;
 }
-const pt$1 = {};
+const lt$1 = {};
 function dt$1(e) {
   const r = new TextEncoder().encode(e), t = r.length, n = t.toString(16), o = "00000000".substring(0, 8 - n.length) + n, a = new TextEncoder().encode(`;0x${o};`), i = new Uint8Array(12 + t);
   return i.set(a), i.set(r, 12), i;
 }
-function W$1(e, r) {
+function W$2(e, r) {
   return new ReadableStream({ start(t) {
     crossSerializeStream(r, { scopeId: e, plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin], onSerialize(n, o) {
       t.enqueue(dt$1(o ? `(${getCrossReferenceHeader(e)},${n})` : n));
@@ -6364,23 +6364,23 @@ function W$1(e, r) {
 async function ft$1(e) {
   const r = Ve(e), t = r.request, n = t.headers.get("X-Server-Id"), o = t.headers.get("X-Server-Instance"), a = t.headers.has("X-Single-Flight"), i = new URL(t.url);
   let c, d;
-  if (n) Je(typeof n == "string", "Invalid server function"), [c, d] = n.split("#");
+  if (n) Xe(typeof n == "string", "Invalid server function"), [c, d] = n.split("#");
   else if (c = i.searchParams.get("id"), d = i.searchParams.get("name"), !c || !d) return new Response(null, { status: 404 });
-  const p = pt$1[c];
+  const l = lt$1[c];
   let h;
-  if (!p) return new Response(null, { status: 404 });
-  h = await p.importer();
-  const Y = h[p.functionName];
+  if (!l) return new Response(null, { status: 404 });
+  h = await l.importer();
+  const Y = h[l.functionName];
   let f = [];
   if (!o || e.method === "GET") {
     const s = i.searchParams.get("args");
     if (s) {
-      const l = JSON.parse(s);
-      (l.t ? fromJSON(l, { plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin] }) : l).forEach((m) => f.push(m));
+      const p = JSON.parse(s);
+      (p.t ? fromJSON(p, { plugins: [CustomEventPlugin, DOMExceptionPlugin, EventPlugin, FormDataPlugin, HeadersPlugin, ReadableStreamPlugin, RequestPlugin, ResponsePlugin, URLSearchParamsPlugin, URLPlugin] }) : p).forEach((m) => f.push(m));
     }
   }
   if (e.method === "POST") {
-    const s = t.headers.get("content-type"), l = e.node.req, m = l instanceof ReadableStream, Z = l.body instanceof ReadableStream, O = m && l.locked || Z && l.body.locked, I = m ? l : l.body;
+    const s = t.headers.get("content-type"), p = e.node.req, m = p instanceof ReadableStream, Z = p.body instanceof ReadableStream, O = m && p.locked || Z && p.body.locked, I = m ? p : p.body;
     if ((s == null ? void 0 : s.startsWith("multipart/form-data")) || (s == null ? void 0 : s.startsWith("application/x-www-form-urlencoded"))) f.push(await (O ? t : new Request(t, { ...t, body: I })).formData());
     else if (s == null ? void 0 : s.startsWith("application/json")) {
       const ee = O ? t : new Request(t, { ...t, body: I });
@@ -6389,24 +6389,24 @@ async function ft$1(e) {
   }
   try {
     let s = await provideRequestEvent(r, async () => (sharedConfig.context = { event: r }, r.locals.serverFunctionMeta = { id: c + "#" + d }, Y(...f)));
-    if (a && o && (s = await B(r, s)), s instanceof Response) {
+    if (a && o && (s = await N(r, s)), s instanceof Response) {
       if (s.headers && s.headers.has("X-Content-Raw")) return s;
-      o && (s.headers && M$2(e, s.headers), s.status && (s.status < 300 || s.status >= 400) && S(e, s.status), s.customBody ? s = await s.customBody() : s.body == null && (s = null));
+      o && (s.headers && z(e, s.headers), s.status && (s.status < 300 || s.status >= 400) && k$1(e, s.status), s.customBody ? s = await s.customBody() : s.body == null && (s = null));
     }
-    return o ? (R$1(e, "content-type", "text/javascript"), W$1(o, s)) : N(s, t, f);
+    return o ? (R$1(e, "content-type", "text/javascript"), W$2(o, s)) : D(s, t, f);
   } catch (s) {
-    if (s instanceof Response) a && o && (s = await B(r, s)), s.headers && M$2(e, s.headers), s.status && (!o || s.status < 300 || s.status >= 400) && S(e, s.status), s.customBody ? s = s.customBody() : s.body == null && (s = null), R$1(e, "X-Error", "true");
+    if (s instanceof Response) a && o && (s = await N(r, s)), s.headers && z(e, s.headers), s.status && (!o || s.status < 300 || s.status >= 400) && k$1(e, s.status), s.customBody ? s = s.customBody() : s.body == null && (s = null), R$1(e, "X-Error", "true");
     else if (o) {
-      const l = s instanceof Error ? s.message : typeof s == "string" ? s : "true";
-      R$1(e, "X-Error", l.replace(/[\r\n]+/g, ""));
-    } else s = N(s, t, f, true);
-    return o ? (R$1(e, "content-type", "text/javascript"), W$1(o, s)) : s;
+      const p = s instanceof Error ? s.message : typeof s == "string" ? s : "true";
+      R$1(e, "X-Error", p.replace(/[\r\n]+/g, ""));
+    } else s = D(s, t, f, true);
+    return o ? (R$1(e, "content-type", "text/javascript"), W$2(o, s)) : s;
   }
 }
-function N(e, r, t, n) {
+function D(e, r, t, n) {
   const o = new URL(r.url), a = e instanceof Error;
   let i = 302, c;
-  return e instanceof Response ? (c = new Headers(e.headers), e.headers.has("Location") && (c.set("Location", new URL(e.headers.get("Location"), o.origin + "").toString()), i = lt$1(e))) : c = new Headers({ Location: new URL(r.headers.get("referer")).toString() }), e && c.append("Set-Cookie", `flash=${encodeURIComponent(JSON.stringify({ url: o.pathname + o.search, result: a ? e.message : e, thrown: n, error: a, input: [...t.slice(0, -1), [...t[t.length - 1].entries()]] }))}; Secure; HttpOnly;`), new Response(null, { status: i, headers: c });
+  return e instanceof Response ? (c = new Headers(e.headers), e.headers.has("Location") && (c.set("Location", new URL(e.headers.get("Location"), o.origin + "").toString()), i = pt$1(e))) : c = new Headers({ Location: new URL(r.headers.get("referer")).toString() }), e && c.append("Set-Cookie", `flash=${encodeURIComponent(JSON.stringify({ url: o.pathname + o.search, result: a ? e.message : e, thrown: n, error: a, input: [...t.slice(0, -1), [...t[t.length - 1].entries()]] }))}; Secure; HttpOnly;`), new Response(null, { status: i, headers: c });
 }
 let b;
 function ht$1(e) {
@@ -6416,7 +6416,7 @@ function ht$1(e) {
   let o = false;
   return ((_a = e.nativeEvent.node) == null ? void 0 : _a.req) && (o = true, e.nativeEvent.node.req.headers.cookie = ""), n.forEach((a) => {
     if (!a) return;
-    const { maxAge: i, expires: c, name: d, value: p } = parseSetCookie$1(a);
+    const { maxAge: i, expires: c, name: d, value: l } = parseSetCookie$1(a);
     if (i != null && i <= 0) {
       delete t[d];
       return;
@@ -6425,17 +6425,17 @@ function ht$1(e) {
       delete t[d];
       return;
     }
-    t[d] = p;
+    t[d] = l;
   }), Object.entries(t).forEach(([a, i]) => {
     r.append("cookie", `${a}=${i}`), o && (e.nativeEvent.node.req.headers.cookie += `${a}=${i};`);
   }), r;
 }
-async function B(e, r) {
+async function N(e, r) {
   let t, n = new URL(e.request.headers.get("referer")).toString();
   r instanceof Response && (r.headers.has("X-Revalidate") && (t = r.headers.get("X-Revalidate").split(",")), r.headers.has("Location") && (n = new URL(r.headers.get("Location"), new URL(e.request.url).origin + "").toString()));
   const o = Ke$1(e);
   return o.request = new Request(n, { headers: ht$1(e) }), await provideRequestEvent(o, async () => {
-    await ct(o), b || (b = (await import('./chunks/build/app-DWU6Z7KW.mjs')).default), o.router.dataOnly = t || true, o.router.previousUrl = e.request.headers.get("referer");
+    await ct(o), b || (b = (await import('./chunks/build/app-BVqHhzbA.mjs')).default), o.router.dataOnly = t || true, o.router.previousUrl = e.request.headers.get("referer");
     try {
       renderToString(() => {
         sharedConfig.context.event = o, b();
@@ -6450,7 +6450,7 @@ async function B(e, r) {
     return i && (r instanceof Response ? r.customBody && (a._$value = r.customBody()) : (a._$value = r, r = new Response(null, { status: 200 })), r.customBody = () => a, r.headers.set("X-Single-Flight", "true")), r;
   });
 }
-const Pt$1 = eventHandler(ft$1);
+const Tt$1 = eventHandler(ft$1);
 
 function ge() {
   let t = /* @__PURE__ */ new Set();
@@ -6521,19 +6521,19 @@ function xe(t, e, n) {
     const l = { path: a ? "" : "/", params: {} }, m = (d) => n === void 0 ? void 0 : n[d];
     for (let d = 0; d < a; d++) {
       const p = o[d], y = p[0] === ":", v = y ? f[d] : f[d].toLowerCase(), A = y ? p.slice(1) : p.toLowerCase();
-      if (y && W(v, m(A))) l.params[A] = v;
-      else if (y || !W(v, A)) return null;
+      if (y && W$1(v, m(A))) l.params[A] = v;
+      else if (y || !W$1(v, A)) return null;
       l.path += `/${v}`;
     }
     if (r) {
       const d = h ? f.slice(-h).join("/") : "";
-      if (W(d, m(r))) l.params[r] = d;
+      if (W$1(d, m(r))) l.params[r] = d;
       else return null;
     }
     return l;
   };
 }
-function W(t, e) {
+function W$1(t, e) {
   const n = (s) => s === t;
   return e === void 0 ? true : typeof e == "string" ? n(e) : typeof e == "function" ? e(t) : Array.isArray(e) ? e.some(n) : e instanceof RegExp ? e.test(t) : false;
 }
@@ -6742,17 +6742,17 @@ var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { en
 var __publicField = (obj, key, value) => __defNormalProp(obj, key + "" , value);
 function lt(e) {
   let r;
-  const t = oe(e), n = { duplex: "half", method: e.method, headers: e.headers };
+  const t = se(e), n = { duplex: "half", method: e.method, headers: e.headers };
   return e.node.req.body instanceof ArrayBuffer ? new Request(t, { ...n, body: e.node.req.body }) : new Request(t, { ...n, get body() {
-    return r || (r = Rt(e), r);
+    return r || (r = vt(e), r);
   } });
 }
 function dt(e) {
   var _a;
-  return (_a = e.web) != null ? _a : e.web = { request: lt(e), url: oe(e) }, e.web.request;
+  return (_a = e.web) != null ? _a : e.web = { request: lt(e), url: se(e) }, e.web.request;
 }
 function pt() {
-  return kt();
+  return St();
 }
 const ne = /* @__PURE__ */ Symbol("$HTTPEvent");
 function ht(e) {
@@ -6771,43 +6771,43 @@ function y(e) {
     return e(...r);
   };
 }
-const oe = y(getRequestURL), ft = y(getRequestIP), I = y(setResponseStatus), K = y(getResponseStatus), mt = y(getResponseStatusText), H = y(getResponseHeaders), J = y(getResponseHeader), gt = y(setResponseHeader), yt = y(appendResponseHeader), G = y(sendRedirect), wt = y(getCookie), bt = y(setCookie), vt = y(setHeader), Rt = y(getRequestWebStream), $t = y(removeResponseHeader), St = y(dt);
-function Et() {
+const se = y(getRequestURL), mt = y(getRequestIP), I = y(setResponseStatus), W = y(getResponseStatus), ft = y(getResponseStatusText), H = y(getResponseHeaders), K = y(getResponseHeader), gt = y(setResponseHeader), yt = y(appendResponseHeader), J = y(sendRedirect), bt = y(getCookie), wt = y(setCookie), kt = y(setHeader), vt = y(getRequestWebStream), Et = y(removeResponseHeader), $t = y(dt);
+function Rt() {
   var _a;
   return getContext("nitro-app", { asyncContext: !!((_a = globalThis.app.config.server.experimental) == null ? void 0 : _a.asyncContext), AsyncLocalStorage: AsyncLocalStorage });
 }
-function kt() {
-  return Et().use().event;
+function St() {
+  return Rt().use().event;
 }
-const se = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics2.mjs'), import: () => import('./chunks/build/analytics2.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: false, $POST: { src: "src/routes/api/rpc.ts?pick=POST", build: () => import('./chunks/build/rpc2.mjs'), import: () => import('./chunks/build/rpc2.mjs') }, path: "/api/rpc", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/rpc.ts" }, { page: true, $component: { src: "src/routes/faucet.tsx?pick=default&pick=$css", build: () => import('./chunks/build/faucet2.mjs'), import: () => import('./chunks/build/faucet2.mjs') }, path: "/faucet", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/faucet.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index2.mjs'), import: () => import('./chunks/build/index2.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint2.mjs'), import: () => import('./chunks/build/mint2.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools2.mjs'), import: () => import('./chunks/build/pools2.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio2.mjs'), import: () => import('./chunks/build/portfolio2.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade2.mjs'), import: () => import('./chunks/build/trade2.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Tt = At(se.filter((e) => e.page));
+const oe = [{ page: true, $component: { src: "src/routes/analytics.tsx?pick=default&pick=$css", build: () => import('./chunks/build/analytics2.mjs'), import: () => import('./chunks/build/analytics2.mjs') }, path: "/analytics", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/analytics.tsx" }, { page: false, $GET: { src: "src/routes/api/health.ts?pick=GET", build: () => import('./chunks/build/health2.mjs'), import: () => import('./chunks/build/health2.mjs') }, $HEAD: { src: "src/routes/api/health.ts?pick=GET", build: () => import('./chunks/build/health2.mjs'), import: () => import('./chunks/build/health2.mjs') }, path: "/api/health", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/health.ts" }, { page: false, $GET: { src: "src/routes/api/markets/[address].ts?pick=GET", build: () => import('./chunks/build/_address_2.mjs'), import: () => import('./chunks/build/_address_2.mjs') }, $HEAD: { src: "src/routes/api/markets/[address].ts?pick=GET", build: () => import('./chunks/build/_address_2.mjs'), import: () => import('./chunks/build/_address_2.mjs') }, path: "/api/markets/:address", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/markets/[address].ts" }, { page: false, $GET: { src: "src/routes/api/markets/index.ts?pick=GET", build: () => import('./chunks/build/index3.mjs'), import: () => import('./chunks/build/index3.mjs') }, $HEAD: { src: "src/routes/api/markets/index.ts?pick=GET", build: () => import('./chunks/build/index3.mjs'), import: () => import('./chunks/build/index3.mjs') }, path: "/api/markets/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/markets/index.ts" }, { page: false, $POST: { src: "src/routes/api/rpc.ts?pick=POST", build: () => import('./chunks/build/rpc2.mjs'), import: () => import('./chunks/build/rpc2.mjs') }, path: "/api/rpc", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/api/rpc.ts" }, { page: true, $component: { src: "src/routes/faucet.tsx?pick=default&pick=$css", build: () => import('./chunks/build/faucet2.mjs'), import: () => import('./chunks/build/faucet2.mjs') }, path: "/faucet", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/faucet.tsx" }, { page: true, $component: { src: "src/routes/index.tsx?pick=default&pick=$css", build: () => import('./chunks/build/index22.mjs'), import: () => import('./chunks/build/index22.mjs') }, path: "/", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/index.tsx" }, { page: true, $component: { src: "src/routes/mint.tsx?pick=default&pick=$css", build: () => import('./chunks/build/mint2.mjs'), import: () => import('./chunks/build/mint2.mjs') }, path: "/mint", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/mint.tsx" }, { page: true, $component: { src: "src/routes/pools.tsx?pick=default&pick=$css", build: () => import('./chunks/build/pools2.mjs'), import: () => import('./chunks/build/pools2.mjs') }, path: "/pools", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/pools.tsx" }, { page: true, $component: { src: "src/routes/portfolio.tsx?pick=default&pick=$css", build: () => import('./chunks/build/portfolio2.mjs'), import: () => import('./chunks/build/portfolio2.mjs') }, path: "/portfolio", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/portfolio.tsx" }, { page: true, $component: { src: "src/routes/trade.tsx?pick=default&pick=$css", build: () => import('./chunks/build/trade2.mjs'), import: () => import('./chunks/build/trade2.mjs') }, path: "/trade", filePath: "/home/ametel/source/horizon-starknet/packages/frontend-solid/src/routes/trade.tsx" }], Tt = At(oe.filter((e) => e.page));
 function At(e) {
-  function r(t, n, o, s) {
-    const a = Object.values(t).find((i) => o.startsWith(i.id + "/"));
-    return a ? (r(a.children || (a.children = []), n, o.slice(a.id.length)), t) : (t.push({ ...n, id: o, path: o.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/") }), t);
+  function r(t, n, s, o) {
+    const a = Object.values(t).find((i) => s.startsWith(i.id + "/"));
+    return a ? (r(a.children || (a.children = []), n, s.slice(a.id.length)), t) : (t.push({ ...n, id: s, path: s.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/") }), t);
   }
   return e.sort((t, n) => t.path.length - n.path.length).reduce((t, n) => r(t, n, n.path, n.path), []);
 }
-function Ct(e, r) {
+function xt(e, r) {
   const t = Pt.lookup(e);
   if (t && t.route) {
-    const n = t.route, o = r === "HEAD" ? n.$HEAD || n.$GET : n[`$${r}`];
-    if (o === void 0) return;
-    const s = n.page === true && n.$component !== void 0;
-    return { handler: o, params: t.params, isPage: s };
+    const n = t.route, s = r === "HEAD" ? n.$HEAD || n.$GET : n[`$${r}`];
+    if (s === void 0) return;
+    const o = n.page === true && n.$component !== void 0;
+    return { handler: s, params: t.params, isPage: o };
   }
 }
-function xt(e) {
+function Ct(e) {
   return e.$HEAD || e.$GET || e.$POST || e.$PUT || e.$PATCH || e.$DELETE;
 }
-const Pt = createRouter$1({ routes: se.reduce((e, r) => {
-  if (!xt(r)) return e;
-  let t = r.path.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/").replace(/\*([^/]*)/g, (n, o) => `**:${o}`).split("/").map((n) => n.startsWith(":") || n.startsWith("*") ? n : encodeURIComponent(n)).join("/");
+const Pt = createRouter$1({ routes: oe.reduce((e, r) => {
+  if (!Ct(r)) return e;
+  let t = r.path.replace(/\([^)/]+\)/g, "").replace(/\/+/g, "/").replace(/\*([^/]*)/g, (n, s) => `**:${s}`).split("/").map((n) => n.startsWith(":") || n.startsWith("*") ? n : encodeURIComponent(n)).join("/");
   if (/:[^/]*\?/g.test(t)) throw new Error(`Optional parameters are not supported in API routes: ${t}`);
   if (e[t]) throw new Error(`Duplicate API routes for "${t}" found at "${e[t].route.path}" and "${r.path}"`);
   return e[t] = { route: r }, e;
 }, {}) }), O = "solidFetchEvent";
 function Ht(e) {
-  return { request: St(e), response: Ot(e), clientAddress: ft(e), locals: {}, nativeEvent: e };
+  return { request: $t(e), response: Ot(e), clientAddress: mt(e), locals: {}, nativeEvent: e };
 }
 function Lt(e) {
   if (!e.context[O]) {
@@ -6822,7 +6822,7 @@ class qt {
     this.event = r;
   }
   get(r) {
-    const t = J(this.event, r);
+    const t = K(this.event, r);
     return Array.isArray(t) ? t.join(", ") : t || null;
   }
   has(r) {
@@ -6832,13 +6832,13 @@ class qt {
     return gt(this.event, r, t);
   }
   delete(r) {
-    return $t(this.event, r);
+    return Et(this.event, r);
   }
   append(r, t) {
     yt(this.event, r, t);
   }
   getSetCookie() {
-    const r = J(this.event, "Set-Cookie");
+    const r = K(this.event, "Set-Cookie");
     return Array.isArray(r) ? r : [r];
   }
   forEach(r) {
@@ -6859,13 +6859,13 @@ class qt {
 }
 function Ot(e) {
   return { get status() {
-    return K(e);
+    return W(e);
   }, set status(r) {
     I(e, r);
   }, get statusText() {
-    return mt(e);
+    return ft(e);
   }, set statusText(r) {
-    I(e, K(e), r);
+    I(e, W(e), r);
   }, headers: new qt(e) };
 }
 var It = " ";
@@ -6873,15 +6873,15 @@ const Mt = { style: (e) => ssrElement("style", e.attrs, () => e.children, true),
   return e.key;
 } }), () => ssr(It), true) : null, noscript: (e) => ssrElement("noscript", e.attrs, () => escape(e.children), true) };
 function M(e, r) {
-  let { tag: t, attrs: { key: n, ...o } = { key: void 0 }, children: s } = e;
-  return Mt[t]({ attrs: { ...o, nonce: r }, key: n, children: s });
+  let { tag: t, attrs: { key: n, ...s } = { key: void 0 }, children: o } = e;
+  return Mt[t]({ attrs: { ...s, nonce: r }, key: n, children: o });
 }
 function jt(e, r, t, n = "default") {
   return lazy(async () => {
     var _a;
     {
-      const s = (await e.import())[n], i = (await ((_a = r.inputs) == null ? void 0 : _a[e.src].assets())).filter((u) => u.tag === "style" || u.attrs.rel === "stylesheet");
-      return { default: (u) => [...i.map((f) => M(f)), createComponent(s, u)] };
+      const o = (await e.import())[n], i = (await ((_a = r.inputs) == null ? void 0 : _a[e.src].assets())).filter((u) => u.tag === "style" || u.attrs.rel === "stylesheet");
+      return { default: (u) => [...i.map((m) => M(m)), createComponent(o, u)] };
     }
   });
 }
@@ -6894,16 +6894,16 @@ function ae() {
 let V;
 const Ft = isServer ? () => getRequestEvent().routes : () => V || (V = ae());
 function Ut(e) {
-  const r = wt(e.nativeEvent, "flash");
+  const r = bt(e.nativeEvent, "flash");
   if (r) try {
     let t = JSON.parse(r);
     if (!t || !t.result) return;
-    const n = [...t.input.slice(0, -1), new Map(t.input[t.input.length - 1])], o = t.error ? new Error(t.result) : t.result;
-    return { input: n, url: t.url, pending: false, result: t.thrown ? void 0 : o, error: t.thrown ? o : void 0 };
+    const n = [...t.input.slice(0, -1), new Map(t.input[t.input.length - 1])], s = t.error ? new Error(t.result) : t.result;
+    return { input: n, url: t.url, pending: false, result: t.thrown ? void 0 : s, error: t.thrown ? s : void 0 };
   } catch (t) {
     console.error(t);
   } finally {
-    bt(e.nativeEvent, "flash", "", { maxAge: 0 });
+    wt(e.nativeEvent, "flash", "", { maxAge: 0 });
   }
 }
 async function _t(e) {
@@ -6915,47 +6915,47 @@ function j(e) {
   return e.status && zt.has(e.status) ? e.status : 302;
 }
 function Bt(e, r, t = {}, n) {
-  return eventHandler({ handler: (o) => {
-    const s = Lt(o);
-    return provideRequestEvent(s, async () => {
-      const a = Ct(new URL(s.request.url).pathname, s.request.method);
+  return eventHandler({ handler: (s) => {
+    const o = Lt(s);
+    return provideRequestEvent(o, async () => {
+      const a = xt(new URL(o.request.url).pathname, o.request.method);
       if (a) {
-        const m = await a.handler.import(), w = s.request.method === "HEAD" ? m.HEAD || m.GET : m[s.request.method];
-        s.params = a.params || {}, sharedConfig.context = { event: s };
-        const l = await w(s);
+        const f = await a.handler.import(), b = o.request.method === "HEAD" ? f.HEAD || f.GET : f[o.request.method];
+        o.params = a.params || {}, sharedConfig.context = { event: o };
+        const l = await b(o);
         if (l !== void 0) return l;
-        if (s.request.method !== "GET") throw new Error(`API handler for ${s.request.method} "${s.request.url}" did not return a response.`);
+        if (o.request.method !== "GET") throw new Error(`API handler for ${o.request.method} "${o.request.url}" did not return a response.`);
         if (!a.isPage) return;
       }
-      const i = await r(s), c = typeof t == "function" ? await t(i) : { ...t }, u = c.mode || "stream";
+      const i = await r(o), c = typeof t == "function" ? await t(i) : { ...t }, u = c.mode || "stream";
       if (c.nonce && (i.nonce = c.nonce), u === "sync") {
-        const m = renderToString(() => (sharedConfig.context.event = i, e(i)), c);
+        const f = renderToString(() => (sharedConfig.context.event = i, e(i)), c);
         if (i.complete = true, i.response && i.response.headers.get("Location")) {
-          const w = j(i.response);
-          return G(o, i.response.headers.get("Location"), w);
+          const b = j(i.response);
+          return J(s, i.response.headers.get("Location"), b);
         }
-        return m;
+        return f;
       }
       if (c.onCompleteAll) {
-        const m = c.onCompleteAll;
-        c.onCompleteAll = (w) => {
-          Q(i)(w), m(w);
+        const f = c.onCompleteAll;
+        c.onCompleteAll = (b) => {
+          Q(i)(b), f(b);
         };
       } else c.onCompleteAll = Q(i);
       if (c.onCompleteShell) {
-        const m = c.onCompleteShell;
-        c.onCompleteShell = (w) => {
-          Y(i, o)(), m(w);
+        const f = c.onCompleteShell;
+        c.onCompleteShell = (b) => {
+          Y(i, s)(), f(b);
         };
-      } else c.onCompleteShell = Y(i, o);
-      const f = renderToStream(() => (sharedConfig.context.event = i, e(i)), c);
+      } else c.onCompleteShell = Y(i, s);
+      const m = renderToStream(() => (sharedConfig.context.event = i, e(i)), c);
       if (i.response && i.response.headers.get("Location")) {
-        const m = j(i.response);
-        return G(o, i.response.headers.get("Location"), m);
+        const f = j(i.response);
+        return J(s, i.response.headers.get("Location"), f);
       }
-      if (u === "async") return f;
-      const { writable: $, readable: R } = new TransformStream();
-      return f.pipeTo($), R;
+      if (u === "async") return m;
+      const { writable: E, readable: v } = new TransformStream();
+      return m.pipeTo(E), v;
     });
   } });
 }
@@ -6963,7 +6963,7 @@ function Y(e, r) {
   return () => {
     if (e.response && e.response.headers.get("Location")) {
       const t = j(e.response);
-      I(r, t), vt(r, "Location", e.response.headers.get("Location"));
+      I(r, t), kt(r, "Location", e.response.headers.get("Location"));
     }
   };
 }
@@ -6974,14 +6974,14 @@ function Q(e) {
     t && r(`<script>window.location="${t}"<\/script>`);
   };
 }
-function Wt(e, r, t) {
+function Dt(e, r, t) {
   return Bt(e, _t, r);
 }
 const ie = createContext$1(), ce = ["title", "meta"], F = [], U = ["name", "http-equiv", "content", "charset", "media"].concat(["property"]), L = (e, r) => {
   const t = Object.fromEntries(Object.entries(e.props).filter(([n]) => r.includes(n)).sort());
   return (Object.hasOwn(t, "name") || Object.hasOwn(t, "property")) && (t.name = t.name || t.property, delete t.property), e.tag + JSON.stringify(t);
 };
-function Dt() {
+function Gt() {
   if (!sharedConfig.context) {
     const t = document.head.querySelectorAll("[data-sm]");
     Array.prototype.forEach.call(t, (n) => n.parentNode.removeChild(n));
@@ -6994,52 +6994,52 @@ function Dt() {
   }
   return { addTag(t) {
     if (ce.indexOf(t.tag) !== -1) {
-      const s = t.tag === "title" ? F : U, a = L(t, s);
+      const o = t.tag === "title" ? F : U, a = L(t, o);
       e.has(a) || e.set(a, []);
       let i = e.get(a), c = i.length;
       i = [...i, t], e.set(a, i);
       let u = r(t);
       t.ref = u, spread(u, t.props);
-      let f = null;
+      let m = null;
       for (var n = c - 1; n >= 0; n--) if (i[n] != null) {
-        f = i[n];
+        m = i[n];
         break;
       }
-      return u.parentNode != document.head && document.head.appendChild(u), f && f.ref && f.ref.parentNode && document.head.removeChild(f.ref), c;
+      return u.parentNode != document.head && document.head.appendChild(u), m && m.ref && m.ref.parentNode && document.head.removeChild(m.ref), c;
     }
-    let o = r(t);
-    return t.ref = o, spread(o, t.props), o.parentNode != document.head && document.head.appendChild(o), -1;
+    let s = r(t);
+    return t.ref = s, spread(s, t.props), s.parentNode != document.head && document.head.appendChild(s), -1;
   }, removeTag(t, n) {
-    const o = t.tag === "title" ? F : U, s = L(t, o);
+    const s = t.tag === "title" ? F : U, o = L(t, s);
     if (t.ref) {
-      const a = e.get(s);
+      const a = e.get(o);
       if (a) {
         if (t.ref.parentNode) {
           t.ref.parentNode.removeChild(t.ref);
           for (let i = n - 1; i >= 0; i--) a[i] != null && document.head.appendChild(a[i].ref);
         }
-        a[n] = null, e.set(s, a);
+        a[n] = null, e.set(o, a);
       } else t.ref.parentNode && t.ref.parentNode.removeChild(t.ref);
     }
   } };
 }
-function Kt() {
+function Wt() {
   const e = [];
   return useAssets(() => ssr(Yt(e))), { addTag(r) {
     if (ce.indexOf(r.tag) !== -1) {
-      const t = r.tag === "title" ? F : U, n = L(r, t), o = e.findIndex((s) => s.tag === r.tag && L(s, t) === n);
-      o !== -1 && e.splice(o, 1);
+      const t = r.tag === "title" ? F : U, n = L(r, t), s = e.findIndex((o) => o.tag === r.tag && L(o, t) === n);
+      s !== -1 && e.splice(s, 1);
     }
     return e.push(r), e.length;
   }, removeTag(r, t) {
   } };
 }
-const Jt = (e) => {
-  const r = isServer ? Kt() : Dt();
+const Kt = (e) => {
+  const r = isServer ? Wt() : Gt();
   return createComponent$1(ie.Provider, { value: r, get children() {
     return e.children;
   } });
-}, Gt = (e, r, t) => (Vt({ tag: e, props: r, setting: t, id: createUniqueId(), get name() {
+}, Jt = (e, r, t) => (Vt({ tag: e, props: r, setting: t, id: createUniqueId(), get name() {
   return r.name || r.property;
 } }), null);
 function Vt(e) {
@@ -7053,23 +7053,23 @@ function Vt(e) {
 function Yt(e) {
   return e.map((r) => {
     var _a, _b;
-    const n = Object.keys(r.props).map((s) => s === "children" ? "" : ` ${s}="${escape(r.props[s], true)}"`).join("");
-    let o = r.props.children;
-    return Array.isArray(o) && (o = o.join("")), ((_a = r.setting) == null ? void 0 : _a.close) ? `<${r.tag} data-sm="${r.id}"${n}>${((_b = r.setting) == null ? void 0 : _b.escape) ? escape(o) : o || ""}</${r.tag}>` : `<${r.tag} data-sm="${r.id}"${n}/>`;
+    const n = Object.keys(r.props).map((o) => o === "children" ? "" : ` ${o}="${escape(r.props[o], true)}"`).join("");
+    let s = r.props.children;
+    return Array.isArray(s) && (s = s.join("")), ((_a = r.setting) == null ? void 0 : _a.close) ? `<${r.tag} data-sm="${r.id}"${n}>${((_b = r.setting) == null ? void 0 : _b.escape) ? escape(s) : s || ""}</${r.tag}>` : `<${r.tag} data-sm="${r.id}"${n}/>`;
   }).join("");
 }
-const Qt = (e) => Gt("title", e, { escape: true, close: true }), ue = (e) => (r) => {
-  const { base: t } = r, n = children(() => r.children), o = createMemo(() => _e(n(), r.base || ""));
-  let s;
-  const a = He(e, o, () => s, { base: t, singleFlight: r.singleFlight, transformUrl: r.transformUrl });
+const Qt = (e) => Jt("title", e, { escape: true, close: true }), ue = (e) => (r) => {
+  const { base: t } = r, n = children(() => r.children), s = createMemo(() => _e(n(), r.base || ""));
+  let o;
+  const a = He(e, s, () => o, { base: t, singleFlight: r.singleFlight, transformUrl: r.transformUrl });
   return e.create && e.create(a), createComponent$1(Ee.Provider, { value: a, get children() {
     return createComponent$1(Xt, { routerState: a, get root() {
       return r.root;
     }, get preload() {
       return r.rootPreload || r.rootLoad;
     }, get children() {
-      return [(s = getOwner()) && null, createComponent$1(Zt, { routerState: a, get branches() {
-        return o();
+      return [(o = getOwner()) && null, createComponent$1(Zt, { routerState: a, get branches() {
+        return s();
       } })];
     } });
   } });
@@ -7082,7 +7082,7 @@ function Xt(e) {
     return e.root;
   }, keyed: true, get fallback() {
     return e.children;
-  }, children: (o) => createComponent$1(o, { params: t, location: r, get data() {
+  }, children: (s) => createComponent$1(s, { params: t, location: r, get data() {
     return n();
   }, get children() {
     return e.children;
@@ -7090,29 +7090,29 @@ function Xt(e) {
 }
 function Zt(e) {
   if (isServer) {
-    const o = getRequestEvent();
-    if (o && o.router && o.router.dataOnly) {
-      er(o, e.routerState, e.branches);
+    const s = getRequestEvent();
+    if (s && s.router && s.router.dataOnly) {
+      er(s, e.routerState, e.branches);
       return;
     }
-    o && ((o.router || (o.router = {})).matches || (o.router.matches = e.routerState.matches().map(({ route: s, path: a, params: i }) => ({ path: s.originalPath, pattern: s.pattern, match: a, params: i, info: s.info }))));
+    s && ((s.router || (s.router = {})).matches || (s.router.matches = e.routerState.matches().map(({ route: o, path: a, params: i }) => ({ path: o.originalPath, pattern: o.pattern, match: a, params: i, info: o.info }))));
   }
   const r = [];
   let t;
-  const n = createMemo(on(e.routerState.matches, (o, s, a) => {
-    let i = s && o.length === s.length;
+  const n = createMemo(on(e.routerState.matches, (s, o, a) => {
+    let i = o && s.length === o.length;
     const c = [];
-    for (let u = 0, f = o.length; u < f; u++) {
-      const $ = s && s[u], R = o[u];
-      a && $ && R.route.key === $.route.key ? c[u] = a[u] : (i = false, r[u] && r[u](), createRoot((m) => {
-        r[u] = m, c[u] = Ke(e.routerState, c[u - 1] || e.routerState.base, X(() => n()[u + 1]), () => {
+    for (let u = 0, m = s.length; u < m; u++) {
+      const E = o && o[u], v = s[u];
+      a && E && v.route.key === E.route.key ? c[u] = a[u] : (i = false, r[u] && r[u](), createRoot((f) => {
+        r[u] = f, c[u] = Ke(e.routerState, c[u - 1] || e.routerState.base, X(() => n()[u + 1]), () => {
           var _a;
-          const w = e.routerState.matches();
-          return (_a = w[u]) != null ? _a : w[0];
+          const b = e.routerState.matches();
+          return (_a = b[u]) != null ? _a : b[0];
         });
       }));
     }
-    return r.splice(o.length).forEach((u) => u()), a && i ? a : (t = c[0], c);
+    return r.splice(s.length).forEach((u) => u()), a && i ? a : (t = c[0], c);
   }));
   return X(() => n() && t)();
 }
@@ -7122,48 +7122,48 @@ const X = (e) => () => createComponent$1(Show, { get when() {
   return r.outlet();
 } }) });
 function er(e, r, t) {
-  const n = new URL(e.request.url), o = I$1(t, new URL(e.router.previousUrl || e.request.url).pathname), s = I$1(t, n.pathname);
-  for (let a = 0; a < s.length; a++) {
-    (!o[a] || s[a].route !== o[a].route) && (e.router.dataOnly = true);
-    const { route: i, params: c } = s[a];
+  const n = new URL(e.request.url), s = I$1(t, new URL(e.router.previousUrl || e.request.url).pathname), o = I$1(t, n.pathname);
+  for (let a = 0; a < o.length; a++) {
+    (!s[a] || o[a].route !== s[a].route) && (e.router.dataOnly = true);
+    const { route: i, params: c } = o[a];
     i.preload && i.preload({ params: c, location: r.location, intent: "preload" });
   }
 }
 function tr([e, r], t, n) {
-  return [e, n ? (o) => r(n(o)) : r];
+  return [e, n ? (s) => r(n(s)) : r];
 }
 function rr(e) {
   let r = false;
-  const t = (o) => typeof o == "string" ? { value: o } : o, n = tr(createSignal(t(e.get()), { equals: (o, s) => o.value === s.value && o.state === s.state }), void 0, (o) => (!r && e.set(o), sharedConfig.registry && !sharedConfig.done && (sharedConfig.done = true), o));
-  return e.init && onCleanup(e.init((o = e.get()) => {
-    r = true, n[1](t(o)), r = false;
+  const t = (s) => typeof s == "string" ? { value: s } : s, n = tr(createSignal(t(e.get()), { equals: (s, o) => s.value === o.value && s.state === o.state }), void 0, (s) => (!r && e.set(s), sharedConfig.registry && !sharedConfig.done && (sharedConfig.done = true), s));
+  return e.init && onCleanup(e.init((s = e.get()) => {
+    r = true, n[1](t(s)), r = false;
   })), ue({ signal: n, create: e.create, utils: e.utils });
 }
 function nr(e, r, t) {
   return e.addEventListener(r, t), () => e.removeEventListener(r, t);
 }
-function or(e, r) {
+function sr(e, r) {
   const t = e && document.getElementById(e);
   t ? t.scrollIntoView() : r && window.scrollTo(0, 0);
 }
-function sr(e) {
+function or(e) {
   const r = new URL(e);
   return r.pathname + r.search;
 }
 function ar(e) {
   let r;
-  const t = { value: e.url || (r = getRequestEvent()) && sr(r.request.url) || "" };
+  const t = { value: e.url || (r = getRequestEvent()) && or(r.request.url) || "" };
   return ue({ signal: [() => t, (n) => Object.assign(t, n)] })(e);
 }
 const ir = /* @__PURE__ */ new Map();
 function cr(e = true, r = false, t = "/_server", n) {
-  return (o) => {
-    const s = o.base.path(), a = o.navigatorFactory(o.base);
+  return (s) => {
+    const o = s.base.path(), a = s.navigatorFactory(s.base);
     let i, c;
     function u(l) {
       return l.namespaceURI === "http://www.w3.org/2000/svg";
     }
-    function f(l) {
+    function m(l) {
       if (l.defaultPrevented || l.button !== 0 || l.metaKey || l.altKey || l.ctrlKey || l.shiftKey) return;
       const d = l.composedPath().find((B) => B instanceof Node && B.nodeName.toUpperCase() === "A");
       if (!d || r && !d.hasAttribute("link")) return;
@@ -7171,69 +7171,69 @@ function cr(e = true, r = false, t = "/_server", n) {
       if ((g ? d.target.baseVal : d.target) || !h && !d.hasAttribute("state")) return;
       const T = (d.getAttribute("rel") || "").split(/\s+/);
       if (d.hasAttribute("download") || T && T.includes("external")) return;
-      const C = g ? new URL(h, document.baseURI) : new URL(h);
-      if (!(C.origin !== window.location.origin || s && C.pathname && !C.pathname.toLowerCase().startsWith(s.toLowerCase()))) return [d, C];
+      const x = g ? new URL(h, document.baseURI) : new URL(h);
+      if (!(x.origin !== window.location.origin || o && x.pathname && !x.pathname.toLowerCase().startsWith(o.toLowerCase()))) return [d, x];
     }
-    function $(l) {
-      const d = f(l);
+    function E(l) {
+      const d = m(l);
       if (!d) return;
-      const [g, h] = d, z = o.parsePath(h.pathname + h.search + h.hash), T = g.getAttribute("state");
+      const [g, h] = d, z = s.parsePath(h.pathname + h.search + h.hash), T = g.getAttribute("state");
       l.preventDefault(), a(z, { resolve: false, replace: g.hasAttribute("replace"), scroll: !g.hasAttribute("noscroll"), state: T ? JSON.parse(T) : void 0 });
     }
-    function R(l) {
-      const d = f(l);
+    function v(l) {
+      const d = m(l);
       if (!d) return;
       const [g, h] = d;
-      n && (h.pathname = n(h.pathname)), o.preloadRoute(h, g.getAttribute("preload") !== "false");
+      n && (h.pathname = n(h.pathname)), s.preloadRoute(h, g.getAttribute("preload") !== "false");
     }
-    function m(l) {
+    function f(l) {
       clearTimeout(i);
-      const d = f(l);
+      const d = m(l);
       if (!d) return c = null;
       const [g, h] = d;
       c !== g && (n && (h.pathname = n(h.pathname)), i = setTimeout(() => {
-        o.preloadRoute(h, g.getAttribute("preload") !== "false"), c = g;
+        s.preloadRoute(h, g.getAttribute("preload") !== "false"), c = g;
       }, 20));
     }
-    function w(l) {
+    function b(l) {
       if (l.defaultPrevented) return;
       let d = l.submitter && l.submitter.hasAttribute("formaction") ? l.submitter.getAttribute("formaction") : l.target.getAttribute("action");
       if (!d) return;
       if (!d.startsWith("https://action/")) {
         const h = new URL(d, ve);
-        if (d = o.parsePath(h.pathname + h.search), !d.startsWith(t)) return;
+        if (d = s.parsePath(h.pathname + h.search), !d.startsWith(t)) return;
       }
       if (l.target.method.toUpperCase() !== "POST") throw new Error("Only POST forms are supported for Actions");
       const g = ir.get(d);
       if (g) {
         l.preventDefault();
         const h = new FormData(l.target, l.submitter);
-        g.call({ r: o, f: l.target }, l.target.enctype === "multipart/form-data" ? h : new URLSearchParams(h));
+        g.call({ r: s, f: l.target }, l.target.enctype === "multipart/form-data" ? h : new URLSearchParams(h));
       }
     }
-    delegateEvents(["click", "submit"]), document.addEventListener("click", $), e && (document.addEventListener("mousemove", m, { passive: true }), document.addEventListener("focusin", R, { passive: true }), document.addEventListener("touchstart", R, { passive: true })), document.addEventListener("submit", w), onCleanup(() => {
-      document.removeEventListener("click", $), e && (document.removeEventListener("mousemove", m), document.removeEventListener("focusin", R), document.removeEventListener("touchstart", R)), document.removeEventListener("submit", w);
+    delegateEvents(["click", "submit"]), document.addEventListener("click", E), e && (document.addEventListener("mousemove", f, { passive: true }), document.addEventListener("focusin", v, { passive: true }), document.addEventListener("touchstart", v, { passive: true })), document.addEventListener("submit", b), onCleanup(() => {
+      document.removeEventListener("click", E), e && (document.removeEventListener("mousemove", f), document.removeEventListener("focusin", v), document.removeEventListener("touchstart", v)), document.removeEventListener("submit", b);
     });
   };
 }
 function ur(e) {
   if (isServer) return ar(e);
   const r = () => {
-    const n = window.location.pathname.replace(/^\/+/, "/") + window.location.search, o = window.history.state && window.history.state._depth && Object.keys(window.history.state).length === 1 ? void 0 : window.history.state;
-    return { value: n + window.location.hash, state: o };
+    const n = window.location.pathname.replace(/^\/+/, "/") + window.location.search, s = window.history.state && window.history.state._depth && Object.keys(window.history.state).length === 1 ? void 0 : window.history.state;
+    return { value: n + window.location.hash, state: s };
   }, t = ge();
-  return rr({ get: r, set({ value: n, replace: o, scroll: s, state: a }) {
-    o ? window.history.replaceState(We(a), "", n) : window.history.pushState(a, "", n), or(decodeURIComponent(window.location.hash.slice(1)), s), Y$1();
-  }, init: (n) => nr(window, "popstate", Ie(n, (o) => {
-    if (o) return !t.confirm(o);
+  return rr({ get: r, set({ value: n, replace: s, scroll: o, state: a }) {
+    s ? window.history.replaceState(We(a), "", n) : window.history.pushState(a, "", n), sr(decodeURIComponent(window.location.hash.slice(1)), o), Y$1();
+  }, init: (n) => nr(window, "popstate", Ie(n, (s) => {
+    if (s) return !t.confirm(s);
     {
-      const s = r();
-      return !t.confirm(s.value, { state: s.state });
+      const o = r();
+      return !t.confirm(o.value, { state: o.state });
     }
   })), create: cr(e.preload, e.explicitLinks, e.actionBase, e.transformUrl), utils: { go: (n) => window.history.go(n), beforeLeave: t } })(e);
 }
 function lr() {
-  return createComponent$1(ur, { root: (e) => createComponent$1(Jt, { get children() {
+  return createComponent$1(ur, { root: (e) => createComponent$1(Kt, { get children() {
     return [createComponent$1(Qt, { children: "Horizon Protocol" }), createComponent$1(Suspense, { get children() {
       return e.children;
     } })];
@@ -7251,51 +7251,51 @@ const hr = (e) => {
   return createComponent$1(ErrorBoundary, { fallback: (t) => (console.error(t), [ssr(dr, ssrHydrationKey(), escape(r)), createComponent$1(le, { code: 500 })]), get children() {
     return e.children;
   } });
-}, fr = (e) => {
+}, mr = (e) => {
   let r = false;
   const t = catchError(() => e.children, (n) => {
     console.error(n), r = !!n;
   });
   return r ? [ssr(pr, ssrHydrationKey()), createComponent$1(le, { code: 500 })] : t;
 };
-var Z = ["<script", ">", "<\/script>"], mr = ["<script", ' type="module"', " async", "><\/script>"], gr = ["<script", ' type="module" async', "><\/script>"];
+var Z = ["<script", ">", "<\/script>"], fr = ["<script", ' type="module"', " async", "><\/script>"], gr = ["<script", ' type="module" async', "><\/script>"];
 const yr = ssr("<!DOCTYPE html>");
 function de(e, r, t = []) {
   for (let n = 0; n < r.length; n++) {
-    const o = r[n];
-    if (o.path !== e[0].path) continue;
-    let s = [...t, o];
-    if (o.children) {
+    const s = r[n];
+    if (s.path !== e[0].path) continue;
+    let o = [...t, s];
+    if (s.children) {
       const a = e.slice(1);
-      if (a.length === 0 || (s = de(a, o.children, s), !s)) continue;
+      if (a.length === 0 || (o = de(a, s.children, o), !o)) continue;
     }
-    return s;
+    return o;
   }
 }
-function wr(e) {
+function br(e) {
   const r = getRequestEvent(), t = r.nonce;
   let n = [];
   return Promise.resolve().then(async () => {
-    let o = [];
+    let s = [];
     if (r.router && r.router.matches) {
-      const s = [...r.router.matches];
-      for (; s.length && (!s[0].info || !s[0].info.filesystem); ) s.shift();
-      const a = s.length && de(s, r.routes);
+      const o = [...r.router.matches];
+      for (; o.length && (!o[0].info || !o[0].info.filesystem); ) o.shift();
+      const a = o.length && de(o, r.routes);
       if (a) {
         const i = globalThis.MANIFEST.client.inputs;
         for (let c = 0; c < a.length; c++) {
-          const u = a[c], f = i[u.$component.src];
-          o.push(f.assets());
+          const u = a[c], m = i[u.$component.src];
+          s.push(m.assets());
         }
       }
     }
-    n = await Promise.all(o).then((s) => [...new Map(s.flat().map((a) => [a.attrs.key, a])).values()].filter((a) => a.attrs.rel === "modulepreload" && !r.assets.find((i) => i.attrs.key === a.attrs.key)));
-  }), useAssets(() => n.length ? n.map((o) => M(o)) : void 0), createComponent$1(NoHydration, { get children() {
-    return [yr, createComponent$1(fr, { get children() {
+    n = await Promise.all(s).then((o) => [...new Map(o.flat().map((a) => [a.attrs.key, a])).values()].filter((a) => a.attrs.rel === "modulepreload" && !r.assets.find((i) => i.attrs.key === a.attrs.key)));
+  }), useAssets(() => n.length ? n.map((s) => M(s)) : void 0), createComponent$1(NoHydration, { get children() {
+    return [yr, createComponent$1(mr, { get children() {
       return createComponent$1(e.document, { get assets() {
-        return [createComponent$1(HydrationScript, {}), r.assets.map((o) => M(o, t))];
+        return [createComponent$1(HydrationScript, {}), r.assets.map((s) => M(s, t))];
       }, get scripts() {
-        return t ? [ssr(Z, ssrHydrationKey() + ssrAttribute("nonce", escape(t, true), false), `window.manifest = ${JSON.stringify(r.manifest)}`), ssr(mr, ssrHydrationKey(), ssrAttribute("nonce", escape(t, true), false), ssrAttribute("src", escape(globalThis.MANIFEST.client.inputs[globalThis.MANIFEST.client.handler].output.path, true), false))] : [ssr(Z, ssrHydrationKey(), `window.manifest = ${JSON.stringify(r.manifest)}`), ssr(gr, ssrHydrationKey(), ssrAttribute("src", escape(globalThis.MANIFEST.client.inputs[globalThis.MANIFEST.client.handler].output.path, true), false))];
+        return t ? [ssr(Z, ssrHydrationKey() + ssrAttribute("nonce", escape(t, true), false), `window.manifest = ${JSON.stringify(r.manifest)}`), ssr(fr, ssrHydrationKey(), ssrAttribute("nonce", escape(t, true), false), ssrAttribute("src", escape(globalThis.MANIFEST.client.inputs[globalThis.MANIFEST.client.handler].output.path, true), false))] : [ssr(Z, ssrHydrationKey(), `window.manifest = ${JSON.stringify(r.manifest)}`), ssr(gr, ssrHydrationKey(), ssrAttribute("src", escape(globalThis.MANIFEST.client.inputs[globalThis.MANIFEST.client.handler].output.path, true), false))];
       }, get children() {
         return createComponent$1(Hydration, { get children() {
           return createComponent$1(hr, { get children() {
@@ -7306,15 +7306,15 @@ function wr(e) {
     } })];
   } });
 }
-var br = ['<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Yield tokenization protocol on Starknet"><link rel="icon" href="/favicon.ico"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">', "</head>"], vr = ["<html", ' lang="en" class="dark">', '<body class="font-sans antialiased"><div id="app">', "</div><!--$-->", "<!--/--></body></html>"];
-const xr = Wt(() => createComponent$1(wr, { document: ({ assets: e, children: r, scripts: t }) => ssr(vr, ssrHydrationKey(), createComponent$1(NoHydration, { get children() {
-  return ssr(br, escape(e));
+var wr = ['<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Yield tokenization protocol on Starknet"><link rel="icon" href="/favicon.ico"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">', "</head>"], kr = ["<html", ' lang="en" class="dark">', '<body class="font-sans antialiased"><div id="app">', "</div><!--$-->", "<!--/--></body></html>"];
+const Cr = Dt(() => createComponent$1(br, { document: ({ assets: e, children: r, scripts: t }) => ssr(kr, ssrHydrationKey(), createComponent$1(NoHydration, { get children() {
+  return ssr(wr, escape(e));
 } }), escape(r), escape(t)) }));
 
 const handlers = [
   { route: '', handler: _5h9zpK, lazy: false, middleware: true, method: undefined },
-  { route: '/_server', handler: Pt$1, lazy: false, middleware: true, method: undefined },
-  { route: '/', handler: xr, lazy: false, middleware: true, method: undefined }
+  { route: '/_server', handler: Tt$1, lazy: false, middleware: true, method: undefined },
+  { route: '/', handler: Cr, lazy: false, middleware: true, method: undefined }
 ];
 
 function createNitroApp() {
