@@ -1617,7 +1617,7 @@ cd packages/frontend-solid && bun run test:e2e tests/e2e/home.spec.ts
 
 ---
 
-### Step 78: Add npm scripts
+### Step 78: Add npm scripts **COMPLETE**
 
 #### Goal
 Add all npm scripts matching React frontend (dev, build, check, test, test:e2e).
