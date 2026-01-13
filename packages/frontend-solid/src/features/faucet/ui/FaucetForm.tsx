@@ -1,6 +1,3 @@
-import { createSignal, Show, type JSX } from 'solid-js';
-
-import { useStarknet } from '@/features/wallet';
 import { cn } from '@shared/lib/utils';
 import { getExplorerTxUrl } from '@shared/starknet/provider';
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/Alert';
@@ -8,6 +5,8 @@ import { Button } from '@shared/ui/Button';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Input } from '@shared/ui/Input';
 import { Separator } from '@shared/ui/Separator';
+import { createSignal, type JSX, Show } from 'solid-js';
+import { useStarknet } from '@/features/wallet';
 
 import { useFaucet } from '../model/useFaucet';
 
@@ -187,7 +186,9 @@ function EligibilityStatus(props: EligibilityStatusProps): JSX.Element {
         <Alert variant="info">
           <CheckIcon class="h-5 w-5" />
           <AlertTitle>Eligible to mint</AlertTitle>
-          <AlertDescription>You can claim your 100 {props.tokenSymbol} test tokens.</AlertDescription>
+          <AlertDescription>
+            You can claim your 100 {props.tokenSymbol} test tokens.
+          </AlertDescription>
         </Alert>
       </Show>
     </>
@@ -268,7 +269,9 @@ export function FaucetForm(props: FaucetFormProps): JSX.Element {
           <DropletsIcon class="text-primary h-8 w-8" />
         </div>
         <h1 class="text-foreground text-2xl font-bold">Test Token Faucet</h1>
-        <p class="text-muted-foreground mt-2">Get free {tokenSymbol()} tokens to test Horizon Protocol</p>
+        <p class="text-muted-foreground mt-2">
+          Get free {tokenSymbol()} tokens to test Horizon Protocol
+        </p>
       </div>
 
       {/* Main Card */}

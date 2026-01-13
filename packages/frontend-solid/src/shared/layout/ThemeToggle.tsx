@@ -1,4 +1,3 @@
-import { useTheme } from '@/providers/ThemeProvider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,6 +5,7 @@ import {
   DropdownMenuTrigger,
 } from '@shared/ui/DropdownMenu';
 import type { JSX } from 'solid-js';
+import { useTheme } from '@/providers/ThemeProvider';
 
 /** Sun icon for light theme */
 function SunIcon(props: JSX.SvgSVGAttributes<SVGSVGElement>): JSX.Element {

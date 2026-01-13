@@ -1,5 +1,5 @@
 import { createMemo, createSignal, type JSX, Show } from 'solid-js';
-import { Contract, type Call } from 'starknet';
+import { type Call, Contract } from 'starknet';
 
 import { useAccount, useStarknet } from '@/features/wallet';
 import { getFaucetInfo } from '@/shared/config/addresses';
@@ -69,6 +69,7 @@ export default function FaucetPage(): JSX.Element {
   });
 
   // Handle mint action
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: faucet mint flow requires multiple validation and state checks
   const handleMint = async (): Promise<void> => {
     const currentAccount = account();
     const info = faucetInfo();

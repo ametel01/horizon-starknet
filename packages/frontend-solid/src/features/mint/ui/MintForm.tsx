@@ -1,7 +1,3 @@
-import { createEffect, createMemo, createSignal, on, Show, type JSX } from 'solid-js';
-
-import { type MarketData } from '@/features/markets';
-import { useStarknet } from '@/features/wallet';
 import { cn } from '@shared/lib/utils';
 import { formatWad, fromWad, parseWad } from '@shared/math/wad';
 import { createAnimatedNumber } from '@shared/ui/AnimatedNumber';
@@ -18,6 +14,9 @@ import {
 } from '@shared/ui/FormLayout';
 import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { createEffect, createMemo, createSignal, type JSX, on, Show } from 'solid-js';
+import type { MarketData } from '@/features/markets';
+import { useStarknet } from '@/features/wallet';
 
 import { calculateMinOutput, useMint } from '../model/useMint';
 
@@ -116,10 +115,7 @@ function TokenOutput(props: TokenOutputProps): JSX.Element {
 
         {/* Output row */}
         <div class="flex min-w-0 items-center gap-2">
-          <Show
-            when={!props.isLoading}
-            fallback={<Skeleton class="h-8 min-w-0 flex-1" />}
-          >
+          <Show when={!props.isLoading} fallback={<Skeleton class="h-8 min-w-0 flex-1" />}>
             <span class="text-foreground min-w-0 flex-1 truncate font-mono text-2xl font-semibold tabular-nums">
               {formattedAmount()}
             </span>

@@ -2,7 +2,7 @@ import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getMarketContract, getRouterContract } from '@shared/starknet/contracts';
 import { createMutation, useQueryClient } from '@tanstack/solid-query';
-import { createMemo, type Accessor } from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { type Call, uint256 } from 'starknet';
 
 import { useAccount, useStarknet } from '@/features/wallet';
@@ -156,6 +156,7 @@ export function useAddLiquidity(): UseAddLiquidityReturn {
     /**
      * Optimistic UI: Update balances immediately (Doherty Threshold)
      */
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: optimistic update logic requires multiple cache updates
     onMutate: async (params: AddLiquidityParams): Promise<AddLiquidityOptimisticContext> => {
       const currentAddress = address();
 

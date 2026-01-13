@@ -1,5 +1,3 @@
-import { type Accessor, createMemo, type JSX, Show } from 'solid-js';
-
 import { calculateFeeSplit } from '@shared/lib/fees';
 import { cn } from '@shared/lib/utils';
 import type { SwapResult } from '@shared/math/amm';
@@ -8,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@shared/ui/
 import { FormRow } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/HoverCard';
+import { type Accessor, createMemo, type JSX, Show } from 'solid-js';
 
 import {
   deriveImpliedApyDisplay,
@@ -243,8 +242,7 @@ export function SwapDetails(props: SwapDetailsProps): JSX.Element {
             valueClass={cn('text-sm', !props.isValidAmount() && 'text-muted-foreground')}
             value={
               <>
-                {impliedApyDisplay().beforeFormatted}%{' '}
-                <span class="text-muted-foreground">→</span>{' '}
+                {impliedApyDisplay().beforeFormatted}% <span class="text-muted-foreground">→</span>{' '}
                 <span class={impliedApyDisplay().changeClass}>
                   {impliedApyDisplay().afterFormatted}%
                 </span>
@@ -259,7 +257,7 @@ export function SwapDetails(props: SwapDetailsProps): JSX.Element {
             label="Historical Avg Impact"
             labelClass="text-sm"
             valueClass="text-muted-foreground font-mono text-sm"
-            value={`${historicalAvgImpact()!.toFixed(2)}%`}
+            value={`${historicalAvgImpact()?.toFixed(2)}%`}
           />
         </Show>
 

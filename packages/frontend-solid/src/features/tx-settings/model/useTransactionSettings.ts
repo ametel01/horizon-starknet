@@ -1,8 +1,5 @@
 import { useContext } from 'solid-js';
-import {
-  TransactionSettingsContext,
-  type TransactionSettingsContextValue,
-} from '@/providers';
+import { TransactionSettingsContext, type TransactionSettingsContextValue } from '@/providers';
 
 /**
  * Hook to access transaction settings context.

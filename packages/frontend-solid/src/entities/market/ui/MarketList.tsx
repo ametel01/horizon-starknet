@@ -1,7 +1,7 @@
 import { useDashboardMarkets } from '@features/markets';
 import { Card, CardContent } from '@shared/ui/Card';
 import { MarketCardSkeleton, SkeletonGrid } from '@shared/ui/Skeleton';
-import { createMemo, For, type JSX, Show, createSignal, onMount } from 'solid-js';
+import { createMemo, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 
 import { MarketCard } from './MarketCard';
 
@@ -94,7 +94,10 @@ export function MarketList(props: MarketListProps): JSX.Element {
             {(market, index) => (
               <div
                 class="animate-fade-up opacity-0"
-                style={{ 'animation-delay': `${100 + index() * 50}ms`, 'animation-fill-mode': 'forwards' }}
+                style={{
+                  'animation-delay': `${100 + index() * 50}ms`,
+                  'animation-fill-mode': 'forwards',
+                }}
               >
                 <MarketCard
                   market={market}

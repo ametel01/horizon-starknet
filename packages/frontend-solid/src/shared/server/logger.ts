@@ -98,7 +98,7 @@ export function logTrace(message: string, context?: LogContext): void {
     if (context) {
       console.debug(`[TRACE] [${context.module ?? 'app'}]`, message, context);
     } else {
-      console.debug(`[TRACE]`, message);
+      console.debug('[TRACE]', message);
     }
   }
 }

@@ -151,13 +151,12 @@ function StatCard(props: StatCardProps): JSX.Element {
         >
           <div class="mt-2 flex items-baseline gap-2">
             <span
-              class={cn('font-mono font-semibold tracking-tight', compact() ? 'text-xl' : 'text-2xl')}
+              class={cn(
+                'font-mono font-semibold tracking-tight',
+                compact() ? 'text-xl' : 'text-2xl'
+              )}
             >
-              <Show
-                when={local.numericValue}
-                fallback={local.value}
-                keyed
-              >
+              <Show when={local.numericValue} fallback={local.value} keyed>
                 {(numericValue) => (
                   <AnimatedNumber
                     value={numericValue}

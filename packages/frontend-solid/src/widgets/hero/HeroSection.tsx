@@ -1,12 +1,12 @@
-import { A } from '@solidjs/router';
-import { useDashboardMarkets } from '@/features/markets';
-import { useUIMode } from '@/providers/UIModeProvider';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Button } from '@shared/ui/Button';
 import { Skeleton } from '@shared/ui/Skeleton';
-import { createMemo, createSignal, onMount, Show, type JSX } from 'solid-js';
+import { A } from '@solidjs/router';
+import { createMemo, createSignal, type JSX, onMount, Show } from 'solid-js';
+import { useDashboardMarkets } from '@/features/markets';
+import { useUIMode } from '@/providers/UIModeProvider';
 
 /**
  * HeroSection - Immersive landing hero with animated gradient horizon
@@ -64,21 +64,10 @@ export function HeroSection(): JSX.Element {
           )}
           style={{ 'animation-delay': '200ms' }}
         >
-          <Button
-            as={A}
-            href="/mint"
-            size="lg"
-            class="min-w-40"
-          >
+          <Button as={A} href="/mint" size="lg" class="min-w-40">
             {isSimple() ? 'Start Earning' : 'Mint PT + YT'}
           </Button>
-          <Button
-            as={A}
-            href="/trade"
-            size="lg"
-            variant="outline"
-            class="min-w-40"
-          >
+          <Button as={A} href="/trade" size="lg" variant="outline" class="min-w-40">
             {isSimple() ? 'View Markets' : 'Trade'}
           </Button>
         </div>

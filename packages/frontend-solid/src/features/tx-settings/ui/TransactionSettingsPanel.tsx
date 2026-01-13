@@ -1,15 +1,14 @@
-import { createMemo, createSignal, type Accessor, type JSX, Show } from 'solid-js';
-import { toast } from 'solid-sonner';
-
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/ToggleGroup';
+import { type Accessor, createMemo, createSignal, type JSX, Show } from 'solid-js';
+import { toast } from 'solid-sonner';
 
 import {
+  DEADLINE_OPTIONS,
   DEFAULT_DEADLINE_MINUTES,
   DEFAULT_SLIPPAGE_BPS,
-  DEADLINE_OPTIONS,
   formatSlippagePercent,
   getSlippageLabel,
   MAX_DEADLINE_MINUTES,
@@ -146,7 +145,9 @@ function SlippageDescription(props: SlippageDescriptionProps): JSX.Element {
           );
         })()}
       </Show>
-      <Show when={props.isSlippagePreset && !props.showCustomSlippage && !props.isUsingSmartSlippage}>
+      <Show
+        when={props.isSlippagePreset && !props.showCustomSlippage && !props.isUsingSmartSlippage}
+      >
         {(() => {
           const option = SLIPPAGE_OPTIONS.find(
             (opt: (typeof SLIPPAGE_OPTIONS)[number]) => opt.value === props.slippageBps
@@ -165,9 +166,7 @@ function SlippageWarning(props: { slippageBps: number }): JSX.Element {
   return (
     <>
       <Show when={props.slippageBps > 200}>
-        <p class="text-chart-1 mt-1 text-xs">
-          High slippage increases risk of unfavorable trades
-        </p>
+        <p class="text-chart-1 mt-1 text-xs">High slippage increases risk of unfavorable trades</p>
       </Show>
       <Show when={props.slippageBps < 10}>
         <p class="text-chart-1 mt-1 text-xs">Low slippage may cause transaction failures</p>
@@ -307,13 +306,16 @@ export function TransactionSettingsPanel(props: TransactionSettingsPanelProps): 
     useTransactionSettings();
 
   // Default smart slippage if not provided
-  const smartSlippage = createMemo(() => props.smartSlippage ?? {
-    isLoading: false,
-    recommendedBps: DEFAULT_SLIPPAGE_BPS,
-    confidence: 'medium' as ConfidenceLevel,
-    reason: 'Standard slippage tolerance',
-    factors: { hasMarketData: false },
-  });
+  const smartSlippage = createMemo(
+    () =>
+      props.smartSlippage ?? {
+        isLoading: false,
+        recommendedBps: DEFAULT_SLIPPAGE_BPS,
+        confidence: 'medium' as ConfidenceLevel,
+        reason: 'Standard slippage tolerance',
+        factors: { hasMarketData: false },
+      }
+  );
 
   // Local state for custom inputs
   const [customSlippage, setCustomSlippage] = createSignal<string>('');
@@ -329,7 +331,9 @@ export function TransactionSettingsPanel(props: TransactionSettingsPanelProps): 
     SLIPPAGE_OPTIONS.some((opt: (typeof SLIPPAGE_OPTIONS)[number]) => opt.value === slippageBps())
   );
   const isDeadlinePreset = createMemo(() =>
-    DEADLINE_OPTIONS.some((opt: (typeof DEADLINE_OPTIONS)[number]) => opt.value === deadlineMinutes())
+    DEADLINE_OPTIONS.some(
+      (opt: (typeof DEADLINE_OPTIONS)[number]) => opt.value === deadlineMinutes()
+    )
   );
 
   // Handle custom slippage submit with confirmation feedback
@@ -432,7 +436,11 @@ export function TransactionSettingsPanel(props: TransactionSettingsPanelProps): 
         <div class="text-muted-foreground mb-2 flex items-center justify-between text-sm">
           <span>Slippage Tolerance</span>
           <SlippageStatusBadge
-            status={computeSlippageStatus(isUsingSmartSlippage(), isSlippagePreset(), slippageBps())}
+            status={computeSlippageStatus(
+              isUsingSmartSlippage(),
+              isSlippagePreset(),
+              slippageBps()
+            )}
             slippageBps={slippageBps()}
           />
         </div>
@@ -450,10 +458,7 @@ export function TransactionSettingsPanel(props: TransactionSettingsPanelProps): 
                 class="shrink-0"
                 aria-label="Apply smart slippage based on market conditions"
               >
-                <Show
-                  when={!smartSlippage().isLoading}
-                  fallback={<Skeleton class="h-4 w-8" />}
-                >
+                <Show when={!smartSlippage().isLoading} fallback={<Skeleton class="h-4 w-8" />}>
                   <span class="flex items-center gap-1">
                     <SparklesIcon class="size-3" />
                     <span class="font-medium">Auto</span>
@@ -466,7 +471,9 @@ export function TransactionSettingsPanel(props: TransactionSettingsPanelProps): 
               {SLIPPAGE_OPTIONS.map((option: (typeof SLIPPAGE_OPTIONS)[number]) => (
                 <ToggleGroupItem
                   pressed={
-                    slippageBps() === option.value && !showCustomSlippage() && !isUsingSmartSlippage()
+                    slippageBps() === option.value &&
+                    !showCustomSlippage() &&
+                    !isUsingSmartSlippage()
                   }
                   onPressedChange={() => {
                     handleSlippagePresetChange(option.value, option.label);

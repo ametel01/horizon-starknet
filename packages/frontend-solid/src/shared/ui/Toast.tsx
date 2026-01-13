@@ -250,7 +250,10 @@ function ToastProgressFill(props: ToastProgressFillProps): JSX.Element {
   return (
     <Toast.ProgressFill
       data-slot="toast-progress"
-      class={cn('bg-primary h-full w-[var(--kb-toast-progress-fill-width)] transition-all', local.class)}
+      class={cn(
+        'bg-primary h-full w-[var(--kb-toast-progress-fill-width)] transition-all',
+        local.class
+      )}
       {...others}
     />
   );
@@ -323,10 +326,4 @@ export type {
 };
 
 // Export icons for external use
-export {
-  CircleCheckIcon,
-  InfoIcon,
-  TriangleAlertIcon,
-  OctagonXIcon,
-  Loader2Icon,
-};
+export { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon };

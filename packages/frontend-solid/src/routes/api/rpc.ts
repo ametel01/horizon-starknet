@@ -1,4 +1,4 @@
-import type { APIEvent } from "@solidjs/start/server";
+import type { APIEvent } from '@solidjs/start/server';
 
 /**
  * RPC Proxy Route
@@ -13,7 +13,7 @@ import type { APIEvent } from "@solidjs/start/server";
  */
 
 // Server-side only RPC URL (no VITE_ prefix to keep it private)
-const RPC_URL = process.env["RPC_URL"];
+const RPC_URL = process.env['RPC_URL'];
 
 // Maximum request body size (10KB)
 const MAX_BODY_SIZE = 10_000;
@@ -27,14 +27,14 @@ const REQUEST_TIMEOUT_MS = 30_000;
  */
 const ALLOWED_RPC_HOSTS = [
   // Alchemy
-  "starknet-mainnet.g.alchemy.com",
-  "starknet-sepolia.g.alchemy.com",
+  'starknet-mainnet.g.alchemy.com',
+  'starknet-sepolia.g.alchemy.com',
   // Infura
-  "starknet-mainnet.infura.io",
-  "starknet-sepolia.infura.io",
+  'starknet-mainnet.infura.io',
+  'starknet-sepolia.infura.io',
   // Local development
-  "localhost",
-  "127.0.0.1",
+  'localhost',
+  '127.0.0.1',
 ];
 
 /**
@@ -44,8 +44,7 @@ function isAllowedRpcUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     return ALLOWED_RPC_HOSTS.some(
-      (host) =>
-        parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+      (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
     );
   } catch {
     return false;
@@ -60,15 +59,12 @@ interface JsonRpcResponse {
   id: string | number | null;
 }
 
-function jsonResponse(
-  data: JsonRpcResponse,
-  status: number = 200
-): Response {
+function jsonResponse(data: JsonRpcResponse, status: number = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
     },
   });
 }
@@ -77,12 +73,12 @@ export async function POST(event: APIEvent): Promise<Response> {
   const { request } = event;
 
   // Check input size limit
-  const contentLength = request.headers.get("content-length");
+  const contentLength = request.headers.get('content-length');
   if (contentLength && Number.parseInt(contentLength, 10) > MAX_BODY_SIZE) {
     return jsonResponse(
       {
-        jsonrpc: "2.0",
-        error: { code: -32600, message: "Request too large" },
+        jsonrpc: '2.0',
+        error: { code: -32600, message: 'Request too large' },
         id: null,
       },
       413
@@ -91,11 +87,11 @@ export async function POST(event: APIEvent): Promise<Response> {
 
   // Check RPC URL is configured
   if (!RPC_URL) {
-    console.error("[api/rpc] RPC_URL not configured");
+    console.error('[api/rpc] RPC_URL not configured');
     return jsonResponse(
       {
-        jsonrpc: "2.0",
-        error: { code: -32603, message: "RPC not configured" },
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'RPC not configured' },
         id: null,
       },
       500
@@ -104,13 +100,11 @@ export async function POST(event: APIEvent): Promise<Response> {
 
   // Validate RPC URL against allowlist (SSRF prevention)
   if (!isAllowedRpcUrl(RPC_URL)) {
-    console.error(
-      `[api/rpc] RPC_URL not in allowlist: ${new URL(RPC_URL).hostname}`
-    );
+    console.error(`[api/rpc] RPC_URL not in allowlist: ${new URL(RPC_URL).hostname}`);
     return jsonResponse(
       {
-        jsonrpc: "2.0",
-        error: { code: -32603, message: "Invalid RPC configuration" },
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Invalid RPC configuration' },
         id: null,
       },
       500
@@ -121,9 +115,9 @@ export async function POST(event: APIEvent): Promise<Response> {
     const body: unknown = await request.json();
 
     const response = await fetch(RPC_URL, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -134,22 +128,22 @@ export async function POST(event: APIEvent): Promise<Response> {
     return jsonResponse(data, response.status);
   } catch (error) {
     // Handle timeout specifically
-    if (error instanceof Error && error.name === "TimeoutError") {
+    if (error instanceof Error && error.name === 'TimeoutError') {
       return jsonResponse(
         {
-          jsonrpc: "2.0",
-          error: { code: -32603, message: "Request timeout" },
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Request timeout' },
           id: null,
         },
         504
       );
     }
 
-    console.error("[api/rpc] Error:", error);
+    console.error('[api/rpc] Error:', error);
     return jsonResponse(
       {
-        jsonrpc: "2.0",
-        error: { code: -32603, message: "Internal error" },
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal error' },
         id: null,
       },
       500

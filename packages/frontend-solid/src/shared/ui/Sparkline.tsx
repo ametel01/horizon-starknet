@@ -267,7 +267,8 @@ function Sparkline(props: SparklineProps): JSX.Element {
 
   // Generate accessible description from data trend
   const trendDescription = createMemo(() => {
-    if (ariaLabel()) return ariaLabel()!;
+    const label = ariaLabel();
+    if (label) return label;
     const vals = values();
     if (vals.length < 2) return 'No trend data';
     const first = vals[0] ?? 0;
@@ -379,12 +380,10 @@ function SparklineWithValue(props: SparklineWithValueProps): JSX.Element {
               isPositive() ? 'text-primary' : 'text-destructive'
             )}
           >
-            {isPositive() ? (
-              <ArrowUpIcon class="h-3 w-3" />
-            ) : (
-              <ArrowDownIcon class="h-3 w-3" />
-            )}
-            {typeof local.change === 'number' ? `${Math.abs(local.change).toFixed(2)}%` : local.change}
+            {isPositive() ? <ArrowUpIcon class="h-3 w-3" /> : <ArrowDownIcon class="h-3 w-3" />}
+            {typeof local.change === 'number'
+              ? `${Math.abs(local.change).toFixed(2)}%`
+              : local.change}
           </span>
         )}
       </div>
@@ -495,7 +494,8 @@ function MiniBarChart(props: MiniBarChartProps): JSX.Element {
 
   // Generate accessible description from data
   const chartDescription = createMemo(() => {
-    if (ariaLabel()) return ariaLabel()!;
+    const label = ariaLabel();
+    if (label) return label;
     const data = local.data;
     if (data.length === 0) return 'No data';
     const max = Math.max(...data);

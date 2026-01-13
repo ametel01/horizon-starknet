@@ -99,7 +99,10 @@ interface StatusBadgesProps {
   isExpanded: boolean;
 }
 
-function ExpiryBadge(props: { market: EnhancedPosition['market']; postExpiryInfo?: PostExpiryInfo | undefined }): JSX.Element {
+function ExpiryBadge(props: {
+  market: EnhancedPosition['market'];
+  postExpiryInfo?: PostExpiryInfo | undefined;
+}): JSX.Element {
   return (
     <Show
       when={props.market.isExpired}
@@ -109,9 +112,7 @@ function ExpiryBadge(props: { market: EnhancedPosition['market']; postExpiryInfo
         </span>
       }
     >
-      <span class="bg-destructive/20 text-destructive rounded px-2 py-0.5 text-xs">
-        Expired
-      </span>
+      <span class="bg-destructive/20 text-destructive rounded px-2 py-0.5 text-xs">Expired</span>
       <Show when={props.postExpiryInfo?.isInitialized}>
         <span class="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
           Post-expiry active
@@ -164,7 +165,9 @@ function PnlDisplay(props: PnlDisplayProps): JSX.Element {
         <div class={cn('text-sm', pnlColorClass())}>
           {pnlSign()}
           {formatUsd(props.pnl.unrealizedUsd)}
-          <span class="text-muted-foreground ml-1">({formatPercent(props.pnl.totalPnlPercent)})</span>
+          <span class="text-muted-foreground ml-1">
+            ({formatPercent(props.pnl.totalPnlPercent)})
+          </span>
         </div>
       </Show>
     </>
@@ -354,7 +357,9 @@ interface RedemptionActionsProps {
 
 function RedemptionActions(props: RedemptionActionsProps): JSX.Element {
   const redeemPtYtLabel = () =>
-    props.yieldData.claimable > 0n ? 'Redeem + Claim' : `Redeem ${props.ptSymbol} + ${props.ytSymbol}`;
+    props.yieldData.claimable > 0n
+      ? 'Redeem + Claim'
+      : `Redeem ${props.ptSymbol} + ${props.ytSymbol}`;
 
   return (
     <Show when={props.redemption.canRedeemPtYt || props.redemption.canRedeemPtPostExpiry}>
@@ -408,7 +413,9 @@ function UnwrapSyCard(props: UnwrapSyCardProps): JSX.Element {
             <div class="text-chart-3 text-sm">Withdraw {props.sySymbol}</div>
             <div class="text-foreground font-medium">
               {formatWadCompact(props.sy.amount)} {props.sySymbol}
-              <span class="text-muted-foreground ml-1 text-sm">({formatUsd(props.sy.valueUsd)})</span>
+              <span class="text-muted-foreground ml-1 text-sm">
+                ({formatUsd(props.sy.valueUsd)})
+              </span>
             </div>
             <p class="text-muted-foreground text-xs">Convert to {underlyingSymbol()}</p>
           </div>
@@ -489,7 +496,9 @@ export function EnhancedPositionCard(props: EnhancedPositionCardProps): JSX.Elem
               <div>
                 <h3 class="text-foreground font-medium">{symbols().ptSymbol} Market</h3>
                 <p class="text-muted-foreground text-sm">{symbols().tokenName}</p>
-                <p class="text-muted-foreground text-xs">Expires {formatExpiry(props.position.market.expiry)}</p>
+                <p class="text-muted-foreground text-xs">
+                  Expires {formatExpiry(props.position.market.expiry)}
+                </p>
               </div>
               <div class="text-right">
                 <PnlDisplay pnl={props.position.pnl} totalValueUsd={props.position.totalValueUsd} />

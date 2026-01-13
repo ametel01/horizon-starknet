@@ -1,4 +1,3 @@
-import { A } from '@solidjs/router';
 import { Button } from '@shared/ui/Button';
 import {
   Dialog,
@@ -9,6 +8,7 @@ import {
   DialogTitle,
 } from '@shared/ui/Dialog';
 import { Separator } from '@shared/ui/Separator';
+import { A } from '@solidjs/router';
 import { createEffect, createSignal, type JSX } from 'solid-js';
 
 /** Inline SVG AlertTriangle icon */

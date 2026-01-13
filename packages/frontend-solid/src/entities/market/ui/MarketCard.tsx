@@ -1,6 +1,6 @@
 import { cn } from '@shared/lib/utils';
-import { daysToExpiry, formatExpiry } from '@shared/math/yield';
 import { formatWadCompact } from '@shared/math/wad';
+import { daysToExpiry, formatExpiry } from '@shared/math/yield';
 import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';

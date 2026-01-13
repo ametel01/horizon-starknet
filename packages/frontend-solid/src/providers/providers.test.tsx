@@ -1,20 +1,20 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@solidjs/testing-library';
+import { cleanup, render, screen } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  Providers,
-  ThemeProvider,
-  useTheme,
-  UIModeProvider,
-  useUIMode,
-  TransactionSettingsProvider,
-  useTransactionSettings,
-  useSlippageWad,
-  useDeadline,
-  DEFAULT_SLIPPAGE_BPS,
   DEFAULT_DEADLINE_MINUTES,
+  DEFAULT_SLIPPAGE_BPS,
   formatSlippagePercent,
   getSlippageLabel,
+  Providers,
+  ThemeProvider,
+  TransactionSettingsProvider,
+  UIModeProvider,
+  useDeadline,
+  useSlippageWad,
+  useTheme,
+  useTransactionSettings,
+  useUIMode,
 } from './index';
 
 // Mock localStorage
@@ -45,10 +45,10 @@ function ThemeConsumer() {
     <div>
       <span data-testid="theme">{theme()}</span>
       <span data-testid="resolved-theme">{resolvedTheme()}</span>
-      <button data-testid="set-dark" onClick={() => setTheme('dark')}>
+      <button type="button" data-testid="set-dark" onClick={() => setTheme('dark')}>
         Set Dark
       </button>
-      <button data-testid="set-light" onClick={() => setTheme('light')}>
+      <button type="button" data-testid="set-light" onClick={() => setTheme('light')}>
         Set Light
       </button>
     </div>
@@ -62,10 +62,10 @@ function UIModeConsumer() {
       <span data-testid="mode">{mode()}</span>
       <span data-testid="is-simple">{isSimple().toString()}</span>
       <span data-testid="is-advanced">{isAdvanced().toString()}</span>
-      <button data-testid="set-advanced" onClick={() => setMode('advanced')}>
+      <button type="button" data-testid="set-advanced" onClick={() => setMode('advanced')}>
         Set Advanced
       </button>
-      <button data-testid="toggle" onClick={toggleMode}>
+      <button type="button" data-testid="toggle" onClick={toggleMode}>
         Toggle
       </button>
     </div>
@@ -91,13 +91,13 @@ function TransactionSettingsConsumer() {
       <span data-testid="slippage-percent">{slippagePercent()}</span>
       <span data-testid="slippage-decimal">{slippageDecimal()}</span>
       <span data-testid="deadline-seconds">{deadlineSeconds()}</span>
-      <button data-testid="set-slippage-100" onClick={() => setSlippageBps(100)}>
+      <button type="button" data-testid="set-slippage-100" onClick={() => setSlippageBps(100)}>
         Set 1%
       </button>
-      <button data-testid="set-deadline-30" onClick={() => setDeadlineMinutes(30)}>
+      <button type="button" data-testid="set-deadline-30" onClick={() => setDeadlineMinutes(30)}>
         Set 30min
       </button>
-      <button data-testid="reset" onClick={resetToDefaults}>
+      <button type="button" data-testid="reset" onClick={resetToDefaults}>
         Reset
       </button>
     </div>
@@ -116,7 +116,11 @@ function DeadlineConsumer() {
   return (
     <div>
       <span data-testid="deadline">{deadline()}</span>
-      <button data-testid="get-deadline" onClick={() => setDeadline(getDeadline().toString())}>
+      <button
+        type="button"
+        data-testid="get-deadline"
+        onClick={() => setDeadline(getDeadline().toString())}
+      >
         Get Deadline
       </button>
     </div>
@@ -307,10 +311,14 @@ describe('TransactionSettingsProvider', () => {
     ));
 
     expect(screen.getByTestId('slippage-bps').textContent).toBe(DEFAULT_SLIPPAGE_BPS.toString());
-    expect(screen.getByTestId('deadline-minutes').textContent).toBe(DEFAULT_DEADLINE_MINUTES.toString());
+    expect(screen.getByTestId('deadline-minutes').textContent).toBe(
+      DEFAULT_DEADLINE_MINUTES.toString()
+    );
     expect(screen.getByTestId('slippage-percent').textContent).toBe('0.5%');
     expect(screen.getByTestId('slippage-decimal').textContent).toBe('0.005');
-    expect(screen.getByTestId('deadline-seconds').textContent).toBe((DEFAULT_DEADLINE_MINUTES * 60).toString());
+    expect(screen.getByTestId('deadline-seconds').textContent).toBe(
+      (DEFAULT_DEADLINE_MINUTES * 60).toString()
+    );
   });
 
   it('allows setting slippage', () => {
@@ -359,7 +367,9 @@ describe('TransactionSettingsProvider', () => {
     screen.getByTestId('reset').click();
 
     expect(screen.getByTestId('slippage-bps').textContent).toBe(DEFAULT_SLIPPAGE_BPS.toString());
-    expect(screen.getByTestId('deadline-minutes').textContent).toBe(DEFAULT_DEADLINE_MINUTES.toString());
+    expect(screen.getByTestId('deadline-minutes').textContent).toBe(
+      DEFAULT_DEADLINE_MINUTES.toString()
+    );
   });
 
   it('persists settings to localStorage', () => {
@@ -501,13 +511,21 @@ describe('Providers composition', () => {
           <span data-testid="theme-val">{theme.resolvedTheme()}</span>
           <span data-testid="mode-val">{uiMode.mode()}</span>
           <span data-testid="slippage-val">{txSettings.slippageBps()}</span>
-          <button data-testid="change-theme" onClick={() => theme.setTheme('light')}>
+          <button type="button" data-testid="change-theme" onClick={() => theme.setTheme('light')}>
             Change Theme
           </button>
-          <button data-testid="change-mode" onClick={() => uiMode.setMode('advanced')}>
+          <button
+            type="button"
+            data-testid="change-mode"
+            onClick={() => uiMode.setMode('advanced')}
+          >
             Change Mode
           </button>
-          <button data-testid="change-slippage" onClick={() => txSettings.setSlippageBps(100)}>
+          <button
+            type="button"
+            data-testid="change-slippage"
+            onClick={() => txSettings.setSlippageBps(100)}
+          >
             Change Slippage
           </button>
         </div>

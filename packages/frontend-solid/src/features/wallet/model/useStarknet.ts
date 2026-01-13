@@ -1,8 +1,5 @@
 import { useContext } from 'solid-js';
-import {
-  StarknetContext,
-  type StarknetContextValue,
-} from '@/providers/StarknetProvider';
+import { StarknetContext, type StarknetContextValue } from '@/providers/StarknetProvider';
 
 /**
  * Hook to access the Starknet context.

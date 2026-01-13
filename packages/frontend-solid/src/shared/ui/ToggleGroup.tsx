@@ -2,13 +2,7 @@ import { ToggleButton as TogglePrimitive } from '@kobalte/core/toggle-button';
 import { cn } from '@shared/lib/utils';
 import { toggleVariants } from '@shared/ui/Toggle';
 import type { VariantProps } from 'class-variance-authority';
-import {
-  type ComponentProps,
-  type JSX,
-  createContext,
-  useContext,
-  splitProps,
-} from 'solid-js';
+import { type ComponentProps, createContext, type JSX, splitProps, useContext } from 'solid-js';
 
 type ToggleGroupContextValue = VariantProps<typeof toggleVariants> & {
   spacing?: number;

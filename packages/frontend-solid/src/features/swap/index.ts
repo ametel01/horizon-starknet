@@ -1,53 +1,51 @@
 // Swap feature barrel export
 
+// Lib (pure logic functions)
+export {
+  type ButtonState,
+  // Call building
+  buildSwapCalls,
+  // Swap quote calculation
+  calculateSwapQuote,
+  // Button state derivation
+  deriveButtonState,
+  // Implied APY display
+  deriveImpliedApyDisplay,
+  // Output badge styling
+  deriveOutputBadgeStyle,
+  // Direction derivation
+  deriveSwapDirection,
+  // UI state derivation
+  deriveSwapFormUiState,
+  // Token labels
+  deriveTokenLabels,
+  // Swap rate display
+  formatSwapRate,
+  getInputTokenAddress,
+  // Token type utilities
+  getTokenTypeDescription,
+  // Transaction steps
+  getTransactionSteps,
+  type ImpliedApyDisplay,
+  isValidBuySell,
+  isValidTokenType,
+  type OutputBadgeStyle,
+  type SwapFormMarket,
+  type SwapFormState,
+  type SwapFormUiState,
+  // Types
+  type TokenType,
+} from './lib/swapFormLogic';
 // Model (hooks and types)
 export {
-  useSwap,
-  calculateMinOutput,
   calculateMaxInput,
+  calculateMinOutput,
   type SwapDirection,
   type SwapParams,
   type SwapResult,
   type UseSwapReturn,
+  useSwap,
 } from './model/useSwap';
-
-// Lib (pure logic functions)
-export {
-  // Direction derivation
-  deriveSwapDirection,
-  // Swap quote calculation
-  calculateSwapQuote,
-  // Call building
-  buildSwapCalls,
-  // Transaction steps
-  getTransactionSteps,
-  // Button state derivation
-  deriveButtonState,
-  // Token labels
-  deriveTokenLabels,
-  getInputTokenAddress,
-  // Output badge styling
-  deriveOutputBadgeStyle,
-  // Implied APY display
-  deriveImpliedApyDisplay,
-  // Swap rate display
-  formatSwapRate,
-  // UI state derivation
-  deriveSwapFormUiState,
-  // Token type utilities
-  getTokenTypeDescription,
-  isValidTokenType,
-  isValidBuySell,
-  // Types
-  type TokenType,
-  type SwapFormMarket,
-  type SwapFormState,
-  type ButtonState,
-  type OutputBadgeStyle,
-  type ImpliedApyDisplay,
-  type SwapFormUiState,
-} from './lib/swapFormLogic';
-
+export { SwapDetails, type SwapDetailsProps } from './ui/SwapDetails';
 // UI (components)
 export { SwapForm, type SwapFormProps } from './ui/SwapForm';
-export { SwapDetails, type SwapDetailsProps } from './ui/SwapDetails';

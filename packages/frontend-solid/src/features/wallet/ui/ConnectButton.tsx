@@ -1,6 +1,6 @@
 import { formatAddress } from '@shared/starknet/wallet';
 import { Button } from '@shared/ui/Button';
-import { Show, type JSX } from 'solid-js';
+import { type JSX, Show } from 'solid-js';
 import { useStarknet } from '../model/useStarknet';
 
 /**
@@ -31,7 +31,7 @@ export function ConnectButton(): JSX.Element {
       }
     >
       <Button variant="secondary" onClick={handleDisconnect}>
-        {formatAddress(address()!)}
+        {formatAddress(address() ?? '')}
       </Button>
     </Show>
   );

@@ -5,12 +5,12 @@ import { logError } from '@shared/server/logger';
 import { getMarketContract } from '@shared/starknet/contracts';
 import { createQuery } from '@tanstack/solid-query';
 import type BigNumber from 'bignumber.js';
-import { createMemo, type Accessor } from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { uint256 } from 'starknet';
 
 import { useStarknet } from '@/features/wallet';
 
-import { marketKeys, type MarketData, type MarketInfo, type MarketState } from './useMarkets';
+import { type MarketData, type MarketInfo, type MarketState, marketKeys } from './useMarkets';
 
 export interface UseMarketOptions {
   enabled?: boolean;
@@ -118,7 +118,9 @@ export function useMarket(
 
           // Reserves are returned as a tuple [sy_reserve, pt_reserve]
           const reservesArr = reserves as unknown[];
-          const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
+          const lnFeeRateRootValue = toBigInt(
+            lnFeeRateRoot as bigint | { low: bigint; high: bigint }
+          );
           const state: MarketState = {
             syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
             ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
@@ -172,7 +174,11 @@ export function useMarket(
 
           return baseData;
         } catch (error) {
-          logError(error, { module: 'useMarket', action: 'fetchMarketData', marketAddress: address });
+          logError(error, {
+            module: 'useMarket',
+            action: 'fetchMarketData',
+            marketAddress: address,
+          });
           throw error;
         }
       },
@@ -248,9 +254,7 @@ export function useMarketInfo(marketAddress: Accessor<string | null>): UseMarket
  *
  * @param marketAddress - Accessor returning the market address or null
  */
-export function useMarketState(
-  marketAddress: Accessor<string | null>
-): UseMarketStateReturn {
+export function useMarketState(marketAddress: Accessor<string | null>): UseMarketStateReturn {
   const { provider, network } = useStarknet();
 
   const query = createQuery(() => {
@@ -276,7 +280,9 @@ export function useMarketState(
 
         const reservesArr = reserves as unknown[];
         const lnImpliedRate = toBigInt(lnRate as bigint | { low: bigint; high: bigint });
-        const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
+        const lnFeeRateRootValue = toBigInt(
+          lnFeeRateRoot as bigint | { low: bigint; high: bigint }
+        );
 
         return {
           syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),

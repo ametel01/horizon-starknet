@@ -5,7 +5,7 @@ export { useTransactionSettings } from './model/useTransactionSettings';
 
 // UI (components)
 export {
-  TransactionSettingsPanel,
   TransactionSettingsDisplay,
+  TransactionSettingsPanel,
   type TransactionSettingsPanelProps,
 } from './ui/TransactionSettingsPanel';

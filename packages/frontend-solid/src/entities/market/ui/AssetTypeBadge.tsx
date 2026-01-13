@@ -149,10 +149,7 @@ export function AssetTypeBadge(props: AssetTypeBadgeProps): JSX.Element {
   const { assetType, isLoading } = useSyAssetType(syAddressAccessor);
 
   return (
-    <Show
-      when={!isLoading()}
-      fallback={<Skeleton class="h-5 w-14 rounded-full" />}
-    >
+    <Show when={!isLoading()} fallback={<Skeleton class="h-5 w-14 rounded-full" />}>
       <Show when={assetType()} keyed>
         {(type) => {
           const config = ASSET_TYPE_CONFIG[type];

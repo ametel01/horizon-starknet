@@ -11,7 +11,7 @@ import {
 import type { NetworkId } from '@shared/starknet/provider';
 import { createQuery } from '@tanstack/solid-query';
 import BigNumber from 'bignumber.js';
-import { createMemo, type Accessor } from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { type ProviderInterface, uint256 } from 'starknet';
 
 import { useStarknet } from '@/features/wallet';
@@ -263,8 +263,7 @@ export const marketKeys = {
   detail: (address: string, network: NetworkId) =>
     [...marketKeys.all, 'detail', address, network] as const,
   addresses: (network: NetworkId) => [...marketKeys.all, 'addresses', network] as const,
-  activeAddresses: (network: NetworkId) =>
-    [...marketKeys.all, 'activeAddresses', network] as const,
+  activeAddresses: (network: NetworkId) => [...marketKeys.all, 'activeAddresses', network] as const,
   count: (network: NetworkId) => [...marketKeys.all, 'count', network] as const,
 };
 

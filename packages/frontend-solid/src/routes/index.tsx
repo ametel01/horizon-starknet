@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router';
-import { createMemo, createSignal, For, onMount, Show, type JSX } from 'solid-js';
+import { createMemo, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 
-import { useDashboardMarkets, type MarketData } from '@/features/markets';
+import { type MarketData, useDashboardMarkets } from '@/features/markets';
 import { useUIMode } from '@/providers/UIModeProvider';
 import { cn } from '@/shared/lib/utils';
 import { fromWad } from '@/shared/math/wad';
@@ -361,9 +361,7 @@ function MarketList(props: MarketListProps): JSX.Element {
         <Show
           when={markets().length > 0}
           fallback={
-            <div class="text-muted-foreground py-8 text-center">
-              No active markets found.
-            </div>
+            <div class="text-muted-foreground py-8 text-center">No active markets found.</div>
           }
         >
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -410,9 +408,7 @@ function MarketCard(props: MarketCardProps): JSX.Element {
               <span class="text-muted-foreground text-sm">
                 {props.isSimple ? 'Fixed Yield' : 'Implied APY'}
               </span>
-              <span class="text-primary font-mono font-semibold">
-                {apyPercent().toFixed(2)}%
-              </span>
+              <span class="text-primary font-mono font-semibold">{apyPercent().toFixed(2)}%</span>
             </div>
 
             {/* TVL */}
@@ -427,7 +423,9 @@ function MarketCard(props: MarketCardProps): JSX.Element {
                 <span class="text-muted-foreground text-sm">
                   {props.isSimple ? 'Duration' : 'Days to Expiry'}
                 </span>
-                <span class="font-mono">{daysLeft()} {daysLeft() === 1 ? 'day' : 'days'}</span>
+                <span class="font-mono">
+                  {daysLeft()} {daysLeft() === 1 ? 'day' : 'days'}
+                </span>
               </div>
             </Show>
           </div>

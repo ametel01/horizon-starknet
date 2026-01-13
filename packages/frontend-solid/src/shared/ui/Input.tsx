@@ -68,10 +68,7 @@ function TextFieldLabel(props: TextFieldLabelProps): JSX.Element {
   return (
     <TextField.Label
       data-slot="text-field-label"
-      class={cn(
-        'text-foreground mb-1.5 block text-sm font-medium',
-        local.class
-      )}
+      class={cn('text-foreground mb-1.5 block text-sm font-medium', local.class)}
       {...others}
     />
   );
@@ -168,17 +165,11 @@ function FormInput(props: FormInputProps): JSX.Element {
         </Show>
         <Input
           id={inputId()}
-          class={cn(
-            local.leftElement && 'pl-10',
-            local.rightElement && 'pr-20',
-            local.class
-          )}
+          class={cn(local.leftElement && 'pl-10', local.rightElement && 'pr-20', local.class)}
           {...others}
         />
         <Show when={local.rightElement}>
-          <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-            {local.rightElement}
-          </div>
+          <div class="absolute inset-y-0 right-0 flex items-center pr-3">{local.rightElement}</div>
         </Show>
       </div>
       <Show when={local.error}>

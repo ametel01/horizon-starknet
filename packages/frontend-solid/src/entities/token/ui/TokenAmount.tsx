@@ -13,16 +13,12 @@ interface TokenAmountProps {
 
 export function TokenAmount(props: TokenAmountProps): JSX.Element {
   const formatted = () =>
-    props.compact
-      ? formatWadCompact(props.amount)
-      : formatWad(props.amount, props.decimals ?? 4);
+    props.compact ? formatWadCompact(props.amount) : formatWad(props.amount, props.decimals ?? 4);
 
   return (
     <span class={cn('font-mono', props.class)}>
       {formatted()}
-      {props.symbol ? (
-        <span class="text-muted-foreground ml-1">{props.symbol}</span>
-      ) : null}
+      {props.symbol ? <span class="text-muted-foreground ml-1">{props.symbol}</span> : null}
     </span>
   );
 }
@@ -34,8 +30,7 @@ interface ApyDisplayProps {
 
 export function ApyDisplay(props: ApyDisplayProps): JSX.Element {
   const isPositive = () => props.apy >= 0;
-  const formatted = () =>
-    `${isPositive() ? '+' : ''}${(props.apy * 100).toFixed(2)}%`;
+  const formatted = () => `${isPositive() ? '+' : ''}${(props.apy * 100).toFixed(2)}%`;
 
   return (
     <span

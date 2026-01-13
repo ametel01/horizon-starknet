@@ -1,7 +1,7 @@
-import { A, useLocation } from '@solidjs/router';
-import { useUIMode } from '@/providers/UIModeProvider';
 import { cn } from '@shared/lib/utils';
+import { A, useLocation } from '@solidjs/router';
 import { createMemo, For, type JSX } from 'solid-js';
+import { useUIMode } from '@/providers/UIModeProvider';
 
 /**
  * Mobile Bottom Navigation

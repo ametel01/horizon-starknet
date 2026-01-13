@@ -1,12 +1,6 @@
 import { type ComponentProps, type JSX, splitProps } from 'solid-js';
 import { Toaster as SolidSonner } from 'solid-sonner';
-import {
-  CircleCheckIcon,
-  InfoIcon,
-  Loader2Icon,
-  OctagonXIcon,
-  TriangleAlertIcon,
-} from './Toast';
+import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon } from './Toast';
 
 /** Props for the Toaster component, inferred from solid-sonner */
 type ToasterProps = ComponentProps<typeof SolidSonner>;

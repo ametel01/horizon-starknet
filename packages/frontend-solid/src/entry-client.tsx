@@ -1,7 +1,7 @@
 // @refresh reload
-import { mount, StartClient } from "@solidjs/start/client";
+import { mount, StartClient } from '@solidjs/start/client';
 
-const root = document.getElementById("app");
+const root = document.getElementById('app');
 if (!root) {
   throw new Error("Root element with id 'app' not found");
 }

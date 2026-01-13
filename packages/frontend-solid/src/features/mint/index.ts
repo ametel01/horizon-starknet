@@ -2,11 +2,11 @@
 
 // Model hooks
 export {
-  useMint,
   calculateMinOutput,
   type MintParams,
   type MintResult,
   type UseMintReturn,
+  useMint,
 } from './model/useMint';
 
 // UI components

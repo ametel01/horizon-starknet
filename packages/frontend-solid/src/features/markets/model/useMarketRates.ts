@@ -106,6 +106,7 @@ async function fetchRatesData(
 /**
  * Process raw rates response into usable format
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: rate data processing requires multiple transformations
 function processRatesData(data: MarketRatesResponse): ProcessedRatesData {
   const dataPoints: ProcessedRateDataPoint[] = data.dataPoints.map((point) => {
     const timestamp = new Date(point.timestamp);
@@ -220,12 +221,7 @@ export function useMarketRates(
   marketAddress: Accessor<string | null>,
   options: UseMarketRatesOptions = {}
 ): UseMarketRatesReturn {
-  const {
-    resolution = 'daily',
-    days = 30,
-    enabled = true,
-    refetchInterval = 60000,
-  } = options;
+  const { resolution = 'daily', days = 30, enabled = true, refetchInterval = 60000 } = options;
 
   // Helper to unwrap accessor or plain value
   const unwrap = <T>(value: Accessor<T> | T): T =>

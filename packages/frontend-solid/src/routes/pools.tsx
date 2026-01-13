@@ -1,5 +1,5 @@
 import { useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, on, type JSX, Show } from 'solid-js';
+import { createEffect, createMemo, type JSX, on, Show } from 'solid-js';
 
 import { type MarketData, useDashboardMarkets } from '@/features/markets';
 import { useUIMode } from '@/providers/UIModeProvider';
@@ -111,9 +111,7 @@ export default function PoolsPage(): JSX.Element {
           <div class="lg:col-span-2">
             <Card>
               <CardHeader class="flex flex-row items-center justify-between gap-4">
-                <CardTitle>
-                  {isSimple() ? 'Add Liquidity' : 'Manage Liquidity'}
-                </CardTitle>
+                <CardTitle>{isSimple() ? 'Add Liquidity' : 'Manage Liquidity'}</CardTitle>
 
                 {/* Market Selector */}
                 <MarketSelector
@@ -196,9 +194,7 @@ function MarketSelector(props: MarketSelectorProps): JSX.Element {
       )}
     >
       <SelectTrigger class="w-48">
-        <SelectValue placeholder="Select a pool">
-          {selectedLabel()}
-        </SelectValue>
+        <SelectValue placeholder="Select a pool">{selectedLabel()}</SelectValue>
       </SelectTrigger>
       <SelectContent />
     </SelectRoot>
@@ -483,17 +479,13 @@ function PoolInfoCard(props: PoolInfoCardProps): JSX.Element {
             <span class="text-muted-foreground text-sm">
               {props.isSimple ? 'Pool Rate' : 'Implied APY'}
             </span>
-            <span class="text-primary font-mono font-semibold">
-              {apy().toFixed(2)}%
-            </span>
+            <span class="text-primary font-mono font-semibold">{apy().toFixed(2)}%</span>
           </div>
 
           {/* Pool Reserves */}
           <Show when={!props.isSimple}>
             <div class="border-border space-y-3 border-t pt-4">
-              <div class="text-muted-foreground text-xs font-medium uppercase">
-                Pool Reserves
-              </div>
+              <div class="text-muted-foreground text-xs font-medium uppercase">Pool Reserves</div>
               <div class="flex items-center justify-between">
                 <span class="text-muted-foreground text-sm">PT Reserve</span>
                 <span class="font-mono text-sm">{ptReserve()}</span>

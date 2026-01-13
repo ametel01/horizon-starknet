@@ -1,6 +1,6 @@
+import { Separator } from '@shared/ui/Separator';
 import { A } from '@solidjs/router';
 import { For, type JSX } from 'solid-js';
-import { Separator } from '@shared/ui/Separator';
 
 interface FooterLink {
   label: string;

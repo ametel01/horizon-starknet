@@ -1,17 +1,10 @@
-import { A, useLocation } from '@solidjs/router';
 import { ConnectButton } from '@features/wallet';
-import { useUIMode } from '@/providers/UIModeProvider';
+import { ThemeToggle } from '@shared/layout/ThemeToggle';
 import { cn } from '@shared/lib/utils';
 import { Button } from '@shared/ui/Button';
-import { ThemeToggle } from '@shared/layout/ThemeToggle';
-import {
-  createEffect,
-  createSignal,
-  For,
-  onCleanup,
-  Show,
-  type JSX,
-} from 'solid-js';
+import { A, useLocation } from '@solidjs/router';
+import { createEffect, createSignal, For, type JSX, onCleanup, Show } from 'solid-js';
+import { useUIMode } from '@/providers/UIModeProvider';
 
 interface NavLink {
   href: string;

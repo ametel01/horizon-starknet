@@ -70,11 +70,7 @@ function CardTitle(props: ComponentProps<'div'>): JSX.Element {
   const [local, others] = splitProps(props, ['class']);
 
   return (
-    <div
-      data-slot="card-title"
-      class={cn('text-base font-medium', local.class)}
-      {...others}
-    />
+    <div data-slot="card-title" class={cn('text-base font-medium', local.class)} {...others} />
   );
 }
 

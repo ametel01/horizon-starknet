@@ -10,6 +10,8 @@
  * @see Security Audit I-08 - Fixed-Point Library Integration
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+import cairoFpModule from 'cairo-fp';
 import { WAD_BIGINT } from './wad';
 
 // ============================================================================
@@ -42,13 +44,10 @@ interface F128Utils {
 interface CairoFP {
   f128: F128Utils;
   f64: F128Utils;
-  default?: CairoFP;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-const cairoFpModule: CairoFP = require('cairo-fp');
-// Handle both ESM (default export) and CJS (direct export)
-const cairoFp: CairoFP = cairoFpModule.default ?? cairoFpModule;
+// Initialize cairo-fp
+const cairoFp = cairoFpModule as CairoFP;
 const f128: F128Utils = cairoFp.f128;
 
 // ============================================================================

@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router';
 import { createMemo, For, type JSX, Show } from 'solid-js';
 
-import { useDashboardMarkets, type MarketData } from '@/features/markets';
+import { type MarketData, useDashboardMarkets } from '@/features/markets';
 import { useUIMode } from '@/providers/UIModeProvider';
 import { cn } from '@/shared/lib/utils';
 import { fromWad } from '@/shared/math/wad';
@@ -118,11 +118,7 @@ export default function AnalyticsPage(): JSX.Element {
               formatter={(v) => String(Math.round(v))}
             />
             <Show when={!isSimple()}>
-              <StatCard
-                label="Total LP Supply"
-                value={totalLp()}
-                formatter={formatCompact}
-              />
+              <StatCard label="Total LP Supply" value={totalLp()} formatter={formatCompact} />
             </Show>
             <Show when={isSimple()}>
               <StatCard
@@ -137,9 +133,7 @@ export default function AnalyticsPage(): JSX.Element {
           <Card>
             <CardHeader>
               <div class="flex items-center justify-between">
-                <CardTitle>
-                  {isSimple() ? 'Market Performance' : 'Markets Breakdown'}
-                </CardTitle>
+                <CardTitle>{isSimple() ? 'Market Performance' : 'Markets Breakdown'}</CardTitle>
                 <A
                   href="/trade"
                   class="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
@@ -152,9 +146,7 @@ export default function AnalyticsPage(): JSX.Element {
               <Show
                 when={markets().length > 0}
                 fallback={
-                  <div class="text-muted-foreground py-8 text-center">
-                    No markets available.
-                  </div>
+                  <div class="text-muted-foreground py-8 text-center">No markets available.</div>
                 }
               >
                 <div class="overflow-x-auto">
@@ -188,9 +180,7 @@ export default function AnalyticsPage(): JSX.Element {
                     </thead>
                     <tbody>
                       <For each={markets()}>
-                        {(market) => (
-                          <MarketRow market={market} isSimple={isSimple()} />
-                        )}
+                        {(market) => <MarketRow market={market} isSimple={isSimple()} />}
                       </For>
                     </tbody>
                   </table>
@@ -281,12 +271,7 @@ interface StatCardProps {
 
 function StatCard(props: StatCardProps): JSX.Element {
   return (
-    <Card
-      class={cn(
-        'transition-all',
-        props.highlight && 'border-primary/30 bg-primary/5'
-      )}
-    >
+    <Card class={cn('transition-all', props.highlight && 'border-primary/30 bg-primary/5')}>
       <CardContent class="pt-6">
         <div class="text-muted-foreground text-sm">{props.label}</div>
         <div
@@ -346,12 +331,8 @@ function MarketRow(props: MarketRowProps): JSX.Element {
           {symbol()}
         </A>
       </td>
-      <td class="text-primary py-4 text-right font-mono">
-        {apy().toFixed(2)}%
-      </td>
-      <td class="py-4 text-right font-mono">
-        {formatCompact(tvl())}
-      </td>
+      <td class="text-primary py-4 text-right font-mono">{apy().toFixed(2)}%</td>
+      <td class="py-4 text-right font-mono">{formatCompact(tvl())}</td>
       <Show when={!props.isSimple}>
         <td class="text-muted-foreground py-4 text-right font-mono text-sm">
           {formatCompact(ptReserve())}

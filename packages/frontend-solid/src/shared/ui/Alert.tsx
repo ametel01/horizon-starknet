@@ -85,11 +85,7 @@ function AlertAction(props: AlertActionProps): JSX.Element {
   const [local, others] = splitProps(props, ['class']);
 
   return (
-    <div
-      data-slot="alert-action"
-      class={cn('absolute top-2.5 right-3', local.class)}
-      {...others}
-    />
+    <div data-slot="alert-action" class={cn('absolute top-2.5 right-3', local.class)} {...others} />
   );
 }
 

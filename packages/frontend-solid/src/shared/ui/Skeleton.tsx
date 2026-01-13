@@ -1,5 +1,12 @@
 import { cn } from '@shared/lib/utils';
-import { type Component, type ComponentProps, createUniqueId, For, type JSX, splitProps } from 'solid-js';
+import {
+  type Component,
+  type ComponentProps,
+  createUniqueId,
+  For,
+  type JSX,
+  splitProps,
+} from 'solid-js';
 
 // ============================================
 // Base Skeleton
@@ -182,7 +189,12 @@ function AreaChartPlaceholder(): JSX.Element {
 
   return (
     <div class="relative h-full pb-6">
-      <svg class="text-muted h-full w-full" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true">
+      <svg
+        class="text-muted h-full w-full"
+        viewBox="0 0 400 200"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="currentColor" stop-opacity="0.3" />
@@ -209,7 +221,12 @@ function AreaChartPlaceholder(): JSX.Element {
 function LineChartPlaceholder(): JSX.Element {
   return (
     <div class="relative h-full pb-6">
-      <svg class="text-muted h-full w-full" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true">
+      <svg
+        class="text-muted h-full w-full"
+        viewBox="0 0 400 200"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
         <path
           d="M0,150 Q80,120 160,100 T320,80 T400,60"
           fill="none"
@@ -232,7 +249,12 @@ function LineChartPlaceholder(): JSX.Element {
 function ScatterChartPlaceholder(): JSX.Element {
   return (
     <div class="relative h-full pb-6">
-      <svg class="text-muted h-full w-full" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true">
+      <svg
+        class="text-muted h-full w-full"
+        viewBox="0 0 400 200"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
         {/* Scattered points */}
         <circle cx="50" cy="120" r="8" fill="currentColor" class="animate-pulse" />
         <circle cx="120" cy="80" r="8" fill="currentColor" class="animate-pulse" />
@@ -384,13 +406,8 @@ function ListSkeleton(props: ListSkeletonProps): JSX.Element {
     <div data-slot="list-skeleton" class={cn('space-y-3', local.class)} {...others}>
       <For each={Array.from({ length: items() })}>
         {(_, i) => (
-          <div
-            class="flex items-center gap-3"
-            style={{ 'animation-delay': `${i() * 75}ms` }}
-          >
-            {showAvatar() && (
-              <Skeleton class="h-10 w-10 shrink-0 rounded-full" variant="shimmer" />
-            )}
+          <div class="flex items-center gap-3" style={{ 'animation-delay': `${i() * 75}ms` }}>
+            {showAvatar() && <Skeleton class="h-10 w-10 shrink-0 rounded-full" variant="shimmer" />}
             <div class="flex-1 space-y-2">
               <Skeleton class="h-4 w-3/4" />
               {showSecondary() && <Skeleton class="h-3 w-1/2" />}
@@ -651,7 +668,13 @@ interface SkeletonGridProps extends ComponentProps<'div'> {
  * Grid of skeleton items with staggered animation.
  */
 function SkeletonGrid(props: SkeletonGridProps): JSX.Element {
-  const [local, others] = splitProps(props, ['count', 'skeleton', 'staggerDelay', 'columns', 'class']);
+  const [local, others] = splitProps(props, [
+    'count',
+    'skeleton',
+    'staggerDelay',
+    'columns',
+    'class',
+  ]);
 
   const count = () => local.count ?? 4;
   const SkeletonComponent = local.skeleton ?? MarketCardSkeleton;

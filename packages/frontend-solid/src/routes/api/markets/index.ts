@@ -1,8 +1,8 @@
-import type { APIEvent } from "@solidjs/start/server";
-import { getMarketInfos } from "@shared/config/addresses";
-import { getNetworkId, createProvider } from "@shared/starknet/provider";
-import { getMarketFactoryContract } from "@shared/starknet/contracts";
-import { logError, logWarn } from "@shared/server/logger";
+import { getMarketInfos } from '@shared/config/addresses';
+import { logError, logWarn } from '@shared/server/logger';
+import { getMarketFactoryContract } from '@shared/starknet/contracts';
+import { createProvider, getNetworkId } from '@shared/starknet/provider';
+import type { APIEvent } from '@solidjs/start/server';
 
 /**
  * Markets List API Route
@@ -42,8 +42,8 @@ function jsonResponse<T>(data: T, status: number = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
     },
   });
 }
@@ -53,17 +53,17 @@ function errorResponse(message: string, code: string, status: number): Response 
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
     },
   });
 }
 
 function addressToHex(addr: unknown): string {
-  if (typeof addr === "bigint") {
-    return `0x${addr.toString(16).padStart(64, "0")}`;
+  if (typeof addr === 'bigint') {
+    return `0x${addr.toString(16).padStart(64, '0')}`;
   }
-  if (typeof addr === "string") {
+  if (typeof addr === 'string') {
     return addr;
   }
   return String(addr);
@@ -75,21 +75,21 @@ const EMPTY_PAGINATED_RESULT: PaginatedResult = { addresses: [], hasMore: false 
 function tryParseArrayTuple(result: unknown): PaginatedResult | null {
   if (!Array.isArray(result) || result.length !== 2) return null;
   const [first, second] = result;
-  if (!Array.isArray(first) || typeof second !== "boolean") return null;
+  if (!Array.isArray(first) || typeof second !== 'boolean') return null;
   return { addresses: first, hasMore: second };
 }
 
 function tryParseNumericKeys(obj: Record<string, unknown>): PaginatedResult | null {
-  if (!("0" in obj) || !("1" in obj)) return null;
-  const addresses = obj["0"];
+  if (!('0' in obj) || !('1' in obj)) return null;
+  const addresses = obj['0'];
   if (!Array.isArray(addresses)) return null;
-  return { addresses, hasMore: Boolean(obj["1"]) };
+  return { addresses, hasMore: Boolean(obj['1']) };
 }
 
 function tryParseNamedKeys(obj: Record<string, unknown>): PaginatedResult | null {
-  if (!("addresses" in obj) && !("active_markets" in obj)) return null;
-  const addresses = (obj["addresses"] ?? obj["active_markets"] ?? obj["markets"]) as unknown[];
-  const hasMore = Boolean(obj["has_more"] ?? obj["hasMore"] ?? false);
+  if (!('addresses' in obj) && !('active_markets' in obj)) return null;
+  const addresses = (obj['addresses'] ?? obj['active_markets'] ?? obj['markets']) as unknown[];
+  const hasMore = Boolean(obj['has_more'] ?? obj['hasMore'] ?? false);
   return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
 }
 
@@ -97,7 +97,7 @@ function parsePaginatedResult(result: unknown): PaginatedResult {
   const arrayResult = tryParseArrayTuple(result);
   if (arrayResult) return arrayResult;
 
-  if (result !== null && typeof result === "object") {
+  if (result !== null && typeof result === 'object') {
     const obj = result as Record<string, unknown>;
     return tryParseNumericKeys(obj) ?? tryParseNamedKeys(obj) ?? EMPTY_PAGINATED_RESULT;
   }
@@ -105,7 +105,9 @@ function parsePaginatedResult(result: unknown): PaginatedResult {
   return EMPTY_PAGINATED_RESULT;
 }
 
-async function fetchActiveMarketAddresses(network: ReturnType<typeof getNetworkId>): Promise<string[]> {
+async function fetchActiveMarketAddresses(
+  network: ReturnType<typeof getNetworkId>
+): Promise<string[]> {
   const provider = createProvider(network);
   const marketFactory = getMarketFactoryContract(provider, network);
   const allAddresses: string[] = [];
@@ -120,8 +122,8 @@ async function fetchActiveMarketAddresses(network: ReturnType<typeof getNetworkI
       .map(addressToHex)
       .filter(
         (addr) =>
-          addr !== "0x0" &&
-          addr !== "0x0000000000000000000000000000000000000000000000000000000000000000"
+          addr !== '0x0' &&
+          addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
       );
 
     allAddresses.push(...pageAddresses);
@@ -130,7 +132,7 @@ async function fetchActiveMarketAddresses(network: ReturnType<typeof getNetworkI
 
     // Safety limit
     if (offset > 1000) {
-      logWarn("Reached safety limit of 1000 markets", { module: "api/markets" });
+      logWarn('Reached safety limit of 1000 markets', { module: 'api/markets' });
       break;
     }
   }
@@ -148,8 +150,8 @@ export async function GET(_event: APIEvent): Promise<Response> {
     try {
       marketAddresses = await fetchActiveMarketAddresses(network);
     } catch (err) {
-      logWarn("Failed to fetch on-chain markets, using static config", {
-        module: "api/markets",
+      logWarn('Failed to fetch on-chain markets, using static config', {
+        module: 'api/markets',
         error: String(err),
       });
     }
@@ -159,7 +161,7 @@ export async function GET(_event: APIEvent): Promise<Response> {
 
     if (marketAddresses.length > 0) {
       // Normalize addresses for comparison
-      const normalizeAddr = (addr: string) => addr.toLowerCase().replace(/^0x0*/, "0x");
+      const normalizeAddr = (addr: string) => addr.toLowerCase().replace(/^0x0*/, '0x');
       const onChainSet = new Set(marketAddresses.map(normalizeAddr));
 
       markets = staticMarkets
@@ -198,7 +200,7 @@ export async function GET(_event: APIEvent): Promise<Response> {
 
     return jsonResponse(response);
   } catch (error) {
-    logError(error, { module: "api/markets", action: "GET" });
-    return errorResponse("Failed to fetch markets", "FETCH_ERROR", 500);
+    logError(error, { module: 'api/markets', action: 'GET' });
+    return errorResponse('Failed to fetch markets', 'FETCH_ERROR', 500);
   }
 }

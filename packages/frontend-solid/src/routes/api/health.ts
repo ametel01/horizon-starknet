@@ -1,6 +1,6 @@
-import type { APIEvent } from "@solidjs/start/server";
-import { getNetworkId, createProvider } from "@shared/starknet/provider";
-import { logError } from "@shared/server/logger";
+import { logError } from '@shared/server/logger';
+import { createProvider, getNetworkId } from '@shared/starknet/provider';
+import type { APIEvent } from '@solidjs/start/server';
 
 /**
  * Health Check Route
@@ -14,16 +14,16 @@ import { logError } from "@shared/server/logger";
  */
 
 interface HealthResponse {
-  status: "ok" | "degraded" | "error";
+  status: 'ok' | 'degraded' | 'error';
   network: string;
   timestamp: number;
   checks?: {
-    rpc?: "ok" | "error";
+    rpc?: 'ok' | 'error';
   };
 }
 
 interface ErrorResponse {
-  status: "error";
+  status: 'error';
   error: string;
   timestamp: number;
 }
@@ -31,18 +31,18 @@ interface ErrorResponse {
 export async function GET(_event: APIEvent): Promise<Response> {
   try {
     const network = getNetworkId();
-    let rpcStatus: "ok" | "error" = "ok";
+    let rpcStatus: 'ok' | 'error' = 'ok';
 
     // Check RPC connectivity by getting chain ID
     try {
       const provider = createProvider(network);
       await provider.getChainId();
     } catch {
-      rpcStatus = "error";
+      rpcStatus = 'error';
     }
 
     const response: HealthResponse = {
-      status: rpcStatus === "ok" ? "ok" : "degraded",
+      status: rpcStatus === 'ok' ? 'ok' : 'degraded',
       network,
       timestamp: Date.now(),
       checks: {
@@ -51,26 +51,26 @@ export async function GET(_event: APIEvent): Promise<Response> {
     };
 
     return new Response(JSON.stringify(response), {
-      status: rpcStatus === "ok" ? 200 : 503,
+      status: rpcStatus === 'ok' ? 200 : 503,
       headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store, no-cache, must-revalidate",
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
       },
     });
   } catch (error) {
-    logError(error, { module: "api/health", action: "GET" });
+    logError(error, { module: 'api/health', action: 'GET' });
 
     const response: ErrorResponse = {
-      status: "error",
-      error: "Health check failed",
+      status: 'error',
+      error: 'Health check failed',
       timestamp: Date.now(),
     };
 
     return new Response(JSON.stringify(response), {
       status: 500,
       headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store, no-cache, must-revalidate",
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
       },
     });
   }

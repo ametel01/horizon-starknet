@@ -70,9 +70,7 @@ export default function PortfolioPage(): JSX.Element {
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
-            <h2 class="text-foreground text-xl font-semibold">
-              Connect Your Wallet
-            </h2>
+            <h2 class="text-foreground text-xl font-semibold">Connect Your Wallet</h2>
             <p class="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
               {isSimple()
                 ? 'Connect your wallet to view your deposits and earnings.'
@@ -95,15 +93,10 @@ export default function PortfolioPage(): JSX.Element {
           <div class="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  {isSimple() ? 'Your Deposits' : 'Your Positions'}
-                </CardTitle>
+                <CardTitle>{isSimple() ? 'Your Deposits' : 'Your Positions'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <Show
-                  when={!isSimple()}
-                  fallback={<SimplePositionsList />}
-                >
+                <Show when={!isSimple()} fallback={<SimplePositionsList />}>
                   <PositionsTabs />
                 </Show>
               </CardContent>
@@ -174,9 +167,7 @@ function SimplePositionsList(): JSX.Element {
       <div class="space-y-4">
         <For each={positions}>
           {() => (
-            <div class="bg-muted/30 rounded-lg border p-4">
-              {/* Position card placeholder */}
-            </div>
+            <div class="bg-muted/30 rounded-lg border p-4">{/* Position card placeholder */}</div>
           )}
         </For>
       </div>
@@ -274,9 +265,7 @@ function PortfolioSummaryCard(props: PortfolioSummaryCardProps): JSX.Element {
   return (
     <Card>
       <CardHeader>
-        <CardTitle class="text-lg">
-          {props.isSimple ? 'Summary' : 'Portfolio Summary'}
-        </CardTitle>
+        <CardTitle class="text-lg">{props.isSimple ? 'Summary' : 'Portfolio Summary'}</CardTitle>
       </CardHeader>
       <CardContent>
         <div class="space-y-4">

@@ -8,15 +8,15 @@ import {
 } from '@shared/starknet/wallet';
 import type { StarknetWindowObject } from '@starknet-io/get-starknet';
 import {
+  type Accessor,
   createContext,
   createEffect,
   createMemo,
   createSignal,
   onCleanup,
   onMount,
-  useContext,
-  type Accessor,
   type ParentProps,
+  useContext,
 } from 'solid-js';
 import type { RpcProvider } from 'starknet';
 

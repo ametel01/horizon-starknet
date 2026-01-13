@@ -1,10 +1,4 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  type Accessor,
-} from 'solid-js';
+import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
 import { WalletAccount } from 'starknet';
 import { useStarknet } from './useStarknet';
 
@@ -51,6 +45,7 @@ export function useAccount(): UseAccountReturn {
       })
       .catch((error) => {
         if (!cancelled) {
+          // biome-ignore lint/suspicious/noConsole: intentional error logging for wallet connection failures
           console.error('Failed to create WalletAccount:', error);
           setAccount(null);
         }

@@ -1,9 +1,9 @@
-import type { APIEvent } from "@solidjs/start/server";
-import { getMarketInfoByAddress } from "@shared/config/addresses";
-import { getNetworkId, createProvider } from "@shared/starknet/provider";
-import { getMarketContract } from "@shared/starknet/contracts";
-import { logError } from "@shared/server/logger";
-import { uint256 } from "starknet";
+import { getMarketInfoByAddress } from '@shared/config/addresses';
+import { logError } from '@shared/server/logger';
+import { getMarketContract } from '@shared/starknet/contracts';
+import { createProvider, getNetworkId } from '@shared/starknet/provider';
+import type { APIEvent } from '@solidjs/start/server';
+import { uint256 } from 'starknet';
 
 /**
  * Single Market API Route
@@ -50,8 +50,8 @@ function jsonResponse<T>(data: T, status: number = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=15, stale-while-revalidate=30",
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=15, stale-while-revalidate=30',
     },
   });
 }
@@ -61,22 +61,22 @@ function errorResponse(message: string, code: string, status: number): Response 
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
     },
   });
 }
 
 function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === "bigint") {
+  if (typeof value === 'bigint') {
     return value;
   }
   return uint256.uint256ToBN(value);
 }
 
 function toHexAddress(value: unknown): string {
-  if (typeof value === "bigint") {
-    return `0x${value.toString(16).padStart(64, "0")}`;
+  if (typeof value === 'bigint') {
+    return `0x${value.toString(16).padStart(64, '0')}`;
   }
   return String(value);
 }
@@ -87,14 +87,14 @@ function isValidAddress(address: string): boolean {
 
 export async function GET(event: APIEvent): Promise<Response> {
   const { params } = event;
-  const address = params["address"];
+  const address = params['address'];
 
   if (!address) {
-    return errorResponse("Market address is required", "MISSING_ADDRESS", 400);
+    return errorResponse('Market address is required', 'MISSING_ADDRESS', 400);
   }
 
   if (!isValidAddress(address)) {
-    return errorResponse("Invalid market address format", "INVALID_ADDRESS", 400);
+    return errorResponse('Invalid market address format', 'INVALID_ADDRESS', 400);
   }
 
   try {
@@ -170,14 +170,17 @@ export async function GET(event: APIEvent): Promise<Response> {
 
     return jsonResponse(response);
   } catch (error) {
-    logError(error, { module: "api/markets/[address]", action: "GET", address });
+    logError(error, { module: 'api/markets/[address]', action: 'GET', address });
 
     // Check if it's a contract not found error
     const errorMessage = String(error);
-    if (errorMessage.includes("Contract not found") || errorMessage.includes("StarknetErrorCode.UNINITIALIZED_CONTRACT")) {
-      return errorResponse("Market not found", "NOT_FOUND", 404);
+    if (
+      errorMessage.includes('Contract not found') ||
+      errorMessage.includes('StarknetErrorCode.UNINITIALIZED_CONTRACT')
+    ) {
+      return errorResponse('Market not found', 'NOT_FOUND', 404);
     }
 
-    return errorResponse("Failed to fetch market data", "FETCH_ERROR", 500);
+    return errorResponse('Failed to fetch market data', 'FETCH_ERROR', 500);
   }
 }

@@ -2,7 +2,7 @@ import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getRouterContract } from '@shared/starknet/contracts';
 import { createMutation, useQueryClient } from '@tanstack/solid-query';
-import { createMemo, type Accessor } from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { type Call, uint256 } from 'starknet';
 
 import { useAccount, useStarknet } from '@/features/wallet';
@@ -196,6 +196,7 @@ export function useMint(): UseMintReturn {
     /**
      * Rollback optimistic update on error
      */
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: rollback logic requires multiple cache restorations
     onError: (_err: Error, _params: MintParams, context: OptimisticContext | undefined) => {
       const currentAddress = address();
 

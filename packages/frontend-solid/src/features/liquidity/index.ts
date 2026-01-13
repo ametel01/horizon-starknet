@@ -2,16 +2,16 @@
 
 // Model (hooks and types)
 export {
-  useAddLiquidity,
-  useRemoveLiquidity,
+  type AddLiquidityParams,
+  calculateBalancedAmounts,
   calculateMinLpOut,
   calculateMinOutputs,
-  calculateBalancedAmounts,
-  type AddLiquidityParams,
-  type RemoveLiquidityParams,
   type LiquidityResult,
+  type RemoveLiquidityParams,
   type UseAddLiquidityReturn,
   type UseRemoveLiquidityReturn,
+  useAddLiquidity,
+  useRemoveLiquidity,
 } from './model/useLiquidity';
 
 // UI (components)

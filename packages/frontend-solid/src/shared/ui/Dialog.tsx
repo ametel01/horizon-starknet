@@ -46,13 +46,7 @@ type DialogTriggerProps = ComponentProps<typeof Dialog.Trigger>;
 function DialogTrigger(props: DialogTriggerProps): JSX.Element {
   const [local, others] = splitProps(props, ['class']);
 
-  return (
-    <Dialog.Trigger
-      data-slot="dialog-trigger"
-      class={cn(local.class)}
-      {...others}
-    />
-  );
+  return <Dialog.Trigger data-slot="dialog-trigger" class={cn(local.class)} {...others} />;
 }
 
 type DialogPortalProps = ComponentProps<typeof Dialog.Portal>;
@@ -66,13 +60,7 @@ type DialogCloseProps = ComponentProps<typeof Dialog.CloseButton>;
 function DialogClose(props: DialogCloseProps): JSX.Element {
   const [local, others] = splitProps(props, ['class']);
 
-  return (
-    <Dialog.CloseButton
-      data-slot="dialog-close"
-      class={cn(local.class)}
-      {...others}
-    />
-  );
+  return <Dialog.CloseButton data-slot="dialog-close" class={cn(local.class)} {...others} />;
 }
 
 type DialogOverlayProps = ComponentProps<typeof Dialog.Overlay>;
@@ -146,11 +134,7 @@ function DialogHeader(props: DialogHeaderProps): JSX.Element {
   const [local, others] = splitProps(props, ['class']);
 
   return (
-    <div
-      data-slot="dialog-header"
-      class={cn('flex flex-col gap-2', local.class)}
-      {...others}
-    />
+    <div data-slot="dialog-header" class={cn('flex flex-col gap-2', local.class)} {...others} />
   );
 }
 

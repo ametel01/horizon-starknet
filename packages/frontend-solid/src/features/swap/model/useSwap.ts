@@ -2,7 +2,7 @@ import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getRouterContract } from '@shared/starknet/contracts';
 import { createMutation, useQueryClient } from '@tanstack/solid-query';
-import { createMemo, type Accessor } from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { type Call, uint256 } from 'starknet';
 
 import { useAccount, useStarknet } from '@/features/wallet';

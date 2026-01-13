@@ -1,5 +1,5 @@
 import { useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, on, type JSX, Show } from 'solid-js';
+import { createEffect, createMemo, type JSX, on, Show } from 'solid-js';
 
 import { type MarketData, useDashboardMarkets } from '@/features/markets';
 import { SwapForm } from '@/features/swap';
@@ -109,9 +109,7 @@ export default function TradePage(): JSX.Element {
           <div class="lg:col-span-2">
             <Card>
               <CardHeader class="flex flex-row items-center justify-between gap-4">
-                <CardTitle>
-                  {isSimple() ? 'Trade Tokens' : 'Swap'}
-                </CardTitle>
+                <CardTitle>{isSimple() ? 'Trade Tokens' : 'Swap'}</CardTitle>
 
                 {/* Market Selector */}
                 <MarketSelector
@@ -194,9 +192,7 @@ function MarketSelector(props: MarketSelectorProps): JSX.Element {
       )}
     >
       <SelectTrigger class="w-48">
-        <SelectValue placeholder="Select a market">
-          {selectedLabel()}
-        </SelectValue>
+        <SelectValue placeholder="Select a market">{selectedLabel()}</SelectValue>
       </SelectTrigger>
       <SelectContent />
     </SelectRoot>
@@ -244,9 +240,7 @@ function MarketInfoCard(props: MarketInfoCardProps): JSX.Element {
             <span class="text-muted-foreground text-sm">
               {props.isSimple ? 'Fixed Yield' : 'Implied APY'}
             </span>
-            <span class="text-primary font-mono font-semibold">
-              {apy().toFixed(2)}%
-            </span>
+            <span class="text-primary font-mono font-semibold">{apy().toFixed(2)}%</span>
           </div>
 
           {/* Expiry */}

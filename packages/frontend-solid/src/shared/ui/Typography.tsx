@@ -104,7 +104,10 @@ function Metric(props: MetricProps): JSX.Element {
   }
 
   return (
-    <span class={cn('metric', metricSizes[size()], metricVariants[variant()], local.class)} {...others}>
+    <span
+      class={cn('metric', metricSizes[size()], metricVariants[variant()], local.class)}
+      {...others}
+    >
       {local.children}
     </span>
   );

@@ -1,7 +1,3 @@
-import { createEffect, createMemo, createSignal, For, on, Show, type JSX } from 'solid-js';
-
-import { type MarketData } from '@/features/markets';
-import { useStarknet } from '@/features/wallet';
 import { cn } from '@shared/lib/utils';
 import { formatWad, fromWad, parseWad } from '@shared/math/wad';
 import { createAnimatedNumber } from '@shared/ui/AnimatedNumber';
@@ -16,6 +12,9 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { createEffect, createMemo, createSignal, For, type JSX, on, Show } from 'solid-js';
+import type { MarketData } from '@/features/markets';
+import { useStarknet } from '@/features/wallet';
 
 import {
   calculateBalancedAmounts,
@@ -222,10 +221,7 @@ function LpOutput(props: LpOutputProps): JSX.Element {
         </div>
 
         <div class="flex min-w-0 items-center gap-2">
-          <Show
-            when={!props.isLoading}
-            fallback={<Skeleton class="h-8 min-w-0 flex-1" />}
-          >
+          <Show when={!props.isLoading} fallback={<Skeleton class="h-8 min-w-0 flex-1" />}>
             <span class="text-foreground min-w-0 flex-1 truncate font-mono text-2xl font-semibold tabular-nums">
               {formattedAmount()}
             </span>
@@ -395,10 +391,7 @@ export function AddLiquidityForm(props: AddLiquidityFormProps): JSX.Element {
   return (
     <FormLayout gradient="primary" class={props.class}>
       {/* Header */}
-      <FormHeader
-        title="Add Liquidity"
-        description="Provide SY and PT to earn trading fees"
-      />
+      <FormHeader title="Add Liquidity" description="Provide SY and PT to earn trading fees" />
 
       {/* Balanced Mode Toggle */}
       <div class="flex items-center gap-3">
@@ -449,11 +442,7 @@ export function AddLiquidityForm(props: AddLiquidityFormProps): JSX.Element {
       </FormInputSection>
 
       {/* Output Preview */}
-      <LpOutput
-        amount={expectedLpOut()}
-        minAmount={minLpOut()}
-        isValid={isValidAmount()}
-      />
+      <LpOutput amount={expectedLpOut()} minAmount={minLpOut()} isValid={isValidAmount()} />
 
       {/* Pool Info */}
       <FormInfoSection>
@@ -461,10 +450,7 @@ export function AddLiquidityForm(props: AddLiquidityFormProps): JSX.Element {
           label="Share of Pool"
           value={isValidAmount() ? `${poolShare().toFixed(4)}%` : '-'}
         />
-        <FormRow
-          label="Slippage Tolerance"
-          value={`${(slippageBps() / 100).toString()}%`}
-        />
+        <FormRow label="Slippage Tolerance" value={`${(slippageBps() / 100).toString()}%`} />
       </FormInfoSection>
 
       {/* Slippage Settings */}

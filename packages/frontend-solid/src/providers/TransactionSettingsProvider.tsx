@@ -1,11 +1,11 @@
 import {
+  type Accessor,
   createContext,
   createMemo,
   createSignal,
   onMount,
-  useContext,
-  type Accessor,
   type ParentProps,
+  useContext,
 } from 'solid-js';
 import { isServer } from 'solid-js/web';
 
@@ -172,7 +172,8 @@ export function TransactionSettingsProvider(
 ): ReturnType<typeof TransactionSettingsContext.Provider> {
   // Initialize with defaults, actual values loaded on mount to avoid SSR mismatch
   const [slippageBps, setSlippageBpsSignal] = createSignal<number>(DEFAULT_SLIPPAGE_BPS);
-  const [deadlineMinutes, setDeadlineMinutesSignal] = createSignal<number>(DEFAULT_DEADLINE_MINUTES);
+  const [deadlineMinutes, setDeadlineMinutesSignal] =
+    createSignal<number>(DEFAULT_DEADLINE_MINUTES);
 
   // Computed values using createMemo for reactive computed values
   const slippageDecimal = createMemo(() => slippageBps() / 10000);

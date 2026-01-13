@@ -1,6 +1,3 @@
-import { useDashboardMarkets } from '@/features/markets';
-import { usePortfolio } from '@/features/portfolio';
-import { useAccount } from '@/features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
@@ -17,6 +14,9 @@ import {
   onCleanup,
   Show,
 } from 'solid-js';
+import { useDashboardMarkets } from '@/features/markets';
+import { usePortfolio } from '@/features/portfolio';
+import { useAccount } from '@/features/wallet';
 
 // ============================================
 // Inline SVG Icons
@@ -455,7 +455,9 @@ export function PortfolioValueChart(props: PortfolioValueChartProps): JSX.Elemen
 
   // Loading state
   if (isLoading() || marketsLoading()) {
-    return <ChartSkeleton class={props.class} height={height()} chartType="area" showHeader showFooter />;
+    return (
+      <ChartSkeleton class={props.class} height={height()} chartType="area" showHeader showFooter />
+    );
   }
 
   // Error state

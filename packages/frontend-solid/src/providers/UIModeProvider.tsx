@@ -1,11 +1,11 @@
 import {
+  type Accessor,
   createContext,
   createMemo,
   createSignal,
   onMount,
-  useContext,
-  type Accessor,
   type ParentProps,
+  useContext,
 } from 'solid-js';
 import { isServer } from 'solid-js/web';
 
@@ -54,7 +54,9 @@ export interface UIModeProviderProps extends ParentProps {
   defaultMode?: UIMode;
 }
 
-export function UIModeProvider(props: UIModeProviderProps): ReturnType<typeof UIModeContext.Provider> {
+export function UIModeProvider(
+  props: UIModeProviderProps
+): ReturnType<typeof UIModeContext.Provider> {
   const defaultMode = props.defaultMode ?? 'simple';
 
   // Initialize with default, actual value loaded on mount to avoid SSR mismatch

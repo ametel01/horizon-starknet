@@ -1,5 +1,13 @@
 import { cn } from '@shared/lib/utils';
-import { type Accessor, createEffect, createMemo, createSignal, on, onCleanup, type JSX } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  type JSX,
+  on,
+  onCleanup,
+} from 'solid-js';
 
 export interface UseAnimatedNumberOptions {
   /** Duration of animation in ms */
@@ -150,14 +158,17 @@ export function AnimatedNumber(props: AnimatedNumberProps): JSX.Element {
   const easing = () => props.easing ?? easings.easeOut;
   const highlightChange = () => props.highlightChange ?? false;
 
-  const animatedValue = createAnimatedNumber(
-    () => props.value,
-    {
-      get duration() { return duration(); },
-      get delay() { return delay(); },
-      get easing() { return easing(); },
-    }
-  );
+  const animatedValue = createAnimatedNumber(() => props.value, {
+    get duration() {
+      return duration();
+    },
+    get delay() {
+      return delay();
+    },
+    get easing() {
+      return easing();
+    },
+  });
 
   const [isChanging, setIsChanging] = createSignal(false);
   const [changeDirection, setChangeDirection] = createSignal<'up' | 'down' | null>(null);

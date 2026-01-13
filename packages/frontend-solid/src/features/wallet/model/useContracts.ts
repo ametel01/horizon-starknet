@@ -1,4 +1,3 @@
-import { createMemo, type Accessor } from 'solid-js';
 import {
   getFactoryContract,
   getMarketContract,
@@ -15,6 +14,7 @@ import {
   type TypedSY,
   type TypedYT,
 } from '@shared/starknet/contracts';
+import { type Accessor, createMemo } from 'solid-js';
 import { useAccount } from './useAccount';
 import { useStarknet } from './useStarknet';
 

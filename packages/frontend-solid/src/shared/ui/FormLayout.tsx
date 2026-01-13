@@ -174,7 +174,13 @@ interface FormRowProps extends ComponentProps<'div'> {
 }
 
 function FormRow(props: FormRowProps): JSX.Element {
-  const [local, others] = splitProps(props, ['class', 'label', 'value', 'labelClass', 'valueClass']);
+  const [local, others] = splitProps(props, [
+    'class',
+    'label',
+    'value',
+    'labelClass',
+    'valueClass',
+  ]);
 
   return (
     <div class={cn('flex items-center justify-between gap-2', local.class)} {...others}>

@@ -1,6 +1,6 @@
 import { getFaucetInfo } from '@shared/config/addresses';
 import { createMutation, createQuery, useQueryClient } from '@tanstack/solid-query';
-import { createMemo, type Accessor } from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { type Call, Contract, type ProviderInterface } from 'starknet';
 
 import { useAccount, useStarknet } from '@/features/wallet';
@@ -95,7 +95,6 @@ export function useFaucet(): UseFaucetReturn {
       }
 
       const faucet = getFaucetContract(info.faucetAddress, provider);
-      // biome-ignore lint/complexity/useLiteralKeys: Contract methods are dynamically typed from ABI
       const result = await faucet['can_mint'](currentAddress);
       // Starknet returns booleans as bigint (0n/1n) for untyped contracts
       return result === 1n || result === true;

@@ -1,11 +1,8 @@
-import { useDashboardMarkets } from '@/features/markets';
-import { type MarketPosition, useActivePositions } from '@/features/portfolio';
-import { useAccount } from '@/features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { ChartSkeleton } from '@shared/ui/Skeleton';
-import { TabsRoot, TabsList, TabsTrigger, TabsContent } from '@shared/ui/Tabs';
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@shared/ui/Tabs';
 import {
   createEffect,
   createMemo,
@@ -16,6 +13,9 @@ import {
   onCleanup,
   Show,
 } from 'solid-js';
+import { useDashboardMarkets } from '@/features/markets';
+import { type MarketPosition, useActivePositions } from '@/features/portfolio';
+import { useAccount } from '@/features/wallet';
 
 // ============================================
 // Inline SVG Icons
@@ -448,7 +448,9 @@ export function PositionPnlTimeline(props: PositionPnlTimelineProps): JSX.Elemen
 
   // Loading state
   if (isLoading() || marketsLoading()) {
-    return <ChartSkeleton class={props.class} height={height()} chartType="area" showHeader showFooter />;
+    return (
+      <ChartSkeleton class={props.class} height={height()} chartType="area" showHeader showFooter />
+    );
   }
 
   // Error state
@@ -558,9 +560,7 @@ export function PositionPnlTimeline(props: PositionPnlTimelineProps): JSX.Elemen
               <ClockIcon class="h-3 w-3" />
               Positions
             </div>
-            <div class="text-foreground font-mono font-semibold">
-              {summary().totalPositions}
-            </div>
+            <div class="text-foreground font-mono font-semibold">{summary().totalPositions}</div>
           </div>
           <div class="text-center">
             <div class="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">

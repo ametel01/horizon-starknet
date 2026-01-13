@@ -1,8 +1,9 @@
-import { MetaProvider, Title } from "@solidjs/meta";
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { Suspense } from "solid-js";
-import "./app.css";
+import { MetaProvider, Title } from '@solidjs/meta';
+import { Router } from '@solidjs/router';
+import { FileRoutes } from '@solidjs/start/router';
+import { Suspense } from 'solid-js';
+import './app.css';
+import { Providers } from './providers';
 
 export default function App() {
   return (
@@ -10,7 +11,9 @@ export default function App() {
       root={(props) => (
         <MetaProvider>
           <Title>Horizon Protocol</Title>
-          <Suspense>{props.children}</Suspense>
+          <Providers>
+            <Suspense>{props.children}</Suspense>
+          </Providers>
         </MetaProvider>
       )}
     >

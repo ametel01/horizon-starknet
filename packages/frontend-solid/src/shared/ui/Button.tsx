@@ -130,10 +130,7 @@ function Button(props: ButtonProps): JSX.Element {
       disabled={isDisabled()}
       {...others}
     >
-      <Show
-        when={local.loading}
-        fallback={local.children}
-      >
+      <Show when={local.loading} fallback={local.children}>
         <Loader2 class="animate-spin" />
         <span>{local.loadingText ?? local.children}</span>
       </Show>

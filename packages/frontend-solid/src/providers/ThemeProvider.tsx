@@ -1,12 +1,12 @@
 import {
+  type Accessor,
   createContext,
   createEffect,
   createSignal,
   onCleanup,
   onMount,
-  useContext,
-  type Accessor,
   type ParentProps,
+  useContext,
 } from 'solid-js';
 import { isServer } from 'solid-js/web';
 

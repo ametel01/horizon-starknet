@@ -1,6 +1,6 @@
 import { Slider as SliderPrimitive } from '@kobalte/core/slider';
 import { cn } from '@shared/lib/utils';
-import { type ComponentProps, type JSX, For, splitProps, createMemo } from 'solid-js';
+import { type ComponentProps, createMemo, For, type JSX, splitProps } from 'solid-js';
 
 type SliderRootProps = ComponentProps<typeof SliderPrimitive> & {
   /** Default value for uncontrolled slider */

@@ -1,8 +1,7 @@
-import { useDashboardMarkets } from '@/features/markets';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { ChartSkeleton } from '@shared/ui/Skeleton';
-import { Sparkline, MiniBarChart } from '@shared/ui/Sparkline';
+import { Sparkline } from '@shared/ui/Sparkline';
 import {
   createEffect,
   createMemo,
@@ -13,6 +12,7 @@ import {
   onCleanup,
   Show,
 } from 'solid-js';
+import { useDashboardMarkets } from '@/features/markets';
 
 // ============================================
 // Inline SVG Icons
@@ -99,29 +99,6 @@ function TrendingUpIcon(props: JSX.SvgSVGAttributes<SVGSVGElement>): JSX.Element
     >
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
       <polyline points="16 7 22 7 22 13" />
-    </svg>
-  );
-}
-
-function CalendarIcon(props: JSX.SvgSVGAttributes<SVGSVGElement>): JSX.Element {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-      <line x1="16" x2="16" y1="2" y2="6" />
-      <line x1="8" x2="8" y1="2" y2="6" />
-      <line x1="3" x2="21" y1="10" y2="10" />
     </svg>
   );
 }
@@ -408,7 +385,9 @@ export function TvlChart(props: TvlChartProps): JSX.Element {
 
   // Loading state
   if (isLoading()) {
-    return <ChartSkeleton class={props.class} height={height()} chartType="area" showHeader showFooter />;
+    return (
+      <ChartSkeleton class={props.class} height={height()} chartType="area" showHeader showFooter />
+    );
   }
 
   // Empty state
@@ -515,7 +494,7 @@ export function TvlSparkline(props: TvlSparklineProps): JSX.Element {
     const current = tvl();
     if (current === 0) return [];
     // Generate simple trend data
-    return Array.from({ length: 7 }, (_, i) => current * (0.9 + Math.random() * 0.15));
+    return Array.from({ length: 7 }, () => current * (0.9 + Math.random() * 0.15));
   });
 
   return (
@@ -527,7 +506,7 @@ export function TvlSparkline(props: TvlSparklineProps): JSX.Element {
         color="primary"
         showFill
         animated
-        class={props.class}
+        {...(props.class ? { class: props.class } : {})}
       />
     </Show>
   );

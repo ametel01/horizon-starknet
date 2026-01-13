@@ -29,10 +29,7 @@ function Switch(props: SwitchProps): JSX.Element {
       {...others}
     >
       <SwitchPrimitive.Input class="peer" />
-      <SwitchPrimitive.Control
-        data-slot="switch-control"
-        class="h-full w-full"
-      >
+      <SwitchPrimitive.Control data-slot="switch-control" class="h-full w-full">
         <SwitchPrimitive.Thumb
           data-slot="switch-thumb"
           class="dark:bg-foreground dark:group-data-[checked]/switch:bg-primary-foreground bg-background pointer-events-none block rounded-full ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-[checked]:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-[checked]:translate-x-[calc(100%-2px)] group-data-[size=default]/switch:data-[unchecked]:translate-x-0 group-data-[size=sm]/switch:data-[unchecked]:translate-x-0"

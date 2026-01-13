@@ -1,7 +1,3 @@
-import { createEffect, createMemo, createSignal, on, type JSX, Show } from 'solid-js';
-
-import { type MarketData } from '@/features/markets';
-import { useStarknet } from '@/features/wallet';
 import { getMarketParams } from '@shared/config/addresses';
 import { cn } from '@shared/lib/utils';
 import { type MarketState as AmmMarketState, getImpliedApy } from '@shared/math/amm';
@@ -18,8 +14,11 @@ import {
 } from '@shared/ui/FormLayout';
 import { NumberInput } from '@shared/ui/Input';
 import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
-import { ToggleGroup, ToggleGroupItem } from '@shared/ui/ToggleGroup';
 import { toast } from '@shared/ui/Toaster';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/ToggleGroup';
+import { createEffect, createMemo, createSignal, type JSX, on, Show } from 'solid-js';
+import type { MarketData } from '@/features/markets';
+import { useStarknet } from '@/features/wallet';
 
 import {
   calculateSwapQuote,
@@ -127,16 +126,18 @@ export function SwapForm(props: SwapFormProps): JSX.Element {
   const isValidAmount = createMemo(() => parsedInputAmount() > 0n);
 
   // Build AMM market state for accurate calculations
-  const ammState = createMemo((): AmmMarketState => ({
-    syReserve: props.market.state.syReserve,
-    ptReserve: props.market.state.ptReserve,
-    totalLp: props.market.state.totalLpSupply,
-    scalarRoot: marketParams().scalarRoot,
-    initialAnchor: props.market.metadata?.initialAnchor ?? props.market.state.lnImpliedRate,
-    feeRate: marketParams().feeRate,
-    expiry: BigInt(props.market.expiry),
-    lastLnImpliedRate: props.market.state.lnImpliedRate,
-  }));
+  const ammState = createMemo(
+    (): AmmMarketState => ({
+      syReserve: props.market.state.syReserve,
+      ptReserve: props.market.state.ptReserve,
+      totalLp: props.market.state.totalLpSupply,
+      scalarRoot: marketParams().scalarRoot,
+      initialAnchor: props.market.metadata?.initialAnchor ?? props.market.state.lnImpliedRate,
+      feeRate: marketParams().feeRate,
+      expiry: BigInt(props.market.expiry),
+      lastLnImpliedRate: props.market.state.lnImpliedRate,
+    })
+  );
 
   // Calculate swap quote using extracted pure function
   const swapResult = createMemo(() =>
@@ -165,14 +166,16 @@ export function SwapForm(props: SwapFormProps): JSX.Element {
   });
 
   // Price impact severity
-  const priceImpactSeverity = createMemo((): 'low' | 'medium' | 'high' | 'very-high' | 'extreme' => {
-    const impact = priceImpact();
-    if (impact < 0.01) return 'low';
-    if (impact < 0.03) return 'medium';
-    if (impact < 0.05) return 'high';
-    if (impact < 0.1) return 'very-high';
-    return 'extreme';
-  });
+  const priceImpactSeverity = createMemo(
+    (): 'low' | 'medium' | 'high' | 'very-high' | 'extreme' => {
+      const impact = priceImpact();
+      if (impact < 0.01) return 'low';
+      if (impact < 0.03) return 'medium';
+      if (impact < 0.05) return 'high';
+      if (impact < 0.1) return 'very-high';
+      return 'extreme';
+    }
+  );
 
   // Calculate implied APY change and derive display properties
   const impliedApyBefore = createMemo(() => getImpliedApy(props.market.state.lnImpliedRate));
@@ -197,8 +200,8 @@ export function SwapForm(props: SwapFormProps): JSX.Element {
 
   // Price impact warning state
   const priceImpactCanProceed = createMemo(() => priceImpactSeverity() !== 'extreme');
-  const priceImpactRequiresAck = createMemo(() =>
-    priceImpactSeverity() === 'high' || priceImpactSeverity() === 'very-high'
+  const priceImpactRequiresAck = createMemo(
+    () => priceImpactSeverity() === 'high' || priceImpactSeverity() === 'very-high'
   );
   const [priceImpactAcknowledged, setPriceImpactAcknowledged] = createSignal(false);
 
@@ -486,8 +489,8 @@ export function SwapForm(props: SwapFormProps): JSX.Element {
         <div class="bg-warning/10 border-warning/30 text-warning-foreground rounded-lg border p-3 text-sm">
           <p class="font-medium">Collateral Required</p>
           <p class="text-warning-foreground/80 mt-1">
-            Selling YT requires {formatWad(collateralRequired(), 2)} {syLabel()} as collateral.
-            This will be returned after the swap.
+            Selling YT requires {formatWad(collateralRequired(), 2)} {syLabel()} as collateral. This
+            will be returned after the swap.
           </p>
         </div>
       </Show>
@@ -508,9 +511,7 @@ export function SwapForm(props: SwapFormProps): JSX.Element {
           <Show when={isSuccess()}>
             <p class="text-success font-medium">Swap successful!</p>
             <Show when={transactionHash()}>
-              <p class="text-success/80 mt-1 truncate text-xs">
-                Tx: {transactionHash()}
-              </p>
+              <p class="text-success/80 mt-1 truncate text-xs">Tx: {transactionHash()}</p>
             </Show>
           </Show>
           <Show when={isError()}>

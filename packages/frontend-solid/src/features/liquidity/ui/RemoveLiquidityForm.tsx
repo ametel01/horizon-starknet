@@ -1,7 +1,3 @@
-import { createEffect, createMemo, createSignal, For, on, Show, type JSX } from 'solid-js';
-
-import { type MarketData } from '@/features/markets';
-import { useStarknet } from '@/features/wallet';
 import { cn } from '@shared/lib/utils';
 import { formatWad, fromWad, parseWad } from '@shared/math/wad';
 import { createAnimatedNumber } from '@shared/ui/AnimatedNumber';
@@ -16,6 +12,9 @@ import {
   FormRow,
 } from '@shared/ui/FormLayout';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { createEffect, createMemo, createSignal, For, type JSX, on, Show } from 'solid-js';
+import type { MarketData } from '@/features/markets';
+import { useStarknet } from '@/features/wallet';
 
 import { calculateMinOutputs, useRemoveLiquidity } from '../model/useLiquidity';
 
@@ -207,10 +206,7 @@ function OutputPreviewRow(props: OutputPreviewRowProps): JSX.Element {
   return (
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <Show
-          when={!props.isLoading}
-          fallback={<Skeleton class="h-6 w-24" />}
-        >
+        <Show when={!props.isLoading} fallback={<Skeleton class="h-6 w-24" />}>
           <span
             class={cn(
               'font-mono text-lg font-semibold tabular-nums',
@@ -307,9 +303,7 @@ export function RemoveLiquidityForm(props: RemoveLiquidityFormProps): JSX.Elemen
   // Validation
   const isValidAmount = createMemo(() => parsedLpAmount() > 0n);
 
-  const buttonDisabled = createMemo(
-    () => !isConnected() || !isValidAmount() || isRemoving()
-  );
+  const buttonDisabled = createMemo(() => !isConnected() || !isValidAmount() || isRemoving());
 
   const buttonText = createMemo(() => {
     if (!isConnected()) return 'Connect Wallet';
@@ -364,10 +358,7 @@ export function RemoveLiquidityForm(props: RemoveLiquidityFormProps): JSX.Elemen
   return (
     <FormLayout gradient="primary" class={props.class}>
       {/* Header */}
-      <FormHeader
-        title="Remove Liquidity"
-        description="Burn LP tokens to receive SY and PT"
-      />
+      <FormHeader title="Remove Liquidity" description="Burn LP tokens to receive SY and PT" />
 
       {/* Input Section */}
       <FormInputSection>
@@ -424,10 +415,7 @@ export function RemoveLiquidityForm(props: RemoveLiquidityFormProps): JSX.Elemen
           label="Pool Share Removed"
           value={isValidAmount() ? `${poolShareRemoved().toFixed(4)}%` : '-'}
         />
-        <FormRow
-          label="Slippage Tolerance"
-          value={`${(slippageBps() / 100).toString()}%`}
-        />
+        <FormRow label="Slippage Tolerance" value={`${(slippageBps() / 100).toString()}%`} />
       </FormInfoSection>
 
       {/* Slippage Settings */}

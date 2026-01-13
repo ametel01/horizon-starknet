@@ -1,17 +1,8 @@
-import { useDashboardMarkets } from '@/features/markets';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { ChartSkeleton } from '@shared/ui/Skeleton';
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  createUniqueId,
-  For,
-  type JSX,
-  onCleanup,
-  Show,
-} from 'solid-js';
+import { createEffect, createMemo, createSignal, For, type JSX, onCleanup } from 'solid-js';
+import { useDashboardMarkets } from '@/features/markets';
 
 // ============================================
 // Inline SVG Icons
@@ -100,29 +91,6 @@ function ArrowLeftRightIcon(props: JSX.SvgSVGAttributes<SVGSVGElement>): JSX.Ele
       <path d="M4 7h16" />
       <path d="m16 21 4-4-4-4" />
       <path d="M20 17H4" />
-    </svg>
-  );
-}
-
-function UsersIcon(props: JSX.SvgSVGAttributes<SVGSVGElement>): JSX.Element {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
 }
@@ -416,7 +384,9 @@ export function VolumeChart(props: VolumeChartProps): JSX.Element {
 
   // Loading state
   if (isLoading()) {
-    return <ChartSkeleton class={props.class} height={height()} chartType="bar" showHeader showFooter />;
+    return (
+      <ChartSkeleton class={props.class} height={height()} chartType="bar" showHeader showFooter />
+    );
   }
 
   // Empty state
@@ -567,7 +537,15 @@ export function VolumeStackedChart(props: VolumeStackedChartProps): JSX.Element 
   });
 
   if (isLoading()) {
-    return <ChartSkeleton class={props.class} height={height()} chartType="bar" showHeader showFooter={false} />;
+    return (
+      <ChartSkeleton
+        class={props.class}
+        height={height()}
+        chartType="bar"
+        showHeader
+        showFooter={false}
+      />
+    );
   }
 
   if (chartData().length === 0) {
@@ -603,11 +581,17 @@ export function VolumeStackedChart(props: VolumeStackedChartProps): JSX.Element 
         </div>
         <div class="flex items-center gap-3 text-xs">
           <span class="flex items-center gap-1">
-            <span class="h-2 w-2 rounded-sm" style={{ 'background-color': 'var(--chart-1, var(--primary))' }} />
+            <span
+              class="h-2 w-2 rounded-sm"
+              style={{ 'background-color': 'var(--chart-1, var(--primary))' }}
+            />
             SY
           </span>
           <span class="flex items-center gap-1">
-            <span class="h-2 w-2 rounded-sm" style={{ 'background-color': 'var(--chart-3, var(--muted-foreground))' }} />
+            <span
+              class="h-2 w-2 rounded-sm"
+              style={{ 'background-color': 'var(--chart-3, var(--muted-foreground))' }}
+            />
             PT
           </span>
         </div>
@@ -621,7 +605,10 @@ export function VolumeStackedChart(props: VolumeStackedChartProps): JSX.Element 
         <div class="border-border/50 mt-4 grid grid-cols-2 gap-4 border-t pt-4">
           <div class="text-center">
             <div class="mb-1 flex items-center justify-center gap-1 text-xs">
-              <span class="h-2 w-2 rounded-sm" style={{ 'background-color': 'var(--chart-1, var(--primary))' }} />
+              <span
+                class="h-2 w-2 rounded-sm"
+                style={{ 'background-color': 'var(--chart-1, var(--primary))' }}
+              />
               <span class="text-muted-foreground">SY Volume (7d)</span>
             </div>
             <div class="text-foreground font-mono text-lg font-semibold">
@@ -630,7 +617,10 @@ export function VolumeStackedChart(props: VolumeStackedChartProps): JSX.Element 
           </div>
           <div class="text-center">
             <div class="mb-1 flex items-center justify-center gap-1 text-xs">
-              <span class="h-2 w-2 rounded-sm" style={{ 'background-color': 'var(--chart-3, var(--muted-foreground))' }} />
+              <span
+                class="h-2 w-2 rounded-sm"
+                style={{ 'background-color': 'var(--chart-3, var(--muted-foreground))' }}
+              />
               <span class="text-muted-foreground">PT Volume (7d)</span>
             </div>
             <div class="text-foreground font-mono text-lg font-semibold">
@@ -685,7 +675,6 @@ function StackedBarChart(props: StackedBarChartProps): JSX.Element {
     const barGap = (chartWidth / data.length) * 0.3;
 
     return data.map((d, i) => {
-      const total = d.syVolume + d.ptVolume;
       const syHeight = (d.syVolume / max) * chartHeight;
       const ptHeight = (d.ptVolume / max) * chartHeight;
       const baseY = paddingY + chartHeight;

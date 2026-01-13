@@ -1,9 +1,9 @@
-import { useDashboardMarkets } from '@/features/markets';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
-import { StatCard, StatCardGrid } from '@shared/ui/StatCard';
 import { StatCardSkeleton } from '@shared/ui/Skeleton';
+import { StatCard, StatCardGrid } from '@shared/ui/StatCard';
 import { createMemo, type JSX, Show } from 'solid-js';
+import { useDashboardMarkets } from '@/features/markets';
 
 // ============================================
 // Inline SVG Icons
@@ -127,7 +127,7 @@ interface ProtocolStatsProps {
  * Shows TVL, volume, fees, and trading activity metrics.
  */
 export function ProtocolStats(props: ProtocolStatsProps): JSX.Element {
-  const { markets, avgApy, isLoading } = useDashboardMarkets();
+  const { markets, isLoading } = useDashboardMarkets();
 
   // Calculate TVL
   const tvl = createMemo(() => {
