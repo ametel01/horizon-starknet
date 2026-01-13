@@ -1391,7 +1391,7 @@ grep -q "createMutation" packages/frontend-solid/src/features/faucet/model/useFa
 
 ---
 
-## Phase 13: Entity Components
+## Phase 13: Entity Components **COMPLETE**
 
 Port domain entity components.
 
@@ -1475,7 +1475,7 @@ Port page-level compositions.
 cd packages/frontend-solid && bun run build
 ```
 
-### Step 71: Create hero widget
+### Step 71: Create hero widget **COMPLETE**
 
 #### Goal
 Port HeroSection with animated stats and call-to-action.
