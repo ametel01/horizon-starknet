@@ -2,14 +2,14 @@
 
 ## 3.1 Router Architecture
 
-**Implementation Status: 55%** (Core operations work; missing advanced features)
+**Implementation Status: 85%** (Core operations, single-sided liquidity, and multicall implemented)
 
 **Reference:** Pendle's Router contracts from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/tree/main/contracts/router)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
 | Architecture | Selector-based proxy (PendleRouterV4) + action facets | Monolithic contract | ⚠️ Different |
-| Contract count | Proxy + ActionStorageV4 + ~7 action modules + helpers | 1 router.cairo | ⚠️ Simpler |
+| Contract count | Proxy + ActionStorageV4 + ~7 action modules + helpers | 1 router.cairo + 1 router_static.cairo | ⚠️ Simpler |
 | Upgradeability | Selector → facet mapping (ActionStorageV4) | Single class upgrade | ⚠️ Less modular |
 | ReentrancyGuard | ❌ None in router actions | ReentrancyGuardComponent | ✅ **Horizon exceeds** |
 | Emergency pause | ❌ No pause | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
@@ -35,7 +35,7 @@
 
 ## 3.2 Core Router Functions
 
-**Implementation Status: 85%** (All basic operations implemented)
+**Implementation Status: 100%** (All basic operations implemented)
 
 | Function | Pendle V2 | Horizon | Status |
 |----------|-----------|---------|--------|
@@ -84,63 +84,69 @@ This is functionally equivalent but uses different mechanics than Pendle's flash
 
 ---
 
-## 3.4 Single-Sided Liquidity (Major Gap)
+## 3.4 Single-Sided Liquidity
 
-**Implementation Status: 0%**
-
-Pendle's `ActionAddRemoveLiqV3.sol` provides extensive single-sided liquidity operations:
+**Implementation Status: 80%** (Core single-sided operations implemented)
 
 | Function | Pendle V2 | Horizon | Status |
 |----------|-----------|---------|--------|
-| `addLiquiditySinglePt` | ✅ | ❌ None | 🔴 HIGH |
-| `addLiquiditySingleSy` | ✅ | ❌ None | 🔴 HIGH |
+| `addLiquiditySinglePt` | ✅ | `add_liquidity_single_pt` | ✅ |
+| `addLiquiditySingleSy` | ✅ | `add_liquidity_single_sy` | ✅ |
 | `addLiquiditySingleToken` | ✅ | ❌ None | 🔴 HIGH |
 | `addLiquiditySingleTokenKeepYt` | ✅ | ❌ None | 🟡 MEDIUM |
-| `removeLiquiditySinglePt` | ✅ | ❌ None | 🔴 HIGH |
-| `removeLiquiditySingleSy` | ✅ | ❌ None | 🔴 HIGH |
+| `removeLiquiditySinglePt` | ✅ | `remove_liquidity_single_pt` | ✅ |
+| `removeLiquiditySingleSy` | ✅ | `remove_liquidity_single_sy` | ✅ |
 | `removeLiquiditySingleToken` | ✅ | ❌ None | 🔴 HIGH |
 | `addLiquidityDualTokenAndPt` | ✅ | ❌ None | 🟡 MEDIUM |
 | `removeLiquidityDualTokenAndPt` | ✅ | ❌ None | 🟡 MEDIUM |
 
-**Gap Detail - Single-Sided Liquidity:**
+**Horizon Single-Sided Liquidity Implementation:**
 
-Pendle allows adding liquidity with just PT or SY (the other side is synthesized internally):
-```solidity
-// Pendle - add liquidity with only PT
-function addLiquiditySinglePt(
-    address receiver,
-    address market,
-    uint256 netPtIn,
-    uint256 minLpOut,
-    ApproxParams calldata guessPtSwapToSy,  // Binary search params
-    LimitOrderData calldata limit
-) external returns (uint256 netLpOut, uint256 netSyFee);
+Horizon implements core single-sided liquidity operations:
 
-// Pendle - add with arbitrary token via aggregator
-function addLiquiditySingleToken(
-    address receiver,
-    address market,
-    uint256 minLpOut,
-    ApproxParams calldata guessPtReceivedFromSy,
-    TokenInput calldata input,  // Aggregator routing data
-    LimitOrderData calldata limit
-) external payable returns (uint256 netLpOut, uint256 netSyFee, uint256 netSyInterm);
-```
-
-Horizon requires both SY and PT:
 ```cairo
-// Horizon - requires both tokens
-fn add_liquidity(
+// Add liquidity with only SY (auto-swaps optimal amount for PT)
+fn add_liquidity_single_sy(
     market: ContractAddress,
     receiver: ContractAddress,
-    sy_desired: u256,
-    pt_desired: u256,
+    amount_sy_in: u256,
     min_lp_out: u256,
     deadline: u64,
 ) -> (u256, u256, u256)
+
+// Add liquidity with only PT (auto-swaps optimal amount for SY)
+fn add_liquidity_single_pt(
+    market: ContractAddress,
+    receiver: ContractAddress,
+    amount_pt_in: u256,
+    min_lp_out: u256,
+    deadline: u64,
+) -> (u256, u256, u256)
+
+// Remove liquidity to receive only SY (auto-swaps PT to SY)
+fn remove_liquidity_single_sy(
+    market: ContractAddress,
+    receiver: ContractAddress,
+    lp_to_burn: u256,
+    min_sy_out: u256,
+    deadline: u64,
+) -> u256
+
+// Remove liquidity to receive only PT (auto-swaps SY to PT)
+fn remove_liquidity_single_pt(
+    market: ContractAddress,
+    receiver: ContractAddress,
+    lp_to_burn: u256,
+    min_pt_out: u256,
+    deadline: u64,
+) -> u256
 ```
 
-**Impact:** Users must hold both SY and PT to provide liquidity. Cannot one-click LP from any token. Major UX barrier for new users.
+**Remaining Gap - Token Aggregation:**
+
+Pendle's `addLiquiditySingleToken` and `removeLiquiditySingleToken` allow arbitrary tokens via aggregator routing, which Horizon does not support (see Section 3.5).
+
+**Impact:** Users can provide single-sided liquidity with SY or PT, but cannot one-click LP from arbitrary tokens.
 
 ---
 
@@ -201,8 +207,8 @@ fn swap_exact_pt_for_sy(market, receiver, exact_pt_in, min_sy_out, deadline) -> 
 |---------|-----------|---------|--------|
 | ApproxParams struct | guessMin, guessMax, maxIteration, eps | Internal only | ⚠️ Hidden |
 | Caller-provided hints | ✅ Frontend can optimize | ❌ Fixed internal | 🟡 MEDIUM |
-| Binary search iterations | Configurable (5-20) | Fixed (100) | 🟡 MEDIUM |
-| Epsilon tolerance | Configurable | Fixed 0.01% | 🟡 MEDIUM |
+| Binary search iterations | Configurable (5-20) | Fixed (64 for swaps, 20 for LP) | 🟡 MEDIUM |
+| Epsilon tolerance | Configurable | Fixed 1000 wei (swaps) | 🟡 MEDIUM |
 
 **Gap Detail:**
 
@@ -218,11 +224,14 @@ struct ApproxParams {
 }
 ```
 
-Horizon uses fixed internal binary search:
+Horizon uses fixed internal binary search parameters:
 ```cairo
-// Horizon - fixed parameters
-const MAX_ITERATIONS: u32 = 100;
-const CONVERGENCE_THRESHOLD: u256 = 100_000_000_000_000; // 0.01%
+// Horizon - fixed parameters for market swaps (market_math_fp.cairo)
+pub const BINARY_SEARCH_TOLERANCE: u256 = 1000;
+pub const BINARY_SEARCH_MAX_ITERATIONS: u32 = 64;
+
+// Horizon - fixed parameters for LP calculations (router.cairo)
+let max_iterations: u32 = 20; // ~1e-6 precision
 ```
 
 **Impact:** Pendle frontends can provide optimized guesses from off-chain calculations, reducing gas costs. Horizon always runs full binary search.
@@ -264,49 +273,101 @@ function swapExactSyForPt(
 
 ## 3.8 Batch Operations (multicall)
 
-**Implementation Status: 0%**
+**Implementation Status: 80%**
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| `multicall(Call3[])` | Batched operations | ❌ None | 🟡 MEDIUM |
-| Atomic multi-action | Single tx for complex ops | ❌ None | 🟡 MEDIUM |
+| `multicall(Call3[])` | Batched operations | `multicall(Span<Call>)` | ✅ |
+| Atomic multi-action | Single tx for complex ops | ✅ (self-calls only) | ✅ |
 | `boostMarkets()` | Gauge boost in batch | ❌ None | 🟡 MEDIUM |
-| `redeemDueInterestAndRewards()` | Combined redemption | ❌ None | 🟡 MEDIUM |
+| `redeemDueInterestAndRewards()` | Combined redemption | ✅ `redeem_due_interest_and_rewards` | ✅ |
 
-**Gap Detail:**
+**Horizon Multicall Implementation:**
 
-Pendle supports batched operations:
-```solidity
-// Pendle - execute multiple calls atomically
-function multicall(Call3[] calldata calls)
-    external payable returns (Result[] memory res);
-
-// Combined interest + rewards redemption
-function redeemDueInterestAndRewards(
-    address user,
-    address[] calldata sys,     // SY contracts
-    address[] calldata yts,     // YT contracts
-    address[] calldata markets  // Market contracts
-) external;
+```cairo
+// Execute multiple calls to this router in a single transaction
+// SECURITY: Only allows calls to self (this router) to prevent arbitrary external calls
+fn multicall(ref self: ContractState, calls: Span<Call>) -> Array<Span<felt252>>
 ```
 
-**Impact:** Users must submit separate transactions for each operation. Higher gas costs and worse UX.
+**Call Struct:**
+```cairo
+#[derive(Drop, Serde)]
+pub struct Call {
+    pub to: ContractAddress,
+    pub selector: felt252,
+    pub calldata: Span<felt252>,
+}
+```
+
+**Combined Interest + Rewards Redemption:**
+```cairo
+fn redeem_due_interest_and_rewards(
+    ref self: ContractState,
+    user: ContractAddress,
+    yts: Span<ContractAddress>,
+    markets: Span<ContractAddress>,
+) -> (u256, Array<Span<u256>>)
+```
+
+**Impact:** Core batch operations are supported. Missing gauge boost functionality (not applicable to current Horizon architecture).
 
 ---
 
 ## 3.9 RouterStatic (Preview Functions)
 
-**Implementation Status: 0%**
+**Implementation Status: 80%**
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| `getLpToSyRate` | View function | ❌ None | 🟡 MEDIUM |
-| `getPtToSyRate` | View function | ❌ None | 🟡 MEDIUM |
-| `addLiquiditySingleSyStatic` | Preview | ❌ None | 🟡 MEDIUM |
-| `swapExactPtForSyStatic` | Preview | ❌ None | 🟡 MEDIUM |
-| Gas-free quotes | Via static calls | ❌ Must simulate | 🟡 MEDIUM |
+| `getLpToSyRate` | View function | `get_lp_to_sy_rate` | ✅ |
+| `getPtToSyRate` | View function | `get_pt_to_sy_rate` | ✅ |
+| `getLpToPtRate` | View function | `get_lp_to_pt_rate` | ✅ |
+| `addLiquiditySingleSyStatic` | Preview | `preview_add_liquidity_single_sy` | ✅ |
+| `swapExactPtForSyStatic` | Preview | `preview_swap_exact_pt_for_sy` | ✅ |
+| `swapExactSyForPtStatic` | Preview | `preview_swap_exact_sy_for_pt` | ✅ |
+| `removeLiquiditySingleSyStatic` | Preview | `preview_remove_liquidity_single_sy` | ✅ |
+| `getMarketInfo` | View function | `get_market_info` | ✅ |
+| Gas-free quotes | Via static calls | ✅ Via view functions | ✅ |
 
-**Impact:** Frontend must simulate transactions; no gas-efficient quote functions.
+**Horizon RouterStatic Implementation:**
+
+Horizon provides a separate `RouterStatic` contract (`router_static.cairo`) with read-only preview functions:
+
+```cairo
+#[starknet::interface]
+pub trait IRouterStatic<TContractState> {
+    fn get_pt_to_sy_rate(self: @TContractState, market: ContractAddress) -> u256;
+    fn get_lp_to_sy_rate(self: @TContractState, market: ContractAddress) -> u256;
+    fn get_lp_to_pt_rate(self: @TContractState, market: ContractAddress) -> u256;
+    fn preview_swap_exact_sy_for_pt(self: @TContractState, market: ContractAddress, sy_in: u256) -> u256;
+    fn preview_swap_exact_pt_for_sy(self: @TContractState, market: ContractAddress, pt_in: u256) -> u256;
+    fn preview_add_liquidity_single_sy(self: @TContractState, market: ContractAddress, sy_in: u256) -> u256;
+    fn preview_remove_liquidity_single_sy(self: @TContractState, market: ContractAddress, lp_in: u256) -> u256;
+    fn get_market_info(self: @TContractState, market: ContractAddress) -> MarketInfo;
+}
+```
+
+**MarketInfo Struct:**
+```cairo
+pub struct MarketInfo {
+    pub sy: ContractAddress,
+    pub pt: ContractAddress,
+    pub yt: ContractAddress,
+    pub expiry: u64,
+    pub is_expired: bool,
+    pub sy_reserve: u256,
+    pub pt_reserve: u256,
+    pub total_lp: u256,
+    pub ln_implied_rate: u256,
+    pub pt_to_sy_rate: u256,
+    pub lp_to_sy_rate: u256,
+    pub scalar_root: u256,
+    pub ln_fee_rate_root: u256,
+}
+```
+
+**Impact:** Frontend can use gas-efficient quote functions for previews.
 
 ---
 
@@ -335,3 +396,29 @@ function redeemDueInterestAndRewards(
 **Impact:** Users must approve tokens in separate transaction before swapping.
 
 ---
+
+## 3.12 LP Rollover Operations
+
+**Implementation Status: 100%** (Horizon-only feature)
+
+| Feature | Pendle V2 | Horizon | Status |
+|---------|-----------|---------|--------|
+| LP rollover to new market | ❌ None | `rollover_lp` | 🟡 Horizon-only |
+
+**Horizon Rollover Implementation:**
+
+```cairo
+/// Rollover LP position from one market to another with the same PT
+/// Burns LP in old market, uses SY+PT to add liquidity in new market
+/// Note: Both markets must share the same SY (underlying) and PT
+fn rollover_lp(
+    ref self: ContractState,
+    market_old: ContractAddress,
+    market_new: ContractAddress,
+    lp_to_rollover: u256,
+    min_lp_out: u256,
+    deadline: u64,
+) -> u256
+```
+
+**Impact:** Enables atomic LP migration between markets with identical PT.
