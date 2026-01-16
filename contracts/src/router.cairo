@@ -1550,6 +1550,114 @@ pub mod Router {
             self.reentrancy_guard.end();
             token_out_received
         }
+
+        /// Swap any token for YT through an external aggregator
+        /// Flow: token_in -> aggregator -> underlying -> SY deposit -> mint PT+YT -> sell PT -> YT
+        fn swap_exact_token_for_yt(
+            ref self: ContractState,
+            yt: ContractAddress,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            input: TokenInput,
+            min_yt_out: u256,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!input.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(input.amount > 0, Errors::ZERO_AMOUNT);
+            assert(!input.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let yt_contract = IYTDispatcher { contract_address: yt };
+            let market_contract = IMarketDispatcher { contract_address: market };
+
+            let sy = yt_contract.sy();
+            let pt = yt_contract.pt();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // Get the underlying asset that SY accepts for deposit
+            let underlying = sy_contract.underlying_asset();
+
+            // 1. Transfer input token from caller to router
+            let token_in_contract = IERC20Dispatcher { contract_address: input.token };
+            token_in_contract.transfer_from(caller, this, input.amount);
+
+            // 2. Approve aggregator to spend input token
+            token_in_contract.approve(input.swap_data.aggregator, input.amount);
+
+            // 3. Swap input token for underlying through aggregator
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: input.swap_data.aggregator,
+            };
+            let underlying_received = aggregator
+                .swap(
+                    input.token,
+                    underlying,
+                    input.amount,
+                    0, // No intermediate slippage check - final YT slippage check protects user
+                    this,
+                    input.swap_data.calldata,
+                );
+
+            // Clear aggregator approval to prevent approval griefing
+            token_in_contract.approve(input.swap_data.aggregator, 0);
+
+            // Verify aggregator returned tokens
+            assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 4. Deposit underlying into SY
+            let underlying_contract = IERC20Dispatcher { contract_address: underlying };
+            underlying_contract.approve(sy, underlying_received);
+            let sy_received = sy_contract.deposit(this, underlying, underlying_received, 0);
+
+            // Clear SY approval for underlying to prevent approval griefing
+            underlying_contract.approve(sy, 0);
+
+            // 5. Mint PT+YT from all SY using floating SY pattern (both to router)
+            sy_contract.transfer(yt, sy_received);
+            let (pt_minted, yt_minted) = yt_contract.mint_py(this, this);
+
+            // 6. Sell all PT back to market for SY
+            pt_contract.approve(market, pt_minted);
+            let sy_from_pt_sale = market_contract
+                .swap_exact_pt_for_sy(this, pt_minted, 0, array![].span());
+
+            // 7. Send YT to receiver
+            yt_contract.transfer(receiver, yt_minted);
+
+            // 8. Send recovered SY to receiver (this is effectively a "refund")
+            if sy_from_pt_sale > 0 {
+                sy_contract.transfer(receiver, sy_from_pt_sale);
+            }
+
+            // Slippage check on YT received
+            assert(yt_minted >= min_yt_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // Emit event
+            self
+                .emit(
+                    SwapYT {
+                        sender: caller,
+                        receiver,
+                        yt,
+                        market,
+                        sy_in: sy_received,
+                        yt_in: 0,
+                        sy_out: sy_from_pt_sale,
+                        yt_out: yt_minted,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            yt_minted
+        }
     }
 
     // ============ Internal Helper Functions ============
