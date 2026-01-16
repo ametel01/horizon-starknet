@@ -27,7 +27,7 @@ pub mod Router {
     };
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-    use horizon::interfaces::i_router::{Call, IRouter, TokenInput};
+    use horizon::interfaces::i_router::{Call, IRouter, TokenInput, TokenOutput};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
@@ -1462,6 +1462,93 @@ pub mod Router {
 
             self.reentrancy_guard.end();
             pt_out
+        }
+
+        /// Swap PT for any token through an external aggregator
+        /// Flow: PT -> market swap -> SY -> SY redeem -> underlying -> aggregator -> token_out
+        fn swap_exact_pt_for_token(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            exact_pt_in: u256,
+            output: TokenOutput,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(exact_pt_in > 0, Errors::ZERO_AMOUNT);
+            assert(!output.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!output.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let pt = market_contract.pt();
+            let sy = market_contract.sy();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+            let sy_contract = ISYDispatcher { contract_address: sy };
+
+            // Get the underlying asset that SY redeems to
+            let underlying = sy_contract.underlying_asset();
+
+            // 1. Transfer PT from caller to router
+            pt_contract.transfer_from(caller, this, exact_pt_in);
+
+            // 2. Swap PT for SY through the market
+            pt_contract.approve(market, exact_pt_in);
+            let sy_received = market_contract
+                .swap_exact_pt_for_sy(this, exact_pt_in, 0, array![].span());
+
+            // 3. Redeem SY for underlying
+            //    Use burn_from_internal_balance=true since SY is already in router
+            let underlying_received = sy_contract
+                .redeem(this, sy_received, underlying, 0, true);
+
+            // Verify SY redeem returned tokens
+            assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 4. Swap underlying for output token through aggregator
+            let underlying_contract = IERC20Dispatcher { contract_address: underlying };
+            underlying_contract.approve(output.swap_data.aggregator, underlying_received);
+
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: output.swap_data.aggregator,
+            };
+            let token_out_received = aggregator
+                .swap(
+                    underlying,
+                    output.token,
+                    underlying_received,
+                    output.min_amount, // Final slippage protection
+                    receiver,
+                    output.swap_data.calldata,
+                );
+
+            // Clear aggregator approval to prevent approval griefing
+            underlying_contract.approve(output.swap_data.aggregator, 0);
+
+            // Verify aggregator returned tokens and slippage check
+            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // Emit swap event
+            self
+                .emit(
+                    Swap {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_in: 0,
+                        pt_in: exact_pt_in,
+                        sy_out: sy_received,
+                        pt_out: 0,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            token_out_received
         }
     }
 
