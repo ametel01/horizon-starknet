@@ -1891,6 +1891,155 @@ pub mod Router {
             (total_sy_used, pt_used, lp_minted)
         }
 
+        /// Add liquidity using any token while keeping YT through an external aggregator
+        /// Flow: token_in -> aggregator -> underlying -> SY deposit -> mint PT+YT -> add liquidity
+        /// with PT -> keep YT
+        fn add_liquidity_single_token_keep_yt(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            input: TokenInput,
+            min_lp_out: u256,
+            min_yt_out: u256,
+            deadline: u64,
+        ) -> (u256, u256) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!input.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(input.amount > 0, Errors::ZERO_AMOUNT);
+            assert(!input.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // Get YT from PT
+            let yt = pt_contract.yt();
+            let yt_contract = IYTDispatcher { contract_address: yt };
+
+            // Get the underlying asset that SY accepts for deposit
+            let underlying = sy_contract.underlying_asset();
+
+            // 1. Transfer input token from caller to router
+            let token_in_contract = IERC20Dispatcher { contract_address: input.token };
+            token_in_contract.transfer_from(caller, this, input.amount);
+
+            // 2. Approve aggregator to spend input token
+            token_in_contract.approve(input.swap_data.aggregator, input.amount);
+
+            // 3. Swap input token for underlying through aggregator
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: input.swap_data.aggregator,
+            };
+            let underlying_received = aggregator
+                .swap(
+                    input.token,
+                    underlying,
+                    input.amount,
+                    0, // No intermediate slippage check - final slippage check protects user
+                    this,
+                    input.swap_data.calldata,
+                );
+
+            // Clear aggregator approval to prevent approval griefing
+            token_in_contract.approve(input.swap_data.aggregator, 0);
+
+            // Verify aggregator returned tokens
+            assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 4. Deposit underlying into SY
+            let underlying_contract = IERC20Dispatcher { contract_address: underlying };
+            underlying_contract.approve(sy, underlying_received);
+            let sy_received = sy_contract.deposit(this, underlying, underlying_received, 0);
+
+            // Clear SY approval for underlying
+            underlying_contract.approve(sy, 0);
+
+            // 5. Mint PT+YT from all SY using floating SY pattern
+            sy_contract.transfer(yt, sy_received);
+            let (pt_minted, yt_minted) = yt_contract.mint_py(this, receiver);
+
+            // Slippage check on YT
+            assert(yt_minted >= min_yt_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 6. Add liquidity with all PT (single-sided PT addition)
+            //    We inline the add_liquidity_single_pt logic here because of reentrancy guard
+
+            // Calculate optimal PT amount to swap for SY
+            let (reserves_sy, reserves_pt) = market_contract.get_reserves();
+            let optimal_pt_to_swap = self
+                ._calc_optimal_swap_pt_for_lp(pt_minted, reserves_sy, reserves_pt);
+
+            // Validate that swap amount doesn't exceed input
+            assert(optimal_pt_to_swap <= pt_minted, Errors::MATH_OVERFLOW);
+
+            // Swap optimal PT for SY
+            pt_contract.approve(market, optimal_pt_to_swap);
+            let sy_from_swap = market_contract
+                .swap_exact_pt_for_sy(
+                    this,
+                    optimal_pt_to_swap,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
+                );
+
+            // Add liquidity with received SY + remaining PT
+            let pt_for_lp = pt_minted - optimal_pt_to_swap;
+            sy_contract.approve(market, sy_from_swap);
+            pt_contract.approve(market, pt_for_lp);
+
+            let (sy_used, pt_used, lp_minted) = market_contract.mint(receiver, sy_from_swap, pt_for_lp);
+
+            // Slippage check on LP
+            assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // Return any dust to caller
+            if sy_from_swap > sy_used {
+                sy_contract.transfer(caller, sy_from_swap - sy_used);
+            }
+            if pt_for_lp > pt_used {
+                pt_contract.transfer(caller, pt_for_lp - pt_used);
+            }
+
+            // Calculate total PT consumed (swap + LP addition)
+            let total_pt_used = optimal_pt_to_swap + pt_used;
+
+            // Emit events
+            self
+                .emit(
+                    MintPY {
+                        sender: caller,
+                        receiver,
+                        yt,
+                        sy_in: sy_received,
+                        pt_out: pt_minted,
+                        yt_out: yt_minted,
+                    },
+                );
+
+            self
+                .emit(
+                    AddLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_used,
+                        pt_used: total_pt_used,
+                        lp_out: lp_minted,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (lp_minted, yt_minted)
+        }
+
         fn remove_liquidity_single_token(
             ref self: ContractState,
             market: ContractAddress,

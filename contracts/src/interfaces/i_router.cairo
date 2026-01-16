@@ -515,6 +515,26 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> (u256, u256, u256);
 
+    /// Add liquidity using any token while keeping YT through an external aggregator
+    /// Flow: token_in -> aggregator -> underlying -> SY deposit -> mint PT+YT -> add liquidity with
+    /// PT -> keep YT
+    /// @param market The market address
+    /// @param receiver Address to receive LP tokens and YT
+    /// @param input Token input with aggregator swap data
+    /// @param min_lp_out Minimum LP tokens to receive (slippage protection)
+    /// @param min_yt_out Minimum YT tokens to receive (slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return (lp_minted, yt_received) - LP tokens minted and YT tokens kept
+    fn add_liquidity_single_token_keep_yt(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        input: TokenInput,
+        min_lp_out: u256,
+        min_yt_out: u256,
+        deadline: u64,
+    ) -> (u256, u256);
+
     /// Remove liquidity and receive any token through an external aggregator
     /// Flow: LP -> burn -> SY + PT -> swap PT for SY -> redeem SY -> underlying -> aggregator ->
     /// token_out
