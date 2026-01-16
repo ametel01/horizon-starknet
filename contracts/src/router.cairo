@@ -1,3 +1,16 @@
+use starknet::ContractAddress;
+
+/// Minimal ERC20 interface for handling input tokens in aggregator swaps
+#[starknet::interface]
+pub trait IERC20<TContractState> {
+    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
+    fn transfer_from(
+        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
+    ) -> bool;
+    fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
+    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
+}
+
 /// Router Contract
 /// User-friendly entry point aggregating all protocol operations.
 /// Handles token transfers, approvals, and provides slippage protection.
@@ -9,9 +22,12 @@
 #[starknet::contract]
 pub mod Router {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_aggregator_router::{
+        IAggregatorRouterDispatcher, IAggregatorRouterDispatcherTrait,
+    };
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-    use horizon::interfaces::i_router::{Call, IRouter};
+    use horizon::interfaces::i_router::{Call, IRouter, TokenInput};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
@@ -28,6 +44,7 @@ pub mod Router {
     use starknet::{
         ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
     };
+    use super::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -1353,6 +1370,98 @@ pub mod Router {
 
             self.reentrancy_guard.end();
             (total_interest, all_rewards)
+        }
+
+        // ============ Aggregator Swap Operations ============
+
+        /// Swap any token for PT through an external aggregator
+        /// Flow: token_in -> aggregator -> underlying -> SY deposit -> market swap -> PT
+        fn swap_exact_token_for_pt(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            input: TokenInput,
+            min_pt_out: u256,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!input.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(input.amount > 0, Errors::ZERO_AMOUNT);
+            assert(!input.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+
+            // Get the underlying asset that SY accepts for deposit
+            let underlying = sy_contract.underlying_asset();
+
+            // 1. Transfer input token from caller to router
+            let token_in_contract = IERC20Dispatcher { contract_address: input.token };
+            token_in_contract.transfer_from(caller, this, input.amount);
+
+            // 2. Approve aggregator to spend input token
+            token_in_contract.approve(input.swap_data.aggregator, input.amount);
+
+            // 3. Swap input token for underlying through aggregator
+            //    Aggregator receives output tokens directly to this router
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: input.swap_data.aggregator,
+            };
+            let underlying_received = aggregator
+                .swap(
+                    input.token,
+                    underlying,
+                    input.amount,
+                    0, // No intermediate slippage check - final PT slippage check protects user
+                    this,
+                    input.swap_data.calldata,
+                );
+
+            // Clear aggregator approval to prevent approval griefing
+            token_in_contract.approve(input.swap_data.aggregator, 0);
+
+            // Verify aggregator returned tokens
+            assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 4. Deposit underlying into SY
+            //    First approve SY to spend the underlying
+            let underlying_contract = IERC20Dispatcher { contract_address: underlying };
+            underlying_contract.approve(sy, underlying_received);
+
+            // Deposit underlying to get SY (SY transfers underlying from router)
+            let sy_received = sy_contract.deposit(this, underlying, underlying_received, 0);
+
+            // Clear SY approval for underlying to prevent approval griefing
+            underlying_contract.approve(sy, 0);
+
+            // 5. Swap SY for PT through the market
+            sy_contract.approve(market, sy_received);
+            let pt_out = market_contract
+                .swap_exact_sy_for_pt(receiver, sy_received, min_pt_out, array![].span());
+
+            // Emit swap event
+            self
+                .emit(
+                    Swap {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_in: sy_received,
+                        pt_in: 0,
+                        sy_out: 0,
+                        pt_out,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            pt_out
         }
     }
 

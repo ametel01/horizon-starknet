@@ -418,4 +418,23 @@ pub trait IRouter<TContractState> {
         yts: Span<ContractAddress>,
         markets: Span<ContractAddress>,
     ) -> (u256, Array<Span<u256>>);
+
+    // ============ Aggregator Swap Operations ============
+
+    /// Swap any token for PT through an external aggregator
+    /// Flow: token_in -> aggregator -> underlying -> SY deposit -> market swap -> PT
+    /// @param market The market address for PT/SY swaps
+    /// @param receiver Address to receive PT
+    /// @param input Token input with aggregator swap data
+    /// @param min_pt_out Minimum PT to receive (final slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return Amount of PT received
+    fn swap_exact_token_for_pt(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        input: TokenInput,
+        min_pt_out: u256,
+        deadline: u64,
+    ) -> u256;
 }
