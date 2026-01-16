@@ -1712,8 +1712,9 @@ pub mod Router {
             let sy_received = market_contract
                 .swap_exact_pt_for_sy(this, exact_pt_in, 0, array![].span());
 
-            // 3. Redeem SY for underlying
-            //    Use burn_from_internal_balance=true since SY is already in router
+            // 3. Transfer SY to SY contract, then redeem for underlying
+            //    burn_from_internal_balance=true requires SY to be in the SY contract
+            sy_contract.transfer(sy, sy_received);
             let underlying_received = sy_contract.redeem(this, sy_received, underlying, 0, true);
 
             // Verify SY redeem returned tokens
@@ -1926,7 +1927,9 @@ pub mod Router {
             let sy_refund = max_sy_collateral - sy_spent_on_pt;
             let total_sy = sy_from_redemption + sy_refund;
 
-            // 6. Redeem all SY for underlying
+            // 6. Transfer SY to SY contract, then redeem for underlying
+            //    burn_from_internal_balance=true requires SY to be in the SY contract
+            sy_contract.transfer(sy, total_sy);
             let underlying_received = sy_contract.redeem(this, total_sy, underlying, 0, true);
 
             // Verify SY redeem returned tokens
@@ -2300,8 +2303,9 @@ pub mod Router {
             // 4. Calculate total SY received
             let total_sy = sy_from_burn + sy_from_swap;
 
-            // 5. Redeem SY for underlying
-            //    Use burn_from_internal_balance=true since SY is already in router
+            // 5. Transfer SY to SY contract, then redeem for underlying
+            //    burn_from_internal_balance=true requires SY to be in the SY contract
+            sy_contract.transfer(sy, total_sy);
             let underlying_received = sy_contract.redeem(this, total_sy, underlying, 0, true);
 
             // Verify SY redeem returned tokens

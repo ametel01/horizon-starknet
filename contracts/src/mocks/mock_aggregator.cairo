@@ -45,7 +45,7 @@ pub mod MockAggregator {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState) {// No initialization needed
+    fn constructor(ref self: ContractState) { // No initialization needed
     }
 
     #[abi(embed_v0)]
