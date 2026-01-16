@@ -596,6 +596,126 @@ pub mod Router {
             (total_sy_used, pt_used, lp_minted)
         }
 
+        fn add_liquidity_single_sy_with_approx(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            amount_sy_in: u256,
+            min_lp_out: u256,
+            approx: ApproxParams,
+            deadline: u64,
+        ) -> (u256, u256, u256) {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(amount_sy_in > 0, Errors::ZERO_AMOUNT);
+
+            // Validate ApproxParams hints (0 values mean use defaults)
+            // When guess_min/guess_max are provided, validate they form a valid range
+            if approx.guess_min > 0 && approx.guess_max > 0 {
+                assert(approx.guess_min <= approx.guess_max, Errors::ROUTER_INVALID_APPROX_PARAMS);
+            }
+
+            // If guess_offchain is provided, it should be within the guess range (if specified)
+            if approx.guess_offchain > 0 {
+                if approx.guess_min > 0 {
+                    assert(
+                        approx.guess_offchain >= approx.guess_min,
+                        Errors::ROUTER_INVALID_APPROX_PARAMS,
+                    );
+                }
+                if approx.guess_max > 0 {
+                    assert(
+                        approx.guess_offchain <= approx.guess_max,
+                        Errors::ROUTER_INVALID_APPROX_PARAMS,
+                    );
+                }
+            }
+
+            // Validate bounds don't exceed input amount
+            if approx.guess_max > 0 {
+                assert(approx.guess_max <= amount_sy_in, Errors::ROUTER_INVALID_APPROX_PARAMS);
+            }
+            if approx.guess_min > 0 {
+                assert(approx.guess_min <= amount_sy_in, Errors::ROUTER_INVALID_APPROX_PARAMS);
+            }
+            if approx.guess_offchain > 0 {
+                assert(approx.guess_offchain <= amount_sy_in, Errors::ROUTER_INVALID_APPROX_PARAMS);
+            }
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // 1. Transfer all SY from caller to router
+            sy_contract.transfer_from(caller, this, amount_sy_in);
+
+            // 2. Calculate optimal SY amount to swap for PT using caller hints
+            //    Goal: balance the ratio so add_liquidity uses everything
+            let (reserves_sy, reserves_pt) = market_contract.get_reserves();
+            let optimal_sy_to_swap = self
+                ._calc_optimal_swap_for_lp_with_approx(
+                    amount_sy_in, reserves_sy, reserves_pt, approx,
+                );
+
+            // Validate that swap amount doesn't exceed input
+            assert(optimal_sy_to_swap <= amount_sy_in, Errors::MATH_OVERFLOW);
+
+            // 3. Swap optimal SY for PT
+            sy_contract.approve(market, optimal_sy_to_swap);
+            let pt_received = market_contract
+                .swap_exact_sy_for_pt(
+                    this,
+                    optimal_sy_to_swap,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
+                );
+
+            // 4. Add liquidity with remaining SY + received PT
+            let sy_for_lp = amount_sy_in - optimal_sy_to_swap;
+            sy_contract.approve(market, sy_for_lp);
+            pt_contract.approve(market, pt_received);
+
+            let (sy_used, pt_used, lp_minted) = market_contract
+                .mint(receiver, sy_for_lp, pt_received);
+
+            // 5. Slippage check
+            assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // 6. Return any dust to caller
+            if sy_for_lp > sy_used {
+                sy_contract.transfer(caller, sy_for_lp - sy_used);
+            }
+            if pt_received > pt_used {
+                pt_contract.transfer(caller, pt_received - pt_used);
+            }
+
+            // Calculate total SY consumed (swap + LP addition)
+            let total_sy_used = optimal_sy_to_swap + sy_used;
+
+            // Emit event
+            self
+                .emit(
+                    AddLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_used: total_sy_used,
+                        pt_used,
+                        lp_out: lp_minted,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (total_sy_used, pt_used, lp_minted)
+        }
+
         fn add_liquidity_single_pt(
             ref self: ContractState,
             market: ContractAddress,
@@ -2289,6 +2409,154 @@ pub mod Router {
                 // In practice, reserves are bounded by realistic token amounts (< 2^128)
                 // so multiplication fits in u256. For added safety, we could use checked math
                 // but Cairo's default behavior will panic on overflow which is acceptable here.
+                let left = sy_remaining * reserves_pt;
+                let right = pt_out * reserves_sy;
+
+                if left < right {
+                    // Too much PT received, swap less SY
+                    high = mid;
+                } else {
+                    // Too little PT received, swap more SY
+                    low = mid;
+                }
+
+                iteration += 1;
+            }
+
+            low
+        }
+
+        /// Calculate optimal SY to swap for PT using caller-provided binary search hints
+        /// Uses ApproxParams for optimized convergence via guess_min, guess_max, guess_offchain
+        /// Falls back to default binary search when hints are invalid (zero values)
+        /// @param amount_sy_total Total SY available
+        /// @param reserves_sy Current SY reserves in market
+        /// @param reserves_pt Current PT reserves in market
+        /// @param approx Binary search hints from caller
+        /// @return Optimal amount of SY to swap for PT
+        fn _calc_optimal_swap_for_lp_with_approx(
+            ref self: ContractState,
+            amount_sy_total: u256,
+            reserves_sy: u256,
+            reserves_pt: u256,
+            approx: ApproxParams,
+        ) -> u256 {
+            // Edge case: empty pool, just swap half
+            if reserves_sy == 0 || reserves_pt == 0 {
+                return amount_sy_total / 2;
+            }
+
+            // Edge case: very small amount, just swap half to avoid precision issues
+            if amount_sy_total <= 1 {
+                return amount_sy_total / 2;
+            }
+
+            // Determine binary search bounds from ApproxParams (0 means use default)
+            let mut low: u256 = if approx.guess_min > 0 {
+                approx.guess_min
+            } else {
+                0
+            };
+            let mut high: u256 = if approx.guess_max > 0 {
+                approx.guess_max
+            } else {
+                amount_sy_total
+            };
+
+            // If guess_offchain is provided and valid, use it as starting point
+            // This narrows the search range around the hint for faster convergence
+            if approx.guess_offchain > 0 && approx.guess_offchain >= low
+                && approx.guess_offchain <= high {
+                // Check if guess_offchain is close enough to optimal
+                let pt_out = self
+                    ._estimate_swap_sy_for_pt(approx.guess_offchain, reserves_sy, reserves_pt);
+                if pt_out > 0 {
+                    let sy_remaining = amount_sy_total - approx.guess_offchain;
+                    if sy_remaining > 0 {
+                        // Check ratio: sy_remaining / pt_out vs reserves_sy / reserves_pt
+                        let left = sy_remaining * reserves_pt;
+                        let right = pt_out * reserves_sy;
+
+                        // If close enough (within eps tolerance), accept the hint
+                        let eps = if approx.eps > 0 {
+                            approx.eps
+                        } else {
+                            WAD / 1000 // Default 0.1% precision
+                        };
+
+                        // Calculate relative difference: |left - right| / right
+                        let diff = if left > right {
+                            left - right
+                        } else {
+                            right - left
+                        };
+
+                        // If diff/right < eps/WAD, hint is acceptable
+                        // Cross-multiply: diff * WAD < eps * right
+                        if diff * WAD < eps * right {
+                            return approx.guess_offchain;
+                        }
+
+                        // Otherwise narrow the search around the hint
+                        if left < right {
+                            // Too much PT, swap less - hint is upper bound
+                            high = approx.guess_offchain;
+                        } else {
+                            // Too little PT, swap more - hint is lower bound
+                            low = approx.guess_offchain;
+                        }
+                    }
+                }
+            }
+
+            // Determine max iterations from ApproxParams (0 means use default)
+            let max_iterations: u32 = if approx.max_iteration > 0 {
+                // Cap at u32 max (but realistically capped at 256 for gas)
+                if approx.max_iteration > 256 {
+                    256
+                } else {
+                    approx.max_iteration.try_into().unwrap()
+                }
+            } else {
+                20 // Default: ~1e-6 precision
+            };
+
+            let mut iteration: u32 = 0;
+
+            while iteration < max_iterations && high > low + 1 {
+                let mid = (low + high) / 2;
+
+                // If mid equals low, we can't make progress, break to avoid infinite loop
+                if mid == low {
+                    break;
+                }
+
+                // Simulate: swap `mid` SY for PT
+                let pt_out = self._estimate_swap_sy_for_pt(mid, reserves_sy, reserves_pt);
+
+                // If pt_out is zero, we can't proceed with this mid value
+                if pt_out == 0 {
+                    // No PT received means we need to swap more (but ensure we make progress)
+                    if mid > low {
+                        low = mid;
+                    }
+                    iteration += 1;
+                    continue;
+                }
+
+                let sy_remaining = amount_sy_total - mid;
+
+                // If we've swapped everything, this is too much
+                if sy_remaining == 0 {
+                    high = mid;
+                    iteration += 1;
+                    continue;
+                }
+
+                // Check if this ratio matches pool ratio
+                // sy_remaining / pt_out should equal reserves_sy / reserves_pt
+                // Cross-multiply to avoid division: sy_remaining * reserves_pt <=> pt_out *
+                // reserves_sy
                 let left = sy_remaining * reserves_pt;
                 let right = pt_out * reserves_sy;
 
