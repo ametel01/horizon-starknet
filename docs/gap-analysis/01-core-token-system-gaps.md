@@ -153,8 +153,8 @@ fn reward_tokens_count(self: @TContractState) -> u32;
 | Interest formula | `bal × Δidx / (prev × curr)` | `bal × Δidx / (prev × curr)` | ✅ |
 | UserInterest struct packing | `{uint128 idx, uint128 accrued}` | Two separate Maps | 🟢 LOW |
 | Two-user distribution | `_distributeInterestForTwo()` | Separate calls | ✅ Equivalent |
-| Multi-reward claiming | `redeemDueInterestAndRewards()` | ❌ Missing | 🔴 HIGH | **NOT PART OF THE REQUIREMENTS**
-| Reward token registry | `getRewardTokens()` | ❌ Missing | 🔴 HIGH | **NOT PART OF THE REQUIREMENTS**
+| Multi-reward claiming | `redeemDueInterestAndRewards()` | ❌ Missing | 🔴 HIGH | 
+| Reward token registry | `getRewardTokens()` | ❌ Missing | 🔴 HIGH | 
 | syReserve tracking | `syReserve` + floating SY | `sy_reserve` + `get_floating_sy()` | ✅ |
 | Post-expiry treasury | `totalSyInterestForTreasury` | `post_expiry_sy_for_treasury` + treasury redeem | ✅ |
 | Protocol fee on interest | Factory-managed | Per-YT `interest_fee_rate` | ✅ (per-YT admin) |

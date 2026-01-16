@@ -1890,6 +1890,101 @@ pub mod Router {
             self.reentrancy_guard.end();
             (total_sy_used, pt_used, lp_minted)
         }
+
+        fn remove_liquidity_single_token(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            lp_to_burn: u256,
+            output: TokenOutput,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(lp_to_burn > 0, Errors::ZERO_AMOUNT);
+            assert(!output.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!output.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt = market_contract.pt();
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // Get the underlying asset that SY redeems to
+            let underlying = sy_contract.underlying_asset();
+
+            // 1. Transfer LP from caller to router
+            let lp_token = IPTDispatcher { contract_address: market };
+            lp_token.transfer_from(caller, this, lp_to_burn);
+
+            // 2. Burn LP tokens to receive SY and PT (to router)
+            let (sy_from_burn, pt_from_burn) = market_contract.burn(this, lp_to_burn);
+
+            // 3. Swap all PT for SY
+            pt_contract.approve(market, pt_from_burn);
+            let sy_from_swap = market_contract
+                .swap_exact_pt_for_sy(
+                    this,
+                    pt_from_burn,
+                    0, // No min check here, final slippage check at end
+                    array![].span(),
+                );
+
+            // 4. Calculate total SY received
+            let total_sy = sy_from_burn + sy_from_swap;
+
+            // 5. Redeem SY for underlying
+            //    Use burn_from_internal_balance=true since SY is already in router
+            let underlying_received = sy_contract.redeem(this, total_sy, underlying, 0, true);
+
+            // Verify SY redeem returned tokens
+            assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 6. Swap underlying for output token through aggregator
+            let underlying_contract = IERC20Dispatcher { contract_address: underlying };
+            underlying_contract.approve(output.swap_data.aggregator, underlying_received);
+
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: output.swap_data.aggregator,
+            };
+            let token_out_received = aggregator
+                .swap(
+                    underlying,
+                    output.token,
+                    underlying_received,
+                    output.min_amount, // Final slippage protection
+                    receiver,
+                    output.swap_data.calldata,
+                );
+
+            // Clear aggregator approval to prevent approval griefing
+            underlying_contract.approve(output.swap_data.aggregator, 0);
+
+            // Verify aggregator returned tokens and slippage check
+            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // Emit event
+            self
+                .emit(
+                    RemoveLiquidity {
+                        sender: caller,
+                        receiver,
+                        market,
+                        lp_in: lp_to_burn,
+                        sy_out: total_sy, // Report SY equivalent
+                        pt_out: 0 // All PT was swapped to SY
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            token_out_received
+        }
     }
 
     // ============ Internal Helper Functions ============
