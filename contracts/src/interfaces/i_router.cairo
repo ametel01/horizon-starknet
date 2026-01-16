@@ -42,6 +42,22 @@ pub struct Call {
     pub calldata: Span<felt252>,
 }
 
+/// Approximation parameters for binary search in swap/liquidity calculations
+/// Matches Pendle's ApproxParams design for caller-provided search hints
+/// @param guess_min Lower bound for binary search (0 = use default)
+/// @param guess_max Upper bound for binary search (0 = use default)
+/// @param guess_offchain Off-chain computed guess for faster convergence (0 = no hint)
+/// @param max_iteration Maximum binary search iterations (default: 20)
+/// @param eps Precision threshold in WAD (1e15 = 0.1% precision)
+#[derive(Drop, Serde, Copy)]
+pub struct ApproxParams {
+    pub guess_min: u256,
+    pub guess_max: u256,
+    pub guess_offchain: u256,
+    pub max_iteration: u256,
+    pub eps: u256,
+}
+
 /// Router interface - user-friendly entry point for all protocol operations
 /// Handles approvals, slippage protection, and multi-hop operations
 ///

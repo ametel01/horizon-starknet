@@ -1504,8 +1504,7 @@ pub mod Router {
 
             // 3. Redeem SY for underlying
             //    Use burn_from_internal_balance=true since SY is already in router
-            let underlying_received = sy_contract
-                .redeem(this, sy_received, underlying, 0, true);
+            let underlying_received = sy_contract.redeem(this, sy_received, underlying, 0, true);
 
             // Verify SY redeem returned tokens
             assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
@@ -1768,7 +1767,8 @@ pub mod Router {
         // ============ Aggregator Liquidity Operations ============
 
         /// Add liquidity using any token through an external aggregator
-        /// Flow: token_in -> aggregator -> underlying -> SY deposit -> add_liquidity_single_sy -> LP
+        /// Flow: token_in -> aggregator -> underlying -> SY deposit -> add_liquidity_single_sy ->
+        /// LP
         fn add_liquidity_single_token(
             ref self: ContractState,
             market: ContractAddress,
@@ -1858,7 +1858,8 @@ pub mod Router {
             sy_contract.approve(market, sy_for_lp);
             pt_contract.approve(market, pt_received);
 
-            let (sy_used, pt_used, lp_minted) = market_contract.mint(receiver, sy_for_lp, pt_received);
+            let (sy_used, pt_used, lp_minted) = market_contract
+                .mint(receiver, sy_for_lp, pt_received);
 
             // Slippage check
             assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
@@ -1995,7 +1996,8 @@ pub mod Router {
             sy_contract.approve(market, sy_from_swap);
             pt_contract.approve(market, pt_for_lp);
 
-            let (sy_used, pt_used, lp_minted) = market_contract.mint(receiver, sy_from_swap, pt_for_lp);
+            let (sy_used, pt_used, lp_minted) = market_contract
+                .mint(receiver, sy_from_swap, pt_for_lp);
 
             // Slippage check on LP
             assert(lp_minted >= min_lp_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
