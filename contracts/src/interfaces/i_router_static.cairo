@@ -1,5 +1,20 @@
 use starknet::ContractAddress;
 
+/// Input parameters for preview_swap_exact_token_for_pt
+/// Since aggregators cannot be called in view context, the caller must provide
+/// the estimated SY amount from off-chain aggregator quote simulation.
+#[derive(Drop, Serde)]
+pub struct TokenToSyEstimate {
+    /// Input token address
+    pub token: ContractAddress,
+    /// Amount of input token
+    pub amount: u256,
+    /// Estimated SY amount after aggregator swap and deposit
+    /// For underlying tokens: use SY.preview_deposit(amount)
+    /// For other tokens: get quote from aggregator off-chain, then preview_deposit
+    pub estimated_sy_amount: u256,
+}
+
 /// Market information struct for frontend display
 #[derive(Drop, Serde)]
 pub struct MarketInfo {
@@ -82,4 +97,17 @@ pub trait IRouterStatic<TContractState> {
     /// @param market The market address
     /// @return MarketInfo struct with all relevant market data
     fn get_market_info(self: @TContractState, market: ContractAddress) -> MarketInfo;
+
+    /// Preview PT output for swapping any token to PT via aggregator
+    /// Since aggregators cannot be called in view context, the frontend must:
+    /// 1. Get aggregator quote off-chain (token -> underlying)
+    /// 2. Call SY.preview_deposit() with the underlying amount
+    /// 3. Pass the estimated SY amount in the estimate parameter
+    /// This function then calculates the expected PT output from that SY amount.
+    /// @param market The market address for PT/SY swaps
+    /// @param estimate Token input with pre-calculated SY estimate from aggregator
+    /// @return Expected PT output (before slippage, includes market fees)
+    fn preview_swap_exact_token_for_pt(
+        self: @TContractState, market: ContractAddress, estimate: TokenToSyEstimate,
+    ) -> u256;
 }

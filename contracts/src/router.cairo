@@ -1007,10 +1007,16 @@ pub mod Router {
             // If guess_offchain is provided, it should be within the guess range (if specified)
             if approx.guess_offchain > 0 {
                 if approx.guess_min > 0 {
-                    assert(approx.guess_offchain >= approx.guess_min, Errors::ROUTER_INVALID_APPROX_PARAMS);
+                    assert(
+                        approx.guess_offchain >= approx.guess_min,
+                        Errors::ROUTER_INVALID_APPROX_PARAMS,
+                    );
                 }
                 if approx.guess_max > 0 {
-                    assert(approx.guess_offchain <= approx.guess_max, Errors::ROUTER_INVALID_APPROX_PARAMS);
+                    assert(
+                        approx.guess_offchain <= approx.guess_max,
+                        Errors::ROUTER_INVALID_APPROX_PARAMS,
+                    );
                 }
             }
 
@@ -2465,7 +2471,8 @@ pub mod Router {
 
             // If guess_offchain is provided and valid, use it as starting point
             // This narrows the search range around the hint for faster convergence
-            if approx.guess_offchain > 0 && approx.guess_offchain >= low
+            if approx.guess_offchain > 0
+                && approx.guess_offchain >= low
                 && approx.guess_offchain <= high {
                 // Check if guess_offchain is close enough to optimal
                 let pt_out = self

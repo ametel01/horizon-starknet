@@ -8,7 +8,7 @@
 pub mod RouterStatic {
     use core::num::traits::Zero;
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
-    use horizon::interfaces::i_router_static::{IRouterStatic, MarketInfo};
+    use horizon::interfaces::i_router_static::{IRouterStatic, MarketInfo, TokenToSyEstimate};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
     use horizon::libraries::math_fp::{wad_div, wad_mul};
@@ -334,6 +334,27 @@ pub mod RouterStatic {
                 scalar_root: market_contract.get_scalar_root(),
                 ln_fee_rate_root: market_contract.get_ln_fee_rate_root(),
             }
+        }
+
+        /// Preview PT output for swapping any token to PT via aggregator
+        /// The frontend provides pre-calculated SY estimate since aggregators
+        /// cannot be called in view context.
+        /// @param market The market address for PT/SY swaps
+        /// @param estimate Token input with pre-calculated SY estimate
+        /// @return Expected PT output
+        fn preview_swap_exact_token_for_pt(
+            self: @ContractState, market: ContractAddress, estimate: TokenToSyEstimate,
+        ) -> u256 {
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!estimate.token.is_zero(), Errors::ZERO_ADDRESS);
+
+            // If no input amount or SY estimate provided, return 0
+            if estimate.amount == 0 || estimate.estimated_sy_amount == 0 {
+                return 0;
+            }
+
+            // Delegate to preview_swap_exact_sy_for_pt with the estimated SY amount
+            self.preview_swap_exact_sy_for_pt(market, estimate.estimated_sy_amount)
         }
     }
 

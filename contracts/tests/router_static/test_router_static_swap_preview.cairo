@@ -1,6 +1,8 @@
 use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
 use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-use horizon::interfaces::i_router_static::{IRouterStaticDispatcher, IRouterStaticDispatcherTrait};
+use horizon::interfaces::i_router_static::{
+    IRouterStaticDispatcher, IRouterStaticDispatcherTrait, TokenToSyEstimate,
+};
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math_fp::WAD;
@@ -553,4 +555,119 @@ fn test_preview_large_swap() {
     // Simplified: pt_preview * WAD / sy_in < small_preview (rate comparison)
     let large_rate = pt_preview * WAD / sy_in;
     assert(large_rate <= small_preview, 'Large swap should have impact');
+}
+
+// ============ Preview Swap Token for PT Tests ============
+
+#[test]
+fn test_preview_swap_exact_token_for_pt_basic() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Create estimate with token amount and estimated SY
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address,
+        amount: 10 * WAD,
+        estimated_sy_amount: 10 * WAD // Assuming 1:1 deposit ratio
+    };
+
+    let pt_preview = router_static
+        .preview_swap_exact_token_for_pt(market.contract_address, estimate);
+
+    // Verify preview returns positive amount
+    assert(pt_preview > 0, 'Preview should return PT > 0');
+
+    // Should match preview_swap_exact_sy_for_pt with same SY amount
+    let direct_preview = router_static
+        .preview_swap_exact_sy_for_pt(market.contract_address, 10 * WAD);
+    assert(pt_preview == direct_preview, 'Should match direct SY preview');
+}
+
+#[test]
+fn test_preview_swap_exact_token_for_pt_zero_amount() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Zero input amount should return zero
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 0, estimated_sy_amount: 10 * WAD,
+    };
+
+    let pt_preview = router_static
+        .preview_swap_exact_token_for_pt(market.contract_address, estimate);
+    assert(pt_preview == 0, 'Zero amount should give zero');
+}
+
+#[test]
+fn test_preview_swap_exact_token_for_pt_zero_sy_estimate() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Zero SY estimate should return zero
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 10 * WAD, estimated_sy_amount: 0,
+    };
+
+    let pt_preview = router_static
+        .preview_swap_exact_token_for_pt(market.contract_address, estimate);
+    assert(pt_preview == 0, 'Zero SY estimate should give 0');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_preview_swap_exact_token_for_pt_zero_market() {
+    let (underlying, _, _, _, _, router_static) = setup();
+
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 10 * WAD, estimated_sy_amount: 10 * WAD,
+    };
+
+    // Should fail with zero market address
+    router_static.preview_swap_exact_token_for_pt(zero_address(), estimate);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_preview_swap_exact_token_for_pt_zero_token() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    let estimate = TokenToSyEstimate {
+        token: zero_address(), amount: 10 * WAD, estimated_sy_amount: 10 * WAD,
+    };
+
+    // Should fail with zero token address
+    router_static.preview_swap_exact_token_for_pt(market.contract_address, estimate);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: market expired')]
+fn test_preview_swap_exact_token_for_pt_expired() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Fast forward past expiry
+    start_cheat_block_timestamp_global(market.expiry() + 1);
+
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 10 * WAD, estimated_sy_amount: 10 * WAD,
+    };
+
+    // Preview should fail for expired market
+    router_static.preview_swap_exact_token_for_pt(market.contract_address, estimate);
 }
