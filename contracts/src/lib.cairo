@@ -4,6 +4,7 @@ pub mod components {
 }
 pub mod factory;
 pub mod interfaces {
+    pub mod i_aggregator_router;
     pub mod i_erc4626;
     pub mod i_factory;
     pub mod i_index_oracle;
