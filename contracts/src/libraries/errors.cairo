@@ -65,6 +65,9 @@ pub mod Errors {
     pub const ROUTER_ROLLOVER_SY_MISMATCH: felt252 = 'HZN: rollover SY mismatch';
     pub const ROUTER_MULTICALL_INVALID_TARGET: felt252 = 'HZN: multicall invalid target';
     pub const ROUTER_MULTICALL_FAILED: felt252 = 'HZN: multicall call failed';
+    pub const ROUTER_INVALID_AGGREGATOR: felt252 = 'HZN: invalid aggregator';
+    pub const ROUTER_AGGREGATOR_SWAP_FAILED: felt252 = 'HZN: aggregator swap failed';
+    pub const ROUTER_TOKEN_NOT_SUPPORTED: felt252 = 'HZN: token not supported';
 
     // Math errors
     pub const MATH_OVERFLOW: felt252 = 'HZN: overflow';
