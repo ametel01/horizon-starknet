@@ -1,6 +1,6 @@
 use horizon::interfaces::i_market::IMarketDispatcherTrait;
 use horizon::interfaces::i_pt::IPTDispatcherTrait;
-use horizon::interfaces::i_router_static::IRouterStaticDispatcherTrait;
+use horizon::interfaces::i_router_static::{IRouterStaticDispatcherTrait, TokenToSyEstimate};
 use horizon::interfaces::i_sy::ISYDispatcherTrait;
 use horizon::libraries::math_fp::WAD;
 use snforge_std::{
@@ -331,4 +331,133 @@ fn test_remove_liquidity_preview_scales_proportionally() {
 
     // But not quite 2x due to price impact on the PT->SY swap
     assert(large_sy < small_sy * 2, 'Price impact expected');
+}
+
+// ============ Preview Add Liquidity Single Token Tests ============
+
+#[test]
+fn test_preview_add_liquidity_single_token_basic() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 300 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Create estimate with token amount and estimated SY
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address,
+        amount: 20 * WAD,
+        estimated_sy_amount: 20 * WAD // Assuming 1:1 deposit ratio
+    };
+
+    let lp_preview = router_static
+        .preview_add_liquidity_single_token(market.contract_address, estimate);
+
+    // Verify preview returns positive amount
+    assert(lp_preview > 0, 'Preview should return LP > 0');
+
+    // Should match preview_add_liquidity_single_sy with same SY amount
+    let direct_preview = router_static
+        .preview_add_liquidity_single_sy(market.contract_address, 20 * WAD);
+    assert(lp_preview == direct_preview, 'Should match direct SY preview');
+}
+
+#[test]
+fn test_preview_add_liquidity_single_token_zero_amount() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Zero input amount should return zero
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 0, estimated_sy_amount: 20 * WAD,
+    };
+
+    let lp_preview = router_static
+        .preview_add_liquidity_single_token(market.contract_address, estimate);
+    assert(lp_preview == 0, 'Zero amount should give zero');
+}
+
+#[test]
+fn test_preview_add_liquidity_single_token_zero_sy_estimate() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Zero SY estimate should return zero
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 20 * WAD, estimated_sy_amount: 0,
+    };
+
+    let lp_preview = router_static
+        .preview_add_liquidity_single_token(market.contract_address, estimate);
+    assert(lp_preview == 0, 'Zero SY estimate should give 0');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_preview_add_liquidity_single_token_zero_market() {
+    let (underlying, _, _, _, _, router_static) = setup();
+
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 20 * WAD, estimated_sy_amount: 20 * WAD,
+    };
+
+    // Should fail with zero market address
+    router_static.preview_add_liquidity_single_token(zero_address(), estimate);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_preview_add_liquidity_single_token_zero_token() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    let estimate = TokenToSyEstimate {
+        token: zero_address(), amount: 20 * WAD, estimated_sy_amount: 20 * WAD,
+    };
+
+    // Should fail with zero token address
+    router_static.preview_add_liquidity_single_token(market.contract_address, estimate);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: market expired')]
+fn test_preview_add_liquidity_single_token_expired() {
+    let (underlying, sy, yt, pt, market, router_static) = setup();
+    let user = user1();
+
+    setup_user_with_tokens(underlying, sy, yt, user, 200 * WAD);
+    add_liquidity(sy, pt, market, user, 100 * WAD, 100 * WAD);
+
+    // Fast forward past expiry
+    start_cheat_block_timestamp_global(market.expiry() + 1);
+
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 20 * WAD, estimated_sy_amount: 20 * WAD,
+    };
+
+    // Preview should fail for expired market
+    router_static.preview_add_liquidity_single_token(market.contract_address, estimate);
+}
+
+#[test]
+fn test_preview_add_liquidity_single_token_empty_pool() {
+    let (underlying, _, _, _, market, router_static) = setup();
+
+    let estimate = TokenToSyEstimate {
+        token: underlying.contract_address, amount: 20 * WAD, estimated_sy_amount: 20 * WAD,
+    };
+
+    // Preview on empty pool should return 0 (can't add single-sided to empty pool)
+    let lp_preview = router_static
+        .preview_add_liquidity_single_token(market.contract_address, estimate);
+    assert(lp_preview == 0, 'Empty pool should return 0');
 }

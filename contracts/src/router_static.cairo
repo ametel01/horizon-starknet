@@ -356,6 +356,27 @@ pub mod RouterStatic {
             // Delegate to preview_swap_exact_sy_for_pt with the estimated SY amount
             self.preview_swap_exact_sy_for_pt(market, estimate.estimated_sy_amount)
         }
+
+        /// Preview LP output for adding liquidity with any token via aggregator
+        /// The frontend provides pre-calculated SY estimate since aggregators
+        /// cannot be called in view context.
+        /// @param market The market address
+        /// @param estimate Token input with pre-calculated SY estimate
+        /// @return Expected LP tokens to receive
+        fn preview_add_liquidity_single_token(
+            self: @ContractState, market: ContractAddress, estimate: TokenToSyEstimate,
+        ) -> u256 {
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!estimate.token.is_zero(), Errors::ZERO_ADDRESS);
+
+            // If no input amount or SY estimate provided, return 0
+            if estimate.amount == 0 || estimate.estimated_sy_amount == 0 {
+                return 0;
+            }
+
+            // Delegate to preview_add_liquidity_single_sy with the estimated SY amount
+            self.preview_add_liquidity_single_sy(market, estimate.estimated_sy_amount)
+        }
     }
 
     #[generate_trait]

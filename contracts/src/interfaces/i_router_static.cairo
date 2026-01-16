@@ -110,4 +110,17 @@ pub trait IRouterStatic<TContractState> {
     fn preview_swap_exact_token_for_pt(
         self: @TContractState, market: ContractAddress, estimate: TokenToSyEstimate,
     ) -> u256;
+
+    /// Preview LP output for adding liquidity with any token via aggregator
+    /// Since aggregators cannot be called in view context, the frontend must:
+    /// 1. Get aggregator quote off-chain (token -> underlying)
+    /// 2. Call SY.preview_deposit() with the underlying amount
+    /// 3. Pass the estimated SY amount in the estimate parameter
+    /// This function then calculates the expected LP output using the single-SY flow.
+    /// @param market The market address
+    /// @param estimate Token input with pre-calculated SY estimate from aggregator
+    /// @return Expected LP tokens to receive
+    fn preview_add_liquidity_single_token(
+        self: @TContractState, market: ContractAddress, estimate: TokenToSyEstimate,
+    ) -> u256;
 }
