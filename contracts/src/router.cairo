@@ -1658,6 +1658,112 @@ pub mod Router {
             self.reentrancy_guard.end();
             yt_minted
         }
+
+        /// Swap YT for any token through an external aggregator
+        /// Flow: YT + collateral -> buy PT -> redeem PT+YT -> SY -> redeem -> underlying ->
+        /// aggregator -> token_out
+        fn swap_exact_yt_for_token(
+            ref self: ContractState,
+            yt: ContractAddress,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            exact_yt_in: u256,
+            max_sy_collateral: u256,
+            output: TokenOutput,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!yt.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(exact_yt_in > 0, Errors::ZERO_AMOUNT);
+            assert(max_sy_collateral > 0, Errors::ZERO_AMOUNT);
+            assert(!output.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!output.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+            let yt_contract = IYTDispatcher { contract_address: yt };
+            let market_contract = IMarketDispatcher { contract_address: market };
+
+            let sy = yt_contract.sy();
+            let pt = yt_contract.pt();
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            let pt_contract = IPTDispatcher { contract_address: pt };
+
+            // Get the underlying asset that SY redeems to
+            let underlying = sy_contract.underlying_asset();
+
+            // 1. Transfer YT from caller to this contract
+            yt_contract.transfer_from(caller, this, exact_yt_in);
+
+            // 2. Transfer SY collateral from caller (user specifies max amount they're willing to
+            // provide)
+            sy_contract.transfer_from(caller, this, max_sy_collateral);
+
+            // 3. Buy exact PT using collateral
+            sy_contract.approve(market, max_sy_collateral);
+            let sy_spent_on_pt = market_contract
+                .swap_sy_for_exact_pt(this, exact_yt_in, max_sy_collateral, array![].span());
+
+            // 4. Now we have PT and YT - pre-transfer to YT contract, then redeem for SY
+            pt_contract.transfer(yt, exact_yt_in);
+            yt_contract.transfer(yt, exact_yt_in);
+            let sy_from_redemption = yt_contract.redeem_py(this);
+
+            // 5. Calculate total SY available (redemption + refunded collateral)
+            let sy_refund = max_sy_collateral - sy_spent_on_pt;
+            let total_sy = sy_from_redemption + sy_refund;
+
+            // 6. Redeem all SY for underlying
+            let underlying_received = sy_contract.redeem(this, total_sy, underlying, 0, true);
+
+            // Verify SY redeem returned tokens
+            assert(underlying_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 7. Swap underlying for output token through aggregator
+            let underlying_contract = IERC20Dispatcher { contract_address: underlying };
+            underlying_contract.approve(output.swap_data.aggregator, underlying_received);
+
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: output.swap_data.aggregator,
+            };
+            let token_out_received = aggregator
+                .swap(
+                    underlying,
+                    output.token,
+                    underlying_received,
+                    output.min_amount, // Final slippage protection
+                    receiver,
+                    output.swap_data.calldata,
+                );
+
+            // Clear aggregator approval to prevent approval griefing
+            underlying_contract.approve(output.swap_data.aggregator, 0);
+
+            // Verify aggregator returned tokens and slippage check
+            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            // Emit event
+            self
+                .emit(
+                    SwapYT {
+                        sender: caller,
+                        receiver,
+                        yt,
+                        market,
+                        sy_in: max_sy_collateral,
+                        yt_in: exact_yt_in,
+                        sy_out: total_sy,
+                        yt_out: 0,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            token_out_received
+        }
     }
 
     // ============ Internal Helper Functions ============

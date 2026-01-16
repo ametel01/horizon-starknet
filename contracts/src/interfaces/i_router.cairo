@@ -473,4 +473,26 @@ pub trait IRouter<TContractState> {
         min_yt_out: u256,
         deadline: u64,
     ) -> u256;
+
+    /// Swap YT for any token through an external aggregator
+    /// Flow: YT + collateral -> buy PT -> redeem PT+YT -> SY -> redeem -> underlying -> aggregator
+    /// -> token_out
+    /// @param yt The YT contract address
+    /// @param market The market address for PT/SY swaps
+    /// @param receiver Address to receive output token
+    /// @param exact_yt_in Exact amount of YT to sell
+    /// @param max_sy_collateral Maximum SY caller will provide as collateral to buy PT
+    /// @param output Token output with aggregator swap data and min amount
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return Amount of output token received
+    fn swap_exact_yt_for_token(
+        ref self: TContractState,
+        yt: ContractAddress,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        exact_yt_in: u256,
+        max_sy_collateral: u256,
+        output: TokenOutput,
+        deadline: u64,
+    ) -> u256;
 }
