@@ -495,4 +495,23 @@ pub trait IRouter<TContractState> {
         output: TokenOutput,
         deadline: u64,
     ) -> u256;
+
+    // ============ Aggregator Liquidity Operations ============
+
+    /// Add liquidity using any token through an external aggregator
+    /// Flow: token_in -> aggregator -> underlying -> SY deposit -> add_liquidity_single_sy -> LP
+    /// @param market The market address
+    /// @param receiver Address to receive LP tokens
+    /// @param input Token input with aggregator swap data
+    /// @param min_lp_out Minimum LP tokens to receive (slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return (sy_used, pt_used, lp_minted) - Actual amounts used and LP received
+    fn add_liquidity_single_token(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        input: TokenInput,
+        min_lp_out: u256,
+        deadline: u64,
+    ) -> (u256, u256, u256);
 }
