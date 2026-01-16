@@ -36,6 +36,7 @@ pub mod market {
 }
 pub mod mocks {
     pub mod faucet;
+    pub mod mock_aggregator;
     pub mod mock_erc20;
     pub mod mock_pragma;
     pub mod mock_reentrant_token;
