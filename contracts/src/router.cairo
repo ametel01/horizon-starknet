@@ -27,10 +27,11 @@ pub mod Router {
     };
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-    use horizon::interfaces::i_router::{Call, IRouter, TokenInput, TokenOutput};
+    use horizon::interfaces::i_router::{ApproxParams, Call, IRouter, TokenInput, TokenOutput};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
     use horizon::libraries::errors::Errors;
+    use horizon::libraries::math::WAD;
     use horizon::libraries::roles::{DEFAULT_ADMIN_ROLE, PAUSER_ROLE};
     use horizon::market::amm::Market::{IMarketRewardsDispatcher, IMarketRewardsDispatcherTrait};
     use openzeppelin_access::accesscontrol::AccessControlComponent;
@@ -842,6 +843,89 @@ pub mod Router {
             // Swap (market handles slippage internally, but we add extra check)
             let pt_out = market_contract
                 .swap_exact_sy_for_pt(receiver, exact_sy_in, min_pt_out, array![].span());
+
+            // Emit event
+            self
+                .emit(
+                    Swap {
+                        sender: caller,
+                        receiver,
+                        market,
+                        sy_in: exact_sy_in,
+                        pt_in: 0,
+                        sy_out: 0,
+                        pt_out,
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            pt_out
+        }
+
+        fn swap_exact_sy_for_pt_with_approx(
+            ref self: ContractState,
+            market: ContractAddress,
+            receiver: ContractAddress,
+            exact_sy_in: u256,
+            min_pt_out: u256,
+            approx: ApproxParams,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!market.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(exact_sy_in > 0, Errors::ZERO_AMOUNT);
+
+            // Validate ApproxParams hints (0 values mean use defaults)
+            // When guess_min/guess_max are provided, validate they form a valid range
+            if approx.guess_min > 0 && approx.guess_max > 0 {
+                assert(approx.guess_min <= approx.guess_max, Errors::ROUTER_INVALID_APPROX_PARAMS);
+            }
+
+            // If guess_offchain is provided, it should be within the guess range (if specified)
+            if approx.guess_offchain > 0 {
+                if approx.guess_min > 0 {
+                    assert(approx.guess_offchain >= approx.guess_min, Errors::ROUTER_INVALID_APPROX_PARAMS);
+                }
+                if approx.guess_max > 0 {
+                    assert(approx.guess_offchain <= approx.guess_max, Errors::ROUTER_INVALID_APPROX_PARAMS);
+                }
+            }
+
+            let caller = get_caller_address();
+            let market_contract = IMarketDispatcher { contract_address: market };
+            let sy = market_contract.sy();
+
+            // Transfer SY from caller to this contract
+            let sy_contract = ISYDispatcher { contract_address: sy };
+            sy_contract.transfer_from(caller, get_contract_address(), exact_sy_in);
+
+            // Approve market to spend SY
+            sy_contract.approve(market, exact_sy_in);
+
+            // Execute swap using market's default binary search
+            // Future optimization: pass approx hints to market for faster convergence
+            let pt_out = market_contract
+                .swap_exact_sy_for_pt(receiver, exact_sy_in, min_pt_out, array![].span());
+
+            // If caller provided eps tolerance, verify result precision
+            // eps is a WAD-scaled fraction (e.g., 1e15 = 0.1% = 0.001 in WAD terms)
+            // This validates the swap result meets caller's precision requirements
+            if approx.eps > 0 && approx.guess_offchain > 0 {
+                // Calculate relative difference: |pt_out - guess| / guess
+                let diff = if pt_out >= approx.guess_offchain {
+                    pt_out - approx.guess_offchain
+                } else {
+                    approx.guess_offchain - pt_out
+                };
+                // Check if difference is within eps tolerance (in WAD)
+                // diff / guess_offchain <= eps / WAD
+                // => diff * WAD <= eps * guess_offchain
+                let tolerance_check = diff * WAD <= approx.eps * approx.guess_offchain;
+                assert(tolerance_check, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+            }
 
             // Emit event
             self

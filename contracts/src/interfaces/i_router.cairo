@@ -254,6 +254,26 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> u256;
 
+    /// Swap exact SY for PT with caller-provided binary search hints
+    /// Uses ApproxParams to optimize binary search convergence
+    /// Falls back to default binary search when hints are invalid (zero values)
+    /// @param market The market address
+    /// @param receiver Address to receive PT
+    /// @param exact_sy_in Exact amount of SY to sell
+    /// @param min_pt_out Minimum PT to receive (slippage protection)
+    /// @param approx Binary search hints for optimized convergence
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return Amount of PT received
+    fn swap_exact_sy_for_pt_with_approx(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        exact_sy_in: u256,
+        min_pt_out: u256,
+        approx: ApproxParams,
+        deadline: u64,
+    ) -> u256;
+
     /// Swap exact PT for SY
     /// @param market The market address
     /// @param receiver Address to receive SY

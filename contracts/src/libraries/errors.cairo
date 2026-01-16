@@ -68,6 +68,7 @@ pub mod Errors {
     pub const ROUTER_INVALID_AGGREGATOR: felt252 = 'HZN: invalid aggregator';
     pub const ROUTER_AGGREGATOR_SWAP_FAILED: felt252 = 'HZN: aggregator swap failed';
     pub const ROUTER_TOKEN_NOT_SUPPORTED: felt252 = 'HZN: token not supported';
+    pub const ROUTER_INVALID_APPROX_PARAMS: felt252 = 'HZN: invalid approx params';
 
     // Math errors
     pub const MATH_OVERFLOW: felt252 = 'HZN: overflow';
