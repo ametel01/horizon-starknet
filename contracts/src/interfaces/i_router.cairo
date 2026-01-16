@@ -1,5 +1,36 @@
 use starknet::ContractAddress;
 
+/// Data for executing a swap through an external aggregator
+/// @param aggregator Address of the swap aggregator contract
+/// @param calldata Encoded calldata to pass to the aggregator
+#[derive(Drop, Serde, Clone)]
+pub struct SwapData {
+    pub aggregator: ContractAddress,
+    pub calldata: Span<felt252>,
+}
+
+/// Represents an input token to be swapped to SY via an aggregator
+/// @param token Address of the input ERC20 token
+/// @param amount Amount of token to swap
+/// @param swap_data Data for executing the swap (aggregator and calldata)
+#[derive(Drop, Serde, Clone)]
+pub struct TokenInput {
+    pub token: ContractAddress,
+    pub amount: u256,
+    pub swap_data: SwapData,
+}
+
+/// Represents an output token to receive after swapping from SY via an aggregator
+/// @param token Address of the output ERC20 token
+/// @param min_amount Minimum amount of token to receive (slippage protection)
+/// @param swap_data Data for executing the swap (aggregator and calldata)
+#[derive(Drop, Serde, Clone)]
+pub struct TokenOutput {
+    pub token: ContractAddress,
+    pub min_amount: u256,
+    pub swap_data: SwapData,
+}
+
 /// Represents a single call in a multicall batch
 /// @param to Target contract address
 /// @param selector Function selector to call
