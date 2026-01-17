@@ -727,6 +727,199 @@ fn test_factory_deploy_multiple_sy_with_rewards() {
     assert(sy2_dispatcher.name() == "SY Two", 'Wrong name for SY2');
 }
 
+// ============ Fee Rate Management Tests ============
+// Tests for reward and interest fee rate setter/getter functions
+
+// Fee rate constants (copied from factory.cairo for tests)
+const MAX_REWARD_FEE_RATE: u256 = 200_000_000_000_000_000; // 20%
+const MAX_INTEREST_FEE_RATE: u256 = 500_000_000_000_000_000; // 50%
+
+#[test]
+fn test_factory_fee_rate_initial_values() {
+    let (_, _, factory) = setup();
+
+    // Fee rates should initially be zero
+    assert(factory.get_reward_fee_rate() == 0, 'Reward fee should be 0');
+    assert(factory.get_default_interest_fee_rate() == 0, 'Interest fee should be 0');
+}
+
+#[test]
+fn test_factory_fee_rate_set_reward_fee_rate() {
+    let (_, _, factory) = setup();
+
+    // Set reward fee rate as owner
+    let fee_rate = 30_000_000_000_000_000; // 3%
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_reward_fee_rate(fee_rate);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(factory.get_reward_fee_rate() == fee_rate, 'Reward fee not set');
+}
+
+#[test]
+fn test_factory_fee_rate_set_interest_fee_rate() {
+    let (_, _, factory) = setup();
+
+    // Set interest fee rate as owner
+    let fee_rate = 50_000_000_000_000_000; // 5%
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_interest_fee_rate(fee_rate);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(factory.get_default_interest_fee_rate() == fee_rate, 'Interest fee not set');
+}
+
+#[test]
+fn test_factory_fee_rate_set_max_reward_fee() {
+    let (_, _, factory) = setup();
+
+    // Set reward fee rate to max allowed (20%)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_reward_fee_rate(MAX_REWARD_FEE_RATE);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify max was set
+    assert(factory.get_reward_fee_rate() == MAX_REWARD_FEE_RATE, 'Max reward fee not set');
+}
+
+#[test]
+fn test_factory_fee_rate_set_max_interest_fee() {
+    let (_, _, factory) = setup();
+
+    // Set interest fee rate to max allowed (50%)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_interest_fee_rate(MAX_INTEREST_FEE_RATE);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify max was set
+    assert(factory.get_default_interest_fee_rate() == MAX_INTEREST_FEE_RATE, 'Max interest fee not set');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee rate')]
+fn test_factory_fee_rate_reward_exceeds_max() {
+    let (_, _, factory) = setup();
+
+    // Try to set reward fee rate above max (should fail)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_reward_fee_rate(MAX_REWARD_FEE_RATE + 1);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee rate')]
+fn test_factory_fee_rate_interest_exceeds_max() {
+    let (_, _, factory) = setup();
+
+    // Try to set interest fee rate above max (should fail)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_interest_fee_rate(MAX_INTEREST_FEE_RATE + 1);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_fee_rate_set_reward_not_owner() {
+    let (_, _, factory) = setup();
+
+    // Try to set reward fee rate as non-owner (should fail)
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_reward_fee_rate(30_000_000_000_000_000);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_fee_rate_set_interest_not_owner() {
+    let (_, _, factory) = setup();
+
+    // Try to set interest fee rate as non-owner (should fail)
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_default_interest_fee_rate(50_000_000_000_000_000);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_update_reward_fee() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set initial fee rate
+    let initial_rate = 30_000_000_000_000_000; // 3%
+    factory.set_reward_fee_rate(initial_rate);
+    assert(factory.get_reward_fee_rate() == initial_rate, 'Initial rate not set');
+
+    // Update to new fee rate
+    let updated_rate = 100_000_000_000_000_000; // 10%
+    factory.set_reward_fee_rate(updated_rate);
+    assert(factory.get_reward_fee_rate() == updated_rate, 'Updated rate not set');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_update_interest_fee() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set initial fee rate
+    let initial_rate = 50_000_000_000_000_000; // 5%
+    factory.set_default_interest_fee_rate(initial_rate);
+    assert(factory.get_default_interest_fee_rate() == initial_rate, 'Initial rate not set');
+
+    // Update to new fee rate
+    let updated_rate = 250_000_000_000_000_000; // 25%
+    factory.set_default_interest_fee_rate(updated_rate);
+    assert(factory.get_default_interest_fee_rate() == updated_rate, 'Updated rate not set');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_set_to_zero() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set non-zero fee rates first
+    factory.set_reward_fee_rate(100_000_000_000_000_000);
+    factory.set_default_interest_fee_rate(200_000_000_000_000_000);
+
+    // Reset to zero (should succeed)
+    factory.set_reward_fee_rate(0);
+    factory.set_default_interest_fee_rate(0);
+
+    assert(factory.get_reward_fee_rate() == 0, 'Reward fee not zero');
+    assert(factory.get_default_interest_fee_rate() == 0, 'Interest fee not zero');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_independent_values() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set different fee rates for reward and interest
+    let reward_rate = 50_000_000_000_000_000; // 5%
+    let interest_rate = 150_000_000_000_000_000; // 15%
+
+    factory.set_reward_fee_rate(reward_rate);
+    factory.set_default_interest_fee_rate(interest_rate);
+
+    // Verify they are independent
+    assert(factory.get_reward_fee_rate() == reward_rate, 'Wrong reward rate');
+    assert(factory.get_default_interest_fee_rate() == interest_rate, 'Wrong interest rate');
+    assert(factory.get_reward_fee_rate() != factory.get_default_interest_fee_rate(), 'Rates equal');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
 // ============ Decimals Consistency Tests ============
 // Tests that verify decimals are correctly propagated from SY to PT and YT
 
