@@ -982,3 +982,195 @@ fn test_standard_18_decimals() {
     assert(pt.decimals() == 18, 'PT should have 18 decimals');
     assert(yt.decimals() == 18, 'YT should have 18 decimals');
 }
+
+// ============ Expiry Divisor Tests ============
+// Tests for expiry divisor validation functionality
+
+// Time constant for expiry divisor testing
+const ONE_DAY: u64 = 86400;
+
+#[test]
+fn test_factory_expiry_divisor_initial_value() {
+    let (_, _, factory) = setup();
+
+    // Expiry divisor should initially be zero (disabled)
+    assert(factory.get_expiry_divisor() == 0, 'Divisor should be 0');
+}
+
+#[test]
+fn test_factory_expiry_divisor_set_daily() {
+    let (_, _, factory) = setup();
+
+    // Set expiry divisor to one day as owner
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(factory.get_expiry_divisor() == ONE_DAY, 'Divisor not set');
+}
+
+#[test]
+fn test_factory_expiry_divisor_disabled_allows_any_expiry() {
+    let (_, sy, factory) = setup();
+
+    // Divisor is 0 (disabled) by default
+    assert(factory.get_expiry_divisor() == 0, 'Divisor should be 0');
+
+    // Any valid future expiry should work (not aligned to anything)
+    let unaligned_expiry = CURRENT_TIME + 12345; // arbitrary non-aligned value
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, unaligned_expiry);
+
+    // Should succeed
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+fn test_factory_expiry_divisor_valid_aligned_expiry() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one day
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Create contracts with an expiry aligned to day boundary
+    // Use a timestamp that is divisible by ONE_DAY
+    let aligned_expiry = ((CURRENT_TIME / ONE_DAY) + 365) * ONE_DAY; // ~1 year, aligned to day
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, aligned_expiry);
+
+    // Should succeed
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid expiry divisor')]
+fn test_factory_expiry_divisor_invalid_unaligned_expiry() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one day
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Try to create contracts with an unaligned expiry (should fail)
+    let unaligned_expiry = ((CURRENT_TIME / ONE_DAY) + 365) * ONE_DAY + 1; // off by 1 second
+
+    factory.create_yield_contracts(sy.contract_address, unaligned_expiry);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_expiry_divisor_set_not_owner() {
+    let (_, _, factory) = setup();
+
+    // Try to set expiry divisor as non-owner (should fail)
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_expiry_divisor_update() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set initial divisor
+    factory.set_expiry_divisor(ONE_DAY);
+    assert(factory.get_expiry_divisor() == ONE_DAY, 'Initial divisor not set');
+
+    // Update to different divisor (hourly)
+    let one_hour: u64 = 3600;
+    factory.set_expiry_divisor(one_hour);
+    assert(factory.get_expiry_divisor() == one_hour, 'Updated divisor not set');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_expiry_divisor_disable() {
+    let (_, sy, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Enable divisor
+    factory.set_expiry_divisor(ONE_DAY);
+    assert(factory.get_expiry_divisor() == ONE_DAY, 'Divisor not enabled');
+
+    // Disable divisor by setting to 0
+    factory.set_expiry_divisor(0);
+    assert(factory.get_expiry_divisor() == 0, 'Divisor not disabled');
+
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Now unaligned expiries should work again
+    let unaligned_expiry = CURRENT_TIME + 12345;
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, unaligned_expiry);
+
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+fn test_factory_expiry_divisor_weekly_alignment() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one week
+    let one_week: u64 = 7 * ONE_DAY;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(one_week);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Create contracts with a weekly-aligned expiry
+    let aligned_expiry = ((CURRENT_TIME / one_week) + 52) * one_week; // ~1 year, aligned to week
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, aligned_expiry);
+
+    // Should succeed
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid expiry divisor')]
+fn test_factory_expiry_divisor_weekly_unaligned() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one week
+    let one_week: u64 = 7 * ONE_DAY;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(one_week);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Try to create with daily-aligned but not weekly-aligned expiry (should fail)
+    let daily_aligned_expiry = ((CURRENT_TIME / ONE_DAY) + 365) * ONE_DAY;
+    // This is aligned to day but not to week (376 days is not divisible by 7)
+
+    factory.create_yield_contracts(sy.contract_address, daily_aligned_expiry);
+}
+
+#[test]
+fn test_factory_expiry_divisor_zero_expiry_aligned() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Expiry that is exactly divisible (multiple of ONE_DAY)
+    let exact_multiple = ONE_DAY * 100; // arbitrary multiple, in the future
+
+    // Need to ensure it's in the future
+    start_cheat_block_timestamp_global(1); // reset to very early time
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, exact_multiple);
+
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
