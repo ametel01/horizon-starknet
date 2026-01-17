@@ -677,7 +677,7 @@ grep -q "get_market_info" packages/frontend/src/features/markets/model/useMarket
 
 ---
 
-### Step 27: Export preview hooks
+### Step 27: Export preview hooks **COMPLETE**
 
 #### Goal
 Export all new preview hooks from their respective features.
