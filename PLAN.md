@@ -76,7 +76,7 @@ grep -q "getRouterStaticContract" packages/frontend/src/shared/starknet/contract
 
 ---
 
-## Phase 2: Single-Sided Liquidity Removal Hooks
+## Phase 2: Single-Sided Liquidity Removal Hooks **COMPLETE**
 
 Add missing removal hooks to complete the single-sided liquidity feature set.
 
@@ -201,7 +201,7 @@ Define TypeScript types and infrastructure for token aggregation operations.
 cd packages/frontend && bun run check
 ```
 
-### Step 8: Create token aggregation types
+### Step 8: Create token aggregation types **COMPLETE**
 
 #### Goal
 Define TypeScript interfaces for TokenInput, TokenOutput, SwapData, and ApproxParams matching Cairo structs from i_router.cairo.
