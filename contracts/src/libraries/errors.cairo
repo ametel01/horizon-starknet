@@ -35,6 +35,8 @@ pub mod Errors {
     pub const YT_NO_FLOATING_PY: felt252 = 'HZN: no floating PT/YT';
     pub const YT_NO_FLOATING_PT: felt252 = 'HZN: no floating PT';
     pub const YT_PT_YT_MISMATCH: felt252 = 'HZN: PT/YT amount mismatch';
+    pub const YT_FLASH_CALLBACK_FAILED: felt252 = 'HZN: flash callback failed';
+    pub const YT_FLASH_REPAYMENT_FAILED: felt252 = 'HZN: flash repayment failed';
 
     // Market errors
     pub const MARKET_EXPIRED: felt252 = 'HZN: market expired';
