@@ -532,7 +532,7 @@ grep -q "useAddLiquiditySingleSyWithApprox" packages/frontend/src/features/liqui
 
 ---
 
-### Step 22: Export ApproxParams hooks
+### Step 22: Export ApproxParams hooks **COMPLETE**
 
 #### Goal
 Export new ApproxParams-enabled hooks from features.

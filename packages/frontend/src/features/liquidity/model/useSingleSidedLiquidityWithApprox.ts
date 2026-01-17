@@ -1,11 +1,8 @@
 'use client';
 
-import { useAccount, useStarknet } from '@features/wallet';
 import { serializeApproxParams, serializeU256 } from '@features/swap/lib/calldata';
-import {
-  type ApproxParams,
-  DEFAULT_APPROX_PARAMS,
-} from '@features/swap/model/types';
+import { type ApproxParams, DEFAULT_APPROX_PARAMS } from '@features/swap/model/types';
+import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract } from '@shared/starknet/contracts';
@@ -138,9 +135,7 @@ export function useAddLiquiditySingleSyWithApprox(): UseAddLiquiditySingleSyWith
     /**
      * Optimistic UI: Update SY and LP balances immediately
      */
-    onMutate: async (
-      params: AddLiquiditySingleSyWithApproxParams
-    ): Promise<OptimisticContext> => {
+    onMutate: async (params: AddLiquiditySingleSyWithApproxParams): Promise<OptimisticContext> => {
       // Cancel any outgoing refetches to prevent overwriting optimistic update
       await queryClient.cancelQueries({
         queryKey: ['token-balance', params.syAddress, address],

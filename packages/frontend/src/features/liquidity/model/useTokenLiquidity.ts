@@ -1,6 +1,10 @@
 'use client';
 
-import { serializeTokenInput, serializeTokenOutput, serializeU256 } from '@features/swap/lib/calldata';
+import {
+  serializeTokenInput,
+  serializeTokenOutput,
+  serializeU256,
+} from '@features/swap/lib/calldata';
 import type { TokenInput, TokenOutput } from '@features/swap/model/types';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
