@@ -192,7 +192,7 @@ cd packages/frontend && bun run check
 
 ---
 
-## Phase 3: Token Aggregation Types and Infrastructure
+## Phase 3: Token Aggregation Types and Infrastructure **COMPLETE**
 
 Define TypeScript types and infrastructure for token aggregation operations.
 
@@ -280,7 +280,7 @@ Implement hooks for swapping arbitrary tokens to PT/YT via external aggregators.
 cd packages/frontend && bun run check
 ```
 
-### Step 11: Create useSwapTokenForPt hook
+### Step 11: Create useSwapTokenForPt hook **COMPLETE**
 
 #### Goal
 Implement hook for swapping any token to PT via aggregator (token -> underlying -> SY -> PT).
