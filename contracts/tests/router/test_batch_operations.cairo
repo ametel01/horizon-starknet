@@ -6,17 +6,16 @@
 use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
 use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
 use horizon::interfaces::i_router::{IRouterDispatcher, IRouterDispatcherTrait};
-use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy::ISYDispatcherTrait;
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
-use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
+use horizon::mocks::mock_yield_token::IMockYieldTokenDispatcherTrait;
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
-    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 use crate::utils::{
-    DEFAULT_DEADLINE, admin, append_bytearray, mint_and_deposit_sy, set_yield_index, setup_full,
+    admin, append_bytearray, mint_and_deposit_sy, set_yield_index, setup_full,
     treasury, user1, user2, zero_address,
 };
 
@@ -272,7 +271,7 @@ fn test_batch_redeem_with_market() {
 #[test]
 #[should_panic(expected: 'HZN: zero address')]
 fn test_batch_redeem_zero_user() {
-    let (_, _, _, yt) = setup_full();
+    let (_, _, _, _) = setup_full();
     let router = deploy_router();
 
     start_cheat_caller_address(router.contract_address, user1());
