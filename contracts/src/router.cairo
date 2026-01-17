@@ -2496,7 +2496,7 @@ pub mod Router {
                         market,
                         lp_in: lp_to_burn,
                         sy_out: sy_from_burn, // Report SY portion
-                        pt_out: pt_from_burn, // Report PT portion sent to receiver
+                        pt_out: pt_from_burn // Report PT portion sent to receiver
                     },
                 );
 

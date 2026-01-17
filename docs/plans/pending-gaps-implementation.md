@@ -2,7 +2,7 @@
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
 4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE
-5. **Phase 5 (Router Dual Token Liquidity)** - COMPLETE: All steps including `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` implemented. Step 7 (tests) pending.
+5. **Phase 5 (Router Dual Token Liquidity)** - COMPLETE
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
 
@@ -892,7 +892,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 7: Add dual liquidity operation tests
+### Step 7: Add dual liquidity operation tests **COMPLETE**
 
 #### Goal
 Create tests for add_liquidity_dual_token_and_pt and remove_liquidity_dual_token_and_pt.
