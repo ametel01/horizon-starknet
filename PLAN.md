@@ -510,7 +510,7 @@ grep -q "useSwapSyForPtWithApprox" packages/frontend/src/features/swap/model/use
 
 ---
 
-### Step 21: Add ApproxParams to add_liquidity_single_sy
+### Step 21: Add ApproxParams to add_liquidity_single_sy **COMPLETE**
 
 #### Goal
 Create useAddLiquiditySingleSyWithApprox hook variant that accepts ApproxParams.
