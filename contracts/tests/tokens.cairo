@@ -14,6 +14,7 @@ pub mod test_sy;
 pub mod test_sy_with_rewards;
 pub mod test_yt;
 pub mod test_yt_fees;
+pub mod test_yt_flash;
 pub mod test_yt_interest;
 pub mod test_yt_phase5;
 pub mod test_yt_reserve;
