@@ -266,6 +266,7 @@ function OutputPreviewRow({ label, value, minValue, isValid }: OutputPreviewRowP
 
 // ----- Main Component -----
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode removal form with dual/SY-only/PT-only outputs and on-chain preview - inherent UI complexity
 export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormProps): ReactNode {
   const { isConnected, address } = useAccount();
   const { network } = useStarknet();

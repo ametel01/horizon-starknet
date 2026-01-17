@@ -232,6 +232,7 @@ function getTransactionSteps(
  * - Two-step approval flow for aggregator swaps
  * - Combined slippage handling (aggregator + market)
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode swap form with PT/YT toggle, buy/sell modes, aggregator routing, and price impact handling - inherent UI complexity
 export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
   const { address } = useAccount();

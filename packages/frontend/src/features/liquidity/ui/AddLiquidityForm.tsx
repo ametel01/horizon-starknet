@@ -216,6 +216,7 @@ function TransactionProgress({
 
 // ----- Main Component -----
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode liquidity form with dual/SY-only deposits, balanced mode toggle, and on-chain preview - inherent UI complexity
 export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): ReactNode {
   const { isConnected, address } = useAccount();
   const { network } = useStarknet();

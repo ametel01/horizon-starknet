@@ -27,6 +27,8 @@ fn redeem_due_interest_and_rewards(
 fn get_reward_tokens() -> Span<ContractAddress>
 ```
 
+**Note:** The Router already has `redeem_due_interest_and_rewards` at `router.cairo:471-476` which claims interest from YTs and rewards from Markets, but YT itself lacks multi-reward support.
+
 **Pendle V2 Reference:**
 - [`InterestManagerYT.sol`](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/YieldContracts/InterestManagerYT.sol) - Combined interest + rewards
 - [`RewardManager.sol`](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/RewardManager/RewardManager.sol) - Multi-token reward tracking
@@ -34,13 +36,13 @@ fn get_reward_tokens() -> Span<ContractAddress>
 **Horizon Implementation:**
 | File | Changes Required |
 |------|------------------|
-| `contracts/src/tokens/yt.cairo` | Add `RewardManagerComponent` (like Market does at line 76), add reward storage, implement `IYTRewards` trait |
-| `contracts/src/interfaces/i_yt.cairo` | Add `IYTRewards` trait with `get_reward_tokens()`, `claim_rewards()`, `redeem_due_interest_and_rewards()` |
+| `contracts/src/tokens/yt.cairo` | Add `RewardManagerComponent` (like Market does at line 76), add reward storage, implement reward tracking in YT |
+| `contracts/src/interfaces/i_yt.cairo` | Add reward-related functions: `get_reward_tokens()`, `claim_rewards()`, `redeem_due_interest_and_rewards()` |
 
 **Implementation Approach:**
-1. Import `RewardManagerComponent` in YT contract (already used in `amm.cairo:76`)
+1. Import `RewardManagerComponent` in YT contract (component already exists at `contracts/src/components/reward_manager_component.cairo`)
 2. Add component storage: `reward_manager: RewardManagerComponent::Storage`
-3. Hook reward updates into YT's `before_update` ERC20 hook (track rewards on transfers like SYWithRewards does)
+3. Hook reward updates into YT's `_update_user_interest` function (track rewards on transfers like Market does)
 4. Implement combined `redeem_due_interest_and_rewards()` that calls both interest and reward claims
 5. Forward `get_reward_tokens()` and `claim_rewards()` to component
 
@@ -107,9 +109,9 @@ Covered in P1-1 above.
 | Attribute | Details |
 |-----------|---------|
 | **Category** | Factory |
-| **Impact** | MEDIUM - Per-YT exists but no centralized factory-level fee schedule |
+| **Impact** | MEDIUM - Per-YT exists but no centralized factory-level default fee schedule |
 
-**Current State:** YT has per-contract `interest_fee_rate` at `yt.cairo:96` with admin setter at lines 1369-1386.
+**Current State:** YT has per-contract `interest_fee_rate` at `yt.cairo:96` with admin setter at lines 1369-1374 (max 50%).
 
 **Pendle V2 Reference:**
 - [`PendleYieldContractFactoryUpg.sol`](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/YieldContracts/PendleYieldContractFactoryUpg.sol) lines 35-39
@@ -118,17 +120,18 @@ Covered in P1-1 above.
 | File | Line | Changes Required |
 |------|------|------------------|
 | `contracts/src/factory.cairo` | After line 76 | Add `default_interest_fee_rate: u256` storage |
-| `contracts/src/factory.cairo` | `create_yield_contracts()` | Pass fee rate to YT constructor |
+| `contracts/src/factory.cairo` | `create_yield_contracts()` around line 207 | Pass fee rate to YT constructor calldata |
 | `contracts/src/tokens/yt.cairo` | Constructor | Accept and set initial `interest_fee_rate` from factory |
 
 **Implementation:**
 ```cairo
 // Factory storage
-default_interest_fee_rate: u256,  // WAD-scaled, max 0.2e18 (20%)
+default_interest_fee_rate: u256,  // WAD-scaled, max 0.5e18 (50%) to match YT max
 
-// In create_yield_contracts(), pass to YT deploy
+// In create_yield_contracts(), add to YT constructor calldata after decimals (line 231)
 let interest_fee_rate = self.default_interest_fee_rate.read();
-// Include in YT constructor calldata
+yt_calldata.append(interest_fee_rate.low.into());
+yt_calldata.append(interest_fee_rate.high.into());
 ```
 
 ---
@@ -168,7 +171,7 @@ fn set_default_interest_fee_rate(ref self: ContractState, rate: u256) {
 **Horizon Implementation:**
 | File | Changes Required |
 |------|------------------|
-| `contracts/src/router.cairo` | New function after `add_liquidity_single_token` |
+| `contracts/src/router.cairo` | New function after `add_liquidity_single_token` (line 565) |
 | `contracts/src/interfaces/i_router.cairo` | Add to `IRouter` trait |
 
 ```cairo
@@ -199,7 +202,7 @@ fn add_liquidity_dual_token_and_pt(
 **Horizon Implementation:**
 | File | Changes Required |
 |------|------------------|
-| `contracts/src/router.cairo` | New function after `remove_liquidity_single_token` |
+| `contracts/src/router.cairo` | New function after `remove_liquidity_single_token` (line 603) |
 
 ```cairo
 fn remove_liquidity_dual_token_and_pt(
@@ -294,7 +297,7 @@ struct FillOrderParams {
 | **Description** | EIP-2612 gasless approvals |
 | **Impact** | N/A for Starknet (different signature model) |
 
-**Note:** Starknet uses account abstraction with native multicall. Users can batch approve + swap in single transaction via wallet.
+**Note:** Starknet uses account abstraction with native multicall. Users can batch approve + swap in single transaction via wallet. The Router already has `multicall()` at line 233.
 
 ---
 
@@ -321,8 +324,8 @@ function createYieldContract(..., uint32 expiry, ...) {
 **Horizon Implementation:**
 | File | Line | Changes Required |
 |------|------|------------------|
-| `contracts/src/factory.cairo` | Storage section | Add `expiry_divisor: u64` |
-| `contracts/src/factory.cairo` | Line ~178 | Add validation `assert(expiry % divisor == 0, ...)` |
+| `contracts/src/factory.cairo` | Storage section after line 76 | Add `expiry_divisor: u64` |
+| `contracts/src/factory.cairo` | Line ~178 in `create_yield_contracts` | Add validation `assert(expiry % divisor == 0, ...)` |
 | `contracts/src/factory.cairo` | New function | Add `set_expiry_divisor(divisor: u64)` admin function |
 
 ```cairo
@@ -358,9 +361,9 @@ Covered in P2-F1 above.
 **Horizon Implementation:**
 | File | Line | Changes Required |
 |------|------|------------------|
-| `contracts/src/market/market_factory.cairo` | Storage | Add `yield_contract_factory: ContractAddress` |
-| `contracts/src/market/market_factory.cairo` | Constructor | Accept and store factory address |
-| `contracts/src/market/market_factory.cairo` | `create_market()` | Optionally validate PT was deployed by linked factory |
+| `contracts/src/market/market_factory.cairo` | Storage section after line 106 | Add `yield_contract_factory: ContractAddress` |
+| `contracts/src/market/market_factory.cairo` | Constructor at line 182 | Accept and store factory address |
+| `contracts/src/market/market_factory.cairo` | `create_market()` at line 212 | Optionally validate PT was deployed by linked factory |
 
 ```cairo
 // Storage
@@ -446,7 +449,7 @@ struct MarketState {
 **Horizon Implementation:**
 | File | Changes Required |
 |------|------------------|
-| `contracts/src/market/amm.cairo` | Storage section | Analyze and pack related fields |
+| `contracts/src/market/amm.cairo` | Storage section (lines 106-144) | Analyze and pack related fields |
 
 **Note:** Cairo storage model differs from EVM. Packing benefits depend on Starknet's storage pricing model. Consider packing after profiling actual gas costs.
 
@@ -473,9 +476,7 @@ uint256 balBefore = SY.balanceOf(address(this));
 uint256 netSyIn = SY.balanceOf(address(this)) - balBefore;
 ```
 
-**Trade-offs:**
-- Horizon: Simpler, explicit; requires approval
-- Pendle: Saves approval step but more complex; enables flash patterns
+**Note:** YT contract already uses the "floating token" pattern (pre-transfer + balance delta) - see `mint_py`, `redeem_py` functions which consume "floating" SY/PT/YT. Market uses pull pattern for simpler UX via Router. This is an intentional design choice.
 
 **Decision:** Current pattern is acceptable. Document difference.
 
@@ -489,6 +490,8 @@ uint256 netSyIn = SY.balanceOf(address(this)) - balBefore;
 |-----------|---------|
 | **Description** | `latestRoundData()` compatibility for DeFi integrations expecting Chainlink interface |
 | **Impact** | Optional - enables integration with protocols expecting Chainlink format |
+
+**Current State:** Horizon has `PragmaIndexOracle` at `contracts/src/oracles/pragma_index_oracle.cairo` which is a generic Pragma oracle adapter, and `PyLpOracle` at `contracts/src/oracles/py_lp_oracle.cairo` for PT/YT/LP TWAP pricing.
 
 **Pendle V2 Reference:**
 - [`PendleChainlinkOracle.sol`](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol)
@@ -508,7 +511,7 @@ trait IPragmaCompatibleOracle<TContractState> {
 mod PragmaPtOracle {
     // Wraps PyLpOracle TWAP in Pragma-compatible format
     fn get_data_median(...) {
-        let pt_rate = py_lp_oracle.get_pt_to_asset_rate(market, duration);
+        let pt_rate = py_lp_oracle.get_pt_to_sy_rate(market, duration);
         // Format as PragmaPricesResponse
     }
 }
@@ -538,12 +541,13 @@ mod PragmaPtOracle {
 | Gap | Category | File | Notes |
 |-----|----------|------|-------|
 | PT VERSION constant | Core Tokens | `contracts/src/tokens/pt.cairo` | Add `const VERSION: felt252 = 1;` |
-| PT reentrancy guard exposure | Core Tokens | `contracts/src/tokens/pt.cairo` | Add `fn reentrancy_guard_entered() -> bool` |
 | YT UserInterest struct packing | Core Tokens | `contracts/src/tokens/yt.cairo:81-83` | Combine `user_py_index` + `user_interest` Maps into single packed struct Map |
 | Factory VERSION constant | Factory | `contracts/src/factory.cairo` | Add `const VERSION: felt252 = 1;` |
 | MarketFactory VERSION constant | MarketFactory | `contracts/src/market/market_factory.cairo` | Add `const VERSION: felt252 = 1;` |
-| `readState(router)` external view | Market | `contracts/src/market/amm.cairo` | Expose `get_market_state()` as external view |
+| `readState(router)` external view | Market | `contracts/src/market/amm.cairo` | Market has internal `_get_market_state()` at line 1488 and view variant at line 1514, but no external view exposing full state. Consider adding `get_market_state() -> MarketState` to `IMarket` |
 | Cross-chain operations | Router | N/A | LayerZero/bridge support (Starknet-only focus) |
+
+**Note:** PT reentrancy guard exposure removed from gap list - PT does not use ReentrancyGuardComponent (unlike YT which has it at line 36-37).
 
 ---
 
@@ -580,10 +584,10 @@ contracts/src/governance/
 | **Critical (P0)** | 1 | Multi-reward YT |
 | **High (P1)** | 4 | Factory fee infrastructure |
 | **Medium (P2)** | 14 | Router features, factory expiry, storage |
-| **Low (P3)** | 7 | Versioning, minor compatibility |
+| **Low (P3)** | 6 | Versioning, minor compatibility |
 | **Future (P4)** | 8 | Governance system |
 
-**Total Remaining Gaps: 34**
+**Total Remaining Gaps: 33**
 
 ---
 

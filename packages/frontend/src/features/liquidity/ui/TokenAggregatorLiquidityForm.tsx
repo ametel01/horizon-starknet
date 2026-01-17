@@ -137,7 +137,10 @@ function deriveButtonState(params: {
   } = params;
 
   if (isProcessing) {
-    return { label: mode === 'add' ? 'Adding Liquidity...' : 'Removing Liquidity...', disabled: true };
+    return {
+      label: mode === 'add' ? 'Adding Liquidity...' : 'Removing Liquidity...',
+      disabled: true,
+    };
   }
   if (!isConnected) return { label: 'Connect Wallet', disabled: true };
   if (isExpired && mode === 'add') return { label: 'Market Expired', disabled: true };
@@ -215,6 +218,7 @@ function getTransactionSteps(
  * - Aggregator routing display (when available)
  * - Combined slippage handling (aggregator + market)
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode form with add/remove liquidity, keep YT toggle, and aggregator routing - inherent UI complexity
 export function TokenAggregatorLiquidityForm({
   market,
   className,
@@ -264,28 +268,52 @@ export function TokenAggregatorLiquidityForm({
       return keepYt ? addLiquiditySingleTokenKeepYt.isAdding : addLiquiditySingleToken.isAdding;
     }
     return removeLiquiditySingleToken.isRemoving;
-  }, [mode, keepYt, addLiquiditySingleToken, addLiquiditySingleTokenKeepYt, removeLiquiditySingleToken]);
+  }, [
+    mode,
+    keepYt,
+    addLiquiditySingleToken,
+    addLiquiditySingleTokenKeepYt,
+    removeLiquiditySingleToken,
+  ]);
 
   const isSuccess = useMemo(() => {
     if (mode === 'add') {
       return keepYt ? addLiquiditySingleTokenKeepYt.isSuccess : addLiquiditySingleToken.isSuccess;
     }
     return removeLiquiditySingleToken.isSuccess;
-  }, [mode, keepYt, addLiquiditySingleToken, addLiquiditySingleTokenKeepYt, removeLiquiditySingleToken]);
+  }, [
+    mode,
+    keepYt,
+    addLiquiditySingleToken,
+    addLiquiditySingleTokenKeepYt,
+    removeLiquiditySingleToken,
+  ]);
 
   const isError = useMemo(() => {
     if (mode === 'add') {
       return keepYt ? addLiquiditySingleTokenKeepYt.isError : addLiquiditySingleToken.isError;
     }
     return removeLiquiditySingleToken.isError;
-  }, [mode, keepYt, addLiquiditySingleToken, addLiquiditySingleTokenKeepYt, removeLiquiditySingleToken]);
+  }, [
+    mode,
+    keepYt,
+    addLiquiditySingleToken,
+    addLiquiditySingleTokenKeepYt,
+    removeLiquiditySingleToken,
+  ]);
 
   const error = useMemo(() => {
     if (mode === 'add') {
       return keepYt ? addLiquiditySingleTokenKeepYt.error : addLiquiditySingleToken.error;
     }
     return removeLiquiditySingleToken.error;
-  }, [mode, keepYt, addLiquiditySingleToken, addLiquiditySingleTokenKeepYt, removeLiquiditySingleToken]);
+  }, [
+    mode,
+    keepYt,
+    addLiquiditySingleToken,
+    addLiquiditySingleTokenKeepYt,
+    removeLiquiditySingleToken,
+  ]);
 
   const transactionHash = useMemo(() => {
     if (mode === 'add') {
@@ -294,14 +322,26 @@ export function TokenAggregatorLiquidityForm({
         : addLiquiditySingleToken.transactionHash;
     }
     return removeLiquiditySingleToken.transactionHash;
-  }, [mode, keepYt, addLiquiditySingleToken, addLiquiditySingleTokenKeepYt, removeLiquiditySingleToken]);
+  }, [
+    mode,
+    keepYt,
+    addLiquiditySingleToken,
+    addLiquiditySingleTokenKeepYt,
+    removeLiquiditySingleToken,
+  ]);
 
   const resetHook = useMemo(() => {
     if (mode === 'add') {
       return keepYt ? addLiquiditySingleTokenKeepYt.reset : addLiquiditySingleToken.reset;
     }
     return removeLiquiditySingleToken.reset;
-  }, [mode, keepYt, addLiquiditySingleToken, addLiquiditySingleTokenKeepYt, removeLiquiditySingleToken]);
+  }, [
+    mode,
+    keepYt,
+    addLiquiditySingleToken,
+    addLiquiditySingleTokenKeepYt,
+    removeLiquiditySingleToken,
+  ]);
 
   // Derive input token address based on mode
   const inputTokenAddress = useMemo(() => {
@@ -456,7 +496,17 @@ export function TokenAggregatorLiquidityForm({
         needsAggregator,
         keepYt,
       }),
-    [isConnected, isValidAmount, hasInsufficientBalance, isProcessing, isSuccess, market.isExpired, mode, needsAggregator, keepYt]
+    [
+      isConnected,
+      isValidAmount,
+      hasInsufficientBalance,
+      isProcessing,
+      isSuccess,
+      market.isExpired,
+      mode,
+      needsAggregator,
+      keepYt,
+    ]
   );
 
   // Transaction steps
@@ -763,7 +813,8 @@ export function TokenAggregatorLiquidityForm({
           size="xl"
           className={cn(
             'w-full',
-            mode === 'remove' && 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+            mode === 'remove' &&
+              'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
           )}
         >
           {buttonState.label}
