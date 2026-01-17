@@ -93,6 +93,8 @@ pub mod Factory {
         ClassHashesUpdated: ClassHashesUpdated,
         SYWithRewardsDeployed: SYWithRewardsDeployed,
         SYWithRewardsClassHashUpdated: SYWithRewardsClassHashUpdated,
+        RewardFeeRateSet: RewardFeeRateSet,
+        DefaultInterestFeeRateSet: DefaultInterestFeeRateSet,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -141,6 +143,18 @@ pub mod Factory {
     pub struct SYWithRewardsClassHashUpdated {
         pub old_class_hash: ClassHash,
         pub new_class_hash: ClassHash,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct RewardFeeRateSet {
+        pub old_fee_rate: u256,
+        pub new_fee_rate: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DefaultInterestFeeRateSet {
+        pub old_fee_rate: u256,
+        pub new_fee_rate: u256,
     }
 
     #[constructor]
@@ -468,6 +482,42 @@ pub mod Factory {
             self.ownable.assert_only_owner();
             assert(!treasury.is_zero(), Errors::ZERO_ADDRESS);
             self.treasury.write(treasury);
+        }
+
+        // ============ Fee Rate Management ============
+
+        /// Get the reward fee rate (in WAD, 10^18 = 100%)
+        fn get_reward_fee_rate(self: @ContractState) -> u256 {
+            self.reward_fee_rate.read()
+        }
+
+        /// Set the reward fee rate (owner only)
+        /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
+        fn set_reward_fee_rate(ref self: ContractState, rate: u256) {
+            self.ownable.assert_only_owner();
+            assert(rate <= MAX_REWARD_FEE_RATE, Errors::FACTORY_INVALID_FEE_RATE);
+
+            let old_rate = self.reward_fee_rate.read();
+            self.reward_fee_rate.write(rate);
+
+            self.emit(RewardFeeRateSet { old_fee_rate: old_rate, new_fee_rate: rate });
+        }
+
+        /// Get the default interest fee rate (in WAD, 10^18 = 100%)
+        fn get_default_interest_fee_rate(self: @ContractState) -> u256 {
+            self.default_interest_fee_rate.read()
+        }
+
+        /// Set the default interest fee rate (owner only)
+        /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
+        fn set_default_interest_fee_rate(ref self: ContractState, rate: u256) {
+            self.ownable.assert_only_owner();
+            assert(rate <= MAX_INTEREST_FEE_RATE, Errors::FACTORY_INVALID_FEE_RATE);
+
+            let old_rate = self.default_interest_fee_rate.read();
+            self.default_interest_fee_rate.write(rate);
+
+            self.emit(DefaultInterestFeeRateSet { old_fee_rate: old_rate, new_fee_rate: rate });
         }
     }
 }

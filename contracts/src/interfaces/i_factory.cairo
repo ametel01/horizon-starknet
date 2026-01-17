@@ -72,4 +72,20 @@ pub trait IFactory<TContractState> {
 
     /// Set the treasury address (owner only)
     fn set_treasury(ref self: TContractState, treasury: ContractAddress);
+
+    // ============ Fee Rate Management ============
+
+    /// Get the reward fee rate (in WAD, 10^18 = 100%)
+    fn get_reward_fee_rate(self: @TContractState) -> u256;
+
+    /// Set the reward fee rate (owner only)
+    /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
+    fn set_reward_fee_rate(ref self: TContractState, rate: u256);
+
+    /// Get the default interest fee rate (in WAD, 10^18 = 100%)
+    fn get_default_interest_fee_rate(self: @TContractState) -> u256;
+
+    /// Set the default interest fee rate (owner only)
+    /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
+    fn set_default_interest_fee_rate(ref self: TContractState, rate: u256);
 }
