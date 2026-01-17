@@ -4,7 +4,7 @@
 4. **Phase 4 (Multi-Reward YT Integration)** - IMPLEMENTED: YT uses RewardManagerComponent with full reward tracking
 5. **Phase 5 (Router Dual Token Liquidity)** - IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` in Router
 6. **Phase 6 (YT Flash Mint)** - IMPLEMENTED: `i_flash_callback.cairo`, `FlashMintPY` event, `flash_mint_py` function in YT
-7. **Phase 7 (VERSION Constants)** - IN PROGRESS: PT has VERSION constant, remaining contracts pending
+7. **Phase 7 (VERSION Constants)** - IN PROGRESS: PT and YT have VERSION constant, remaining contracts pending
 
 This document describes planned features with step-by-step implementation guides. Phases 1-6 are fully implemented. Phase 7 is in progress.
 
@@ -1077,7 +1077,7 @@ grep -q "VERSION.*1" contracts/src/tokens/pt.cairo && echo "OK"
 
 ---
 
-### Step 2: Add VERSION constant to YT
+### Step 2: Add VERSION constant to YT **COMPLETE**
 
 #### Goal
 Add `const VERSION: felt252 = 1;` to YT contract.
