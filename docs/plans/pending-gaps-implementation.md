@@ -1,12 +1,12 @@
-1. **Phase 1 (Factory Fee Infrastructure)** - NOT IMPLEMENTED
-2. **Phase 2 (Expiry Divisor)** - NOT IMPLEMENTED
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED
-4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED
-5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED
-6. **Phase 6 (YT Flash Mint)** - IN PROGRESS: `i_flash_callback.cairo` created, flash mint functions not yet implemented
-7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
+1. **Phase 1 (Factory Fee Infrastructure)** - IMPLEMENTED: `reward_fee_rate`, `default_interest_fee_rate`, and fee setters/getters in Factory
+2. **Phase 2 (Expiry Divisor)** - IMPLEMENTED: `expiry_divisor` with validation in Factory
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - IMPLEMENTED: `yield_contract_factory` with PT validation in MarketFactory
+4. **Phase 4 (Multi-Reward YT Integration)** - IMPLEMENTED: YT uses RewardManagerComponent with full reward tracking
+5. **Phase 5 (Router Dual Token Liquidity)** - IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` in Router
+6. **Phase 6 (YT Flash Mint)** - IN PROGRESS: `i_flash_callback.cairo` created, `flash_mint_py` not yet implemented
+7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED: No VERSION constants exist in any contracts
 
-This document describes **planned features** with step-by-step implementation guides. Steps marked **COMPLETE** indicate the step specification is finalized (not that the code is implemented).
+This document describes planned features with step-by-step implementation guides. Steps marked **COMPLETE** indicate the step specification is finalized (not that the code is implemented).
 
 ## Phase 1: Factory Fee Infrastructure **COMPLETE**
 
