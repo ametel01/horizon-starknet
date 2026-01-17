@@ -634,7 +634,7 @@ grep -q "preview_add_liquidity_single_sy\|preview_remove_liquidity_single_sy" pa
 
 ---
 
-### Step 26: Create useMarketInfo hook
+### Step 26: Create useMarketInfo hook **COMPLETE**
 
 #### Goal
 Create query hook for fetching comprehensive market state from RouterStatic.
