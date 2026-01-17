@@ -206,6 +206,22 @@ pub mod Factory {
         fn create_yield_contracts(
             ref self: ContractState, sy: ContractAddress, expiry: u64,
         ) -> (ContractAddress, ContractAddress) {
+            // Delegate to the full function with empty reward tokens for backward compatibility
+            let empty_reward_tokens: Array<ContractAddress> = array![];
+            self.create_yield_contracts_with_rewards(sy, expiry, empty_reward_tokens.span())
+        }
+
+        /// Create new PT and YT contracts with reward tokens for a given SY and expiry
+        /// @param sy The standardized yield token address
+        /// @param expiry The expiry timestamp
+        /// @param reward_tokens Reward tokens to track for YT holders
+        /// @return (PT address, YT address)
+        fn create_yield_contracts_with_rewards(
+            ref self: ContractState,
+            sy: ContractAddress,
+            expiry: u64,
+            reward_tokens: Span<ContractAddress>,
+        ) -> (ContractAddress, ContractAddress) {
             // Validate inputs
             assert(!sy.is_zero(), Errors::ZERO_ADDRESS);
             assert(expiry > get_block_timestamp(), Errors::FACTORY_INVALID_EXPIRY);
@@ -270,9 +286,8 @@ pub mod Factory {
             // Decimals (matches SY for consistency)
             yt_calldata.append(sy_decimals.into());
 
-            // Reward tokens (empty span for standard deploy_pt_yt)
-            let empty_reward_tokens: Array<ContractAddress> = array![];
-            Serde::serialize(@empty_reward_tokens, ref yt_calldata);
+            // Reward tokens (pass through from caller)
+            Serde::serialize(@reward_tokens, ref yt_calldata);
 
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();

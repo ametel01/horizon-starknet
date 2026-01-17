@@ -7,6 +7,18 @@ pub trait IFactory<TContractState> {
         ref self: TContractState, sy: ContractAddress, expiry: u64,
     ) -> (ContractAddress, ContractAddress); // (PT, YT)
 
+    /// Create new PT and YT contracts with reward tokens for a given SY and expiry
+    /// @param sy The standardized yield token address
+    /// @param expiry The expiry timestamp
+    /// @param reward_tokens Reward tokens to track for YT holders
+    /// @return (PT address, YT address)
+    fn create_yield_contracts_with_rewards(
+        ref self: TContractState,
+        sy: ContractAddress,
+        expiry: u64,
+        reward_tokens: Span<ContractAddress>,
+    ) -> (ContractAddress, ContractAddress);
+
     fn get_pt(self: @TContractState, sy: ContractAddress, expiry: u64) -> ContractAddress;
     fn get_yt(self: @TContractState, sy: ContractAddress, expiry: u64) -> ContractAddress;
     fn is_valid_pt(self: @TContractState, pt: ContractAddress) -> bool;
