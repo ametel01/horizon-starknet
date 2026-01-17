@@ -611,6 +611,26 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> u256;
 
+    /// Remove liquidity and receive any token plus PT through an external aggregator
+    /// Flow: LP -> burn -> SY + PT -> redeem SY -> underlying -> aggregator -> token_out + PT
+    /// User receives both an external token (from SY redemption via aggregator) and PT directly
+    /// @param market The market address
+    /// @param receiver Address to receive output token and PT
+    /// @param lp_to_burn Amount of LP tokens to burn
+    /// @param output Token output with aggregator swap data and min amount (for SY portion)
+    /// @param min_pt_out Minimum PT to receive (slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return (token_out, pt_out) - Amount of output token and PT received
+    fn remove_liquidity_dual_token_and_pt(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        lp_to_burn: u256,
+        output: TokenOutput,
+        min_pt_out: u256,
+        deadline: u64,
+    ) -> (u256, u256);
+
     /// Remove liquidity and receive any token through an external aggregator
     /// Flow: LP -> burn -> SY + PT -> swap PT for SY -> redeem SY -> underlying -> aggregator ->
     /// token_out

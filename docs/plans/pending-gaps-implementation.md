@@ -2,7 +2,7 @@
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
 4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE
-5. **Phase 5 (Router Dual Token Liquidity)** - IN PROGRESS: Steps 1-2 complete (`add_liquidity_dual_token_and_pt`)
+5. **Phase 5 (Router Dual Token Liquidity)** - IN PROGRESS: Steps 1-4 complete (`add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`)
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
 
@@ -819,7 +819,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 3: Add remove_liquidity_dual_token_and_pt function signature to IRouter
+### Step 3: Add remove_liquidity_dual_token_and_pt function signature to IRouter **COMPLETE**
 
 #### Goal
 Add `remove_liquidity_dual_token_and_pt(market, receiver, lp_to_burn, output, min_pt_out, deadline) -> (u256, u256)` to IRouter.
@@ -837,7 +837,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 4: Implement remove_liquidity_dual_token_and_pt in Router
+### Step 4: Implement remove_liquidity_dual_token_and_pt in Router **COMPLETE**
 
 #### Goal
 Implement: burn LP → receive SY + PT → convert SY portion via aggregator → return (token_out, pt_out).
