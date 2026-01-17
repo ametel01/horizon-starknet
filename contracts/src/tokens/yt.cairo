@@ -352,6 +352,7 @@ pub mod YT {
         pauser: ContractAddress,
         treasury: ContractAddress,
         decimals: u8,
+        reward_tokens: Span<ContractAddress>,
     ) {
         // Initialize ERC20 for YT
         self.erc20.initializer(name.clone(), symbol.clone());
@@ -411,6 +412,11 @@ pub mod YT {
         // Initialize PT with YT address (this contract)
         let pt_init = IPTInitDispatcher { contract_address: pt_address };
         pt_init.initialize_yt(get_contract_address());
+
+        // Initialize RewardManagerComponent if reward tokens are provided
+        if reward_tokens.len() > 0 {
+            self.reward_manager.initializer(reward_tokens);
+        }
     }
 
     #[abi(embed_v0)]

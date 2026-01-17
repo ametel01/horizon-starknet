@@ -242,7 +242,8 @@ pub mod Factory {
             let sy_decimals = sy_dispatcher.decimals();
 
             // Build YT constructor calldata
-            // YT constructor: name, symbol, sy, pt_class_hash, expiry, pauser, treasury, decimals
+            // YT constructor: name, symbol, sy, pt_class_hash, expiry, pauser, treasury, decimals,
+            // reward_tokens
             let mut yt_calldata: Array<felt252> = array![];
 
             // Serialize YT name (ByteArray)
@@ -268,6 +269,10 @@ pub mod Factory {
 
             // Decimals (matches SY for consistency)
             yt_calldata.append(sy_decimals.into());
+
+            // Reward tokens (empty span for standard deploy_pt_yt)
+            let empty_reward_tokens: Array<ContractAddress> = array![];
+            Serde::serialize(@empty_reward_tokens, ref yt_calldata);
 
             // Deploy YT contract (which will deploy PT internally)
             let salt: felt252 = count.low.into();

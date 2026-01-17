@@ -1,7 +1,7 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
-4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS (Steps 1-4 complete: RewardManagerComponent, storage, events, hooks; Steps 5-14 pending)
+4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS (Steps 1-5 complete: RewardManagerComponent, storage, events, hooks, constructor; Steps 6-14 pending)
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
@@ -589,7 +589,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 5: Update YT constructor for reward tokens
+### Step 5: Update YT constructor for reward tokens **COMPLETE**
 
 #### Goal
 Accept `reward_tokens: Span<ContractAddress>` parameter and initialize RewardManagerComponent if non-empty.

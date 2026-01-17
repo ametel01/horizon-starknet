@@ -107,6 +107,9 @@ fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTD
     calldata.append(admin().into()); // pauser
     calldata.append(treasury().into()); // treasury for post-expiry yield
     calldata.append(18); // decimals (matching SY standard)
+    // Reward tokens (empty span for standard deployment)
+    let empty_reward_tokens: Array<ContractAddress> = array![];
+    Serde::serialize(@empty_reward_tokens, ref calldata);
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
