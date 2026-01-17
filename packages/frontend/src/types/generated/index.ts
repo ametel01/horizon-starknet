@@ -20,6 +20,7 @@ export { PRAGMAINDEXORACLE_ABI } from './PragmaIndexOracle';
 export { PT_ABI } from './PT';
 export { PYLPORACLE_ABI } from './PyLpOracle';
 export { ROUTER_ABI } from './Router';
+export { ROUTERSTATIC_ABI } from './RouterStatic';
 export { SY_ABI } from './SY';
 export { SYWITHREWARDS_ABI } from './SYWithRewards';
 export { YT_ABI } from './YT';

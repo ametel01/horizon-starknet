@@ -1832,6 +1832,48 @@ export const MARKET_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::market::amm::Market::Skim',
+    kind: 'struct',
+    members: [
+      {
+        name: 'market',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'sy_excess',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_excess',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'pt_reserve_after',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
     kind: 'struct',
     members: [
@@ -2006,6 +2048,11 @@ export const MARKET_ABI = [
       {
         name: 'ScalarRootUpdated',
         type: 'horizon::market::amm::Market::ScalarRootUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'Skim',
+        type: 'horizon::market::amm::Market::Skim',
         kind: 'nested',
       },
       {

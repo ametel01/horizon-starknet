@@ -24,6 +24,7 @@ const CONTRACTS = [
   { file: 'horizon_Factory.contract_class.json', name: 'Factory' },
   { file: 'horizon_MarketFactory.contract_class.json', name: 'MarketFactory' },
   { file: 'horizon_Router.contract_class.json', name: 'Router' },
+  { file: 'horizon_RouterStatic.contract_class.json', name: 'RouterStatic' },
   { file: 'horizon_Market.contract_class.json', name: 'Market' },
   // Token contracts
   { file: 'horizon_SY.contract_class.json', name: 'SY' },

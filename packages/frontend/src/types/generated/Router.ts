@@ -29,6 +29,44 @@ export const ROUTER_ABI = [
   },
   {
     type: 'struct',
+    name: 'core::array::Span::<core::felt252>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::felt252>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'horizon::interfaces::i_router::Call',
+    members: [
+      {
+        name: 'to',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'selector',
+        type: 'core::felt252',
+      },
+      {
+        name: 'calldata',
+        type: 'core::array::Span::<core::felt252>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<horizon::interfaces::i_router::Call>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<horizon::interfaces::i_router::Call>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
     name: 'core::integer::u256',
     members: [
       {
@@ -42,9 +80,121 @@ export const ROUTER_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'horizon::interfaces::i_router::ApproxParams',
+    members: [
+      {
+        name: 'guess_min',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'guess_max',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'guess_offchain',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'max_iteration',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'eps',
+        type: 'core::integer::u256',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::integer::u256>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::integer::u256>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'horizon::interfaces::i_router::SwapData',
+    members: [
+      {
+        name: 'aggregator',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'calldata',
+        type: 'core::array::Span::<core::felt252>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'horizon::interfaces::i_router::TokenInput',
+    members: [
+      {
+        name: 'token',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'amount',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'swap_data',
+        type: 'horizon::interfaces::i_router::SwapData',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'horizon::interfaces::i_router::TokenOutput',
+    members: [
+      {
+        name: 'token',
+        type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'min_amount',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'swap_data',
+        type: 'horizon::interfaces::i_router::SwapData',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_router::IRouter',
     items: [
+      {
+        type: 'function',
+        name: 'multicall',
+        inputs: [
+          {
+            name: 'calls',
+            type: 'core::array::Span::<horizon::interfaces::i_router::Call>',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Array::<core::array::Span::<core::felt252>>',
+          },
+        ],
+        state_mutability: 'external',
+      },
       {
         type: 'function',
         name: 'pause',
@@ -268,6 +418,42 @@ export const ROUTER_ABI = [
       },
       {
         type: 'function',
+        name: 'add_liquidity_single_sy_with_approx',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'amount_sy_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_lp_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'approx',
+            type: 'horizon::interfaces::i_router::ApproxParams',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'add_liquidity_single_pt',
         inputs: [
           {
@@ -300,6 +486,70 @@ export const ROUTER_ABI = [
       },
       {
         type: 'function',
+        name: 'remove_liquidity_single_sy',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'lp_to_burn',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_sy_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'remove_liquidity_single_pt',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'lp_to_burn',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_pt_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'swap_exact_sy_for_pt',
         inputs: [
           {
@@ -317,6 +567,42 @@ export const ROUTER_ABI = [
           {
             name: 'min_pt_out',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'swap_exact_sy_for_pt_with_approx',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'exact_sy_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_pt_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'approx',
+            type: 'horizon::interfaces::i_router::ApproxParams',
           },
           {
             name: 'deadline',
@@ -621,6 +907,270 @@ export const ROUTER_ABI = [
           {
             name: 'min_lp_out',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'redeem_due_interest_and_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'yts',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+          {
+            name: 'markets',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::array::Array::<core::array::Span::<core::integer::u256>>)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'swap_exact_token_for_pt',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'input',
+            type: 'horizon::interfaces::i_router::TokenInput',
+          },
+          {
+            name: 'min_pt_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'swap_exact_pt_for_token',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'exact_pt_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'output',
+            type: 'horizon::interfaces::i_router::TokenOutput',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'swap_exact_token_for_yt',
+        inputs: [
+          {
+            name: 'yt',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'input',
+            type: 'horizon::interfaces::i_router::TokenInput',
+          },
+          {
+            name: 'min_yt_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'swap_exact_yt_for_token',
+        inputs: [
+          {
+            name: 'yt',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'exact_yt_in',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'max_sy_collateral',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'output',
+            type: 'horizon::interfaces::i_router::TokenOutput',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'add_liquidity_single_token',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'input',
+            type: 'horizon::interfaces::i_router::TokenInput',
+          },
+          {
+            name: 'min_lp_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'add_liquidity_single_token_keep_yt',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'input',
+            type: 'horizon::interfaces::i_router::TokenInput',
+          },
+          {
+            name: 'min_lp_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_yt_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'remove_liquidity_single_token',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'lp_to_burn',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'output',
+            type: 'horizon::interfaces::i_router::TokenOutput',
           },
           {
             name: 'deadline',

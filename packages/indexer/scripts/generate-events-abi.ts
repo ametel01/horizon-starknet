@@ -30,6 +30,7 @@ const CONTRACTS = [
   "Router",
   "Market",
   "SY",
+  "SYWithRewards",
   "PT",
   "YT",
   "PragmaIndexOracle",
