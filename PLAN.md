@@ -346,7 +346,7 @@ grep -q "useSwapTokenForYt" packages/frontend/src/features/swap/model/useTokenYt
 
 ---
 
-### Step 14: Create useSwapYtForToken hook
+### Step 14: Create useSwapYtForToken hook **COMPLETE**
 
 #### Goal
 Implement hook for swapping YT to any token via aggregator.
