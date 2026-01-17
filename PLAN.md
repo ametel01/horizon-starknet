@@ -889,7 +889,7 @@ test -f packages/frontend/src/features/swap/ui/TokenAggregatorSwapForm.tsx && ec
 
 ---
 
-### Step 35: Create TokenAggregatorLiquidityForm component
+### Step 35: Create TokenAggregatorLiquidityForm component **COMPLETE**
 
 #### Goal
 Create liquidity form variant for adding/removing liquidity with arbitrary tokens.

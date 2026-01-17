@@ -11,8 +11,8 @@
 | VotingController | Epoch-based voting | ❌ None | 🔴 Future |
 | GaugeController | Emission streaming | ❌ None | 🔴 Future |
 | LP boost formula | `min(LP, 0.4*LP + 0.6*(totalLP*userVe/totalVe))` | ❌ None | 🔴 Future |
-| Fee distribution | 80% voters / 20% LPs | ❌ Owner-only | 🔴 Future |
-| Multi-reward tokens | Per gauge | ❌ None | 🔴 Future |
+| Fee distribution | 80% voters / 20% LPs | ❌ 100% treasury (reserve fee) + LP fees auto-compound | 🔴 Future |
+| Multi-reward tokens | Per gauge | ✅ RewardManagerComponent (SYWithRewards + Market LP) | ✅ Partial |
 
 ## 7.2 Current Admin Structure
 
@@ -20,20 +20,25 @@ Horizon uses centralized admin control:
 
 | Control | Mechanism | Risk Level |
 |---------|-----------|------------|
-| Fee collection | Owner-only `collect_fees()` | Centralized |
+| Fee collection | Owner-only `collect_fees()` (analytics only; LP fees auto-compound in pool) | Centralized |
 | Parameter changes | Owner-only `set_scalar_root()` | Centralized |
-| Emergency pause | PAUSER_ROLE | Acceptable |
-| Contract upgrades | Owner-only | Centralized |
+| Emergency pause | PAUSER_ROLE on SY, Router, Market, PragmaIndexOracle | Acceptable |
+| Contract upgrades | Owner-only (SY, Router, Factory, MarketFactory, PragmaIndexOracle) | Centralized |
+| Oracle config | OPERATOR_ROLE `set_config()` on PragmaIndexOracle | Centralized |
 
-**Roles Defined:**
-- `DEFAULT_ADMIN_ROLE`: Full administrative control
-- `PAUSER_ROLE`: Emergency pause only
-- `OPERATOR_ROLE`: Defined but unused
+**Roles Defined (contracts/src/libraries/roles.cairo):**
+- `DEFAULT_ADMIN_ROLE`: Full administrative control (value: 0)
+- `PAUSER_ROLE`: Emergency pause/unpause
+- `OPERATOR_ROLE`: Operational parameter updates (oracle config)
+
+**Upgradeability Model (from HORIZON-SPEC-COMPRESSED.md):**
+- **Upgradeable (owner-controlled):** SY, SYWithRewards, Router, Factory, MarketFactory, PragmaIndexOracle
+- **Non-upgradeable:** PT, YT, Market (per-deployment trust anchor)
 
 ## 7.3 Intentional Design Decision
 
-From SPEC.md:
-> **"Simplicity is intentional."** v1 is deliberately minimal and expandable.
+From HORIZON-SPEC-COMPRESSED.md:
+> **design_philosophy: correctness_over_features: "v1 minimal; expand later"**
 
 Governance is explicitly **Phase 4** on the roadmap:
 - Phase 1: Core tokenization (current)
