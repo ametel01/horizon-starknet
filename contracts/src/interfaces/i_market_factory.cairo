@@ -126,4 +126,14 @@ pub trait IMarketFactory<TContractState> {
     /// Controls how much fees increase based on trade's rate impact
     /// @param sensitivity Sensitivity factor in WAD (0 to disable, max ~10 WAD for safety)
     fn set_default_rate_impact_sensitivity(ref self: TContractState, sensitivity: u256);
+
+    // ============ Yield Contract Factory Configuration ============
+
+    /// Get the yield contract factory address used for PT validation
+    /// @return Factory address (zero address means PT validation is disabled)
+    fn get_yield_contract_factory(self: @TContractState) -> ContractAddress;
+
+    /// Set the yield contract factory address (owner only)
+    /// @param factory New factory address (zero address disables PT validation)
+    fn set_yield_contract_factory(ref self: TContractState, factory: ContractAddress);
 }

@@ -4,6 +4,7 @@
 #[starknet::contract]
 pub mod MarketFactory {
     use core::num::traits::Zero;
+    use horizon::interfaces::i_factory::{IFactoryDispatcher, IFactoryDispatcherTrait};
     use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
     use horizon::interfaces::i_market_factory::{IMarketFactory, MarketConfig};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
@@ -117,6 +118,7 @@ pub mod MarketFactory {
         DefaultReserveFeeUpdated: DefaultReserveFeeUpdated,
         OverrideFeeSet: OverrideFeeSet,
         DefaultRateImpactSensitivityUpdated: DefaultRateImpactSensitivityUpdated,
+        YieldContractFactoryUpdated: YieldContractFactoryUpdated,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -181,6 +183,12 @@ pub mod MarketFactory {
         pub new_sensitivity: u256,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct YieldContractFactoryUpdated {
+        pub old_factory: ContractAddress,
+        pub new_factory: ContractAddress,
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -229,6 +237,13 @@ pub mod MarketFactory {
         ) -> ContractAddress {
             // Validate PT address
             assert(!pt.is_zero(), Errors::ZERO_ADDRESS);
+
+            // Validate PT was deployed by linked yield contract factory (if factory is set)
+            let factory = self.yield_contract_factory.read();
+            if !factory.is_zero() {
+                let factory_dispatcher = IFactoryDispatcher { contract_address: factory };
+                assert(factory_dispatcher.is_valid_pt(pt), Errors::MARKET_FACTORY_INVALID_PT);
+            }
 
             // Validate market parameters to prevent AMM math issues and economic attacks
             // scalar_root must be within [1 WAD, 1000 WAD] to ensure proper rate sensitivity
@@ -617,6 +632,24 @@ pub mod MarketFactory {
                         old_sensitivity, new_sensitivity: sensitivity,
                     },
                 );
+        }
+
+        // ============ Yield Contract Factory Configuration ============
+
+        /// Get the yield contract factory address used for PT validation
+        fn get_yield_contract_factory(self: @ContractState) -> ContractAddress {
+            self.yield_contract_factory.read()
+        }
+
+        /// Set the yield contract factory address (owner only)
+        /// @param factory New factory address (zero address disables PT validation)
+        fn set_yield_contract_factory(ref self: ContractState, factory: ContractAddress) {
+            self.ownable.assert_only_owner();
+
+            let old_factory = self.yield_contract_factory.read();
+            self.yield_contract_factory.write(factory);
+
+            self.emit(YieldContractFactoryUpdated { old_factory, new_factory: factory });
         }
     }
 }

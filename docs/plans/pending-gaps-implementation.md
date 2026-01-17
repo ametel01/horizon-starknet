@@ -1,6 +1,6 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
 2. **Phase 2 (Expiry Divisor)** - COMPLETE: Storage, event, getter/setter, interface, and validation in create_yield_contracts all implemented with tests
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - IN PROGRESS: `yield_contract_factory` storage added (Step 1), `MARKET_FACTORY_INVALID_PT` error added (Step 2), constructor updated (Step 3), getter/setter/validation pending (Steps 4-8)
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - IN PROGRESS: Steps 1-7 complete (storage, error, constructor, validation, getter/setter, interface). Step 8 (tests) pending
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED: `i_flash_callback.cairo` does not exist, no flash mint functions
@@ -353,7 +353,7 @@ cd contracts && snforge test test_factory_expiry_divisor
 
 ---
 
-## Phase 3: MarketFactory Yield Contract Factory Reference **IN PROGRESS**
+## Phase 3: MarketFactory Yield Contract Factory Reference **NEARLY COMPLETE**
 
 Add cross-factory validation for PT deployments.
 
@@ -416,10 +416,10 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 4: Add PT factory validation to create_market
+### Step 4: Add PT factory validation to create_market **COMPLETE**
 
 #### Goal
-Validate that PT was deployed by linked yield contract factory using `IFactory.is_valid_pt()` (optional, can be skipped if factory is zero).
+Validate that PT was deployed by linked yield contract factory using `IFactory.is_valid_pt()` (optional, skipped if factory is zero).
 
 #### Files
 - `contracts/src/market/market_factory.cairo` - Add validation after PT address check in `create_market` function
@@ -435,7 +435,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 5: Add set_yield_contract_factory admin function
+### Step 5: Add set_yield_contract_factory admin function **COMPLETE**
 
 #### Goal
 Add `set_yield_contract_factory(factory: ContractAddress)` owner-only function for post-deployment configuration.
@@ -453,7 +453,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 6: Add get_yield_contract_factory view function
+### Step 6: Add get_yield_contract_factory view function **COMPLETE**
 
 #### Goal
 Add `get_yield_contract_factory() -> ContractAddress` view function.
@@ -471,7 +471,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 7: Update IMarketFactory interface
+### Step 7: Update IMarketFactory interface **COMPLETE**
 
 #### Goal
 Add `set_yield_contract_factory` and `get_yield_contract_factory` to IMarketFactory trait.
