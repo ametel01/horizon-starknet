@@ -57,6 +57,7 @@ pub mod Errors {
     pub const MARKET_FACTORY_INVALID_FEE: felt252 = 'HZN: invalid fee';
     pub const MARKET_FACTORY_INVALID_MARKET: felt252 = 'HZN: invalid market';
     pub const MARKET_FACTORY_OVERRIDE_TOO_HIGH: felt252 = 'HZN: override fee too high';
+    pub const MARKET_FACTORY_INVALID_PT: felt252 = 'HZN: invalid PT';
 
     // Router errors
     pub const ROUTER_SLIPPAGE_EXCEEDED: felt252 = 'HZN: slippage exceeded';
