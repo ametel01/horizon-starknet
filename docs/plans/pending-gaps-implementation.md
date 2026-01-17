@@ -1131,7 +1131,7 @@ grep -q "VERSION.*1" contracts/src/market/market_factory.cairo && echo "OK"
 
 ---
 
-### Step 5: Add get_market_state view to Market
+### Step 5: Add get_market_state view to Market **COMPLETE**
 
 #### Goal
 Add `get_market_state() -> MarketState` external view function exposing full state for integrations.
@@ -1151,7 +1151,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 6: Update IMarket interface with get_market_state
+### Step 6: Update IMarket interface with get_market_state **COMPLETE**
 
 #### Goal
 Add `get_market_state() -> MarketState` to IMarket trait.

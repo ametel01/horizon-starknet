@@ -1,5 +1,31 @@
 use starknet::ContractAddress;
 
+/// Market state returned by get_market_state.
+/// Provides full state for integrations and off-chain calculations.
+#[derive(Copy, Drop, Serde)]
+pub struct MarketState {
+    /// SY token reserve
+    pub sy_reserve: u256,
+    /// PT token reserve
+    pub pt_reserve: u256,
+    /// Total LP token supply
+    pub total_lp: u256,
+    /// Rate sensitivity parameter (in WAD)
+    pub scalar_root: u256,
+    /// Initial anchor for exchange rate (in WAD)
+    pub initial_anchor: u256,
+    /// Log fee rate root (Pendle-style)
+    pub ln_fee_rate_root: u256,
+    /// Reserve fee in base-100 (0-100), sent to treasury
+    pub reserve_fee_percent: u8,
+    /// Market expiry timestamp
+    pub expiry: u64,
+    /// Cached ln(implied rate) for anchor calculation
+    pub last_ln_implied_rate: u256,
+    /// SY -> asset index from YT (fetched per-call)
+    pub py_index: u256,
+}
+
 /// Oracle state returned by get_oracle_state.
 /// Provides the data needed for TWAP calculations.
 #[derive(Copy, Drop, Serde)]
@@ -83,6 +109,10 @@ pub trait IMarket<TContractState> {
 
     // Market state
     fn get_ln_implied_rate(self: @TContractState) -> u256;
+
+    /// Get full market state for integrations
+    /// Returns reserves, parameters, and current py_index for off-chain calculations
+    fn get_market_state(self: @TContractState) -> MarketState;
 
     // Fee info (LP fees only - reserve fees are sent to treasury immediately)
     fn get_total_fees_collected(self: @TContractState) -> u256;

@@ -8,7 +8,9 @@
 pub mod Market {
     use core::num::traits::Zero;
     use horizon::components::reward_manager_component::RewardManagerComponent;
-    use horizon::interfaces::i_market::{IMarket, IMarketAdmin, IMarketOracle, OracleState};
+    use horizon::interfaces::i_market::{
+        IMarket, IMarketAdmin, IMarketOracle, MarketState as IMarketState, OracleState,
+    };
     use horizon::interfaces::i_market_callback::{
         IMarketSwapCallbackDispatcher, IMarketSwapCallbackDispatcherTrait,
     };
@@ -1122,6 +1124,24 @@ pub mod Market {
             let state = self._get_market_state_view();
             let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
             get_ln_implied_rate(@state, time_to_expiry)
+        }
+
+        /// Get full market state for integrations
+        /// Returns reserves, parameters, and current py_index for off-chain calculations
+        fn get_market_state(self: @ContractState) -> IMarketState {
+            let state = self._get_market_state_view();
+            IMarketState {
+                sy_reserve: state.sy_reserve,
+                pt_reserve: state.pt_reserve,
+                total_lp: state.total_lp,
+                scalar_root: state.scalar_root,
+                initial_anchor: state.initial_anchor,
+                ln_fee_rate_root: state.ln_fee_rate_root,
+                reserve_fee_percent: state.reserve_fee_percent,
+                expiry: state.expiry,
+                last_ln_implied_rate: state.last_ln_implied_rate,
+                py_index: state.py_index,
+            }
         }
 
         fn get_total_fees_collected(self: @ContractState) -> u256 {
