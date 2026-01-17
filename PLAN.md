@@ -228,7 +228,7 @@ test -f packages/frontend/src/features/swap/model/types.ts && echo "OK"
 
 ---
 
-### Step 9: Create calldata serialization utilities
+### Step 9: Create calldata serialization utilities **COMPLETE**
 
 #### Goal
 Add utility functions to serialize TokenInput/TokenOutput/ApproxParams to Starknet calldata format.
