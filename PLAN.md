@@ -173,7 +173,7 @@ grep -q "buildRemoveLiquiditySingleSyCalls" packages/frontend/src/features/liqui
 
 ---
 
-### Step 7: Export new hooks from liquidity feature
+### Step 7: Export new hooks from liquidity feature **COMPLETE**
 
 #### Goal
 Verify new removal hooks are exported correctly.
