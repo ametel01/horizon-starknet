@@ -3,8 +3,13 @@
 import type { MarketData } from '@entities/market';
 import {
   buildRemoveLiquidityCalls,
+  buildRemoveLiquiditySinglePtCalls,
+  buildRemoveLiquiditySingleSyCalls,
   calculateMinOutputs,
   useRemoveLiquidity,
+  useRemoveLiquidityPreview,
+  useRemoveLiquiditySinglePt,
+  useRemoveLiquiditySingleSy,
 } from '@features/liquidity';
 import { TokenInput } from '@features/mint';
 import { useTokenBalance } from '@features/portfolio';
@@ -47,6 +52,14 @@ const PERCENTAGE_OPTIONS = [
   { label: 'Max', value: 100 },
 ];
 
+type OutputType = 'dual' | 'sy-only' | 'pt-only';
+
+const OUTPUT_TYPE_OPTIONS = [
+  { label: 'SY + PT', value: 'dual' as const },
+  { label: 'SY Only', value: 'sy-only' as const },
+  { label: 'PT Only', value: 'pt-only' as const },
+];
+
 // ----- Helper Functions -----
 
 function parseAmountSafe(amount: string): bigint {
@@ -77,15 +90,28 @@ interface ButtonTextParams {
   isValidAmount: boolean;
   hasInsufficientBalance: boolean;
   isSuccess: boolean;
+  outputType: OutputType;
+  isPreviewLoading: boolean;
 }
 
 function getButtonText(params: ButtonTextParams): string {
-  const { isRemoving, isConnected, isValidAmount, hasInsufficientBalance, isSuccess } = params;
+  const {
+    isRemoving,
+    isConnected,
+    isValidAmount,
+    hasInsufficientBalance,
+    isSuccess,
+    outputType,
+    isPreviewLoading,
+  } = params;
   if (isRemoving) return 'Removing Liquidity...';
   if (!isConnected) return 'Connect Wallet';
   if (!isValidAmount) return 'Enter Amount';
   if (hasInsufficientBalance) return 'Insufficient LP Balance';
   if (isSuccess) return 'Liquidity Removed!';
+  if (isPreviewLoading) return 'Loading Preview...';
+  if (outputType === 'sy-only') return 'Remove to SY';
+  if (outputType === 'pt-only') return 'Remove to PT';
   return 'Remove Liquidity';
 }
 
@@ -108,6 +134,26 @@ function calculateExpectedOutputs(params: ExpectedOutputsParams): {
     expectedSyOut: (lpAmount * syReserve) / totalLpSupply,
     expectedPtOut: (lpAmount * ptReserve) / totalLpSupply,
   };
+}
+
+/**
+ * Calculate expected PT output for single-sided PT removal.
+ * This is an approximation based on the LP share of PT reserves.
+ * The actual swap-based calculation would require on-chain preview.
+ */
+function calculateExpectedPtOnlyOutput(params: ExpectedOutputsParams): bigint {
+  const { lpAmount, syReserve, ptReserve, totalLpSupply } = params;
+  if (lpAmount === BigInt(0) || totalLpSupply === BigInt(0)) {
+    return BigInt(0);
+  }
+  // Pro-rata share of reserves
+  const syShare = (lpAmount * syReserve) / totalLpSupply;
+  const ptShare = (lpAmount * ptReserve) / totalLpSupply;
+
+  // Approximate: SY gets swapped to PT, assume ~1:1 rate pre-expiry with some slippage
+  // This is a rough estimate - actual value comes from swap math
+  const syToPtEstimate = syShare; // Simplified approximation
+  return ptShare + syToPtEstimate;
 }
 
 // ----- Sub-components -----
@@ -225,10 +271,50 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   const { network } = useStarknet();
   const [lpAmount, setLpAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
+  const [outputType, setOutputType] = useState<OutputType>('dual');
 
   const addresses = getAddresses(network);
-  const { removeLiquidity, isRemoving, isSuccess, isError, error, transactionHash } =
-    useRemoveLiquidity();
+
+  // Dual removal hook (SY + PT)
+  const {
+    removeLiquidity,
+    isRemoving: isRemovingDual,
+    isSuccess: isSuccessDual,
+    isError: isErrorDual,
+    error: errorDual,
+    transactionHash: txHashDual,
+  } = useRemoveLiquidity();
+
+  // Single-sided SY removal hook
+  const {
+    removeLiquiditySingleSy,
+    isRemoving: isRemovingSy,
+    isSuccess: isSuccessSy,
+    isError: isErrorSy,
+    error: errorSy,
+    transactionHash: txHashSy,
+  } = useRemoveLiquiditySingleSy();
+
+  // Single-sided PT removal hook
+  const {
+    removeLiquiditySinglePt,
+    isRemoving: isRemovingPt,
+    isSuccess: isSuccessPt,
+    isError: isErrorPt,
+    error: errorPt,
+    transactionHash: txHashPt,
+  } = useRemoveLiquiditySinglePt();
+
+  // Combine states based on output type
+  const isRemoving =
+    outputType === 'dual' ? isRemovingDual : outputType === 'sy-only' ? isRemovingSy : isRemovingPt;
+  const isSuccess =
+    outputType === 'dual' ? isSuccessDual : outputType === 'sy-only' ? isSuccessSy : isSuccessPt;
+  const isError =
+    outputType === 'dual' ? isErrorDual : outputType === 'sy-only' ? isErrorSy : isErrorPt;
+  const error = outputType === 'dual' ? errorDual : outputType === 'sy-only' ? errorSy : errorPt;
+  const transactionHash =
+    outputType === 'dual' ? txHashDual : outputType === 'sy-only' ? txHashSy : txHashPt;
 
   // Get token symbols from metadata for proper naming (I-06)
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
@@ -240,8 +326,15 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   // Parse LP amount
   const parsedLpAmount = useMemo(() => parseAmountSafe(lpAmount), [lpAmount]);
 
-  // Calculate expected outputs
-  const { expectedSyOut, expectedPtOut } = useMemo(
+  // Preview SY-only removal using on-chain calculation
+  const { data: syOnlyPreview, isLoading: isSyPreviewLoading } = useRemoveLiquidityPreview(
+    market.address,
+    outputType === 'sy-only' ? parsedLpAmount : undefined,
+    { enabled: outputType === 'sy-only' && parsedLpAmount > 0n }
+  );
+
+  // Calculate expected outputs for dual removal
+  const { expectedSyOut: dualSyOut, expectedPtOut: dualPtOut } = useMemo(
     () =>
       calculateExpectedOutputs({
         lpAmount: parsedLpAmount,
@@ -252,8 +345,20 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     [parsedLpAmount, market.state]
   );
 
+  // Calculate expected PT output for PT-only removal (approximation)
+  const expectedPtOnlyOut = useMemo(
+    () =>
+      calculateExpectedPtOnlyOutput({
+        lpAmount: parsedLpAmount,
+        syReserve: market.state.syReserve,
+        ptReserve: market.state.ptReserve,
+        totalLpSupply: market.state.totalLpSupply,
+      }),
+    [parsedLpAmount, market.state]
+  );
+
   // Calculate minimum outputs with slippage
-  const { minSyOut, minPtOut } = useMemo(() => {
+  const { minSyOut: dualMinSyOut, minPtOut: dualMinPtOut } = useMemo(() => {
     return calculateMinOutputs(
       parsedLpAmount,
       market.state.syReserve,
@@ -263,17 +368,44 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     );
   }, [parsedLpAmount, market.state, slippageBps]);
 
-  // Build calls for gas estimation
+  // Calculate single-sided minimum outputs with slippage
+  const minSyOnlyOut = useMemo(() => {
+    if (!syOnlyPreview?.expectedSyOut) return 0n;
+    return (syOnlyPreview.expectedSyOut * BigInt(10000 - slippageBps)) / BigInt(10000);
+  }, [syOnlyPreview?.expectedSyOut, slippageBps]);
+
+  const minPtOnlyOut = useMemo(() => {
+    if (expectedPtOnlyOut === 0n) return 0n;
+    return (expectedPtOnlyOut * BigInt(10000 - slippageBps)) / BigInt(10000);
+  }, [expectedPtOnlyOut, slippageBps]);
+
+  // Build calls for gas estimation based on output type
   const removeLiquidityCalls = useMemo(() => {
     if (!address || parsedLpAmount === BigInt(0)) return null;
     try {
+      if (outputType === 'sy-only') {
+        return buildRemoveLiquiditySingleSyCalls(addresses.router, address, {
+          marketAddress: market.address,
+          syAddress: market.syAddress,
+          lpAmount: parsedLpAmount,
+          minSyOut: minSyOnlyOut,
+        });
+      }
+      if (outputType === 'pt-only') {
+        return buildRemoveLiquiditySinglePtCalls(addresses.router, address, {
+          marketAddress: market.address,
+          ptAddress: market.ptAddress,
+          lpAmount: parsedLpAmount,
+          minPtOut: minPtOnlyOut,
+        });
+      }
       return buildRemoveLiquidityCalls(addresses.router, address, {
         marketAddress: market.address,
         syAddress: market.syAddress,
         ptAddress: market.ptAddress,
         lpAmount: parsedLpAmount,
-        minSyOut,
-        minPtOut,
+        minSyOut: dualMinSyOut,
+        minPtOut: dualMinPtOut,
       });
     } catch {
       return null;
@@ -285,8 +417,11 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     market.syAddress,
     market.ptAddress,
     parsedLpAmount,
-    minSyOut,
-    minPtOut,
+    outputType,
+    minSyOnlyOut,
+    minPtOnlyOut,
+    dualMinSyOut,
+    dualMinPtOut,
   ]);
 
   // Estimate gas fee
@@ -310,9 +445,16 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   // Validation
   const hasInsufficientBalance = lpBalance !== undefined && parsedLpAmount > lpBalance;
   const isValidAmount = parsedLpAmount > BigInt(0);
+  // For SY-only mode, require the preview to be loaded to ensure proper slippage protection
+  const isPreviewReady = outputType !== 'sy-only' || syOnlyPreview?.expectedSyOut !== undefined;
 
   const canRemoveLiquidity =
-    isConnected && isValidAmount && !hasInsufficientBalance && !isRemoving && !isSuccess;
+    isConnected &&
+    isValidAmount &&
+    !hasInsufficientBalance &&
+    !isRemoving &&
+    !isSuccess &&
+    isPreviewReady;
 
   // Determine transaction status
   const txStatus = useMemo(
@@ -335,18 +477,34 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
     return -1; // No transaction in progress
   }, [isRemoving, isSuccess, transactionSteps.length]);
 
-  // Handle remove liquidity
+  // Handle remove liquidity based on output type
   const handleRemoveLiquidity = (): void => {
     if (!canRemoveLiquidity) return;
 
-    removeLiquidity({
-      marketAddress: market.address,
-      syAddress: market.syAddress,
-      ptAddress: market.ptAddress,
-      lpAmount: parsedLpAmount,
-      minSyOut,
-      minPtOut,
-    });
+    if (outputType === 'sy-only') {
+      removeLiquiditySingleSy({
+        marketAddress: market.address,
+        syAddress: market.syAddress,
+        lpAmount: parsedLpAmount,
+        minSyOut: minSyOnlyOut,
+      });
+    } else if (outputType === 'pt-only') {
+      removeLiquiditySinglePt({
+        marketAddress: market.address,
+        ptAddress: market.ptAddress,
+        lpAmount: parsedLpAmount,
+        minPtOut: minPtOnlyOut,
+      });
+    } else {
+      removeLiquidity({
+        marketAddress: market.address,
+        syAddress: market.syAddress,
+        ptAddress: market.ptAddress,
+        lpAmount: parsedLpAmount,
+        minSyOut: dualMinSyOut,
+        minPtOut: dualMinPtOut,
+      });
+    }
   };
 
   // Handle percentage buttons
@@ -398,23 +556,70 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
         ))}
       </div>
 
+      {/* Output Type Selector */}
+      <div>
+        <div className="text-muted-foreground mb-2 text-sm">Receive as</div>
+        <ToggleGroup className="flex gap-1">
+          {OUTPUT_TYPE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              pressed={outputType === option.value}
+              onPressedChange={() => {
+                setOutputType(option.value);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
       {/* Output Preview */}
       <Card size="sm" className="bg-muted">
         <CardContent className="p-4">
           <div className="text-muted-foreground mb-2 text-sm">You will receive</div>
           <div className="space-y-2">
-            <OutputPreviewRow
-              label="SY"
-              value={expectedSyOut}
-              minValue={minSyOut}
-              isValid={isValidAmount}
-            />
-            <OutputPreviewRow
-              label="PT"
-              value={expectedPtOut}
-              minValue={minPtOut}
-              isValid={isValidAmount}
-            />
+            {outputType === 'dual' && (
+              <>
+                <OutputPreviewRow
+                  label="SY"
+                  value={dualSyOut}
+                  minValue={dualMinSyOut}
+                  isValid={isValidAmount}
+                />
+                <OutputPreviewRow
+                  label="PT"
+                  value={dualPtOut}
+                  minValue={dualMinPtOut}
+                  isValid={isValidAmount}
+                />
+              </>
+            )}
+            {outputType === 'sy-only' &&
+              (isSyPreviewLoading && isValidAmount ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-lg font-semibold">
+                    Loading preview...
+                  </span>
+                </div>
+              ) : (
+                <OutputPreviewRow
+                  label="SY"
+                  value={syOnlyPreview?.expectedSyOut ?? 0n}
+                  minValue={minSyOnlyOut}
+                  isValid={isValidAmount}
+                />
+              ))}
+            {outputType === 'pt-only' && (
+              <OutputPreviewRow
+                label="PT"
+                value={expectedPtOnlyOut}
+                minValue={minPtOnlyOut}
+                isValid={isValidAmount}
+              />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -490,6 +695,8 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
             isValidAmount,
             hasInsufficientBalance,
             isSuccess,
+            outputType,
+            isPreviewLoading: outputType === 'sy-only' && isSyPreviewLoading && isValidAmount,
           })}
         </Button>
       </FormActions>

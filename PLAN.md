@@ -697,7 +697,7 @@ cd packages/frontend && bun run check
 
 ---
 
-## Phase 8: Final Validation and Type Safety
+## Phase 8: Final Validation and Type Safety **COMPLETE**
 
 Run comprehensive type checking and ensure all exports are correct.
 
@@ -758,7 +758,7 @@ Wire up the new hooks to UI components. Without this phase, all hooks from Phase
 cd packages/frontend && bun run check && bun run test && bun run test:e2e
 ```
 
-### Step 30: Add single-sided removal output type selector to RemoveLiquidityForm
+### Step 30: Add single-sided removal output type selector to RemoveLiquidityForm **COMPLETE**
 
 #### Goal
 Allow users to choose between receiving SY+PT (current), SY-only, or PT-only when removing liquidity.
