@@ -80,6 +80,7 @@ pub mod Errors {
     pub const FACTORY_INVALID_EXPIRY: felt252 = 'HZN: invalid expiry';
     pub const FACTORY_DEPLOY_FAILED: felt252 = 'HZN: deploy failed';
     pub const FACTORY_INVALID_FEE_RATE: felt252 = 'HZN: invalid fee rate';
+    pub const FACTORY_INVALID_EXPIRY_DIVISOR: felt252 = 'HZN: invalid expiry divisor';
 
     // RBAC errors
     pub const RBAC_ALREADY_INITIALIZED: felt252 = 'HZN: RBAC already init';
