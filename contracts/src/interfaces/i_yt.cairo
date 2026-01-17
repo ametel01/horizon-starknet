@@ -95,6 +95,9 @@ pub trait IYT<TContractState> {
     /// @param user Address to claim rewards for
     /// @return Array of claimed amounts (one per reward token)
     fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
+    /// Get all registered reward tokens
+    /// @return Array of reward token addresses
+    fn get_reward_tokens(self: @TContractState) -> Span<ContractAddress>;
 
     // Treasury
     fn treasury(self: @TContractState) -> ContractAddress;

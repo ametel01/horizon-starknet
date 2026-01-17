@@ -1278,6 +1278,13 @@ pub mod YT {
             amounts
         }
 
+        /// Get all registered reward tokens
+        /// Forwards to RewardManagerComponent
+        /// @return Array of reward token addresses
+        fn get_reward_tokens(self: @ContractState) -> Span<ContractAddress> {
+            self.reward_manager.get_reward_tokens()
+        }
+
         /// Get the treasury address for protocol fee collection
         fn treasury(self: @ContractState) -> ContractAddress {
             self.treasury.read()
