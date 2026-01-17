@@ -2,7 +2,7 @@
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
 4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE
-5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED
+5. **Phase 5 (Router Dual Token Liquidity)** - IN PROGRESS: Steps 1-2 complete (`add_liquidity_dual_token_and_pt`)
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
 
@@ -507,7 +507,7 @@ cd contracts && snforge test test_market_factory_yield_factory
 
 ---
 
-## Phase 4: Multi-Reward YT Integration
+## Phase 4: Multi-Reward YT Integration **COMPLETE**
 
 Integrate RewardManagerComponent into YT for multi-token reward tracking.
 
@@ -781,7 +781,7 @@ Add mixed deposit/withdrawal operations for advanced liquidity provision.
 cd contracts && scarb build && snforge test test_router
 ```
 
-### Step 1: Add add_liquidity_dual_token_and_pt function signature to IRouter
+### Step 1: Add add_liquidity_dual_token_and_pt function signature to IRouter **COMPLETE**
 
 #### Goal
 Add `add_liquidity_dual_token_and_pt(market, receiver, input, pt_amount, min_lp_out, deadline) -> u256` to IRouter.
@@ -799,7 +799,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 2: Implement add_liquidity_dual_token_and_pt in Router
+### Step 2: Implement add_liquidity_dual_token_and_pt in Router **COMPLETE**
 
 #### Goal
 Implement: swap input token → underlying via aggregator → deposit to SY → call market.mint with SY + provided PT.

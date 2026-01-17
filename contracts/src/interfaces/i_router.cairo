@@ -591,6 +591,26 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> (u256, u256);
 
+    /// Add liquidity using any token plus PT through an external aggregator
+    /// Flow: token_in -> aggregator -> underlying -> SY deposit -> add_liquidity(SY, PT) -> LP
+    /// User provides both an external token (swapped to SY) and PT directly
+    /// @param market The market address
+    /// @param receiver Address to receive LP tokens
+    /// @param input Token input with aggregator swap data (swapped to SY)
+    /// @param pt_amount Amount of PT to add directly
+    /// @param min_lp_out Minimum LP tokens to receive (slippage protection)
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return Amount of LP tokens minted
+    fn add_liquidity_dual_token_and_pt(
+        ref self: TContractState,
+        market: ContractAddress,
+        receiver: ContractAddress,
+        input: TokenInput,
+        pt_amount: u256,
+        min_lp_out: u256,
+        deadline: u64,
+    ) -> u256;
+
     /// Remove liquidity and receive any token through an external aggregator
     /// Flow: LP -> burn -> SY + PT -> swap PT for SY -> redeem SY -> underlying -> aggregator ->
     /// token_out

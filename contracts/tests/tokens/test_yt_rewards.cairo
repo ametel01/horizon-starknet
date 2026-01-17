@@ -123,7 +123,10 @@ fn get_pt_class_hash() -> ClassHash {
 
 /// Deploy YT token with reward tokens
 fn deploy_yt_with_rewards(
-    sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64, reward_tokens: Array<ContractAddress>,
+    sy: ContractAddress,
+    pt_class_hash: ClassHash,
+    expiry: u64,
+    reward_tokens: Array<ContractAddress>,
 ) -> IYTDispatcher {
     let contract = declare("YT").unwrap_syscall().contract_class();
     let mut calldata = array![];
