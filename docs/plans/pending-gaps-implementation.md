@@ -1,6 +1,6 @@
-1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
-2. **Phase 2 (Expiry Divisor)** - COMPLETE: Storage, event, getter/setter, interface, and validation in create_yield_contracts all implemented with tests
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - IN PROGRESS: Steps 1-7 complete (storage, error, constructor, validation, getter/setter, interface). Step 8 (tests) pending
+1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions implemented
+2. **Phase 2 (Expiry Divisor)** - COMPLETE: Storage, event, getter/setter, interface, and validation in create_yield_contracts implemented
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE: Storage, error, constructor, validation, getter/setter, interface implemented
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED: `i_flash_callback.cairo` does not exist, no flash mint functions
@@ -353,7 +353,7 @@ cd contracts && snforge test test_factory_expiry_divisor
 
 ---
 
-## Phase 3: MarketFactory Yield Contract Factory Reference **NEARLY COMPLETE**
+## Phase 3: MarketFactory Yield Contract Factory Reference **COMPLETE**
 
 Add cross-factory validation for PT deployments.
 
@@ -419,7 +419,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 ### Step 4: Add PT factory validation to create_market **COMPLETE**
 
 #### Goal
-Validate that PT was deployed by linked yield contract factory using `IFactory.is_valid_pt()` (optional, skipped if factory is zero).
+Validate that PT was deployed by linked yield contract factory using `IFactory.is_valid_pt()` (optional, can be skipped if factory is zero).
 
 #### Files
 - `contracts/src/market/market_factory.cairo` - Add validation after PT address check in `create_market` function
