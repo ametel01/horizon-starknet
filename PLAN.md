@@ -58,7 +58,7 @@ grep -q "routerStatic" packages/frontend/src/shared/config/addresses.ts && echo 
 
 ---
 
-### Step 3: Add RouterStatic contract wrapper
+### Step 3: Add RouterStatic contract wrapper **COMPLETE**
 
 #### Goal
 Create typed contract wrapper for RouterStatic following existing pattern from Router/Factory wrappers in `contracts.ts`.

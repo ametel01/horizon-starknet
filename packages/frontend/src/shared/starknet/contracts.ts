@@ -9,6 +9,7 @@ import {
   PT_ABI,
   PYLPORACLE_ABI,
   ROUTER_ABI,
+  ROUTERSTATIC_ABI,
   SY_ABI,
   SYWITHREWARDS_ABI,
   YT_ABI,
@@ -22,6 +23,7 @@ type ProviderOrAccount = ProviderInterface | AccountInterface;
 export type TypedFactory = TypedContractV2<typeof FACTORY_ABI>;
 export type TypedMarketFactory = TypedContractV2<typeof MARKETFACTORY_ABI>;
 export type TypedRouter = TypedContractV2<typeof ROUTER_ABI>;
+export type TypedRouterStatic = TypedContractV2<typeof ROUTERSTATIC_ABI>;
 export type TypedMarket = TypedContractV2<typeof MARKET_ABI>;
 export type TypedSY = TypedContractV2<typeof SY_ABI>;
 export type TypedSYWithRewards = TypedContractV2<typeof SYWITHREWARDS_ABI>;
@@ -76,6 +78,29 @@ export function getRouterContract(
     address: addresses.router,
     providerOrAccount,
   }).typedv2(ROUTER_ABI);
+}
+
+/**
+ * Creates a typed RouterStatic contract instance.
+ *
+ * RouterStatic provides read-only helper functions for querying market state,
+ * computing swap previews, and getting token balances without requiring transactions.
+ * Returns null if RouterStatic is not deployed on the network (address is 0x0).
+ */
+export function getRouterStaticContract(
+  providerOrAccount: ProviderOrAccount,
+  network: NetworkId
+): TypedRouterStatic | null {
+  const addresses = getAddresses(network);
+  // Return null if RouterStatic is not deployed (placeholder 0x0)
+  if (addresses.routerStatic === '0x0') {
+    return null;
+  }
+  return new Contract({
+    abi: ROUTERSTATIC_ABI,
+    address: addresses.routerStatic,
+    providerOrAccount,
+  }).typedv2(ROUTERSTATIC_ABI);
 }
 
 // Dynamic contracts (address provided at runtime)
