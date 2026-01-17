@@ -250,7 +250,7 @@ test -f packages/frontend/src/features/swap/lib/calldata.ts && echo "OK"
 
 ---
 
-### Step 10: Export types from swap feature
+### Step 10: Export types from swap feature **COMPLETE**
 
 #### Goal
 Export new types and utilities from swap feature index.

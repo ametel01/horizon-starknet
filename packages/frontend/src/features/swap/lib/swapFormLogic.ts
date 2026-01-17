@@ -8,7 +8,6 @@
  * - Button state derivation
  */
 
-import type { SwapDirection } from '@features/swap';
 import { getDeadline } from '@shared/lib/deadline';
 import {
   type MarketState as AmmMarketState,
@@ -19,6 +18,7 @@ import {
 } from '@shared/math/amm';
 import { WAD_BIGINT } from '@shared/math/wad';
 import type { Call } from 'starknet';
+import type { SwapDirection } from '../model/useSwap';
 
 // ============================================================================
 // Types
