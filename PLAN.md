@@ -479,7 +479,7 @@ cd packages/frontend && bun run check
 
 ---
 
-## Phase 6: ApproxParams Support for Existing Hooks
+## Phase 6: ApproxParams Support for Existing Hooks **COMPLETE**
 
 Add optional ApproxParams support to existing swap and liquidity hooks.
 
@@ -562,7 +562,7 @@ Create query hooks using RouterStatic for preview functions.
 cd packages/frontend && bun run check
 ```
 
-### Step 23: Create useMarketExchangeRates hook
+### Step 23: Create useMarketExchangeRates hook **COMPLETE**
 
 #### Goal
 Create query hook for fetching PT/SY, LP/SY, and LP/PT exchange rates from RouterStatic.
