@@ -417,7 +417,7 @@ grep -q "useAddLiquiditySingleToken" packages/frontend/src/features/liquidity/mo
 
 ---
 
-### Step 17: Create useAddLiquiditySingleTokenKeepYt hook
+### Step 17: Create useAddLiquiditySingleTokenKeepYt hook **COMPLETE**
 
 #### Goal
 Implement hook for adding liquidity while keeping minted YT tokens.
