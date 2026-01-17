@@ -74,6 +74,10 @@ pub mod Factory {
         valid_sys: Map<ContractAddress, bool>,
         // Treasury address for protocol fee collection and post-expiry yield
         treasury: ContractAddress,
+        // Fee rate for reward token harvesting (in WAD, e.g., 3% = 0.03 * 10^18)
+        reward_fee_rate: u256,
+        // Default fee rate for interest accrual (in WAD, e.g., 3% = 0.03 * 10^18)
+        default_interest_fee_rate: u256,
     }
 
     #[event]
