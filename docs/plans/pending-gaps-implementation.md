@@ -1,7 +1,7 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
-4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
+4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS: RewardManagerComponent added to YT storage/events, but hooks and internal impl not yet wired up
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED: `i_flash_callback.cairo` does not exist, no flash mint functions
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED: No VERSION constants exist in any contracts
@@ -516,7 +516,7 @@ Integrate RewardManagerComponent into YT for multi-token reward tracking.
 cd contracts && scarb build && snforge test test_yt
 ```
 
-### Step 1: Add RewardManagerComponent to YT contract
+### Step 1: Add RewardManagerComponent to YT contract **COMPLETE**
 
 #### Goal
 Import and declare `RewardManagerComponent` in YT contract similar to Market's usage at amm.cairo:76.
@@ -535,7 +535,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 2: Add reward_manager storage to YT
+### Step 2: Add reward_manager storage to YT **COMPLETE**
 
 #### Goal
 Add `reward_manager: RewardManagerComponent::Storage` substorage to YT Storage struct.
@@ -553,7 +553,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 3: Add RewardManagerEvent to YT Event enum
+### Step 3: Add RewardManagerEvent to YT Event enum **COMPLETE**
 
 #### Goal
 Register RewardManagerComponent events in YT's Event enum for proper emission.

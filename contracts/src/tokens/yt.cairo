@@ -5,6 +5,7 @@
 #[starknet::contract]
 pub mod YT {
     use core::num::traits::Zero;
+    use horizon::components::reward_manager_component::RewardManagerComponent;
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYT, IYTAdmin};
@@ -36,12 +37,29 @@ pub mod YT {
     component!(
         path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent,
     );
+    component!(path: RewardManagerComponent, storage: reward_manager, event: RewardManagerEvent);
 
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
     impl PausableInternalImpl = PausableComponent::InternalImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
     impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
+    impl RewardManagerInternalImpl = RewardManagerComponent::InternalImpl<ContractState>;
+    impl RewardManagerViewImpl = RewardManagerComponent::ViewImpl<ContractState>;
+
+    /// RewardHooksTrait implementation for YT
+    /// Rewards are distributed based on YT balance (not SY), since YT holders earn yield
+    impl RewardHooksImpl of RewardManagerComponent::RewardHooksTrait<ContractState> {
+        fn user_sy_balance(self: @ContractState, user: ContractAddress) -> u256 {
+            // Use YT balance for reward distribution (YT holders earn rewards)
+            self.erc20.ERC20_balances.read(user)
+        }
+
+        fn total_sy_supply(self: @ContractState) -> u256 {
+            // Use YT total supply for reward distribution
+            self.erc20.ERC20_total_supply.read()
+        }
+    }
 
     #[abi(embed_v0)]
     impl AccessControlImpl =
@@ -65,6 +83,8 @@ pub mod YT {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         reentrancy_guard: ReentrancyGuardComponent::Storage,
+        #[substorage(v0)]
+        reward_manager: RewardManagerComponent::Storage,
         // The SY token this YT is derived from
         sy: ContractAddress,
         // The corresponding PT contract
@@ -118,6 +138,8 @@ pub mod YT {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
+        #[flat]
+        RewardManagerEvent: RewardManagerComponent::Event,
         MintPY: MintPY,
         RedeemPY: RedeemPY,
         RedeemPYPostExpiry: RedeemPYPostExpiry,
