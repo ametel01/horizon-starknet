@@ -18,6 +18,7 @@
     "Factory": "0x06ac49e50485953541b9e98959a8132d1f4addfe04c15b515c544d419ca393fe",
     "MarketFactory": "0x05c62c7659fb051f9ff583511abcef40bcd132f4fb5f44b98e5eec70e307fcde",
     "Router": "0x036f9575b04fe5cce215f5cfe865492cb42e0e18de39ba8f5e42dffc4be07ea6",
+    "RouterStatic": "0x0",
     "PyLpOracle": "0x0"
   },
   "mainnetTokens": {

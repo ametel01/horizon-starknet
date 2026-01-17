@@ -35,6 +35,7 @@ interface SepoliaAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    RouterStatic?: string;
     PyLpOracle?: string;
   };
   testSetup: {
@@ -108,6 +109,7 @@ interface DevnetAddresses {
     Factory?: string;
     MarketFactory?: string;
     Router?: string;
+    RouterStatic?: string;
     PyLpOracle?: string;
   };
   testSetup: {
@@ -157,6 +159,7 @@ interface ForkAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    RouterStatic?: string;
     PyLpOracle?: string;
   };
   mainnetTokens: {
@@ -208,6 +211,7 @@ interface MainnetAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    RouterStatic?: string;
     Faucet: string;
     PyLpOracle?: string;
   };
@@ -239,6 +243,7 @@ export interface ContractAddresses {
   factory: string;
   marketFactory: string;
   router: string;
+  routerStatic: string;
   pyLpOracle: string;
 }
 
@@ -266,24 +271,28 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
     factory: devnetAddresses.contracts.Factory ?? ZERO_ADDRESS,
     marketFactory: devnetAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
     router: devnetAddresses.contracts.Router ?? ZERO_ADDRESS,
+    routerStatic: devnetAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
     pyLpOracle: devnetAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   fork: {
     factory: forkAddresses.contracts.Factory,
     marketFactory: forkAddresses.contracts.MarketFactory,
     router: forkAddresses.contracts.Router,
+    routerStatic: forkAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
     pyLpOracle: forkAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   sepolia: {
     factory: sepoliaAddresses.contracts.Factory,
     marketFactory: sepoliaAddresses.contracts.MarketFactory,
     router: sepoliaAddresses.contracts.Router,
+    routerStatic: sepoliaAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
     pyLpOracle: sepoliaAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   mainnet: {
     factory: mainnetAddresses.contracts.Factory,
     marketFactory: mainnetAddresses.contracts.MarketFactory,
     router: mainnetAddresses.contracts.Router,
+    routerStatic: mainnetAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
     pyLpOracle: mainnetAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
 };

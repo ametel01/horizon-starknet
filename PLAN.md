@@ -34,7 +34,7 @@ grep -q "ROUTERSTATIC_ABI" packages/frontend/src/types/generated/index.ts && ech
 
 ---
 
-### Step 2: Add RouterStatic address to network config
+### Step 2: Add RouterStatic address to network config **COMPLETE**
 
 #### Goal
 Add routerStatic contract address field to all network address configurations.
