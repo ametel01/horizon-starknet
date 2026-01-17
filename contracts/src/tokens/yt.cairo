@@ -179,6 +179,7 @@ pub mod YT {
         RedeemPYWithInterest: RedeemPYWithInterest,
         PostExpiryDataSet: PostExpiryDataSet,
         PyIndexUpdated: PyIndexUpdated,
+        FlashMintPY: FlashMintPY,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -365,6 +366,21 @@ pub mod YT {
         pub new_index: u256,
         pub exchange_rate: u256,
         pub block_number: u64,
+        pub timestamp: u64,
+    }
+
+    /// Emitted when flash minting PT + YT tokens
+    /// Flash mint allows atomic borrow-and-repay within a single transaction
+    #[derive(Drop, starknet::Event)]
+    pub struct FlashMintPY {
+        #[key]
+        pub caller: ContractAddress,
+        #[key]
+        pub receiver: ContractAddress,
+        pub amount_py: u256,
+        pub fee_sy: u256,
+        pub sy: ContractAddress,
+        pub pt: ContractAddress,
         pub timestamp: u64,
     }
 

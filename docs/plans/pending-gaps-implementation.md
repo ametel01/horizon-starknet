@@ -3,7 +3,7 @@
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - IMPLEMENTED: `yield_contract_factory` with PT validation in MarketFactory
 4. **Phase 4 (Multi-Reward YT Integration)** - IMPLEMENTED: YT uses RewardManagerComponent with full reward tracking
 5. **Phase 5 (Router Dual Token Liquidity)** - IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` in Router
-6. **Phase 6 (YT Flash Mint)** - IN PROGRESS: `i_flash_callback.cairo` created, error constants added, `flash_mint_py` not yet implemented
+6. **Phase 6 (YT Flash Mint)** - IN PROGRESS: `i_flash_callback.cairo` created, error constants added, `FlashMintPY` event added, `flash_mint_py` not yet implemented
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED: No VERSION constants exist in any contracts
 
 This document describes planned features with step-by-step implementation guides. Steps marked **COMPLETE** indicate the step specification is finalized (phases 1-5 are now fully implemented).
@@ -976,7 +976,7 @@ grep -q "YT_FLASH" contracts/src/libraries/errors.cairo && echo "OK"
 
 ---
 
-### Step 4: Add FlashMintPY event to YT
+### Step 4: Add FlashMintPY event to YT **COMPLETE**
 
 #### Goal
 Create `FlashMintPY` event for flash mint tracking.
