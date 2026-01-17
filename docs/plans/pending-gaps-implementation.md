@@ -1,10 +1,12 @@
-1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE
-2. **Phase 2 (Expiry Divisor)** - COMPLETE
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
-4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE
-5. **Phase 5 (Router Dual Token Liquidity)** - COMPLETE
-6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
+1. **Phase 1 (Factory Fee Infrastructure)** - NOT IMPLEMENTED
+2. **Phase 2 (Expiry Divisor)** - NOT IMPLEMENTED
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED
+4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED
+5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED
+6. **Phase 6 (YT Flash Mint)** - IN PROGRESS: `i_flash_callback.cairo` created, flash mint functions not yet implemented
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
+
+This document describes **planned features** with step-by-step implementation guides. Steps marked **COMPLETE** indicate the step specification is finalized (not that the code is implemented).
 
 ## Phase 1: Factory Fee Infrastructure **COMPLETE**
 
@@ -772,7 +774,7 @@ cd contracts && snforge test test_yt_rewards
 
 ---
 
-## Phase 5: Router Dual Token Liquidity Operations
+## Phase 5: Router Dual Token Liquidity Operations **COMPLETE**
 
 Add mixed deposit/withdrawal operations for advanced liquidity provision.
 
@@ -920,7 +922,7 @@ Add flash mint pattern for atomic PT+YT operations.
 cd contracts && scarb build && snforge test test_yt_flash
 ```
 
-### Step 1: Create IFlashCallback interface
+### Step 1: Create IFlashCallback interface **COMPLETE**
 
 #### Goal
 Define `IFlashCallback` trait with `flash_callback(pt_amount, yt_amount, data)` function.
@@ -938,7 +940,7 @@ test -f contracts/src/interfaces/i_flash_callback.cairo && echo "OK"
 
 ---
 
-### Step 2: Register IFlashCallback in interfaces module
+### Step 2: Register IFlashCallback in interfaces module **COMPLETE**
 
 #### Goal
 Add `pub mod i_flash_callback;` to interfaces module declaration.

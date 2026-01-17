@@ -7,6 +7,7 @@ pub mod interfaces {
     pub mod i_aggregator_router;
     pub mod i_erc4626;
     pub mod i_factory;
+    pub mod i_flash_callback;
     pub mod i_index_oracle;
     pub mod i_market;
     pub mod i_market_callback;
