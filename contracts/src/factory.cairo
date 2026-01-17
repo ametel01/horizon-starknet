@@ -23,6 +23,12 @@ pub mod Factory {
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
     use super::{IERC20MetadataDispatcher, IERC20MetadataDispatcherTrait};
 
+    // Fee rate limits (WAD units, 10^18 = 100%)
+    // Maximum reward fee rate: 20% (0.2e18)
+    pub const MAX_REWARD_FEE_RATE: u256 = 200_000_000_000_000_000;
+    // Maximum interest fee rate: 50% (0.5e18)
+    pub const MAX_INTEREST_FEE_RATE: u256 = 500_000_000_000_000_000;
+
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);

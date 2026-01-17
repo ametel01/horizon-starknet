@@ -1,6 +1,6 @@
 # Implementation Status Summary
 
-1. **Phase 1 (Factory Fee Infrastructure)** - PARTIAL: `reward_fee_rate`, `default_interest_fee_rate` storage fields added (Step 1 complete). Steps 2-10 pending (constants, events, errors, getters/setters, interface, tests).
+1. **Phase 1 (Factory Fee Infrastructure)** - PARTIAL: `reward_fee_rate`, `default_interest_fee_rate` storage fields added (Step 1 complete). `MAX_REWARD_FEE_RATE`, `MAX_INTEREST_FEE_RATE` constants added (Step 2 complete). Steps 3-10 pending (events, errors, getters/setters, interface, tests).
 2. **Phase 2 (Expiry Divisor)** - NOT IMPLEMENTED: `expiry_divisor` does not exist in Factory
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED: `yield_contract_factory` does not exist in MarketFactory
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
@@ -38,7 +38,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error|warning)" | head -20 || echo 
 
 ---
 
-### Step 2: Add factory fee rate constants
+### Step 2: Add factory fee rate constants **COMPLETE**
 
 #### Goal
 Define `MAX_REWARD_FEE_RATE` (20% = 0.2e18) and `MAX_INTEREST_FEE_RATE` (50% = 0.5e18) constants for validation.
