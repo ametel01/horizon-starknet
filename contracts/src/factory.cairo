@@ -97,6 +97,7 @@ pub mod Factory {
         SYWithRewardsClassHashUpdated: SYWithRewardsClassHashUpdated,
         RewardFeeRateSet: RewardFeeRateSet,
         DefaultInterestFeeRateSet: DefaultInterestFeeRateSet,
+        ExpiryDivisorSet: ExpiryDivisorSet,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -157,6 +158,12 @@ pub mod Factory {
     pub struct DefaultInterestFeeRateSet {
         pub old_fee_rate: u256,
         pub new_fee_rate: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ExpiryDivisorSet {
+        pub old_expiry_divisor: u64,
+        pub new_expiry_divisor: u64,
     }
 
     #[constructor]
@@ -520,6 +527,24 @@ pub mod Factory {
             self.default_interest_fee_rate.write(rate);
 
             self.emit(DefaultInterestFeeRateSet { old_fee_rate: old_rate, new_fee_rate: rate });
+        }
+
+        // ============ Expiry Divisor Management ============
+
+        /// Get the expiry divisor for expiry validation (0 = disabled)
+        fn get_expiry_divisor(self: @ContractState) -> u64 {
+            self.expiry_divisor.read()
+        }
+
+        /// Set the expiry divisor (owner only)
+        /// @param divisor Expiry divisor (0 = disabled, e.g., 86400 for daily alignment)
+        fn set_expiry_divisor(ref self: ContractState, divisor: u64) {
+            self.ownable.assert_only_owner();
+
+            let old_divisor = self.expiry_divisor.read();
+            self.expiry_divisor.write(divisor);
+
+            self.emit(ExpiryDivisorSet { old_expiry_divisor: old_divisor, new_expiry_divisor: divisor });
         }
     }
 }

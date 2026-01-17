@@ -1,5 +1,5 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
-2. **Phase 2 (Expiry Divisor)** - IN PROGRESS: `expiry_divisor` storage field and error constant added, getter/setter functions and events pending
+2. **Phase 2 (Expiry Divisor)** - IN PROGRESS: Storage, event, getter/setter, and interface complete; validation in create_yield_contracts and tests pending
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED: `yield_contract_factory` does not exist in MarketFactory
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
@@ -246,7 +246,7 @@ grep -q "FACTORY_INVALID_EXPIRY_DIVISOR" contracts/src/libraries/errors.cairo &&
 
 ---
 
-### Step 3: Add expiry divisor event
+### Step 3: Add expiry divisor event **COMPLETE**
 
 #### Goal
 Create `ExpiryDivisorSet` event for expiry divisor changes.
@@ -283,7 +283,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 5: Implement set_expiry_divisor admin function
+### Step 5: Implement set_expiry_divisor admin function **COMPLETE**
 
 #### Goal
 Add `set_expiry_divisor(divisor: u64)` owner-only function that updates divisor and emits event.
@@ -301,7 +301,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 6: Implement get_expiry_divisor view function
+### Step 6: Implement get_expiry_divisor view function **COMPLETE**
 
 #### Goal
 Add `get_expiry_divisor() -> u64` view function.
@@ -319,7 +319,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 7: Update IFactory interface with expiry divisor functions
+### Step 7: Update IFactory interface with expiry divisor functions **COMPLETE**
 
 #### Goal
 Add `set_expiry_divisor(u64)` and `get_expiry_divisor() -> u64` to IFactory trait.

@@ -88,4 +88,13 @@ pub trait IFactory<TContractState> {
     /// Set the default interest fee rate (owner only)
     /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
     fn set_default_interest_fee_rate(ref self: TContractState, rate: u256);
+
+    // ============ Expiry Divisor Management ============
+
+    /// Get the expiry divisor for expiry validation (0 = disabled)
+    fn get_expiry_divisor(self: @TContractState) -> u64;
+
+    /// Set the expiry divisor (owner only)
+    /// @param divisor Expiry divisor (0 = disabled, e.g., 86400 for daily alignment)
+    fn set_expiry_divisor(ref self: TContractState, divisor: u64);
 }
