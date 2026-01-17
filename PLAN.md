@@ -121,7 +121,7 @@ grep -q "useRemoveLiquiditySingleSy" packages/frontend/src/features/liquidity/mo
 
 ---
 
-### Step 5: Add useRemoveLiquiditySinglePt hook
+### Step 5: Add useRemoveLiquiditySinglePt hook **COMPLETE**
 
 #### Goal
 Create hook for removing liquidity and receiving only PT tokens (no SY).
