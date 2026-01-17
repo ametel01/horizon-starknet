@@ -368,7 +368,7 @@ grep -q "useSwapYtForToken" packages/frontend/src/features/swap/model/useTokenYt
 
 ---
 
-### Step 15: Export token swap hooks
+### Step 15: Export token swap hooks **COMPLETE**
 
 #### Goal
 Export new token swap hooks from swap feature.
