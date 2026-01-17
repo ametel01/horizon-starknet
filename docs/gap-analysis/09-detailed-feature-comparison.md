@@ -57,7 +57,7 @@ AMM/MARKET (MarketMathCore)
   4 swap function variants              ✗            ✓         None (EXCEEDS)
   PYIndex integration                   ✓            ✓         None
   Reserve fee splitting                 ✓            ✓         None
-  Fee collection                        Auto-compound Manual   HIGH
+  Fee collection                        Auto-compound Manual   MEDIUM
   Treasury address                      ✓            ✓         None
   LP fee on add liquidity               ✓            ✗         MEDIUM
   Fee formula (exponential)             ✓            ✓         None
@@ -78,14 +78,14 @@ MARKET CONTRACT (PendleMarketV6)
   TWAP observation buffer (65k)         ✓            ✓         None
   observe(secondsAgos[])                ✓            ✓         None
   increaseObservationsCardinality       ✓            ✓         None
-  RewardManager/PendleGauge             ✓            ✗         HIGH
-  redeemRewards(user)                   ✓            ✗         HIGH
-  getRewardTokens()                     ✓            ✗         HIGH
+  RewardManager/PendleGauge             ✓            ✓         None ✅ IMPLEMENTED
+  redeemRewards(user)                   ✓            ✓         None ✅ IMPLEMENTED
+  getRewardTokens()                     ✓            ✓         None ✅ IMPLEMENTED
   Flash swap callback                   ✓            ✗         MEDIUM
   skim() balance reconciliation         ✓            ✗         MEDIUM
   Separate burn receivers               ✓            Single    MEDIUM
   Storage packing                       ✓            u256      MEDIUM (gas)
-  Fee config from factory               ✓            In-contract MEDIUM
+  Fee config from factory               ✓            ✓         None ✅ IMPLEMENTED
 
 ROUTER ARCHITECTURE
   Diamond/Proxy pattern                 ✓            Monolithic⚠️ Different
@@ -106,35 +106,36 @@ ROUTER CORE FUNCTIONS
   YT flash mechanism                    Callback     Mint+Sell ⚠️ Different
 
 SINGLE-SIDED LIQUIDITY
-  addLiquiditySinglePt                  ✓            ✗         HIGH
-  addLiquiditySingleSy                  ✓            ✗         HIGH
-  addLiquiditySingleToken               ✓            ✗         HIGH
-  addLiquiditySingleTokenKeepYt         ✓            ✗         MEDIUM
-  removeLiquiditySinglePt               ✓            ✗         HIGH
-  removeLiquiditySingleSy               ✓            ✗         HIGH
-  removeLiquiditySingleToken            ✓            ✗         HIGH
+  addLiquiditySinglePt                  ✓            ✓         None ✅ IMPLEMENTED
+  addLiquiditySingleSy                  ✓            ✓         None ✅ IMPLEMENTED
+  addLiquiditySingleToken               ✓            ✓         None ✅ IMPLEMENTED
+  addLiquiditySingleTokenKeepYt         ✓            ✓         None ✅ IMPLEMENTED
+  removeLiquiditySinglePt               ✓            ✓         None ✅ IMPLEMENTED
+  removeLiquiditySingleSy               ✓            ✓         None ✅ IMPLEMENTED
+  removeLiquiditySingleToken            ✓            ✓         None ✅ IMPLEMENTED
   addLiquidityDualTokenAndPt            ✓            ✗         MEDIUM
   removeLiquidityDualTokenAndPt         ✓            ✗         MEDIUM
 
 TOKEN AGGREGATION
-  TokenInput struct                     ✓            ✗         HIGH
-  TokenOutput struct                    ✓            ✗         HIGH
-  swapExactTokenForPt                   ✓            ✗         HIGH
-  swapExactPtForToken                   ✓            ✗         HIGH
-  swapExactTokenForYt                   ✓            ✗         HIGH
-  swapExactYtForToken                   ✓            ✗         HIGH
-  swapTokensToTokens                    ✓            ✗         HIGH
-  Aggregator integration (AVNU etc)     ✓            ✗         HIGH
+  TokenInput struct                     ✓            ✓         None ✅ IMPLEMENTED
+  TokenOutput struct                    ✓            ✓         None ✅ IMPLEMENTED
+  swapExactTokenForPt                   ✓            ✓         None ✅ IMPLEMENTED
+  swapExactPtForToken                   ✓            ✓         None ✅ IMPLEMENTED
+  swapExactTokenForYt                   ✓            ✓         None ✅ IMPLEMENTED
+  swapExactYtForToken                   ✓            ✓         None ✅ IMPLEMENTED
+  swapTokensToTokens                    ✓            ✗         MEDIUM
+  Aggregator integration (AVNU etc)     ✓            ✓         None ✅ IMPLEMENTED
 
 ADVANCED ROUTER
-  ApproxParams (caller hints)           ✓            Internal  MEDIUM
+  ApproxParams (caller hints)           ✓            ✓         None ✅ IMPLEMENTED
   LimitOrderData                        ✓            ✗         MEDIUM
-  multicall batching                    ✓            ✗         MEDIUM
+  multicall batching                    ✓            ✓         None ✅ IMPLEMENTED
   boostMarkets                          ✓            ✗         MEDIUM
-  redeemDueInterestAndRewards           ✓            ✗         MEDIUM
-  RouterStatic previews                 ✓            ✗         MEDIUM
-  Permit signatures                     ✓            ✗         MEDIUM
+  redeemDueInterestAndRewards           ✓            ✓         None ✅ IMPLEMENTED
+  RouterStatic previews                 ✓            ✓         None ✅ IMPLEMENTED
+  Permit signatures                     ✓            ✗         N/A (Starknet)
   Cross-chain operations                ✓            ✗         LOW
+  rolloverLp                            ✓            ✓         None ✅ IMPLEMENTED
 
 FACTORY (YieldContractFactory)
   Create PT/YT pair                     ✓            ✓         None
@@ -201,21 +202,21 @@ YIELD INDEX ORACLE (SY Exchange Rate)
 MARKET TWAP ORACLE (PT/YT/LP Pricing) - ~95% Implemented
   Observation buffer (8.7k slots)       ✓            ✓         None (oracle_lib.cairo)
   lnImpliedRateCumulative               ✓            ✓         None (oracle_lib.cairo)
-  observe(secondsAgos[])                ✓            ✓         None (amm.cairo:1003-1062)
-  increaseObservationsCardinalityNext   ✓            ✓         None (amm.cairo:1066-1083)
-  getOracleState(market, duration)      ✓            ✓         None (py_lp_oracle.cairo:262-290)
-  getPtToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:47-75)
-  getPtToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:142-175)
-  getYtToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:77-100)
-  getYtToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:177-210)
-  getLpToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:102-140)
-  getLpToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:212-260)
+  observe(secondsAgos[])                ✓            ✓         None (amm.cairo:1376)
+  increaseObservationsCardinalityNext   ✓            ✓         None (amm.cairo:1443)
+  getOracleState(market, duration)      ✓            ✓         None (py_lp_oracle.cairo:152-205)
+  getPtToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:47-62)
+  getPtToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:117-122)
+  getYtToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:67-85)
+  getYtToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:125-130)
+  getLpToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:91-109)
+  getLpToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:139-144)
   Pre-deployed oracle contract          ✓            ✓         None (PyLpOracle)
-  getLnImpliedRateTwap                  ✓            ✓         None (py_lp_oracle.cairo)
-  checkOracleState                      ✓            ✓         None (py_lp_oracle.cairo)
+  getLnImpliedRateTwap                  ✓            ✓         None (py_lp_oracle.cairo:211-242)
+  checkOracleState                      ✓            ✓         None (py_lp_oracle.cairo:152-205)
   Chainlink wrapper (latestRoundData)   ✓            ✗         OPTIONAL
   Reentrancy guard check                ✓            N/A       N/A (Cairo inherent)
-  SY/PY index adjustment                ✓            ✓         None (py_lp_oracle.cairo)
+  SY/PY index adjustment                ✓            ✓         None (py_lp_oracle.cairo:269-292)
   Oracle factory                        ✓            ✗         OPTIONAL
 
 GOVERNANCE
@@ -232,9 +233,9 @@ GOVERNANCE
 
 | Category | Implementation | Gap Count | Critical Gaps | Notes |
 |----------|---------------|-----------|---------------|-------|
-| Core Tokens | 90% | 8 | 2 (multi-reward YT) | ✅ **SY: 95% complete** (2 gaps: EIP-2612 Permit N/A, native ETH N/A); YT: 4 gaps (multi-reward, reward registry, flash mint, packing); PT: 2 gaps; Horizon exceeds in 7 areas |
-| AMM/Market | 85% | 6 | 0 | ✅ **Core math: 100%** (PYIndex, reserve fees, TWAP oracle, **fee auto-compounding all implemented**); Remaining: RewardManager/PendleGauge, flash callbacks, rate-impact fees (Phase 2); Horizon exceeds in 5 areas |
-| Router | 55% | 29 | 14 (single-sided×7, token aggregation×8) | Core ops: 85%; Missing: single-sided liquidity, token aggregation, batch ops; Horizon exceeds in 3 areas (pause, RBAC, wrappers) |
+| Core Tokens | 90% | 6 | 1 (multi-reward YT) | ✅ **SY: 95% complete** (2 gaps: EIP-2612 Permit N/A, native ETH N/A); YT: 3 gaps (multi-reward, flash mint, packing); PT: 2 gaps; Horizon exceeds in 7 areas |
+| AMM/Market | 90% | 4 | 0 | ✅ **Core math: 100%** (PYIndex, reserve fees, TWAP oracle, fee config from factory); ✅ **RewardManager: implemented**; Remaining: flash callbacks, skim, burn receivers; Horizon exceeds in 5 areas |
+| Router | 85% | 7 | 0 | ✅ **Single-sided liquidity: 100%** (7/7 functions); ✅ **Token aggregation: 95%** (6/7 functions); ✅ **Advanced: multicall, ApproxParams, RouterStatic, redeemDueInterestAndRewards, rolloverLp**; Remaining: LimitOrderData, boostMarkets, swapTokensToTokens; Horizon exceeds in 3 areas (pause, RBAC, wrappers) |
 | Factory | 70% | 8 | 4 (interestFeeRate, rewardFeeRate, setters) | Core deployment: 100%; Missing: factory-level fee schedule; Horizon exceeds in 3 areas (enriched events, RBAC, class hash updates) |
 | MarketFactory | 95% | 5 | 0 | ✅ **Treasury/fee infrastructure: 100%** (treasury, reserve_fee_percent, router overrides, get_market_config); Remaining: governance integration (vePendle, gaugeController); Horizon exceeds in 6 areas (pagination, active filter, events, RBAC) |
 | Oracle | 95% | 2 | 0 | ✅ **Yield Index Oracle: 75%** with 5 areas Horizon EXCEEDS; ✅ **Market TWAP Oracle: 95%** - full PT/YT/LP price functions in `py_lp_oracle.cairo`; 2 optional gaps (Chainlink wrapper, Oracle factory) |

@@ -918,7 +918,7 @@ test -f packages/frontend/src/features/liquidity/ui/TokenAggregatorLiquidityForm
 
 ---
 
-### Step 36: Add form mode switcher to trade page
+### Step 36: Add form mode switcher to trade page **COMPLETE**
 
 #### Goal
 Allow users to switch between standard forms and token aggregator forms.

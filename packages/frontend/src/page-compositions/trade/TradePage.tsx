@@ -2,18 +2,35 @@
 
 import { useDashboardMarkets } from '@features/markets';
 import { usePositions } from '@features/portfolio';
-import { SwapForm } from '@features/swap';
+import { SwapForm, TokenAggregatorSwapForm } from '@features/swap';
 import { useStarknet } from '@features/wallet';
 import { ApyBreakdown, useApyBreakdown } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@shared/ui';
 import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
-import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const FORM_MODE_STORAGE_KEY = 'horizon-trade-form-mode';
+type FormMode = 'standard' | 'any-token';
 
 // Lazy load chart components (recharts is heavy)
 const ImpliedRateChart = dynamic(
@@ -79,8 +96,31 @@ function TradePageContent(): ReactNode {
   const [mounted, setMounted] = useState(false);
   const { isConnected } = useStarknet();
 
+  // Form mode state with localStorage persistence
+  const [formMode, setFormMode] = useState<FormMode>('standard');
+
+  // Load form mode preference from localStorage on mount
   useEffect(() => {
     setMounted(true);
+    try {
+      const savedMode = localStorage.getItem(FORM_MODE_STORAGE_KEY);
+      if (savedMode === 'standard' || savedMode === 'any-token') {
+        setFormMode(savedMode);
+      }
+    } catch {
+      // localStorage unavailable (private browsing, disabled cookies, etc.)
+    }
+  }, []);
+
+  // Handle form mode change with localStorage persistence
+  const handleFormModeChange = useCallback((value: unknown) => {
+    if (value !== 'standard' && value !== 'any-token') return;
+    setFormMode(value);
+    try {
+      localStorage.setItem(FORM_MODE_STORAGE_KEY, value);
+    } catch {
+      // localStorage unavailable, mode still works in memory
+    }
   }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
@@ -164,8 +204,28 @@ function TradePageContent(): ReactNode {
                 </Select>
               </div>
 
-              {/* Swap Form */}
-              <SwapForm market={selectedMarket} />
+              {/* Form Mode Tabs */}
+              <Tabs value={formMode} onValueChange={handleFormModeChange}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="standard" className="flex-1 gap-1.5">
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                    Standard
+                  </TabsTrigger>
+                  <TabsTrigger value="any-token" className="flex-1 gap-1.5">
+                    <Zap className="h-3.5 w-3.5" />
+                    Any Token
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="standard">
+                  <SwapForm key={`standard-${selectedMarket.address}`} market={selectedMarket} />
+                </TabsContent>
+                <TabsContent value="any-token">
+                  <TokenAggregatorSwapForm
+                    key={`any-token-${selectedMarket.address}`}
+                    market={selectedMarket}
+                  />
+                </TabsContent>
+              </Tabs>
 
               {/* Implied Rate Chart */}
               <ImpliedRateChart
