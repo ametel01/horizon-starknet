@@ -18,7 +18,7 @@ pub mod YT {
     use openzeppelin_introspection::src5::SRC5Component;
     use openzeppelin_security::pausable::PausableComponent;
     use openzeppelin_security::reentrancyguard::ReentrancyGuardComponent;
-    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component, ERC20HooksEmptyImpl};
+    use openzeppelin_token::erc20::{DefaultConfig, ERC20Component};
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
@@ -58,6 +58,34 @@ pub mod YT {
         fn total_sy_supply(self: @ContractState) -> u256 {
             // Use YT total supply for reward distribution
             self.erc20.ERC20_total_supply.read()
+        }
+    }
+
+    /// Custom ERC20 hooks - update reward tracking before balance changes
+    ///
+    /// This ensures that when YT tokens are transferred (including mint/burn),
+    /// both parties' reward state is updated BEFORE the balance change occurs.
+    /// This is critical for accurate reward distribution based on time-weighted balances.
+    impl ERC20HooksImpl of ERC20Component::ERC20HooksTrait<ContractState> {
+        fn before_update(
+            ref self: ERC20Component::ComponentState<ContractState>,
+            from: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) {
+            // Update rewards for both parties BEFORE balance changes
+            // This captures their rewards based on their current balances
+            let mut contract = self.get_contract_mut();
+            contract.reward_manager.update_rewards_for_two(from, recipient);
+        }
+
+        fn after_update(
+            ref self: ERC20Component::ComponentState<ContractState>,
+            from: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) {
+            // No additional logic needed after update
         }
     }
 
