@@ -21,6 +21,13 @@ interface AddLiquiditySinglePtParams {
   minLpOut: bigint;
 }
 
+interface RemoveLiquiditySingleSyParams {
+  marketAddress: string;
+  syAddress: string;
+  lpAmount: bigint;
+  minSyOut: bigint;
+}
+
 interface LiquidityResult {
   transactionHash: string;
 }
@@ -45,6 +52,17 @@ interface UseAddLiquiditySinglePtReturn {
   addLiquiditySinglePt: (params: AddLiquiditySinglePtParams) => void;
   addLiquiditySinglePtAsync: (params: AddLiquiditySinglePtParams) => Promise<LiquidityResult>;
   isAdding: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  error: Error | null;
+  transactionHash: string | undefined;
+  reset: () => void;
+}
+
+interface UseRemoveLiquiditySingleSyReturn {
+  removeLiquiditySingleSy: (params: RemoveLiquiditySingleSyParams) => void;
+  removeLiquiditySingleSyAsync: (params: RemoveLiquiditySingleSyParams) => Promise<LiquidityResult>;
+  isRemoving: boolean;
   isSuccess: boolean;
   isError: boolean;
   error: Error | null;
@@ -363,6 +381,167 @@ export function buildAddLiquiditySinglePtCalls(
       u256Pt.high,
       u256MinLp.low,
       u256MinLp.high,
+      getDeadline().toString(),
+    ],
+  });
+
+  return calls;
+}
+
+export function useRemoveLiquiditySingleSy(): UseRemoveLiquiditySingleSyReturn {
+  const { network } = useStarknet();
+  const { account, address } = useAccount();
+  const queryClient = useQueryClient();
+  const addresses = getAddresses(network);
+
+  const mutation = useMutation({
+    mutationFn: async (params: RemoveLiquiditySingleSyParams): Promise<LiquidityResult> => {
+      if (!account || !address) {
+        throw new Error('Wallet not connected');
+      }
+
+      const routerAddress = addresses.router;
+      const router = getRouterContract(account, network);
+
+      const calls: Call[] = [];
+
+      // Approve LP tokens (market) to router for burning
+      const lpContract = getERC20Contract(params.marketAddress, account);
+      const approveLpCall = lpContract.populate('approve', [
+        routerAddress,
+        uint256.bnToUint256(params.lpAmount),
+      ]);
+      calls.push(approveLpCall);
+
+      // Remove liquidity single SY call
+      const removeLiquidityCall = router.populate('remove_liquidity_single_sy', [
+        params.marketAddress,
+        address,
+        uint256.bnToUint256(params.lpAmount),
+        uint256.bnToUint256(params.minSyOut),
+        getDeadline(),
+      ]);
+      calls.push(removeLiquidityCall);
+
+      // Execute multicall
+      const result = await account.execute(calls);
+
+      return {
+        transactionHash: result.transaction_hash,
+      };
+    },
+
+    onMutate: async (
+      params: RemoveLiquiditySingleSyParams
+    ): Promise<SingleSidedOptimisticContext> => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.marketAddress, address],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ['token-balance', params.syAddress, address],
+      });
+
+      // Snapshot previous values
+      const previousLpBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.marketAddress,
+        address,
+      ]);
+      const previousInputBalance = queryClient.getQueryData<string>([
+        'token-balance',
+        params.syAddress,
+        address,
+      ]);
+
+      // Optimistically decrease LP balance
+      if (previousLpBalance !== undefined) {
+        const newBalance = BigInt(previousLpBalance) - params.lpAmount;
+        queryClient.setQueryData(
+          ['token-balance', params.marketAddress, address],
+          (newBalance > 0n ? newBalance : 0n).toString()
+        );
+      }
+
+      // Optimistically increase SY balance
+      if (previousInputBalance !== undefined) {
+        const newBalance = BigInt(previousInputBalance) + params.minSyOut;
+        queryClient.setQueryData(
+          ['token-balance', params.syAddress, address],
+          newBalance.toString()
+        );
+      }
+
+      return { previousInputBalance, previousLpBalance };
+    },
+
+    onError: (_err, params, context) => {
+      if (context) {
+        if (context.previousLpBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.marketAddress, address],
+            context.previousLpBalance
+          );
+        }
+        if (context.previousInputBalance !== undefined) {
+          queryClient.setQueryData(
+            ['token-balance', params.syAddress, address],
+            context.previousInputBalance
+          );
+        }
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['market'] });
+      void queryClient.invalidateQueries({ queryKey: ['token-balance'] });
+      void queryClient.invalidateQueries({ queryKey: ['token-allowance'] });
+      void queryClient.invalidateQueries({ queryKey: ['lp-balance'] });
+    },
+  });
+
+  return {
+    removeLiquiditySingleSy: mutation.mutate,
+    removeLiquiditySingleSyAsync: mutation.mutateAsync,
+    isRemoving: mutation.isPending,
+    isSuccess: mutation.isSuccess,
+    isError: mutation.isError,
+    error: mutation.error,
+    transactionHash: mutation.data?.transactionHash,
+    reset: mutation.reset,
+  };
+}
+
+/**
+ * Build calls for removing single-sided SY liquidity (for gas estimation)
+ */
+export function buildRemoveLiquiditySingleSyCalls(
+  routerAddress: string,
+  userAddress: string,
+  params: RemoveLiquiditySingleSyParams
+): Call[] {
+  const calls: Call[] = [];
+
+  // Approve LP tokens for burning
+  const u256Lp = uint256.bnToUint256(params.lpAmount);
+  calls.push({
+    contractAddress: params.marketAddress,
+    entrypoint: 'approve',
+    calldata: [routerAddress, u256Lp.low, u256Lp.high],
+  });
+
+  // Remove liquidity single SY
+  const u256MinSy = uint256.bnToUint256(params.minSyOut);
+  calls.push({
+    contractAddress: routerAddress,
+    entrypoint: 'remove_liquidity_single_sy',
+    calldata: [
+      params.marketAddress,
+      userAddress,
+      u256Lp.low,
+      u256Lp.high,
+      u256MinSy.low,
+      u256MinSy.high,
       getDeadline().toString(),
     ],
   });

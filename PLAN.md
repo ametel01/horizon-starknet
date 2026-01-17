@@ -1,8 +1,8 @@
-## Phase 1: RouterStatic Contract Integration
+## Phase 1: RouterStatic Contract Integration **COMPLETE**
 
 Deploy RouterStatic contract and integrate it into the frontend for preview functions.
 
-**[BLOCKED]**: RouterStatic contract exists in the contracts layer (`contracts/src/router_static.cairo`) but is NOT deployed on any network and NOT included in deploy scripts.
+**[BLOCKED]**: RouterStatic contract exists in the contracts layer (`contracts/src/router_static.cairo`) and frontend TypeScript integration is complete, but RouterStatic is NOT deployed on any network (all address files show `"0x0"`).
 
 ### Phase Validation
 ```bash
@@ -15,11 +15,11 @@ cd packages/frontend && bun run check
 Create TypeScript ABI types for RouterStatic contract to enable type-safe preview function calls.
 
 #### Files
-- `packages/frontend/src/types/generated/RouterStatic.ts` - Create new ABI export file following existing pattern from `Router.ts`
-- `packages/frontend/src/types/generated/index.ts` - Add export for ROUTERSTATIC_ABI
+- `packages/frontend/src/types/generated/RouterStatic.ts` - ABI export file (312 lines)
+- `packages/frontend/src/types/generated/index.ts` - Exports `ROUTERSTATIC_ABI` (line 23)
 
 #### Prerequisites
-- RouterStatic must be deployed so ABI exists in `contracts/target/dev/horizon_RouterStatic.contract_class.json`
+- RouterStatic contract must be built so ABI exists in `contracts/target/dev/horizon_RouterStatic.contract_class.json`
 - Run `bun run codegen` in packages/frontend to auto-generate from ABI
 
 #### Validation
@@ -28,7 +28,6 @@ grep -q "ROUTERSTATIC_ABI" packages/frontend/src/types/generated/index.ts && ech
 ```
 
 #### Failure modes
-- RouterStatic not deployed (blocked until deployment)
 - ABI JSON not available in contracts build output
 - Type generation mismatch with actual contract interface
 
@@ -40,11 +39,11 @@ grep -q "ROUTERSTATIC_ABI" packages/frontend/src/types/generated/index.ts && ech
 Add routerStatic contract address field to all network address configurations.
 
 #### Files
-- `packages/frontend/src/shared/config/addresses.ts` - Add routerStatic field to ContractAddresses interface and all network configs (currently lines 238-243)
-- `deploy/addresses/devnet.json` - Add RouterStatic to contracts object (currently has Factory, MarketFactory, Router, PyLpOracle)
-- `deploy/addresses/sepolia.json` - Add RouterStatic contract address
-- `deploy/addresses/mainnet.json` - Add RouterStatic contract address
-- `deploy/addresses/fork.json` - Add RouterStatic contract address
+- `packages/frontend/src/shared/config/addresses.ts` - `routerStatic` field in `ContractAddresses` interface (line 246) and all network configs (lines 274, 281, 288, 295)
+- `deploy/addresses/devnet.json` - RouterStatic in contracts object (line 22, currently `"0x0"`)
+- `deploy/addresses/sepolia.json` - RouterStatic contract address (currently `"0x0"`)
+- `deploy/addresses/mainnet.json` - RouterStatic contract address (currently `"0x0"`)
+- `deploy/addresses/fork.json` - RouterStatic contract address (currently `"0x0"`)
 
 #### Validation
 ```bash
@@ -64,7 +63,7 @@ grep -q "routerStatic" packages/frontend/src/shared/config/addresses.ts && echo 
 Create typed contract wrapper for RouterStatic following existing pattern from Router/Factory wrappers in `contracts.ts`.
 
 #### Files
-- `packages/frontend/src/shared/starknet/contracts.ts` - Add `getRouterStaticContract()` function and `TypedRouterStatic` type alias following the existing pattern (e.g., `getRouterContract()` at lines 69-79)
+- `packages/frontend/src/shared/starknet/contracts.ts` - `getRouterStaticContract()` function (lines 90-104) and `TypedRouterStatic` type alias (line 26)
 
 #### Validation
 ```bash
@@ -72,7 +71,7 @@ grep -q "getRouterStaticContract" packages/frontend/src/shared/starknet/contract
 ```
 
 #### Failure modes
-- Null address check missing for networks without RouterStatic deployed
+- Null address check missing for networks without RouterStatic deployed (already handled - returns null if address is `0x0`)
 - Type import path incorrect for ROUTERSTATIC_ABI
 
 ---
@@ -81,23 +80,34 @@ grep -q "getRouterStaticContract" packages/frontend/src/shared/starknet/contract
 
 Add missing removal hooks to complete the single-sided liquidity feature set.
 
-**Current state**: `useSingleSidedLiquidity.ts` has `useAddLiquiditySingleSy`, `useAddLiquiditySinglePt`, `buildAddLiquiditySingleSyCalls`, and `buildAddLiquiditySinglePtCalls`. Removal hooks are NOT implemented.
+**Current state**: `useSingleSidedLiquidity.ts` (390 lines) has `useAddLiquiditySingleSy`, `useAddLiquiditySinglePt`, `buildAddLiquiditySingleSyCalls`, and `buildAddLiquiditySinglePtCalls`. Removal hooks are NOT implemented (only `UseRemoveLiquiditySingleSyReturn` interface type exists but no hook implementation).
 
 ### Phase Validation
 ```bash
 cd packages/frontend && bun run check && bun run test
 ```
 
-### Step 4: Add useRemoveLiquiditySingleSy hook
+### Step 4: Add useRemoveLiquiditySingleSy hook **COMPLETE**
 
 #### Goal
 Create hook for removing liquidity and receiving only SY tokens (no PT).
 
 #### Files
-- `packages/frontend/src/features/liquidity/model/useSingleSidedLiquidity.ts` - Add useRemoveLiquiditySingleSy hook following useAddLiquiditySingleSy pattern (existing file, 372 lines)
+- `packages/frontend/src/features/liquidity/model/useSingleSidedLiquidity.ts` - Add useRemoveLiquiditySingleSy hook following useAddLiquiditySingleSy pattern
 
 #### Router function
 `remove_liquidity_single_sy` (line 234 in i_router.cairo)
+
+```cairo
+fn remove_liquidity_single_sy(
+    ref self: TContractState,
+    market: ContractAddress,
+    receiver: ContractAddress,
+    lp_to_burn: u256,
+    min_sy_out: u256,
+    deadline: u64,
+) -> u256;
+```
 
 #### Validation
 ```bash
@@ -105,7 +115,7 @@ grep -q "useRemoveLiquiditySingleSy" packages/frontend/src/features/liquidity/mo
 ```
 
 #### Failure modes
-- Router function signature mismatch (remove_liquidity_single_sy params: market, receiver, lp_in, min_sy_out, deadline)
+- Router function signature mismatch (params: market, receiver, lp_to_burn, min_sy_out, deadline)
 - Optimistic update incorrectly increases LP balance instead of decreasing
 - Missing LP token approval before burn
 
@@ -121,6 +131,17 @@ Create hook for removing liquidity and receiving only PT tokens (no SY).
 
 #### Router function
 `remove_liquidity_single_pt` (line 250 in i_router.cairo)
+
+```cairo
+fn remove_liquidity_single_pt(
+    ref self: TContractState,
+    market: ContractAddress,
+    receiver: ContractAddress,
+    lp_to_burn: u256,
+    min_pt_out: u256,
+    deadline: u64,
+) -> u256;
+```
 
 #### Validation
 ```bash
@@ -139,7 +160,7 @@ grep -q "useRemoveLiquiditySinglePt" packages/frontend/src/features/liquidity/mo
 Create buildRemoveLiquiditySingleSyCalls and buildRemoveLiquiditySinglePtCalls for gas estimation.
 
 #### Files
-- `packages/frontend/src/features/liquidity/model/useSingleSidedLiquidity.ts` - Add buildRemoveLiquiditySingle* helper functions following existing buildAddLiquiditySingle* pattern (lines 302-371)
+- `packages/frontend/src/features/liquidity/model/useSingleSidedLiquidity.ts` - Add buildRemoveLiquiditySingle* helper functions following existing buildAddLiquiditySingle* pattern (lines 320-389)
 
 #### Validation
 ```bash
@@ -188,12 +209,12 @@ Define TypeScript interfaces for TokenInput, TokenOutput, SwapData, and ApproxPa
 #### Files
 - `packages/frontend/src/features/swap/model/types.ts` - Create new file with TokenInput, TokenOutput, SwapData, ApproxParams interfaces
 
-#### Cairo struct reference (from i_router.cairo lines 6-59):
+#### Cairo struct reference (from i_router.cairo lines 7-59):
 ```cairo
-struct SwapData { aggregator: ContractAddress, calldata: Span<felt252> }
-struct TokenInput { token: ContractAddress, amount: u256, swap_data: SwapData }
-struct TokenOutput { token: ContractAddress, min_amount: u256, swap_data: SwapData }
-struct ApproxParams { guess_min: u256, guess_max: u256, guess_offchain: u256, max_iteration: u256, eps: u256 }
+struct SwapData { aggregator: ContractAddress, calldata: Span<felt252> }  // lines 7-10
+struct TokenInput { token: ContractAddress, amount: u256, swap_data: SwapData }  // lines 17-21
+struct TokenOutput { token: ContractAddress, min_amount: u256, swap_data: SwapData }  // lines 28-32
+struct ApproxParams { guess_min: u256, guess_max: u256, guess_offchain: u256, max_iteration: u256, eps: u256 }  // lines 53-59
 ```
 
 #### Validation
@@ -216,7 +237,7 @@ Add utility functions to serialize TokenInput/TokenOutput/ApproxParams to Starkn
 - `packages/frontend/src/features/swap/lib/calldata.ts` - Create serialization functions: serializeTokenInput, serializeTokenOutput, serializeSwapData, serializeApproxParams
 
 #### Note
-`packages/frontend/src/features/swap/lib/` already exists with `swapFormLogic.ts`
+`packages/frontend/src/features/swap/lib/` exists with `swapFormLogic.ts` (657 lines)
 
 #### Validation
 ```bash
@@ -268,7 +289,7 @@ Implement hook for swapping any token to PT via aggregator (token -> underlying 
 - `packages/frontend/src/features/swap/model/useTokenSwap.ts` - Create useSwapTokenForPt hook using `swap_exact_token_for_pt` router function
 
 #### Router function
-`swap_exact_token_for_pt` (exists in router interface)
+`swap_exact_token_for_pt` (line 488 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -290,7 +311,7 @@ Implement hook for swapping PT to any token via aggregator (PT -> SY -> underlyi
 - `packages/frontend/src/features/swap/model/useTokenSwap.ts` - Add useSwapPtForToken hook using `swap_exact_pt_for_token` router function
 
 #### Router function
-`swap_exact_pt_for_token` (exists in router interface)
+`swap_exact_pt_for_token` (line 505 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -312,7 +333,7 @@ Implement hook for swapping any token to YT via aggregator.
 - `packages/frontend/src/features/swap/model/useTokenYtSwap.ts` - Create useSwapTokenForYt hook using `swap_exact_token_for_yt` router function
 
 #### Router function
-`swap_exact_token_for_yt` (exists in router interface)
+`swap_exact_token_for_yt` (line 523 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -334,7 +355,7 @@ Implement hook for swapping YT to any token via aggregator.
 - `packages/frontend/src/features/swap/model/useTokenYtSwap.ts` - Add useSwapYtForToken hook using `swap_exact_yt_for_token` router function
 
 #### Router function
-`swap_exact_yt_for_token` (exists in router interface)
+`swap_exact_yt_for_token` (line 544 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -383,7 +404,7 @@ Implement hook for adding liquidity with any token via aggregator.
 - `packages/frontend/src/features/liquidity/model/useTokenLiquidity.ts` - Create useAddLiquiditySingleToken hook using `add_liquidity_single_token` router function
 
 #### Router function
-`add_liquidity_single_token` (exists in router interface)
+`add_liquidity_single_token` (line 565 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -405,7 +426,7 @@ Implement hook for adding liquidity while keeping minted YT tokens.
 - `packages/frontend/src/features/liquidity/model/useTokenLiquidity.ts` - Add useAddLiquiditySingleTokenKeepYt hook using `add_liquidity_single_token_keep_yt` router function
 
 #### Router function
-`add_liquidity_single_token_keep_yt` (exists in router interface)
+`add_liquidity_single_token_keep_yt` (line 584 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -427,7 +448,7 @@ Implement hook for removing liquidity and receiving any token via aggregator.
 - `packages/frontend/src/features/liquidity/model/useTokenLiquidity.ts` - Add useRemoveLiquiditySingleToken hook using `remove_liquidity_single_token` router function
 
 #### Router function
-`remove_liquidity_single_token` (exists in router interface)
+`remove_liquidity_single_token` (line 603 in i_router.cairo)
 
 #### Validation
 ```bash
@@ -534,7 +555,7 @@ cd packages/frontend && bun run check
 
 Create query hooks using RouterStatic for preview functions.
 
-**[BLOCKED]**: Requires Phase 1 completion (RouterStatic deployment and TypeScript integration).
+**[BLOCKED]**: Requires RouterStatic deployment. TypeScript infrastructure is complete (Phase 1), but contract not deployed on any network.
 
 ### Phase Validation
 ```bash
@@ -546,7 +567,7 @@ cd packages/frontend && bun run check
 #### Goal
 Create query hook for fetching PT/SY, LP/SY, and LP/PT exchange rates from RouterStatic.
 
-**Note**: `useMarketRates` already exists in `packages/frontend/src/features/markets/model/useMarketRates.ts` but fetches historical rate data from the indexer API, not live exchange rates from RouterStatic.
+**Note**: `useMarketRates` already exists in `packages/frontend/src/features/markets/model/useMarketRates.ts` but fetches historical rate data from the indexer API (`/api/markets/{marketAddress}/rates`), not live exchange rates from RouterStatic.
 
 #### Files
 - `packages/frontend/src/features/markets/model/useMarketExchangeRates.ts` - Create hook calling RouterStatic `get_pt_to_sy_rate`, `get_lp_to_sy_rate`, `get_lp_to_pt_rate` functions
@@ -576,8 +597,8 @@ Create query hook for previewing swap outputs using RouterStatic.
 - `packages/frontend/src/features/swap/model/useSwapPreview.ts` - Create useSwapPreview hook calling `preview_swap_exact_sy_for_pt` and `preview_swap_exact_pt_for_sy`
 
 #### RouterStatic functions (from i_router_static.cairo)
-- `preview_swap_exact_sy_for_pt(market, sy_in)` - line 62
-- `preview_swap_exact_pt_for_sy(market, pt_in)` - line 70
+- `preview_swap_exact_sy_for_pt(market, sy_in)` - lines 62-64
+- `preview_swap_exact_pt_for_sy(market, pt_in)` - lines 70-72
 
 #### Validation
 ```bash
@@ -599,8 +620,8 @@ Create query hook for previewing liquidity add/remove outputs.
 - `packages/frontend/src/features/liquidity/model/useLiquidityPreview.ts` - Create useLiquidityPreview hook calling `preview_add_liquidity_single_sy` and `preview_remove_liquidity_single_sy`
 
 #### RouterStatic functions (from i_router_static.cairo)
-- `preview_add_liquidity_single_sy(market, sy_in)` - line 81
-- `preview_remove_liquidity_single_sy(market, lp_in)` - line 92
+- `preview_add_liquidity_single_sy(market, sy_in)` - lines 81-83
+- `preview_remove_liquidity_single_sy(market, lp_in)` - lines 92-94
 
 #### Validation
 ```bash
@@ -618,8 +639,10 @@ grep -q "preview_add_liquidity_single_sy\|preview_remove_liquidity_single_sy" pa
 #### Goal
 Create query hook for fetching comprehensive market state from RouterStatic.
 
+**Note**: A `useMarketInfo()` function already exists in `packages/frontend/src/features/markets/model/useMarket.ts` (not a separate file) but fetches basic market info from contract calls, not the full `MarketInfo` struct from RouterStatic.
+
 #### Files
-- `packages/frontend/src/features/markets/model/useMarketInfo.ts` - Create useMarketInfo hook calling `get_market_info`
+- `packages/frontend/src/features/markets/model/useMarketInfoStatic.ts` - Create hook calling `get_market_info` (use different name to avoid conflict with existing `useMarketInfo`)
 
 #### RouterStatic function (from i_router_static.cairo)
 - `get_market_info(market)` - line 99, returns MarketInfo struct
@@ -645,7 +668,7 @@ pub struct MarketInfo {
 
 #### Validation
 ```bash
-grep -q "get_market_info" packages/frontend/src/features/markets/model/useMarketInfo.ts && echo "OK"
+grep -q "get_market_info" packages/frontend/src/features/markets/model/useMarketInfoStatic.ts && echo "OK"
 ```
 
 #### Failure modes
@@ -662,7 +685,7 @@ Export all new preview hooks from their respective features.
 #### Files
 - `packages/frontend/src/features/swap/model/index.ts` - Add export for useSwapPreview
 - `packages/frontend/src/features/liquidity/model/index.ts` - Add export for useLiquidityPreview
-- `packages/frontend/src/features/markets/model/index.ts` - Add exports for useMarketExchangeRates and useMarketInfo (currently exports useMarket, useMarketRates, useMarkets)
+- `packages/frontend/src/features/markets/model/index.ts` - Add exports for useMarketExchangeRates and useMarketInfoStatic (currently exports useMarket, useMarketRates, useMarkets)
 
 #### Validation
 ```bash
@@ -691,7 +714,7 @@ Ensure all new hooks are accessible from feature public APIs.
 #### Files
 - `packages/frontend/src/features/swap/index.ts` - Verify model exports (currently: `export * from './model'` and `export * from './ui'`)
 - `packages/frontend/src/features/liquidity/index.ts` - Verify model exports (currently: `export * from './model'` and `export * from './ui'`)
-- `packages/frontend/src/features/markets/index.ts` - Verify model exports
+- `packages/frontend/src/features/markets/index.ts` - Verify model exports (currently: `export * from './api'`, `export * from './model'`, `export * from './ui'`)
 
 #### Validation
 ```bash
@@ -710,7 +733,7 @@ cd packages/frontend && bun run check
 Verify no TypeScript errors or lint warnings in new code.
 
 #### Files
-- All new files created in phases 1-7
+- All new files created in phases 2-7
 
 #### Validation
 ```bash
@@ -723,3 +746,250 @@ cd packages/frontend && bun run check
 - ESLint rule violations
 
 ---
+
+## Phase 9: UI Integration
+
+Wire up the new hooks to UI components. Without this phase, all hooks from Phases 2-7 are unused.
+
+**[BLOCKED]**: Requires Phase 7 completion (RouterStatic preview hooks for live rate display).
+
+### Phase Validation
+```bash
+cd packages/frontend && bun run check && bun run test && bun run test:e2e
+```
+
+### Step 30: Add single-sided removal output type selector to RemoveLiquidityForm
+
+#### Goal
+Allow users to choose between receiving SY+PT (current), SY-only, or PT-only when removing liquidity.
+
+#### Files
+- `packages/frontend/src/features/liquidity/ui/RemoveLiquidityForm.tsx` - Add output type toggle (dual/sy-only/pt-only), wire to `useRemoveLiquiditySingleSy` and `useRemoveLiquiditySinglePt` hooks from Phase 2
+
+#### UI Changes
+- Add ToggleGroup with options: "SY + PT" (default), "SY Only", "PT Only"
+- Update output preview to show single token when single-sided selected
+- Update button text to reflect selected mode
+
+#### Validation
+```bash
+grep -q "useRemoveLiquiditySingleSy\|useRemoveLiquiditySinglePt" packages/frontend/src/features/liquidity/ui/RemoveLiquidityForm.tsx && echo "OK"
+```
+
+#### Failure modes
+- Output preview not updating when toggle changes
+- Wrong hook called for selected output type
+- Slippage applied incorrectly for single-sided removal
+
+---
+
+### Step 31: Add swap preview display to SwapDetails
+
+#### Goal
+Show live swap output preview from RouterStatic before user submits transaction.
+
+#### Files
+- `packages/frontend/src/features/swap/ui/SwapDetails.tsx` - Add preview output from `useSwapPreview` hook (Phase 7), show alongside calculated output
+
+#### UI Changes
+- Add "Expected output (on-chain)" row showing RouterStatic preview
+- Show loading state while preview is fetching
+- Highlight discrepancy if calculated vs preview differs significantly
+
+#### Validation
+```bash
+grep -q "useSwapPreview\|preview_swap" packages/frontend/src/features/swap/ui/SwapDetails.tsx && echo "OK"
+```
+
+#### Failure modes
+- Preview stale after market state changes
+- Loading state causes layout shift
+- Preview unavailable when RouterStatic not deployed (need graceful fallback)
+
+---
+
+### Step 32: Add liquidity preview display to AddLiquidityForm
+
+#### Goal
+Show live LP output preview from RouterStatic for single-SY liquidity adds.
+
+#### Files
+- `packages/frontend/src/features/liquidity/ui/AddLiquidityForm.tsx` - Add preview output from `useLiquidityPreview` hook (Phase 7)
+
+#### UI Changes
+- Add "Expected LP (on-chain)" row for single-SY mode
+- Show loading state while preview is fetching
+- Graceful fallback when RouterStatic unavailable
+
+#### Validation
+```bash
+grep -q "useLiquidityPreview\|preview_add_liquidity" packages/frontend/src/features/liquidity/ui/AddLiquidityForm.tsx && echo "OK"
+```
+
+#### Failure modes
+- Preview only shown for single-SY mode (not dual-asset)
+- Query key doesn't invalidate on reserve changes
+
+---
+
+### Step 33: Add live exchange rates to market display
+
+#### Goal
+Display live PT/SY, LP/SY, and LP/PT rates from RouterStatic in market cards and detail views.
+
+#### Files
+- `packages/frontend/src/entities/market/ui/MarketCard.tsx` - Add live rate display from `useMarketExchangeRates` hook (Phase 7)
+- `packages/frontend/src/features/markets/ui/MarketRates.tsx` - Create new component for rate display grid
+
+#### UI Changes
+- Show PT/SY rate (how much SY per PT)
+- Show LP/SY rate (LP value in SY terms)
+- Show LP/PT rate (LP value in PT terms)
+- Update rates on configurable interval (e.g., every 30s)
+
+#### Validation
+```bash
+grep -q "useMarketExchangeRates\|get_pt_to_sy_rate" packages/frontend/src/entities/market/ui/MarketCard.tsx && echo "OK"
+```
+
+#### Failure modes
+- Rate display flickers on refetch
+- Rates show stale data after swap
+- RouterStatic unavailable fallback not implemented
+
+---
+
+### Step 34: Create TokenAggregatorSwapForm component
+
+#### Goal
+Create new swap form variant for swapping arbitrary tokens to/from PT/YT via DEX aggregators.
+
+#### Files
+- `packages/frontend/src/features/swap/ui/TokenAggregatorSwapForm.tsx` - New form component using token aggregation hooks from Phase 4
+
+#### UI Changes
+- Token selector dropdown for input token (not just SY)
+- Aggregator selection or auto-routing display
+- Shows aggregator quote + market swap in combined flow
+- Two-step approval flow (approve aggregator, then execute)
+
+#### Dependencies
+- `useSwapTokenForPt`, `useSwapPtForToken`, `useSwapTokenForYt`, `useSwapYtForToken` from Phase 4
+- Token list from shared config
+
+#### Validation
+```bash
+test -f packages/frontend/src/features/swap/ui/TokenAggregatorSwapForm.tsx && echo "OK"
+```
+
+#### Failure modes
+- Token approval to wrong address (aggregator vs router)
+- Aggregator calldata not properly encoded
+- Slippage applied twice (aggregator + market)
+
+---
+
+### Step 35: Create TokenAggregatorLiquidityForm component
+
+#### Goal
+Create liquidity form variant for adding/removing liquidity with arbitrary tokens.
+
+#### Files
+- `packages/frontend/src/features/liquidity/ui/TokenAggregatorLiquidityForm.tsx` - New form component using token aggregation hooks from Phase 5
+
+#### UI Changes
+- Token selector for input token (add liquidity)
+- Token selector for output token (remove liquidity)
+- Option to keep YT when adding liquidity (`add_liquidity_single_token_keep_yt`)
+- Shows aggregator routing + liquidity operation flow
+
+#### Dependencies
+- `useAddLiquiditySingleToken`, `useAddLiquiditySingleTokenKeepYt`, `useRemoveLiquiditySingleToken` from Phase 5
+
+#### Validation
+```bash
+test -f packages/frontend/src/features/liquidity/ui/TokenAggregatorLiquidityForm.tsx && echo "OK"
+```
+
+#### Failure modes
+- Keep YT option not updating expected outputs
+- Wrong token approved for aggregator
+- Output token not received due to aggregator routing failure
+
+---
+
+### Step 36: Add form mode switcher to trade page
+
+#### Goal
+Allow users to switch between standard forms and token aggregator forms.
+
+#### Files
+- `packages/frontend/src/app/trade/page.tsx` - Add tabs or toggle to switch form modes
+- `packages/frontend/src/features/swap/ui/index.ts` - Export TokenAggregatorSwapForm
+- `packages/frontend/src/features/liquidity/ui/index.ts` - Export TokenAggregatorLiquidityForm
+
+#### UI Changes
+- Tab group: "Standard" | "Any Token"
+- Standard tab shows existing SwapForm/AddLiquidityForm/RemoveLiquidityForm
+- "Any Token" tab shows TokenAggregatorSwapForm/TokenAggregatorLiquidityForm
+- Persist user preference in localStorage
+
+#### Validation
+```bash
+grep -q "TokenAggregatorSwapForm\|TokenAggregatorLiquidityForm" packages/frontend/src/app/trade/page.tsx && echo "OK"
+```
+
+#### Failure modes
+- Form state not reset when switching tabs
+- localStorage key collision with other preferences
+
+---
+
+### Step 37: Export new UI components from features
+
+#### Goal
+Ensure all new UI components are properly exported.
+
+#### Files
+- `packages/frontend/src/features/swap/ui/index.ts` - Add export for TokenAggregatorSwapForm (currently only exports `SwapForm`)
+- `packages/frontend/src/features/liquidity/ui/index.ts` - Add export for TokenAggregatorLiquidityForm (currently exports `AddLiquidityForm`, `RemoveLiquidityForm`)
+- `packages/frontend/src/features/markets/ui/index.ts` - Add export for MarketRates (currently exports `FeeStructure`)
+
+#### Validation
+```bash
+cd packages/frontend && bun run check
+```
+
+#### Failure modes
+- Missing re-export from feature index
+- Circular dependency between ui and model
+
+---
+
+### Step 38: Add E2E tests for new UI flows
+
+#### Goal
+Add Playwright E2E tests for token aggregation and single-sided removal flows.
+
+#### Files
+- `packages/frontend/e2e/token-aggregator-swap.spec.ts` - Test swap with arbitrary token input
+- `packages/frontend/e2e/single-sided-liquidity.spec.ts` - Test single-sided add/remove flows
+
+#### Note
+Current E2E tests in `packages/frontend/e2e/`: `fixtures.ts`, `navigation.spec.ts`, `markets.spec.ts`
+
+#### Test Cases
+- Swap ETH → PT via aggregator
+- Swap PT → USDC via aggregator
+- Add liquidity with ETH (not SY)
+- Remove liquidity to single SY
+- Remove liquidity to single PT
+
+#### Validation
+```bash
+cd packages/frontend && bun run test:e2e
+```
+
+#### Failure modes
+- Tests flaky due to aggregator quote timing
+- Mock aggregator not returning expected calldata
