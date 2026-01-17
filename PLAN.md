@@ -588,7 +588,7 @@ grep -q "get_pt_to_sy_rate\|get_lp_to_sy_rate" packages/frontend/src/features/ma
 
 ---
 
-### Step 24: Create useSwapPreview hook
+### Step 24: Create useSwapPreview hook **COMPLETE**
 
 #### Goal
 Create query hook for previewing swap outputs using RouterStatic.
