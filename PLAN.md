@@ -966,7 +966,7 @@ cd packages/frontend && bun run check
 
 ---
 
-### Step 38: Add E2E tests for new UI flows
+### Step 38: Add E2E tests for new UI flows **COMPLETE**
 
 #### Goal
 Add Playwright E2E tests for token aggregation and single-sided removal flows.
