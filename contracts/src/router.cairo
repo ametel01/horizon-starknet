@@ -1977,6 +1977,61 @@ pub mod Router {
             token_out_received
         }
 
+        /// General token-to-token swap through an external aggregator
+        /// Flow: input.token -> aggregator -> output.token
+        fn swap_tokens_to_tokens(
+            ref self: ContractState,
+            input: TokenInput,
+            output: TokenOutput,
+            receiver: ContractAddress,
+            deadline: u64,
+        ) -> u256 {
+            self.pausable.assert_not_paused();
+            self.reentrancy_guard.start();
+            assert(get_block_timestamp() <= deadline, Errors::ROUTER_DEADLINE_EXCEEDED);
+            assert(!input.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(input.amount > 0, Errors::ZERO_AMOUNT);
+            assert(!input.swap_data.aggregator.is_zero(), Errors::ROUTER_INVALID_AGGREGATOR);
+            assert(!output.token.is_zero(), Errors::ZERO_ADDRESS);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+
+            // 1. Transfer input token from caller to router
+            let token_in_contract = IERC20Dispatcher { contract_address: input.token };
+            token_in_contract.transfer_from(caller, this, input.amount);
+
+            // 2. Approve aggregator to spend input token
+            token_in_contract.approve(input.swap_data.aggregator, input.amount);
+
+            // 3. Swap input token for output token through aggregator
+            let aggregator = IAggregatorRouterDispatcher {
+                contract_address: input.swap_data.aggregator,
+            };
+            let token_out_received = aggregator
+                .swap(
+                    input.token,
+                    output.token,
+                    input.amount,
+                    output.min_amount,
+                    receiver,
+                    input.swap_data.calldata,
+                );
+
+            // 4. Clear aggregator approval to prevent approval griefing
+            token_in_contract.approve(input.swap_data.aggregator, 0);
+
+            // 5. Verify aggregator returned tokens
+            assert(token_out_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+
+            // 6. Verify slippage
+            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+
+            self.reentrancy_guard.end();
+            token_out_received
+        }
+
         // ============ Aggregator Liquidity Operations ============
 
         /// Add liquidity using any token through an external aggregator

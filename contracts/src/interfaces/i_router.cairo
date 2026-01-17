@@ -552,6 +552,22 @@ pub trait IRouter<TContractState> {
         deadline: u64,
     ) -> u256;
 
+    /// General token-to-token swap through an external aggregator
+    /// Flow: input.token -> aggregator -> output.token
+    /// This is a general-purpose swap for any ERC20 tokens without going through protocol internals
+    /// @param input Token input with aggregator swap data
+    /// @param output Token output with aggregator swap data and min amount
+    /// @param receiver Address to receive output token
+    /// @param deadline Transaction must complete before this timestamp
+    /// @return Amount of output token received
+    fn swap_tokens_to_tokens(
+        ref self: TContractState,
+        input: TokenInput,
+        output: TokenOutput,
+        receiver: ContractAddress,
+        deadline: u64,
+    ) -> u256;
+
     // ============ Aggregator Liquidity Operations ============
 
     /// Add liquidity using any token through an external aggregator

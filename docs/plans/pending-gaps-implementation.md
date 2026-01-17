@@ -2,7 +2,7 @@
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
 4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE
-5. **Phase 5 (Router Dual Token Liquidity)** - IN PROGRESS: Steps 1-4 complete (`add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`), Steps 5-7 pending (`swap_tokens_to_tokens`)
+5. **Phase 5 (Router Dual Token Liquidity)** - IN PROGRESS: Steps 1-6 complete (`add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens`), Step 7 pending (tests)
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
 
@@ -856,7 +856,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 5: Add swap_tokens_to_tokens function signature to IRouter
+### Step 5: Add swap_tokens_to_tokens function signature to IRouter **COMPLETE**
 
 #### Goal
 Add `swap_tokens_to_tokens(input, output, receiver, deadline) -> u256` general aggregator routing.
@@ -874,7 +874,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 6: Implement swap_tokens_to_tokens in Router
+### Step 6: Implement swap_tokens_to_tokens in Router **COMPLETE**
 
 #### Goal
 Implement general aggregator routing without PT/YT involvement.
