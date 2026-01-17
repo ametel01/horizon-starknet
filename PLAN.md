@@ -439,7 +439,7 @@ grep -q "useAddLiquiditySingleTokenKeepYt" packages/frontend/src/features/liquid
 
 ---
 
-### Step 18: Create useRemoveLiquiditySingleToken hook
+### Step 18: Create useRemoveLiquiditySingleToken hook **COMPLETE**
 
 #### Goal
 Implement hook for removing liquidity and receiving any token via aggregator.
