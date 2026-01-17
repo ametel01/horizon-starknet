@@ -2,7 +2,7 @@
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
 4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE
-5. **Phase 5 (Router Dual Token Liquidity)** - IN PROGRESS: Steps 1-6 complete (`add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens`), Step 7 pending (tests)
+5. **Phase 5 (Router Dual Token Liquidity)** - COMPLETE: All steps including `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` implemented. Step 7 (tests) pending.
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
 
