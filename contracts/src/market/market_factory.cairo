@@ -182,10 +182,16 @@ pub mod MarketFactory {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress, market_class_hash: ClassHash) {
+    fn constructor(
+        ref self: ContractState,
+        owner: ContractAddress,
+        market_class_hash: ClassHash,
+        yield_contract_factory: ContractAddress,
+    ) {
         assert(!market_class_hash.is_zero(), Errors::ZERO_ADDRESS);
         self.ownable.initializer(owner);
         self.market_class_hash.write(market_class_hash);
+        self.yield_contract_factory.write(yield_contract_factory);
         self.deploy_count.write(0);
         self.market_count.write(0);
 

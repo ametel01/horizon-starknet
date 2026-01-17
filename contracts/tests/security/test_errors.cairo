@@ -312,12 +312,17 @@ fn deploy_router_raw() -> ContractAddress {
     contract_address
 }
 
+fn zero_address() -> ContractAddress {
+    0.try_into().unwrap()
+}
+
 fn deploy_market_factory() -> IMarketFactoryDispatcher {
     let market_class_hash = get_market_class_hash();
     let contract = declare("MarketFactory").unwrap_syscall().contract_class();
     let mut calldata = array![];
     calldata.append(admin().into()); // owner
     calldata.append(market_class_hash.into()); // market_class_hash
+    calldata.append(zero_address().into()); // yield_contract_factory (zero = no validation)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
 
@@ -335,6 +340,7 @@ fn deploy_market_factory_raw() -> ContractAddress {
     let mut calldata = array![];
     calldata.append(admin().into()); // owner
     calldata.append(market_class_hash.into()); // market_class_hash
+    calldata.append(zero_address().into()); // yield_contract_factory (zero = no validation)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     contract_address

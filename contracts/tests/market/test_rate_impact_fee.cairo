@@ -156,6 +156,8 @@ fn deploy_market_factory() -> IMarketFactoryDispatcher {
     let mut calldata = array![];
     calldata.append(admin().into()); // owner
     calldata.append((*market_class.class_hash).into());
+    let zero: ContractAddress = 0.try_into().unwrap();
+    calldata.append(zero.into()); // yield_contract_factory (zero = no validation)
 
     let (contract_address, _) = factory_class.deploy(@calldata).unwrap_syscall();
     IMarketFactoryDispatcher { contract_address }

@@ -1,12 +1,10 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
 2. **Phase 2 (Expiry Divisor)** - COMPLETE: Storage, event, getter/setter, interface, and validation in create_yield_contracts all implemented with tests
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - IN PROGRESS: `yield_contract_factory` storage added (Step 1), `MARKET_FACTORY_INVALID_PT` error added (Step 2), getter/setter/validation pending (Steps 3-8)
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - IN PROGRESS: `yield_contract_factory` storage added (Step 1), `MARKET_FACTORY_INVALID_PT` error added (Step 2), constructor updated (Step 3), getter/setter/validation pending (Steps 4-8)
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED: `i_flash_callback.cairo` does not exist, no flash mint functions
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED: No VERSION constants exist in any contracts
-
----
 
 ## Phase 1: Factory Fee Infrastructure **COMPLETE**
 
@@ -400,7 +398,7 @@ grep -q "MARKET_FACTORY_INVALID_PT" contracts/src/libraries/errors.cairo && echo
 
 ---
 
-### Step 3: Update MarketFactory constructor
+### Step 3: Update MarketFactory constructor **COMPLETE**
 
 #### Goal
 Accept `yield_contract_factory: ContractAddress` parameter and store it during construction.
