@@ -1,6 +1,6 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
 2. **Phase 2 (Expiry Divisor)** - COMPLETE: Storage, event, getter/setter, interface, and validation in create_yield_contracts all implemented with tests
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED: `yield_contract_factory` does not exist in MarketFactory
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - IN PROGRESS: `yield_contract_factory` storage added (Step 1), getter/setter/validation pending (Steps 2-8)
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED: `i_flash_callback.cairo` does not exist, no flash mint functions
@@ -201,7 +201,7 @@ cd contracts && snforge test test_factory_fee_rate
 
 ---
 
-## Phase 2: Factory Expiry Divisor
+## Phase 2: Factory Expiry Divisor **COMPLETE**
 
 Add expiry standardization to concentrate liquidity at fixed intervals.
 
@@ -355,7 +355,7 @@ cd contracts && snforge test test_factory_expiry_divisor
 
 ---
 
-## Phase 3: MarketFactory Yield Contract Factory Reference
+## Phase 3: MarketFactory Yield Contract Factory Reference **IN PROGRESS**
 
 Add cross-factory validation for PT deployments.
 
@@ -364,7 +364,7 @@ Add cross-factory validation for PT deployments.
 cd contracts && scarb build && snforge test test_market_factory
 ```
 
-### Step 1: Add yield_contract_factory storage field
+### Step 1: Add yield_contract_factory storage field **COMPLETE**
 
 #### Goal
 Add `yield_contract_factory: ContractAddress` storage to MarketFactory for PT validation.

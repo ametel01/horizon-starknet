@@ -103,6 +103,9 @@ pub mod MarketFactory {
         // Controls how much fees increase based on trade's rate impact
         // E.g., 0.1 WAD (10%) means 10% rate change → ~1% additional fee
         default_rate_impact_sensitivity: u256,
+        // === PT VALIDATION ===
+        // Factory contract address for validating PT tokens
+        yield_contract_factory: ContractAddress,
     }
 
     #[event]
