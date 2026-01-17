@@ -1,5 +1,5 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
-2. **Phase 2 (Expiry Divisor)** - NOT IMPLEMENTED: `expiry_divisor` does not exist in Factory
+2. **Phase 2 (Expiry Divisor)** - IN PROGRESS: `expiry_divisor` storage field added, remaining steps pending
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED: `yield_contract_factory` does not exist in MarketFactory
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
@@ -8,7 +8,7 @@
 
 ---
 
-## Phase 1: Factory Fee Infrastructure
+## Phase 1: Factory Fee Infrastructure **COMPLETE**
 
 Add reward and interest fee rate storage and management to Factory contract.
 
@@ -210,7 +210,7 @@ Add expiry standardization to concentrate liquidity at fixed intervals.
 cd contracts && scarb build && snforge test test_factory
 ```
 
-### Step 1: Add expiry_divisor storage field
+### Step 1: Add expiry_divisor storage field **COMPLETE**
 
 #### Goal
 Add `expiry_divisor: u64` storage field to Factory for expiry validation (0 = disabled).

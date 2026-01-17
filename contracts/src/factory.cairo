@@ -84,6 +84,8 @@ pub mod Factory {
         reward_fee_rate: u256,
         // Default fee rate for interest accrual (in WAD, e.g., 3% = 0.03 * 10^18)
         default_interest_fee_rate: u256,
+        // Expiry divisor for expiry validation (0 = disabled, e.g., 86400 for daily alignment)
+        expiry_divisor: u64,
     }
 
     #[event]
