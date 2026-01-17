@@ -611,7 +611,7 @@ grep -q "preview_swap_exact" packages/frontend/src/features/swap/model/useSwapPr
 
 ---
 
-### Step 25: Create useLiquidityPreview hook
+### Step 25: Create useLiquidityPreview hook **COMPLETE**
 
 #### Goal
 Create query hook for previewing liquidity add/remove outputs.
