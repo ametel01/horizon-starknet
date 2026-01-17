@@ -386,7 +386,7 @@ cd packages/frontend && bun run check
 
 ---
 
-## Phase 5: Token Aggregation Liquidity Hooks
+## Phase 5: Token Aggregation Liquidity Hooks **COMPLETE**
 
 Implement hooks for adding/removing liquidity with arbitrary tokens.
 
@@ -488,7 +488,7 @@ Add optional ApproxParams support to existing swap and liquidity hooks.
 cd packages/frontend && bun run check
 ```
 
-### Step 20: Add ApproxParams to swap_exact_sy_for_pt
+### Step 20: Add ApproxParams to swap_exact_sy_for_pt **COMPLETE**
 
 #### Goal
 Create useSwapSyForPtWithApprox hook variant that accepts ApproxParams for optimized binary search.
