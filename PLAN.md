@@ -9,7 +9,7 @@ Deploy RouterStatic contract and integrate it into the frontend for preview func
 cd packages/frontend && bun run check
 ```
 
-### Step 1: Generate RouterStatic TypeScript ABI
+### Step 1: Generate RouterStatic TypeScript ABI **COMPLETE**
 
 #### Goal
 Create TypeScript ABI types for RouterStatic contract to enable type-safe preview function calls.
