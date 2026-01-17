@@ -4,9 +4,9 @@
 4. **Phase 4 (Multi-Reward YT Integration)** - IMPLEMENTED: YT uses RewardManagerComponent with full reward tracking
 5. **Phase 5 (Router Dual Token Liquidity)** - IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` in Router
 6. **Phase 6 (YT Flash Mint)** - IMPLEMENTED: `i_flash_callback.cairo`, `FlashMintPY` event, `flash_mint_py` function in YT
-7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED: No VERSION constants exist in any contracts
+7. **Phase 7 (VERSION Constants)** - IN PROGRESS: PT has VERSION constant, remaining contracts pending
 
-This document describes planned features with step-by-step implementation guides. Phases 1-6 are now fully implemented.
+This document describes planned features with step-by-step implementation guides. Phases 1-6 are fully implemented. Phase 7 is in progress.
 
 ## Phase 1: Factory Fee Infrastructure **COMPLETE**
 
@@ -913,7 +913,7 @@ cd contracts && snforge test test_router_dual_liquidity
 
 ---
 
-## Phase 6: YT Flash Mint
+## Phase 6: YT Flash Mint **COMPLETE**
 
 Add flash mint pattern for atomic PT+YT operations.
 
@@ -1059,7 +1059,7 @@ Add VERSION constants and minor compatibility items.
 cd contracts && scarb build && snforge test
 ```
 
-### Step 1: Add VERSION constant to PT
+### Step 1: Add VERSION constant to PT **COMPLETE**
 
 #### Goal
 Add `const VERSION: felt252 = 1;` to PT contract.

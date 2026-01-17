@@ -27,6 +27,8 @@ pub mod PT {
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
+    const VERSION: felt252 = 1;
+
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
