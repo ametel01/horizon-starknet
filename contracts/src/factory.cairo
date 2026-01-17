@@ -29,6 +29,8 @@ pub mod Factory {
     // Maximum interest fee rate: 50% (0.5e18)
     pub const MAX_INTEREST_FEE_RATE: u256 = 500_000_000_000_000_000;
 
+    pub const VERSION: felt252 = 1;
+
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);

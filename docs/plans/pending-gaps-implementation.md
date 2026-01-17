@@ -1,10 +1,10 @@
-1. **Phase 1 (Factory Fee Infrastructure)** - IMPLEMENTED: `reward_fee_rate`, `default_interest_fee_rate` storage and setters in Factory
-2. **Phase 2 (Expiry Divisor)** - IMPLEMENTED: `expiry_divisor` with validation in Factory
-3. **Phase 3 (MarketFactory Yield Contract Factory)** - IMPLEMENTED: `yield_contract_factory` with PT validation in MarketFactory
-4. **Phase 4 (Multi-Reward YT Integration)** - IMPLEMENTED: YT uses RewardManagerComponent with full reward tracking
-5. **Phase 5 (Router Dual Token Liquidity)** - IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` in Router
-6. **Phase 6 (YT Flash Mint)** - IMPLEMENTED: `i_flash_callback.cairo`, `FlashMintPY` event, `flash_mint_py` function in YT
-7. **Phase 7 (VERSION Constants)** - IN PROGRESS: PT and YT have VERSION constant, remaining contracts pending
+1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: `reward_fee_rate`, `default_interest_fee_rate` storage and setters in Factory
+2. **Phase 2 (Expiry Divisor)** - COMPLETE: `expiry_divisor` with validation in Factory
+3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE: `yield_contract_factory` with PT validation in MarketFactory
+4. **Phase 4 (Multi-Reward YT Integration)** - COMPLETE: YT uses RewardManagerComponent with full reward tracking
+5. **Phase 5 (Router Dual Token Liquidity)** - COMPLETE: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` in Router
+6. **Phase 6 (YT Flash Mint)** - COMPLETE: `i_flash_callback.cairo`, `FlashMintPY` event, `flash_mint_py` function in YT
+7. **Phase 7 (VERSION Constants)** - IN PROGRESS: PT, YT, and Factory have VERSION constant, remaining contracts pending
 
 This document describes planned features with step-by-step implementation guides. Phases 1-6 are fully implemented. Phase 7 is in progress.
 
@@ -1095,7 +1095,7 @@ grep -q "VERSION.*1" contracts/src/tokens/yt.cairo && echo "OK"
 
 ---
 
-### Step 3: Add VERSION constant to Factory
+### Step 3: Add VERSION constant to Factory **COMPLETE**
 
 #### Goal
 Add `const VERSION: felt252 = 1;` to Factory contract.
