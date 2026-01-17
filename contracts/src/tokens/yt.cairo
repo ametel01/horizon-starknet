@@ -1266,6 +1266,18 @@ pub mod YT {
             }
         }
 
+        /// Claim accrued reward tokens for a user
+        /// Forwards to RewardManagerComponent for multi-reward support
+        /// @param user Address to claim rewards for
+        /// @return Array of claimed amounts (one per reward token)
+        fn claim_rewards(ref self: ContractState, user: ContractAddress) -> Span<u256> {
+            // Defense-in-depth: prevent reentrancy during external token transfers
+            self.reentrancy_guard.start();
+            let amounts = self.reward_manager.claim_rewards(user);
+            self.reentrancy_guard.end();
+            amounts
+        }
+
         /// Get the treasury address for protocol fee collection
         fn treasury(self: @ContractState) -> ContractAddress {
             self.treasury.read()

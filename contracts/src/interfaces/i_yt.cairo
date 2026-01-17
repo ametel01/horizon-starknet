@@ -90,6 +90,12 @@ pub trait IYT<TContractState> {
     fn redeem_due_interest(ref self: TContractState, user: ContractAddress) -> u256;
     fn get_user_interest(self: @TContractState, user: ContractAddress) -> u256;
 
+    // Reward token claiming (multi-reward support)
+    /// Claim accrued reward tokens for a user
+    /// @param user Address to claim rewards for
+    /// @return Array of claimed amounts (one per reward token)
+    fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
+
     // Treasury
     fn treasury(self: @TContractState) -> ContractAddress;
     fn get_post_expiry_treasury_interest(self: @TContractState) -> u256;
