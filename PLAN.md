@@ -551,7 +551,7 @@ cd packages/frontend && bun run check
 
 ---
 
-## Phase 7: RouterStatic Preview Hooks
+## Phase 7: RouterStatic Preview Hooks **COMPLETE**
 
 Create query hooks using RouterStatic for preview functions.
 
@@ -706,7 +706,7 @@ Run comprehensive type checking and ensure all exports are correct.
 cd packages/frontend && bun run check && bun run test
 ```
 
-### Step 28: Verify all new hooks export correctly
+### Step 28: Verify all new hooks export correctly **COMPLETE**
 
 #### Goal
 Ensure all new hooks are accessible from feature public APIs.
