@@ -3,9 +3,12 @@
 import type { MarketData } from '@entities/market';
 import {
   buildAddLiquidityCalls,
+  buildAddLiquiditySingleSyCalls,
   calculateBalancedAmounts,
   calculateMinLpOut,
   useAddLiquidity,
+  useAddLiquidityPreview,
+  useAddLiquiditySingleSy,
 } from '@features/liquidity';
 import { TokenInput } from '@features/mint';
 import { useTokenBalance } from '@features/portfolio';
@@ -43,6 +46,13 @@ const SLIPPAGE_OPTIONS = [
   { label: '1%', value: 100 },
 ];
 
+type InputType = 'dual' | 'sy-only';
+
+const INPUT_TYPE_OPTIONS = [
+  { label: 'SY + PT', value: 'dual' as const },
+  { label: 'SY Only', value: 'sy-only' as const },
+];
+
 // ----- Helper Functions -----
 
 function parseAmountSafe(amount: string): bigint {
@@ -70,6 +80,8 @@ interface ButtonTextParams {
   hasInsufficientSyBalance: boolean;
   hasInsufficientPtBalance: boolean;
   isSuccess: boolean;
+  inputType: InputType;
+  isPreviewLoading: boolean;
 }
 
 function getButtonText(params: ButtonTextParams): string {
@@ -80,12 +92,15 @@ function getButtonText(params: ButtonTextParams): string {
     hasInsufficientSyBalance,
     hasInsufficientPtBalance,
     isSuccess,
+    inputType,
+    isPreviewLoading,
   } = params;
   if (isAdding) return 'Adding Liquidity...';
   if (!isConnected) return 'Connect Wallet';
-  if (!isValidAmount) return 'Enter Amounts';
+  if (!isValidAmount) return inputType === 'sy-only' ? 'Enter SY Amount' : 'Enter Amounts';
   if (hasInsufficientSyBalance) return 'Insufficient SY Balance';
   if (hasInsufficientPtBalance) return 'Insufficient PT Balance';
+  if (isPreviewLoading) return 'Loading Preview...';
   if (isSuccess) return 'Liquidity Added!';
   return 'Add Liquidity';
 }
@@ -208,9 +223,36 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
   const [ptAmount, setPtAmount] = useState('');
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
   const [isBalanced, setIsBalanced] = useState(true);
+  const [inputType, setInputType] = useState<InputType>('dual');
 
   const addresses = getAddresses(network);
-  const { addLiquidity, isAdding, isSuccess, isError, error, transactionHash } = useAddLiquidity();
+
+  // Dual-asset liquidity hook (SY + PT)
+  const {
+    addLiquidity,
+    isAdding: isAddingDual,
+    isSuccess: isSuccessDual,
+    isError: isErrorDual,
+    error: errorDual,
+    transactionHash: txHashDual,
+  } = useAddLiquidity();
+
+  // Single-sided SY liquidity hook
+  const {
+    addLiquiditySingleSy,
+    isAdding: isAddingSy,
+    isSuccess: isSuccessSy,
+    isError: isErrorSy,
+    error: errorSy,
+    transactionHash: txHashSy,
+  } = useAddLiquiditySingleSy();
+
+  // Combine states based on input type
+  const isAdding = inputType === 'dual' ? isAddingDual : isAddingSy;
+  const isSuccess = inputType === 'dual' ? isSuccessDual : isSuccessSy;
+  const isError = inputType === 'dual' ? isErrorDual : isErrorSy;
+  const error = inputType === 'dual' ? errorDual : errorSy;
+  const transactionHash = inputType === 'dual' ? txHashDual : txHashSy;
 
   // Get token symbols from metadata for proper naming (I-06)
   const tokenSymbol = market.metadata?.yieldTokenSymbol ?? 'Token';
@@ -224,6 +266,13 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
   // Parse amounts
   const parsedSyAmount = useMemo(() => parseAmountSafe(syAmount), [syAmount]);
   const parsedPtAmount = useMemo(() => parseAmountSafe(ptAmount), [ptAmount]);
+
+  // Preview single-SY add liquidity using on-chain calculation
+  const { data: syOnlyPreview, isLoading: isSyPreviewLoading } = useAddLiquidityPreview(
+    market.address,
+    inputType === 'sy-only' ? parsedSyAmount : undefined,
+    { enabled: inputType === 'sy-only' && parsedSyAmount > 0n }
+  );
 
   // Calculate balanced amounts when SY changes
   useEffect(() => {
@@ -251,8 +300,8 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     [parsedSyAmount, parsedPtAmount, market.state]
   );
 
-  // Calculate minimum LP output with slippage
-  const minLpOut = useMemo(() => {
+  // Calculate minimum LP output with slippage (dual mode)
+  const minLpOutDual = useMemo(() => {
     return calculateMinLpOut(
       parsedSyAmount,
       parsedPtAmount,
@@ -263,17 +312,36 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     );
   }, [parsedSyAmount, parsedPtAmount, market.state, slippageBps]);
 
-  // Build calls for gas estimation
+  // Calculate minimum LP output for single-SY mode using on-chain preview
+  const minLpOutSyOnly = useMemo(() => {
+    if (!syOnlyPreview?.expectedLpOut) return 0n;
+    return (syOnlyPreview.expectedLpOut * BigInt(10000 - slippageBps)) / BigInt(10000);
+  }, [syOnlyPreview?.expectedLpOut, slippageBps]);
+
+  // Select the appropriate minLpOut based on input type
+  const minLpOut = inputType === 'dual' ? minLpOutDual : minLpOutSyOnly;
+
+  // Build calls for gas estimation based on input type
   const addLiquidityCalls = useMemo(() => {
-    if (!address || parsedSyAmount === BigInt(0) || parsedPtAmount === BigInt(0)) return null;
+    if (!address || parsedSyAmount === BigInt(0)) return null;
     try {
+      if (inputType === 'sy-only') {
+        return buildAddLiquiditySingleSyCalls(addresses.router, address, {
+          marketAddress: market.address,
+          syAddress: market.syAddress,
+          syAmount: parsedSyAmount,
+          minLpOut: minLpOutSyOnly,
+        });
+      }
+      // Dual mode requires PT amount
+      if (parsedPtAmount === BigInt(0)) return null;
       return buildAddLiquidityCalls(addresses.router, address, {
         marketAddress: market.address,
         syAddress: market.syAddress,
         ptAddress: market.ptAddress,
         syAmount: parsedSyAmount,
         ptAmount: parsedPtAmount,
-        minLpOut,
+        minLpOut: minLpOutDual,
       });
     } catch {
       return null;
@@ -286,7 +354,9 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     market.ptAddress,
     parsedSyAmount,
     parsedPtAmount,
-    minLpOut,
+    minLpOutDual,
+    minLpOutSyOnly,
+    inputType,
   ]);
 
   // Estimate gas fee
@@ -297,20 +367,28 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     error: feeError,
   } = useEstimateFee(addLiquidityCalls);
 
-  // Calculate share of pool
+  // Calculate share of pool based on input type
   const poolShare = useMemo(() => {
-    if (expectedLpOut === BigInt(0)) return new BigNumber(0);
-    const newTotalSupply = market.state.totalLpSupply + expectedLpOut;
+    // Use on-chain preview LP output for SY-only mode, local calculation for dual mode
+    const lpOut = inputType === 'sy-only' ? (syOnlyPreview?.expectedLpOut ?? 0n) : expectedLpOut;
+    if (lpOut === BigInt(0)) return new BigNumber(0);
+    const newTotalSupply = market.state.totalLpSupply + lpOut;
     if (newTotalSupply === BigInt(0)) return new BigNumber(100);
-    return new BigNumber(expectedLpOut.toString())
-      .dividedBy(newTotalSupply.toString())
-      .multipliedBy(100);
-  }, [expectedLpOut, market.state.totalLpSupply]);
+    return new BigNumber(lpOut.toString()).dividedBy(newTotalSupply.toString()).multipliedBy(100);
+  }, [expectedLpOut, syOnlyPreview?.expectedLpOut, inputType, market.state.totalLpSupply]);
 
   // Validation
   const hasInsufficientSyBalance = syBalance !== undefined && parsedSyAmount > syBalance;
-  const hasInsufficientPtBalance = ptBalance !== undefined && parsedPtAmount > ptBalance;
-  const isValidAmount = parsedSyAmount > BigInt(0) && parsedPtAmount > BigInt(0);
+  const hasInsufficientPtBalance =
+    inputType === 'dual' && ptBalance !== undefined && parsedPtAmount > ptBalance;
+  // For single-SY mode, only require SY amount
+  // For dual mode, require both SY and PT amounts
+  const isValidAmount =
+    inputType === 'sy-only'
+      ? parsedSyAmount > BigInt(0)
+      : parsedSyAmount > BigInt(0) && parsedPtAmount > BigInt(0);
+  // For SY-only mode, require the preview to be loaded to ensure proper slippage protection
+  const isPreviewReady = inputType !== 'sy-only' || syOnlyPreview?.expectedLpOut !== undefined;
 
   const canAddLiquidity =
     isConnected &&
@@ -318,7 +396,8 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     !hasInsufficientSyBalance &&
     !hasInsufficientPtBalance &&
     !isAdding &&
-    !isSuccess;
+    !isSuccess &&
+    isPreviewReady;
 
   // Determine transaction status
   const txStatus = useMemo(
@@ -326,14 +405,20 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     [isAdding, isSuccess, isError]
   );
 
-  // Transaction steps for StepProgress
+  // Transaction steps for StepProgress (varies by input type)
   const transactionSteps: Step[] = useMemo(() => {
+    if (inputType === 'sy-only') {
+      return [
+        { label: 'Approve SY', description: `Approve ${sySymbol} spending` },
+        { label: 'Add Liquidity', description: 'Deposit SY to pool' },
+      ];
+    }
     return [
       { label: 'Approve SY', description: `Approve ${sySymbol} spending` },
       { label: 'Approve PT', description: `Approve ${ptSymbol} spending` },
       { label: 'Add Liquidity', description: 'Deposit tokens to pool' },
     ];
-  }, [sySymbol, ptSymbol]);
+  }, [sySymbol, ptSymbol, inputType]);
 
   // Calculate current step based on transaction state
   // Starknet multicall executes all steps atomically, so we show:
@@ -347,18 +432,27 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     return -1; // No transaction in progress
   }, [isAdding, isSuccess, transactionSteps.length]);
 
-  // Handle add liquidity
+  // Handle add liquidity based on input type
   const handleAddLiquidity = (): void => {
     if (!canAddLiquidity) return;
 
-    addLiquidity({
-      marketAddress: market.address,
-      syAddress: market.syAddress,
-      ptAddress: market.ptAddress,
-      syAmount: parsedSyAmount,
-      ptAmount: parsedPtAmount,
-      minLpOut,
-    });
+    if (inputType === 'sy-only') {
+      addLiquiditySingleSy({
+        marketAddress: market.address,
+        syAddress: market.syAddress,
+        syAmount: parsedSyAmount,
+        minLpOut: minLpOutSyOnly,
+      });
+    } else {
+      addLiquidity({
+        marketAddress: market.address,
+        syAddress: market.syAddress,
+        ptAddress: market.ptAddress,
+        syAmount: parsedSyAmount,
+        ptAmount: parsedPtAmount,
+        minLpOut: minLpOutDual,
+      });
+    }
   };
 
   // Clear inputs on success
@@ -380,16 +474,51 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
     });
   }, []);
 
+  // Handle input type change - reset PT amount when switching to SY-only mode
+  const handleInputTypeChange = useCallback(
+    (newType: InputType): void => {
+      if (newType === inputType) return;
+      setInputType(newType);
+      // Reset PT amount when switching to SY-only to avoid stale state
+      if (newType === 'sy-only') {
+        setPtAmount('');
+      }
+    },
+    [inputType]
+  );
+
   return (
     <FormLayout gradient="primary" className={className}>
       {/* Header */}
       <FormHeader title="Add Liquidity" />
 
-      {/* Balanced Mode Toggle */}
-      <div className="flex items-center gap-2">
-        <Switch checked={isBalanced} onCheckedChange={handleBalancedChange} />
-        <span className="text-muted-foreground text-sm">Balanced deposit</span>
+      {/* Input Type Selector */}
+      <div>
+        <div className="text-muted-foreground mb-2 text-sm">Deposit type</div>
+        <ToggleGroup className="flex gap-1">
+          {INPUT_TYPE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              pressed={inputType === option.value}
+              onPressedChange={() => {
+                handleInputTypeChange(option.value);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </div>
+
+      {/* Balanced Mode Toggle - only for dual mode */}
+      {inputType === 'dual' && (
+        <div className="flex items-center gap-2">
+          <Switch checked={isBalanced} onCheckedChange={handleBalancedChange} />
+          <span className="text-muted-foreground text-sm">Balanced deposit</span>
+        </div>
+      )}
 
       {/* Input Section */}
       <FormInputSection>
@@ -401,33 +530,69 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
           onChange={setSyAmount}
           error={hasInsufficientSyBalance ? 'Insufficient balance' : undefined}
         />
-        <TokenInput
-          label="PT Amount"
-          tokenAddress={market.ptAddress}
-          tokenSymbol={ptSymbol}
-          value={ptAmount}
-          onChange={(value): void => {
-            if (!isBalanced) {
-              setPtAmount(value);
-            }
-          }}
-          disabled={isBalanced}
-          error={hasInsufficientPtBalance ? 'Insufficient balance' : undefined}
-        />
+        {inputType === 'dual' && (
+          <TokenInput
+            label="PT Amount"
+            tokenAddress={market.ptAddress}
+            tokenSymbol={ptSymbol}
+            value={ptAmount}
+            onChange={(value): void => {
+              if (!isBalanced) {
+                setPtAmount(value);
+              }
+            }}
+            disabled={isBalanced}
+            error={hasInsufficientPtBalance ? 'Insufficient balance' : undefined}
+          />
+        )}
       </FormInputSection>
 
       {/* Output Preview */}
       <Card size="sm" className="bg-muted">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
-            <span className="text-muted-foreground text-sm">
-              Min: {isValidAmount ? formatWad(minLpOut, 6) : '-'} LP
-            </span>
-          </div>
-          <div className="text-foreground mt-2 text-2xl font-semibold">
-            {isValidAmount ? formatWad(expectedLpOut, 6) : '0.000000'} LP
-          </div>
+          {inputType === 'sy-only' ? (
+            // Single-SY mode with on-chain preview
+            isSyPreviewLoading && isValidAmount ? (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-lg font-semibold">
+                  Loading preview...
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">Expected LP (on-chain)</span>
+                  <span className="text-muted-foreground text-sm">
+                    Min: {isValidAmount && syOnlyPreview ? formatWad(minLpOutSyOnly, 6) : '-'} LP
+                  </span>
+                </div>
+                <div className="text-foreground mt-2 text-2xl font-semibold">
+                  {isValidAmount && syOnlyPreview
+                    ? formatWad(syOnlyPreview.expectedLpOut, 6)
+                    : '0.000000'}{' '}
+                  LP
+                </div>
+                {!syOnlyPreview && isValidAmount && !isSyPreviewLoading && (
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Preview unavailable - using estimated values
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            // Dual mode with local calculation
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Expected LP Tokens</span>
+                <span className="text-muted-foreground text-sm">
+                  Min: {isValidAmount ? formatWad(minLpOut, 6) : '-'} LP
+                </span>
+              </div>
+              <div className="text-foreground mt-2 text-2xl font-semibold">
+                {isValidAmount ? formatWad(expectedLpOut, 6) : '0.000000'} LP
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -503,6 +668,8 @@ export function AddLiquidityForm({ market, className }: AddLiquidityFormProps): 
             hasInsufficientSyBalance,
             hasInsufficientPtBalance,
             isSuccess,
+            inputType,
+            isPreviewLoading: inputType === 'sy-only' && isSyPreviewLoading && isValidAmount,
           })}
         </Button>
       </FormActions>

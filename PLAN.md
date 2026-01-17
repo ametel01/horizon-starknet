@@ -808,7 +808,7 @@ grep -q "useSwapPreview\|preview_swap" packages/frontend/src/features/swap/ui/Sw
 
 ---
 
-### Step 32: Add liquidity preview display to AddLiquidityForm
+### Step 32: Add liquidity preview display to AddLiquidityForm **COMPLETE**
 
 #### Goal
 Show live LP output preview from RouterStatic for single-SY liquidity adds.
