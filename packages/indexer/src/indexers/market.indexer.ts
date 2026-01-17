@@ -612,16 +612,12 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             });
           } else if (matchSelector(eventKey, REWARDS_CLAIMED)) {
             // Validate event structure
-            const validated = validateEvent(
-              marketRewardsClaimedSchema,
-              event,
-              {
-                indexer: "market",
-                eventName: "RewardsClaimed",
-                blockNumber,
-                transactionHash,
-              }
-            );
+            const validated = validateEvent(marketRewardsClaimedSchema, event, {
+              indexer: "market",
+              eventName: "RewardsClaimed",
+              blockNumber,
+              transactionHash,
+            });
             if (!validated) {
               errorCount++;
               continue;
