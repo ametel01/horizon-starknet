@@ -271,7 +271,7 @@ cd packages/frontend && bun run check
 
 ---
 
-## Phase 4: Token-to-PT/YT Swap Hooks
+## Phase 4: Token-to-PT/YT Swap Hooks **COMPLETE**
 
 Implement hooks for swapping arbitrary tokens to PT/YT via external aggregators.
 
@@ -395,7 +395,7 @@ Implement hooks for adding/removing liquidity with arbitrary tokens.
 cd packages/frontend && bun run check
 ```
 
-### Step 16: Create useAddLiquiditySingleToken hook
+### Step 16: Create useAddLiquiditySingleToken hook **COMPLETE**
 
 #### Goal
 Implement hook for adding liquidity with any token via aggregator.
