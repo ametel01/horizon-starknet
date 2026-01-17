@@ -154,7 +154,7 @@ grep -q "useRemoveLiquiditySinglePt" packages/frontend/src/features/liquidity/mo
 
 ---
 
-### Step 6: Add build helper functions for single-sided removal
+### Step 6: Add build helper functions for single-sided removal **COMPLETE**
 
 #### Goal
 Create buildRemoveLiquiditySingleSyCalls and buildRemoveLiquiditySinglePtCalls for gas estimation.
