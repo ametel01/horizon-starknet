@@ -1,10 +1,10 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
-4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS: RewardManagerComponent added to YT storage/events, but hooks and internal impl not yet wired up
-5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
-6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED: `i_flash_callback.cairo` does not exist, no flash mint functions
-7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED: No VERSION constants exist in any contracts
+4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS (Steps 1-4 complete: RewardManagerComponent, storage, events, hooks; Steps 5-14 pending)
+5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED
+6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
+7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
 
 ## Phase 1: Factory Fee Infrastructure **COMPLETE**
 
@@ -571,7 +571,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 4: Implement RewardHooksTrait for YT
+### Step 4: Implement RewardHooksTrait for YT **COMPLETE**
 
 #### Goal
 Implement `user_sy_balance` and `total_sy_supply` hooks using YT balance (not SY balance) since rewards distribute to YT holders.
