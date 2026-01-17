@@ -832,7 +832,7 @@ grep -q "useLiquidityPreview\|preview_add_liquidity" packages/frontend/src/featu
 
 ---
 
-### Step 33: Add live exchange rates to market display
+### Step 33: Add live exchange rates to market display **COMPLETE**
 
 #### Goal
 Display live PT/SY, LP/SY, and LP/PT rates from RouterStatic in market cards and detail views.

@@ -1,6 +1,7 @@
 'use client';
 
 import { TokenAmount } from '@entities/token';
+import { MarketRates, useMarketExchangeRates } from '@features/markets';
 import { formatApyWithStatus, type OracleStatus, OracleStatusBadge } from '@features/oracle';
 import { ApyBreakdown, NegativeYieldWarning, useApyBreakdown } from '@features/yield';
 import { TWAP_DEFAULT_DURATION, TWAP_ESTIMATED_READY_DEFAULT } from '@shared/config/twap';
@@ -130,6 +131,13 @@ export const MarketCard = memo(function MarketCard({
 
   // Get APY breakdown for hover display
   const { data: apyBreakdown } = useApyBreakdown(market);
+
+  // Fetch live exchange rates from RouterStatic (updates every 30s)
+  const {
+    data: exchangeRates,
+    isLoading: isRatesLoading,
+    isError: isRatesError,
+  } = useMarketExchangeRates(market.address);
 
   return (
     <Card
@@ -280,6 +288,16 @@ export const MarketCard = memo(function MarketCard({
             </StatRow>
           )}
         </div>
+
+        {/* Live Exchange Rates (Advanced mode only) */}
+        {isAdvanced && (
+          <MarketRates
+            rates={exchangeRates}
+            isLoading={isRatesLoading && !exchangeRates}
+            isAvailable={!isRatesError}
+            className="border-border/50 mt-4 border-t pt-3"
+          />
+        )}
 
         {/* Action buttons with hover reveal */}
         <div className="mt-4 flex gap-2 opacity-80 transition-opacity group-hover:opacity-100">
