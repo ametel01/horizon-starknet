@@ -48,6 +48,9 @@ pub mod MarketFactory {
     /// Using precise value: ln(1.05) = 0.04879016416943092...
     const MAX_LN_FEE_RATE_ROOT: u256 = 48_790_164_169_432_000; // ln(1.05) WAD
 
+    /// Contract version for upgrade tracking
+    const VERSION: felt252 = 1;
+
     // Keep OwnableComponent for backward compatibility (existing owner can bootstrap RBAC)
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
