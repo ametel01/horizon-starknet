@@ -9,7 +9,12 @@ import {
   usePriceImpact,
   usePriceImpactWarning,
 } from '@features/price';
-import { calculateMinOutput, useSwap } from '@features/swap';
+import {
+  calculateMinOutput,
+  type SwapPreviewDirection,
+  useSwap,
+  useSwapPreview,
+} from '@features/swap';
 import {
   buildSwapCalls,
   calculateSwapQuote,
@@ -152,6 +157,30 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
   // Extract values from swap result
   const expectedOutput = swapResult?.amountOut ?? BigInt(0);
   const priceImpact = swapResult?.priceImpact ?? 0;
+
+  // Map swap direction to preview direction (only available for PT swaps)
+  const previewDirection = useMemo((): SwapPreviewDirection | null => {
+    switch (direction) {
+      case 'buy_pt':
+        return 'sy_for_pt';
+      case 'sell_pt':
+        return 'pt_for_sy';
+      default:
+        // YT swaps don't have RouterStatic preview functions
+        return null;
+    }
+  }, [direction]);
+
+  // On-chain preview from RouterStatic (only for PT swaps)
+  const { data: previewResult, isLoading: isPreviewLoading } = useSwapPreview(
+    market.address,
+    parsedInputAmount,
+    previewDirection ?? 'sy_for_pt', // Fallback doesn't matter since enabled=false for YT
+    { enabled: previewDirection !== null && isValidAmount }
+  );
+
+  // Preview is only available for PT swaps when RouterStatic is deployed
+  const isPreviewAvailable = previewDirection !== null;
 
   // Animate output for Change Blindness prevention (UI/UX Law)
   const numericOutput = useMemo(() => fromWad(expectedOutput).toNumber(), [expectedOutput]);
@@ -503,6 +532,9 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
         formattedFeeUsd={formattedFeeUsd}
         isEstimatingFee={isEstimatingFee}
         feeError={feeError}
+        previewResult={previewResult}
+        isPreviewLoading={isPreviewLoading}
+        isPreviewAvailable={isPreviewAvailable}
       />
 
       {/* Price Impact Warning */}

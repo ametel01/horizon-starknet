@@ -1,6 +1,7 @@
 'use client';
 
 import type { ImpliedApyDisplay } from '@features/swap/lib/swapFormLogic';
+import type { SwapPreviewResult } from '@features/swap/model/useSwapPreview';
 import { calculateFeeSplit } from '@shared/lib/fees';
 import { cn } from '@shared/lib/utils';
 import type { SwapResult } from '@shared/math/amm';
@@ -9,8 +10,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@shared/ui/
 import { FormRow } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
+import { Skeleton } from '@shared/ui/Skeleton';
 import BigNumber from 'bignumber.js';
-import { ChevronDown, Info } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface SwapDetailsProps {
@@ -42,6 +44,11 @@ interface SwapDetailsProps {
   formattedFeeUsd: string | null;
   isEstimatingFee: boolean;
   feeError: Error | null;
+
+  // On-chain preview (from RouterStatic) - only available for PT swaps
+  previewResult: SwapPreviewResult | null | undefined;
+  isPreviewLoading: boolean;
+  isPreviewAvailable: boolean;
 }
 
 /**
@@ -64,6 +71,9 @@ export function SwapDetails({
   formattedFeeUsd,
   isEstimatingFee,
   feeError,
+  previewResult,
+  isPreviewLoading,
+  isPreviewAvailable,
 }: SwapDetailsProps): ReactNode {
   // Pre-compute rate display
   const rateDisplay = formatRateDisplay(parsedInputAmount, expectedOutput, inputLabel, outputLabel);
@@ -74,6 +84,16 @@ export function SwapDetails({
     isValidAmount,
     syLabel,
     reserveFeePercent
+  );
+
+  // Compute on-chain preview display
+  const previewDisplay = formatPreviewDisplay(
+    previewResult,
+    expectedOutput,
+    outputLabel,
+    isPreviewLoading,
+    isPreviewAvailable,
+    isValidAmount
   );
 
   return (
@@ -90,6 +110,55 @@ export function SwapDetails({
           valueClassName={cn('font-mono text-sm', !isValidAmount && 'text-muted-foreground')}
           value={rateDisplay}
         />
+
+        {/* On-chain Preview Output - only shown for PT swaps when RouterStatic is available */}
+        {previewDisplay.show && (
+          <div className="flex items-center justify-between gap-2">
+            <HoverCard>
+              <HoverCardTrigger className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-sm transition-colors">
+                Expected (on-chain)
+                <Info className="h-3 w-3 opacity-50" />
+              </HoverCardTrigger>
+              <HoverCardContent side="top" align="start" className="w-64">
+                <div className="space-y-2">
+                  <h4 className="text-foreground text-sm font-medium">On-chain Preview</h4>
+                  <p className="text-muted-foreground text-xs">
+                    Live output estimate from RouterStatic contract. This reflects the current
+                    on-chain market state and may differ from the calculated estimate.
+                  </p>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+            <span className="text-foreground text-sm">
+              {previewDisplay.isLoading ? (
+                <Skeleton className="h-4 w-24" />
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn('font-mono', previewDisplay.valueClass)}>
+                    {previewDisplay.text}
+                  </span>
+                  {previewDisplay.showDiscrepancyWarning && (
+                    <HoverCard>
+                      <HoverCardTrigger className="text-warning cursor-help">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                      </HoverCardTrigger>
+                      <HoverCardContent side="top" align="end" className="w-56">
+                        <div className="space-y-2">
+                          <h4 className="text-warning text-sm font-medium">Output Discrepancy</h4>
+                          <p className="text-muted-foreground text-xs">
+                            The on-chain preview differs from the calculated estimate by{' '}
+                            <span className="font-mono">{previewDisplay.discrepancyPercent}</span>.
+                            This may indicate market state has changed.
+                          </p>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  )}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* Implied APY Change */}
         {impliedApyDisplay.showSection && (
@@ -243,4 +312,104 @@ function formatSwapFeeDisplay(
     lpFeeFormatted: '-',
     reserveFeeFormatted: '-',
   };
+}
+
+// Threshold for showing discrepancy warning (1% difference)
+const DISCREPANCY_THRESHOLD = 0.01;
+
+interface PreviewDisplayResult {
+  show: boolean;
+  isLoading: boolean;
+  text: string;
+  valueClass: string;
+  showDiscrepancyWarning: boolean;
+  discrepancyPercent: string;
+}
+
+/**
+ * Formats the on-chain preview display.
+ * Shows the preview output and highlights significant discrepancies from calculated output.
+ */
+function formatPreviewDisplay(
+  previewResult: SwapPreviewResult | null | undefined,
+  expectedOutput: bigint,
+  outputLabel: string,
+  isPreviewLoading: boolean,
+  isPreviewAvailable: boolean,
+  isValidAmount: boolean
+): PreviewDisplayResult {
+  // Don't show if preview is not available (YT swaps or RouterStatic not deployed)
+  if (!isPreviewAvailable) {
+    return {
+      show: false,
+      isLoading: false,
+      text: '-',
+      valueClass: 'text-muted-foreground',
+      showDiscrepancyWarning: false,
+      discrepancyPercent: '',
+    };
+  }
+
+  // Show row with loading state
+  if (isPreviewLoading || !isValidAmount) {
+    return {
+      show: true,
+      isLoading: isPreviewLoading && isValidAmount,
+      text: '-',
+      valueClass: 'text-muted-foreground',
+      showDiscrepancyWarning: false,
+      discrepancyPercent: '',
+    };
+  }
+
+  // Preview not available (null result means RouterStatic returned null)
+  if (!previewResult) {
+    return {
+      show: true,
+      isLoading: false,
+      text: 'Unavailable',
+      valueClass: 'text-muted-foreground',
+      showDiscrepancyWarning: false,
+      discrepancyPercent: '',
+    };
+  }
+
+  // Calculate discrepancy between calculated and preview output
+  const previewOutput = previewResult.expectedOutput;
+  const discrepancy = calculateDiscrepancy(expectedOutput, previewOutput);
+  const showDiscrepancyWarning = Math.abs(discrepancy) > DISCREPANCY_THRESHOLD;
+
+  // Determine value styling based on discrepancy
+  let valueClass = 'text-foreground';
+  if (showDiscrepancyWarning) {
+    valueClass = discrepancy > 0 ? 'text-destructive' : 'text-success';
+  }
+
+  return {
+    show: true,
+    isLoading: false,
+    text: `${formatWad(previewOutput, 6)} ${outputLabel}`,
+    valueClass,
+    showDiscrepancyWarning,
+    discrepancyPercent: `${(Math.abs(discrepancy) * 100).toFixed(2)}%`,
+  };
+}
+
+/**
+ * Calculate the percentage discrepancy between calculated and preview outputs.
+ * Returns positive if calculated > preview (user would receive less than expected).
+ */
+function calculateDiscrepancy(calculated: bigint, preview: bigint): number {
+  // No expected output means no comparison needed
+  if (calculated === 0n) return 0;
+
+  // Preview returns 0 but we calculated something - this is a 100% discrepancy
+  if (preview === 0n) return 1;
+
+  // (calculated - preview) / calculated
+  const diff = new BigNumber(calculated.toString())
+    .minus(preview.toString())
+    .dividedBy(calculated.toString());
+
+  return diff.toNumber();
 }

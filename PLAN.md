@@ -783,7 +783,7 @@ grep -q "useRemoveLiquiditySingleSy\|useRemoveLiquiditySinglePt" packages/fronte
 
 ---
 
-### Step 31: Add swap preview display to SwapDetails
+### Step 31: Add swap preview display to SwapDetails **COMPLETE**
 
 #### Goal
 Show live swap output preview from RouterStatic before user submits transaction.
