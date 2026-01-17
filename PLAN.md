@@ -945,7 +945,7 @@ grep -q "TokenAggregatorSwapForm\|TokenAggregatorLiquidityForm" packages/fronten
 
 ---
 
-### Step 37: Export new UI components from features
+### Step 37: Export new UI components from features **COMPLETE**
 
 #### Goal
 Ensure all new UI components are properly exported.
