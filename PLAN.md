@@ -859,7 +859,7 @@ grep -q "useMarketExchangeRates\|get_pt_to_sy_rate" packages/frontend/src/entiti
 
 ---
 
-### Step 34: Create TokenAggregatorSwapForm component
+### Step 34: Create TokenAggregatorSwapForm component **COMPLETE**
 
 #### Goal
 Create new swap form variant for swapping arbitrary tokens to/from PT/YT via DEX aggregators.

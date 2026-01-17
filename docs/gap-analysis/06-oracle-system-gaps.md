@@ -45,9 +45,12 @@ Pendle's oracle infrastructure serves **two distinct purposes** that Horizon par
 1. **Dual-Feed Ratio Mode** - Supports calculating ratios from two USD-denominated prices:
 ```cairo
 // Horizon - calculate wstETH/stETH from WSTETH/USD ÷ STETH/USD
-if denominator_pair_id != 0 {
-    let ratio = (num_price * denom_scale * WAD) / (denom_price * num_scale);
-    return ratio;
+if denominator_pair == 0 {
+    // Single-feed mode: convert price directly to index
+    self._price_to_wad(num_price, num_decimals)
+} else {
+    // Dual-feed mode: calculate ratio
+    self._calculate_ratio_wad(num_price, num_decimals, denom_price, denom_decimals)
 }
 ```
 
@@ -75,9 +78,9 @@ assert(new_index >= old_index, 'HZN: cannot decrease index');
 
 | File | Purpose | Size |
 |------|---------|------|
-| [`libraries/oracle_lib.cairo`](../contracts/src/libraries/oracle_lib.cairo) | Core TWAP library with ring buffer, binary search | ~670 lines |
-| [`market/amm.cairo`](../contracts/src/market/amm.cairo) (IMarketOracle) | Oracle storage and interface | ~110 lines |
-| [`oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) | PT/YT/LP price helpers | ~320 lines |
+| [`libraries/oracle_lib.cairo`](../contracts/src/libraries/oracle_lib.cairo) | Core TWAP library with ring buffer, binary search | 672 lines |
+| [`market/amm.cairo`](../contracts/src/market/amm.cairo) (IMarketOracle) | Oracle storage and interface | 1773 lines total |
+| [`oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) | PT/YT/LP price helpers | 319 lines |
 
 ---
 
@@ -139,7 +142,7 @@ self.observation_cardinality.write(result.cardinality);
 
 **Usage:** Called by Market contract ([amm.cairo](../contracts/src/market/amm.cairo)) on every swap to update observations. The `IMarketOracle` trait exposes `observe()` and `increase_observations_cardinality_next()` as external entrypoints.
 
-**Tests:** Comprehensive coverage in [`contracts/tests/market/test_market_oracle.cairo`](../contracts/tests/market/test_market_oracle.cairo) (~860 lines)
+**Tests:** Comprehensive coverage in [`contracts/tests/market/test_market_oracle.cairo`](../contracts/tests/market/test_market_oracle.cairo) (861 lines)
 
 ---
 
@@ -150,7 +153,7 @@ Stateless contract that queries Market's observation buffer.
 
 **Reference (Pendle V2):** [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)
 
-**Horizon Implementation:** [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) (~320 lines)
+**Horizon Implementation:** [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) (319 lines)
 
 **Functions:**
 
@@ -177,11 +180,16 @@ Stateless contract that queries Market's observation buffer.
 **Oracle Readiness Check:**
 
 The `check_oracle_state()` function verifies TWAP query feasibility:
-1. Calculates required cardinality: `(duration / MIN_BLOCK_TIME) + 1`
+1. Calculates required cardinality: `(duration / MIN_BLOCK_TIME) + 1` where `MIN_BLOCK_TIME = 10`
 2. Checks if `observation_cardinality_next >= cardinality_required`
 3. Verifies oldest observation is at least `duration` seconds old
 
-**Tests:** Comprehensive coverage in [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) (~842 lines)
+**Return Type:** `OracleReadinessState` struct with fields:
+- `increase_cardinality_required: bool`
+- `cardinality_required: u16`
+- `oldest_observation_satisfied: bool`
+
+**Tests:** Comprehensive coverage in [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) (843 lines)
 
 ---
 
@@ -195,18 +203,18 @@ The `check_oracle_state()` function verifies TWAP query feasibility:
 |---------|-----------|---------|--------|
 | Observation buffer | `OracleLib.Observation[65_535]` | `oracle_lib::Observation` struct + `Map<u16, Observation>` in market | ✅ Implemented |
 | `lnImpliedRateCumulative` | `Observation.lnImpliedRateCumulative` (`uint216`) | `Observation.ln_implied_rate_cumulative` (`u256`) | ✅ Implemented |
-| `observe(uint32[] secondsAgos)` | Market TWAP via `observations.observe` | `IMarketOracle::observe()` at `amm.cairo:1003-1062` | ✅ Implemented |
-| `increaseObservationsCardinalityNext(uint16)` | Buffer expansion via `observations.grow` | `IMarketOracle::increase_observations_cardinality_next()` at `amm.cairo:1066-1083` | ✅ Implemented |
-| `getOracleState(market, duration)` | Readiness check in PendlePYLpOracle | `PyLpOracle::get_oracle_state()` at `py_lp_oracle.cairo:262-290` | ✅ Implemented |
-| `getPtToSyRate(duration)` | PendlePYOracleLib.getPtToSyRate | `PyLpOracle::get_pt_to_sy_rate()` at `py_lp_oracle.cairo:47-75` | ✅ Implemented |
-| `getPtToAssetRate(duration)` | PendlePYOracleLib.getPtToAssetRate | `PyLpOracle::get_pt_to_asset_rate()` at `py_lp_oracle.cairo:142-175` | ✅ Implemented |
-| `getYtToSyRate(duration)` | PendlePYOracleLib.getYtToSyRate | `PyLpOracle::get_yt_to_sy_rate()` at `py_lp_oracle.cairo:77-100` | ✅ Implemented |
-| `getYtToAssetRate(duration)` | PendlePYOracleLib.getYtToAssetRate | `PyLpOracle::get_yt_to_asset_rate()` at `py_lp_oracle.cairo:177-210` | ✅ Implemented |
-| `getLpToSyRate(duration)` | PendleLpOracleLib.getLpToSyRate | `PyLpOracle::get_lp_to_sy_rate()` at `py_lp_oracle.cairo:102-140` | ✅ Implemented |
-| `getLpToAssetRate(duration)` | PendleLpOracleLib.getLpToAssetRate | `PyLpOracle::get_lp_to_asset_rate()` at `py_lp_oracle.cairo:212-260` | ✅ Implemented |
+| `observe(uint32[] secondsAgos)` | Market TWAP via `observations.observe` | `IMarketOracle::observe()` at `amm.cairo:1376-1435` | ✅ Implemented |
+| `increaseObservationsCardinalityNext(uint16)` | Buffer expansion via `observations.grow` | `IMarketOracle::increase_observations_cardinality_next()` at `amm.cairo:1439-1456` | ✅ Implemented |
+| `getOracleState(market, duration)` | Readiness check in PendlePYLpOracle | `PyLpOracle::check_oracle_state()` at `py_lp_oracle.cairo:152-205` | ✅ Implemented |
+| `getPtToSyRate(duration)` | PendlePYOracleLib.getPtToSyRate | `PyLpOracle::get_pt_to_sy_rate()` at `py_lp_oracle.cairo:47-62` | ✅ Implemented |
+| `getPtToAssetRate(duration)` | PendlePYOracleLib.getPtToAssetRate | `PyLpOracle::get_pt_to_asset_rate()` at `py_lp_oracle.cairo:117-122` | ✅ Implemented |
+| `getYtToSyRate(duration)` | PendlePYOracleLib.getYtToSyRate | `PyLpOracle::get_yt_to_sy_rate()` at `py_lp_oracle.cairo:67-85` | ✅ Implemented |
+| `getYtToAssetRate(duration)` | PendlePYOracleLib.getYtToAssetRate | `PyLpOracle::get_yt_to_asset_rate()` at `py_lp_oracle.cairo:125-130` | ✅ Implemented |
+| `getLpToSyRate(duration)` | PendleLpOracleLib.getLpToSyRate | `PyLpOracle::get_lp_to_sy_rate()` at `py_lp_oracle.cairo:91-109` | ✅ Implemented |
+| `getLpToAssetRate(duration)` | PendleLpOracleLib.getLpToAssetRate | `PyLpOracle::get_lp_to_asset_rate()` at `py_lp_oracle.cairo:139-144` | ✅ Implemented |
 | Pre-deployed oracle contract | `PendlePYLpOracle` | `PyLpOracle` contract at `py_lp_oracle.cairo` | ✅ Implemented |
-| MAX_CARDINALITY | 65,535 | 8,760 (1 year of hourly observations) at `amm.cairo:38` | ✅ Implemented |
-| Test coverage | Various test files | 860 lines in `tests/market/test_market_oracle.cairo` | ✅ Implemented |
+| MAX_CARDINALITY | 65,535 | 8,760 (1 year of hourly observations) at `amm.cairo:69` | ✅ Implemented |
+| Test coverage | Various test files | 861 lines in `tests/market/test_market_oracle.cairo` | ✅ Implemented |
 | Chainlink wrapper | `PendleChainlinkOracle` / `PendleChainlinkOracleWithQuote` | ❌ None | 🟡 Optional |
 | `latestRoundData()` compatibility | Chainlink-style interface | ❌ None | 🟡 Optional |
 | Reentrancy guard check | `_checkMarketReentrancy` in PendleLpOracleLib | ❌ None (Cairo's execution model provides inherent protection) | 🟢 N/A |
@@ -224,11 +232,13 @@ This section documents the workflow for using the Market TWAP oracle for integra
 When a market is created, the TWAP oracle is automatically initialized:
 
 ```cairo
-let result = oracle_lib::initialize(timestamp);
-self.observations.write(0_u16, result.observation);
+// In Market constructor (amm.cairo:389-395)
+let timestamp = get_block_timestamp();
+let init_result = oracle_lib::initialize(timestamp);
+self.observations.write(0_u16, init_result.observation);
 self.observation_index.write(0_u16);
-self.observation_cardinality.write(result.cardinality);
-self.observation_cardinality_next.write(result.cardinality_next);
+self.observation_cardinality.write(init_result.cardinality);
+self.observation_cardinality_next.write(init_result.cardinality_next);
 ```
 
 This sets up the ring buffer with an initial observation and cardinality of 1.
@@ -270,13 +280,13 @@ Before querying TWAP, verify the oracle has sufficient historical data:
 
 ```cairo
 let state = py_lp_oracle.check_oracle_state(market, duration);
-assert(state == OracleReadinessState::Ready, 'Oracle not ready');
+// Check state.oldest_observation_satisfied and !state.increase_cardinality_required
 ```
 
-**Oracle States:**
-- `Ready`: Sufficient observations exist for the requested duration
-- `NotReady`: More time/observations needed before TWAP is reliable
-- `NotInitialized`: Market oracle not yet initialized
+**OracleReadinessState fields:**
+- `increase_cardinality_required`: true if buffer needs to be grown
+- `cardinality_required`: minimum cardinality needed for duration
+- `oldest_observation_satisfied`: true if oldest observation is old enough
 
 ### Integration Example (Lending Protocol)
 
@@ -287,13 +297,14 @@ fn get_pt_collateral_value(market: ContractAddress, pt_amount: u256) -> u256 {
 
     // Check oracle is ready for 30-minute TWAP
     let state = oracle.check_oracle_state(market, 1800);
-    assert(state == OracleReadinessState::Ready, 'Oracle not ready');
+    assert(!state.increase_cardinality_required, 'Cardinality too low');
+    assert(state.oldest_observation_satisfied, 'Oracle not ready');
 
     // Get manipulation-resistant PT price
     let pt_to_asset_rate = oracle.get_pt_to_asset_rate(market, 1800);
 
     // Calculate collateral value
-    math::wmul(pt_amount, pt_to_asset_rate)
+    wad_mul(pt_amount, pt_to_asset_rate)
 }
 ```
 
@@ -308,14 +319,14 @@ fn get_pt_collateral_value(market: ContractAddress, pt_amount: u256) -> u256 {
 | PT TWAP Functions | `PendlePYOracleLib.getPtToSyRate/getPtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ✅ `get_pt_to_sy_rate()`, `get_pt_to_asset_rate()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
 | YT TWAP Functions | `PendlePYOracleLib.getYtToSyRate/getYtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ✅ `get_yt_to_sy_rate()`, `get_yt_to_asset_rate()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
 | LP TWAP Functions | `PendleLpOracleLib.getLpToSyRate/getLpToAssetRate` ([PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)) | ✅ `get_lp_to_sy_rate()`, `get_lp_to_asset_rate()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
-| Oracle State Check | `getOracleState` in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `get_oracle_state()`, `check_oracle_state()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| Oracle State Check | `getOracleState` in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `check_oracle_state()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
 | Pre-deployed Oracle | [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `PyLpOracle` contract in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
 | getLnImpliedRateTwap | `getOracleState` return in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `get_ln_implied_rate_twap()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
 | Chainlink/Pragma Wrapper | [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol) / [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol) | ❌ None | 🟡 Optional |
 | Oracle Factory | [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol) | ❌ None | 🟡 Optional |
 
 **Implementation:** [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo)
-**Tests:** [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) (842 lines)
+**Tests:** [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) (843 lines)
 
 **Total Oracle Gaps: 2** (0 CRITICAL, 0 HIGH, 2 OPTIONAL)
 
