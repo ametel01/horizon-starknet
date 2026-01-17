@@ -6,6 +6,7 @@
 pub mod YT {
     use core::num::traits::Zero;
     use horizon::components::reward_manager_component::RewardManagerComponent;
+    use horizon::interfaces::i_flash_callback::{IFlashCallbackDispatcher, IFlashCallbackDispatcherTrait};
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYT, IYTAdmin};
@@ -1452,6 +1453,95 @@ pub mod YT {
             let treasury_interest = self.post_expiry_sy_for_treasury.read();
             let is_initialized = first_index > 0;
             (first_index, treasury_interest, is_initialized)
+        }
+
+        /// Flash mint PT + YT tokens with callback (Pendle-style)
+        /// Mints PT+YT to receiver, calls callback, then verifies SY repayment.
+        /// The receiver must implement IFlashCallback and repay the required SY.
+        /// Currently fee-less (fee_sy = 0), but fee parameter reserved for future use.
+        ///
+        /// Flow:
+        /// 1. Update PY index and receiver's interest state
+        /// 2. Mint PT+YT to receiver based on amount_sy
+        /// 3. Call receiver's flash_callback with the minted amounts and data
+        /// 4. Verify receiver has transferred amount_sy back to this contract
+        /// 5. Update sy_reserve to include the repaid SY
+        ///
+        /// @param receiver Address to receive PT+YT and execute callback (must implement IFlashCallback)
+        /// @param amount_sy Amount of SY to use for minting PT+YT
+        /// @param data Arbitrary data passed to the callback
+        /// @return (amount_pt_out, amount_yt_out) Amounts of PT and YT minted
+        fn flash_mint_py(
+            ref self: ContractState,
+            receiver: ContractAddress,
+            amount_sy: u256,
+            data: Span<felt252>,
+        ) -> (u256, u256) {
+            // Check not paused - flash mint operations can be paused in emergency
+            self.pausable.assert_not_paused();
+            // Reentrancy guard is critical for flash operations to prevent callback attacks
+            self.reentrancy_guard.start();
+
+            assert(!self.is_expired(), Errors::YT_EXPIRED);
+            assert(!receiver.is_zero(), Errors::ZERO_ADDRESS);
+            assert(amount_sy > 0, Errors::ZERO_AMOUNT);
+
+            let caller = get_caller_address();
+            let this = get_contract_address();
+
+            // Update global PY index first
+            self._update_py_index();
+
+            // Update receiver's interest before minting
+            self._update_user_interest(receiver);
+
+            // Calculate PY amount using Pendle's syToAsset formula:
+            // amount_py = syAmount * pyIndex / WAD
+            let py_index = self.py_index_stored.read();
+            let amount_py = wad_mul(amount_sy, py_index);
+
+            // Mint PT to receiver
+            let pt_addr = self.pt.read();
+            let pt = IPTDispatcher { contract_address: pt_addr };
+            pt.mint(receiver, amount_py);
+
+            // Mint YT to receiver
+            self.erc20.mint(receiver, amount_py);
+
+            // Get SY balance before callback
+            let sy_addr = self.sy.read();
+            let sy = ISYDispatcher { contract_address: sy_addr };
+            let sy_balance_before = sy.balance_of(this);
+
+            // Call the receiver's callback - they must repay amount_sy to this contract
+            let flash_callback = IFlashCallbackDispatcher { contract_address: receiver };
+            flash_callback.flash_callback(amount_py, amount_py, data);
+
+            // Verify SY repayment - balance must have increased by at least amount_sy
+            let sy_balance_after = sy.balance_of(this);
+            assert(sy_balance_after >= sy_balance_before + amount_sy, Errors::YT_FLASH_REPAYMENT_FAILED);
+
+            // Update sy_reserve to track the newly received SY
+            self.sy_reserve.write(sy_balance_after);
+
+            // Currently fee-less (fee = 0), but parameter reserved for future use
+            let fee_sy: u256 = 0;
+
+            self
+                .emit(
+                    FlashMintPY {
+                        caller,
+                        receiver,
+                        amount_py,
+                        fee_sy,
+                        sy: sy_addr,
+                        pt: pt_addr,
+                        timestamp: get_block_timestamp(),
+                    },
+                );
+
+            self.reentrancy_guard.end();
+            (amount_py, amount_py)
         }
     }
 

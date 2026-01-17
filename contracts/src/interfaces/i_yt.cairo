@@ -128,6 +128,19 @@ pub trait IYT<TContractState> {
     /// Get complete post-expiry data in one call
     /// Returns (first_py_index, total_sy_interest_for_treasury, is_post_expiry_initialized)
     fn get_post_expiry_data(self: @TContractState) -> (u256, u256, bool);
+
+    // Flash operations
+    /// Flash mint PT + YT tokens with callback (Pendle-style)
+    /// Mints PT+YT to receiver, calls callback, then verifies SY repayment.
+    /// The callback receiver must repay the required SY amount to the YT contract.
+    /// Currently fee-less (fee_sy = 0), but fee parameter reserved for future use.
+    /// @param receiver Address to receive PT+YT and execute callback
+    /// @param amount_sy Amount of SY to use for minting PT+YT
+    /// @param data Arbitrary data passed to the callback
+    /// @return (amount_pt_out, amount_yt_out) Amounts of PT and YT minted
+    fn flash_mint_py(
+        ref self: TContractState, receiver: ContractAddress, amount_sy: u256, data: Span<felt252>,
+    ) -> (u256, u256);
 }
 
 /// Admin interface for YT pausability and treasury management
