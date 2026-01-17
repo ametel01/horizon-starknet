@@ -1,5 +1,5 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE: Storage fields, constants, events, error constant, getter/setter functions, and tests implemented
-2. **Phase 2 (Expiry Divisor)** - IN PROGRESS: Storage, event, getter/setter, and interface complete; validation in create_yield_contracts and tests pending
+2. **Phase 2 (Expiry Divisor)** - COMPLETE: Storage, event, getter/setter, interface, and validation in create_yield_contracts all implemented; tests pending
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - NOT IMPLEMENTED: `yield_contract_factory` does not exist in MarketFactory
 4. **Phase 4 (Multi-Reward YT Integration)** - NOT IMPLEMENTED: YT does not use RewardManagerComponent
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED: `add_liquidity_dual_token_and_pt`, `remove_liquidity_dual_token_and_pt`, `swap_tokens_to_tokens` do not exist
@@ -264,7 +264,7 @@ grep -q "ExpiryDivisorSet" contracts/src/factory.cairo && echo "OK"
 
 ---
 
-### Step 4: Add expiry validation to create_yield_contracts
+### Step 4: Add expiry validation to create_yield_contracts **COMPLETE**
 
 #### Goal
 Modify `create_yield_contracts` to validate `expiry % divisor == 0` when divisor > 0.

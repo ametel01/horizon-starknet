@@ -210,6 +210,12 @@ pub mod Factory {
             assert(!sy.is_zero(), Errors::ZERO_ADDRESS);
             assert(expiry > get_block_timestamp(), Errors::FACTORY_INVALID_EXPIRY);
 
+            // Validate expiry alignment with divisor (if divisor > 0)
+            let divisor = self.expiry_divisor.read();
+            if divisor > 0 {
+                assert(expiry % divisor == 0, Errors::FACTORY_INVALID_EXPIRY_DIVISOR);
+            }
+
             // Check if contracts already exist for this SY/expiry pair
             let existing_yt = self.yt_registry.read((sy, expiry));
             assert(existing_yt.is_zero(), Errors::FACTORY_ALREADY_EXISTS);
