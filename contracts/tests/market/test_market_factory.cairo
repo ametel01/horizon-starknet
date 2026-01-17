@@ -1,4 +1,5 @@
 use core::num::traits::Zero;
+use horizon::interfaces::i_factory::{IFactoryDispatcher, IFactoryDispatcherTrait};
 use horizon::interfaces::i_market::{IMarketDispatcher, IMarketDispatcherTrait};
 use horizon::interfaces::i_market_factory::{
     IMarketFactoryDispatcher, IMarketFactoryDispatcherTrait,
@@ -145,6 +146,38 @@ fn deploy_market_factory() -> IMarketFactoryDispatcher {
     calldata.append(admin().into()); // owner
     calldata.append((*market_class.class_hash).into());
     calldata.append(zero_address().into()); // yield_contract_factory (zero = no validation)
+
+    let (contract_address, _) = factory_class.deploy(@calldata).unwrap_syscall();
+    IMarketFactoryDispatcher { contract_address }
+}
+
+// Deploy yield contract Factory (for PT validation tests)
+fn deploy_yield_factory() -> IFactoryDispatcher {
+    let factory_class = declare("Factory").unwrap_syscall().contract_class();
+    let pt_class = declare("PT").unwrap_syscall().contract_class();
+    let yt_class = declare("YT").unwrap_syscall().contract_class();
+
+    let mut calldata = array![];
+    calldata.append(admin().into()); // owner
+    calldata.append((*yt_class.class_hash).into());
+    calldata.append((*pt_class.class_hash).into());
+    calldata.append(treasury().into()); // treasury
+
+    let (contract_address, _) = factory_class.deploy(@calldata).unwrap_syscall();
+    IFactoryDispatcher { contract_address }
+}
+
+// Deploy MarketFactory with yield contract factory reference
+fn deploy_market_factory_with_yield_factory(
+    yield_factory: ContractAddress,
+) -> IMarketFactoryDispatcher {
+    let market_class = declare("Market").unwrap_syscall().contract_class();
+    let factory_class = declare("MarketFactory").unwrap_syscall().contract_class();
+
+    let mut calldata = array![];
+    calldata.append(admin().into()); // owner
+    calldata.append((*market_class.class_hash).into());
+    calldata.append(yield_factory.into()); // yield_contract_factory for PT validation
 
     let (contract_address, _) = factory_class.deploy(@calldata).unwrap_syscall();
     IMarketFactoryDispatcher { contract_address }
@@ -923,4 +956,244 @@ fn test_market_factory_get_market_config_with_rate_impact_sensitivity() {
     assert(config.treasury == treasury(), 'Wrong treasury');
     assert(config.reserve_fee_percent == 15, 'Wrong reserve fee');
     assert(config.rate_impact_sensitivity == sensitivity, 'Wrong rate impact sensitivity');
+}
+
+// ============ Yield Contract Factory Validation Tests (Step 8) ============
+
+#[test]
+fn test_market_factory_yield_factory_constructor() {
+    let yield_factory = deploy_yield_factory();
+    let market_factory = deploy_market_factory_with_yield_factory(yield_factory.contract_address);
+
+    // Verify yield factory was set correctly
+    let stored_factory = market_factory.get_yield_contract_factory();
+    assert(stored_factory == yield_factory.contract_address, 'Yield factory should be set');
+}
+
+#[test]
+fn test_market_factory_yield_factory_zero_disables_validation() {
+    let factory = deploy_market_factory();
+
+    // With zero yield factory, PT validation is disabled
+    let yield_factory_addr = factory.get_yield_contract_factory();
+    assert(yield_factory_addr.is_zero(), 'Should be zero');
+}
+
+#[test]
+fn test_market_factory_yield_factory_create_market_with_valid_pt() {
+    start_cheat_block_timestamp_global(1000);
+
+    // Deploy yield factory
+    let yield_factory = deploy_yield_factory();
+
+    // Deploy underlying token stack
+    let (_, underlying) = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
+
+    // Create PT/YT via yield factory (makes PT valid)
+    let expiry = 1000 + 365 * 24 * 60 * 60;
+    let (pt_addr, _) = yield_factory.create_yield_contracts(sy.contract_address, expiry);
+    let pt = IPTDispatcher { contract_address: pt_addr };
+
+    // Verify PT is valid according to yield factory
+    assert(yield_factory.is_valid_pt(pt_addr), 'PT should be valid');
+
+    // Deploy market factory with yield factory reference
+    let market_factory = deploy_market_factory_with_yield_factory(yield_factory.contract_address);
+
+    // Create market should succeed for valid PT
+    let market_addr = market_factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            default_fee_rate(),
+            default_reserve_fee_percent(),
+            array![].span(),
+        );
+
+    assert(!market_addr.is_zero(), 'Market should be created');
+    assert(market_factory.is_valid_market(market_addr), 'Should be valid market');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid PT')]
+fn test_market_factory_yield_factory_reject_invalid_pt() {
+    start_cheat_block_timestamp_global(1000);
+
+    // Deploy yield factory
+    let yield_factory = deploy_yield_factory();
+
+    // Deploy underlying and SY without using yield factory
+    let (_, underlying) = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
+
+    // Deploy PT/YT directly (NOT via yield factory - so it won't be valid)
+    let expiry = 1000 + 365 * 24 * 60 * 60;
+    let yt = deploy_yt(sy.contract_address, expiry);
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Verify PT is NOT valid according to yield factory
+    assert(!yield_factory.is_valid_pt(pt.contract_address), 'PT should not be valid');
+
+    // Deploy market factory with yield factory reference
+    let market_factory = deploy_market_factory_with_yield_factory(yield_factory.contract_address);
+
+    // Create market should fail for invalid PT
+    market_factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            default_fee_rate(),
+            default_reserve_fee_percent(),
+            array![].span(),
+        );
+}
+
+#[test]
+fn test_market_factory_yield_factory_no_validation_when_zero() {
+    start_cheat_block_timestamp_global(1000);
+
+    // Deploy market factory WITHOUT yield factory (zero address)
+    let market_factory = deploy_market_factory();
+
+    // Confirm yield factory is zero
+    assert(market_factory.get_yield_contract_factory().is_zero(), 'Should be zero');
+
+    // Deploy PT/YT directly (not via any factory)
+    let (_, underlying) = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
+    let expiry = 1000 + 365 * 24 * 60 * 60;
+    let yt = deploy_yt(sy.contract_address, expiry);
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Create market should succeed even for "unvalidated" PT when no yield factory is set
+    let market_addr = market_factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            default_fee_rate(),
+            default_reserve_fee_percent(),
+            array![].span(),
+        );
+
+    assert(!market_addr.is_zero(), 'Market should be created');
+}
+
+#[test]
+fn test_market_factory_yield_factory_set_yield_contract_factory() {
+    let factory = deploy_market_factory();
+    let yield_factory = deploy_yield_factory();
+
+    // Initial yield factory should be zero
+    assert(factory.get_yield_contract_factory().is_zero(), 'Initial should be zero');
+
+    // Set yield factory as admin
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_yield_contract_factory(yield_factory.contract_address);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify yield factory was set
+    assert(
+        factory.get_yield_contract_factory() == yield_factory.contract_address,
+        'Yield factory should be set',
+    );
+}
+
+#[test]
+fn test_market_factory_yield_factory_clear_yield_contract_factory() {
+    let yield_factory = deploy_yield_factory();
+    let factory = deploy_market_factory_with_yield_factory(yield_factory.contract_address);
+
+    // Initial yield factory should be set
+    assert(!factory.get_yield_contract_factory().is_zero(), 'Should be set initially');
+
+    // Clear yield factory as admin (set to zero)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_yield_contract_factory(zero_address());
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify yield factory was cleared
+    assert(factory.get_yield_contract_factory().is_zero(), 'Should be cleared');
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_market_factory_yield_factory_set_unauthorized() {
+    let factory = deploy_market_factory();
+    let yield_factory = deploy_yield_factory();
+
+    // Try to set yield factory as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_yield_contract_factory(yield_factory.contract_address);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_market_factory_yield_factory_update_enables_validation() {
+    start_cheat_block_timestamp_global(1000);
+
+    // Deploy market factory WITHOUT yield factory initially
+    let market_factory = deploy_market_factory();
+
+    // Deploy yield factory
+    let yield_factory = deploy_yield_factory();
+
+    // Deploy PT/YT directly (not via yield factory)
+    let (_, underlying) = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
+    let expiry = 1000 + 365 * 24 * 60 * 60;
+    let yt = deploy_yt(sy.contract_address, expiry);
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Now set the yield factory on the market factory
+    start_cheat_caller_address(market_factory.contract_address, admin());
+    market_factory.set_yield_contract_factory(yield_factory.contract_address);
+    stop_cheat_caller_address(market_factory.contract_address);
+
+    // PT is not valid according to yield factory
+    assert(!yield_factory.is_valid_pt(pt.contract_address), 'PT should not be valid');
+
+    // Verify validation is now enabled
+    assert(
+        market_factory.get_yield_contract_factory() == yield_factory.contract_address,
+        'Validation should be enabled',
+    );
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid PT')]
+fn test_market_factory_yield_factory_update_then_reject_invalid_pt() {
+    start_cheat_block_timestamp_global(1000);
+
+    // Deploy market factory WITHOUT yield factory initially
+    let market_factory = deploy_market_factory();
+
+    // Deploy yield factory
+    let yield_factory = deploy_yield_factory();
+
+    // Deploy PT/YT directly (not via yield factory)
+    let (_, underlying) = deploy_yield_token_stack();
+    let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
+    let expiry = 1000 + 365 * 24 * 60 * 60;
+    let yt = deploy_yt(sy.contract_address, expiry);
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Now set the yield factory on the market factory
+    start_cheat_caller_address(market_factory.contract_address, admin());
+    market_factory.set_yield_contract_factory(yield_factory.contract_address);
+    stop_cheat_caller_address(market_factory.contract_address);
+
+    // Create market should fail because PT is not from yield factory
+    market_factory
+        .create_market(
+            pt.contract_address,
+            default_scalar_root(),
+            default_initial_anchor(),
+            default_fee_rate(),
+            default_reserve_fee_percent(),
+            array![].span(),
+        );
 }

@@ -794,7 +794,10 @@ fn test_factory_fee_rate_set_max_interest_fee() {
     stop_cheat_caller_address(factory.contract_address);
 
     // Verify max was set
-    assert(factory.get_default_interest_fee_rate() == MAX_INTEREST_FEE_RATE, 'Max interest fee not set');
+    assert(
+        factory.get_default_interest_fee_rate() == MAX_INTEREST_FEE_RATE,
+        'Max interest fee not set',
+    );
 }
 
 #[test]

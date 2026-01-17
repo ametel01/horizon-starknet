@@ -550,7 +550,12 @@ pub mod Factory {
             let old_divisor = self.expiry_divisor.read();
             self.expiry_divisor.write(divisor);
 
-            self.emit(ExpiryDivisorSet { old_expiry_divisor: old_divisor, new_expiry_divisor: divisor });
+            self
+                .emit(
+                    ExpiryDivisorSet {
+                        old_expiry_divisor: old_divisor, new_expiry_divisor: divisor,
+                    },
+                );
         }
     }
 }
