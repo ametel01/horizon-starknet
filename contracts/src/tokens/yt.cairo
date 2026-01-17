@@ -84,8 +84,7 @@ pub mod YT {
             from: ContractAddress,
             recipient: ContractAddress,
             amount: u256,
-        ) {
-            // No additional logic needed after update
+        ) { // No additional logic needed after update
         }
     }
 
@@ -1276,6 +1275,88 @@ pub mod YT {
             let amounts = self.reward_manager.claim_rewards(user);
             self.reentrancy_guard.end();
             amounts
+        }
+
+        /// Combined atomic claim of interest and rewards
+        /// Allows claiming both in a single transaction for gas efficiency
+        /// @param user Address to claim for
+        /// @param do_interest If true, claims accrued interest (SY)
+        /// @param do_rewards If true, claims accrued reward tokens
+        /// @return (interest_amount, reward_amounts) - interest in SY, rewards per token
+        fn redeem_due_interest_and_rewards(
+            ref self: ContractState, user: ContractAddress, do_interest: bool, do_rewards: bool,
+        ) -> (u256, Span<u256>) {
+            // Defense-in-depth: prevent reentrancy during external calls
+            self.reentrancy_guard.start();
+
+            let mut interest_out: u256 = 0;
+            let mut rewards_out: Span<u256> = array![].span();
+
+            // Claim interest if requested
+            if do_interest {
+                // Update global index and user's interest
+                self._update_py_index();
+                self._update_user_interest(user);
+
+                // Get user's YT balance before clearing interest
+                let yt_balance = self.erc20.ERC20_balances.read(user);
+
+                // Get and clear user's accrued interest
+                let interest = self.user_interest.read(user);
+                if interest > 0 {
+                    self.user_interest.write(user, 0);
+
+                    // Apply protocol fee
+                    let fee_rate = self.interest_fee_rate.read();
+                    let fee = wad_mul(interest, fee_rate);
+                    let user_interest = interest - fee;
+
+                    // Transfer net interest to user
+                    let sy_addr = self.sy.read();
+                    let sy = ISYDispatcher { contract_address: sy_addr };
+                    if user_interest > 0 {
+                        let success = sy.transfer(user, user_interest);
+                        assert(success, Errors::YT_INSUFFICIENT_SY);
+                    }
+
+                    // Transfer fee to treasury if applicable
+                    if fee > 0 {
+                        let treasury = self.treasury.read();
+                        if !treasury.is_zero() {
+                            let success = sy.transfer(treasury, fee);
+                            assert(success, Errors::YT_INSUFFICIENT_SY);
+                        }
+                    }
+
+                    // Reset sy_reserve to actual balance (Pendle-style)
+                    self.sy_reserve.write(sy.balance_of(get_contract_address()));
+
+                    self
+                        .emit(
+                            InterestClaimed {
+                                user,
+                                yt: get_contract_address(),
+                                expiry: self.expiry.read(),
+                                amount_sy: user_interest,
+                                sy: sy_addr,
+                                yt_balance,
+                                py_index_at_claim: self.py_index_stored.read(),
+                                exchange_rate: sy.exchange_rate(),
+                                timestamp: get_block_timestamp(),
+                            },
+                        );
+
+                    interest_out = user_interest;
+                }
+            }
+
+            // Claim rewards if requested
+            if do_rewards {
+                rewards_out = self.reward_manager.claim_rewards(user);
+            }
+
+            self.reentrancy_guard.end();
+            (interest_out, rewards_out)
         }
 
         /// Get all registered reward tokens

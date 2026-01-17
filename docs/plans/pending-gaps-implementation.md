@@ -1,7 +1,7 @@
 1. **Phase 1 (Factory Fee Infrastructure)** - COMPLETE
 2. **Phase 2 (Expiry Divisor)** - COMPLETE
 3. **Phase 3 (MarketFactory Yield Contract Factory)** - COMPLETE
-4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS (Steps 1-9 complete; Steps 10-14 pending)
+4. **Phase 4 (Multi-Reward YT Integration)** - IN PROGRESS (Steps 1-10 complete; Steps 11-14 pending)
 5. **Phase 5 (Router Dual Token Liquidity)** - NOT IMPLEMENTED
 6. **Phase 6 (YT Flash Mint)** - NOT IMPLEMENTED
 7. **Phase 7 (VERSION Constants)** - NOT IMPLEMENTED
@@ -680,7 +680,7 @@ cd contracts && scarb build 2>&1 | grep -E "(error)" | head -10 || echo "Build O
 
 ---
 
-### Step 10: Implement redeem_due_interest_and_rewards in YT
+### Step 10: Implement redeem_due_interest_and_rewards in YT **COMPLETE**
 
 #### Goal
 Add combined `redeem_due_interest_and_rewards(user, do_interest, do_rewards) -> (u256, Span<u256>)` for atomic claims.

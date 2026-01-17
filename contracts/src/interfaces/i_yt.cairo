@@ -95,6 +95,17 @@ pub trait IYT<TContractState> {
     /// @param user Address to claim rewards for
     /// @return Array of claimed amounts (one per reward token)
     fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
+
+    /// Combined atomic claim of interest and rewards
+    /// Allows claiming both in a single transaction for gas efficiency
+    /// @param user Address to claim for
+    /// @param do_interest If true, claims accrued interest (SY)
+    /// @param do_rewards If true, claims accrued reward tokens
+    /// @return (interest_amount, reward_amounts) - interest in SY, rewards per token
+    fn redeem_due_interest_and_rewards(
+        ref self: TContractState, user: ContractAddress, do_interest: bool, do_rewards: bool,
+    ) -> (u256, Span<u256>);
+
     /// Get all registered reward tokens
     /// @return Array of reward token addresses
     fn get_reward_tokens(self: @TContractState) -> Span<ContractAddress>;
