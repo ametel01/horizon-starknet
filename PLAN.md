@@ -461,7 +461,7 @@ grep -q "useRemoveLiquiditySingleToken" packages/frontend/src/features/liquidity
 
 ---
 
-### Step 19: Export token liquidity hooks
+### Step 19: Export token liquidity hooks **COMPLETE**
 
 #### Goal
 Export new token liquidity hooks from liquidity feature.
