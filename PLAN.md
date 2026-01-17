@@ -302,7 +302,7 @@ grep -q "useSwapTokenForPt" packages/frontend/src/features/swap/model/useTokenSw
 
 ---
 
-### Step 12: Create useSwapPtForToken hook
+### Step 12: Create useSwapPtForToken hook **COMPLETE**
 
 #### Goal
 Implement hook for swapping PT to any token via aggregator (PT -> SY -> underlying -> token).
