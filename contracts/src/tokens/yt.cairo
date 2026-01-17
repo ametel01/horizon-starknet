@@ -1620,6 +1620,9 @@ pub mod YT {
                 return;
             }
 
+            // Sync reward accounting before updating interest
+            self.reward_manager.update_user_rewards(user);
+
             let current_index = self.py_index_stored.read();
             let user_index = self.user_py_index.read(user);
             let yt_balance = self.erc20.ERC20_balances.read(user);
