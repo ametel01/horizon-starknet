@@ -78,6 +78,25 @@ Yes, but at market prices:
 
 The difference between expected and actual execution price. Set slippage tolerance in settings to protect against unfavorable price movements.
 
+### How do I set slippage tolerance?
+
+Slippage settings appear directly on swap and liquidity forms. Choose from preset options:
+
+| Setting | Tolerance | Use Case |
+|---------|-----------|----------|
+| **Low** | 0.1% | Stable conditions, may fail in volatile markets |
+| **Standard** | 0.5% | Recommended for most trades |
+| **Fast** | 1% | Higher execution chance, accepts more price movement |
+| **Auto** | Dynamic | Adjusts based on current market volatility |
+| **Custom** | 0.01–50% | Set any value for specific needs |
+
+**Recommendations:**
+- Start with **Standard (0.5%)** for most trades
+- Use **Auto** if available — it analyzes market conditions and adjusts automatically
+- Increase to **Fast (1%)** during volatile periods or for large trades
+- Lower slippage means better prices but higher failure risk
+- Higher slippage means more likely execution but worse prices
+
 ---
 
 ## Liquidity

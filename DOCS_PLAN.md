@@ -244,7 +244,7 @@ grep -q "Any Token\|token aggregator\|any supported token" packages/frontend/src
 
 ---
 
-## Phase 6: Update Provide Liquidity Guide
+## Phase 6: Update Provide Liquidity Guide **COMPLETE**
 
 Add dual-token liquidity operations documentation.
 
@@ -281,7 +281,7 @@ Add slippage configuration, error messages, fee explanations, and faucet expansi
 cd packages/frontend && bun run check
 ```
 
-### Step 12: Add slippage configuration FAQ
+### Step 12: Add slippage configuration FAQ **COMPLETE**
 
 #### Goal
 Add "How do I set slippage tolerance?" question explaining settings panel, recommended values.
