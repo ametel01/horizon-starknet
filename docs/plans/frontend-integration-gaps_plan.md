@@ -1,4 +1,4 @@
-## Phase 1: Shared Utility Foundation
+## Phase 1: Shared Utility Foundation **COMPLETE**
 
 Create shared utilities that will be used by all new hooks, reducing code duplication across the codebase.
 
@@ -56,7 +56,7 @@ Implement YT reward hooks following the established SY rewards pattern.
 cd packages/frontend && bun run check && bun run test
 ```
 
-### Step 3: Create useYTRewardTokens hook
+### Step 3: Create useYTRewardTokens hook **COMPLETE**
 
 #### Goal
 Fetch reward token addresses from YT contract, following useRewardTokens pattern.

@@ -34,3 +34,4 @@ export {
   useRewardSummary,
 } from './useRewardHistory';
 export { useRewardTokens } from './useRewardTokens';
+export { useYTRewardTokens } from './useYTRewardTokens';
