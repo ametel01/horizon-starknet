@@ -45,6 +45,9 @@ See [Maturity](#maturity).
 ### Fixed Yield
 A guaranteed return locked in at the time of purchase. Achieved by buying PT at a discount and holding to maturity. See [Earn Fixed Yield](/docs/guides/earn-fixed-yield).
 
+### Flash Mint
+An atomic operation that mints PT and YT from SY, uses them within the same transaction, and returns the required tokens. Enables capital-efficient arbitrage and complex DeFi strategies without upfront capital. See [Flash Mint Mechanics](/docs/mechanics/flash-mint).
+
 ---
 
 ## I
@@ -56,6 +59,9 @@ The difference between LP returns and simply holding the underlying assets. Occu
 The annualized return implied by the current PT price. See [Pricing](/docs/mechanics/pricing).
 
 <Formula display>{"\\text{Implied APY} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+
+### IFlashCallback
+A contract interface that must be implemented to use Flash Mint. The YT contract calls your callback function with the minted tokens, and you must return the required SY by the end of the transaction. See [Flash Mint Mechanics](/docs/mechanics/flash-mint).
 
 ---
 

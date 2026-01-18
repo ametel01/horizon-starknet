@@ -423,7 +423,7 @@ grep -q "Reward Tokens\|SYWithRewards" packages/frontend/src/app/docs/glossary/p
 
 ---
 
-### Step 19: Add Flash Mint and IFlashCallback terms
+### Step 19: Add Flash Mint and IFlashCallback terms **COMPLETE**
 
 #### Goal
 Add glossary entries for Flash Mint under F section and IFlashCallback under I section.
