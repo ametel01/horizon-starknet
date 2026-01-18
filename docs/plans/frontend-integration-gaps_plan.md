@@ -531,7 +531,7 @@ cd packages/frontend && bun run test
 
 ---
 
-### Step 24: Run E2E tests for reward claiming
+### Step 24: Run E2E tests for reward claiming **COMPLETE**
 
 #### Goal
 Verify end-to-end reward claiming flow works correctly.
