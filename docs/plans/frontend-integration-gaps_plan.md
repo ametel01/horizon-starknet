@@ -351,7 +351,7 @@ Replace local toBigInt in reward hooks with shared utility.
 
 ---
 
-### Step 16: Migrate features/yield to shared toBigInt
+### Step 16: Migrate features/yield to shared toBigInt **COMPLETE**
 
 #### Goal
 Replace local toBigInt in yield hooks with shared utility.

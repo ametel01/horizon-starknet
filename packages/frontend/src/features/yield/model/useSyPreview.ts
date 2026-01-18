@@ -1,9 +1,9 @@
 'use client';
 
 import { useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getSYContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 export type SyPreviewDirection = 'deposit' | 'redeem';
 
@@ -14,28 +14,6 @@ export interface SyPreviewResult {
   inputAmount: bigint;
   /** Direction of the preview (deposit or redeem) */
   direction: SyPreviewDirection;
-}
-
-/**
- * Convert various numeric return types to bigint.
- * Handles: bigint, number, Uint256 struct
- */
-function toBigInt(value: unknown): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return BigInt(value);
-  }
-  // Handle Uint256 struct with BigNumberish properties
-  if (value !== null && typeof value === 'object' && 'low' in value && 'high' in value) {
-    return uint256.uint256ToBN(value as { low: bigint; high: bigint });
-  }
-  // Fallback for string representation
-  if (typeof value === 'string') {
-    return BigInt(value);
-  }
-  return 0n;
 }
 
 /**

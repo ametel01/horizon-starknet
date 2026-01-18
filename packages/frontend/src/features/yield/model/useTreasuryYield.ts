@@ -1,34 +1,15 @@
 'use client';
 
 import { useStarknet } from '@features/wallet';
+import { toBigInt, toHexAddress } from '@shared/lib';
 import { formatWad, formatWadPercent } from '@shared/math';
 import { getYTContract } from '@shared/starknet/contracts';
 import { useQueries } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 import type { InterestFeeInfo } from './useInterestFee';
 import type { PostExpiryInfo } from './usePostExpiryStatus';
 
 const WAD = 10n ** 18n;
-
-/**
- * Convert various numeric return types to bigint.
- */
-function toBigInt(value: unknown): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return BigInt(value);
-  }
-  if (value !== null && typeof value === 'object' && 'low' in value && 'high' in value) {
-    return uint256.uint256ToBN(value as { low: bigint; high: bigint });
-  }
-  if (typeof value === 'string') {
-    return BigInt(value);
-  }
-  return 0n;
-}
 
 /**
  * Parse a Cairo boolean variant to a JavaScript boolean.
@@ -44,22 +25,6 @@ function toBool(value: unknown): boolean {
     }
   }
   return false;
-}
-
-/**
- * Convert a contract address to a hex string.
- */
-function toHexAddress(value: unknown): string {
-  if (typeof value === 'string') {
-    return value.startsWith('0x') ? value : `0x${value}`;
-  }
-  if (typeof value === 'bigint') {
-    return `0x${value.toString(16)}`;
-  }
-  if (typeof value === 'number') {
-    return `0x${value.toString(16)}`;
-  }
-  return '0x0';
 }
 
 /**
