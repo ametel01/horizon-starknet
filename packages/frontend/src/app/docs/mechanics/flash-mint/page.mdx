@@ -1,0 +1,230 @@
+import { DocsNavigation } from '@features/docs';
+import { Callout } from '@features/docs';
+import { Formula } from '@features/docs';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@features/docs';
+
+# Flash Mint
+
+Atomic PT+YT minting with callback for advanced integrators.
+
+---
+
+<Callout type="warning">
+**Advanced Feature** — Flash minting is designed for smart contract integrators only. It requires implementing a callback interface and understanding the atomic execution model. Regular users should use the standard Router functions.
+</Callout>
+
+---
+
+## Overview
+
+Flash minting allows you to mint PT and YT tokens **without providing SY upfront**. Instead, tokens are minted first, then your callback contract must repay the required SY before the transaction completes.
+
+This pattern enables atomic arbitrage, leveraged strategies, and complex multi-step operations that would otherwise require significant upfront capital.
+
+---
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     ATOMIC TRANSACTION                          │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Your Contract calls flash_mint_py(receiver, amount_sy)      │
+│                           │                                     │
+│                           ▼                                     │
+│  2. YT Contract mints PT + YT to receiver                       │
+│                           │                                     │
+│                           ▼                                     │
+│  3. YT Contract calls flash_callback(pt_amount, yt_amount)      │
+│                           │                                     │
+│                           ▼                                     │
+│  4. Your Contract executes strategy (arb, swap, etc.)           │
+│                           │                                     │
+│                           ▼                                     │
+│  5. Your Contract transfers amount_sy of SY to YT Contract      │
+│                           │                                     │
+│                           ▼                                     │
+│  6. YT Contract verifies repayment, reverts if insufficient     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Use Cases
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Strategy</TableHead>
+      <TableHead>Description</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>**Arbitrage**</TableCell>
+      <TableCell>Flash mint PT+YT, sell one token on external market if mispriced, use proceeds to repay SY</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Leveraged Yield**</TableCell>
+      <TableCell>Flash mint, sell PT for more SY, mint again, repeat to build leveraged YT position</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Atomic Liquidations**</TableCell>
+      <TableCell>Flash mint tokens needed to unwind a position atomically without upfront capital</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>**Complex Rebalancing**</TableCell>
+      <TableCell>Execute multi-step position changes in a single atomic transaction</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Callback Interface
+
+Your contract must implement the `IFlashCallback` interface:
+
+```cairo
+#[starknet::interface]
+pub trait IFlashCallback<TContractState> {
+    /// Called by YT contract during flash mint
+    /// Must transfer amount_sy of SY back to the YT contract
+    fn flash_callback(
+        ref self: TContractState,
+        pt_amount: u256,
+        yt_amount: u256,
+        data: Span<felt252>,
+    );
+}
+```
+
+### Parameters
+
+<Table>
+  <TableBody>
+    <TableRow>
+      <TableCell>`pt_amount`</TableCell>
+      <TableCell>Amount of PT tokens minted to your contract</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>`yt_amount`</TableCell>
+      <TableCell>Amount of YT tokens minted (equal to pt_amount)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>`data`</TableCell>
+      <TableCell>Arbitrary data you passed to `flash_mint_py`, useful for strategy parameters</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+---
+
+## Calling Flash Mint
+
+```cairo
+// On the YT contract
+fn flash_mint_py(
+    receiver: ContractAddress,  // Your callback contract
+    amount_sy: u256,            // Amount of SY you will repay
+    data: Span<felt252>,        // Passed to your callback
+) -> (u256, u256);              // Returns (pt_minted, yt_minted)
+```
+
+### Token Amounts
+
+The amount of PT and YT minted is calculated using the PY Index:
+
+<Formula display>{"\\text{Amount}_{PT} = \\text{Amount}_{YT} = \\text{amount\\_sy} \\times \\text{Index}_{PY}"}</Formula>
+
+---
+
+## Requirements
+
+<Callout type="info">
+**Repayment is mandatory.** The transaction reverts if your callback does not transfer sufficient SY back to the YT contract.
+</Callout>
+
+1. **Pre-expiry only** — Flash mint is disabled after market expiry
+2. **Non-zero amounts** — `amount_sy` must be greater than zero
+3. **Valid receiver** — Receiver address cannot be zero
+4. **Exact repayment** — Must transfer at least `amount_sy` of SY tokens to the YT contract
+5. **Implement callback** — Receiver must implement `IFlashCallback` interface
+
+---
+
+## Security Considerations
+
+<Callout type="warning">
+**Reentrancy Protection** — The YT contract uses a reentrancy guard. Your callback cannot call `flash_mint_py` again within the same transaction.
+</Callout>
+
+### For Integrators
+
+- **Verify caller** — Your callback should verify it's being called by the expected YT contract
+- **Handle failures** — If your strategy fails mid-callback, the entire transaction reverts
+- **Test thoroughly** — Flash operations are complex; test all edge cases on testnet first
+- **Gas estimation** — Flash mint operations consume more gas due to the callback pattern
+
+---
+
+## Example Implementation
+
+```cairo
+#[starknet::contract]
+mod ArbitrageBot {
+    use horizon::interfaces::i_flash_callback::IFlashCallback;
+    use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+    use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
+
+    #[storage]
+    struct Storage {
+        yt: ContractAddress,
+        sy: ContractAddress,
+    }
+
+    #[abi(embed_v0)]
+    impl FlashCallbackImpl of IFlashCallback<ContractState> {
+        fn flash_callback(
+            ref self: ContractState,
+            pt_amount: u256,
+            yt_amount: u256,
+            data: Span<felt252>,
+        ) {
+            let yt_addr = self.yt.read();
+            let sy_addr = self.sy.read();
+
+            // 1. Execute your strategy with the minted PT+YT
+            //    (sell tokens, arbitrage, etc.)
+
+            // 2. Ensure you have enough SY to repay
+            let sy = ISYDispatcher { contract_address: sy_addr };
+            let repay_amount = /* calculate based on your strategy */;
+
+            // 3. Transfer SY back to YT contract
+            sy.transfer(yt_addr, repay_amount);
+        }
+    }
+
+    #[external(v0)]
+    fn execute_flash_strategy(ref self: ContractState, amount_sy: u256) {
+        let yt = IYTDispatcher { contract_address: self.yt.read() };
+        let data: Array<felt252> = array![];
+
+        // Initiate flash mint - callback will be invoked
+        yt.flash_mint_py(
+            get_contract_address(),  // This contract receives tokens
+            amount_sy,
+            data.span(),
+        );
+    }
+}
+```
+
+---
+
+## Fee Structure
+
+Flash minting is currently **fee-less** (`fee_sy = 0`). This parameter is reserved for future protocol upgrades.
+
+<DocsNavigation />

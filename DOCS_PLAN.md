@@ -82,7 +82,7 @@ test -f packages/frontend/src/app/docs/guides/analytics/page.mdx && echo "OK"
 
 ---
 
-### Step 4: Create Flash Mint mechanics page
+### Step 4: Create Flash Mint mechanics page **COMPLETE**
 
 #### Goal
 Create flash minting documentation for advanced users/integrators explaining atomic PT+YT minting with callback.
