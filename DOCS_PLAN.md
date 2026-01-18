@@ -404,7 +404,7 @@ grep -q "Simple Mode\|Advanced Mode" packages/frontend/src/app/docs/glossary/pag
 
 ---
 
-### Step 18: Add Reward Tokens and SYWithRewards terms
+### Step 18: Add Reward Tokens and SYWithRewards terms **COMPLETE**
 
 #### Goal
 Add glossary entries for Reward Tokens under R section and SYWithRewards under S section.

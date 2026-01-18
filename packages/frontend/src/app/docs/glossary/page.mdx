@@ -102,6 +102,9 @@ The exchange rate used for minting and redemption. Always uses the maximum histo
 ### Redemption
 Converting PT back to underlying assets. After maturity: PT → underlying (1:1). Before maturity: PT + YT → SY. See [Redemption](/docs/mechanics/redemption).
 
+### Reward Tokens
+Additional tokens distributed to SY holders beyond the base yield. Some yield-bearing assets provide incentive rewards (e.g., protocol tokens, governance tokens) that are separate from the underlying yield. Only SY tokens that implement the SYWithRewards interface support reward token distribution.
+
 ---
 
 ## S
@@ -117,6 +120,9 @@ The current market price for immediate execution (before accounting for price im
 
 ### Standardized Yield (SY)
 A wrapper token that standardizes different yield-bearing assets for use in Horizon. SY can be split into PT + YT.
+
+### SYWithRewards
+An extended SY implementation that supports distributing reward tokens in addition to the base yield. SY tokens for assets like sSTRK use this interface to pass through staking rewards and other incentives to holders. See [Reward Tokens](#reward-tokens).
 
 ### Starknet
 An Ethereum Layer 2 network using ZK rollups. Horizon is deployed on Starknet.
