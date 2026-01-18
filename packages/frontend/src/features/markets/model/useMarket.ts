@@ -161,6 +161,21 @@ export function useMarketInfo(marketAddress: string | null): UseQueryResult<Mark
   });
 }
 
+// Contract MarketState struct shape from get_market_state()
+// Must match contracts/src/interfaces/i_market.cairo MarketState struct
+interface ContractMarketState {
+  sy_reserve: bigint | { low: bigint; high: bigint };
+  pt_reserve: bigint | { low: bigint; high: bigint };
+  total_lp: bigint | { low: bigint; high: bigint };
+  scalar_root: bigint | { low: bigint; high: bigint };
+  initial_anchor: bigint | { low: bigint; high: bigint };
+  ln_fee_rate_root: bigint | { low: bigint; high: bigint };
+  reserve_fee_percent: number | bigint;
+  expiry: number | bigint;
+  last_ln_implied_rate: bigint | { low: bigint; high: bigint };
+  py_index: bigint | { low: bigint; high: bigint };
+}
+
 export function useMarketState(
   marketAddress: string | null
 ): UseQueryResult<MarketState & { impliedApy: BigNumber }> {
@@ -175,28 +190,24 @@ export function useMarketState(
 
       const market = getMarketContract(marketAddress, provider);
 
-      const [reserves, totalLpSupply, lnRate, feesCollected, lnFeeRateRoot, reserveFeePercent] =
-        await Promise.all([
-          market.get_reserves(),
-          market.total_lp_supply(),
-          market.get_ln_implied_rate(),
-          market.get_total_fees_collected(),
-          market.get_ln_fee_rate_root(),
-          market.get_reserve_fee_percent(),
-        ]);
+      // Use get_market_state() to reduce 6 RPC calls to 3
+      const [contractState, lnRate, feesCollected] = await Promise.all([
+        market.get_market_state() as Promise<ContractMarketState>,
+        market.get_ln_implied_rate(),
+        market.get_total_fees_collected(),
+      ]);
 
-      const reservesArr = reserves as unknown[];
       const lnImpliedRate = toBigInt(lnRate as bigint | { low: bigint; high: bigint });
-      const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
+      const lnFeeRateRootValue = toBigInt(contractState.ln_fee_rate_root);
 
       return {
-        syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
-        ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
-        totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
+        syReserve: toBigInt(contractState.sy_reserve),
+        ptReserve: toBigInt(contractState.pt_reserve),
+        totalLpSupply: toBigInt(contractState.total_lp),
         lnImpliedRate,
         feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
         lnFeeRateRoot: lnFeeRateRootValue,
-        reserveFeePercent: Number(reserveFeePercent),
+        reserveFeePercent: Number(contractState.reserve_fee_percent),
         impliedApy: lnRateToApy(lnImpliedRate),
       };
     },

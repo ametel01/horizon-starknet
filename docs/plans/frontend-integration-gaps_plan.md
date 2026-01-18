@@ -185,7 +185,7 @@ grep -q "useCombinedClaimPreview" packages/frontend/src/features/yield/model/ind
 
 ---
 
-## Phase 4: Portfolio UI Integration
+## Phase 4: Portfolio UI Integration **COMPLETE**
 
 Integrate YT rewards into the portfolio rewards display.
 
@@ -242,7 +242,7 @@ Optimize RPC calls by using the consolidated get_market_state() method.
 cd packages/frontend && bun run check && bun run test
 ```
 
-### Step 11: Refactor useMarketState to use get_market_state
+### Step 11: Refactor useMarketState to use get_market_state **COMPLETE**
 
 #### Goal
 Replace 6 individual RPC calls with single get_market_state() call.
