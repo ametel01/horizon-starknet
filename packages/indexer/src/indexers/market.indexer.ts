@@ -15,6 +15,7 @@
  * - RewardsClaimed: LP rewards claimed by users
  * - RewardIndexUpdated: LP reward index updates (for APY calculation)
  * - RewardTokenAdded: New reward tokens added to market
+ * - Skim: Reserves reconciled with actual token balances
  */
 
 import {
@@ -36,6 +37,7 @@ import {
   marketRewardsClaimed,
   marketRewardTokenAdded,
   marketScalarRootUpdated,
+  marketSkim,
   marketSwap,
 } from "@/schema";
 import { getNetworkConfig } from "../lib/constants";
@@ -61,6 +63,7 @@ import {
   marketRewardsClaimedSchema,
   marketRewardTokenAddedSchema,
   marketScalarRootUpdatedSchema,
+  marketSkimSchema,
   marketSwapSchema,
   validateEvent,
 } from "../lib/validation";
@@ -81,6 +84,7 @@ const BURN_WITH_RECEIVERS = getSelector("BurnWithReceivers");
 const REWARDS_CLAIMED = getSelector("RewardsClaimed");
 const REWARD_INDEX_UPDATED = getSelector("RewardIndexUpdated");
 const REWARD_TOKEN_ADDED = getSelector("RewardTokenAdded");
+const SKIM = getSelector("Skim");
 
 const log = createIndexerLogger("market");
 
@@ -102,6 +106,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       marketRewardsClaimed,
       marketRewardIndexUpdated,
       marketRewardTokenAdded,
+      marketSkim,
     })
   );
 
@@ -127,6 +132,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: marketAddress, keys: [REWARDS_CLAIMED] },
       { address: marketAddress, keys: [REWARD_INDEX_UPDATED] },
       { address: marketAddress, keys: [REWARD_TOKEN_ADDED] },
+      { address: marketAddress, keys: [SKIM] },
     ]
   );
 
@@ -173,6 +179,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           { address: marketAddress, keys: [REWARDS_CLAIMED] },
           { address: marketAddress, keys: [REWARD_INDEX_UPDATED] },
           { address: marketAddress, keys: [REWARD_TOKEN_ADDED] },
+          { address: marketAddress, keys: [SKIM] },
         ];
       });
 
@@ -208,6 +215,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       type RewardsClaimedRow = typeof marketRewardsClaimed.$inferInsert;
       type RewardIndexUpdatedRow = typeof marketRewardIndexUpdated.$inferInsert;
       type RewardTokenAddedRow = typeof marketRewardTokenAdded.$inferInsert;
+      type SkimRow = typeof marketSkim.$inferInsert;
 
       const mintRows: MintRow[] = [];
       const burnRows: BurnRow[] = [];
@@ -220,6 +228,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const rewardsClaimedRows: RewardsClaimedRow[] = [];
       const rewardIndexUpdatedRows: RewardIndexUpdatedRow[] = [];
       const rewardTokenAddedRows: RewardTokenAddedRow[] = [];
+      const skimRows: SkimRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -719,6 +728,44 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               token_index: tokenIndex,
               event_timestamp: eventTimestamp,
             });
+          } else if (matchSelector(eventKey, SKIM)) {
+            // Validate event structure
+            const validated = validateEvent(marketSkimSchema, event, {
+              indexer: "market",
+              eventName: "Skim",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // Skim: keys = [selector, market, caller]
+            // data = [sy_excess(u256), pt_excess(u256), sy_reserve_after(u256), pt_reserve_after(u256), timestamp]
+            // Note: market is from event.address since the market emits the event from itself
+            const caller = validated.keys[2] ?? "";
+
+            const data = validated.data;
+            const syExcess = readU256(data, 0, "sy_excess");
+            const ptExcess = readU256(data, 2, "pt_excess");
+            const syReserveAfter = readU256(data, 4, "sy_reserve_after");
+            const ptReserveAfter = readU256(data, 6, "pt_reserve_after");
+            const eventTimestamp = Number(BigInt(data[8] ?? "0"));
+
+            skimRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              market: marketAddress,
+              caller,
+              sy_excess: syExcess,
+              pt_excess: ptExcess,
+              sy_reserve_after: syReserveAfter,
+              pt_reserve_after: ptReserveAfter,
+              event_timestamp: eventTimestamp,
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -813,6 +860,9 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(rewardTokenAddedRows)
               .onConflictDoNothing();
           }
+          if (skimRows.length > 0) {
+            await tx.insert(marketSkim).values(skimRows).onConflictDoNothing();
+          }
         });
       });
 
@@ -828,7 +878,8 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         reserveFeeRows.length +
         rewardsClaimedRows.length +
         rewardIndexUpdatedRows.length +
-        rewardTokenAddedRows.length;
+        rewardTokenAddedRows.length +
+        skimRows.length;
       recordEvents("market", successCount, errorCount);
       recordBlock("market", blockNumber);
 

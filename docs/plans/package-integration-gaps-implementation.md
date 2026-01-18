@@ -298,7 +298,7 @@ grep -q "marketSkimSchema" packages/indexer/src/lib/validation.ts && echo "OK"
 
 ---
 
-### Step 13: Add Market Skim selector, filter, and transform logic
+### Step 13: Add Market Skim selector, filter, and transform logic **COMPLETE**
 
 #### Goal
 Complete Market indexer Skim integration.
