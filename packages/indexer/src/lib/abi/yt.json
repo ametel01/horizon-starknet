@@ -15,6 +15,92 @@
   },
   {
     "type": "event",
+    "name": "horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "reward_token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "reward_token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "old_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "rewards_added",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total_supply",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "reward_token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "index",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
     "name": "horizon::tokens::yt::YT::MintPY",
     "kind": "struct",
     "members": [
@@ -588,6 +674,48 @@
       {
         "name": "block_number",
         "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::tokens::yt::YT::FlashMintPY",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "receiver",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "amount_py",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "fee_sy",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "sy",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "pt",
+        "type": "core::starknet::contract_address::ContractAddress",
         "kind": "data"
       },
       {

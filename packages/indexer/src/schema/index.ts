@@ -6,7 +6,7 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 45 event tables across 6 contracts
+ * Total: 50 event tables across 6 contracts
  * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
  */
 
@@ -25,7 +25,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 // ============================================================
-// FACTORY EVENTS (2 tables)
+// FACTORY EVENTS (7 tables)
+// 2 core + 5 admin event tables
 // ============================================================
 
 export const factoryYieldContractsCreated = pgTable(
@@ -79,6 +80,131 @@ export const factoryClassHashesUpdated = pgTable(
   },
   (table) => [
     uniqueIndex("factory_chu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factoryRewardFeeRateSet = pgTable(
+  "factory_reward_fee_rate_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_fee_rate: numeric("old_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    new_fee_rate: numeric("new_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_rfrs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factoryDefaultInterestFeeRateSet = pgTable(
+  "factory_default_interest_fee_rate_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_fee_rate: numeric("old_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    new_fee_rate: numeric("new_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_difrs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factoryExpiryDivisorSet = pgTable(
+  "factory_expiry_divisor_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_expiry_divisor: bigint("old_expiry_divisor", {
+      mode: "number",
+    }).notNull(),
+    new_expiry_divisor: bigint("new_expiry_divisor", {
+      mode: "number",
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_eds_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factorySYWithRewardsDeployed = pgTable(
+  "factory_sy_with_rewards_deployed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed field (key)
+    sy: text("sy").notNull(),
+    // Event data
+    name: text("name").notNull(),
+    symbol: text("symbol").notNull(),
+    underlying: text("underlying").notNull(),
+    deployer: text("deployer").notNull(),
+    timestamp_field: bigint("timestamp_field", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("factory_sywrd_sy_idx").on(table.sy),
+    index("factory_sywrd_underlying_idx").on(table.underlying),
+    index("factory_sywrd_deployer_idx").on(table.deployer),
+    uniqueIndex("factory_sywrd_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factorySYWithRewardsClassHashUpdated = pgTable(
+  "factory_sy_with_rewards_class_hash_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_class_hash: text("old_class_hash").notNull(),
+    new_class_hash: text("new_class_hash").notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_swrchu_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index

@@ -43,6 +43,52 @@ export const MARKET_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'horizon::interfaces::i_market::MarketState',
+    members: [
+      {
+        name: 'sy_reserve',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'pt_reserve',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'total_lp',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'scalar_root',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'initial_anchor',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'ln_fee_rate_root',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'reserve_fee_percent',
+        type: 'core::integer::u8',
+      },
+      {
+        name: 'expiry',
+        type: 'core::integer::u64',
+      },
+      {
+        name: 'last_ln_implied_rate',
+        type: 'core::integer::u256',
+      },
+      {
+        name: 'py_index',
+        type: 'core::integer::u256',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_market::IMarket',
     items: [
@@ -310,6 +356,17 @@ export const MARKET_ABI = [
         outputs: [
           {
             type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_market_state',
+        inputs: [],
+        outputs: [
+          {
+            type: 'horizon::interfaces::i_market::MarketState',
           },
         ],
         state_mutability: 'view',

@@ -202,5 +202,22 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::YieldContractFactoryUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_factory",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_factory",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
   }
 ]

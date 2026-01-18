@@ -51,6 +51,36 @@ export const YT_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::integer::u256>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::integer::u256>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
+    type: 'struct',
+    name: 'core::array::Span::<core::felt252>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::felt252>',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_yt::IYT',
     items: [
@@ -469,6 +499,57 @@ export const YT_ABI = [
       },
       {
         type: 'function',
+        name: 'claim_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::integer::u256>',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'redeem_due_interest_and_rewards',
+        inputs: [
+          {
+            name: 'user',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'do_interest',
+            type: 'core::bool',
+          },
+          {
+            name: 'do_rewards',
+            type: 'core::bool',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::array::Span::<core::integer::u256>)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_reward_tokens',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
         name: 'treasury',
         inputs: [],
         outputs: [
@@ -532,6 +613,30 @@ export const YT_ABI = [
           },
         ],
         state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'flash_mint_py',
+        inputs: [
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'amount_sy',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'data',
+            type: 'core::array::Span::<core::felt252>',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
       },
     ],
   },
@@ -776,6 +881,10 @@ export const YT_ABI = [
       {
         name: 'decimals',
         type: 'core::integer::u8',
+      },
+      {
+        name: 'reward_tokens',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
       },
     ],
   },
@@ -1063,6 +1172,114 @@ export const YT_ABI = [
     name: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
     kind: 'enum',
     variants: [],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
+    kind: 'struct',
+    members: [
+      {
+        name: 'user',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'amount',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'old_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_index',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'rewards_added',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'total_supply',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded',
+    kind: 'struct',
+    members: [
+      {
+        name: 'reward_token',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'index',
+        type: 'core::integer::u32',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::reward_manager_component::RewardManagerComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'RewardsClaimed',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardsClaimed',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardIndexUpdated',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardIndexUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardTokenAdded',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::RewardTokenAdded',
+        kind: 'nested',
+      },
+    ],
   },
   {
     type: 'event',
@@ -1650,6 +1867,48 @@ export const YT_ABI = [
   },
   {
     type: 'event',
+    name: 'horizon::tokens::yt::YT::FlashMintPY',
+    kind: 'struct',
+    members: [
+      {
+        name: 'caller',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'receiver',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'amount_py',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'fee_sy',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'pt',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
     name: 'horizon::tokens::yt::YT::Event',
     kind: 'enum',
     variants: [
@@ -1681,6 +1940,11 @@ export const YT_ABI = [
       {
         name: 'ReentrancyGuardEvent',
         type: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
+        kind: 'flat',
+      },
+      {
+        name: 'RewardManagerEvent',
+        type: 'horizon::components::reward_manager_component::RewardManagerComponent::Event',
         kind: 'flat',
       },
       {
@@ -1741,6 +2005,11 @@ export const YT_ABI = [
       {
         name: 'PyIndexUpdated',
         type: 'horizon::tokens::yt::YT::PyIndexUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'FlashMintPY',
+        type: 'horizon::tokens::yt::YT::FlashMintPY',
         kind: 'nested',
       },
     ],

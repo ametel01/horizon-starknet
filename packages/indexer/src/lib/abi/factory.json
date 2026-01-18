@@ -158,5 +158,56 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::RewardFeeRateSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::DefaultInterestFeeRateSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::ExpiryDivisorSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_expiry_divisor",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "new_expiry_divisor",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
   }
 ]

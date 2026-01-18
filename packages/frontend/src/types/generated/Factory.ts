@@ -28,6 +28,16 @@ export const FACTORY_ABI = [
     interface_name: 'horizon::interfaces::i_factory::IFactory',
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
     type: 'enum',
     name: 'core::bool',
     variants: [
@@ -75,11 +85,15 @@ export const FACTORY_ABI = [
   },
   {
     type: 'struct',
-    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    name: 'core::integer::u256',
     members: [
       {
-        name: 'snapshot',
-        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+        name: 'low',
+        type: 'core::integer::u128',
+      },
+      {
+        name: 'high',
+        type: 'core::integer::u128',
       },
     ],
   },
@@ -98,6 +112,30 @@ export const FACTORY_ABI = [
           {
             name: 'expiry',
             type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::starknet::contract_address::ContractAddress, core::starknet::contract_address::ContractAddress)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'create_yield_contracts_with_rewards',
+        inputs: [
+          {
+            name: 'sy',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'expiry',
+            type: 'core::integer::u64',
+          },
+          {
+            name: 'reward_tokens',
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
           },
         ],
         outputs: [
@@ -342,6 +380,75 @@ export const FACTORY_ABI = [
         outputs: [],
         state_mutability: 'external',
       },
+      {
+        type: 'function',
+        name: 'get_reward_fee_rate',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_reward_fee_rate',
+        inputs: [
+          {
+            name: 'rate',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_default_interest_fee_rate',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_default_interest_fee_rate',
+        inputs: [
+          {
+            name: 'rate',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'get_expiry_divisor',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u64',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_expiry_divisor',
+        inputs: [
+          {
+            name: 'divisor',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
     ],
   },
   {
@@ -503,20 +610,6 @@ export const FACTORY_ABI = [
     ],
   },
   {
-    type: 'struct',
-    name: 'core::integer::u256',
-    members: [
-      {
-        name: 'low',
-        type: 'core::integer::u128',
-      },
-      {
-        name: 'high',
-        type: 'core::integer::u128',
-      },
-    ],
-  },
-  {
     type: 'event',
     name: 'horizon::factory::Factory::YieldContractsCreated',
     kind: 'struct',
@@ -640,6 +733,57 @@ export const FACTORY_ABI = [
       {
         name: 'new_class_hash',
         type: 'core::starknet::class_hash::ClassHash',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::factory::Factory::RewardFeeRateSet',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_fee_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_fee_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::factory::Factory::DefaultInterestFeeRateSet',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_fee_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'new_fee_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::factory::Factory::ExpiryDivisorSet',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_expiry_divisor',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+      {
+        name: 'new_expiry_divisor',
+        type: 'core::integer::u64',
         kind: 'data',
       },
     ],
@@ -868,6 +1012,21 @@ export const FACTORY_ABI = [
       {
         name: 'SYWithRewardsClassHashUpdated',
         type: 'horizon::factory::Factory::SYWithRewardsClassHashUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'RewardFeeRateSet',
+        type: 'horizon::factory::Factory::RewardFeeRateSet',
+        kind: 'nested',
+      },
+      {
+        name: 'DefaultInterestFeeRateSet',
+        type: 'horizon::factory::Factory::DefaultInterestFeeRateSet',
+        kind: 'nested',
+      },
+      {
+        name: 'ExpiryDivisorSet',
+        type: 'horizon::factory::Factory::ExpiryDivisorSet',
         kind: 'nested',
       },
       {

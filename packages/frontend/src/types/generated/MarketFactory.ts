@@ -376,6 +376,29 @@ export const MARKETFACTORY_ABI = [
         outputs: [],
         state_mutability: 'external',
       },
+      {
+        type: 'function',
+        name: 'get_yield_contract_factory',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'set_yield_contract_factory',
+        inputs: [
+          {
+            name: 'factory',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [],
+        state_mutability: 'external',
+      },
     ],
   },
   {
@@ -525,6 +548,10 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'market_class_hash',
         type: 'core::starknet::class_hash::ClassHash',
+      },
+      {
+        name: 'yield_contract_factory',
+        type: 'core::starknet::contract_address::ContractAddress',
       },
     ],
   },
@@ -714,6 +741,23 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'new_sensitivity',
         type: 'core::integer::u256',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::market::market_factory::MarketFactory::YieldContractFactoryUpdated',
+    kind: 'struct',
+    members: [
+      {
+        name: 'old_factory',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'data',
+      },
+      {
+        name: 'new_factory',
+        type: 'core::starknet::contract_address::ContractAddress',
         kind: 'data',
       },
     ],
@@ -952,6 +996,11 @@ export const MARKETFACTORY_ABI = [
       {
         name: 'DefaultRateImpactSensitivityUpdated',
         type: 'horizon::market::market_factory::MarketFactory::DefaultRateImpactSensitivityUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'YieldContractFactoryUpdated',
+        type: 'horizon::market::market_factory::MarketFactory::YieldContractFactoryUpdated',
         kind: 'nested',
       },
       {

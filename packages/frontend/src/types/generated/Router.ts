@@ -1086,6 +1086,34 @@ export const ROUTER_ABI = [
       },
       {
         type: 'function',
+        name: 'swap_tokens_to_tokens',
+        inputs: [
+          {
+            name: 'input',
+            type: 'horizon::interfaces::i_router::TokenInput',
+          },
+          {
+            name: 'output',
+            type: 'horizon::interfaces::i_router::TokenOutput',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
         name: 'add_liquidity_single_token',
         inputs: [
           {
@@ -1138,6 +1166,78 @@ export const ROUTER_ABI = [
           },
           {
             name: 'min_yt_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: '(core::integer::u256, core::integer::u256)',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'add_liquidity_dual_token_and_pt',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'input',
+            type: 'horizon::interfaces::i_router::TokenInput',
+          },
+          {
+            name: 'pt_amount',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_lp_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'deadline',
+            type: 'core::integer::u64',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'external',
+      },
+      {
+        type: 'function',
+        name: 'remove_liquidity_dual_token_and_pt',
+        inputs: [
+          {
+            name: 'market',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'receiver',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'lp_to_burn',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'output',
+            type: 'horizon::interfaces::i_router::TokenOutput',
+          },
+          {
+            name: 'min_pt_out',
             type: 'core::integer::u256',
           },
           {
