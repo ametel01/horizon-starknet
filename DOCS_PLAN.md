@@ -272,7 +272,7 @@ grep -q "Any Token\|dual-token\|router converts" packages/frontend/src/app/docs/
 
 ---
 
-## Phase 7: Expand FAQ Page
+## Phase 7: Expand FAQ Page **COMPLETE**
 
 Add slippage configuration, error messages, fee explanations, and faucet expansion.
 
@@ -385,7 +385,7 @@ Add new terms for v2.0 features and undocumented concepts.
 cd packages/frontend && bun run check
 ```
 
-### Step 17: Add Simple Mode and Advanced Mode terms
+### Step 17: Add Simple Mode and Advanced Mode terms **COMPLETE**
 
 #### Goal
 Add glossary entries for Simple Mode and Advanced Mode under S and A sections.
