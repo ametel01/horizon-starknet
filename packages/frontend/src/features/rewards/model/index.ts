@@ -16,6 +16,11 @@ export {
 export { useClaimAllMarketRewards, useMarketClaimRewards } from './useMarketClaimRewards';
 export { useMarketRewardTokens } from './useMarketRewardTokens';
 export { type PortfolioRewards, type SyRewards, usePortfolioRewards } from './usePortfolioRewards';
+export {
+  type PortfolioYTRewards,
+  usePortfolioYTRewards,
+  type YTRewards,
+} from './usePortfolioYTRewards';
 // Indexed reward APY calculation
 export {
   type RewardApyData,

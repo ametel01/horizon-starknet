@@ -136,7 +136,7 @@ grep -q "useClaimAllYTRewards" packages/frontend/src/features/rewards/model/inde
 
 ---
 
-## Phase 3: Combined Interest and Rewards Claim
+## Phase 3: Combined Interest and Rewards Claim **COMPLETE**
 
 Implement the combined claim feature using YT.redeem_due_interest_and_rewards.
 
@@ -194,7 +194,7 @@ Integrate YT rewards into the portfolio rewards display.
 cd packages/frontend && bun run check
 ```
 
-### Step 9: Create usePortfolioYTRewards aggregation hook
+### Step 9: Create usePortfolioYTRewards aggregation hook **COMPLETE**
 
 #### Goal
 Aggregate YT rewards across all user YT positions, following usePortfolioRewards pattern.
