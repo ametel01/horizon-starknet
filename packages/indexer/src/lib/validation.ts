@@ -139,7 +139,7 @@ export const factorySYWithRewardsClassHashUpdatedSchema =
   });
 
 // ============================================================
-// MARKET FACTORY EVENTS (5 schemas)
+// MARKET FACTORY EVENTS (7 schemas)
 // ============================================================
 
 /**
@@ -207,6 +207,35 @@ export const marketFactoryOverrideFeeSetSchema = baseEventSchema.extend({
     .array(z.string())
     .min(2, "OverrideFeeSet requires at least 2 data elements"),
 });
+
+/**
+ * MarketFactory.DefaultRateImpactSensitivityUpdated event
+ * keys: [selector]
+ * data: [old_sensitivity(u256), new_sensitivity(u256)]
+ */
+export const marketFactoryDefaultRateImpactSensitivityUpdatedSchema =
+  baseEventSchema.extend({
+    keys: z.array(z.string()).min(1),
+    data: z
+      .array(z.string())
+      .min(
+        4,
+        "DefaultRateImpactSensitivityUpdated requires at least 4 data elements"
+      ),
+  });
+
+/**
+ * MarketFactory.YieldContractFactoryUpdated event
+ * keys: [selector]
+ * data: [old_factory, new_factory]
+ */
+export const marketFactoryYieldContractFactoryUpdatedSchema =
+  baseEventSchema.extend({
+    keys: z.array(z.string()).min(1),
+    data: z
+      .array(z.string())
+      .min(2, "YieldContractFactoryUpdated requires at least 2 data elements"),
+  });
 
 // ============================================================
 // SY EVENTS (3 core + 6 Phase 4 monitoring schemas)
@@ -856,6 +885,9 @@ export const eventSchemas = {
   TreasuryUpdated: marketFactoryTreasuryUpdatedSchema,
   DefaultReserveFeeUpdated: marketFactoryDefaultReserveFeeUpdatedSchema,
   OverrideFeeSet: marketFactoryOverrideFeeSetSchema,
+  DefaultRateImpactSensitivityUpdated:
+    marketFactoryDefaultRateImpactSensitivityUpdatedSchema,
+  YieldContractFactoryUpdated: marketFactoryYieldContractFactoryUpdatedSchema,
 
   // SY (core)
   Deposit: syDepositSchema,

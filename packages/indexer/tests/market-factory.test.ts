@@ -2,7 +2,8 @@
  * MarketFactory Indexer Unit Test
  *
  * Tests the transform logic for MarketCreated, MarketClassHashUpdated,
- * TreasuryUpdated, DefaultReserveFeeUpdated, and OverrideFeeSet events
+ * TreasuryUpdated, DefaultReserveFeeUpdated, OverrideFeeSet,
+ * DefaultRateImpactSensitivityUpdated, and YieldContractFactoryUpdated events
  */
 
 import { hash } from "starknet";
@@ -20,6 +21,12 @@ const DEFAULT_RESERVE_FEE_UPDATED = hash.getSelectorFromName(
   "DefaultReserveFeeUpdated"
 );
 const OVERRIDE_FEE_SET = hash.getSelectorFromName("OverrideFeeSet");
+const DEFAULT_RATE_IMPACT_SENSITIVITY_UPDATED = hash.getSelectorFromName(
+  "DefaultRateImpactSensitivityUpdated"
+);
+const YIELD_CONTRACT_FACTORY_UPDATED = hash.getSelectorFromName(
+  "YieldContractFactoryUpdated"
+);
 
 // Shared event context type
 interface EventContext {
@@ -118,13 +125,35 @@ function handleOverrideFeeSet(ctx: EventContext) {
   };
 }
 
+function handleDefaultRateImpactSensitivityUpdated(ctx: EventContext) {
+  const { data } = ctx;
+  return {
+    event_type: "DefaultRateImpactSensitivityUpdated" as const,
+    ...baseFields(ctx),
+    old_sensitivity: readU256(data, 0),
+    new_sensitivity: readU256(data, 2),
+  };
+}
+
+function handleYieldContractFactoryUpdated(ctx: EventContext) {
+  const { data } = ctx;
+  return {
+    event_type: "YieldContractFactoryUpdated" as const,
+    ...baseFields(ctx),
+    old_factory: data[0] ?? "",
+    new_factory: data[1] ?? "",
+  };
+}
+
 // Handler return types
 type MarketFactoryEventResult =
   | ReturnType<typeof handleMarketCreated>
   | ReturnType<typeof handleMarketClassHashUpdated>
   | ReturnType<typeof handleTreasuryUpdated>
   | ReturnType<typeof handleDefaultReserveFeeUpdated>
-  | ReturnType<typeof handleOverrideFeeSet>;
+  | ReturnType<typeof handleOverrideFeeSet>
+  | ReturnType<typeof handleDefaultRateImpactSensitivityUpdated>
+  | ReturnType<typeof handleYieldContractFactoryUpdated>;
 
 // Dispatch table: [selector, handler] pairs
 const EVENT_HANDLERS: [
@@ -136,6 +165,11 @@ const EVENT_HANDLERS: [
   [TREASURY_UPDATED, handleTreasuryUpdated],
   [DEFAULT_RESERVE_FEE_UPDATED, handleDefaultReserveFeeUpdated],
   [OVERRIDE_FEE_SET, handleOverrideFeeSet],
+  [
+    DEFAULT_RATE_IMPACT_SENSITIVITY_UPDATED,
+    handleDefaultRateImpactSensitivityUpdated,
+  ],
+  [YIELD_CONTRACT_FACTORY_UPDATED, handleYieldContractFactoryUpdated],
 ];
 
 // Transform function using dispatch table
@@ -294,6 +328,53 @@ describe("MarketFactory Indexer", () => {
       router: "0xrouter_address",
       market: "0xmarket_address",
       ln_fee_rate_root: "100000000",
+    });
+  });
+
+  it("should transform DefaultRateImpactSensitivityUpdated event", () => {
+    const event = {
+      keys: [DEFAULT_RATE_IMPACT_SENSITIVITY_UPDATED],
+      data: [
+        "0xde0b6b3a7640000", // old_sensitivity low (1e18)
+        "0x0", // old_sensitivity high
+        "0x1bc16d674ec80000", // new_sensitivity low (2e18)
+        "0x0", // new_sensitivity high
+      ],
+      transactionHash: "0xsensitivity123",
+      blockNumber: 4643600,
+      blockTimestamp: "1234568100",
+    };
+
+    const result = transformMarketFactoryEvent(event);
+
+    expect(result).toEqual({
+      event_type: "DefaultRateImpactSensitivityUpdated",
+      block_number: 4643600,
+      block_timestamp: "1234568100",
+      transaction_hash: "0xsensitivity123",
+      old_sensitivity: "1000000000000000000",
+      new_sensitivity: "2000000000000000000",
+    });
+  });
+
+  it("should transform YieldContractFactoryUpdated event", () => {
+    const event = {
+      keys: [YIELD_CONTRACT_FACTORY_UPDATED],
+      data: ["0xold_factory_address", "0xnew_factory_address"],
+      transactionHash: "0xfactory123",
+      blockNumber: 4643650,
+      blockTimestamp: "1234568150",
+    };
+
+    const result = transformMarketFactoryEvent(event);
+
+    expect(result).toEqual({
+      event_type: "YieldContractFactoryUpdated",
+      block_number: 4643650,
+      block_timestamp: "1234568150",
+      transaction_hash: "0xfactory123",
+      old_factory: "0xold_factory_address",
+      new_factory: "0xnew_factory_address",
     });
   });
 

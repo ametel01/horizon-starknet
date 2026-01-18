@@ -145,7 +145,7 @@ grep -q "marketFactoryDefaultRateImpactSensitivityUpdated" packages/indexer/src/
 
 ---
 
-### Step 6: Add MarketFactory validation schemas for new events
+### Step 6: Add MarketFactory validation schemas for new events **COMPLETE**
 
 #### Goal
 Create Zod validation schemas for the 2 new MarketFactory events.
