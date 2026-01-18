@@ -39,9 +39,13 @@ import type { TxStatusValue } from '../lib/positionCardLogic';
 
 interface YieldAnalyticsSectionProps {
   syAddresses: string[];
+  ytAddresses: string[];
 }
 
-export function YieldAnalyticsSection({ syAddresses }: YieldAnalyticsSectionProps): ReactNode {
+export function YieldAnalyticsSection({
+  syAddresses,
+  ytAddresses,
+}: YieldAnalyticsSectionProps): ReactNode {
   return (
     <section className="space-y-4">
       <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
@@ -51,7 +55,7 @@ export function YieldAnalyticsSection({ syAddresses }: YieldAnalyticsSectionProp
         <YieldEarnedCard />
         <YieldByPosition />
       </div>
-      <PortfolioRewardsCard syAddresses={syAddresses} />
+      <PortfolioRewardsCard syAddresses={syAddresses} ytAddresses={ytAddresses} />
       <YtCashflowChart />
       <YieldHistory limit={10} />
     </section>

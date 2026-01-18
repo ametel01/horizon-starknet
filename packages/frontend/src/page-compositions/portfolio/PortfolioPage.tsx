@@ -547,6 +547,11 @@ function PortfolioContent(): ReactNode {
     return markets.map((m) => m.syAddress);
   }, [markets]);
 
+  // Collect YT addresses from positions for YT rewards lookup
+  const ytAddresses = useMemo(() => {
+    return markets.map((m) => m.ytAddress);
+  }, [markets]);
+
   // Simple mode renders SimplePortfolio
   if (isSimple) {
     return <SimplePortfolio markets={markets} />;
@@ -555,12 +560,12 @@ function PortfolioContent(): ReactNode {
   const handleClaimAll = (): void => {
     if (!portfolio) return;
 
-    const ytAddresses = portfolio.positions
+    const claimableYtAddresses = portfolio.positions
       .filter((p) => p.claimableYield > BigInt(0))
       .map((p) => p.market.ytAddress);
 
-    if (ytAddresses.length > 0) {
-      claimAllYield({ ytAddresses });
+    if (claimableYtAddresses.length > 0) {
+      claimAllYield({ ytAddresses: claimableYtAddresses });
     }
   };
 
@@ -647,7 +652,7 @@ function PortfolioContent(): ReactNode {
         {renderPositionCards()}
       </section>
 
-      <YieldAnalyticsSection syAddresses={syAddresses} />
+      <YieldAnalyticsSection syAddresses={syAddresses} ytAddresses={ytAddresses} />
       <LpAnalyticsSection
         activeLpPositions={activeLpPositions}
         poolReservesByMarket={poolReservesByMarket}

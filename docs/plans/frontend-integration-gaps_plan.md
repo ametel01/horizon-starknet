@@ -214,7 +214,7 @@ grep -q "usePortfolioYTRewards" packages/frontend/src/features/rewards/model/ind
 
 ---
 
-### Step 10: Add YT rewards section to PortfolioRewardsCard
+### Step 10: Add YT rewards section to PortfolioRewardsCard **COMPLETE**
 
 #### Goal
 Display YT rewards alongside existing SY rewards in portfolio view.
