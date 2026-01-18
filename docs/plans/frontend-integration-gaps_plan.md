@@ -47,7 +47,7 @@ grep -q "parseReserves" packages/frontend/src/shared/lib/abi-helpers.ts && echo 
 
 ---
 
-## Phase 2: YT Reward Infrastructure
+## Phase 2: YT Reward Infrastructure **COMPLETE**
 
 Implement YT reward hooks following the established SY rewards pattern.
 
@@ -76,7 +76,7 @@ grep -q "useYTRewardTokens" packages/frontend/src/features/rewards/model/index.t
 
 ---
 
-### Step 4: Create useYTAccruedRewards hook **COMPLETE** (partial - contract interface limitation)
+### Step 4: Create useYTAccruedRewards hook **COMPLETE**
 
 #### Goal
 Fetch accrued YT rewards for connected user, following useMarketAccruedRewards pattern.
@@ -93,13 +93,6 @@ grep -q "useYTAccruedRewards" packages/frontend/src/features/rewards/model/index
 #### Failure modes
 - Contract may return empty arrays for non-reward YTs
 - Amount array ordering may not match token array ordering
-
-#### Known Limitation
-The IYT interface (`contracts/src/interfaces/i_yt.cairo`) does not expose `accrued_rewards`.
-The hook currently returns zeros for all reward amounts. To fix:
-1. Add `fn accrued_rewards(self: @TContractState, user: ContractAddress) -> Span<u256>;` to IYT trait
-2. Add corresponding implementation in `contracts/src/tokens/yt.cairo` (already exists internally)
-3. Regenerate ABIs with `bun run codegen` in frontend package
 
 ---
 
@@ -152,7 +145,7 @@ Implement the combined claim feature using YT.redeem_due_interest_and_rewards.
 cd packages/frontend && bun run check && bun run test
 ```
 
-### Step 7: Create useClaimInterestAndRewards hook
+### Step 7: Create useClaimInterestAndRewards hook **COMPLETE**
 
 #### Goal
 Create mutation hook for combined interest + rewards claim in single transaction.

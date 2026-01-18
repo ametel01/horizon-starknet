@@ -3,6 +3,10 @@
 export * from './useApyBreakdown';
 export * from './useClaimGasCheck';
 // YT Interest system hooks
+export {
+  useClaimAllInterestAndRewards,
+  useClaimInterestAndRewards,
+} from './useClaimInterestAndRewards';
 export * from './useInterestFee';
 export * from './useNegativeYieldAlerts';
 export * from './usePostExpiryStatus';
