@@ -6,7 +6,7 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 50 event tables across 6 contracts
+ * Total: 52 event tables across 6 contracts
  * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
  */
 
@@ -213,8 +213,8 @@ export const factorySYWithRewardsClassHashUpdated = pgTable(
 );
 
 // ============================================================
-// MARKET FACTORY EVENTS (5 tables)
-// 2 core + 3 AMM fee management tables
+// MARKET FACTORY EVENTS (7 tables)
+// 2 core + 3 AMM fee management + 2 admin tables
 // ============================================================
 
 export const marketFactoryMarketCreated = pgTable(
@@ -343,6 +343,52 @@ export const marketFactoryOverrideFeeSet = pgTable(
     index("mf_ofs_router_idx").on(table.router),
     index("mf_ofs_market_idx").on(table.market),
     uniqueIndex("mf_ofs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryDefaultRateImpactSensitivityUpdated = pgTable(
+  "market_factory_default_rate_impact_sensitivity_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_sensitivity: numeric("old_sensitivity", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    new_sensitivity: numeric("new_sensitivity", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_drisu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryYieldContractFactoryUpdated = pgTable(
+  "market_factory_yield_contract_factory_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_factory: text("old_factory").notNull(),
+    new_factory: text("new_factory").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_ycfu_event_key").on(
       table.block_number,
       table.transaction_hash,
       table.event_index

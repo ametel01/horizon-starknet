@@ -30,7 +30,7 @@ The document says:
 
 Now let me produce the corrected document with accurate line numbers and details:
 
-## Phase 1: Factory Indexer Event Integration
+## Phase 1: Factory Indexer Event Integration **COMPLETE**
 
 Add 5 missing Factory events to the indexer: SYWithRewardsDeployed, SYWithRewardsClassHashUpdated, RewardFeeRateSet, DefaultInterestFeeRateSet, ExpiryDivisorSet.
 
@@ -107,7 +107,7 @@ Implement event parsing and row insertion for 5 new Factory events in the transf
 
 #### Validation
 ```bash
-grep -q "rewardFeeRateRows" packages/indexer/src/indexers/factory.indexer.ts && grep -q "syWithRewardsDeployedRows" packages/indexer/src/indexers/factory.indexer.ts && echo "OK"
+grep -q "rewardFeeRateSetRows" packages/indexer/src/indexers/factory.indexer.ts && grep -q "syWithRewardsDeployedRows" packages/indexer/src/indexers/factory.indexer.ts && echo "OK"
 ```
 
 #### Failure modes
@@ -126,7 +126,7 @@ Add 2 missing MarketFactory events: DefaultRateImpactSensitivityUpdated, YieldCo
 cd packages/indexer && bun run check
 ```
 
-### Step 5: Add MarketFactory schema tables for new events
+### Step 5: Add MarketFactory schema tables for new events **COMPLETE**
 
 #### Goal
 Create 2 new pgTable definitions for MarketFactory admin events.
