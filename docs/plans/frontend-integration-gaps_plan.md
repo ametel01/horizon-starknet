@@ -465,7 +465,7 @@ Replace hardcoded lpRewards = 0 with actual reward data from useYTAccruedRewards
 
 ---
 
-### Step 21: Wire historical claim data in useEnhancedPositions
+### Step 21: Wire historical claim data in useEnhancedPositions **COMPLETE**
 
 #### Goal
 Replace TODO placeholders for claimed, fees, and realizedSy with indexed data.
