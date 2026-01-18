@@ -284,6 +284,64 @@ Unlike YT yield which requires manual claiming, LP trading fees auto-compound in
 
 ---
 
+## Unwrapping SY
+
+SY (Standardized Yield) tokens are wrappers around yield-bearing assets. Unwrapping converts your SY tokens back to the underlying asset.
+
+### When You Have SY Tokens
+
+You'll have SY tokens after:
+
+- **Early redemption** — Combining PT + YT before maturity returns SY
+- **Selling PT or YT** — Swapping on the market returns SY
+- **Removing LP liquidity** — Withdrawing from pools returns SY (plus PT)
+- **Direct minting** — Depositing underlying assets gives you SY
+
+### To Unwrap SY
+
+1. Go to **Portfolio**
+2. Find your SY balance
+3. Click **Unwrap**
+4. Enter the amount to unwrap (or click Max)
+5. Confirm transaction
+
+You receive the underlying yield-bearing asset (e.g., sSTRK, nstSTRK) directly to your wallet.
+
+<Callout type="info">
+Unwrapping is a 1:1 conversion — each SY token unwraps to exactly one share of the underlying yield-bearing asset.
+</Callout>
+
+### SY vs Underlying
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Hold SY</TableHead>
+      <TableHead>Unwrap to Underlying</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Ready to mint PT + YT</TableCell>
+      <TableCell>Use in other protocols</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Stays in Horizon ecosystem</TableCell>
+      <TableCell>Exit Horizon completely</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>No unwrap gas cost</TableCell>
+      <TableCell>Requires transaction</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+<Callout type="info">
+If you plan to re-enter a position or mint new PT + YT, keeping SY avoids extra wrap/unwrap transactions.
+</Callout>
+
+---
+
 ## Tips
 
 - Set calendar reminders for maturity dates

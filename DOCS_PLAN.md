@@ -197,7 +197,7 @@ grep -q "LP Position\|pool share\|auto-compound" packages/frontend/src/app/docs/
 
 ---
 
-### Step 9: Add Unwrap SY section
+### Step 9: Add Unwrap SY section **COMPLETE**
 
 #### Goal
 Document the unwrap SY functionality for converting SY tokens back to underlying assets.
