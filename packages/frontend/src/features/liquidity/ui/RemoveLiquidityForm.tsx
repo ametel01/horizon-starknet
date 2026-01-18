@@ -13,6 +13,7 @@ import {
 } from '@features/liquidity';
 import { TokenInput } from '@features/mint';
 import { useTokenBalance } from '@features/portfolio';
+import { SLIPPAGE_OPTIONS } from '@features/tx-settings';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { useEstimateFee } from '@shared/hooks';
@@ -38,12 +39,6 @@ interface RemoveLiquidityFormProps {
   market: MarketData;
   className?: string;
 }
-
-const SLIPPAGE_OPTIONS = [
-  { label: '0.1%', value: 10 },
-  { label: '0.5%', value: 50 },
-  { label: '1%', value: 100 },
-];
 
 const PERCENTAGE_OPTIONS = [
   { label: '25%', value: 25 },
@@ -662,7 +657,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
               variant="outline"
               size="sm"
             >
-              {option.label}
+              {option.percent}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>

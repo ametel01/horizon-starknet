@@ -399,7 +399,7 @@ cd packages/frontend && bun run check
 
 ---
 
-### Step 18: Remove duplicate SLIPPAGE_OPTIONS from liquidity forms
+### Step 18: Remove duplicate SLIPPAGE_OPTIONS from liquidity forms **COMPLETE**
 
 #### Goal
 Use existing SLIPPAGE_OPTIONS from tx-settings context in liquidity forms.
