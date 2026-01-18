@@ -15,7 +15,7 @@ Add new documentation pages to the navigation structure before creating them.
 cd packages/frontend && bun run check
 ```
 
-### Step 1: Add Analytics link to sidebar navigation **COMPLETE**
+### Step 1: Add Analytics link to sidebar navigation
 
 #### Goal
 Add Analytics page to the Guides section in DocsSidebar.tsx navigation array.
@@ -34,7 +34,7 @@ grep -q "Analytics.*guides/analytics" packages/frontend/src/features/docs/ui/Doc
 
 ---
 
-### Step 2: Add Flash Mint link to sidebar navigation
+### Step 2: Add Flash Mint link to sidebar navigation **COMPLETE**
 
 #### Goal
 Add Flash Mint page to the Mechanics section for advanced/developer documentation.

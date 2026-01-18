@@ -46,6 +46,7 @@ const navigation: NavItem[] = [
       { title: 'Pricing', href: '/docs/mechanics/pricing' },
       { title: 'APY Calculation', href: '/docs/mechanics/apy-calculation' },
       { title: 'Redemption', href: '/docs/mechanics/redemption' },
+      { title: 'Flash Mint', href: '/docs/mechanics/flash-mint' },
     ],
   },
   {
