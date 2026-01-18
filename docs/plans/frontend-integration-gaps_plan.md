@@ -437,7 +437,7 @@ Use existing SLIPPAGE_OPTIONS from tx-settings context in swap form.
 
 ---
 
-## Phase 7: APY and Portfolio Data Integration
+## Phase 7: APY and Portfolio Data Integration **COMPLETE**
 
 Wire up real data for TODO placeholders in APY and portfolio calculations.
 
@@ -493,7 +493,7 @@ Run full test suite and verify all features work correctly.
 cd packages/frontend && bun run check && bun run test && bun run test:e2e --project=chromium
 ```
 
-### Step 22: Run type checking and linting
+### Step 22: Run type checking and linting **COMPLETE**
 
 #### Goal
 Ensure all changes pass TypeScript type checking and ESLint rules.

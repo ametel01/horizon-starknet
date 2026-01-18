@@ -15,7 +15,6 @@ import {
   useSwap,
   useSwapPreview,
 } from '@features/swap';
-import { SLIPPAGE_OPTIONS } from '@features/tx-settings';
 import {
   buildSwapCalls,
   calculateSwapQuote,
@@ -36,6 +35,7 @@ import { PriceImpactMeter } from '@features/swap/ui/PriceImpactMeter';
 import { SwapDetails } from '@features/swap/ui/SwapDetails';
 import { TransactionProgress } from '@features/swap/ui/TransactionProgress';
 import { YtCollateralWarning } from '@features/swap/ui/YtCollateralWarning';
+import { SLIPPAGE_OPTIONS } from '@features/tx-settings';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses, getMarketParams } from '@shared/config/addresses';
 import { useEstimateFee } from '@shared/hooks';

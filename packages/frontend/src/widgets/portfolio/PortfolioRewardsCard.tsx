@@ -37,11 +37,7 @@ interface PortfolioRewardsCardProps {
 /**
  * Display a single reward token with its accrued amount
  */
-function RewardTokenDisplay({
-  reward,
-}: {
-  reward: AccruedReward | YTAccruedReward;
-}): ReactNode {
+function RewardTokenDisplay({ reward }: { reward: AccruedReward | YTAccruedReward }): ReactNode {
   const { data: tokenInfo, isLoading } = useTokenInfo(reward.tokenAddress);
 
   if (isLoading) {
