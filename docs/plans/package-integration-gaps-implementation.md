@@ -78,7 +78,7 @@ grep -q "factoryRewardFeeRateSetSchema" packages/indexer/src/lib/validation.ts &
 
 ---
 
-### Step 3: Add Factory event selectors and filters
+### Step 3: Add Factory event selectors and filters **COMPLETE**
 
 #### Goal
 Add event selectors for 5 new events and include them in the filter configuration.
