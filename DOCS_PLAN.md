@@ -53,7 +53,7 @@ grep -q "Flash Mint.*mechanics/flash-mint" packages/frontend/src/features/docs/u
 
 ---
 
-## Phase 2: Create New Documentation Pages
+## Phase 2: Create New Documentation Pages **COMPLETE**
 
 Create the two new documentation pages identified as P0 priority.
 
@@ -102,7 +102,7 @@ test -f packages/frontend/src/app/docs/mechanics/flash-mint/page.mdx && echo "OK
 
 ---
 
-## Phase 3: Update Getting Started Page
+## Phase 3: Update Getting Started Page **COMPLETE**
 
 Add Simple vs Advanced mode documentation to the Getting Started page.
 
@@ -111,7 +111,7 @@ Add Simple vs Advanced mode documentation to the Getting Started page.
 cd packages/frontend && bun run check
 ```
 
-### Step 5: Add Simple vs Advanced Mode section to Getting Started
+### Step 5: Add Simple vs Advanced Mode section to Getting Started **COMPLETE**
 
 #### Goal
 Add new section after "Before You Begin" explaining Simple Mode (default) vs Advanced Mode, feature differences, and how to toggle.
