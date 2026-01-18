@@ -165,7 +165,7 @@ grep -q "useClaimInterestAndRewards" packages/frontend/src/features/yield/model/
 
 ---
 
-### Step 8: Create useCombinedClaimPreview hook
+### Step 8: Create useCombinedClaimPreview hook **COMPLETE**
 
 #### Goal
 Create preview hook showing combined interest + rewards with gas estimate.

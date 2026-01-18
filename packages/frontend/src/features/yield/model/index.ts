@@ -1,6 +1,7 @@
 // Yield feature model
 
 export * from './useApyBreakdown';
+export { useCombinedClaimPreview, type CombinedClaimPreview } from './useCombinedClaimPreview';
 export * from './useClaimGasCheck';
 // YT Interest system hooks
 export {
