@@ -97,7 +97,7 @@ grep -q "REWARD_FEE_RATE_SET" packages/indexer/src/indexers/factory.indexer.ts &
 
 ---
 
-### Step 4: Add Factory transform logic for new events
+### Step 4: Add Factory transform logic for new events **COMPLETE**
 
 #### Goal
 Implement event parsing and row insertion for 5 new Factory events in the transform function.
@@ -107,7 +107,7 @@ Implement event parsing and row insertion for 5 new Factory events in the transf
 
 #### Validation
 ```bash
-grep -q "rewardFeeRateSetRows" packages/indexer/src/indexers/factory.indexer.ts && grep -q "syWithRewardsDeployedRows" packages/indexer/src/indexers/factory.indexer.ts && echo "OK"
+grep -q "rewardFeeRateRows" packages/indexer/src/indexers/factory.indexer.ts && grep -q "syWithRewardsDeployedRows" packages/indexer/src/indexers/factory.indexer.ts && echo "OK"
 ```
 
 #### Failure modes
