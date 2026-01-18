@@ -96,6 +96,63 @@ You receive PT + SY back in the current pool ratio.
 
 ---
 
+## Adding Liquidity with Any Token
+
+<Callout type="info">
+This feature requires **Advanced mode**. Enable it in Settings before proceeding.
+</Callout>
+
+Instead of providing PT + SY directly, you can add liquidity using any supported token plus PT. The router converts your token to SY automatically via the aggregator.
+
+### How It Works
+
+1. Go to **Pools** and select a pool
+2. Toggle **Any Token** mode
+3. Select your input token (e.g., USDC, ETH)
+4. Enter the token amount and PT amount
+5. Review the conversion rate and LP tokens you'll receive
+6. Confirm the transaction
+
+### Flow
+
+```
+Your Token → aggregator → underlying → wrap → SY
+                    SY + PT → LP tokens
+```
+
+<Callout type="warning">
+The conversion rate from your token to SY depends on aggregator liquidity. Large amounts may experience price impact. Always review the quote before confirming.
+</Callout>
+
+---
+
+## Removing Liquidity to Any Token
+
+You can withdraw your LP position and receive any supported token plus PT, rather than SY + PT.
+
+### How It Works
+
+1. Go to **Pools** and click your active position
+2. Toggle **Any Token** mode
+3. Select your desired output token
+4. Enter the LP amount to withdraw
+5. Review the amounts you'll receive (token + PT)
+6. Confirm the transaction
+
+### Flow
+
+```
+LP tokens → burn → SY + PT
+             SY → redeem → underlying → aggregator → Your Token
+             PT → returned directly
+```
+
+<Callout type="warning">
+The conversion rate from underlying to your output token depends on aggregator liquidity. This may differ from the rate when you added liquidity.
+</Callout>
+
+---
+
 ## Impermanent Loss
 
 <Callout type="warning">

@@ -253,7 +253,7 @@ Add dual-token liquidity operations documentation.
 cd packages/frontend && bun run check
 ```
 
-### Step 11: Add Dual-Token Liquidity section
+### Step 11: Add Dual-Token Liquidity section **COMPLETE**
 
 #### Goal
 Document add_liquidity_dual_token_and_pt and remove_liquidity_dual_token_and_pt router functions.
