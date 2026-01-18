@@ -1,12 +1,32 @@
 # Frontend Integration Gaps - Research Findings
 
 **Date:** 2025-01-18
-**Status:** Research Complete
+**Status:** Implementation Complete - Documentation Updates Pending
 **Scope:** Analyze frontend changes required after indexer event integration
 
 ## Executive Summary
 
-The frontend at `packages/frontend` has not been updated to leverage some contract capabilities. This document identifies **4 missing features**, **5 improvements**, and **3 fixes** required to fully integrate with the contracts.
+The frontend implementation plan (`frontend-integration-gaps_plan.md`) has been **fully completed** with all 8 phases marked as done. This document now tracks **documentation updates** required to reflect the newly implemented features.
+
+### Implementation Status
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Shared Utility Foundation | ✅ COMPLETE |
+| Phase 2 | YT Reward Infrastructure | ✅ COMPLETE |
+| Phase 3 | Combined Interest and Rewards Claim | ✅ COMPLETE |
+| Phase 4 | Portfolio UI Integration | ✅ COMPLETE |
+| Phase 5 | Market State Consolidation | ✅ COMPLETE |
+| Phase 6 | Code Quality Improvements | ✅ COMPLETE |
+| Phase 7 | APY and Portfolio Data Integration | ✅ COMPLETE |
+| Phase 8 | Final Verification | ✅ COMPLETE |
+
+### Remaining Work
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Documentation Updates | 6 | User-facing docs need updates for new features |
+| Missing Features | 2 | Optional advanced features not yet implemented |
 
 ---
 
@@ -26,9 +46,11 @@ The frontend at `packages/frontend` has not been updated to leverage some contra
 
 ---
 
-## Part 1: Missing New Features
+## Part 1: Implemented Features (COMPLETE)
 
-### Feature 1: YT Reward Claiming (HIGH PRIORITY)
+The following features have been implemented as part of the implementation plan.
+
+### Feature 1: YT Reward Claiming ✅ COMPLETE
 
 **Contract Method:** `YT.claim_rewards(user: ContractAddress) -> Span<u256>`
 **Location in ABI:** `packages/frontend/src/types/generated/YT.ts:502`
@@ -36,7 +58,7 @@ The frontend at `packages/frontend` has not been updated to leverage some contra
 **Current State:**
 - SY rewards: Fully implemented (`useAccruedRewards`, `useClaimRewards`)
 - Market LP rewards: Fully implemented (`useMarketAccruedRewards`, `useMarketClaimRewards`)
-- **YT rewards: NOT IMPLEMENTED**
+- **YT rewards: Fully implemented** (`useYTAccruedRewards`, `useYTClaimRewards`, `useYTRewardTokens`)
 
 **Evidence:**
 ```
@@ -95,15 +117,15 @@ src/features/rewards/model/
 
 ---
 
-### Feature 2: Combined Interest + Rewards Claim (HIGH PRIORITY)
+### Feature 2: Combined Interest + Rewards Claim ✅ COMPLETE
 
 **Contract Method:** `YT.redeem_due_interest_and_rewards(user, do_interest, do_rewards) -> (u256, Span<u256>)`
 **Location in ABI:** `packages/frontend/src/types/generated/YT.ts:518`
 
 **Current State:**
 - Interest claiming: Implemented via `useClaimYield()` in `src/features/yield/model/useYield.ts` using `redeem_due_interest()`
-- Rewards claiming: NOT IMPLEMENTED (see Feature 1)
-- Combined: NOT IMPLEMENTED
+- Rewards claiming: Fully implemented (see Feature 1)
+- Combined: Fully implemented via `useClaimInterestAndRewards()`
 
 **Business Value:**
 Users currently need separate transactions to claim interest and rewards. A single call:
@@ -140,7 +162,7 @@ Users currently need separate transactions to claim interest and rewards. A sing
 
 ---
 
-### Feature 3: Dual Token + PT Liquidity (MEDIUM PRIORITY)
+### Feature 3: Dual Token + PT Liquidity (OPTIONAL - NOT IMPLEMENTED)
 
 **Contract Methods:**
 - `Router.add_liquidity_dual_token_and_pt(market, receiver, input, pt_amount, min_lp_out, deadline)`
@@ -200,7 +222,7 @@ Users who hold both an arbitrary token AND PT tokens can add liquidity more effi
 
 ---
 
-### Feature 4: Token-to-Token Swap (LOW PRIORITY)
+### Feature 4: Token-to-Token Swap (OPTIONAL - NOT IMPLEMENTED)
 
 **Contract Method:** `Router.swap_tokens_to_tokens(input, output, receiver, deadline) -> u256`
 **Location in ABI:** `packages/frontend/src/types/generated/Router.ts:1089`
@@ -220,9 +242,11 @@ Swap any token to any other token without going through protocol tokens. Example
 
 ---
 
-## Part 2: Improvements
+## Part 2: Improvements (COMPLETE)
 
-### Improvement 1: Consolidate SLIPPAGE_OPTIONS Constant
+All improvements have been implemented.
+
+### Improvement 1: Consolidate SLIPPAGE_OPTIONS Constant ✅ COMPLETE
 
 **Issue:** Duplicate constant definition
 
@@ -258,7 +282,7 @@ export const SLIPPAGE_OPTIONS = [
 
 ---
 
-### Improvement 2: Unified Rewards Dashboard
+### Improvement 2: Unified Rewards Dashboard ✅ COMPLETE
 
 **Issue:** Rewards are fragmented across different sources without unified view
 
@@ -282,7 +306,7 @@ Create unified rewards view showing:
 
 ---
 
-### Improvement 3: Type-Safe ABI Response Helper
+### Improvement 3: Type-Safe ABI Response Helper ✅ COMPLETE
 
 **Issue:** Repeated `as unknown[]` assertions for ABI responses
 
@@ -318,7 +342,7 @@ export function parseUint256Array(data: unknown): bigint[] {
 
 ---
 
-### Improvement 4: Consolidated toBigInt Helper
+### Improvement 4: Consolidated toBigInt Helper ✅ COMPLETE
 
 **Issue:** `toBigInt()` helper duplicated across 21 files
 
@@ -350,7 +374,7 @@ export function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint 
 
 ---
 
-### Improvement 5: Market State Consolidation (MEDIUM PRIORITY)
+### Improvement 5: Market State Consolidation ✅ COMPLETE
 
 **Contract Method:** `Market.get_market_state() -> MarketState`
 **Location in ABI:** `packages/frontend/src/types/generated/Market.ts:365`
@@ -395,9 +419,11 @@ The `useMarketState` hook at lines 164-209 makes **6 separate RPC calls**.
 
 ---
 
-## Part 3: Fixes
+## Part 3: Fixes (COMPLETE)
 
-### Fix 1: Complete TODO Items in APY Breakdown
+All fixes have been implemented.
+
+### Fix 1: Complete TODO Items in APY Breakdown ✅ COMPLETE
 
 **Location:** `src/shared/math/apy-breakdown.ts:50,60`
 ```typescript
@@ -414,7 +440,7 @@ rewardsApr: 0, // TODO: Add reward tracking
 
 ---
 
-### Fix 2: Portfolio Position TODOs
+### Fix 2: Portfolio Position TODOs ✅ COMPLETE
 
 **Location:** `src/features/portfolio/model/useEnhancedPositions.ts:115,122,127`
 ```typescript
@@ -433,7 +459,7 @@ realizedSy: 0n, // TODO: Track realized P&L
 
 ---
 
-### Fix 3: Regenerate Types After Contract Changes
+### Fix 3: Regenerate Types After Contract Changes ✅ COMPLETE
 
 **Issue:** Types may be stale if contracts were rebuilt
 
@@ -453,7 +479,171 @@ grep -q "add_liquidity_dual_token_and_pt" src/types/generated/Router.ts && echo 
 
 ---
 
-## Implementation Priority Matrix
+## Part 4: Documentation Updates (PENDING)
+
+The following user-facing documentation pages need updates to reflect the newly implemented features.
+
+### Doc Update 1: guides/manage-positions/page.mdx
+
+**File:** `packages/frontend/src/app/docs/guides/manage-positions/page.mdx`
+
+**Current State:**
+- Documents "Claiming Yield" section (lines 48-61) - only mentions interest claiming
+- No mention of external rewards from YT tokens
+
+**Required Updates:**
+1. Add "Claiming YT Rewards" subsection explaining:
+   - YT tokens can accumulate external reward tokens (governance tokens, incentives)
+   - Rewards are separate from interest (yield from underlying)
+   - How to view and claim rewards in Portfolio
+2. Add "Combined Claim" subsection explaining:
+   - Single-transaction claiming of both interest AND rewards
+   - Gas savings benefit
+3. Update Portfolio Overview table to include "Claimable Rewards" row
+
+**Suggested Content:**
+```mdx
+### Claiming YT Rewards
+
+In addition to yield from the underlying asset, YT tokens may accumulate **external rewards** such as governance tokens or protocol incentives.
+
+#### To View Rewards
+1. Go to **Portfolio**
+2. Look for the **YT Rewards** section
+3. View claimable amounts per reward token
+
+#### To Claim Rewards
+1. Click **Claim Rewards** in the YT Rewards section
+2. Confirm transaction
+
+<Callout type="tip">
+Use **Claim All** to claim both interest and rewards in a single transaction, saving gas.
+</Callout>
+```
+
+---
+
+### Doc Update 2: mechanics/redemption/page.mdx
+
+**File:** `packages/frontend/src/app/docs/mechanics/redemption/page.mdx`
+
+**Current State:**
+- Documents "YT Yield Collection" (lines 148-156)
+- Only mentions yield (interest), not external rewards
+
+**Required Updates:**
+1. Add note that YT may also accumulate external rewards
+2. Link to rewards documentation
+
+**Suggested Addition (after line 156):**
+```mdx
+<Callout type="info">
+YT tokens may also accumulate **external rewards** (governance tokens, incentives) separate from yield. See [Manage Positions](/docs/guides/manage-positions) for claiming rewards.
+</Callout>
+```
+
+---
+
+### Doc Update 3: how-it-works/yield-tokens/page.mdx
+
+**File:** `packages/frontend/src/app/docs/how-it-works/yield-tokens/page.mdx`
+
+**Current State:**
+- YT section (lines 48-79) mentions collecting "ongoing yield"
+- No mention of potential external rewards
+
+**Required Updates:**
+1. Add row to YT properties table for "External Rewards"
+2. Add note about reward capability
+
+**Suggested Addition to YT table:**
+```mdx
+<TableRow>
+  <TableCell>External Rewards</TableCell>
+  <TableCell>May receive protocol incentives</TableCell>
+</TableRow>
+```
+
+---
+
+### Doc Update 4: faq/page.mdx
+
+**File:** `packages/frontend/src/app/docs/faq/page.mdx`
+
+**Current State:**
+- No FAQ about YT rewards
+
+**Required Updates:**
+Add new FAQ entry in "Tokens" section:
+
+```mdx
+### Can YT earn rewards besides yield?
+
+Yes. Some YT tokens may accumulate **external rewards** such as governance tokens or protocol incentives. These are separate from the yield generated by the underlying asset. Check the Portfolio page for claimable rewards.
+```
+
+---
+
+### Doc Update 5: glossary/page.mdx
+
+**File:** `packages/frontend/src/app/docs/glossary/page.mdx`
+
+**Current State:**
+- No entry for "External Rewards" or "Reward Tokens"
+
+**Required Updates:**
+Add glossary entry in "E" section:
+
+```mdx
+### External Rewards
+Additional token rewards (governance tokens, incentives) that accrue to SY, YT, or LP position holders. These are separate from yield generated by the underlying asset and must be claimed separately.
+```
+
+---
+
+### Doc Update 6: guides/provide-liquidity/page.mdx
+
+**File:** `packages/frontend/src/app/docs/guides/provide-liquidity/page.mdx`
+
+**Current State:**
+- "Your Returns" section (lines 59-83) lists swap fees, underlying yield, PT appreciation
+- No mention of LP reward tokens
+
+**Required Updates:**
+1. Add row to returns table for "External Rewards"
+2. Note that rewards are claimed separately
+
+**Suggested Addition to table:**
+```mdx
+<TableRow>
+  <TableCell>External rewards</TableCell>
+  <TableCell>Protocol incentives (if available)</TableCell>
+</TableRow>
+```
+
+**Add note after table:**
+```mdx
+<Callout type="info">
+External rewards (if any) must be claimed separately from the Portfolio page.
+</Callout>
+```
+
+---
+
+## Documentation Priority Matrix
+
+| Doc Update | File | Priority | Complexity |
+|------------|------|----------|------------|
+| Manage Positions | guides/manage-positions/page.mdx | HIGH | Medium |
+| FAQ | faq/page.mdx | HIGH | Low |
+| Glossary | glossary/page.mdx | MEDIUM | Low |
+| Redemption | mechanics/redemption/page.mdx | MEDIUM | Low |
+| Yield Tokens | how-it-works/yield-tokens/page.mdx | MEDIUM | Low |
+| Provide Liquidity | guides/provide-liquidity/page.mdx | LOW | Low |
+
+---
+
+## Implementation Priority Matrix (ARCHIVED)
 
 | Feature/Fix | Priority | Complexity | Dependencies | User Impact |
 |-------------|----------|------------|--------------|-------------|
@@ -520,22 +710,42 @@ bun run test:e2e --project=chromium
 
 ## Summary
 
-| Category | Count | Description |
-|----------|-------|-------------|
-| Missing Features | 4 | New contract capabilities not exposed in UI |
-| Improvements | 5 | UX, performance, and code quality enhancements |
-| Fixes | 3 | TODOs and maintenance items |
-| **Total Items** | **12** | |
+### Current Status
 
-**Key Insight:** The most impactful changes are enabling YT reward claiming and the combined interest+rewards claim - these directly affect user revenue collection.
+| Category | Status | Count |
+|----------|--------|-------|
+| Core Features | ✅ COMPLETE | 2 implemented |
+| Improvements | ✅ COMPLETE | 5 implemented |
+| Fixes | ✅ COMPLETE | 3 implemented |
+| Documentation Updates | ⏳ PENDING | 6 pages to update |
+| Optional Features | ⏸️ DEFERRED | 2 not implemented |
 
-**Notes on Corrections:**
-- Removed "Flash Mint Integration" as a missing feature - this is an advanced/internal feature not typically exposed in user-facing UI
-- Corrected line numbers to match actual codebase
-- Removed incorrect reference to `InterestClaimPreview.tsx` missing a claim button - it's a display-only preview component, and `useClaimYield` is already integrated in `PortfolioPage.tsx` and `SimplePortfolio.tsx`
-- Corrected the rewards model directory listing to match actual files
-- Updated the count from 14 to 12 items after removing duplicates and correcting scope
-- Corrected `useMarketAccruedRewards` line reference from 19-77 to 32-72
-- Corrected the number of RPC calls: `useMarket` makes 11 calls, `useMarketState` makes 6 calls (not identical patterns)
-- Removed estimated effort as per project guidelines
-- Updated `as unknown[]` instance count from 11 to 7 based on actual grep results
+### What Was Implemented
+
+1. **YT Reward Claiming** - Users can now view and claim external rewards from YT tokens
+2. **Combined Interest + Rewards Claim** - Single-transaction claiming saves gas
+3. **Market State Consolidation** - Reduced RPC calls from 11 to 4-5 per market
+4. **Shared Utilities** - `toBigInt`, `parseReserves` helpers consolidated
+5. **SLIPPAGE_OPTIONS** - Removed duplicate constant definitions
+6. **APY Breakdown** - Wired up real reward data
+7. **Portfolio Positions** - Connected historical claim data from indexer
+
+### What Remains
+
+**Documentation (6 files):**
+- `guides/manage-positions/page.mdx` - Add YT rewards and combined claim docs
+- `faq/page.mdx` - Add YT rewards FAQ
+- `glossary/page.mdx` - Add "External Rewards" entry
+- `mechanics/redemption/page.mdx` - Note about external rewards
+- `how-it-works/yield-tokens/page.mdx` - Add rewards to YT properties
+- `guides/provide-liquidity/page.mdx` - Add LP rewards row
+
+**Optional Features (deferred):**
+- Dual Token + PT Liquidity (`add_liquidity_dual_token_and_pt`)
+- Token-to-Token Swap (`swap_tokens_to_tokens`)
+
+### Next Steps
+
+1. Update documentation pages with suggested content in Part 4
+2. Run `bun run check` to verify no regressions
+3. Optionally implement deferred features if needed

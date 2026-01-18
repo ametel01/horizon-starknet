@@ -1,551 +1,507 @@
-## Phase 1: Shared Utility Foundation **COMPLETE**
+# Documentation Update Implementation Plan
 
-Create shared utilities that will be used by all new hooks, reducing code duplication across the codebase.
+Based on DOCS_UPDATE_RESEARCH.md findings for `/packages/frontend/src/app/docs`.
+
+---
+
+## Phase 1: Core Navigation and New Page Setup
+
+Add new documentation pages to the sidebar navigation and create file scaffolding for all new content.
 
 ### Phase Validation
 ```bash
 cd packages/frontend && bun run check
 ```
 
-### Step 1: Create shared uint256 conversion utility **COMPLETE**
+### Step 1: Add Analytics guide entry to DocsSidebar
 
 #### Goal
-Create a centralized `toBigInt` helper in shared lib to replace 21 duplicate definitions across feature files.
+Add Analytics page link to the Guides section in the sidebar navigation.
 
 #### Files
-- `packages/frontend/src/shared/lib/uint256.ts` - Create new file with toBigInt function and Uint256 type
-- `packages/frontend/src/shared/lib/index.ts` - Add export for new uint256 module
+- `packages/frontend/src/features/docs/ui/DocsSidebar.tsx` - Add Analytics child to Guides section after Manage Positions (line 39)
 
 #### Validation
 ```bash
-grep -q "export.*toBigInt" packages/frontend/src/shared/lib/index.ts && echo "OK"
+grep -q "Analytics" packages/frontend/src/features/docs/ui/DocsSidebar.tsx && echo "OK"
 ```
 
 #### Failure modes
-- Import path conflicts with existing local definitions during migration
-- Type incompatibility with starknet.js Uint256 struct
+- Navigation item placed in wrong section
+- Incorrect href path
 
 ---
 
-### Step 2: Create shared ABI response helpers **COMPLETE**
+### Step 2: Create Analytics guide page
 
 #### Goal
-Create type-safe helpers for parsing common ABI response patterns like reserves and amounts.
+Create the analytics guide MDX file documenting yield curve, PT convergence, market depth, liquidity health score, and advanced analytics panels.
 
 #### Files
-- `packages/frontend/src/shared/lib/abi-helpers.ts` - Create parseReserves, parseUint256Array helpers
-- `packages/frontend/src/shared/lib/index.ts` - Add export for abi-helpers module
+- `packages/frontend/src/app/docs/guides/analytics/page.mdx` - Create new file with Analytics documentation
 
 #### Validation
 ```bash
-grep -q "parseReserves" packages/frontend/src/shared/lib/abi-helpers.ts && echo "OK"
+test -f packages/frontend/src/app/docs/guides/analytics/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Helper functions may not cover all existing usage patterns
-- Type inference issues with unknown return types
+- Missing directory creation
+- Incorrect import paths
 
 ---
 
-## Phase 2: YT Reward Infrastructure **COMPLETE**
-
-Implement YT reward hooks following the established SY rewards pattern.
-
-### Phase Validation
-```bash
-cd packages/frontend && bun run check && bun run test
-```
-
-### Step 3: Create useYTRewardTokens hook **COMPLETE**
+### Step 3: Add Flash Mint mechanics entry to DocsSidebar
 
 #### Goal
-Fetch reward token addresses from YT contract, following useRewardTokens pattern.
+Add Flash Mint page link to the Mechanics section in the sidebar navigation.
 
 #### Files
-- `packages/frontend/src/features/rewards/model/useYTRewardTokens.ts` - Create hook using YT.get_reward_tokens()
-- `packages/frontend/src/features/rewards/model/index.ts` - Export new hook
+- `packages/frontend/src/features/docs/ui/DocsSidebar.tsx` - Add Flash Mint child to Mechanics section after Redemption (line 48)
 
 #### Validation
 ```bash
-grep -q "useYTRewardTokens" packages/frontend/src/features/rewards/model/index.ts && echo "OK"
+grep -q "Flash Mint" packages/frontend/src/features/docs/ui/DocsSidebar.tsx && echo "OK"
 ```
 
 #### Failure modes
-- YT contract may not have reward tokens configured
-- Address normalization issues with bigint to hex conversion
+- Navigation item placed in wrong section
 
 ---
 
-### Step 4: Create useYTAccruedRewards hook **COMPLETE**
+### Step 4: Create Flash Mint mechanics page
 
 #### Goal
-Fetch accrued YT rewards for connected user, following useMarketAccruedRewards pattern.
+Create the flash mint mechanics MDX file documenting atomic PT+YT minting for advanced users and integrators.
 
 #### Files
-- `packages/frontend/src/features/rewards/model/useYTAccruedRewards.ts` - Create hook with query key ['yt-rewards', 'accrued', ytAddress, userAddress]
-- `packages/frontend/src/features/rewards/model/index.ts` - Export new hook and YTAccruedReward type
+- `packages/frontend/src/app/docs/mechanics/flash-mint/page.mdx` - Create new file with Flash Mint documentation
 
 #### Validation
 ```bash
-grep -q "useYTAccruedRewards" packages/frontend/src/features/rewards/model/index.ts && echo "OK"
+test -f packages/frontend/src/app/docs/mechanics/flash-mint/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Contract may return empty arrays for non-reward YTs
-- Amount array ordering may not match token array ordering
+- Missing directory creation
 
 ---
 
-### Step 5: Create useYTClaimRewards hook **COMPLETE**
+## Phase 2: Getting Started Updates
 
-#### Goal
-Create mutation hook to claim YT rewards, following useClaimRewards pattern.
-
-#### Files
-- `packages/frontend/src/features/rewards/model/useYTClaimRewards.ts` - Create hook with claim_rewards entrypoint
-- `packages/frontend/src/features/rewards/model/index.ts` - Export new hook
-
-#### Validation
-```bash
-grep -q "useYTClaimRewards" packages/frontend/src/features/rewards/model/index.ts && echo "OK"
-```
-
-#### Failure modes
-- Transaction may fail if no rewards to claim
-- Query invalidation may not trigger refetch
-
----
-
-### Step 6: Create useClaimAllYTRewards multicall hook **COMPLETE**
-
-#### Goal
-Create batch claim hook for claiming rewards from multiple YT positions in single transaction.
-
-#### Files
-- `packages/frontend/src/features/rewards/model/useYTClaimRewards.ts` - Add useClaimAllYTRewards function
-- `packages/frontend/src/features/rewards/model/index.ts` - Export multicall variant
-
-#### Validation
-```bash
-grep -q "useClaimAllYTRewards" packages/frontend/src/features/rewards/model/index.ts && echo "OK"
-```
-
-#### Failure modes
-- Empty ytAddresses array should be handled gracefully
-- Gas estimation may fail for large batches
-
----
-
-## Phase 3: Combined Interest and Rewards Claim **COMPLETE**
-
-Implement the combined claim feature using YT.redeem_due_interest_and_rewards.
-
-### Phase Validation
-```bash
-cd packages/frontend && bun run check && bun run test
-```
-
-### Step 7: Create useClaimInterestAndRewards hook **COMPLETE**
-
-#### Goal
-Create mutation hook for combined interest + rewards claim in single transaction.
-
-#### Files
-- `packages/frontend/src/features/yield/model/useClaimInterestAndRewards.ts` - Create hook using redeem_due_interest_and_rewards entrypoint
-- `packages/frontend/src/features/yield/model/index.ts` - Export new hook
-
-#### Validation
-```bash
-grep -q "useClaimInterestAndRewards" packages/frontend/src/features/yield/model/index.ts && echo "OK"
-```
-
-#### Failure modes
-- Combined call may fail if either interest or rewards are zero
-- Return value parsing for (u256, Span<u256>) tuple
-
----
-
-### Step 8: Create useCombinedClaimPreview hook **COMPLETE**
-
-#### Goal
-Create preview hook showing combined interest + rewards with gas estimate.
-
-#### Files
-- `packages/frontend/src/features/yield/model/useCombinedClaimPreview.ts` - Create query hook aggregating interest and rewards data
-- `packages/frontend/src/features/yield/model/index.ts` - Export new hook
-
-#### Validation
-```bash
-grep -q "useCombinedClaimPreview" packages/frontend/src/features/yield/model/index.ts && echo "OK"
-```
-
-#### Failure modes
-- Parallel fetches of interest and rewards may have timing issues
-- Fee calculation needs both YT interest fee and reward values
-
----
-
-## Phase 4: Portfolio UI Integration **COMPLETE**
-
-Integrate YT rewards into the portfolio rewards display.
+Add Simple vs Advanced mode documentation and expand wallet connection details.
 
 ### Phase Validation
 ```bash
 cd packages/frontend && bun run check
 ```
 
-### Step 9: Create usePortfolioYTRewards aggregation hook **COMPLETE**
+### Step 5: Add mode system section to Getting Started
 
 #### Goal
-Aggregate YT rewards across all user YT positions, following usePortfolioRewards pattern.
+Document the Simple vs Advanced mode toggle system after the Before You Begin section.
 
 #### Files
-- `packages/frontend/src/features/rewards/model/usePortfolioYTRewards.ts` - Create hook using useQueries for parallel fetching
-- `packages/frontend/src/features/rewards/model/index.ts` - Export new hook and PortfolioYTRewards type
+- `packages/frontend/src/app/docs/getting-started/page.mdx` - Add new section "Simple vs Advanced Mode" explaining mode toggle, feature differences, and how to switch
 
 #### Validation
 ```bash
-grep -q "usePortfolioYTRewards" packages/frontend/src/features/rewards/model/index.ts && echo "OK"
+grep -q "Simple vs Advanced" packages/frontend/src/app/docs/getting-started/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Large number of YT positions may cause rate limiting
-- Empty positions should not break aggregation
+- Section placed in wrong location disrupting page flow
+- Terminology inconsistent with UI
 
 ---
 
-### Step 10: Add YT rewards section to PortfolioRewardsCard **COMPLETE**
+### Step 6: Expand wallet connection details in Getting Started
 
 #### Goal
-Display YT rewards alongside existing SY rewards in portfolio view.
+Add detailed wallet connection steps including network switching and disconnecting.
 
 #### Files
-- `packages/frontend/src/widgets/portfolio/PortfolioRewardsCard.tsx` - Add YT rewards section with separate claim button
+- `packages/frontend/src/app/docs/getting-started/page.mdx` - Expand Step 1: Connect Wallet with network info and disconnect instructions
 
 #### Validation
 ```bash
-grep -q "YT.*Rewards" packages/frontend/src/widgets/portfolio/PortfolioRewardsCard.tsx && echo "OK"
+grep -q "Disconnect" packages/frontend/src/app/docs/getting-started/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Layout may break with multiple reward sections
-- Claim buttons need distinct handlers for SY vs YT
+- Duplicate content with existing wallet section
 
 ---
 
-## Phase 5: Market State Consolidation **COMPLETE**
+## Phase 3: Guide Updates for v2.0 Features
 
-Optimize RPC calls by using the consolidated get_market_state() method.
-
-### Phase Validation
-```bash
-cd packages/frontend && bun run check && bun run test
-```
-
-### Step 11: Refactor useMarketState to use get_market_state **COMPLETE**
-
-#### Goal
-Replace 6 individual RPC calls with single get_market_state() call.
-
-#### Files
-- `packages/frontend/src/features/markets/model/useMarket.ts` - Refactor useMarketState hook at lines 164-209
-
-#### Validation
-```bash
-grep -q "get_market_state" packages/frontend/src/features/markets/model/useMarket.ts && echo "OK"
-```
-
-#### Failure modes
-- MarketState struct field names may not match expected property names
-- Existing consumers may expect different data shape
-
----
-
-### Step 12: Refactor useMarket to use get_market_state **COMPLETE**
-
-#### Goal
-Replace 11 individual RPC calls with get_market_state() + 4 address calls (sy, pt, yt, is_expired).
-
-#### Files
-- `packages/frontend/src/features/markets/model/useMarket.ts` - Refactor main useMarket hook at lines 34-128
-
-#### Validation
-```bash
-cd packages/frontend && bun run test -- --grep "useMarket"
-```
-
-#### Failure modes
-- Derived values (APY, TVL) may need recalculation from new data shape
-- TWAP handling may need adjustment
-
----
-
-### Step 13: Refactor useMarkets batch fetching **COMPLETE**
-
-#### Goal
-Apply same optimization to batch market fetching in useMarkets hook.
-
-#### Files
-- `packages/frontend/src/features/markets/model/useMarkets.ts` - Refactor fetchMarketData function at lines 53-77
-
-#### Validation
-```bash
-cd packages/frontend && bun run test -- --grep "useMarkets"
-```
-
-#### Failure modes
-- Paginated fetching logic may need adjustment
-- TWAP oracle fallback logic must be preserved
-
----
-
-## Phase 6: Code Quality Improvements **COMPLETE**
-
-Consolidate duplicate code and complete remaining TODO items.
+Update existing guides with multi-reward system, portfolio details, and new trading features.
 
 ### Phase Validation
 ```bash
 cd packages/frontend && bun run check
 ```
 
-### Step 14: Migrate features/markets to shared toBigInt **COMPLETE**
+### Step 7: Add multi-reward system to Manage Positions guide
 
 #### Goal
-Replace local toBigInt in market hooks with shared utility.
+Document the new multi-reward YT system including viewing available rewards, claiming rewards, and Claim All functionality.
 
 #### Files
-- `packages/frontend/src/features/markets/model/useMarket.ts` - Import from @shared/lib
-- `packages/frontend/src/features/markets/model/useMarkets.ts` - Import from @shared/lib
-- `packages/frontend/src/features/markets/model/useMarketInfoStatic.ts` - Import from @shared/lib
-- `packages/frontend/src/features/markets/model/useMarketExchangeRates.ts` - Import from @shared/lib
+- `packages/frontend/src/app/docs/guides/manage-positions/page.mdx` - Add new section "Claiming Rewards" after existing "Claiming Yield" section
 
 #### Validation
 ```bash
-! grep -q "function toBigInt" packages/frontend/src/features/markets/model/useMarket.ts && echo "OK"
+grep -q "Reward Tokens" packages/frontend/src/app/docs/guides/manage-positions/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Import path resolution issues
-- Type inference may differ slightly
+- Confusion between yield and rewards terminology
 
 ---
 
-### Step 15: Migrate features/rewards to shared toBigInt **COMPLETE**
+### Step 8: Add portfolio summary details to Manage Positions guide
 
 #### Goal
-Replace local toBigInt in reward hooks with shared utility.
+Document the portfolio summary grid showing total value, PnL, claimable yield, and active positions count.
 
 #### Files
-- `packages/frontend/src/features/rewards/model/useAccruedRewards.ts` - Import from @shared/lib
-- `packages/frontend/src/features/rewards/model/useMarketAccruedRewards.ts` - Import from @shared/lib
-- `packages/frontend/src/features/rewards/model/usePortfolioRewards.ts` - Import from @shared/lib
+- `packages/frontend/src/app/docs/guides/manage-positions/page.mdx` - Expand "Portfolio Overview" section with summary grid explanation
 
 #### Validation
 ```bash
-! grep -q "function toBigInt" packages/frontend/src/features/rewards/model/useAccruedRewards.ts && echo "OK"
+grep -q "Total PnL" packages/frontend/src/app/docs/guides/manage-positions/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Existing tests may depend on local function
-- Edge case handling may differ between implementations
+- Metrics descriptions don't match actual UI
 
 ---
 
-### Step 16: Migrate features/yield to shared toBigInt **COMPLETE**
+### Step 9: Add Unwrap SY documentation to Manage Positions guide
 
 #### Goal
-Replace local toBigInt in yield hooks with shared utility.
+Document how to unwrap SY tokens back to the underlying asset.
 
 #### Files
-- `packages/frontend/src/features/yield/model/useApyBreakdown.ts` - Import from @shared/lib
-- `packages/frontend/src/features/yield/model/useInterestFee.ts` - Import from @shared/lib
-- `packages/frontend/src/features/yield/model/usePostExpiryStatus.ts` - Import from @shared/lib
-- `packages/frontend/src/features/yield/model/useSyPreview.ts` - Import from @shared/lib
-- `packages/frontend/src/features/yield/model/useSyWatermark.ts` - Import from @shared/lib
-- `packages/frontend/src/features/yield/model/useTreasuryYield.ts` - Import from @shared/lib
-- `packages/frontend/src/features/yield/model/useUserYield.ts` - Import from @shared/lib
+- `packages/frontend/src/app/docs/guides/manage-positions/page.mdx` - Add new section "Unwrapping SY" after Early Redemption
 
 #### Validation
 ```bash
-! grep -q "function toBigInt" packages/frontend/src/features/yield/model/useUserYield.ts && echo "OK"
+grep -q "Unwrap" packages/frontend/src/app/docs/guides/manage-positions/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Lenient type variant in some files may need shared utility to support all input types
+- Steps don't match actual UI flow
 
 ---
 
-### Step 17: Migrate remaining features to shared toBigInt **COMPLETE**
+### Step 10: Add dual-token liquidity to Provide Liquidity guide
 
 #### Goal
-Replace local toBigInt in portfolio, liquidity, swap, and oracle hooks.
+Document adding and removing liquidity with any token using the router.
 
 #### Files
-- `packages/frontend/src/features/portfolio/model/useEnhancedPositions.ts` - Import from @shared/lib
-- `packages/frontend/src/features/portfolio/model/usePositions.ts` - Import from @shared/lib
-- `packages/frontend/src/features/portfolio/model/useTokenBalance.ts` - Import from @shared/lib
-- `packages/frontend/src/features/liquidity/model/useLiquidityPreview.ts` - Import from @shared/lib
-- `packages/frontend/src/features/swap/model/useSwapPreview.ts` - Import from @shared/lib
-- `packages/frontend/src/features/oracle/model/useOracleStatus.ts` - Import from @shared/lib
+- `packages/frontend/src/app/docs/guides/provide-liquidity/page.mdx` - Add section "Adding Liquidity with Any Token" after Step-by-Step
 
 #### Validation
+```bash
+grep -q "Any Token" packages/frontend/src/app/docs/guides/provide-liquidity/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Confusion with existing step-by-step instructions
+
+---
+
+### Step 11: Add token-to-token swap to Trade Yield guide
+
+#### Goal
+Document the Any Token swap mode and general token routing.
+
+#### Files
+- `packages/frontend/src/app/docs/guides/trade-yield/page.mdx` - Add section "Swap with Any Token" after Trading YT section
+
+#### Validation
+```bash
+grep -q "Any Token" packages/frontend/src/app/docs/guides/trade-yield/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Section conflicts with existing trading instructions
+
+---
+
+## Phase 4: FAQ Expansion
+
+Add new FAQ entries for undocumented features, fees, and troubleshooting.
+
+### Phase Validation
 ```bash
 cd packages/frontend && bun run check
 ```
 
-#### Failure modes
-- Test file useTokenBalance.test.ts may need its own import
-- Different toBigInt variations need unified handling
-
----
-
-### Step 18: Remove duplicate SLIPPAGE_OPTIONS from liquidity forms **COMPLETE**
+### Step 12: Add slippage configuration FAQ
 
 #### Goal
-Use existing SLIPPAGE_OPTIONS from tx-settings context in liquidity forms.
+Document how to configure slippage tolerance in transaction settings panel.
 
 #### Files
-- `packages/frontend/src/features/liquidity/ui/AddLiquidityForm.tsx` - Import SLIPPAGE_OPTIONS from @features/tx-settings, remove local definition
-- `packages/frontend/src/features/liquidity/ui/RemoveLiquidityForm.tsx` - Import SLIPPAGE_OPTIONS from @features/tx-settings, remove local definition
+- `packages/frontend/src/app/docs/faq/page.mdx` - Add question "How do I set slippage tolerance?" after existing slippage question in Trading section
 
 #### Validation
 ```bash
-! grep -q "const SLIPPAGE_OPTIONS" packages/frontend/src/features/liquidity/ui/AddLiquidityForm.tsx && echo "OK"
+grep -q "set slippage tolerance" packages/frontend/src/app/docs/faq/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- tx-settings SLIPPAGE_OPTIONS has different structure (includes description)
-- Simple forms may only need label/value, not full options
+- Duplicate content with existing slippage question
 
 ---
 
-### Step 19: Remove duplicate SLIPPAGE_OPTIONS from swap form **COMPLETE**
+### Step 13: Expand faucet documentation in FAQ
 
 #### Goal
-Use existing SLIPPAGE_OPTIONS from tx-settings context in swap form.
+Provide detailed faucet usage instructions including limits and token description.
 
 #### Files
-- `packages/frontend/src/features/swap/ui/SwapForm.tsx` - Import SLIPPAGE_OPTIONS from @features/tx-settings, remove local definition
+- `packages/frontend/src/app/docs/faq/page.mdx` - Expand "How do I get test tokens?" answer with step-by-step flow
 
 #### Validation
 ```bash
-! grep -q "const SLIPPAGE_OPTIONS" packages/frontend/src/features/swap/ui/SwapForm.tsx && echo "OK"
+grep -q "100 tokens" packages/frontend/src/app/docs/faq/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Same structure mismatch as Step 18
+- Rate limit info becomes outdated
 
 ---
 
-## Phase 7: APY and Portfolio Data Integration **COMPLETE**
+### Step 14: Add fee documentation to FAQ
 
-Wire up real data for TODO placeholders in APY and portfolio calculations.
+#### Goal
+Document what fees Horizon charges including interest fees, reward fees, and swap fees.
+
+#### Files
+- `packages/frontend/src/app/docs/faq/page.mdx` - Add question "What fees does Horizon charge?" in General section after audit question
+
+#### Validation
+```bash
+grep -q "fees does Horizon charge" packages/frontend/src/app/docs/faq/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Fee percentages may change over time
+
+---
+
+### Step 15: Add error message explanations to FAQ
+
+#### Goal
+Document common error messages and their solutions in Troubleshooting.
+
+#### Files
+- `packages/frontend/src/app/docs/faq/page.mdx` - Expand Troubleshooting section with specific error messages: "Slippage exceeded", "Expired", "Insufficient balance"
+
+#### Validation
+```bash
+grep -q "Slippage exceeded" packages/frontend/src/app/docs/faq/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Error message wording changes in contracts
+
+---
+
+### Step 16: Add negative yield warning FAQ
+
+#### Goal
+Explain what happens when implied yield goes negative and impact on positions.
+
+#### Files
+- `packages/frontend/src/app/docs/faq/page.mdx` - Add question "What if implied yield goes negative?" in Trading section
+
+#### Validation
+```bash
+grep -q "negative" packages/frontend/src/app/docs/faq/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Edge case not clearly explained
+
+---
+
+## Phase 5: Glossary Updates
+
+Add all new terms for v2.0 features to the glossary.
 
 ### Phase Validation
-```bash
-cd packages/frontend && bun run check && bun run test
-```
-
-### Step 20: Wire reward APR in apy-breakdown.ts **COMPLETE**
-
-#### Goal
-Replace hardcoded lpRewards = 0 with actual reward data from useYTAccruedRewards.
-
-#### Files
-- `packages/frontend/src/shared/math/apy-breakdown.ts` - Update calculateApyBreakdown to accept reward APR parameter
-
-#### Validation
-```bash
-! grep -q "lpRewards = 0.*TODO" packages/frontend/src/shared/math/apy-breakdown.ts && echo "OK"
-```
-
-#### Failure modes
-- Reward APR calculation depends on price data availability
-- May need fallback to 0 if prices unavailable
-
----
-
-### Step 21: Wire historical claim data in useEnhancedPositions **COMPLETE**
-
-#### Goal
-Replace TODO placeholders for claimed, fees, and realizedSy with indexed data.
-
-#### Files
-- `packages/frontend/src/features/portfolio/model/useEnhancedPositions.ts` - Add API call to fetch historical data
-
-#### Validation
-```bash
-! grep -q "claimed: 0n.*TODO" packages/frontend/src/features/portfolio/model/useEnhancedPositions.ts && echo "OK"
-```
-
-#### Failure modes
-- Indexer API endpoint may not exist yet
-- Historical data may be incomplete for older positions
-
----
-
-## Phase 8: Final Verification
-
-Run full test suite and verify all features work correctly.
-
-### Phase Validation
-```bash
-cd packages/frontend && bun run check && bun run test && bun run test:e2e --project=chromium
-```
-
-### Step 22: Run type checking and linting **COMPLETE**
-
-#### Goal
-Ensure all changes pass TypeScript type checking and ESLint rules.
-
-#### Files
-- All modified files from previous phases
-
-#### Validation
 ```bash
 cd packages/frontend && bun run check
 ```
 
-#### Failure modes
-- Unused imports after migration
-- Type errors from refactored hooks
-
----
-
-### Step 23: Run unit tests **COMPLETE**
+### Step 17: Add A-D section terms to glossary
 
 #### Goal
-Ensure all existing tests pass after refactoring.
+Add Advanced Mode term to A section and Dual-Token Liquidity term to D section.
 
 #### Files
-- All test files in packages/frontend
+- `packages/frontend/src/app/docs/glossary/page.mdx` - Add Advanced Mode after APY, add Dual-Token Liquidity after Discount
 
 #### Validation
 ```bash
-cd packages/frontend && bun run test
+grep -q "Advanced Mode" packages/frontend/src/app/docs/glossary/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Tests may mock local toBigInt functions
-- Market hook tests may expect specific RPC call counts
+- Terms placed in wrong alphabetical position
 
 ---
 
-### Step 24: Run E2E tests for reward claiming **COMPLETE**
+### Step 18: Add E-I section terms to glossary
 
 #### Goal
-Verify end-to-end reward claiming flow works correctly.
+Add Expiry Divisor to E section, add Flash Mint and IFlashCallback to new F and I sections, add Interest Fee Rate to I section.
 
 #### Files
-- E2E test files related to portfolio and rewards
+- `packages/frontend/src/app/docs/glossary/page.mdx` - Add new terms in appropriate alphabetical sections
 
 #### Validation
 ```bash
-cd packages/frontend && bun run test:e2e --project=chromium --grep "reward"
+grep -q "Flash Mint" packages/frontend/src/app/docs/glossary/page.mdx && echo "OK"
 ```
 
 #### Failure modes
-- Devnet may not have reward-bearing positions
-- Transaction timing issues in E2E tests
+- Missing section headers for new letters
+
+---
+
+### Step 19: Add R-T section terms to glossary
+
+#### Goal
+Add Reward Fee Rate and Reward Tokens to R section, add Simple Mode and SYWithRewards to S section, add Token Aggregator to T section.
+
+#### Files
+- `packages/frontend/src/app/docs/glossary/page.mdx` - Add new terms in appropriate alphabetical sections
+
+#### Validation
+```bash
+grep -q "Reward Tokens" packages/frontend/src/app/docs/glossary/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Cross-references to non-existent pages
+
+---
+
+## Phase 6: Risks Page Updates
+
+Add risk documentation for new v2.0 features.
+
+### Phase Validation
+```bash
+cd packages/frontend && bun run check
+```
+
+### Step 20: Add reward token risks to Risks page
+
+#### Goal
+Document risks specific to multi-reward tokens including reward token volatility and smart contract risk.
+
+#### Files
+- `packages/frontend/src/app/docs/risks/page.mdx` - Add "Reward Token Risks" subsection under "Position-Specific Risks" after YT Risks
+
+#### Validation
+```bash
+grep -q "Reward Token" packages/frontend/src/app/docs/risks/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Risk section too brief or unduly alarming
+
+---
+
+### Step 21: Add flash mint risks to Risks page
+
+#### Goal
+Document risks for flash minting including callback implementation risks.
+
+#### Files
+- `packages/frontend/src/app/docs/risks/page.mdx` - Add "Flash Mint Risks" subsection in Operational Risks section
+
+#### Validation
+```bash
+grep -q "Flash Mint" packages/frontend/src/app/docs/risks/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Technical jargon confuses regular users
+
+---
+
+## Phase 7: Consistency and Verification
+
+Standardize terminology and verify all cross-references work correctly.
+
+### Phase Validation
+```bash
+cd packages/frontend && bun run check && bun run build
+```
+
+### Step 22: Standardize wallet naming across docs
+
+#### Goal
+Update all references to use consistent "Ready (formerly Argent)" format.
+
+#### Files
+- `packages/frontend/src/app/docs/getting-started/page.mdx` - Update wallet reference at line 14
+- `packages/frontend/src/app/docs/faq/page.mdx` - Update wallet reference at line 136
+
+#### Validation
+```bash
+grep -r "formerly Argent" packages/frontend/src/app/docs/ | wc -l | xargs test 2 -le && echo "OK"
+```
+
+#### Failure modes
+- Inconsistent naming remains in some files
+
+---
+
+### Step 23: Add interactive component usage hints
+
+#### Goal
+Add brief usage instructions before PriceSimulator and YieldCalculator components.
+
+#### Files
+- `packages/frontend/src/app/docs/mechanics/pricing/page.mdx` - Add instruction text before PriceSimulator
+- `packages/frontend/src/app/docs/mechanics/apy-calculation/page.mdx` - Add instruction text before YieldCalculator
+
+#### Validation
+```bash
+grep -q "adjust" packages/frontend/src/app/docs/mechanics/pricing/page.mdx && echo "OK"
+```
+
+#### Failure modes
+- Instructions interfere with prose styling
+
+---
+
+### Step 24: Run build to verify all links
+
+#### Goal
+Ensure all new cross-references link to valid pages and MDX compiles.
+
+#### Files
+- All modified MDX files from previous phases
+
+#### Validation
+```bash
+cd packages/frontend && bun run build 2>&1 | grep -i "error" | wc -l | xargs test 0 -eq && echo "OK"
+```
+
+#### Failure modes
+- Dead links to non-existent pages
+- MDX syntax errors
+- Incorrect anchor references
 
 ---
