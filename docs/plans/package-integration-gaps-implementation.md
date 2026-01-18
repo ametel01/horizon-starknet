@@ -378,7 +378,7 @@ make build && cd packages/indexer && bun run codegen && grep -q "FlashMintPY" sr
 
 ---
 
-## Phase 7: Type Checking and Linting
+## Phase 7: Type Checking and Linting **COMPLETE**
 
 Verify all changes pass type checking and linting.
 
@@ -407,7 +407,7 @@ cd packages/indexer && bun run check
 
 ---
 
-## Phase 8: Integration Testing
+## Phase 8: Integration Testing **COMPLETE**
 
 Test indexer against devnet to verify event parsing.
 
@@ -416,7 +416,7 @@ Test indexer against devnet to verify event parsing.
 cd packages/indexer && bun run test
 ```
 
-### Step 17: Run indexer unit tests
+### Step 17: Run indexer unit tests **COMPLETE**
 
 #### Goal
 Verify existing tests pass and new event parsing logic works correctly.
