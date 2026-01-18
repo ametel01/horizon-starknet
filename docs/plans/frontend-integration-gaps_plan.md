@@ -103,7 +103,7 @@ The hook currently returns zeros for all reward amounts. To fix:
 
 ---
 
-### Step 5: Create useYTClaimRewards hook
+### Step 5: Create useYTClaimRewards hook **COMPLETE**
 
 #### Goal
 Create mutation hook to claim YT rewards, following useClaimRewards pattern.
@@ -123,7 +123,7 @@ grep -q "useYTClaimRewards" packages/frontend/src/features/rewards/model/index.t
 
 ---
 
-### Step 6: Create useClaimAllYTRewards multicall hook
+### Step 6: Create useClaimAllYTRewards multicall hook **COMPLETE**
 
 #### Goal
 Create batch claim hook for claiming rewards from multiple YT positions in single transaction.

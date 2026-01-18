@@ -40,4 +40,5 @@ export {
   useYTAccruedRewards,
   type YTAccruedReward,
 } from './useYTAccruedRewards';
+export { useClaimAllYTRewards, useYTClaimRewards } from './useYTClaimRewards';
 export { useYTRewardTokens } from './useYTRewardTokens';
