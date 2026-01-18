@@ -461,7 +461,7 @@ grep -q "Interest Fee Rate\|Reward Fee Rate\|Expiry Divisor" packages/frontend/s
 
 ---
 
-### Step 21: Add remaining utility terms
+### Step 21: Add remaining utility terms **COMPLETE**
 
 #### Goal
 Add glossary entries for Token Aggregator, hrzSTRK, Faucet, Portfolio Value, PnL, Claim All, Unwrap.
