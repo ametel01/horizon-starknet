@@ -376,7 +376,7 @@ grep -q "negative\|premium\|PT trades above" packages/frontend/src/app/docs/faq/
 
 ---
 
-## Phase 8: Expand Glossary
+## Phase 8: Expand Glossary **COMPLETE**
 
 Add new terms for v2.0 features and undocumented concepts.
 
@@ -489,7 +489,7 @@ Add risks for new v2.0 features.
 cd packages/frontend && bun run check
 ```
 
-### Step 22: Add Reward Token Risks section
+### Step 22: Add Reward Token Risks section **COMPLETE**
 
 #### Goal
 Document risks specific to external reward tokens: reward rate volatility, protocol dependency, smart contract risk of reward source.
