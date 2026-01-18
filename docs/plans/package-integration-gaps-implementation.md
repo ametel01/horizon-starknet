@@ -318,7 +318,7 @@ grep -q "SKIM" packages/indexer/src/indexers/market.indexer.ts && grep -q "marke
 
 ---
 
-## Phase 5: Database Migration Generation
+## Phase 5: Database Migration Generation **COMPLETE**
 
 Generate Drizzle migration for all new schema tables.
 
@@ -346,7 +346,7 @@ cd packages/indexer && bun run db:generate && grep -l "factory_reward_fee_rate_s
 
 ---
 
-## Phase 6: Regenerate Event ABIs
+## Phase 6: Regenerate Event ABIs **COMPLETE**
 
 Regenerate event ABIs from rebuilt contracts to ensure ABI alignment.
 
@@ -355,7 +355,7 @@ Regenerate event ABIs from rebuilt contracts to ensure ABI alignment.
 cd packages/indexer && bun run codegen && echo "OK"
 ```
 
-### Step 15: Rebuild contracts and regenerate indexer event ABIs
+### Step 15: Rebuild contracts and regenerate indexer event ABIs **COMPLETE**
 
 #### Goal
 Ensure indexer event ABIs match current contract definitions.
