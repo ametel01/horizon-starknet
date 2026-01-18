@@ -1,7 +1,7 @@
 /**
  * Validation Module Tests
  *
- * Tests Zod schemas for all 40 event types and the validateEvent helper.
+ * Tests Zod schemas for all event types and the validateEvent helper.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +9,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   baseEventSchema,
   factoryClassHashesUpdatedSchema,
+  factoryDefaultInterestFeeRateSetSchema,
+  factoryExpiryDivisorSetSchema,
+  factoryRewardFeeRateSetSchema,
+  factorySYWithRewardsClassHashUpdatedSchema,
+  factorySYWithRewardsDeployedSchema,
   factoryYieldContractsCreatedSchema,
   marketBurnSchema,
   marketFactoryDefaultReserveFeeUpdatedSchema,
@@ -201,6 +206,149 @@ describe("factoryClassHashesUpdatedSchema", () => {
     };
 
     const result = factoryClassHashesUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("factoryRewardFeeRateSetSchema", () => {
+  it("validates event with sufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x1", "0x0", "0x2", "0x0"], // old_fee_rate(u256), new_fee_rate(u256)
+      transactionHash: TX_HASH,
+    };
+
+    const result = factoryRewardFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x1", "0x0", "0x2"], // Only 3, need 4 for two u256s
+      transactionHash: TX_HASH,
+    };
+
+    const result = factoryRewardFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("factoryDefaultInterestFeeRateSetSchema", () => {
+  it("validates event with sufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x1", "0x0", "0x2", "0x0"], // old_fee_rate(u256), new_fee_rate(u256)
+      transactionHash: TX_HASH,
+    };
+
+    const result = factoryDefaultInterestFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x1", "0x0", "0x2"], // Only 3, need 4 for two u256s
+      transactionHash: TX_HASH,
+    };
+
+    const result = factoryDefaultInterestFeeRateSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("factoryExpiryDivisorSetSchema", () => {
+  it("validates event with sufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x15180", "0x15180"], // old_expiry_divisor (86400), new_expiry_divisor (86400)
+      transactionHash: TX_HASH,
+    };
+
+    const result = factoryExpiryDivisorSetSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0x15180"], // Only 1, need 2
+      transactionHash: TX_HASH,
+    };
+
+    const result = factoryExpiryDivisorSetSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("factorySYWithRewardsDeployedSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR, "0xsy123"], // selector and sy address
+      // data: name(ByteArray: 3 min), symbol(ByteArray: 3 min), underlying, deployer, timestamp
+      data: Array.from({ length: 9 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = factorySYWithRewardsDeployedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR], // Missing sy key
+      data: Array.from({ length: 9 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = factorySYWithRewardsDeployedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR, "0xsy123"],
+      data: Array.from({ length: 5 }, (_, i) => `0x${(i + 1).toString(16)}`), // Only 5, need 9
+      transactionHash: TX_HASH,
+    };
+
+    const result = factorySYWithRewardsDeployedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("factorySYWithRewardsClassHashUpdatedSchema", () => {
+  it("validates event with sufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0xabc123", "0xdef456"], // old_class_hash, new_class_hash
+      transactionHash: TX_HASH,
+    };
+
+    const result = factorySYWithRewardsClassHashUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: FACTORY_ADDR,
+      keys: [SELECTOR],
+      data: ["0xabc123"], // Only 1, need 2
+      transactionHash: TX_HASH,
+    };
+
+    const result = factorySYWithRewardsClassHashUpdatedSchema.safeParse(event);
     expect(result.success).toBe(false);
   });
 });

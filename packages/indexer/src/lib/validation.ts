@@ -37,7 +37,7 @@ export const baseEventSchema = z.object({
 export type BaseEvent = z.infer<typeof baseEventSchema>;
 
 // ============================================================
-// FACTORY EVENTS (2 schemas)
+// FACTORY EVENTS (7 schemas)
 // ============================================================
 
 /**
@@ -69,8 +69,77 @@ export const factoryClassHashesUpdatedSchema = baseEventSchema.extend({
     .min(2, "ClassHashesUpdated requires at least 2 data elements"),
 });
 
+/**
+ * Factory.RewardFeeRateSet event
+ * keys: [selector]
+ * data: [old_fee_rate(u256), new_fee_rate(u256)]
+ */
+export const factoryRewardFeeRateSetSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1),
+  data: z
+    .array(z.string())
+    .min(4, "RewardFeeRateSet requires at least 4 data elements"),
+});
+
+/**
+ * Factory.DefaultInterestFeeRateSet event
+ * keys: [selector]
+ * data: [old_fee_rate(u256), new_fee_rate(u256)]
+ */
+export const factoryDefaultInterestFeeRateSetSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1),
+  data: z
+    .array(z.string())
+    .min(4, "DefaultInterestFeeRateSet requires at least 4 data elements"),
+});
+
+/**
+ * Factory.ExpiryDivisorSet event
+ * keys: [selector]
+ * data: [old_expiry_divisor, new_expiry_divisor]
+ */
+export const factoryExpiryDivisorSetSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(1),
+  data: z
+    .array(z.string())
+    .min(2, "ExpiryDivisorSet requires at least 2 data elements"),
+});
+
+/**
+ * Factory.SYWithRewardsDeployed event
+ * keys: [selector, sy]
+ * data: [name(ByteArray), symbol(ByteArray), underlying, deployer, timestamp]
+ *
+ * Note: name and symbol are variable-length ByteArrays (3 + arrayLen felts each).
+ * Minimum 9 elements assumes arrayLen=0 for both (name/symbol ≤31 chars).
+ */
+export const factorySYWithRewardsDeployedSchema = baseEventSchema.extend({
+  keys: z
+    .array(z.string())
+    .min(2, "SYWithRewardsDeployed requires at least 2 keys"),
+  data: z
+    .array(z.string())
+    .min(9, "SYWithRewardsDeployed requires at least 9 data elements"),
+});
+
+/**
+ * Factory.SYWithRewardsClassHashUpdated event
+ * keys: [selector]
+ * data: [old_class_hash, new_class_hash]
+ */
+export const factorySYWithRewardsClassHashUpdatedSchema =
+  baseEventSchema.extend({
+    keys: z.array(z.string()).min(1),
+    data: z
+      .array(z.string())
+      .min(
+        2,
+        "SYWithRewardsClassHashUpdated requires at least 2 data elements"
+      ),
+  });
+
 // ============================================================
-// MARKET FACTORY EVENTS (2 schemas)
+// MARKET FACTORY EVENTS (5 schemas)
 // ============================================================
 
 /**
@@ -775,6 +844,11 @@ export const eventSchemas = {
   // Factory
   YieldContractsCreated: factoryYieldContractsCreatedSchema,
   ClassHashesUpdated: factoryClassHashesUpdatedSchema,
+  RewardFeeRateSet: factoryRewardFeeRateSetSchema,
+  DefaultInterestFeeRateSet: factoryDefaultInterestFeeRateSetSchema,
+  ExpiryDivisorSet: factoryExpiryDivisorSetSchema,
+  SYWithRewardsDeployed: factorySYWithRewardsDeployedSchema,
+  SYWithRewardsClassHashUpdated: factorySYWithRewardsClassHashUpdatedSchema,
 
   // MarketFactory
   MarketCreated: marketFactoryMarketCreatedSchema,

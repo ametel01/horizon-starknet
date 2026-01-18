@@ -59,7 +59,7 @@ grep -q "factoryRewardFeeRateSet" packages/indexer/src/schema/index.ts && grep -
 
 ---
 
-### Step 2: Add Factory validation schemas for new events
+### Step 2: Add Factory validation schemas for new events **COMPLETE**
 
 #### Goal
 Create Zod validation schemas for the 5 new Factory events following existing patterns.
