@@ -178,7 +178,7 @@ grep -q "Claiming Rewards\|reward tokens\|external rewards" packages/frontend/sr
 
 ---
 
-### Step 8: Add LP Position Details section
+### Step 8: Add LP Position Details section **COMPLETE**
 
 #### Goal
 Document LP position display: LP token balance, pool share percentage, reserve breakdown (SY + PT), and auto-compounding of fees.
