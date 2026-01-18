@@ -43,6 +43,7 @@ import {
   syUnpausedSchema,
   validateEvent,
   ytExpiryReachedSchema,
+  ytFlashMintPYSchema,
   ytInterestClaimedSchema,
   ytInterestFeeRateSetSchema,
   ytMintPYMultiSchema,
@@ -1087,6 +1088,44 @@ describe("ytPyIndexUpdatedSchema", () => {
     };
 
     const result = ytPyIndexUpdatedSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ytFlashMintPYSchema", () => {
+  it("validates event with sufficient keys and data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xreceiver"],
+      data: Array.from({ length: 7 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytFlashMintPYSchema.safeParse(event);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with insufficient keys", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller"], // Missing receiver
+      data: Array.from({ length: 7 }, (_, i) => `0x${(i + 1).toString(16)}`),
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytFlashMintPYSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects event with insufficient data", () => {
+    const event = {
+      address: YT_ADDR,
+      keys: [SELECTOR, "0xcaller", "0xreceiver"],
+      data: Array.from({ length: 4 }, (_, i) => `0x${(i + 1).toString(16)}`), // Need 7
+      transactionHash: TX_HASH,
+    };
+
+    const result = ytFlashMintPYSchema.safeParse(event);
     expect(result.success).toBe(false);
   });
 });

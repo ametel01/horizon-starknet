@@ -117,7 +117,7 @@ grep -q "rewardFeeRateSetRows" packages/indexer/src/indexers/factory.indexer.ts 
 
 ---
 
-## Phase 2: MarketFactory Indexer Event Integration
+## Phase 2: MarketFactory Indexer Event Integration **COMPLETE**
 
 Add 2 missing MarketFactory events: DefaultRateImpactSensitivityUpdated, YieldContractFactoryUpdated.
 
@@ -192,7 +192,7 @@ Add FlashMintPY event to YT indexer.
 cd packages/indexer && bun run check
 ```
 
-### Step 8: Add YT FlashMintPY schema table
+### Step 8: Add YT FlashMintPY schema table **COMPLETE**
 
 #### Goal
 Create pgTable for ytFlashMintPY event tracking flash mint operations.

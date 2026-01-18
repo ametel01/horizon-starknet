@@ -1167,6 +1167,38 @@ export const ytRedeemPYWithInterest = pgTable(
   ]
 );
 
+// FlashMintPY: flash mint PT + YT tokens (atomic borrow-and-repay)
+export const ytFlashMintPY = pgTable(
+  "yt_flash_mint_py",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, receiver]
+    caller: text("caller").notNull(),
+    receiver: text("receiver").notNull(),
+    // Data fields
+    yt: text("yt").notNull(), // derived from event.address
+    amount_py: numeric("amount_py", { precision: 78, scale: 0 }).notNull(),
+    fee_sy: numeric("fee_sy", { precision: 78, scale: 0 }).notNull(),
+    sy: text("sy").notNull(),
+    pt: text("pt").notNull(),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("yt_fmpy_caller_idx").on(table.caller),
+    index("yt_fmpy_receiver_idx").on(table.receiver),
+    index("yt_fmpy_yt_idx").on(table.yt),
+    uniqueIndex("yt_fmpy_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
 // ============================================================
 // MARKET (AMM) EVENTS (8 tables)
 // 7 core + 1 reserve fee transfer table

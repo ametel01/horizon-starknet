@@ -420,7 +420,7 @@ export const ytExpiryReachedSchema = baseEventSchema.extend({
 });
 
 // ============================================================
-// YT NEW EVENTS (7 schemas) - Pendle-style interest system
+// YT NEW EVENTS (8 schemas) - Pendle-style interest system
 // ============================================================
 
 /**
@@ -513,6 +513,18 @@ export const ytPyIndexUpdatedSchema = baseEventSchema.extend({
   data: z
     .array(z.string())
     .min(8, "PyIndexUpdated requires at least 8 data elements"),
+});
+
+/**
+ * YT.FlashMintPY event
+ * keys: [selector, caller, receiver]
+ * data: [amount_py(u256), fee_sy(u256), sy, pt, timestamp]
+ */
+export const ytFlashMintPYSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "FlashMintPY requires at least 3 keys"),
+  data: z
+    .array(z.string())
+    .min(7, "FlashMintPY requires at least 7 data elements"),
 });
 
 // ============================================================
@@ -917,6 +929,7 @@ export const eventSchemas = {
   RedeemPYWithInterest: ytRedeemPYWithInterestSchema,
   PostExpiryDataSet: ytPostExpiryDataSetSchema,
   PyIndexUpdated: ytPyIndexUpdatedSchema,
+  FlashMintPY: ytFlashMintPYSchema,
 
   // Market
   Mint: marketMintSchema,
