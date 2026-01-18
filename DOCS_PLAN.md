@@ -338,7 +338,7 @@ grep -q "fees does Horizon\|Interest Fee\|Reward Fee\|Swap Fee" packages/fronten
 
 ---
 
-### Step 15: Expand faucet FAQ
+### Step 15: Expand faucet FAQ **COMPLETE**
 
 #### Goal
 Expand test token faucet question with detailed usage steps, limits, and what hrzSTRK is.
