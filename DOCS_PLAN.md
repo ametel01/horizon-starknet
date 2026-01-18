@@ -131,7 +131,7 @@ grep -q "Simple vs Advanced\|Simple Mode\|Advanced Mode" packages/frontend/src/a
 
 ---
 
-## Phase 4: Update Manage Positions Guide
+## Phase 4: Update Manage Positions Guide **COMPLETE**
 
 Add multi-reward system, claim all, LP details, and unwrap SY documentation.
 
@@ -216,7 +216,7 @@ grep -q "Unwrap\|underlying asset\|SY tokens" packages/frontend/src/app/docs/gui
 
 ---
 
-## Phase 5: Update Trade Yield Guide
+## Phase 5: Update Trade Yield Guide **COMPLETE**
 
 Add dual-token swap and any-token mode documentation.
 
@@ -225,7 +225,7 @@ Add dual-token swap and any-token mode documentation.
 cd packages/frontend && bun run check
 ```
 
-### Step 10: Add Any Token Swap section
+### Step 10: Add Any Token Swap section **COMPLETE**
 
 #### Goal
 Document the token aggregator mode allowing swaps from any ERC20 to PT/YT/SY and vice versa.

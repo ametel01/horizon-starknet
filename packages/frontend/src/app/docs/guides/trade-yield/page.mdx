@@ -137,6 +137,37 @@ If yield drops to 4%, your YT could be worth only ~50 SY — a 50% loss.
 
 ---
 
+## Swap with Any Token
+
+<Callout type="info">
+This feature requires **Advanced mode**. Enable it in Settings before proceeding.
+</Callout>
+
+The token aggregator lets you swap from any supported ERC20 token directly to PT, YT, or SY — and vice versa. No need to manually convert to SY first.
+
+### How It Works
+
+1. Go to **Trade**
+2. Toggle **Any Token** mode (appears in Advanced mode)
+3. Select your input token from the dropdown
+4. Choose your output (PT, YT, or SY)
+5. Enter amount — the aggregator finds the best route automatically
+6. Review the route preview and confirm
+
+### Route Finding
+
+The aggregator searches across available liquidity sources to find the optimal path. For example, swapping USDC → PT might route through:
+
+```
+USDC → underlying asset → SY → PT
+```
+
+<Callout type="warning">
+Multi-hop routes may have higher price impact. Always review the route preview before confirming.
+</Callout>
+
+---
+
 ## Tips
 
 - Check implied yield vs underlying yield before trading
