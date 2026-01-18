@@ -330,7 +330,7 @@ Replace local toBigInt in market hooks with shared utility.
 
 ---
 
-### Step 15: Migrate features/rewards to shared toBigInt
+### Step 15: Migrate features/rewards to shared toBigInt **COMPLETE**
 
 #### Goal
 Replace local toBigInt in reward hooks with shared utility.

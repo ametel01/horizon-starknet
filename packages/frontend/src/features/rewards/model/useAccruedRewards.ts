@@ -1,22 +1,13 @@
 'use client';
 
 import { useAccount, useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getSYWithRewardsContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 export interface AccruedReward {
   tokenAddress: string;
   amount: bigint;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
 }
 
 /**

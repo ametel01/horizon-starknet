@@ -1,10 +1,11 @@
 'use client';
 
 import { useAccount, useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getSYWithRewardsContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { type ProviderInterface, uint256 } from 'starknet';
+import type { ProviderInterface } from 'starknet';
 
 import type { AccruedReward } from './useAccruedRewards';
 
@@ -36,23 +37,6 @@ export interface PortfolioRewards {
   hasAnyRewards: boolean;
   /** Total count of distinct reward tokens */
   distinctTokenCount: number;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: unknown): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return BigInt(value);
-  }
-  if (value !== null && typeof value === 'object' && 'low' in value && 'high' in value) {
-    return uint256.uint256ToBN(value as { low: bigint; high: bigint });
-  }
-  if (typeof value === 'string') {
-    return BigInt(value);
-  }
-  return 0n;
 }
 
 // Convert address to hex string
