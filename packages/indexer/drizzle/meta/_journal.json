@@ -64,6 +64,13 @@
       "when": 1768077496858,
       "tag": "0008_soft_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768699670793,
+      "tag": "0009_narrow_patch",
+      "breakpoints": true
     }
   ]
 }

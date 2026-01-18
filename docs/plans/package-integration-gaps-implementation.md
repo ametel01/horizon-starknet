@@ -250,7 +250,7 @@ grep -q "FLASH_MINT_PY" packages/indexer/src/indexers/yt.indexer.ts && grep -q "
 
 ---
 
-## Phase 4: Market Indexer Skim Event Integration
+## Phase 4: Market Indexer Skim Event Integration **COMPLETE**
 
 Add Skim event to Market indexer.
 
@@ -327,7 +327,7 @@ Generate Drizzle migration for all new schema tables.
 cd packages/indexer && bun run db:generate && ls drizzle/*.sql | tail -1
 ```
 
-### Step 14: Generate Drizzle migration
+### Step 14: Generate Drizzle migration **COMPLETE**
 
 #### Goal
 Run Drizzle kit to generate SQL migration for the 10 new tables.
