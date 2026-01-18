@@ -183,7 +183,7 @@ grep -q "YIELD_CONTRACT_FACTORY_UPDATED" packages/indexer/src/indexers/market-fa
 
 ---
 
-## Phase 3: YT Indexer FlashMintPY Event Integration
+## Phase 3: YT Indexer FlashMintPY Event Integration **COMPLETE**
 
 Add FlashMintPY event to YT indexer.
 
@@ -259,7 +259,7 @@ Add Skim event to Market indexer.
 cd packages/indexer && bun run check
 ```
 
-### Step 11: Add Market Skim schema table
+### Step 11: Add Market Skim schema table **COMPLETE**
 
 #### Goal
 Create pgTable for marketSkim event tracking excess token removal.

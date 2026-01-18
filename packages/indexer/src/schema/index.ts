@@ -1652,6 +1652,42 @@ export const marketRewardTokenAdded = pgTable(
   ]
 );
 
+// Market Skim event - emitted when reserves are reconciled with actual balances
+export const marketSkim = pgTable(
+  "market_skim",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    market: text("market").notNull(),
+    caller: text("caller").notNull(),
+    // Event data
+    sy_excess: numeric("sy_excess", { precision: 78, scale: 0 }).notNull(), // SY tokens added to reserves
+    pt_excess: numeric("pt_excess", { precision: 78, scale: 0 }).notNull(), // PT tokens added to reserves
+    sy_reserve_after: numeric("sy_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    pt_reserve_after: numeric("pt_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_skim_market_idx").on(table.market),
+    index("market_skim_caller_idx").on(table.caller),
+    uniqueIndex("market_skim_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
 // ============================================================
 // ROUTER EVENTS (7 tables)
 // ============================================================
