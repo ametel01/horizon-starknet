@@ -299,7 +299,7 @@ cd packages/frontend && bun run test -- --grep "useMarkets"
 
 ---
 
-## Phase 6: Code Quality Improvements
+## Phase 6: Code Quality Improvements **COMPLETE**
 
 Consolidate duplicate code and complete remaining TODO items.
 
@@ -446,7 +446,7 @@ Wire up real data for TODO placeholders in APY and portfolio calculations.
 cd packages/frontend && bun run check && bun run test
 ```
 
-### Step 20: Wire reward APR in apy-breakdown.ts
+### Step 20: Wire reward APR in apy-breakdown.ts **COMPLETE**
 
 #### Goal
 Replace hardcoded lpRewards = 0 with actual reward data from useYTAccruedRewards.

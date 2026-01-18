@@ -81,6 +81,9 @@ export interface ApyCalculationParams {
   feeRate: bigint;
   /** LP share of fees (0.2 = 20%) */
   lpFeeShare?: number;
+
+  /** Reward APR from external sources (e.g., YT accrued rewards) */
+  rewardApr?: number;
 }
 
 /**

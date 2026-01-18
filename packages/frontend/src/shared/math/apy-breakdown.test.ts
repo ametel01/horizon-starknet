@@ -7,8 +7,15 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { calculatePtFixedApy, formatApyPercent, getApyColorClass } from './apy-breakdown';
-import { toWad } from './wad';
+import {
+  calculateApyBreakdown,
+  calculatePtFixedApy,
+  calculateSwapFeeApy,
+  calculateUnderlyingApy,
+  formatApyPercent,
+  getApyColorClass,
+} from './apy-breakdown';
+import { toWad, WAD_BIGINT } from './wad';
 
 describe('calculatePtFixedApy', () => {
   test('returns 0 for zero input', () => {
@@ -112,5 +119,113 @@ describe('getApyColorClass', () => {
 
   test('returns foreground color for zero APY', () => {
     expect(getApyColorClass(0)).toBe('text-foreground');
+  });
+});
+
+describe('calculateUnderlyingApy', () => {
+  test('returns 0 for zero previous rate', () => {
+    expect(calculateUnderlyingApy(WAD_BIGINT, 0n, 86400)).toBe(0);
+  });
+
+  test('returns 0 for zero time delta', () => {
+    expect(calculateUnderlyingApy(WAD_BIGINT, WAD_BIGINT, 0)).toBe(0);
+  });
+
+  test('returns 0 when current rate equals previous rate', () => {
+    expect(calculateUnderlyingApy(WAD_BIGINT, WAD_BIGINT, 86400)).toBe(0);
+  });
+
+  test('calculates APY from rate growth over 1 day', () => {
+    // 0.01% daily growth ≈ 3.7% APY
+    const currentRate = toWad(1.0001);
+    const previousRate = WAD_BIGINT;
+    const apy = calculateUnderlyingApy(currentRate, previousRate, 86400);
+    expect(apy).toBeGreaterThan(0.03);
+    expect(apy).toBeLessThan(0.04);
+  });
+});
+
+describe('calculateSwapFeeApy', () => {
+  test('returns 0 for zero volume', () => {
+    expect(calculateSwapFeeApy(0n, WAD_BIGINT, WAD_BIGINT, toWad(0.003), 0.2)).toBe(0);
+  });
+
+  test('returns 0 for zero reserves', () => {
+    expect(calculateSwapFeeApy(toWad(1000), 0n, 0n, toWad(0.003), 0.2)).toBe(0);
+  });
+
+  test('calculates swap fee APY correctly', () => {
+    // $1000 daily volume, $10000 TVL, 0.3% fee, 20% LP share
+    // Daily fees = 1000 * 0.003 * 0.2 = 0.6
+    // APY = (0.6 / 10000) * 365 ≈ 0.0219 (2.19%)
+    const volume = toWad(1000);
+    const syReserve = toWad(5000);
+    const ptReserve = toWad(5000);
+    const feeRate = toWad(0.003);
+    const lpFeeShare = 0.2;
+
+    const apy = calculateSwapFeeApy(volume, syReserve, ptReserve, feeRate, lpFeeShare);
+    expect(apy).toBeCloseTo(0.0219, 3);
+  });
+});
+
+describe('calculateApyBreakdown', () => {
+  const baseParams = {
+    syReserve: toWad(5000),
+    ptReserve: toWad(5000),
+    lnImpliedRate: toWad(0.05), // 5% ln rate
+    expiry: BigInt(Math.floor(Date.now() / 1000) + 365 * 86400), // 1 year from now
+    syExchangeRate: WAD_BIGINT,
+    previousExchangeRate: WAD_BIGINT,
+    rateTimeDelta: 86400,
+    swapVolume24h: toWad(100),
+    feeRate: toWad(0.003),
+    lpFeeShare: 0.2,
+  };
+
+  test('calculates breakdown with default rewardApr (0)', () => {
+    const breakdown = calculateApyBreakdown(baseParams);
+
+    expect(breakdown.underlying.rewardsApr).toBe(0);
+    expect(breakdown.underlying.totalApy).toBe(breakdown.underlying.interestApy);
+    expect(breakdown.lpApy.rewards).toBe(0);
+  });
+
+  test('includes rewardApr in underlying totalApy', () => {
+    const rewardApr = 0.05; // 5% reward APR
+    const breakdown = calculateApyBreakdown({ ...baseParams, rewardApr });
+
+    expect(breakdown.underlying.rewardsApr).toBe(rewardApr);
+    expect(breakdown.underlying.totalApy).toBe(breakdown.underlying.interestApy + rewardApr);
+  });
+
+  test('includes rewardApr in LP rewards and total', () => {
+    const rewardApr = 0.03; // 3% reward APR
+    const breakdown = calculateApyBreakdown({ ...baseParams, rewardApr });
+
+    expect(breakdown.lpApy.rewards).toBe(rewardApr);
+    // LP total should include rewards
+    const expectedLpTotal =
+      breakdown.lpApy.ptYield + breakdown.lpApy.syYield + breakdown.lpApy.swapFees + rewardApr;
+    expect(breakdown.lpApy.total).toBeCloseTo(expectedLpTotal, 10);
+  });
+
+  test('calculates PT fixed APY from ln implied rate', () => {
+    const breakdown = calculateApyBreakdown(baseParams);
+
+    // e^0.05 - 1 ≈ 0.05127
+    expect(breakdown.ptFixedApy).toBeCloseTo(0.05127, 4);
+  });
+
+  test('handles expired market', () => {
+    const expiredParams = {
+      ...baseParams,
+      expiry: BigInt(Math.floor(Date.now() / 1000) - 86400), // 1 day ago
+    };
+    const breakdown = calculateApyBreakdown(expiredParams);
+
+    // Should still return valid breakdown
+    expect(breakdown.ptFixedApy).toBeDefined();
+    expect(breakdown.lpApy.total).toBeDefined();
   });
 });

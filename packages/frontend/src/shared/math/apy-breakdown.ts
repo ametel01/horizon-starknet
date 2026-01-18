@@ -26,6 +26,7 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
     swapVolume24h,
     feeRate,
     lpFeeShare = 0.2, // Default: 20% of fees go to LPs
+    rewardApr = 0, // Default: 0 if no reward data available
   } = params;
 
   const now = BigInt(Math.floor(Date.now() / 1000));
@@ -47,7 +48,7 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
 
   const lpPtYield = ptFixedApy * ptPortion;
   const lpSyYield = interestApy * syPortion;
-  const lpRewards = 0; // TODO: Add when gauge/rewards implemented
+  const lpRewards = rewardApr;
   const lpTotalApy = lpPtYield + lpSyYield + swapFeeApy + lpRewards;
 
   // 5. YT Long Yield APY
@@ -57,8 +58,8 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
     ptFixedApy,
     underlying: {
       interestApy,
-      rewardsApr: 0, // TODO: Add reward tracking
-      totalApy: interestApy,
+      rewardsApr: rewardApr,
+      totalApy: interestApy + rewardApr,
     },
     lpApy: {
       ptYield: lpPtYield,
