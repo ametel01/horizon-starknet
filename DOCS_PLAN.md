@@ -140,7 +140,7 @@ Add multi-reward system, claim all, LP details, and unwrap SY documentation.
 cd packages/frontend && bun run check
 ```
 
-### Step 6: Add Portfolio Summary section with metrics
+### Step 6: Add Portfolio Summary section with metrics **COMPLETE**
 
 #### Goal
 Add section explaining Total Portfolio Value, Total PnL, Claimable Yield summary, Active Positions count, and Claim All button.
