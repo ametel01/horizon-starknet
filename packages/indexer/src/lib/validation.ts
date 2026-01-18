@@ -684,6 +684,17 @@ export const marketRewardTokenAddedSchema = baseEventSchema.extend({
     .min(2, "Market RewardTokenAdded requires at least 2 data elements"),
 });
 
+/**
+ * Market.Skim event
+ * keys: [selector, market, caller]
+ * data: [sy_excess(u256), pt_excess(u256), sy_reserve_after(u256), pt_reserve_after(u256), timestamp]
+ * Total: (4 * 2) + 1 = 9 data elements
+ */
+export const marketSkimSchema = baseEventSchema.extend({
+  keys: z.array(z.string()).min(3, "Skim requires at least 3 keys"),
+  data: z.array(z.string()).min(9, "Skim requires at least 9 data elements"),
+});
+
 // ============================================================
 // ROUTER EVENTS (7 schemas)
 // ============================================================
@@ -945,6 +956,7 @@ export const eventSchemas = {
   "Market.RewardsClaimed": marketRewardsClaimedSchema,
   "Market.RewardIndexUpdated": marketRewardIndexUpdatedSchema,
   "Market.RewardTokenAdded": marketRewardTokenAddedSchema,
+  "Market.Skim": marketSkimSchema,
 
   // Router
   "Router.MintPY": routerMintPYSchema,

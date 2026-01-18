@@ -279,7 +279,7 @@ grep -q "marketSkim" packages/indexer/src/schema/index.ts && echo "OK"
 
 ---
 
-### Step 12: Add Market Skim validation schema
+### Step 12: Add Market Skim validation schema **COMPLETE**
 
 #### Goal
 Create Zod validation schema for Skim event.
