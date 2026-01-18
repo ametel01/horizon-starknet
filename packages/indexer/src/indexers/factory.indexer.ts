@@ -62,7 +62,9 @@ const REWARD_FEE_RATE_SET = getSelector("RewardFeeRateSet");
 const DEFAULT_INTEREST_FEE_RATE_SET = getSelector("DefaultInterestFeeRateSet");
 const EXPIRY_DIVISOR_SET = getSelector("ExpiryDivisorSet");
 const SY_WITH_REWARDS_DEPLOYED = getSelector("SYWithRewardsDeployed");
-const SY_WITH_REWARDS_CLASS_HASH_UPDATED = getSelector("SYWithRewardsClassHashUpdated");
+const SY_WITH_REWARDS_CLASS_HASH_UPDATED = getSelector(
+  "SYWithRewardsClassHashUpdated"
+);
 
 const log = createIndexerLogger("factory");
 
@@ -303,12 +305,16 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               new_fee_rate: newFeeRate,
             });
           } else if (matchSelector(eventKey, EXPIRY_DIVISOR_SET)) {
-            const validated = validateEvent(factoryExpiryDivisorSetSchema, event, {
-              indexer: "factory",
-              eventName: "ExpiryDivisorSet",
-              blockNumber,
-              transactionHash,
-            });
+            const validated = validateEvent(
+              factoryExpiryDivisorSetSchema,
+              event,
+              {
+                indexer: "factory",
+                eventName: "ExpiryDivisorSet",
+                blockNumber,
+                transactionHash,
+              }
+            );
             if (!validated) {
               errorCount++;
               continue;
@@ -368,7 +374,10 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               "timestamp"
             );
 
-            log.info({ sy, name, symbol, underlying, deployer }, "SYWithRewardsDeployed");
+            log.info(
+              { sy, name, symbol, underlying, deployer },
+              "SYWithRewardsDeployed"
+            );
 
             syWithRewardsDeployedRows.push({
               block_number: blockNumber,
@@ -382,7 +391,9 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               deployer: deployer ?? "",
               timestamp_field: timestampField,
             });
-          } else if (matchSelector(eventKey, SY_WITH_REWARDS_CLASS_HASH_UPDATED)) {
+          } else if (
+            matchSelector(eventKey, SY_WITH_REWARDS_CLASS_HASH_UPDATED)
+          ) {
             const validated = validateEvent(
               factorySYWithRewardsClassHashUpdatedSchema,
               event,
@@ -401,7 +412,10 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const oldClassHash = validated.data[0];
             const newClassHash = validated.data[1];
 
-            log.info({ oldClassHash, newClassHash }, "SYWithRewardsClassHashUpdated");
+            log.info(
+              { oldClassHash, newClassHash },
+              "SYWithRewardsClassHashUpdated"
+            );
 
             syWithRewardsClassHashRows.push({
               block_number: blockNumber,

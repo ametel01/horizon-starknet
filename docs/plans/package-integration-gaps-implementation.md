@@ -387,7 +387,7 @@ Verify all changes pass type checking and linting.
 cd packages/indexer && bun run check
 ```
 
-### Step 16: Run full type check and lint
+### Step 16: Run full type check and lint **COMPLETE**
 
 #### Goal
 Ensure all new code passes TypeScript and ESLint validation.
