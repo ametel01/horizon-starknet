@@ -319,7 +319,7 @@ grep -q "slippage exceeded\|HZN:\|Insufficient balance" packages/frontend/src/ap
 
 ---
 
-### Step 14: Add fee explanation FAQ
+### Step 14: Add fee explanation FAQ **COMPLETE**
 
 #### Goal
 Add "What fees does Horizon charge?" question explaining interest fee, reward fee, and swap fees.
