@@ -261,7 +261,7 @@ grep -q "get_market_state" packages/frontend/src/features/markets/model/useMarke
 
 ---
 
-### Step 12: Refactor useMarket to use get_market_state
+### Step 12: Refactor useMarket to use get_market_state **COMPLETE**
 
 #### Goal
 Replace 11 individual RPC calls with get_market_state() + 4 address calls (sy, pt, yt, is_expired).
