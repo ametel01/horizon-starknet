@@ -15,6 +15,7 @@ import {
   useSwap,
   useSwapPreview,
 } from '@features/swap';
+import { SLIPPAGE_OPTIONS } from '@features/tx-settings';
 import {
   buildSwapCalls,
   calculateSwapQuote,
@@ -61,12 +62,6 @@ interface SwapFormProps {
   market: MarketData;
   className?: string | undefined;
 }
-
-const SLIPPAGE_OPTIONS = [
-  { label: '0.1%', value: 10 },
-  { label: '0.5%', value: 50 },
-  { label: '1%', value: 100 },
-];
 
 /**
  * SwapForm - Enhanced with visual hierarchy and micro-interactions
@@ -560,7 +555,7 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
               variant="outline"
               size="sm"
             >
-              {option.label}
+              {option.percent}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>

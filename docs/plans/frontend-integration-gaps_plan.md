@@ -419,7 +419,7 @@ Use existing SLIPPAGE_OPTIONS from tx-settings context in liquidity forms.
 
 ---
 
-### Step 19: Remove duplicate SLIPPAGE_OPTIONS from swap form
+### Step 19: Remove duplicate SLIPPAGE_OPTIONS from swap form **COMPLETE**
 
 #### Goal
 Use existing SLIPPAGE_OPTIONS from tx-settings context in swap form.
