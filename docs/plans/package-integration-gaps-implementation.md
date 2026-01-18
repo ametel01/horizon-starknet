@@ -163,7 +163,7 @@ grep -q "marketFactoryDefaultRateImpactSensitivityUpdatedSchema" packages/indexe
 
 ---
 
-### Step 7: Add MarketFactory event selectors, filters, and transform logic
+### Step 7: Add MarketFactory event selectors, filters, and transform logic **COMPLETE**
 
 #### Goal
 Complete MarketFactory indexer integration: selectors, filters, and transform branches.

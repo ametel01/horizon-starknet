@@ -7,6 +7,8 @@
  * - TreasuryUpdated: When the treasury address is changed
  * - DefaultReserveFeeUpdated: When the default reserve fee percent is changed
  * - OverrideFeeSet: When a per-router per-market fee override is set
+ * - YieldContractFactoryUpdated: When the yield contract factory address is changed
+ * - DefaultRateImpactSensitivityUpdated: When the default rate impact sensitivity is changed
  */
 
 import {
@@ -19,10 +21,12 @@ import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   marketFactoryClassHashUpdated,
+  marketFactoryDefaultRateImpactSensitivityUpdated,
   marketFactoryDefaultReserveFeeUpdated,
   marketFactoryMarketCreated,
   marketFactoryOverrideFeeSet,
   marketFactoryTreasuryUpdated,
+  marketFactoryYieldContractFactoryUpdated,
 } from "@/schema";
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
@@ -42,10 +46,12 @@ import {
 } from "../lib/utils";
 import {
   marketFactoryClassHashUpdatedSchema,
+  marketFactoryDefaultRateImpactSensitivityUpdatedSchema,
   marketFactoryDefaultReserveFeeUpdatedSchema,
   marketFactoryMarketCreatedSchema,
   marketFactoryOverrideFeeSetSchema,
   marketFactoryTreasuryUpdatedSchema,
+  marketFactoryYieldContractFactoryUpdatedSchema,
   validateEvent,
 } from "../lib/validation";
 
@@ -55,6 +61,12 @@ const MARKET_CLASS_HASH_UPDATED = getSelector("MarketClassHashUpdated");
 const TREASURY_UPDATED = getSelector("TreasuryUpdated");
 const DEFAULT_RESERVE_FEE_UPDATED = getSelector("DefaultReserveFeeUpdated");
 const OVERRIDE_FEE_SET = getSelector("OverrideFeeSet");
+const YIELD_CONTRACT_FACTORY_UPDATED = getSelector(
+  "YieldContractFactoryUpdated"
+);
+const DEFAULT_RATE_IMPACT_SENSITIVITY_UPDATED = getSelector(
+  "DefaultRateImpactSensitivityUpdated"
+);
 
 const log = createIndexerLogger("market-factory");
 
@@ -72,6 +84,8 @@ export default function marketFactoryIndexer(
       marketFactoryTreasuryUpdated,
       marketFactoryDefaultReserveFeeUpdated,
       marketFactoryOverrideFeeSet,
+      marketFactoryYieldContractFactoryUpdated,
+      marketFactoryDefaultRateImpactSensitivityUpdated,
     })
   );
 
@@ -100,6 +114,14 @@ export default function marketFactoryIndexer(
         { address: config.marketFactory, keys: [TREASURY_UPDATED] },
         { address: config.marketFactory, keys: [DEFAULT_RESERVE_FEE_UPDATED] },
         { address: config.marketFactory, keys: [OVERRIDE_FEE_SET] },
+        {
+          address: config.marketFactory,
+          keys: [YIELD_CONTRACT_FACTORY_UPDATED],
+        },
+        {
+          address: config.marketFactory,
+          keys: [DEFAULT_RATE_IMPACT_SENSITIVITY_UPDATED],
+        },
       ],
     },
     async transform({ block, endCursor }) {
@@ -120,12 +142,20 @@ export default function marketFactoryIndexer(
       type DefaultReserveFeeUpdatedRow =
         typeof marketFactoryDefaultReserveFeeUpdated.$inferInsert;
       type OverrideFeeSetRow = typeof marketFactoryOverrideFeeSet.$inferInsert;
+      type YieldContractFactoryUpdatedRow =
+        typeof marketFactoryYieldContractFactoryUpdated.$inferInsert;
+      type DefaultRateImpactSensitivityUpdatedRow =
+        typeof marketFactoryDefaultRateImpactSensitivityUpdated.$inferInsert;
 
       const marketCreatedRows: MarketCreatedRow[] = [];
       const classHashRows: ClassHashRow[] = [];
       const treasuryUpdatedRows: TreasuryUpdatedRow[] = [];
       const defaultReserveFeeUpdatedRows: DefaultReserveFeeUpdatedRow[] = [];
       const overrideFeeSetRows: OverrideFeeSetRow[] = [];
+      const yieldContractFactoryUpdatedRows: YieldContractFactoryUpdatedRow[] =
+        [];
+      const defaultRateImpactSensitivityUpdatedRows: DefaultRateImpactSensitivityUpdatedRow[] =
+        [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -326,6 +356,74 @@ export default function marketFactoryIndexer(
               market,
               ln_fee_rate_root: lnFeeRateRoot,
             });
+          } else if (matchSelector(eventKey, YIELD_CONTRACT_FACTORY_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryYieldContractFactoryUpdatedSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "YieldContractFactoryUpdated",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // YieldContractFactoryUpdated: keys = [selector], data = [old_factory, new_factory]
+            const oldFactory = validated.data[0] ?? "";
+            const newFactory = validated.data[1] ?? "";
+
+            yieldContractFactoryUpdatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_factory: oldFactory,
+              new_factory: newFactory,
+            });
+          } else if (
+            matchSelector(eventKey, DEFAULT_RATE_IMPACT_SENSITIVITY_UPDATED)
+          ) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketFactoryDefaultRateImpactSensitivityUpdatedSchema,
+              event,
+              {
+                indexer: "market-factory",
+                eventName: "DefaultRateImpactSensitivityUpdated",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // DefaultRateImpactSensitivityUpdated: keys = [selector], data = [old_sensitivity(u256), new_sensitivity(u256)]
+            const oldSensitivity = readU256(
+              validated.data,
+              0,
+              "old_sensitivity"
+            );
+            const newSensitivity = readU256(
+              validated.data,
+              2,
+              "new_sensitivity"
+            );
+
+            defaultRateImpactSensitivityUpdatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_sensitivity: oldSensitivity,
+              new_sensitivity: newSensitivity,
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -393,6 +491,18 @@ export default function marketFactoryIndexer(
               .values(overrideFeeSetRows)
               .onConflictDoNothing();
           }
+          if (yieldContractFactoryUpdatedRows.length > 0) {
+            await tx
+              .insert(marketFactoryYieldContractFactoryUpdated)
+              .values(yieldContractFactoryUpdatedRows)
+              .onConflictDoNothing();
+          }
+          if (defaultRateImpactSensitivityUpdatedRows.length > 0) {
+            await tx
+              .insert(marketFactoryDefaultRateImpactSensitivityUpdated)
+              .values(defaultRateImpactSensitivityUpdatedRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
@@ -402,7 +512,9 @@ export default function marketFactoryIndexer(
         classHashRows.length +
         treasuryUpdatedRows.length +
         defaultReserveFeeUpdatedRows.length +
-        overrideFeeSetRows.length;
+        overrideFeeSetRows.length +
+        yieldContractFactoryUpdatedRows.length +
+        defaultRateImpactSensitivityUpdatedRows.length;
       recordEvents("market-factory", successCount, errorCount);
       recordBlock("market-factory", blockNumber);
     },
