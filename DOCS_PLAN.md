@@ -357,7 +357,7 @@ grep -q "100 hrzSTRK\|once every 24 hours\|mock yield-bearing" packages/frontend
 
 ---
 
-### Step 16: Add negative yield FAQ
+### Step 16: Add negative yield FAQ **COMPLETE**
 
 #### Goal
 Add "What if implied yield goes negative?" question explaining PT premium, implications for buyers.
