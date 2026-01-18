@@ -230,7 +230,7 @@ grep -q "ytFlashMintPYSchema" packages/indexer/src/lib/validation.ts && echo "OK
 
 ---
 
-### Step 10: Add YT FlashMintPY selector, filter, and transform logic
+### Step 10: Add YT FlashMintPY selector, filter, and transform logic **COMPLETE**
 
 #### Goal
 Complete YT indexer FlashMintPY integration.

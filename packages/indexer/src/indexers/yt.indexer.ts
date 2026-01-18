@@ -21,6 +21,7 @@ import { defineIndexer } from "apibara/indexer";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   ytExpiryReached,
+  ytFlashMintPY,
   ytInterestClaimed,
   ytInterestFeeRateSet,
   ytMintPY,
@@ -49,6 +50,7 @@ import { matchSelector, readU256 } from "../lib/utils";
 import {
   validateEvent,
   ytExpiryReachedSchema,
+  ytFlashMintPYSchema,
   ytInterestClaimedSchema,
   ytInterestFeeRateSetSchema,
   ytMintPYMultiSchema,
@@ -82,6 +84,7 @@ const REDEEM_PY_MULTI = getSelector("RedeemPYMulti");
 const REDEEM_PY_WITH_INTEREST = getSelector("RedeemPYWithInterest");
 const POST_EXPIRY_DATA_SET = getSelector("PostExpiryDataSet");
 const PY_INDEX_UPDATED = getSelector("PyIndexUpdated");
+const FLASH_MINT_PY = getSelector("FlashMintPY");
 
 export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
@@ -103,6 +106,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       ytMintPYMulti,
       ytRedeemPYMulti,
       ytRedeemPYWithInterest,
+      ytFlashMintPY,
     })
   );
 
@@ -130,6 +134,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: ytAddress, keys: [REDEEM_PY_WITH_INTEREST] },
       { address: ytAddress, keys: [POST_EXPIRY_DATA_SET] },
       { address: ytAddress, keys: [PY_INDEX_UPDATED] },
+      { address: ytAddress, keys: [FLASH_MINT_PY] },
     ]
   );
 
@@ -180,6 +185,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           { address: ytAddress, keys: [REDEEM_PY_WITH_INTEREST] },
           { address: ytAddress, keys: [POST_EXPIRY_DATA_SET] },
           { address: ytAddress, keys: [PY_INDEX_UPDATED] },
+          { address: ytAddress, keys: [FLASH_MINT_PY] },
         ];
       });
 
@@ -218,6 +224,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       type MintPYMultiRow = typeof ytMintPYMulti.$inferInsert;
       type RedeemPYMultiRow = typeof ytRedeemPYMulti.$inferInsert;
       type RedeemPYWithInterestRow = typeof ytRedeemPYWithInterest.$inferInsert;
+      type FlashMintPYRow = typeof ytFlashMintPY.$inferInsert;
 
       const mintPYRows: MintPYRow[] = [];
       const redeemPYRows: RedeemPYRow[] = [];
@@ -232,6 +239,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const mintPYMultiRows: MintPYMultiRow[] = [];
       const redeemPYMultiRows: RedeemPYMultiRow[] = [];
       const redeemPYWithInterestRows: RedeemPYWithInterestRow[] = [];
+      const flashMintPYRows: FlashMintPYRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -722,6 +730,44 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               amount_sy_from_redeem: amountSyFromRedeem,
               amount_interest_claimed: amountInterestClaimed,
             });
+          } else if (matchSelector(eventKey, FLASH_MINT_PY)) {
+            const validated = validateEvent(ytFlashMintPYSchema, event, {
+              indexer: "yt",
+              eventName: "FlashMintPY",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, caller, receiver]
+            const caller = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+
+            // data: [amount_py(u256), fee_sy(u256), sy, pt, timestamp]
+            const data = validated.data;
+            const amountPy = readU256(data, 0, "amount_py");
+            const feeSy = readU256(data, 2, "fee_sy");
+            const sy = data[4] ?? "";
+            const pt = data[5] ?? "";
+            const eventTimestamp = Number(BigInt(data[6] ?? "0"));
+
+            flashMintPYRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              receiver,
+              yt: ytAddress,
+              amount_py: amountPy,
+              fee_sy: feeSy,
+              sy,
+              pt,
+              timestamp: eventTimestamp,
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -828,6 +874,12 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(redeemPYWithInterestRows)
               .onConflictDoNothing();
           }
+          if (flashMintPYRows.length > 0) {
+            await tx
+              .insert(ytFlashMintPY)
+              .values(flashMintPYRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
@@ -844,7 +896,8 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         interestFeeRateSetRows.length +
         mintPYMultiRows.length +
         redeemPYMultiRows.length +
-        redeemPYWithInterestRows.length;
+        redeemPYWithInterestRows.length +
+        flashMintPYRows.length;
       recordEvents("yt", successCount, errorCount);
       recordBlock("yt", blockNumber);
 
