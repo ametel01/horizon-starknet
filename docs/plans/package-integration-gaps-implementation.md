@@ -211,7 +211,7 @@ grep -q "ytFlashMintPY" packages/indexer/src/schema/index.ts && echo "OK"
 
 ---
 
-### Step 9: Add YT FlashMintPY validation schema
+### Step 9: Add YT FlashMintPY validation schema **COMPLETE**
 
 #### Goal
 Create Zod validation schema for FlashMintPY event.
