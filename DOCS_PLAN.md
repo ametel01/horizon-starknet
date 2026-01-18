@@ -300,7 +300,7 @@ grep -q "slippage tolerance\|settings icon\|gear" packages/frontend/src/app/docs
 
 ---
 
-### Step 13: Add common error messages section
+### Step 13: Add common error messages section **COMPLETE**
 
 #### Goal
 Add "Common Error Messages" section explaining HZN: slippage exceeded, HZN: expired, HZN: insufficient balance and solutions.

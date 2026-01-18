@@ -180,6 +180,21 @@ The AMM uses a time-weighted curve that expresses prices as implied yield. As ma
 3. Slippage not exceeded
 4. Wallet connected to correct network
 
+### Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `HZN: slippage exceeded` | Price moved beyond your slippage tolerance between quote and execution | Increase slippage tolerance in settings, or retry when markets are calmer |
+| `HZN: expired` | Attempting an operation on an expired market or YT | Use a market with a future expiry date, or redeem PT instead |
+| `HZN: insufficient balance` | Your wallet doesn't have enough tokens for the operation | Check balances and reduce trade size, or acquire more tokens |
+| `HZN: insufficient liquidity` | The pool doesn't have enough liquidity for your trade size | Reduce trade size or split into smaller trades |
+| `HZN: market expired` | The market has passed its maturity date | Redeem your PT 1:1 for the underlying asset instead of trading |
+| `HZN: zero amount` | Attempting a transaction with zero tokens | Enter a valid amount greater than zero |
+
+<Callout type="info">
+All Horizon errors start with "HZN:" prefix. If you see an error not listed here, check that you have sufficient STRK for gas and that your wallet is connected to the correct network.
+</Callout>
+
 ### Why is my yield lower than expected?
 
 - Underlying yield may have decreased
