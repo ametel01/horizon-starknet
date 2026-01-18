@@ -27,7 +27,7 @@ grep -q "export.*toBigInt" packages/frontend/src/shared/lib/index.ts && echo "OK
 
 ---
 
-### Step 2: Create shared ABI response helpers
+### Step 2: Create shared ABI response helpers **COMPLETE**
 
 #### Goal
 Create type-safe helpers for parsing common ABI response patterns like reserves and amounts.
