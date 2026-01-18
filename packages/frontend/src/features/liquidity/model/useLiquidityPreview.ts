@@ -1,9 +1,9 @@
 'use client';
 
 import { useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getRouterStaticContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 /**
  * Direction of the liquidity preview
@@ -33,15 +33,6 @@ export interface RemoveLiquidityPreviewResult {
 interface UseLiquidityPreviewOptions {
   enabled?: boolean;
   refetchInterval?: number;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
 }
 
 /**
@@ -91,7 +82,7 @@ export function useAddLiquidityPreview(
       }
 
       const rawOutput = await routerStatic.preview_add_liquidity_single_sy(marketAddress, syAmount);
-      const expectedLpOut = toBigInt(rawOutput as bigint | { low: bigint; high: bigint });
+      const expectedLpOut = toBigInt(rawOutput);
 
       return {
         expectedLpOut,
@@ -156,7 +147,7 @@ export function useRemoveLiquidityPreview(
         marketAddress,
         lpAmount
       );
-      const expectedSyOut = toBigInt(rawOutput as bigint | { low: bigint; high: bigint });
+      const expectedSyOut = toBigInt(rawOutput);
 
       return {
         expectedSyOut,
@@ -209,7 +200,7 @@ export function useLiquidityPreview(
 
       if (direction === 'add') {
         const rawOutput = await routerStatic.preview_add_liquidity_single_sy(marketAddress, amount);
-        const expectedLpOut = toBigInt(rawOutput as bigint | { low: bigint; high: bigint });
+        const expectedLpOut = toBigInt(rawOutput);
 
         return {
           expectedLpOut,
@@ -220,7 +211,7 @@ export function useLiquidityPreview(
           marketAddress,
           amount
         );
-        const expectedSyOut = toBigInt(rawOutput as bigint | { low: bigint; high: bigint });
+        const expectedSyOut = toBigInt(rawOutput);
 
         return {
           expectedSyOut,

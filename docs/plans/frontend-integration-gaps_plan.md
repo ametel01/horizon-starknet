@@ -375,7 +375,7 @@ Replace local toBigInt in yield hooks with shared utility.
 
 ---
 
-### Step 17: Migrate remaining features to shared toBigInt
+### Step 17: Migrate remaining features to shared toBigInt **COMPLETE**
 
 #### Goal
 Replace local toBigInt in portfolio, liquidity, swap, and oracle hooks.

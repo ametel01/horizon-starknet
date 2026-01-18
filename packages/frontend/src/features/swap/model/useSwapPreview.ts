@@ -1,9 +1,9 @@
 'use client';
 
 import { useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getRouterStaticContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 /**
  * Direction of the swap preview
@@ -25,15 +25,6 @@ export interface SwapPreviewResult {
 interface UseSwapPreviewOptions {
   enabled?: boolean;
   refetchInterval?: number;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
 }
 
 /**
@@ -91,7 +82,7 @@ export function useSwapPreview(
           ? await routerStatic.preview_swap_exact_sy_for_pt(marketAddress, amount)
           : await routerStatic.preview_swap_exact_pt_for_sy(marketAddress, amount);
 
-      const expectedOutput = toBigInt(rawOutput as bigint | { low: bigint; high: bigint });
+      const expectedOutput = toBigInt(rawOutput);
 
       return {
         expectedOutput,

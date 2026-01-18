@@ -1,23 +1,14 @@
 'use client';
 
 import { useAccount, useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getERC20Contract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 interface TokenInfo {
   name: string;
   symbol: string;
   decimals: number;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
 }
 
 // Return type for balance hooks - stores as string to avoid BigInt serialization issues
@@ -47,7 +38,7 @@ export function useTokenBalance(
 
       const token = getERC20Contract(tokenAddress, provider);
       const balance = await token.balance_of(address);
-      return toBigInt(balance as bigint | { low: bigint; high: bigint }).toString();
+      return toBigInt(balance).toString();
     },
     enabled: enabled && !!tokenAddress && !!address,
     refetchInterval,
@@ -82,7 +73,7 @@ export function useTokenAllowance(
 
       const token = getERC20Contract(tokenAddress, provider);
       const allowance = await token.allowance(address, spenderAddress);
-      return toBigInt(allowance as bigint | { low: bigint; high: bigint }).toString();
+      return toBigInt(allowance).toString();
     },
     enabled: enabled && !!tokenAddress && !!address && !!spenderAddress,
     refetchInterval,

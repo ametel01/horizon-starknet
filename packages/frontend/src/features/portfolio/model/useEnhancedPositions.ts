@@ -13,19 +13,12 @@ import {
 } from '@entities/position';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useAccount, useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { fromWad, WAD_BIGINT } from '@shared/math/wad';
 import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { type ProviderInterface, uint256 } from 'starknet';
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  return uint256.uint256ToBN(value);
-}
+import type { ProviderInterface } from 'starknet';
 
 /**
  * Fetch position data for a single market
@@ -51,11 +44,11 @@ async function fetchMarketPositionData(
       ytContract.get_user_interest(userAddress).catch(() => BigInt(0)),
     ]);
 
-  const syBalance = toBigInt(syBalanceResult as bigint | { low: bigint; high: bigint });
-  const ptBalance = toBigInt(ptBalanceResult as bigint | { low: bigint; high: bigint });
-  const ytBalance = toBigInt(ytBalanceResult as bigint | { low: bigint; high: bigint });
-  const lpBalance = toBigInt(lpBalanceResult as bigint | { low: bigint; high: bigint });
-  const claimableYield = toBigInt(claimableYieldResult as bigint | { low: bigint; high: bigint });
+  const syBalance = toBigInt(syBalanceResult);
+  const ptBalance = toBigInt(ptBalanceResult);
+  const ytBalance = toBigInt(ytBalanceResult);
+  const lpBalance = toBigInt(lpBalanceResult);
+  const claimableYield = toBigInt(claimableYieldResult);
 
   // Get SY price in USD - use symbol mapping for mock tokens
   const priceAddr =

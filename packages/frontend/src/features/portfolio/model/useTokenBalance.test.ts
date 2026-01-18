@@ -6,18 +6,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { uint256 } from 'starknet';
 
-/**
- * Convert Uint256 or bigint to bigint
- */
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
-}
+import { toBigInt } from '@shared/lib';
 
 /**
  * Convert felt252 to string

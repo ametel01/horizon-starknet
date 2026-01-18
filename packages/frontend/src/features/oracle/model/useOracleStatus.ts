@@ -8,28 +8,13 @@ import {
   TWAP_REFETCH_INTERVAL,
   TWAP_STALE_TIME,
 } from '@shared/config/twap';
+import { toBigInt } from '@shared/lib';
 import { lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
 import { getMarketContract, getPyLpOracleContract } from '@shared/starknet/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 import type { OracleStatus } from './types';
-
-// Type alias for Uint256-like values from contracts
-type Uint256Like = bigint | { low: bigint; high: bigint };
-
-/**
- * Helper to convert Uint256 or bigint to bigint
- * Starknet.js typed contracts may return Uint256 struct { low, high }
- */
-function toBigInt(value: Uint256Like): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
-}
 
 /**
  * Calculate estimated time until TWAP oracle is ready.
@@ -82,7 +67,7 @@ export function useOracleStatus(
           // Fall back to spot rate when PyLpOracle not available
           const market = getMarketContract(marketAddress, provider);
           const oracleState = await market.get_oracle_state();
-          const spotRate = toBigInt(oracleState.last_ln_implied_rate as Uint256Like);
+          const spotRate = toBigInt(oracleState.last_ln_implied_rate);
           const apy = lnRateToApy(spotRate).toNumber();
 
           return {
@@ -104,7 +89,7 @@ export function useOracleStatus(
             marketAddress,
             requestedDuration
           );
-          const rate = toBigInt(rawRate as Uint256Like);
+          const rate = toBigInt(rawRate);
           const apy = lnRateToApy(rate).toNumber();
           return { state: 'ready', rate, duration: requestedDuration, apy };
         }
@@ -115,7 +100,7 @@ export function useOracleStatus(
 
         if (shortReadiness.oldest_observation_satisfied) {
           const rawRate = await pyLpOracle.get_ln_implied_rate_twap(marketAddress, shortDuration);
-          const rate = toBigInt(rawRate as Uint256Like);
+          const rate = toBigInt(rawRate);
           const apy = lnRateToApy(rate).toNumber();
           return {
             state: 'partial',
@@ -128,7 +113,7 @@ export function useOracleStatus(
 
         // Fall back to spot rate
         const oracleState = await market.get_oracle_state();
-        const spotRate = toBigInt(oracleState.last_ln_implied_rate as Uint256Like);
+        const spotRate = toBigInt(oracleState.last_ln_implied_rate);
         const apy = lnRateToApy(spotRate).toNumber();
         const cardinality = Number(oracleState.observation_cardinality);
         const estimatedReadyIn = calculateEstimatedReadyIn(cardinality, requestedDuration);
