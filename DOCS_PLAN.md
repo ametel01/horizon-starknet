@@ -442,7 +442,7 @@ grep -q "Flash Mint\|IFlashCallback" packages/frontend/src/app/docs/glossary/pag
 
 ---
 
-### Step 20: Add fee-related terms
+### Step 20: Add fee-related terms **COMPLETE**
 
 #### Goal
 Add glossary entries for Interest Fee Rate, Reward Fee Rate, Expiry Divisor.

@@ -38,9 +38,15 @@ The difference between PT price and 1.0. A PT at 0.95 has a 5% discount, which b
 ### Expiry
 See [Maturity](#maturity).
 
+### Expiry Divisor
+A factory parameter that enforces expiry date alignment. When set (e.g., 86400 for daily alignment), all market expiries must be evenly divisible by this value. Used to standardize expiry dates across markets. A value of 0 disables alignment checks.
+
 ---
 
 ## F
+
+### Fee Decay
+The automatic reduction of swap fees as a market approaches maturity. Fees scale linearly with time-to-expiry: a 6-month market pays roughly half the fee rate of a 1-year market, and fees reach zero at expiry. See [AMM Mechanics](/docs/how-it-works/amm-mechanics#fee-decay).
 
 ### Fixed Yield
 A guaranteed return locked in at the time of purchase. Achieved by buying PT at a discount and holding to maturity. See [Earn Fixed Yield](/docs/guides/earn-fixed-yield).
@@ -62,6 +68,9 @@ The annualized return implied by the current PT price. See [Pricing](/docs/mecha
 
 ### IFlashCallback
 A contract interface that must be implemented to use Flash Mint. The YT contract calls your callback function with the minted tokens, and you must return the required SY by the end of the transaction. See [Flash Mint Mechanics](/docs/mechanics/flash-mint).
+
+### Interest Fee Rate
+The percentage of accrued yield that the protocol collects as a fee. Applied when YT holders claim their accumulated interest. Typical value: 3%. For example, if YT earns 100 tokens of interest and the fee rate is 3%, the holder receives 97 tokens.
 
 ---
 
@@ -107,6 +116,9 @@ The exchange rate used for minting and redemption. Always uses the maximum histo
 
 ### Redemption
 Converting PT back to underlying assets. After maturity: PT → underlying (1:1). Before maturity: PT + YT → SY. See [Redemption](/docs/mechanics/redemption).
+
+### Reward Fee Rate
+The percentage of reward tokens that the protocol collects as a fee. Applied when users claim reward tokens distributed by SYWithRewards implementations. Typical value: 3%. Separate from the interest fee rate, which applies to base yield.
 
 ### Reward Tokens
 Additional tokens distributed to SY holders beyond the base yield. Some yield-bearing assets provide incentive rewards (e.g., protocol tokens, governance tokens) that are separate from the underlying yield. Only SY tokens that implement the SYWithRewards interface support reward token distribution.
