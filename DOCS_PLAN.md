@@ -480,7 +480,7 @@ grep -q "Token Aggregator\|hrzSTRK\|Faucet\|Portfolio Value\|PnL\|Claim All\|Unw
 
 ---
 
-## Phase 9: Update Risks Page
+## Phase 9: Update Risks Page **COMPLETE**
 
 Add risks for new v2.0 features.
 
@@ -536,7 +536,7 @@ Run full build and lint to ensure all documentation compiles correctly.
 cd packages/frontend && bun run check && bun run build
 ```
 
-### Step 24: Run typecheck and lint
+### Step 24: Run typecheck and lint **COMPLETE**
 
 #### Goal
 Verify all MDX pages compile without errors and pass linting.
