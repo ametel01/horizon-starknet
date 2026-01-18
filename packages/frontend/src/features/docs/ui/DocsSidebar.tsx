@@ -37,6 +37,7 @@ const navigation: NavItem[] = [
       { title: 'Trade Yield', href: '/docs/guides/trade-yield' },
       { title: 'Provide Liquidity', href: '/docs/guides/provide-liquidity' },
       { title: 'Manage Positions', href: '/docs/guides/manage-positions' },
+      { title: 'Analytics', href: '/docs/guides/analytics' },
     ],
   },
   {
