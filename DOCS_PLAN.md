@@ -508,7 +508,7 @@ grep -q "Reward Token Risks\|external rewards\|reward rate" packages/frontend/sr
 
 ---
 
-### Step 23: Add Flash Mint Risks section
+### Step 23: Add Flash Mint Risks section **COMPLETE**
 
 #### Goal
 Document flash mint risks for integrators: callback implementation errors, reentrancy considerations, revert conditions.
