@@ -4,7 +4,9 @@ import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { useStarknet } from '@features/wallet';
 import { getAddresses, getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
 import { TWAP_DEFAULT_DURATION, TWAP_DURATIONS } from '@shared/config/twap';
+import { toHexAddress } from '@shared/lib/abi-helpers';
 import { calculateAnnualFeeRate } from '@shared/lib/fees';
+import { toBigInt } from '@shared/lib/uint256';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
 import {
@@ -15,30 +17,13 @@ import {
 import type { NetworkId } from '@shared/starknet/provider';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
-import { type ProviderInterface, uint256 } from 'starknet';
+import type { ProviderInterface } from 'starknet';
 
 /**
  * Page size for paginated market fetching
  * @see Security Audit L-04 - Gas Exhaustion Prevention
  */
 const MARKETS_PAGE_SIZE = 20;
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
-}
-
-// Helper to convert address (bigint or string) to hex string
-function toHexAddress(value: unknown): string {
-  if (typeof value === 'bigint') {
-    return `0x${value.toString(16).padStart(64, '0')}`;
-  }
-  return String(value);
-}
 
 // Contract MarketState struct shape from get_market_state()
 // Must match contracts/src/interfaces/i_market.cairo MarketState struct
@@ -317,19 +302,6 @@ function parsePaginatedResult(result: unknown): PaginatedResult {
 }
 
 /**
- * Convert address value to hex string
- */
-function addressToHex(addr: unknown): string {
-  if (typeof addr === 'bigint') {
-    return `0x${addr.toString(16).padStart(64, '0')}`;
-  }
-  if (typeof addr === 'string') {
-    return addr;
-  }
-  return String(addr);
-}
-
-/**
  * Fetch all active market addresses using pagination
  * @see Security Audit L-04 - Gas Exhaustion Prevention
  */
@@ -350,7 +322,7 @@ async function fetchActiveMarketsPaginated(
     const parsed = parsePaginatedResult(result);
 
     const pageAddresses = parsed.addresses
-      .map(addressToHex)
+      .map(toHexAddress)
       .filter(
         (addr) =>
           addr !== '0x0' &&
@@ -453,7 +425,7 @@ async function fetchAllMarketsPaginated(
     const parsed = parsePaginatedResult(result);
 
     const pageAddresses = parsed.addresses
-      .map(addressToHex)
+      .map(toHexAddress)
       .filter(
         (addr) =>
           addr !== '0x0' &&

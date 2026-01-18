@@ -1,9 +1,9 @@
 'use client';
 
 import { useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib/uint256';
 import { getRouterStaticContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
 
 /**
  * Live exchange rates from RouterStatic
@@ -21,15 +21,6 @@ export interface MarketExchangeRates {
 interface UseMarketExchangeRatesOptions {
   enabled?: boolean;
   refetchInterval?: number;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
 }
 
 /**

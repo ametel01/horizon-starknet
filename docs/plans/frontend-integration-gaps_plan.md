@@ -233,7 +233,7 @@ grep -q "YT.*Rewards" packages/frontend/src/widgets/portfolio/PortfolioRewardsCa
 
 ---
 
-## Phase 5: Market State Consolidation
+## Phase 5: Market State Consolidation **COMPLETE**
 
 Optimize RPC calls by using the consolidated get_market_state() method.
 
@@ -308,7 +308,7 @@ Consolidate duplicate code and complete remaining TODO items.
 cd packages/frontend && bun run check
 ```
 
-### Step 14: Migrate features/markets to shared toBigInt
+### Step 14: Migrate features/markets to shared toBigInt **COMPLETE**
 
 #### Goal
 Replace local toBigInt in market hooks with shared utility.
