@@ -34,4 +34,10 @@ export {
   useRewardSummary,
 } from './useRewardHistory';
 export { useRewardTokens } from './useRewardTokens';
+export {
+  useHasClaimableYTRewards,
+  useTotalYTAccruedRewards,
+  useYTAccruedRewards,
+  type YTAccruedReward,
+} from './useYTAccruedRewards';
 export { useYTRewardTokens } from './useYTRewardTokens';

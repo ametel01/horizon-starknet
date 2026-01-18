@@ -76,7 +76,7 @@ grep -q "useYTRewardTokens" packages/frontend/src/features/rewards/model/index.t
 
 ---
 
-### Step 4: Create useYTAccruedRewards hook
+### Step 4: Create useYTAccruedRewards hook **COMPLETE** (partial - contract interface limitation)
 
 #### Goal
 Fetch accrued YT rewards for connected user, following useMarketAccruedRewards pattern.
@@ -93,6 +93,13 @@ grep -q "useYTAccruedRewards" packages/frontend/src/features/rewards/model/index
 #### Failure modes
 - Contract may return empty arrays for non-reward YTs
 - Amount array ordering may not match token array ordering
+
+#### Known Limitation
+The IYT interface (`contracts/src/interfaces/i_yt.cairo`) does not expose `accrued_rewards`.
+The hook currently returns zeros for all reward amounts. To fix:
+1. Add `fn accrued_rewards(self: @TContractState, user: ContractAddress) -> Span<u256>;` to IYT trait
+2. Add corresponding implementation in `contracts/src/tokens/yt.cairo` (already exists internally)
+3. Regenerate ABIs with `bun run codegen` in frontend package
 
 ---
 
