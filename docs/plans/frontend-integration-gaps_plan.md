@@ -280,7 +280,7 @@ cd packages/frontend && bun run test -- --grep "useMarket"
 
 ---
 
-### Step 13: Refactor useMarkets batch fetching
+### Step 13: Refactor useMarkets batch fetching **COMPLETE**
 
 #### Goal
 Apply same optimization to batch market fetching in useMarkets hook.

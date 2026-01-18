@@ -40,6 +40,21 @@ function toHexAddress(value: unknown): string {
   return String(value);
 }
 
+// Contract MarketState struct shape from get_market_state()
+// Must match contracts/src/interfaces/i_market.cairo MarketState struct
+interface ContractMarketState {
+  sy_reserve: bigint | { low: bigint; high: bigint };
+  pt_reserve: bigint | { low: bigint; high: bigint };
+  total_lp: bigint | { low: bigint; high: bigint };
+  scalar_root: bigint | { low: bigint; high: bigint };
+  initial_anchor: bigint | { low: bigint; high: bigint };
+  ln_fee_rate_root: bigint | { low: bigint; high: bigint };
+  reserve_fee_percent: number | bigint;
+  expiry: number | bigint;
+  last_ln_implied_rate: bigint | { low: bigint; high: bigint };
+  py_index: bigint | { low: bigint; high: bigint };
+}
+
 async function fetchMarketData(
   marketAddress: string,
   provider: ProviderInterface,
@@ -49,53 +64,37 @@ async function fetchMarketData(
   const addresses = getAddresses(network);
 
   try {
-    // Fetch all market data in parallel using typed contract calls
-    const [
-      syAddress,
-      ptAddress,
-      ytAddress,
-      expiry,
-      isExpiredVal,
-      reserves,
-      totalLpSupply,
-      lnRate,
-      feesCollected,
-      lnFeeRateRoot,
-      reserveFeePercent,
-    ] = await Promise.all([
-      market.sy(),
-      market.pt(),
-      market.yt(),
-      market.expiry(),
-      market.is_expired(),
-      market.get_reserves(),
-      market.total_lp_supply(),
-      market.get_ln_implied_rate(),
-      market.get_total_fees_collected(),
-      market.get_ln_fee_rate_root(),
-      market.get_reserve_fee_percent(),
-    ]);
+    // Use get_market_state() to reduce RPC calls from 11 to 6
+    // get_market_state() returns: sy_reserve, pt_reserve, total_lp, scalar_root,
+    // initial_anchor, ln_fee_rate_root, reserve_fee_percent, expiry, last_ln_implied_rate, py_index
+    const [syAddress, ptAddress, ytAddress, isExpiredVal, contractState, feesCollected] =
+      await Promise.all([
+        market.sy(),
+        market.pt(),
+        market.yt(),
+        market.is_expired(),
+        market.get_market_state() as Promise<ContractMarketState>,
+        market.get_total_fees_collected(),
+      ]);
 
     const info: MarketInfo = {
       address: marketAddress,
       syAddress: toHexAddress(syAddress),
       ptAddress: toHexAddress(ptAddress),
       ytAddress: toHexAddress(ytAddress),
-      expiry: Number(expiry),
-      isExpired: isExpiredVal,
+      expiry: Number(contractState.expiry),
+      isExpired: Boolean(isExpiredVal),
     };
 
-    // Reserves are returned as a tuple [sy_reserve, pt_reserve]
-    const reservesArr = reserves as unknown[];
-    const lnFeeRateRootValue = toBigInt(lnFeeRateRoot as bigint | { low: bigint; high: bigint });
+    const lnFeeRateRootValue = toBigInt(contractState.ln_fee_rate_root);
     const state: MarketState = {
-      syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
-      ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
-      totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
-      lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
+      syReserve: toBigInt(contractState.sy_reserve),
+      ptReserve: toBigInt(contractState.pt_reserve),
+      totalLpSupply: toBigInt(contractState.total_lp),
+      lnImpliedRate: toBigInt(contractState.last_ln_implied_rate),
       feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
       lnFeeRateRoot: lnFeeRateRootValue,
-      reserveFeePercent: Number(reserveFeePercent),
+      reserveFeePercent: Number(contractState.reserve_fee_percent),
     };
 
     // Spot rate (always available)

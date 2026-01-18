@@ -81,7 +81,7 @@ export function useMarket(
         ptAddress: toHexAddress(ptAddress),
         ytAddress: toHexAddress(ytAddress),
         expiry: Number(contractState.expiry),
-        isExpired: isExpiredVal,
+        isExpired: Boolean(isExpiredVal),
       };
 
       const lnFeeRateRootValue = toBigInt(contractState.ln_fee_rate_root);
@@ -152,7 +152,7 @@ export function useMarketInfo(marketAddress: string | null): UseQueryResult<Mark
         ptAddress: toHexAddress(ptAddress),
         ytAddress: toHexAddress(ytAddress),
         expiry: Number(expiry),
-        isExpired: isExpiredVal,
+        isExpired: Boolean(isExpiredVal),
       };
     },
     enabled: !!marketAddress,
