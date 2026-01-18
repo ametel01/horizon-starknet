@@ -85,6 +85,47 @@ Yield is paid in the underlying asset (e.g., sSTRK).
 
 ---
 
+## Claiming Rewards
+
+Some YT positions earn external reward tokens in addition to yield. These rewards come from the underlying protocol (e.g., staking rewards, liquidity mining incentives).
+
+<Callout type="info">
+Not all YT positions have reward tokens. Rewards depend on the underlying asset and protocol integration.
+</Callout>
+
+### Viewing Available Rewards
+
+1. Go to **Portfolio**
+2. Find your YT position
+3. Check the **Rewards** column for claimable amounts
+
+Positions with no external rewards will show "—" in the rewards column.
+
+### To Claim Rewards
+
+1. Go to **Portfolio**
+2. Find position with claimable rewards
+3. Click **Claim Rewards**
+4. Confirm transaction
+
+Rewards are paid directly in the reward token (e.g., STRK, protocol tokens).
+
+### Combined Yield + Rewards Claim
+
+For gas efficiency, you can claim both yield and rewards in a single transaction:
+
+1. Go to **Portfolio**
+2. Click **Claim All** on a position with both yield and rewards
+3. Confirm transaction
+
+This batches the yield claim (in underlying asset) and reward claims (in reward tokens) into one transaction.
+
+<Callout type="warning">
+Like yield, reward accrual stops at maturity. Claim any rewards before expiry.
+</Callout>
+
+---
+
 ## Redeeming at Maturity
 
 After maturity, PT can be redeemed 1:1 for the underlying.
@@ -149,6 +190,11 @@ If you don't have matching PT + YT, sell on the market instead:
       <TableCell>Claim Yield</TableCell>
       <TableCell>Anytime (YT only)</TableCell>
       <TableCell>Underlying asset</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Claim Rewards</TableCell>
+      <TableCell>Anytime (YT with rewards)</TableCell>
+      <TableCell>Reward tokens</TableCell>
     </TableRow>
     <TableRow>
       <TableCell>Redeem PT</TableCell>

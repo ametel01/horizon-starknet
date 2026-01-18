@@ -159,7 +159,7 @@ grep -q "Portfolio Summary\|Claim All\|Total PnL" packages/frontend/src/app/docs
 
 ---
 
-### Step 7: Add Multi-Reward Claims section
+### Step 7: Add Multi-Reward Claims section **COMPLETE**
 
 #### Goal
 Document the new multi-reward YT system: viewing available rewards, claiming rewards, and combined interest+rewards claims.
