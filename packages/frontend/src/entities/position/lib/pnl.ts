@@ -7,7 +7,10 @@
 import type { CostBasis } from '@entities/position';
 import { fromWad, WAD_BIGINT, wadDiv, wadMul } from '@shared/math/wad';
 
-const COST_BASIS_KEY = 'horizon_cost_basis';
+// Version localStorage keys to prevent data corruption on schema changes
+// Increment version when changing the stored data structure
+const STORAGE_VERSION = 'v1';
+const COST_BASIS_KEY = `horizon_cost_basis_${STORAGE_VERSION}`;
 
 /**
  * Generate a unique key for a cost basis entry

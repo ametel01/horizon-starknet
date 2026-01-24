@@ -4,7 +4,7 @@ import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { getDeadline } from '@shared/lib/deadline';
 import { getERC20Contract, getRouterContract } from '@shared/starknet/contracts';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type UseMutateFunction, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Call, uint256 } from 'starknet';
 
 export type SwapDirection = 'buy_pt' | 'sell_pt' | 'buy_yt' | 'sell_yt';
@@ -47,7 +47,8 @@ interface SwapResult {
 }
 
 interface UseSwapReturn {
-  swap: (params: SwapParams) => void;
+  /** Trigger a swap mutation with optional callbacks */
+  swap: UseMutateFunction<SwapResult, Error, SwapParams, OptimisticContext>;
   swapAsync: (params: SwapParams) => Promise<SwapResult>;
   isSwapping: boolean;
   isSuccess: boolean;

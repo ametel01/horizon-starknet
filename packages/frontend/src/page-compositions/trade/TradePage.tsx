@@ -29,7 +29,9 @@ import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } f
 // Constants
 // ============================================================================
 
-const FORM_MODE_STORAGE_KEY = 'horizon-trade-form-mode';
+// Version localStorage keys to prevent data corruption on schema changes
+const STORAGE_VERSION = 'v1';
+const FORM_MODE_STORAGE_KEY = `horizon-trade-form-mode-${STORAGE_VERSION}`;
 type FormMode = 'standard' | 'any-token';
 
 // Lazy load chart components (recharts is heavy)

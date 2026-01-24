@@ -228,9 +228,15 @@ declare_class() {
 
 # Check if all required class hashes are already set
 if [[ -n "$MOCK_ERC20_CLASS_HASH" && -n "$MOCK_YIELD_TOKEN_CLASS_HASH" && \
-      -n "$SY_CLASS_HASH" && -n "$PT_CLASS_HASH" && -n "$YT_CLASS_HASH" && \
-      -n "$MARKET_CLASS_HASH" && -n "$FACTORY_CLASS_HASH" && \
-      -n "$MARKET_FACTORY_CLASS_HASH" && -n "$ROUTER_CLASS_HASH" ]]; then
+      -n "$MOCK_PRAGMA_CLASS_HASH" && -n "$MOCK_AGGREGATOR_CLASS_HASH" && \
+      -n "$MOCK_SWAP_CALLBACK_CLASS_HASH" && -n "$MOCK_FLASH_CALLBACK_CLASS_HASH" && \
+      -n "$MOCK_REENTRANT_TOKEN_CLASS_HASH" && -n "$FAUCET_CLASS_HASH" && \
+      -n "$PRAGMA_INDEX_ORACLE_CLASS_HASH" && -n "$PY_LP_ORACLE_CLASS_HASH" && \
+      -n "$ROUTER_STATIC_CLASS_HASH" && -n "$SY_CLASS_HASH" && \
+      -n "$SY_WITH_REWARDS_CLASS_HASH" && -n "$PT_CLASS_HASH" && \
+      -n "$YT_CLASS_HASH" && -n "$MARKET_CLASS_HASH" && \
+      -n "$FACTORY_CLASS_HASH" && -n "$MARKET_FACTORY_CLASS_HASH" && \
+      -n "$ROUTER_CLASS_HASH" ]]; then
     log_info "All class hashes found in env, skipping declarations"
     log_info "  MockERC20: $MOCK_ERC20_CLASS_HASH"
     log_info "  MockYieldToken: $MOCK_YIELD_TOKEN_CLASS_HASH"
@@ -247,8 +253,16 @@ else
     MOCK_ERC20_CLASS_HASH=$(declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH")
     MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
     MOCK_PRAGMA_CLASS_HASH=$(declare_class "MockPragmaSummaryStats" "MOCK_PRAGMA_CLASS_HASH")
+    MOCK_AGGREGATOR_CLASS_HASH=$(declare_class "MockAggregator" "MOCK_AGGREGATOR_CLASS_HASH")
+    MOCK_SWAP_CALLBACK_CLASS_HASH=$(declare_class "MockSwapCallback" "MOCK_SWAP_CALLBACK_CLASS_HASH")
+    MOCK_FLASH_CALLBACK_CLASS_HASH=$(declare_class "MockFlashCallback" "MOCK_FLASH_CALLBACK_CLASS_HASH")
+    MOCK_REENTRANT_TOKEN_CLASS_HASH=$(declare_class "MockReentrantToken" "MOCK_REENTRANT_TOKEN_CLASS_HASH")
+    FAUCET_CLASS_HASH=$(declare_class "Faucet" "FAUCET_CLASS_HASH")
     PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
+    PY_LP_ORACLE_CLASS_HASH=$(declare_class "PyLpOracle" "PY_LP_ORACLE_CLASS_HASH")
+    ROUTER_STATIC_CLASS_HASH=$(declare_class "RouterStatic" "ROUTER_STATIC_CLASS_HASH")
     SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
+    SY_WITH_REWARDS_CLASS_HASH=$(declare_class "SYWithRewards" "SY_WITH_REWARDS_CLASS_HASH")
     PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
     YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
     MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
@@ -386,6 +400,12 @@ MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFac
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
     "$DEPLOYER_ADDRESS")
+
+# RouterStatic: constructor()
+ROUTER_STATIC_ADDRESS=$(deploy_contract "$ROUTER_STATIC_CLASS_HASH" "RouterStatic" "ROUTER_STATIC_ADDRESS")
+
+# PyLpOracle: constructor()
+PY_LP_ORACLE_ADDRESS=$(deploy_contract "$PY_LP_ORACLE_CLASS_HASH" "PyLpOracle" "PY_LP_ORACLE_ADDRESS")
 
 log_success "Core infrastructure deployed"
 
@@ -879,8 +899,16 @@ cat > "$JSON_FILE" << EOF
     "MockERC20": "$MOCK_ERC20_CLASS_HASH",
     "MockYieldToken": "$MOCK_YIELD_TOKEN_CLASS_HASH",
     "MockPragmaSummaryStats": "$MOCK_PRAGMA_CLASS_HASH",
+    "MockAggregator": "$MOCK_AGGREGATOR_CLASS_HASH",
+    "MockSwapCallback": "$MOCK_SWAP_CALLBACK_CLASS_HASH",
+    "MockFlashCallback": "$MOCK_FLASH_CALLBACK_CLASS_HASH",
+    "MockReentrantToken": "$MOCK_REENTRANT_TOKEN_CLASS_HASH",
+    "Faucet": "$FAUCET_CLASS_HASH",
     "PragmaIndexOracle": "$PRAGMA_INDEX_ORACLE_CLASS_HASH",
+    "PyLpOracle": "$PY_LP_ORACLE_CLASS_HASH",
+    "RouterStatic": "$ROUTER_STATIC_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
+    "SYWithRewards": "$SY_WITH_REWARDS_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
     "YT": "$YT_CLASS_HASH",
     "Market": "$MARKET_CLASS_HASH",
@@ -891,7 +919,9 @@ cat > "$JSON_FILE" << EOF
   "contracts": {
     "Factory": "$FACTORY_ADDRESS",
     "MarketFactory": "$MARKET_FACTORY_ADDRESS",
-    "Router": "$ROUTER_ADDRESS"
+    "Router": "$ROUTER_ADDRESS",
+    "RouterStatic": "$ROUTER_STATIC_ADDRESS",
+    "PyLpOracle": "$PY_LP_ORACLE_ADDRESS"
   },
   "testSetup": {
     "testRecipient": "$TEST_RECIPIENT",
@@ -987,6 +1017,8 @@ echo "Core Contracts:"
 echo "  Factory:        $FACTORY_ADDRESS"
 echo "  MarketFactory:  $MARKET_FACTORY_ADDRESS"
 echo "  Router:         $ROUTER_ADDRESS"
+echo "  RouterStatic:   $ROUTER_STATIC_ADDRESS"
+echo "  PyLpOracle:     $PY_LP_ORACLE_ADDRESS"
 
 if [[ "$NETWORK" != "mainnet" ]]; then
     echo ""

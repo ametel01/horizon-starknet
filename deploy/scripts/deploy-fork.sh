@@ -189,7 +189,10 @@ declare_class() {
 log_info "Declaring contract classes..."
 
 PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
+PY_LP_ORACLE_CLASS_HASH=$(declare_class "PyLpOracle" "PY_LP_ORACLE_CLASS_HASH")
+ROUTER_STATIC_CLASS_HASH=$(declare_class "RouterStatic" "ROUTER_STATIC_CLASS_HASH")
 SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
+SY_WITH_REWARDS_CLASS_HASH=$(declare_class "SYWithRewards" "SY_WITH_REWARDS_CLASS_HASH")
 PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
 YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
 MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
@@ -309,6 +312,12 @@ MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFac
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
     "$DEPLOYER_ADDRESS")
+
+# RouterStatic: constructor()
+ROUTER_STATIC_ADDRESS=$(deploy_contract "$ROUTER_STATIC_CLASS_HASH" "RouterStatic" "ROUTER_STATIC_ADDRESS")
+
+# PyLpOracle: constructor()
+PY_LP_ORACLE_ADDRESS=$(deploy_contract "$PY_LP_ORACLE_CLASS_HASH" "PyLpOracle" "PY_LP_ORACLE_ADDRESS")
 
 log_success "Core infrastructure deployed"
 
@@ -603,7 +612,10 @@ cat > "$JSON_FILE" << EOF
   "pragmaTwap": "$PRAGMA_TWAP_ADDRESS",
   "classHashes": {
     "PragmaIndexOracle": "$PRAGMA_INDEX_ORACLE_CLASS_HASH",
+    "PyLpOracle": "$PY_LP_ORACLE_CLASS_HASH",
+    "RouterStatic": "$ROUTER_STATIC_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
+    "SYWithRewards": "$SY_WITH_REWARDS_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
     "YT": "$YT_CLASS_HASH",
     "Market": "$MARKET_CLASS_HASH",
@@ -614,7 +626,9 @@ cat > "$JSON_FILE" << EOF
   "contracts": {
     "Factory": "$FACTORY_ADDRESS",
     "MarketFactory": "$MARKET_FACTORY_ADDRESS",
-    "Router": "$ROUTER_ADDRESS"
+    "Router": "$ROUTER_ADDRESS",
+    "RouterStatic": "$ROUTER_STATIC_ADDRESS",
+    "PyLpOracle": "$PY_LP_ORACLE_ADDRESS"
   },
   "mainnetTokens": {
     "sSTRK": "$SSTRK_ADDRESS",
@@ -676,6 +690,8 @@ echo "Core Contracts:"
 echo "  Factory:        $FACTORY_ADDRESS"
 echo "  MarketFactory:  $MARKET_FACTORY_ADDRESS"
 echo "  Router:         $ROUTER_ADDRESS"
+echo "  RouterStatic:   $ROUTER_STATIC_ADDRESS"
+echo "  PyLpOracle:     $PY_LP_ORACLE_ADDRESS"
 echo ""
 echo "Mainnet Yield Tokens:"
 echo "  sSTRK:          $SSTRK_ADDRESS"
