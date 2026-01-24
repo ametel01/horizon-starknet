@@ -55,7 +55,7 @@ import {
 import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { ArrowUpDown } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 interface SwapFormProps {
@@ -338,27 +338,27 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
     return -1; // No transaction in progress
   }, [isSwapping, isSuccess, transactionSteps.length]);
 
-  // Handle swap
+  // Handle swap - uses mutation callback for clearing input (rerender-move-effect-to-event)
   const handleSwap = (): void => {
     if (!canSwap) return;
 
-    swap({
-      marketAddress: market.address,
-      syAddress: market.syAddress,
-      ptAddress: market.ptAddress,
-      ytAddress: market.ytAddress,
-      direction,
-      amountIn: parsedInputAmount,
-      minAmountOut: minOutput,
-    });
+    swap(
+      {
+        marketAddress: market.address,
+        syAddress: market.syAddress,
+        ptAddress: market.ptAddress,
+        ytAddress: market.ytAddress,
+        direction,
+        amountIn: parsedInputAmount,
+        minAmountOut: minOutput,
+      },
+      {
+        onSuccess: () => {
+          setInputAmount('');
+        },
+      }
+    );
   };
-
-  // Clear input on success
-  useEffect(() => {
-    if (isSuccess) {
-      setInputAmount('');
-    }
-  }, [isSuccess]);
 
   // Handle direction change with animation
   const toggleDirection = (): void => {
