@@ -25,7 +25,7 @@ source "$ENV_FILE"
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
 # Test recipient address
-TEST_RECIPIENT="0x0715140EF3b872C34c0E82CB2650c4bEB0E9F60d5a157414af6913E9326cd691"
+TEST_RECIPIENT="${TEST_RECIPIENT:-0x064b48806902a367c8598f4F95C305e8c1a1aCbA5f082D294a43793113115691}"
 
 cat > "$OUTPUT_FILE" << EOF
 {
@@ -36,8 +36,16 @@ cat > "$OUTPUT_FILE" << EOF
     "MockERC20": "${MOCK_ERC20_CLASS_HASH:-}",
     "MockYieldToken": "${MOCK_YIELD_TOKEN_CLASS_HASH:-}",
     "MockPragmaSummaryStats": "${MOCK_PRAGMA_CLASS_HASH:-}",
+    "MockAggregator": "${MOCK_AGGREGATOR_CLASS_HASH:-}",
+    "MockSwapCallback": "${MOCK_SWAP_CALLBACK_CLASS_HASH:-}",
+    "MockFlashCallback": "${MOCK_FLASH_CALLBACK_CLASS_HASH:-}",
+    "MockReentrantToken": "${MOCK_REENTRANT_TOKEN_CLASS_HASH:-}",
+    "Faucet": "${FAUCET_CLASS_HASH:-}",
     "PragmaIndexOracle": "${PRAGMA_INDEX_ORACLE_CLASS_HASH:-}",
+    "PyLpOracle": "${PY_LP_ORACLE_CLASS_HASH:-}",
+    "RouterStatic": "${ROUTER_STATIC_CLASS_HASH:-}",
     "SY": "${SY_CLASS_HASH:-}",
+    "SYWithRewards": "${SY_WITH_REWARDS_CLASS_HASH:-}",
     "PT": "${PT_CLASS_HASH:-}",
     "YT": "${YT_CLASS_HASH:-}",
     "Market": "${MARKET_CLASS_HASH:-}",
@@ -48,65 +56,82 @@ cat > "$OUTPUT_FILE" << EOF
   "contracts": {
     "Factory": "${FACTORY_ADDRESS:-}",
     "MarketFactory": "${MARKET_FACTORY_ADDRESS:-}",
-    "Router": "${ROUTER_ADDRESS:-}"
+    "Router": "${ROUTER_ADDRESS:-}",
+    "RouterStatic": "${ROUTER_STATIC_ADDRESS:-}",
+    "PyLpOracle": "${PY_LP_ORACLE_ADDRESS:-}"
   },
   "testSetup": {
     "testRecipient": "$TEST_RECIPIENT",
     "baseToken": {
-      "STRK": "${STRK_ADDRESS:-}"
-    },
-    "oracles": {
-      "MockPragma": "${MOCK_PRAGMA_ADDRESS:-}",
-      "sSTRK": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
+      "STRK": "${STRK_ADDRESS:-}",
+      "ETH": "${ETH_ADDRESS:-}"
     },
     "yieldTokens": {
       "nstSTRK": {
         "name": "Nostra Staked STRK",
         "symbol": "nstSTRK",
         "address": "${NST_STRK_ADDRESS:-}",
-        "isERC4626": true,
-        "oracle": null
+        "isERC4626": true
       },
       "sSTRK": {
         "name": "Staked Starknet Token",
         "symbol": "sSTRK",
         "address": "${SSTRK_ADDRESS:-}",
-        "isERC4626": false,
-        "oracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}"
+        "isERC4626": true
+      },
+      "wstETH": {
+        "name": "Starknet Wrapped Staked Ether",
+        "symbol": "wstETH",
+        "address": "${WSTETH_ADDRESS:-}",
+        "isERC4626": true
       }
     },
     "syTokens": {
       "SY-nstSTRK": {
         "address": "${SY_NST_STRK_ADDRESS:-}",
         "underlying": "${NST_STRK_ADDRESS:-}",
-        "indexOracle": "${NST_STRK_ADDRESS:-}",
         "isERC4626": true
       },
       "SY-sSTRK": {
         "address": "${SY_SSTRK_ADDRESS:-}",
         "underlying": "${SSTRK_ADDRESS:-}",
-        "indexOracle": "${PRAGMA_SSTRK_ORACLE_ADDRESS:-}",
-        "isERC4626": false
+        "isERC4626": true
+      },
+      "SY-wstETH": {
+        "address": "${SY_WSTETH_ADDRESS:-}",
+        "underlying": "${WSTETH_ADDRESS:-}",
+        "isERC4626": true
       }
     },
     "markets": {
       "nstSTRK": {
         "PT": "${PT_NST_STRK_ADDRESS:-}",
         "YT": "${YT_NST_STRK_ADDRESS:-}",
-        "Market": "${MARKET_NST_STRK_ADDRESS:-}"
+        "Market": "${MARKET_NST_STRK_ADDRESS:-}",
+        "initialAnchor": "${ANCHOR_NST_STRK:-}"
       },
       "sSTRK": {
         "PT": "${PT_SSTRK_ADDRESS:-}",
         "YT": "${YT_SSTRK_ADDRESS:-}",
-        "Market": "${MARKET_SSTRK_ADDRESS:-}"
+        "Market": "${MARKET_SSTRK_ADDRESS:-}",
+        "initialAnchor": "${ANCHOR_SSTRK:-}"
+      },
+      "wstETH": {
+        "PT": "${PT_WSTETH_ADDRESS:-}",
+        "YT": "${YT_WSTETH_ADDRESS:-}",
+        "Market": "${MARKET_WSTETH_ADDRESS:-}",
+        "initialAnchor": "${ANCHOR_WSTETH:-}"
       }
     },
+    "marketParams": {
+      "scalarRoot": "${SCALAR_ROOT:-}",
+      "feeRate": "${FEE_RATE:-}"
+    },
+    "liquidity": {
+      "seeded": ${SEED_LIQUIDITY:-false},
+      "seedAmount": "${SEED_AMOUNT:-0}"
+    },
     "expiry": ${EXPIRY_TIMESTAMP:-0}
-  },
-  "marketParams": {
-    "scalarRoot": "${MARKET_SCALAR_ROOT:-}",
-    "initialAnchor": "${MARKET_INITIAL_ANCHOR:-}",
-    "feeRate": "${MARKET_FEE_RATE:-}"
   }
 }
 EOF

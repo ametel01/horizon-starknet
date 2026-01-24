@@ -263,9 +263,9 @@ log_info "Deploying core infrastructure..."
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
     "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
-# MarketFactory: constructor(owner, market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash, yield_contract_factory)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH" "$FACTORY_ADDRESS")
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
@@ -402,6 +402,7 @@ ANCHOR_HRZ_STRK="${MARKET_INITIAL_ANCHOR_HRZ_STRK:-$DEFAULT_ANCHOR}"
 SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
 FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
 ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_HRZ_STRK")
+RESERVE_FEE_PERCENT="${MARKET_RESERVE_FEE_PERCENT:-0}"
 
 if [[ -n "$MARKET_HRZ_STRK_ADDRESS" && "$MARKET_HRZ_STRK_ADDRESS" != "" && "$MARKET_HRZ_STRK_ADDRESS" != "0x0" ]]; then
     log_warning "Market for hrzSTRK already exists: $MARKET_HRZ_STRK_ADDRESS"
@@ -411,7 +412,9 @@ else
         "$PT_HRZ_STRK_ADDRESS" \
         "$SCALAR_ROOT_HEX" 0x0 \
         "$ANCHOR_HEX" 0x0 \
-        "$FEE_RATE_HEX" 0x0
+        "$FEE_RATE_HEX" 0x0 \
+        "$RESERVE_FEE_PERCENT" \
+        0x0
 
     MARKET_HRZ_STRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
         "$PT_HRZ_STRK_ADDRESS")

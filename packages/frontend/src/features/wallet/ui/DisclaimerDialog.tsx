@@ -101,6 +101,7 @@ export function DisclaimerDialog({
           <label className="hover:bg-muted/50 flex cursor-pointer items-start gap-3 rounded-lg p-2 transition-colors">
             <input
               type="checkbox"
+              name="acknowledge-risks"
               checked={acknowledged}
               onChange={(e) => {
                 setAcknowledged(e.target.checked);

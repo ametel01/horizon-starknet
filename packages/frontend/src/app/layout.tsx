@@ -106,6 +106,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
       lang="en"
       className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
       suppressHydrationWarning
+      style={{ colorScheme: 'light dark' }}
     >
       <head>
         {/* Preconnect to external origins used early in page lifecycle */}

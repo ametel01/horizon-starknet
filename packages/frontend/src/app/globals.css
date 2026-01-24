@@ -548,14 +548,14 @@
 
   /* Smooth content transitions */
   .transition-smooth {
-    transition-property: all;
+    transition-property: color, background-color, border-color, opacity, transform, box-shadow;
     transition-duration: 300ms;
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   /* Slow reveal transitions */
   .transition-reveal {
-    transition-property: all;
+    transition-property: color, background-color, border-color, opacity, transform, box-shadow;
     transition-duration: 400ms;
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }

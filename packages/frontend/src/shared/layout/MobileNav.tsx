@@ -116,10 +116,7 @@ export function MobileNav(): ReactNode {
       {/* Glassmorphism container */}
       <div className="bg-background/80 border-border supports-[backdrop-filter]:bg-background/60 border-t backdrop-blur-xl">
         {/* Navigation grid */}
-        <div
-          className={cn('grid gap-1 px-2 py-1', isSimple ? 'grid-cols-3' : 'grid-cols-5')}
-          role="menubar"
-        >
+        <div className={cn('grid gap-1 px-2 py-1', isSimple ? 'grid-cols-3' : 'grid-cols-5')}>
           {navItems.map((item) => (
             <NavItem
               key={item.href}

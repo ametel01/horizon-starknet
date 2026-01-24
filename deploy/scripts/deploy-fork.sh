@@ -305,9 +305,9 @@ log_info "Deploying core infrastructure..."
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
     "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
-# MarketFactory: constructor(owner, market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash, yield_contract_factory)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH" "$FACTORY_ADDRESS")
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
@@ -464,6 +464,7 @@ log_info "Expiry: $EXPIRY_TIMESTAMP ($(date -d "@$EXPIRY_TIMESTAMP" 2>/dev/null 
 SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
 FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
 DEFAULT_ANCHOR="${MARKET_INITIAL_ANCHOR:-50000000000000000}"
+RESERVE_FEE_PERCENT="${MARKET_RESERVE_FEE_PERCENT:-0}"
 
 SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
 FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
@@ -495,7 +496,9 @@ invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
     "$PT_SSTRK_ADDRESS" \
     "$SCALAR_ROOT_HEX" 0x0 \
     "$ANCHOR_HEX" 0x0 \
-    "$FEE_RATE_HEX" 0x0
+    "$FEE_RATE_HEX" 0x0 \
+    "$RESERVE_FEE_PERCENT" \
+    0x0
 
 sleep 2
 
@@ -528,7 +531,9 @@ invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
     "$PT_WSTETH_ADDRESS" \
     "$SCALAR_ROOT_HEX" 0x0 \
     "$ANCHOR_HEX" 0x0 \
-    "$FEE_RATE_HEX" 0x0
+    "$FEE_RATE_HEX" 0x0 \
+    "$RESERVE_FEE_PERCENT" \
+    0x0
 
 sleep 2
 
@@ -561,7 +566,9 @@ invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
     "$PT_NST_STRK_ADDRESS" \
     "$SCALAR_ROOT_HEX" 0x0 \
     "$ANCHOR_HEX" 0x0 \
-    "$FEE_RATE_HEX" 0x0
+    "$FEE_RATE_HEX" 0x0 \
+    "$RESERVE_FEE_PERCENT" \
+    0x0
 
 sleep 2
 

@@ -240,7 +240,17 @@ if [[ -n "$MOCK_ERC20_CLASS_HASH" && -n "$MOCK_YIELD_TOKEN_CLASS_HASH" && \
     log_info "All class hashes found in env, skipping declarations"
     log_info "  MockERC20: $MOCK_ERC20_CLASS_HASH"
     log_info "  MockYieldToken: $MOCK_YIELD_TOKEN_CLASS_HASH"
+    log_info "  MockPragmaSummaryStats: $MOCK_PRAGMA_CLASS_HASH"
+    log_info "  MockAggregator: $MOCK_AGGREGATOR_CLASS_HASH"
+    log_info "  MockSwapCallback: $MOCK_SWAP_CALLBACK_CLASS_HASH"
+    log_info "  MockFlashCallback: $MOCK_FLASH_CALLBACK_CLASS_HASH"
+    log_info "  MockReentrantToken: $MOCK_REENTRANT_TOKEN_CLASS_HASH"
+    log_info "  Faucet: $FAUCET_CLASS_HASH"
+    log_info "  PragmaIndexOracle: $PRAGMA_INDEX_ORACLE_CLASS_HASH"
+    log_info "  PyLpOracle: $PY_LP_ORACLE_CLASS_HASH"
+    log_info "  RouterStatic: $ROUTER_STATIC_CLASS_HASH"
     log_info "  SY: $SY_CLASS_HASH"
+    log_info "  SYWithRewards: $SY_WITH_REWARDS_CLASS_HASH"
     log_info "  PT: $PT_CLASS_HASH"
     log_info "  YT: $YT_CLASS_HASH"
     log_info "  Market: $MARKET_CLASS_HASH"
@@ -393,9 +403,9 @@ log_info "Deploying core infrastructure..."
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
     "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
-# MarketFactory: constructor(owner, market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash, yield_contract_factory)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH" "$FACTORY_ADDRESS")
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
@@ -652,6 +662,7 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
     FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
     DEFAULT_ANCHOR="${MARKET_INITIAL_ANCHOR:-76961041136128000}"  # ~8% APY default
+    RESERVE_FEE_PERCENT="${MARKET_RESERVE_FEE_PERCENT:-0}"
 
     # Per-market initial anchors (override with MARKET_INITIAL_ANCHOR_<NAME>)
     # Use calc-anchor.sh to calculate: ./deploy/scripts/calc-anchor.sh <apy%>
@@ -673,7 +684,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             "$PT_NST_STRK_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
             "$ANCHOR_HEX" 0x0 \
-            "$FEE_RATE_HEX" 0x0
+            "$FEE_RATE_HEX" 0x0 \
+            "$RESERVE_FEE_PERCENT" \
+            0x0
 
         sleep 1
         MARKET_NST_STRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
@@ -697,7 +710,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             "$PT_SSTRK_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
             "$ANCHOR_HEX" 0x0 \
-            "$FEE_RATE_HEX" 0x0
+            "$FEE_RATE_HEX" 0x0 \
+            "$RESERVE_FEE_PERCENT" \
+            0x0
 
         sleep 1
         MARKET_SSTRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
@@ -721,7 +736,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             "$PT_WSTETH_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
             "$ANCHOR_HEX" 0x0 \
-            "$FEE_RATE_HEX" 0x0
+            "$FEE_RATE_HEX" 0x0 \
+            "$RESERVE_FEE_PERCENT" \
+            0x0
 
         sleep 1
         MARKET_WSTETH_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
