@@ -39,9 +39,9 @@ pub mod MarketFactory {
     /// Using same value as market_math::MAX_LN_IMPLIED_RATE
     const MAX_INITIAL_ANCHOR: u256 = 4_600_000_000_000_000_000; // ~4.6 WAD
 
-    /// Minimum initial_anchor: 1 WAD (Pendle requires initial_anchor >= WAD)
-    /// This ensures the starting ln(implied rate) is valid (rate >= 1)
-    const MIN_INITIAL_ANCHOR: u256 = 1_000_000_000_000_000_000; // 1 WAD
+    /// Minimum initial_anchor: 0.01 WAD (corresponds to ~1% APY)
+    /// Formula: anchor = ln(1 + APY), so 0.01 WAD ≈ ln(1.01) ≈ 1% APY
+    const MIN_INITIAL_ANCHOR: u256 = 10_000_000_000_000_000; // 0.01 WAD (~1% APY)
 
     /// Maximum ln_fee_rate_root: ln(1.05) WAD ≈ 0.0488 WAD (Pendle bound)
     /// At 1 year to expiry, this gives max 5% fee: exp(0.0488 * 1) ≈ 1.05
