@@ -13,9 +13,12 @@ Throughout this appendix, \textbf{PY} denotes a matched pair of PT and YT tokens
 \textbf{Interface} & \textbf{Responsibility} & \textbf{Trust Level} & \textbf{Key Invariant} \\
 \midrule
 SY & Yield abstraction layer & Medium & Fully backed by underlying \\
+SYWithRewards & SY plus reward tracking & Medium & Fully backed by underlying \\
 PT & Principal token claim & High & Supply equals YT supply \\
 YT & Yield accounting and distribution & High & Index monotonically increases \\
 Market & PT/SY price discovery & Medium & Proportion bounds enforced \\
+RouterStatic & Read-only quotes & Low & No state changes \\
+PyLpOracle & PT/YT/LP TWAP helper & Medium & Uses Market oracle state \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -131,7 +134,7 @@ pub trait IPT<TContractState> {
 \item YT supply always equals PT supply.
 \item The global index $I_{global}$ only increases (watermark protection).
 \item Interest is distributed proportionally based on YT balance and index delta.
-\item After expiry, YT stops accruing yield and becomes non-transferable.
+\item After expiry, YT stops accruing yield; transfers remain allowed.
 \end{itemize}
 
 \paragraph{Interest accounting model.}
@@ -201,6 +204,7 @@ pub trait IYT<TContractState> {
 \item \texttt{redeem\_py} requires caller to hold equal amounts of PT and YT; burns both and returns SY.
 \item \texttt{claim\_interest} updates $I_{user}$ to $I_{global}$ after transfer; subsequent calls return 0 until new yield accrues.
 \item After expiry, \texttt{redeem\_pt\_after\_expiry} (not shown) allows PT-only redemption at 1:1.
+\item If reward tokens are configured, YT exposes reward helpers (e.g., \texttt{claim\_rewards}, \texttt{get\_reward\_tokens}, \texttt{redeem\_due\_interest\_and\_rewards}).
 \end{itemize}
 
 
@@ -211,7 +215,7 @@ pub trait IYT<TContractState> {
 \item Pool proportions remain within configured bounds; trades violating bounds revert.
 \item LP tokens represent pro-rata ownership of pool reserves.
 \item Swap prices follow the logit-based AMM curve (see Section 4).
-\item Fees accrue to the pool and are distributed to LPs on withdrawal.
+\item Swap fees can include a reserve fee to the treasury; optional LP reward tokens may be tracked.
 \end{itemize}
 
 \begin{lstlisting}[language=C,basicstyle=\ttfamily\small,frame=single,breaklines=true,columns=fullflexible]
@@ -304,4 +308,3 @@ Not expired (where applicable) & \texttt{redeem\_pt\_after\_expiry} \\
 \bottomrule
 \end{tabular}
 \end{center}
-

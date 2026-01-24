@@ -1,26 +1,34 @@
 {
   "network": "devnet",
   "rpcUrl": "http://devnet:5050",
-  "deployedAt": "2026-01-03T00:23:28Z",
+  "deployedAt": "2026-01-24T01:55:59Z",
   "classHashes": {
     "MockERC20": "0x03e0656031a68e8afa62a960fbd7db369399d4232cb40f21b719d1edb7f73db0",
     "MockYieldToken": "0x0472ea900c6c8482b26c5b69a15d96f01c5d24d2b63255af5473b533e440fc51",
     "MockPragmaSummaryStats": "0x00b78459940e4d7008c13ed9c33500390531fad6117c3f7c559731b01fe0945a",
+    "MockAggregator": "0x0125be689962b415001fda40125615f587746a1f16704219715e3c74ed78db9f",
+    "MockSwapCallback": "0x044402442fd56de0c03df653999edcaeac4e894d2cd6b609b253bf1702151f13",
+    "MockFlashCallback": "0x01a750ec54d0d305d56e8830f3af992b2d2a9c3b09efea271a0f0979dd509ff6",
+    "MockReentrantToken": "0x01f3bda8f3d9c2d761596ce69cac4ee394881576d4f8d1dfc68e60119748a332",
+    "Faucet": "0x002a23d74960946e57c81f2fb53bf017cf7cfb099c68b2241a1e6f57e677cd88",
     "PragmaIndexOracle": "0x00453a2f281ba6be544a466110e144495f7ab6b72e0f73c6d32cf3f0ac780ac7",
+    "PyLpOracle": "0x07f50f6926e694e99fd38af29134050c56c269cd8393908c1d1e28a40036b47b",
+    "RouterStatic": "0x02450ec9b3be234ef46b296007a9c313d96530d290d3b89c73afcdf2766d2a5c",
     "SY": "0x054f6e5c326992300a4f28bdd9f2b086d95e9d82ba31c0cc77f05c9bc3a40c3d",
+    "SYWithRewards": "0x04b4cdb4dcf16f0f1290840dd804da1c5041f736781408950a40b8ff91ffa71f",
     "PT": "0x01457055ec33a35199c1648796c4b1b8342ccd18255fe50af789007ea5acf963",
-    "YT": "0x000c1aa3a1272e5fee2f02cb967d550824b8a60c46d4944f9f09c74e5de5904d",
-    "Market": "0x0361b0048b3b3300115c3344dc11e66442ac78f906e38d5823cd89b2c1a756a7",
-    "Factory": "0x04856088e771af7260a4648edc49b1b9ba9fdde284f67577ac25e55f3dd5b0db",
-    "MarketFactory": "0x015b5d2eedff83b31e6320318d4ee7ffe7fbe8cc4bec686f79ec6912883664cf",
-    "Router": "0x04feaf99c04424198c8d1decc7aecffd28bb0314cbe2f33e14ead3b61333fc76"
+    "YT": "0x01a5751cebbc64343bd3c9a56ee631a7108595b3751c274321e16012064133d4",
+    "Market": "0x04e3e1b6cd394e0a6005e9b6ffacb1336b598d40802a2e114c1d2e724d7a9712",
+    "Factory": "0x05081e3b3a98029b5502feed9f8929e28ac05c3ed3bea1c0576484347dd0e9fe",
+    "MarketFactory": "0x026f1cb3b60ae43c9bad10ce3c2606254a20016a735dfe4c2637e6e3e056e70a",
+    "Router": "0x02c1c9732ee77c543bc81cb1e8db20aab083c6a47ff8dc60968db4a0b7111523"
   },
   "contracts": {
-    "Factory": "0x00893e6062346f58b31c8b12a1a43109520154e9c25b4c8f7f70a2ef0248ffcc",
-    "MarketFactory": "0x036ca9bb1231eab175282fd183329ffad8d3d963066057d406d39a0e89c3ce5a",
-    "Router": "0x03b3709282cf4b5ee496889e2c9ed68a872364ce8e5d03a90532d5e4252d5fa4",
-    "RouterStatic": "0x0",
-    "PyLpOracle": "0x0"
+    "Factory": "0x0093e5efcf9f4452bde73b13547aa8a8596c79b6378d8352d72d34ab124685ea",
+    "MarketFactory": "0x05d78bff9f11ea80f322739b37367b20152c96fb452f66b28a82942ac5ed7ebf",
+    "Router": "0x033b083094c1c2d85f39e28be9d200022ccb1751531757405233299cbe511471",
+    "RouterStatic": "0x015f9844074df639ac40d4601d53046306cd07b959577137a1b9b24f1ef983ab",
+    "PyLpOracle": "0x03164fd5c73f9a668d63484375a2d2faf6be53eaf2b99529952abd5574978194"
   },
   "testSetup": {
     "testRecipient": "0x064b48806902a367c8598f4F95C305e8c1a1aCbA5f082D294a43793113115691",
@@ -32,56 +40,56 @@
       "nstSTRK": {
         "name": "Nostra Staked STRK",
         "symbol": "nstSTRK",
-        "address": "0x04f401f239d4e9c2437e95066e671a370924b2d15d4fd41158a03bd859a67371",
+        "address": "0x013c128834d76bd56ec6cbcae386e0d44dd146b3d8022dce12a5a7c7b4005ce4",
         "isERC4626": true
       },
       "sSTRK": {
         "name": "Staked Starknet Token",
         "symbol": "sSTRK",
-        "address": "0x03165beeed67c5e3f2a06a03e49a84d930f4aee5bf55463b8107a72eb7c85f98",
+        "address": "0x061fefece088078f73725d994e22394ad7d111cb3568fa6ca5e4aec7313f652a",
         "isERC4626": true
       },
       "wstETH": {
         "name": "Starknet Wrapped Staked Ether",
         "symbol": "wstETH",
-        "address": "0x02f7f67abba569f80199699e26a9adab976699c92329e933d600176e204c2195",
+        "address": "0x07c4a2ca57746759e33aef088dbfb419500bc313fa5dffdab927b1081ab49e5f",
         "isERC4626": true
       }
     },
     "syTokens": {
       "SY-nstSTRK": {
-        "address": "0x00afa4b40deaa0ee8307de627dd03c6b61a38a31942f1bfed67fe9c63efe0c12",
-        "underlying": "0x04f401f239d4e9c2437e95066e671a370924b2d15d4fd41158a03bd859a67371",
+        "address": "0x0007a6b077179bcda31d4cacdd9777ce5f238980144d9b10a42f7c9280c9a569",
+        "underlying": "0x013c128834d76bd56ec6cbcae386e0d44dd146b3d8022dce12a5a7c7b4005ce4",
         "isERC4626": true
       },
       "SY-sSTRK": {
-        "address": "0x0543759da00b9eab75f09c380feb2a9c2703ad6b297e9278f64971d498bbd6b6",
-        "underlying": "0x03165beeed67c5e3f2a06a03e49a84d930f4aee5bf55463b8107a72eb7c85f98",
+        "address": "0x03016082cfed1d5649ab23c9705f54a150bc1d9c9765d9834ae4a7780c917f74",
+        "underlying": "0x061fefece088078f73725d994e22394ad7d111cb3568fa6ca5e4aec7313f652a",
         "isERC4626": true
       },
       "SY-wstETH": {
-        "address": "0x0514f39b7c1db7c5ac1ead7413aea2b6f81ede469319ab7591761863bdad8266",
-        "underlying": "0x02f7f67abba569f80199699e26a9adab976699c92329e933d600176e204c2195",
+        "address": "0x0051c4ed3db85f66b17dafd1fc96950e8060dbf5e714e229ed46e048b1f5742d",
+        "underlying": "0x07c4a2ca57746759e33aef088dbfb419500bc313fa5dffdab927b1081ab49e5f",
         "isERC4626": true
       }
     },
     "markets": {
       "nstSTRK": {
-        "PT": "0x4e8e93a06fb6de5e09174bf7c8adf2fbb14f6b5750b08b0f7a1f868ad13930a",
-        "YT": "0x143a74315e0a5519be7828443e9c3e5b7bce7eb844852ac8e3818fe55c41db2",
-        "Market": "0x0",
+        "PT": "0x46c64e3d611ac8785c7b85499f097b171a2eb0185b6ce14b7d7168973b141d2",
+        "YT": "0x6d08403cad8f70469674e01c4226a1705b397c25418506d886f9a8650064fc0",
+        "Market": "0x49c9706eafd3a249dc54f1ffbb055b77c86af52e93de44704fb326a1f7d2882",
         "initialAnchor": "50000000000000000"
       },
       "sSTRK": {
-        "PT": "0x75da488e3122d581dd20513aea7dfb9b8bd320bf38f6f85c93f90dd84bb1567",
-        "YT": "0x4ef0885b582b110ddde49c5a5e4b4426d0e71afbb18310c8f0acd20b13ec694",
-        "Market": "0x0",
+        "PT": "0x2bdae00d181e90ed286cabd0a099359f7251d66e47b9767a3b7e3b1f5de688c",
+        "YT": "0x45b1accdd87996b284479f51a4d565dc4efed140efaca09818cfea17db14fb7",
+        "Market": "0x67ca7f0e1646ac78c0aed47bf2daffa51533e1a83085e884dca2c255a8f61cb",
         "initialAnchor": "50000000000000000"
       },
       "wstETH": {
-        "PT": "0x4f69883328472a1a14ac859ff83501ec5c7d2ea1d9654ad6d891d9844aef166",
-        "YT": "0x2aae9f4cfea1383b91ee522e5af61ba42f2237c2a07c7ebadb5ac1e3f644821",
-        "Market": "0x0",
+        "PT": "0x3b33095210b3562cd605e94d047944574ce082596f7fff234dc15295c1294c0",
+        "YT": "0x4f323c16dc5b40f3028afb81c078601b713761110990785726b2281d20cb6ae",
+        "Market": "0x578cd2aa4addd69850b299f317375bb3236eb754a2b8cc36586756e1894b0bb",
         "initialAnchor": "38480520568064000"
       }
     },
@@ -93,6 +101,6 @@
       "seeded": true,
       "seedAmount": "1000000000000000000000000"
     },
-    "expiry": 1769991789
+    "expiry": 1771811691
   }
 }
