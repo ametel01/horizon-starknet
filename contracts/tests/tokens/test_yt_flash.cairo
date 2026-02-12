@@ -9,7 +9,9 @@
 
 use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
 use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-use horizon::interfaces::i_yt::{IYTAdminDispatcher, IYTAdminDispatcherTrait, IYTDispatcher, IYTDispatcherTrait};
+use horizon::interfaces::i_yt::{
+    IYTAdminDispatcher, IYTAdminDispatcherTrait, IYTDispatcher, IYTDispatcherTrait,
+};
 use horizon::libraries::math::WAD;
 use horizon::mocks::mock_flash_callback::{
     IMockFlashCallbackDispatcher, IMockFlashCallbackDispatcherTrait,
@@ -20,9 +22,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use crate::utils::{
-    admin, mint_yield_token_to_user, setup_full, user1, user2, zero_address,
-};
+use crate::utils::{admin, mint_yield_token_to_user, setup_full, user1, user2, zero_address};
 
 // ============ Setup Functions ============
 
@@ -156,12 +156,8 @@ fn test_flash_mint_py_multiple_times() {
 
     // Verify cumulative PT/YT balance
     let pt = IPTDispatcher { contract_address: yt.pt() };
-    assert(
-        pt.balance_of(callback.contract_address) == pt_out_1 + pt_out_2, 'Total PT should sum',
-    );
-    assert(
-        yt.balance_of(callback.contract_address) == yt_out_1 + yt_out_2, 'Total YT should sum',
-    );
+    assert(pt.balance_of(callback.contract_address) == pt_out_1 + pt_out_2, 'Total PT should sum');
+    assert(yt.balance_of(callback.contract_address) == yt_out_1 + yt_out_2, 'Total YT should sum');
 }
 
 #[test]

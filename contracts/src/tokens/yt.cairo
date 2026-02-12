@@ -6,7 +6,9 @@
 pub mod YT {
     use core::num::traits::Zero;
     use horizon::components::reward_manager_component::RewardManagerComponent;
-    use horizon::interfaces::i_flash_callback::{IFlashCallbackDispatcher, IFlashCallbackDispatcherTrait};
+    use horizon::interfaces::i_flash_callback::{
+        IFlashCallbackDispatcher, IFlashCallbackDispatcherTrait,
+    };
     use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
     use horizon::interfaces::i_yt::{IYT, IYTAdmin};
@@ -1086,10 +1088,7 @@ pub mod YT {
                 if interest > 0 {
                     self
                         .user_interest_state
-                        .write(
-                            caller,
-                            UserInterestState { py_index: state.py_index, interest: 0 },
-                        );
+                        .write(caller, UserInterestState { py_index: state.py_index, interest: 0 });
 
                     // Apply protocol fee
                     let fee_rate = self.interest_fee_rate.read();
@@ -1354,10 +1353,7 @@ pub mod YT {
                 if interest > 0 {
                     self
                         .user_interest_state
-                        .write(
-                            user,
-                            UserInterestState { py_index: state.py_index, interest: 0 },
-                        );
+                        .write(user, UserInterestState { py_index: state.py_index, interest: 0 });
 
                     // Apply protocol fee
                     let fee_rate = self.interest_fee_rate.read();
@@ -1503,7 +1499,8 @@ pub mod YT {
         /// 4. Verify receiver has transferred amount_sy back to this contract
         /// 5. Update sy_reserve to include the repaid SY
         ///
-        /// @param receiver Address to receive PT+YT and execute callback (must implement IFlashCallback)
+        /// @param receiver Address to receive PT+YT and execute callback (must implement
+        /// IFlashCallback)
         /// @param amount_sy Amount of SY to use for minting PT+YT
         /// @param data Arbitrary data passed to the callback
         /// @return (amount_pt_out, amount_yt_out) Amounts of PT and YT minted
@@ -1555,7 +1552,10 @@ pub mod YT {
 
             // Verify SY repayment - balance must have increased by at least amount_sy
             let sy_balance_after = sy.balance_of(this);
-            assert(sy_balance_after >= sy_balance_before + amount_sy, Errors::YT_FLASH_REPAYMENT_FAILED);
+            assert(
+                sy_balance_after >= sy_balance_before + amount_sy,
+                Errors::YT_FLASH_REPAYMENT_FAILED,
+            );
 
             // Update sy_reserve to track the newly received SY
             self.sy_reserve.write(sy_balance_after);
@@ -1892,9 +1892,7 @@ pub mod YT {
                     .user_interest_state
                     .write(
                         user,
-                        UserInterestState {
-                            py_index: packed_index, interest: packed_interest,
-                        },
+                        UserInterestState { py_index: packed_index, interest: packed_interest },
                     );
             }
         }

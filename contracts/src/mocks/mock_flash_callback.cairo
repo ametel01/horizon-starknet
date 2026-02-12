@@ -6,8 +6,8 @@ use starknet::ContractAddress;
 pub mod MockFlashCallback {
     use horizon::interfaces::i_flash_callback::IFlashCallback;
     use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::ContractAddress;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 
     #[storage]
     struct Storage {

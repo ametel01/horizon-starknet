@@ -186,7 +186,7 @@ mod PragmaPtOracle {
 
 | Gap | Category | File | Notes |
 |-----|----------|------|-------|
-| YT UserInterest struct packing | Core Tokens | `contracts/src/tokens/yt.cairo:131-133` | Combine `user_py_index` + `user_interest` Maps into single packed struct Map |
+| ~~YT UserInterest struct packing~~ | Core Tokens | `contracts/src/tokens/yt.cairo` | ~~Combine `user_py_index` + `user_interest` Maps into single packed struct Map~~ **DONE** — `UserInterestState` struct with `StorePacking<UserInterestState, u256>` halves storage I/O on the hot path |
 | Cross-chain operations | Router | N/A | LayerZero/bridge support (Starknet-only focus, not planned) |
 
 ---
@@ -221,15 +221,15 @@ contracts/src/governance/
 
 | Priority | Count | Key Items |
 |----------|-------|-----------|
-| **Completed** | 17 | All P0, P1, and most P2 items (see table above) |
+| **Completed** | 18 | All P0, P1, most P2 items, and YT struct packing (see table above) |
 | **Medium (P2)** | 7 | Limit orders, storage packing, oracle wrappers |
-| **Low (P3)** | 2 | YT struct packing, cross-chain |
+| **Low (P3)** | 1 | Cross-chain |
 | **Future (P4)** | 8 | Governance system |
 | **Not a gap** | 2 | Permit signatures (N/A), token transfer pattern (intentional) |
 
-**Total Remaining Gaps: 17** (down from 33, of which 2 are N/A and 8 are deferred to Phase 4)
+**Total Remaining Gaps: 16** (down from 33, of which 2 are N/A and 8 are deferred to Phase 4)
 
-**Actionable Remaining Gaps: 7** (P2 + P3, excluding N/A items and Phase 4)
+**Actionable Remaining Gaps: 6** (P2 + P3, excluding N/A items and Phase 4)
 
 ---
 
