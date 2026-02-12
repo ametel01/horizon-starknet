@@ -24,6 +24,7 @@ pub mod YT {
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
+    use starknet::storage_access::StorePacking;
     use starknet::syscalls::deploy_syscall;
     use starknet::{
         ClassHash, ContractAddress, SyscallResultTrait, get_block_info, get_block_timestamp,
@@ -31,6 +32,24 @@ pub mod YT {
     };
 
     const VERSION: felt252 = 1;
+
+    /// Packed per-user interest state: (py_index, accrued_interest)
+    /// Stored as a single u256 to halve storage operations on the hot path.
+    #[derive(Copy, Drop, Serde)]
+    struct UserInterestState {
+        py_index: u128,
+        interest: u128,
+    }
+
+    impl UserInterestStatePacking of StorePacking<UserInterestState, u256> {
+        fn pack(value: UserInterestState) -> u256 {
+            u256 { low: value.interest, high: value.py_index }
+        }
+
+        fn unpack(value: u256) -> UserInterestState {
+            UserInterestState { py_index: value.high, interest: value.low }
+        }
+    }
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
@@ -127,10 +146,9 @@ pub mod YT {
         // After expiry, this caps the yield calculation so YT holders don't benefit from
         // post-expiry yield
         py_index_at_expiry: u256,
-        // User's last recorded PY index (for interest calculation)
-        user_py_index: Map<ContractAddress, u256>,
-        // User's accrued but unclaimed interest (in SY)
-        user_interest: Map<ContractAddress, u256>,
+        // Packed per-user interest state: last PY index + accrued unclaimed interest (in SY)
+        // Stored as a single u256 via StorePacking to halve storage I/O on the hot path
+        user_interest_state: Map<ContractAddress, UserInterestState>,
         // Flag to emit ExpiryReached event only once
         expiry_event_emitted: bool,
         // Expected SY balance held by contract (tracks deposits/withdrawals)
@@ -1063,9 +1081,15 @@ pub mod YT {
                 // Update caller's interest first to ensure it's current
                 self._update_user_interest(caller);
 
-                let interest = self.user_interest.read(caller);
+                let state = self.user_interest_state.read(caller);
+                let interest: u256 = state.interest.into();
                 if interest > 0 {
-                    self.user_interest.write(caller, 0);
+                    self
+                        .user_interest_state
+                        .write(
+                            caller,
+                            UserInterestState { py_index: state.py_index, interest: 0 },
+                        );
 
                     // Apply protocol fee
                     let fee_rate = self.interest_fee_rate.read();
@@ -1209,13 +1233,16 @@ pub mod YT {
             let yt_balance = self.erc20.ERC20_balances.read(user);
 
             // Get and clear user's accrued interest
-            let interest = self.user_interest.read(user);
+            let state = self.user_interest_state.read(user);
+            let interest: u256 = state.interest.into();
             if interest == 0 {
                 self.reentrancy_guard.end();
                 return 0;
             }
 
-            self.user_interest.write(user, 0);
+            self
+                .user_interest_state
+                .write(user, UserInterestState { py_index: state.py_index, interest: 0 });
 
             // Apply protocol fee
             let fee_rate = self.interest_fee_rate.read();
@@ -1264,9 +1291,10 @@ pub mod YT {
         /// Get user's pending interest (view only)
         fn get_user_interest(self: @ContractState, user: ContractAddress) -> u256 {
             let current_index = self.py_index_current();
-            let user_index = self.user_py_index.read(user);
+            let state = self.user_interest_state.read(user);
+            let user_index: u256 = state.py_index.into();
             let yt_balance = self.erc20.ERC20_balances.read(user);
-            let accrued = self.user_interest.read(user);
+            let accrued: u256 = state.interest.into();
 
             if user_index == 0 || yt_balance == 0 {
                 return accrued;
@@ -1321,9 +1349,15 @@ pub mod YT {
                 let yt_balance = self.erc20.ERC20_balances.read(user);
 
                 // Get and clear user's accrued interest
-                let interest = self.user_interest.read(user);
+                let state = self.user_interest_state.read(user);
+                let interest: u256 = state.interest.into();
                 if interest > 0 {
-                    self.user_interest.write(user, 0);
+                    self
+                        .user_interest_state
+                        .write(
+                            user,
+                            UserInterestState { py_index: state.py_index, interest: 0 },
+                        );
 
                     // Apply protocol fee
                     let fee_rate = self.interest_fee_rate.read();
@@ -1832,8 +1866,12 @@ pub mod YT {
             self.reward_manager.update_user_rewards(user);
 
             let current_index = self.py_index_stored.read();
-            let user_index = self.user_py_index.read(user);
+            let state = self.user_interest_state.read(user);
+            let user_index: u256 = state.py_index.into();
             let yt_balance = self.erc20.ERC20_balances.read(user);
+
+            // Calculate new accrued interest from packed state
+            let mut new_accrued: u256 = state.interest.into();
 
             // If user has a previous index and YT balance, calculate interest
             if user_index > 0 && yt_balance > 0 && current_index > user_index {
@@ -1843,14 +1881,21 @@ pub mod YT {
                 let index_diff = current_index - user_index;
                 let denominator = wad_mul(user_index, current_index);
                 let new_interest = wad_div(wad_mul(yt_balance, index_diff), denominator);
-
-                let accrued = self.user_interest.read(user);
-                self.user_interest.write(user, accrued + new_interest);
+                new_accrued += new_interest;
             }
 
-            // Update user's index to current
+            // Write packed state in a single storage op
             if current_index > 0 {
-                self.user_py_index.write(user, current_index);
+                let packed_index: u128 = current_index.try_into().expect('py_index overflow u128');
+                let packed_interest: u128 = new_accrued.try_into().expect('interest overflow u128');
+                self
+                    .user_interest_state
+                    .write(
+                        user,
+                        UserInterestState {
+                            py_index: packed_index, interest: packed_interest,
+                        },
+                    );
             }
         }
     }
