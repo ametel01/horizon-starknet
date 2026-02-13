@@ -37,7 +37,114 @@ pub mod Market {
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
+    use starknet::storage_access::StorePacking;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+
+    // ── Packed storage structs
+    // ──────────────────────────────────────────
+    // Each struct packs co-accessed fields into a single storage slot via
+    // StorePacking, cutting hot-path reads/writes roughly in half.
+
+    /// Packed pool reserves: (sy_reserve, pt_reserve) as u128 pair → 1 u256 slot.
+    /// u128 max = 3.4e38; even 340B tokens at 18 decimals = 3.4e29.
+    #[derive(Copy, Drop, Serde)]
+    struct PoolReserves {
+        sy: u128,
+        pt: u128,
+    }
+
+    impl PoolReservesPacking of StorePacking<PoolReserves, u256> {
+        fn pack(value: PoolReserves) -> u256 {
+            u256 { low: value.pt, high: value.sy }
+        }
+        fn unpack(value: u256) -> PoolReserves {
+            PoolReserves { sy: value.high, pt: value.low }
+        }
+    }
+
+    /// Packed TWAP oracle indices: 3 × u16 = 48 bits → fits in felt252.
+    #[derive(Copy, Drop, Serde)]
+    struct OracleIndices {
+        index: u16,
+        cardinality: u16,
+        cardinality_next: u16,
+    }
+
+    const TWO_POW_16: u64 = 0x10000;
+    const TWO_POW_32: u64 = 0x100000000;
+
+    impl OracleIndicesPacking of StorePacking<OracleIndices, felt252> {
+        fn pack(value: OracleIndices) -> felt252 {
+            let idx: felt252 = value.index.into();
+            let card: felt252 = (Into::<u16, u64>::into(value.cardinality) * TWO_POW_16).into();
+            let card_next: felt252 = (Into::<u16, u64>::into(value.cardinality_next) * TWO_POW_32)
+                .into();
+            idx + card + card_next
+        }
+        fn unpack(value: felt252) -> OracleIndices {
+            let v: u64 = value.try_into().unwrap();
+            let index: u16 = (v % TWO_POW_16).try_into().unwrap();
+            let cardinality: u16 = ((v / TWO_POW_16) % TWO_POW_16).try_into().unwrap();
+            let cardinality_next: u16 = ((v / TWO_POW_32) % TWO_POW_16).try_into().unwrap();
+            OracleIndices { index, cardinality, cardinality_next }
+        }
+    }
+
+    /// Packed market rate parameters: (scalar_root, ln_fee_rate_root) as u128 pair → 1 u256 slot.
+    #[derive(Copy, Drop, Serde)]
+    struct MarketParams {
+        scalar_root: u128,
+        ln_fee_rate_root: u128,
+    }
+
+    impl MarketParamsPacking of StorePacking<MarketParams, u256> {
+        fn pack(value: MarketParams) -> u256 {
+            u256 { low: value.ln_fee_rate_root, high: value.scalar_root }
+        }
+        fn unpack(value: u256) -> MarketParams {
+            MarketParams { scalar_root: value.high, ln_fee_rate_root: value.low }
+        }
+    }
+
+    /// Packed rate state: (initial_anchor, last_ln_implied_rate) as u128 pair → 1 u256 slot.
+    #[derive(Copy, Drop, Serde)]
+    struct RateState {
+        initial_anchor: u128,
+        last_ln_implied_rate: u128,
+    }
+
+    impl RateStatePacking of StorePacking<RateState, u256> {
+        fn pack(value: RateState) -> u256 {
+            u256 { low: value.last_ln_implied_rate, high: value.initial_anchor }
+        }
+        fn unpack(value: u256) -> RateState {
+            RateState { initial_anchor: value.high, last_ln_implied_rate: value.low }
+        }
+    }
+
+    /// Packed market metadata: (reserve_fee_percent, expiry) → 1 felt252 slot.
+    /// u8 + u64 = 72 bits.
+    #[derive(Copy, Drop, Serde)]
+    struct MarketMeta {
+        reserve_fee_percent: u8,
+        expiry: u64,
+    }
+
+    const TWO_POW_8: u128 = 0x100;
+
+    impl MarketMetaPacking of StorePacking<MarketMeta, felt252> {
+        fn pack(value: MarketMeta) -> felt252 {
+            let fee: felt252 = value.reserve_fee_percent.into();
+            let exp: felt252 = (Into::<u64, u128>::into(value.expiry) * TWO_POW_8).into();
+            fee + exp
+        }
+        fn unpack(value: felt252) -> MarketMeta {
+            let v: u128 = value.try_into().unwrap();
+            let reserve_fee_percent: u8 = (v % TWO_POW_8).try_into().unwrap();
+            let expiry: u64 = (v / TWO_POW_8).try_into().unwrap();
+            MarketMeta { reserve_fee_percent, expiry }
+        }
+    }
 
     /// Interface for Market LP reward functions
     #[starknet::interface]
@@ -122,25 +229,20 @@ pub mod Market {
         yt: ContractAddress,
         // Factory address (for querying fee config and treasury)
         factory: ContractAddress,
-        // Pool reserves
-        sy_reserve: u256,
-        pt_reserve: u256,
-        // Market parameters
-        scalar_root: u256,
-        initial_anchor: u256,
-        ln_fee_rate_root: u256, // Pendle-style log fee rate root
-        reserve_fee_percent: u8, // Reserve fee in base-100 (0-100), sent to treasury
-        // Expiry info
-        expiry: u64,
-        // Cached implied rate
-        last_ln_implied_rate: u256,
+        // Packed pool reserves (1 u256 slot)
+        reserves: PoolReserves,
+        // Packed market parameters: scalar_root + ln_fee_rate_root (1 u256 slot)
+        market_params: MarketParams,
+        // Packed rate state: initial_anchor + last_ln_implied_rate (1 u256 slot)
+        rate_state: RateState,
+        // Packed market metadata: reserve_fee_percent + expiry (1 felt252 slot)
+        market_meta: MarketMeta,
         // LP fees collected (in SY) - reserve fees are sent to treasury immediately
         lp_fees_collected: u256,
         // TWAP oracle - ring buffer of ln(implied rate) observations
         observations: Map<u16, Observation>,
-        observation_index: u16,
-        observation_cardinality: u16,
-        observation_cardinality_next: u16,
+        // Packed oracle indices: index + cardinality + cardinality_next (1 felt252 slot)
+        oracle_indices: OracleIndices,
         #[substorage(v0)]
         reward_manager: RewardManagerComponent::Storage,
     }
@@ -372,29 +474,47 @@ pub mod Market {
         self.pt.write(pt);
         self.yt.write(yt);
         self.factory.write(factory);
-        self.expiry.write(expiry);
 
-        // Store market parameters
-        self.scalar_root.write(scalar_root);
-        self.initial_anchor.write(initial_anchor);
-        self.ln_fee_rate_root.write(ln_fee_rate_root);
-        self.reserve_fee_percent.write(reserve_fee_percent);
+        // Store packed market metadata (expiry + reserve_fee_percent)
+        self.market_meta.write(MarketMeta { reserve_fee_percent, expiry });
 
-        // Initialize reserves to 0
-        self.sy_reserve.write(0);
-        self.pt_reserve.write(0);
-        // Note: last_ln_implied_rate starts at 0 and is properly calculated
-        // after first mint using set_initial_ln_implied_rate (Pendle parity)
-        self.last_ln_implied_rate.write(0);
+        // Store packed market parameters (scalar_root + ln_fee_rate_root)
+        self
+            .market_params
+            .write(
+                MarketParams {
+                    scalar_root: scalar_root.try_into().expect('scalar_root overflow'),
+                    ln_fee_rate_root: ln_fee_rate_root.try_into().expect('ln_fee overflow'),
+                },
+            );
+
+        // Initialize packed rate state (initial_anchor + last_ln_implied_rate=0)
+        self
+            .rate_state
+            .write(
+                RateState {
+                    initial_anchor: initial_anchor.try_into().expect('anchor overflow'),
+                    last_ln_implied_rate: 0,
+                },
+            );
+
+        // Initialize packed reserves to 0
+        self.reserves.write(PoolReserves { sy: 0, pt: 0 });
         self.lp_fees_collected.write(0);
 
         // Initialize TWAP oracle with first observation at deployment time
         let timestamp = get_block_timestamp();
         let init_result = oracle_lib::initialize(timestamp);
         self.observations.write(0_u16, init_result.observation);
-        self.observation_index.write(0_u16);
-        self.observation_cardinality.write(init_result.cardinality);
-        self.observation_cardinality_next.write(init_result.cardinality_next);
+        self
+            .oracle_indices
+            .write(
+                OracleIndices {
+                    index: 0,
+                    cardinality: init_result.cardinality,
+                    cardinality_next: init_result.cardinality_next,
+                },
+            );
 
         // Initialize RewardManager component (if reward_tokens provided)
         // LP rewards are optional - pass empty span to disable reward tracking
@@ -471,17 +591,18 @@ pub mod Market {
 
         /// Get the expiry timestamp
         fn expiry(self: @ContractState) -> u64 {
-            self.expiry.read()
+            self.market_meta.read().expiry
         }
 
         /// Check if the market has expired
         fn is_expired(self: @ContractState) -> bool {
-            get_block_timestamp() >= self.expiry.read()
+            get_block_timestamp() >= self.market_meta.read().expiry
         }
 
         /// Get current reserves
         fn get_reserves(self: @ContractState) -> (u256, u256) {
-            (self.sy_reserve.read(), self.pt_reserve.read())
+            let r = self.reserves.read();
+            (r.sy.into(), r.pt.into())
         }
 
         /// Get total LP token supply
@@ -529,8 +650,14 @@ pub mod Market {
             );
 
             // Update reserves
-            self.sy_reserve.write(self.sy_reserve.read() + sy_used);
-            self.pt_reserve.write(self.pt_reserve.read() + pt_used);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) + sy_used)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) + pt_used)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
 
             // For first mint, lock MINIMUM_LIQUIDITY to treasury (Pendle-style).
             // Fallback to a dead address if factory/treasury is unset.
@@ -562,16 +689,16 @@ pub mod Market {
                     Mint {
                         sender: caller,
                         receiver,
-                        expiry: self.expiry.read(),
+                        expiry: self.market_meta.read().expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         sy_amount: sy_used,
                         pt_amount: pt_used,
                         lp_amount: lp_to_mint,
                         exchange_rate: sy_contract.exchange_rate(),
-                        implied_rate: self.last_ln_implied_rate.read(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        implied_rate: self.rate_state.read().last_ln_implied_rate.into(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         total_lp_after: self.erc20.total_supply(),
                         timestamp: get_block_timestamp(),
                     },
@@ -602,8 +729,14 @@ pub mod Market {
             self.erc20.burn(caller, lp_to_burn);
 
             // Update reserves
-            self.sy_reserve.write(self.sy_reserve.read() - sy_out);
-            self.pt_reserve.write(self.pt_reserve.read() - pt_out);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) - sy_out)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) - pt_out)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
 
             // Transfer tokens to receiver
             if sy_out > 0 {
@@ -631,16 +764,16 @@ pub mod Market {
                     Burn {
                         sender: caller,
                         receiver,
-                        expiry: self.expiry.read(),
+                        expiry: self.market_meta.read().expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         lp_amount: lp_to_burn,
                         sy_amount: sy_out,
                         pt_amount: pt_out,
                         exchange_rate: sy_contract.exchange_rate(),
-                        implied_rate: self.last_ln_implied_rate.read(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        implied_rate: self.rate_state.read().last_ln_implied_rate.into(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         total_lp_after: self.erc20.total_supply(),
                         timestamp: get_block_timestamp(),
                     },
@@ -676,8 +809,14 @@ pub mod Market {
             self.erc20.burn(caller, lp_to_burn);
 
             // Update reserves
-            self.sy_reserve.write(self.sy_reserve.read() - sy_out);
-            self.pt_reserve.write(self.pt_reserve.read() - pt_out);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) - sy_out)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) - pt_out)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
 
             // Transfer tokens to separate receivers
             if sy_out > 0 {
@@ -706,16 +845,16 @@ pub mod Market {
                         sender: caller,
                         receiver_sy,
                         receiver_pt,
-                        expiry: self.expiry.read(),
+                        expiry: self.market_meta.read().expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         lp_amount: lp_to_burn,
                         sy_amount: sy_out,
                         pt_amount: pt_out,
                         exchange_rate: sy_contract.exchange_rate(),
-                        implied_rate: self.last_ln_implied_rate.read(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        implied_rate: self.rate_state.read().last_ln_implied_rate.into(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         total_lp_after: self.erc20.total_supply(),
                         timestamp: get_block_timestamp(),
                     },
@@ -743,8 +882,9 @@ pub mod Market {
             assert(exact_pt_in > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let meta = self.market_meta.read();
             let state = self._get_market_state_with_effective_fee(caller);
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(meta.expiry, get_block_timestamp());
 
             // Capture implied rate before swap
             let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
@@ -773,10 +913,16 @@ pub mod Market {
 
             // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-            self.sy_reserve.write(self.sy_reserve.read() - sy_out - actual_reserve_fee);
-            self.pt_reserve.write(self.pt_reserve.read() + exact_pt_in);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) - sy_out - actual_reserve_fee)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) + exact_pt_in)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
             self._update_implied_rate();
-            let implied_rate_after = self.last_ln_implied_rate.read();
+            let implied_rate_after: u256 = self.rate_state.read().last_ln_implied_rate.into();
 
             // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
             assert(sy_contract.transfer(receiver, sy_out), Errors::MARKET_TRANSFER_FAILED);
@@ -801,7 +947,7 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
-                        expiry: self.expiry.read(),
+                        expiry: meta.expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         pt_in: exact_pt_in,
@@ -814,8 +960,8 @@ pub mod Market {
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -842,8 +988,9 @@ pub mod Market {
             assert(exact_pt_out > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let meta = self.market_meta.read();
             let state = self._get_market_state_with_effective_fee(caller);
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(meta.expiry, get_block_timestamp());
 
             // Capture implied rate before swap
             let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
@@ -872,10 +1019,16 @@ pub mod Market {
 
             // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-            self.sy_reserve.write(self.sy_reserve.read() + sy_in - actual_reserve_fee);
-            self.pt_reserve.write(self.pt_reserve.read() - exact_pt_out);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) + sy_in - actual_reserve_fee)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) - exact_pt_out)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
             self._update_implied_rate();
-            let implied_rate_after = self.last_ln_implied_rate.read();
+            let implied_rate_after: u256 = self.rate_state.read().last_ln_implied_rate.into();
 
             // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
             assert(pt_contract.transfer(receiver, exact_pt_out), Errors::MARKET_TRANSFER_FAILED);
@@ -900,7 +1053,7 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
-                        expiry: self.expiry.read(),
+                        expiry: meta.expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         pt_in: 0,
@@ -913,8 +1066,8 @@ pub mod Market {
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -941,8 +1094,9 @@ pub mod Market {
             assert(exact_sy_in > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let meta = self.market_meta.read();
             let state = self._get_market_state_with_effective_fee(caller);
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(meta.expiry, get_block_timestamp());
 
             // Capture implied rate before swap
             let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
@@ -970,10 +1124,16 @@ pub mod Market {
 
             // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-            self.sy_reserve.write(self.sy_reserve.read() + exact_sy_in - actual_reserve_fee);
-            self.pt_reserve.write(self.pt_reserve.read() - pt_out);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) + exact_sy_in - actual_reserve_fee)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) - pt_out)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
             self._update_implied_rate();
-            let implied_rate_after = self.last_ln_implied_rate.read();
+            let implied_rate_after: u256 = self.rate_state.read().last_ln_implied_rate.into();
 
             // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
             assert(pt_contract.transfer(receiver, pt_out), Errors::MARKET_TRANSFER_FAILED);
@@ -998,7 +1158,7 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
-                        expiry: self.expiry.read(),
+                        expiry: meta.expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         pt_in: 0,
@@ -1011,8 +1171,8 @@ pub mod Market {
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -1039,8 +1199,9 @@ pub mod Market {
             assert(exact_sy_out > 0, Errors::ZERO_AMOUNT);
 
             let caller = get_caller_address();
+            let meta = self.market_meta.read();
             let state = self._get_market_state_with_effective_fee(caller);
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(meta.expiry, get_block_timestamp());
 
             // Capture implied rate before swap
             let implied_rate_before = get_ln_implied_rate(@state, time_to_expiry);
@@ -1068,10 +1229,16 @@ pub mod Market {
 
             // --- EFFECTS: Update ALL state BEFORE external transfers (CEI pattern) ---
             self.lp_fees_collected.write(self.lp_fees_collected.read() + lp_fee);
-            self.sy_reserve.write(self.sy_reserve.read() - exact_sy_out - actual_reserve_fee);
-            self.pt_reserve.write(self.pt_reserve.read() + pt_in);
+            let r = self.reserves.read();
+            let new_sy: u128 = (Into::<u128, u256>::into(r.sy) - exact_sy_out - actual_reserve_fee)
+                .try_into()
+                .expect('sy overflow');
+            let new_pt: u128 = (Into::<u128, u256>::into(r.pt) + pt_in)
+                .try_into()
+                .expect('pt overflow');
+            self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
             self._update_implied_rate();
-            let implied_rate_after = self.last_ln_implied_rate.read();
+            let implied_rate_after: u256 = self.rate_state.read().last_ln_implied_rate.into();
 
             // --- INTERACTIONS: External transfers OUT (after state is finalized) ---
             assert(sy_contract.transfer(receiver, exact_sy_out), Errors::MARKET_TRANSFER_FAILED);
@@ -1096,7 +1263,7 @@ pub mod Market {
                     Swap {
                         sender: caller,
                         receiver,
-                        expiry: self.expiry.read(),
+                        expiry: meta.expiry,
                         sy: sy_addr,
                         pt: pt_addr,
                         pt_in,
@@ -1109,8 +1276,8 @@ pub mod Market {
                         implied_rate_before,
                         implied_rate_after,
                         exchange_rate: sy_contract.exchange_rate(),
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -1122,7 +1289,9 @@ pub mod Market {
         /// Uses _get_market_state_view for read-only access (no side effects)
         fn get_ln_implied_rate(self: @ContractState) -> u256 {
             let state = self._get_market_state_view();
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), get_block_timestamp());
+            let time_to_expiry = get_time_to_expiry(
+                self.market_meta.read().expiry, get_block_timestamp(),
+            );
             get_ln_implied_rate(@state, time_to_expiry)
         }
 
@@ -1155,11 +1324,11 @@ pub mod Market {
         }
 
         fn get_scalar_root(self: @ContractState) -> u256 {
-            self.scalar_root.read()
+            self.market_params.read().scalar_root.into()
         }
 
         fn get_initial_anchor(self: @ContractState) -> u256 {
-            self.initial_anchor.read()
+            self.rate_state.read().initial_anchor.into()
         }
 
         /// Returns the market's base ln_fee_rate_root.
@@ -1167,7 +1336,7 @@ pub mod Market {
         /// Per-router overrides (if any) are caller-specific and queried via
         /// factory.get_market_config().
         fn get_ln_fee_rate_root(self: @ContractState) -> u256 {
-            self.ln_fee_rate_root.read()
+            self.market_params.read().ln_fee_rate_root.into()
         }
 
         /// Returns the effective reserve fee percent used in swaps.
@@ -1182,7 +1351,7 @@ pub mod Market {
                     .get_market_config(get_contract_address(), Zero::zero());
                 config.reserve_fee_percent
             } else {
-                self.reserve_fee_percent.read()
+                self.market_meta.read().reserve_fee_percent
             }
         }
     }
@@ -1295,8 +1464,8 @@ pub mod Market {
                         receiver,
                         market: get_contract_address(),
                         amount: fees,
-                        expiry: self.expiry.read(),
-                        ln_fee_rate_root: self.ln_fee_rate_root.read(),
+                        expiry: self.market_meta.read().expiry,
+                        ln_fee_rate_root: self.market_params.read().ln_fee_rate_root.into(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -1315,11 +1484,17 @@ pub mod Market {
             // Validate non-zero
             assert(new_scalar_root > 0, Errors::ZERO_AMOUNT);
 
-            // Get old value for event
-            let old_value = self.scalar_root.read();
-
-            // Update scalar root
-            self.scalar_root.write(new_scalar_root);
+            // Read-modify-write packed market params
+            let params = self.market_params.read();
+            let old_value: u256 = params.scalar_root.into();
+            self
+                .market_params
+                .write(
+                    MarketParams {
+                        scalar_root: new_scalar_root.try_into().expect('scalar_root overflow'),
+                        ln_fee_rate_root: params.ln_fee_rate_root,
+                    },
+                );
 
             // Update implied rate cache with new scalar root
             self._update_implied_rate();
@@ -1348,8 +1523,9 @@ pub mod Market {
             let actual_sy = sy_contract.balance_of(get_contract_address());
             let actual_pt = pt_contract.balance_of(get_contract_address());
 
-            let stored_sy = self.sy_reserve.read();
-            let stored_pt = self.pt_reserve.read();
+            let r = self.reserves.read();
+            let stored_sy: u256 = r.sy.into();
+            let stored_pt: u256 = r.pt.into();
 
             // Calculate excess amounts
             let sy_excess = if actual_sy > stored_sy {
@@ -1364,11 +1540,18 @@ pub mod Market {
             };
 
             // If actual > stored, donate excess to reserves (benefits LPs)
-            if sy_excess > 0 {
-                self.sy_reserve.write(actual_sy);
-            }
-            if pt_excess > 0 {
-                self.pt_reserve.write(actual_pt);
+            let new_sy: u128 = if sy_excess > 0 {
+                actual_sy.try_into().expect('sy overflow')
+            } else {
+                r.sy
+            };
+            let new_pt: u128 = if pt_excess > 0 {
+                actual_pt.try_into().expect('pt overflow')
+            } else {
+                r.pt
+            };
+            if sy_excess > 0 || pt_excess > 0 {
+                self.reserves.write(PoolReserves { sy: new_sy, pt: new_pt });
             }
 
             // Emit event for auditability (even if no excess found)
@@ -1379,8 +1562,8 @@ pub mod Market {
                         caller: get_caller_address(),
                         sy_excess,
                         pt_excess,
-                        sy_reserve_after: self.sy_reserve.read(),
-                        pt_reserve_after: self.pt_reserve.read(),
+                        sy_reserve_after: new_sy.into(),
+                        pt_reserve_after: new_pt.into(),
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -1395,9 +1578,10 @@ pub mod Market {
         /// TWAP = (cumulative_now - cumulative_past) / duration
         fn observe(self: @ContractState, seconds_agos: Array<u32>) -> Array<u256> {
             let time = get_block_timestamp();
-            let index = self.observation_index.read();
-            let cardinality = self.observation_cardinality.read();
-            let ln_implied_rate = self.last_ln_implied_rate.read();
+            let oi = self.oracle_indices.read();
+            let index = oi.index;
+            let cardinality = oi.cardinality;
+            let ln_implied_rate: u256 = self.rate_state.read().last_ln_implied_rate.into();
 
             assert(cardinality > 0, Errors::ORACLE_ZERO_CARDINALITY);
 
@@ -1460,7 +1644,8 @@ pub mod Market {
             // Cap cardinality to prevent unbounded storage growth
             assert(cardinality_next <= MAX_CARDINALITY, Errors::ORACLE_CARDINALITY_EXCEEDS_MAX);
 
-            let current_next = self.observation_cardinality_next.read();
+            let oi = self.oracle_indices.read();
+            let current_next = oi.cardinality_next;
             let grow_result = oracle_lib::grow(current_next, cardinality_next);
 
             // Write pre-initialized observations to storage
@@ -1471,7 +1656,15 @@ pub mod Market {
 
             // Update cardinality_next if changed
             if grow_result.cardinality_next != current_next {
-                self.observation_cardinality_next.write(grow_result.cardinality_next);
+                self
+                    .oracle_indices
+                    .write(
+                        OracleIndices {
+                            index: oi.index,
+                            cardinality: oi.cardinality,
+                            cardinality_next: grow_result.cardinality_next,
+                        },
+                    );
             }
         }
 
@@ -1479,7 +1672,7 @@ pub mod Market {
         /// Returns (block_timestamp, ln_implied_rate_cumulative, initialized)
         /// Reverts if index is out of bounds (>= observation_cardinality).
         fn get_observation(self: @ContractState, index: u16) -> (u64, u256, bool) {
-            let cardinality = self.observation_cardinality.read();
+            let cardinality = self.oracle_indices.read().cardinality;
             assert(index < cardinality, Errors::ORACLE_INDEX_OUT_OF_BOUNDS);
             let obs = self.observations.read(index);
             (obs.block_timestamp, obs.ln_implied_rate_cumulative, obs.initialized)
@@ -1488,11 +1681,12 @@ pub mod Market {
         /// Get oracle state for external TWAP calculations.
         /// Returns the last_ln_implied_rate and oracle buffer indices.
         fn get_oracle_state(self: @ContractState) -> OracleState {
+            let oi = self.oracle_indices.read();
             OracleState {
-                last_ln_implied_rate: self.last_ln_implied_rate.read(),
-                observation_index: self.observation_index.read(),
-                observation_cardinality: self.observation_cardinality.read(),
-                observation_cardinality_next: self.observation_cardinality_next.read(),
+                last_ln_implied_rate: self.rate_state.read().last_ln_implied_rate.into(),
+                observation_index: oi.index,
+                observation_cardinality: oi.cardinality,
+                observation_cardinality_next: oi.cardinality_next,
             }
         }
     }
@@ -1512,16 +1706,21 @@ pub mod Market {
             let yt_contract = IYTDispatcher { contract_address: self.yt.read() };
             let py_index = yt_contract.update_py_index();
 
+            let reserves = self.reserves.read();
+            let params = self.market_params.read();
+            let rs = self.rate_state.read();
+            let meta = self.market_meta.read();
+
             MarketState {
-                sy_reserve: self.sy_reserve.read(),
-                pt_reserve: self.pt_reserve.read(),
+                sy_reserve: reserves.sy.into(),
+                pt_reserve: reserves.pt.into(),
                 total_lp: self.erc20.total_supply(),
-                scalar_root: self.scalar_root.read(),
-                initial_anchor: self.initial_anchor.read(),
-                ln_fee_rate_root: self.ln_fee_rate_root.read(),
-                reserve_fee_percent: self.reserve_fee_percent.read(),
-                expiry: self.expiry.read(),
-                last_ln_implied_rate: self.last_ln_implied_rate.read(),
+                scalar_root: params.scalar_root.into(),
+                initial_anchor: rs.initial_anchor.into(),
+                ln_fee_rate_root: params.ln_fee_rate_root.into(),
+                reserve_fee_percent: meta.reserve_fee_percent,
+                expiry: meta.expiry,
+                last_ln_implied_rate: rs.last_ln_implied_rate.into(),
                 py_index,
                 rate_impact_sensitivity: 0 // Not used for non-swap operations
             }
@@ -1536,16 +1735,21 @@ pub mod Market {
             let yt_contract = IYTDispatcher { contract_address: self.yt.read() };
             let py_index = yt_contract.py_index_current();
 
+            let reserves = self.reserves.read();
+            let params = self.market_params.read();
+            let rs = self.rate_state.read();
+            let meta = self.market_meta.read();
+
             MarketState {
-                sy_reserve: self.sy_reserve.read(),
-                pt_reserve: self.pt_reserve.read(),
+                sy_reserve: reserves.sy.into(),
+                pt_reserve: reserves.pt.into(),
                 total_lp: self.erc20.total_supply(),
-                scalar_root: self.scalar_root.read(),
-                initial_anchor: self.initial_anchor.read(),
-                ln_fee_rate_root: self.ln_fee_rate_root.read(),
-                reserve_fee_percent: self.reserve_fee_percent.read(),
-                expiry: self.expiry.read(),
-                last_ln_implied_rate: self.last_ln_implied_rate.read(),
+                scalar_root: params.scalar_root.into(),
+                initial_anchor: rs.initial_anchor.into(),
+                ln_fee_rate_root: params.ln_fee_rate_root.into(),
+                reserve_fee_percent: meta.reserve_fee_percent,
+                expiry: meta.expiry,
+                last_ln_implied_rate: rs.last_ln_implied_rate.into(),
                 py_index,
                 rate_impact_sensitivity: 0 // Not used for view functions
             }
@@ -1565,6 +1769,11 @@ pub mod Market {
             let yt_contract = IYTDispatcher { contract_address: self.yt.read() };
             let py_index = yt_contract.update_py_index();
 
+            let reserves = self.reserves.read();
+            let params = self.market_params.read();
+            let rs = self.rate_state.read();
+            let meta = self.market_meta.read();
+
             // Query factory for effective fee config
             let factory = self.factory.read();
             let (
@@ -1581,7 +1790,7 @@ pub mod Market {
                 let ln_fee = if config.ln_fee_rate_root != 0 {
                     config.ln_fee_rate_root
                 } else {
-                    self.ln_fee_rate_root.read()
+                    params.ln_fee_rate_root.into()
                 };
 
                 // For reserve_fee_percent and rate_impact_sensitivity: always use factory's value
@@ -1589,19 +1798,19 @@ pub mod Market {
                 (ln_fee, config.reserve_fee_percent, config.rate_impact_sensitivity)
             } else {
                 // No factory - use market's own stored values, no rate impact sensitivity
-                (self.ln_fee_rate_root.read(), self.reserve_fee_percent.read(), 0)
+                (params.ln_fee_rate_root.into(), meta.reserve_fee_percent, 0)
             };
 
             MarketState {
-                sy_reserve: self.sy_reserve.read(),
-                pt_reserve: self.pt_reserve.read(),
+                sy_reserve: reserves.sy.into(),
+                pt_reserve: reserves.pt.into(),
                 total_lp: self.erc20.total_supply(),
-                scalar_root: self.scalar_root.read(),
-                initial_anchor: self.initial_anchor.read(),
+                scalar_root: params.scalar_root.into(),
+                initial_anchor: rs.initial_anchor.into(),
                 ln_fee_rate_root: effective_ln_fee_rate_root,
                 reserve_fee_percent: effective_reserve_fee_percent,
-                expiry: self.expiry.read(),
-                last_ln_implied_rate: self.last_ln_implied_rate.read(),
+                expiry: meta.expiry,
+                last_ln_implied_rate: rs.last_ln_implied_rate.into(),
                 py_index,
                 rate_impact_sensitivity: effective_rate_impact_sensitivity,
             }
@@ -1675,7 +1884,7 @@ pub mod Market {
                         treasury,
                         caller,
                         amount: reserve_fee,
-                        expiry: self.expiry.read(),
+                        expiry: self.market_meta.read().expiry,
                         timestamp: get_block_timestamp(),
                     },
                 );
@@ -1687,49 +1896,66 @@ pub mod Market {
         /// during the elapsed time period.
         fn _update_implied_rate(ref self: ContractState) {
             let timestamp = get_block_timestamp();
-            let old_rate = self.last_ln_implied_rate.read();
+            let rs = self.rate_state.read();
+            let old_rate: u256 = rs.last_ln_implied_rate.into();
 
             // --- TWAP: Write observation BEFORE updating rate ---
             // The cumulative calculation uses old_rate × time_delta
-            let last_obs = self.observations.read(self.observation_index.read());
+            let oi = self.oracle_indices.read();
+            let last_obs = self.observations.read(oi.index);
             let write_result = oracle_lib::write(
                 last_obs,
-                self.observation_index.read(),
+                oi.index,
                 timestamp,
                 old_rate, // MUST use stored (old) rate
-                self.observation_cardinality.read(),
-                self.observation_cardinality_next.read(),
+                oi.cardinality,
+                oi.cardinality_next,
             );
             // Persist observation changes (no-op if same block)
             self.observations.write(write_result.index, write_result.observation);
-            self.observation_index.write(write_result.index);
-            self.observation_cardinality.write(write_result.cardinality);
+            self
+                .oracle_indices
+                .write(
+                    OracleIndices {
+                        index: write_result.index,
+                        cardinality: write_result.cardinality,
+                        cardinality_next: oi.cardinality_next,
+                    },
+                );
             // --- End TWAP write ---
 
             // Calculate new rate
             let state = self._get_market_state();
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), timestamp);
+            let time_to_expiry = get_time_to_expiry(self.market_meta.read().expiry, timestamp);
             let new_rate = get_ln_implied_rate(@state, time_to_expiry);
 
             // Only update and emit if rate has changed
             if new_rate != old_rate {
-                self.last_ln_implied_rate.write(new_rate);
+                self
+                    .rate_state
+                    .write(
+                        RateState {
+                            initial_anchor: rs.initial_anchor,
+                            last_ln_implied_rate: new_rate.try_into().expect('rate overflow'),
+                        },
+                    );
 
                 // Get exchange rate for event
                 let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+                let reserves = self.reserves.read();
 
                 self
                     .emit(
                         ImpliedRateUpdated {
                             market: get_contract_address(),
-                            expiry: self.expiry.read(),
+                            expiry: self.market_meta.read().expiry,
                             old_rate,
                             new_rate,
                             timestamp,
                             time_to_expiry,
                             exchange_rate: sy_contract.exchange_rate(),
-                            sy_reserve: self.sy_reserve.read(),
-                            pt_reserve: self.pt_reserve.read(),
+                            sy_reserve: reserves.sy.into(),
+                            pt_reserve: reserves.pt.into(),
                             total_lp: self.erc20.total_supply(),
                         },
                     );
@@ -1742,49 +1968,66 @@ pub mod Market {
         /// Also writes an observation to establish the TWAP baseline.
         fn _set_initial_ln_implied_rate(ref self: ContractState) {
             let timestamp = get_block_timestamp();
-            let old_rate = self.last_ln_implied_rate.read(); // Expected to be 0
+            let rs = self.rate_state.read();
+            let old_rate: u256 = rs.last_ln_implied_rate.into(); // Expected to be 0
 
             // --- TWAP: Write observation with stored (0) rate BEFORE setting initial rate ---
-            let last_obs = self.observations.read(self.observation_index.read());
+            let oi = self.oracle_indices.read();
+            let last_obs = self.observations.read(oi.index);
             let write_result = oracle_lib::write(
                 last_obs,
-                self.observation_index.read(),
+                oi.index,
                 timestamp,
                 old_rate, // Use stored rate (0 before first mint)
-                self.observation_cardinality.read(),
-                self.observation_cardinality_next.read(),
+                oi.cardinality,
+                oi.cardinality_next,
             );
             // Persist observation changes
             self.observations.write(write_result.index, write_result.observation);
-            self.observation_index.write(write_result.index);
-            self.observation_cardinality.write(write_result.cardinality);
+            self
+                .oracle_indices
+                .write(
+                    OracleIndices {
+                        index: write_result.index,
+                        cardinality: write_result.cardinality,
+                        cardinality_next: oi.cardinality_next,
+                    },
+                );
             // --- End TWAP write ---
 
             let state = self._get_market_state();
-            let time_to_expiry = get_time_to_expiry(self.expiry.read(), timestamp);
+            let time_to_expiry = get_time_to_expiry(self.market_meta.read().expiry, timestamp);
 
             // Use Pendle's formula to compute initial implied rate
             let initial_rate = set_initial_ln_implied_rate(@state, time_to_expiry);
 
             // Store the computed rate
-            self.last_ln_implied_rate.write(initial_rate);
+            self
+                .rate_state
+                .write(
+                    RateState {
+                        initial_anchor: rs.initial_anchor,
+                        last_ln_implied_rate: initial_rate.try_into().expect('rate overflow'),
+                    },
+                );
 
             // Get exchange rate for event
             let sy_contract = ISYDispatcher { contract_address: self.sy.read() };
+            let reserves = self.reserves.read();
 
             // Emit event for the initial rate
             self
                 .emit(
                     ImpliedRateUpdated {
                         market: get_contract_address(),
-                        expiry: self.expiry.read(),
+                        expiry: self.market_meta.read().expiry,
                         old_rate, // Was 0 before first mint
                         new_rate: initial_rate,
                         timestamp,
                         time_to_expiry,
                         exchange_rate: sy_contract.exchange_rate(),
-                        sy_reserve: self.sy_reserve.read(),
-                        pt_reserve: self.pt_reserve.read(),
+                        sy_reserve: reserves.sy.into(),
+                        pt_reserve: reserves.pt.into(),
                         total_lp: self.erc20.total_supply(),
                     },
                 );
