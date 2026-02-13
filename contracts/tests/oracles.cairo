@@ -9,4 +9,6 @@
 
 pub mod test_mock_pragma;
 pub mod test_pragma_index_oracle;
+pub mod test_pt_yt_lp_oracle;
+pub mod test_pt_yt_lp_oracle_factory;
 pub mod test_py_lp_oracle;
