@@ -615,8 +615,8 @@ fn test_market_factory_anchor_too_large() {
 fn test_market_factory_anchor_too_small() {
     let (_, _, _, pt, factory) = setup();
 
-    // initial_anchor below minimum (1 WAD) - Pendle requires initial_anchor >= WAD
-    let invalid_anchor = WAD / 2; // 0.5 WAD - below 1 WAD min
+    // initial_anchor below minimum (0.01 WAD)
+    let invalid_anchor = WAD / 200; // 0.005 WAD - below 0.01 WAD min
     factory
         .create_market(
             pt.contract_address,
