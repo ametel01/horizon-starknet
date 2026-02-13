@@ -105,6 +105,14 @@ pub mod Errors {
     pub const REWARD_TOKEN_EXISTS: felt252 = 'HZN: reward token exists';
     pub const REWARD_TRANSFER_FAILED: felt252 = 'HZN: reward transfer failed';
 
+    // PtYtLpOracle errors
+    pub const PTYLP_ZERO_ORACLE: felt252 = 'HZN: zero py_lp_oracle';
+    pub const PTYLP_ZERO_MARKET: felt252 = 'HZN: zero market';
+
+    // PtYtLpOracleFactory errors
+    pub const PTYLP_FACTORY_DUPLICATE: felt252 = 'HZN: oracle already exists';
+    pub const PTYLP_FACTORY_DEPLOY_FAILED: felt252 = 'HZN: oracle deploy failed';
+
     // Oracle errors
     pub const ORACLE_ZERO_CARDINALITY: felt252 = 'HZN: oracle zero cardinality';
     pub const ORACLE_TARGET_TOO_OLD: felt252 = 'HZN: oracle target too old';

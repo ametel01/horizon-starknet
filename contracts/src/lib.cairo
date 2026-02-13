@@ -14,6 +14,8 @@ pub mod interfaces {
     pub mod i_market_factory;
     pub mod i_pragma_summary_stats;
     pub mod i_pt;
+    pub mod i_pt_yt_lp_oracle;
+    pub mod i_pt_yt_lp_oracle_factory;
     pub mod i_py_lp_oracle;
     pub mod i_router;
     pub mod i_router_static;
@@ -47,6 +49,8 @@ pub mod mocks {
 }
 pub mod oracles {
     pub mod pragma_index_oracle;
+    pub mod pt_yt_lp_oracle;
+    pub mod pt_yt_lp_oracle_factory;
     pub mod py_lp_oracle;
 }
 pub mod router;
