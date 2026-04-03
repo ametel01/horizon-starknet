@@ -67,7 +67,7 @@ fn deploy_router() -> IRouterDispatcher {
 
 #[test]
 fn test_batch_redeem_empty_arrays() {
-    let (_, _, _, yt) = setup_full();
+    let (_, _, _, _) = setup_full();
     let router = deploy_router();
     let user = user1();
 
