@@ -8,7 +8,7 @@ export { DocsSidebar } from './DocsSidebar';
 export { Formula } from './Formula';
 export { PriceSimulator } from './PriceSimulator';
 export { Steps } from './Steps';
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './Table';
+export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './Table';
 export { TableOfContents } from './TableOfContents';
 export { TryItButton } from './TryItButton';
 export { VersionBadge } from './VersionBadge';

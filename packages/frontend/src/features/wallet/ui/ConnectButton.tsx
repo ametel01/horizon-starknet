@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-
 import { useStarknet } from '@features/wallet';
 import { formatAddress } from '@shared/starknet/wallet';
 import { Button } from '@shared/ui/Button';
+import { useState } from 'react';
 
 import { DisclaimerDialog } from './DisclaimerDialog';
 

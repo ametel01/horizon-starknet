@@ -1,12 +1,12 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Minus, TrendingUp } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
-
 import { useMarketRates } from '@features/markets';
+import { useDelayedMount } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { Skeleton, SparklineSkeleton, StatCardSkeleton } from '@shared/ui/Skeleton';
+import { ArrowDown, ArrowUp, Minus, TrendingUp } from 'lucide-react';
+import { type ReactNode, useMemo } from 'react';
+import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 /**
  * Format percentage with appropriate precision
@@ -43,16 +43,7 @@ export function RateSparkline({
   showChange = false,
   color = 'auto',
 }: RateSparklineProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 50);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+  const mounted = useDelayedMount();
 
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
@@ -162,16 +153,7 @@ export function RateSparklineLarge({
   height = 48,
   days = 30,
 }: RateSparklineLargeProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 50);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+  const mounted = useDelayedMount();
 
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
@@ -251,16 +233,7 @@ export function RateBadgeWithSparkline({
   marketAddress,
   className,
 }: RateBadgeWithSparklineProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 50);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+  const mounted = useDelayedMount();
 
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',
@@ -347,16 +320,7 @@ export function RateSparklineCard({
   label = 'Implied Rate',
   className,
 }: RateSparklineCardProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 50);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+  const mounted = useDelayedMount();
 
   const { data: ratesData, isLoading } = useMarketRates(marketAddress, {
     resolution: 'daily',

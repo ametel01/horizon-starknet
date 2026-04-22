@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
-
 import { useTokenAllowance, useTokenBalance } from '@features/portfolio';
 import { useAccount, useStarknet } from '@features/wallet';
 import { getAddresses } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { toWad } from '@shared/math/wad';
 import { buildDepositAndEarnCalls } from '@shared/starknet';
+import { useCallback, useMemo } from 'react';
 
 interface UseSimpleDepositParams {
   underlyingAddress: string;

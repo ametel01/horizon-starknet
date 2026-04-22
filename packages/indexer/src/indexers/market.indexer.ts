@@ -6,10 +6,16 @@
  * Indexes events from Market contracts:
  * - Mint: Adding liquidity to the market
  * - Burn: Removing liquidity from the market
+ * - BurnWithReceivers: Removing liquidity with separate SY/PT receivers
  * - Swap: Swapping PT/SY in the market
  * - ImpliedRateUpdated: Implied rate changes
  * - FeesCollected: Protocol fees collected
  * - ScalarRootUpdated: Scalar root parameter changes (admin)
+ * - ReserveFeeTransferred: Reserve fees transferred to treasury
+ * - RewardsClaimed: LP rewards claimed by users
+ * - RewardIndexUpdated: LP reward index updates (for APY calculation)
+ * - RewardTokenAdded: New reward tokens added to market
+ * - Skim: Reserves reconciled with actual token balances
  */
 
 import {
@@ -19,16 +25,21 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   marketBurn,
+  marketBurnWithReceivers,
   marketFeesCollected,
   marketImpliedRateUpdated,
   marketMint,
+  marketReserveFeeTransferred,
+  marketRewardIndexUpdated,
+  marketRewardsClaimed,
+  marketRewardTokenAdded,
   marketScalarRootUpdated,
+  marketSkim,
   marketSwap,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -43,15 +54,19 @@ import { streamTimeoutPlugin } from "../lib/plugins";
 import { matchSelector, readU256 } from "../lib/utils";
 import {
   marketBurnSchema,
+  marketBurnWithReceiversSchema,
   marketFeesCollectedSchema,
   marketImpliedRateUpdatedSchema,
   marketMintSchema,
+  marketReserveFeeTransferredSchema,
+  marketRewardIndexUpdatedSchema,
+  marketRewardsClaimedSchema,
+  marketRewardTokenAddedSchema,
   marketScalarRootUpdatedSchema,
+  marketSkimSchema,
   marketSwapSchema,
   validateEvent,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 // MarketFactory event to discover Market contracts
 const MARKET_CREATED = getSelector("MarketCreated");
@@ -63,6 +78,13 @@ const SWAP = getSelector("Swap");
 const IMPLIED_RATE_UPDATED = getSelector("ImpliedRateUpdated");
 const FEES_COLLECTED = getSelector("FeesCollected");
 const SCALAR_ROOT_UPDATED = getSelector("ScalarRootUpdated");
+const RESERVE_FEE_TRANSFERRED = getSelector("ReserveFeeTransferred");
+// New Market events (LP rewards and burn with receivers)
+const BURN_WITH_RECEIVERS = getSelector("BurnWithReceivers");
+const REWARDS_CLAIMED = getSelector("RewardsClaimed");
+const REWARD_INDEX_UPDATED = getSelector("RewardIndexUpdated");
+const REWARD_TOKEN_ADDED = getSelector("RewardTokenAdded");
+const SKIM = getSelector("Skim");
 
 const log = createIndexerLogger("market");
 
@@ -75,11 +97,17 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     getDrizzleOptions({
       marketMint,
       marketBurn,
+      marketBurnWithReceivers,
       marketSwap,
       marketImpliedRateUpdated,
       marketFeesCollected,
       marketScalarRootUpdated,
-    }),
+      marketReserveFeeTransferred,
+      marketRewardsClaimed,
+      marketRewardIndexUpdated,
+      marketRewardTokenAdded,
+      marketSkim,
+    })
   );
 
   logIndexerStart(log, {
@@ -95,11 +123,17 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     (marketAddress: `0x${string}`) => [
       { address: marketAddress, keys: [MINT] },
       { address: marketAddress, keys: [BURN] },
+      { address: marketAddress, keys: [BURN_WITH_RECEIVERS] },
       { address: marketAddress, keys: [SWAP] },
       { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
       { address: marketAddress, keys: [FEES_COLLECTED] },
       { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
-    ],
+      { address: marketAddress, keys: [RESERVE_FEE_TRANSFERRED] },
+      { address: marketAddress, keys: [REWARDS_CLAIMED] },
+      { address: marketAddress, keys: [REWARD_INDEX_UPDATED] },
+      { address: marketAddress, keys: [REWARD_TOKEN_ADDED] },
+      { address: marketAddress, keys: [SKIM] },
+    ]
   );
 
   return defineIndexer(StarknetStream)({
@@ -136,10 +170,16 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         return [
           { address: marketAddress, keys: [MINT] },
           { address: marketAddress, keys: [BURN] },
+          { address: marketAddress, keys: [BURN_WITH_RECEIVERS] },
           { address: marketAddress, keys: [SWAP] },
           { address: marketAddress, keys: [IMPLIED_RATE_UPDATED] },
           { address: marketAddress, keys: [FEES_COLLECTED] },
           { address: marketAddress, keys: [SCALAR_ROOT_UPDATED] },
+          { address: marketAddress, keys: [RESERVE_FEE_TRANSFERRED] },
+          { address: marketAddress, keys: [REWARDS_CLAIMED] },
+          { address: marketAddress, keys: [REWARD_INDEX_UPDATED] },
+          { address: marketAddress, keys: [REWARD_TOKEN_ADDED] },
+          { address: marketAddress, keys: [SKIM] },
         ];
       });
 
@@ -166,17 +206,29 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       // Collect events by type for batch insert
       type MintRow = typeof marketMint.$inferInsert;
       type BurnRow = typeof marketBurn.$inferInsert;
+      type BurnWithReceiversRow = typeof marketBurnWithReceivers.$inferInsert;
       type SwapRow = typeof marketSwap.$inferInsert;
       type ImpliedRateRow = typeof marketImpliedRateUpdated.$inferInsert;
       type FeesRow = typeof marketFeesCollected.$inferInsert;
       type ScalarRootRow = typeof marketScalarRootUpdated.$inferInsert;
+      type ReserveFeeRow = typeof marketReserveFeeTransferred.$inferInsert;
+      type RewardsClaimedRow = typeof marketRewardsClaimed.$inferInsert;
+      type RewardIndexUpdatedRow = typeof marketRewardIndexUpdated.$inferInsert;
+      type RewardTokenAddedRow = typeof marketRewardTokenAdded.$inferInsert;
+      type SkimRow = typeof marketSkim.$inferInsert;
 
       const mintRows: MintRow[] = [];
       const burnRows: BurnRow[] = [];
+      const burnWithReceiversRows: BurnWithReceiversRow[] = [];
       const swapRows: SwapRow[] = [];
       const impliedRateRows: ImpliedRateRow[] = [];
       const feesRows: FeesRow[] = [];
       const scalarRootRows: ScalarRootRow[] = [];
+      const reserveFeeRows: ReserveFeeRow[] = [];
+      const rewardsClaimedRows: RewardsClaimedRow[] = [];
+      const rewardIndexUpdatedRows: RewardIndexUpdatedRow[] = [];
+      const rewardTokenAddedRows: RewardTokenAddedRow[] = [];
+      const skimRows: SkimRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -312,12 +364,16 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const syIn = readU256(data, 4, "sy_in");
             const ptOut = readU256(data, 6, "pt_out");
             const syOut = readU256(data, 8, "sy_out");
-            const fee = readU256(data, 10, "fee");
-            const impliedRateBefore = readU256(data, 12, "implied_rate_before");
-            const impliedRateAfter = readU256(data, 14, "implied_rate_after");
-            const exchangeRate = readU256(data, 16, "exchange_rate");
-            const syReserve = readU256(data, 18, "sy_reserve");
-            const ptReserve = readU256(data, 20, "pt_reserve");
+            // Fee fields added in AMM curve integration (3 u256 fields = 6 data positions)
+            const totalFee = readU256(data, 10, "total_fee");
+            const lpFee = readU256(data, 12, "lp_fee");
+            const reserveFee = readU256(data, 14, "reserve_fee");
+            // Remaining fields shifted by 6 positions due to new fee fields
+            const impliedRateBefore = readU256(data, 16, "implied_rate_before");
+            const impliedRateAfter = readU256(data, 18, "implied_rate_after");
+            const exchangeRate = readU256(data, 20, "exchange_rate");
+            const syReserve = readU256(data, 22, "sy_reserve");
+            const ptReserve = readU256(data, 24, "pt_reserve");
 
             swapRows.push({
               block_number: blockNumber,
@@ -334,7 +390,9 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               sy_in: syIn,
               pt_out: ptOut,
               sy_out: syOut,
-              fee,
+              total_fee: totalFee,
+              lp_fee: lpFee,
+              reserve_fee: reserveFee,
               implied_rate_before: impliedRateBefore,
               implied_rate_after: impliedRateAfter,
               exchange_rate: exchangeRate,
@@ -351,7 +409,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "ImpliedRateUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -415,7 +473,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const data = validated.data;
             const amount = readU256(data, 0, "amount");
             const expiry = Number(BigInt(data[2] ?? "0"));
-            const feeRate = readU256(data, 3, "fee_rate");
+            const lnFeeRateRoot = readU256(data, 3, "ln_fee_rate_root");
 
             feesRows.push({
               block_number: blockNumber,
@@ -427,7 +485,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               market,
               amount,
               expiry,
-              fee_rate: feeRate,
+              ln_fee_rate_root: lnFeeRateRoot,
             });
           } else if (matchSelector(eventKey, SCALAR_ROOT_UPDATED)) {
             // Validate event structure
@@ -439,7 +497,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "ScalarRootUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -462,6 +520,252 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               old_value: oldValue,
               new_value: newValue,
             });
+          } else if (matchSelector(eventKey, RESERVE_FEE_TRANSFERRED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketReserveFeeTransferredSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "ReserveFeeTransferred",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // ReserveFeeTransferred: keys = [selector, market, treasury, caller]
+            // data = [amount(u256), expiry, timestamp]
+            const market = validated.keys[1] ?? marketAddress;
+            const treasury = validated.keys[2] ?? "";
+            const caller = validated.keys[3] ?? "";
+
+            const data = validated.data;
+            const amount = readU256(data, 0, "amount");
+            const expiry = Number(BigInt(data[2] ?? "0"));
+            const timestamp = Number(BigInt(data[3] ?? "0"));
+
+            reserveFeeRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              market,
+              treasury,
+              caller,
+              amount,
+              expiry,
+              timestamp,
+            });
+          } else if (matchSelector(eventKey, BURN_WITH_RECEIVERS)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketBurnWithReceiversSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "BurnWithReceivers",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // BurnWithReceivers: keys = [selector, sender, receiver_sy, receiver_pt]
+            // data = [expiry, sy, pt, lp_amount(u256), sy_amount(u256), pt_amount(u256),
+            //         exchange_rate(u256), implied_rate(u256), sy_reserve_after(u256),
+            //         pt_reserve_after(u256), total_lp_after(u256), timestamp]
+            const sender = validated.keys[1] ?? "";
+            const receiverSy = validated.keys[2] ?? "";
+            const receiverPt = validated.keys[3] ?? "";
+
+            const data = validated.data;
+            const expiry = Number(BigInt(data[0] ?? "0"));
+            const sy = data[1] ?? "";
+            const pt = data[2] ?? "";
+            const lpAmount = readU256(data, 3, "lp_amount");
+            const syAmount = readU256(data, 5, "sy_amount");
+            const ptAmount = readU256(data, 7, "pt_amount");
+            const exchangeRate = readU256(data, 9, "exchange_rate");
+            const impliedRate = readU256(data, 11, "implied_rate");
+            const syReserve = readU256(data, 13, "sy_reserve_after");
+            const ptReserve = readU256(data, 15, "pt_reserve_after");
+            const totalLp = readU256(data, 17, "total_lp_after");
+
+            burnWithReceiversRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sender,
+              receiver_sy: receiverSy,
+              receiver_pt: receiverPt,
+              expiry,
+              market: marketAddress,
+              sy,
+              pt,
+              lp_amount: lpAmount,
+              sy_amount: syAmount,
+              pt_amount: ptAmount,
+              exchange_rate: exchangeRate,
+              implied_rate: impliedRate,
+              sy_reserve_after: syReserve,
+              pt_reserve_after: ptReserve,
+              total_lp_after: totalLp,
+            });
+          } else if (matchSelector(eventKey, REWARDS_CLAIMED)) {
+            // Validate event structure
+            const validated = validateEvent(marketRewardsClaimedSchema, event, {
+              indexer: "market",
+              eventName: "RewardsClaimed",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // RewardsClaimed: keys = [selector, user, reward_token]
+            // data = [amount(u256), timestamp]
+            const user = validated.keys[1] ?? "";
+            const rewardToken = validated.keys[2] ?? "";
+
+            const data = validated.data;
+            const amount = readU256(data, 0, "amount");
+            const eventTimestamp = Number(BigInt(data[2] ?? "0"));
+
+            rewardsClaimedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              user,
+              reward_token: rewardToken,
+              market: marketAddress,
+              amount,
+              event_timestamp: eventTimestamp,
+            });
+          } else if (matchSelector(eventKey, REWARD_INDEX_UPDATED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketRewardIndexUpdatedSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "RewardIndexUpdated",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // RewardIndexUpdated: keys = [selector, reward_token]
+            // data = [old_index(u256), new_index(u256), rewards_added(u256), total_supply(u256), timestamp]
+            const rewardToken = validated.keys[1] ?? "";
+
+            const data = validated.data;
+            const oldIndex = readU256(data, 0, "old_index");
+            const newIndex = readU256(data, 2, "new_index");
+            const rewardsAdded = readU256(data, 4, "rewards_added");
+            const totalSupply = readU256(data, 6, "total_supply");
+            const eventTimestamp = Number(BigInt(data[8] ?? "0"));
+
+            rewardIndexUpdatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              reward_token: rewardToken,
+              market: marketAddress,
+              old_index: oldIndex,
+              new_index: newIndex,
+              rewards_added: rewardsAdded,
+              total_supply: totalSupply,
+              event_timestamp: eventTimestamp,
+            });
+          } else if (matchSelector(eventKey, REWARD_TOKEN_ADDED)) {
+            // Validate event structure
+            const validated = validateEvent(
+              marketRewardTokenAddedSchema,
+              event,
+              {
+                indexer: "market",
+                eventName: "RewardTokenAdded",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // RewardTokenAdded: keys = [selector, reward_token]
+            // data = [index, timestamp]
+            const rewardToken = validated.keys[1] ?? "";
+
+            const data = validated.data;
+            const tokenIndex = Number(BigInt(data[0] ?? "0"));
+            const eventTimestamp = Number(BigInt(data[1] ?? "0"));
+
+            rewardTokenAddedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              reward_token: rewardToken,
+              market: marketAddress,
+              token_index: tokenIndex,
+              event_timestamp: eventTimestamp,
+            });
+          } else if (matchSelector(eventKey, SKIM)) {
+            // Validate event structure
+            const validated = validateEvent(marketSkimSchema, event, {
+              indexer: "market",
+              eventName: "Skim",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // Skim: keys = [selector, market, caller]
+            // data = [sy_excess(u256), pt_excess(u256), sy_reserve_after(u256), pt_reserve_after(u256), timestamp]
+            // Note: market is from event.address since the market emits the event from itself
+            const caller = validated.keys[2] ?? "";
+
+            const data = validated.data;
+            const syExcess = readU256(data, 0, "sy_excess");
+            const ptExcess = readU256(data, 2, "pt_excess");
+            const syReserveAfter = readU256(data, 4, "sy_reserve_after");
+            const ptReserveAfter = readU256(data, 6, "pt_reserve_after");
+            const eventTimestamp = Number(BigInt(data[8] ?? "0"));
+
+            skimRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              market: marketAddress,
+              caller,
+              sy_excess: syExcess,
+              pt_excess: ptExcess,
+              sy_reserve_after: syReserveAfter,
+              pt_reserve_after: ptReserveAfter,
+              event_timestamp: eventTimestamp,
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -478,7 +782,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -492,7 +796,7 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 
@@ -526,6 +830,39 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(scalarRootRows)
               .onConflictDoNothing();
           }
+          if (reserveFeeRows.length > 0) {
+            await tx
+              .insert(marketReserveFeeTransferred)
+              .values(reserveFeeRows)
+              .onConflictDoNothing();
+          }
+          if (burnWithReceiversRows.length > 0) {
+            await tx
+              .insert(marketBurnWithReceivers)
+              .values(burnWithReceiversRows)
+              .onConflictDoNothing();
+          }
+          if (rewardsClaimedRows.length > 0) {
+            await tx
+              .insert(marketRewardsClaimed)
+              .values(rewardsClaimedRows)
+              .onConflictDoNothing();
+          }
+          if (rewardIndexUpdatedRows.length > 0) {
+            await tx
+              .insert(marketRewardIndexUpdated)
+              .values(rewardIndexUpdatedRows)
+              .onConflictDoNothing();
+          }
+          if (rewardTokenAddedRows.length > 0) {
+            await tx
+              .insert(marketRewardTokenAdded)
+              .values(rewardTokenAddedRows)
+              .onConflictDoNothing();
+          }
+          if (skimRows.length > 0) {
+            await tx.insert(marketSkim).values(skimRows).onConflictDoNothing();
+          }
         });
       });
 
@@ -533,10 +870,16 @@ export default function marketIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const successCount =
         mintRows.length +
         burnRows.length +
+        burnWithReceiversRows.length +
         swapRows.length +
         impliedRateRows.length +
         feesRows.length +
-        scalarRootRows.length;
+        scalarRootRows.length +
+        reserveFeeRows.length +
+        rewardsClaimedRows.length +
+        rewardIndexUpdatedRows.length +
+        rewardTokenAddedRows.length +
+        skimRows.length;
       recordEvents("market", successCount, errorCount);
       recordBlock("market", blockNumber);
 

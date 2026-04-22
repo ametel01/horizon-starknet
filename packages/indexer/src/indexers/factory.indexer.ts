@@ -4,6 +4,11 @@
  * Indexes events from the Factory contract:
  * - YieldContractsCreated: When new PT/YT pairs are deployed
  * - ClassHashesUpdated: When PT/YT class hashes are updated
+ * - RewardFeeRateSet: When reward fee rate is updated
+ * - DefaultInterestFeeRateSet: When default interest fee rate is updated
+ * - ExpiryDivisorSet: When expiry divisor is updated
+ * - SYWithRewardsDeployed: When SY with rewards token is deployed
+ * - SYWithRewardsClassHashUpdated: When SY with rewards class hash is updated
  */
 
 import {
@@ -13,12 +18,16 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   factoryClassHashesUpdated,
+  factoryDefaultInterestFeeRateSet,
+  factoryExpiryDivisorSet,
+  factoryRewardFeeRateSet,
+  factorySYWithRewardsClassHashUpdated,
+  factorySYWithRewardsDeployed,
   factoryYieldContractsCreated,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -29,18 +38,33 @@ import {
 } from "../lib/logger";
 import { measureDbLatency, recordBlock, recordEvents } from "../lib/metrics";
 import { streamTimeoutPlugin } from "../lib/plugins";
-import { decodeByteArray, matchSelector, readU256 } from "../lib/utils";
+import {
+  decodeByteArrayWithOffset,
+  matchSelector,
+  readFeltAsNumber,
+  readU256,
+} from "../lib/utils";
 import {
   factoryClassHashesUpdatedSchema,
+  factoryDefaultInterestFeeRateSetSchema,
+  factoryExpiryDivisorSetSchema,
+  factoryRewardFeeRateSetSchema,
+  factorySYWithRewardsClassHashUpdatedSchema,
+  factorySYWithRewardsDeployedSchema,
   factoryYieldContractsCreatedSchema,
   validateEvent,
 } from "../lib/validation";
 
-import type { ApibaraRuntimeConfig } from "apibara/types";
-
 // Event selectors using Apibara's getSelector helper
 const YIELD_CONTRACTS_CREATED = getSelector("YieldContractsCreated");
 const CLASS_HASHES_UPDATED = getSelector("ClassHashesUpdated");
+const REWARD_FEE_RATE_SET = getSelector("RewardFeeRateSet");
+const DEFAULT_INTEREST_FEE_RATE_SET = getSelector("DefaultInterestFeeRateSet");
+const EXPIRY_DIVISOR_SET = getSelector("ExpiryDivisorSet");
+const SY_WITH_REWARDS_DEPLOYED = getSelector("SYWithRewardsDeployed");
+const SY_WITH_REWARDS_CLASS_HASH_UPDATED = getSelector(
+  "SYWithRewardsClassHashUpdated"
+);
 
 const log = createIndexerLogger("factory");
 
@@ -53,7 +77,12 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
     getDrizzleOptions({
       factoryYieldContractsCreated,
       factoryClassHashesUpdated,
-    }),
+      factoryRewardFeeRateSet,
+      factoryDefaultInterestFeeRateSet,
+      factoryExpiryDivisorSet,
+      factorySYWithRewardsDeployed,
+      factorySYWithRewardsClassHashUpdated,
+    })
   );
 
   logIndexerStart(log, { streamUrl, startingBlock: config.startingBlock });
@@ -78,6 +107,11 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       events: [
         { address: config.factory, keys: [YIELD_CONTRACTS_CREATED] },
         { address: config.factory, keys: [CLASS_HASHES_UPDATED] },
+        { address: config.factory, keys: [REWARD_FEE_RATE_SET] },
+        { address: config.factory, keys: [DEFAULT_INTEREST_FEE_RATE_SET] },
+        { address: config.factory, keys: [EXPIRY_DIVISOR_SET] },
+        { address: config.factory, keys: [SY_WITH_REWARDS_DEPLOYED] },
+        { address: config.factory, keys: [SY_WITH_REWARDS_CLASS_HASH_UPDATED] },
       ],
     },
     async transform({ block, endCursor }) {
@@ -93,9 +127,22 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       // Collect events by type for batch insert
       type YieldContractsRow = typeof factoryYieldContractsCreated.$inferInsert;
       type ClassHashesRow = typeof factoryClassHashesUpdated.$inferInsert;
+      type RewardFeeRateRow = typeof factoryRewardFeeRateSet.$inferInsert;
+      type DefaultInterestFeeRateRow =
+        typeof factoryDefaultInterestFeeRateSet.$inferInsert;
+      type ExpiryDivisorRow = typeof factoryExpiryDivisorSet.$inferInsert;
+      type SYWithRewardsDeployedRow =
+        typeof factorySYWithRewardsDeployed.$inferInsert;
+      type SYWithRewardsClassHashRow =
+        typeof factorySYWithRewardsClassHashUpdated.$inferInsert;
 
       const yieldContractsRows: YieldContractsRow[] = [];
       const classHashesRows: ClassHashesRow[] = [];
+      const rewardFeeRateRows: RewardFeeRateRow[] = [];
+      const defaultInterestFeeRateRows: DefaultInterestFeeRateRow[] = [];
+      const expiryDivisorRows: ExpiryDivisorRow[] = [];
+      const syWithRewardsDeployedRows: SYWithRewardsDeployedRow[] = [];
+      const syWithRewardsClassHashRows: SYWithRewardsClassHashRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -118,7 +165,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "YieldContractsCreated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -133,22 +180,25 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             const yt = data[1];
             const creator = data[2];
             const underlying = data[3];
-            const underlyingSymbol = decodeByteArray(
-              data,
-              4,
-              "underlying_symbol",
-            );
-            // data[7-8] = initial_exchange_rate (u256), data[9] = timestamp, data[10] = market_index
+            // ByteArray is variable-length: 3 + arrayLen felts
+            // Use decodeByteArrayWithOffset to get next index dynamically
+            const { value: underlyingSymbol, nextIndex: afterSymbol } =
+              decodeByteArrayWithOffset(data, 4, "underlying_symbol");
             const initialExchangeRate = readU256(
               data,
-              7,
-              "initial_exchange_rate",
+              afterSymbol,
+              "initial_exchange_rate"
             );
-            const marketIndex = Number(data[10] ?? "0");
+            // afterSymbol + 2 is timestamp (unused), afterSymbol + 3 is market_index
+            const marketIndex = readFeltAsNumber(
+              data,
+              afterSymbol + 3,
+              "market_index"
+            );
 
             log.info(
               { sy, pt, yt, underlying, symbol: underlyingSymbol },
-              "YieldContractsCreated",
+              "YieldContractsCreated"
             );
 
             yieldContractsRows.push({
@@ -176,7 +226,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "ClassHashesUpdated",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -196,6 +246,185 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               yt_class_hash: ytClassHash ?? "",
               pt_class_hash: ptClassHash ?? "",
             });
+          } else if (matchSelector(eventKey, REWARD_FEE_RATE_SET)) {
+            const validated = validateEvent(
+              factoryRewardFeeRateSetSchema,
+              event,
+              {
+                indexer: "factory",
+                eventName: "RewardFeeRateSet",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const oldFeeRate = readU256(validated.data, 0, "old_fee_rate");
+            const newFeeRate = readU256(validated.data, 2, "new_fee_rate");
+
+            log.info({ oldFeeRate, newFeeRate }, "RewardFeeRateSet");
+
+            rewardFeeRateRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_fee_rate: oldFeeRate,
+              new_fee_rate: newFeeRate,
+            });
+          } else if (matchSelector(eventKey, DEFAULT_INTEREST_FEE_RATE_SET)) {
+            const validated = validateEvent(
+              factoryDefaultInterestFeeRateSetSchema,
+              event,
+              {
+                indexer: "factory",
+                eventName: "DefaultInterestFeeRateSet",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const oldFeeRate = readU256(validated.data, 0, "old_fee_rate");
+            const newFeeRate = readU256(validated.data, 2, "new_fee_rate");
+
+            log.info({ oldFeeRate, newFeeRate }, "DefaultInterestFeeRateSet");
+
+            defaultInterestFeeRateRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_fee_rate: oldFeeRate,
+              new_fee_rate: newFeeRate,
+            });
+          } else if (matchSelector(eventKey, EXPIRY_DIVISOR_SET)) {
+            const validated = validateEvent(
+              factoryExpiryDivisorSetSchema,
+              event,
+              {
+                indexer: "factory",
+                eventName: "ExpiryDivisorSet",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const oldExpiryDivisor = readFeltAsNumber(
+              validated.data,
+              0,
+              "old_expiry_divisor"
+            );
+            const newExpiryDivisor = readFeltAsNumber(
+              validated.data,
+              1,
+              "new_expiry_divisor"
+            );
+
+            log.info(
+              { oldExpiryDivisor, newExpiryDivisor },
+              "ExpiryDivisorSet"
+            );
+
+            expiryDivisorRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_expiry_divisor: oldExpiryDivisor,
+              new_expiry_divisor: newExpiryDivisor,
+            });
+          } else if (matchSelector(eventKey, SY_WITH_REWARDS_DEPLOYED)) {
+            const validated = validateEvent(
+              factorySYWithRewardsDeployedSchema,
+              event,
+              {
+                indexer: "factory",
+                eventName: "SYWithRewardsDeployed",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const sy = validated.keys[1];
+            const data = validated.data;
+            const { value: name, nextIndex: afterName } =
+              decodeByteArrayWithOffset(data, 0, "name");
+            const { value: symbol, nextIndex: afterSymbol } =
+              decodeByteArrayWithOffset(data, afterName, "symbol");
+            const underlying = data[afterSymbol];
+            const deployer = data[afterSymbol + 1];
+            const timestampField = readFeltAsNumber(
+              data,
+              afterSymbol + 2,
+              "timestamp"
+            );
+
+            log.info(
+              { sy, name, symbol, underlying, deployer },
+              "SYWithRewardsDeployed"
+            );
+
+            syWithRewardsDeployedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sy: sy ?? "",
+              name,
+              symbol,
+              underlying: underlying ?? "",
+              deployer: deployer ?? "",
+              timestamp_field: timestampField,
+            });
+          } else if (
+            matchSelector(eventKey, SY_WITH_REWARDS_CLASS_HASH_UPDATED)
+          ) {
+            const validated = validateEvent(
+              factorySYWithRewardsClassHashUpdatedSchema,
+              event,
+              {
+                indexer: "factory",
+                eventName: "SYWithRewardsClassHashUpdated",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const oldClassHash = validated.data[0];
+            const newClassHash = validated.data[1];
+
+            log.info(
+              { oldClassHash, newClassHash },
+              "SYWithRewardsClassHashUpdated"
+            );
+
+            syWithRewardsClassHashRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              old_class_hash: oldClassHash ?? "",
+              new_class_hash: newClassHash ?? "",
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -212,7 +441,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -226,7 +455,7 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 
@@ -245,11 +474,48 @@ export default function factoryIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(classHashesRows)
               .onConflictDoNothing();
           }
+          if (rewardFeeRateRows.length > 0) {
+            await tx
+              .insert(factoryRewardFeeRateSet)
+              .values(rewardFeeRateRows)
+              .onConflictDoNothing();
+          }
+          if (defaultInterestFeeRateRows.length > 0) {
+            await tx
+              .insert(factoryDefaultInterestFeeRateSet)
+              .values(defaultInterestFeeRateRows)
+              .onConflictDoNothing();
+          }
+          if (expiryDivisorRows.length > 0) {
+            await tx
+              .insert(factoryExpiryDivisorSet)
+              .values(expiryDivisorRows)
+              .onConflictDoNothing();
+          }
+          if (syWithRewardsDeployedRows.length > 0) {
+            await tx
+              .insert(factorySYWithRewardsDeployed)
+              .values(syWithRewardsDeployedRows)
+              .onConflictDoNothing();
+          }
+          if (syWithRewardsClassHashRows.length > 0) {
+            await tx
+              .insert(factorySYWithRewardsClassHashUpdated)
+              .values(syWithRewardsClassHashRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
       // Record metrics
-      const successCount = yieldContractsRows.length + classHashesRows.length;
+      const successCount =
+        yieldContractsRows.length +
+        classHashesRows.length +
+        rewardFeeRateRows.length +
+        defaultInterestFeeRateRows.length +
+        expiryDivisorRows.length +
+        syWithRewardsDeployedRows.length +
+        syWithRewardsClassHashRows.length;
       recordEvents("factory", successCount, errorCount);
       recordBlock("factory", blockNumber);
     },

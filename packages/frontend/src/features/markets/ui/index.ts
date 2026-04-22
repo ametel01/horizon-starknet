@@ -1,2 +1,3 @@
-// Feature UI - forms and components
-// Will be populated in Phase 3
+// Markets feature UI components
+export { FeeSplitBar, FeeStructure } from './FeeStructure';
+export { MarketRates } from './MarketRates';

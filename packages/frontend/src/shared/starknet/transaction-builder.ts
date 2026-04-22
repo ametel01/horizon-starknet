@@ -6,9 +6,8 @@
  * multi-step DeFi operations and combine them into single transactions.
  */
 
-import { type Call, uint256 } from 'starknet';
-
 import { getDeadline } from '@shared/lib/deadline';
+import { type Call, uint256 } from 'starknet';
 
 /**
  * Parameters for building deposit and earn calls
@@ -81,14 +80,26 @@ export function buildApprovalCall(
 
 /**
  * Build a deposit (wrap) call to SY contract
- * SY.deposit(receiver, amount) -> amount_sy_minted
+ * SY.deposit(receiver, amount, min_shares_out) -> amount_sy_minted
  */
-export function buildDepositToSyCall(syAddress: string, receiver: string, amount: bigint): Call {
+export function buildDepositToSyCall(
+  syAddress: string,
+  receiver: string,
+  amount: bigint,
+  minSharesOut: bigint
+): Call {
   const u256Amount = uint256.bnToUint256(amount);
+  const u256MinSharesOut = uint256.bnToUint256(minSharesOut);
   return {
     contractAddress: syAddress,
     entrypoint: 'deposit',
-    calldata: [receiver, u256Amount.low, u256Amount.high],
+    calldata: [
+      receiver,
+      u256Amount.low,
+      u256Amount.high,
+      u256MinSharesOut.low,
+      u256MinSharesOut.high,
+    ],
   };
 }
 
@@ -184,14 +195,28 @@ export function buildRedeemPtPostExpiryCall(
 
 /**
  * Build an unwrap (redeem) call from SY contract
- * SY.redeem(receiver, amount_sy_to_redeem) -> amount_redeemed
+ * SY.redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance) -> amount_redeemed
  */
-export function buildUnwrapSyCall(syAddress: string, receiver: string, amount: bigint): Call {
+export function buildUnwrapSyCall(
+  syAddress: string,
+  receiver: string,
+  amount: bigint,
+  minTokenOut: bigint,
+  burnFromInternalBalance = false
+): Call {
   const u256Amount = uint256.bnToUint256(amount);
+  const u256MinTokenOut = uint256.bnToUint256(minTokenOut);
   return {
     contractAddress: syAddress,
     entrypoint: 'redeem',
-    calldata: [receiver, u256Amount.low, u256Amount.high],
+    calldata: [
+      receiver,
+      u256Amount.low,
+      u256Amount.high,
+      u256MinTokenOut.low,
+      u256MinTokenOut.high,
+      burnFromInternalBalance ? '0x1' : '0x0',
+    ],
   };
 }
 
@@ -218,6 +243,7 @@ export function buildDepositAndEarnCalls(params: DepositAndEarnParams): Call[] {
   } = params;
 
   const calls: Call[] = [];
+  const minSyOut = calculateMinOutput(amount, slippageBps);
   const minPyOut = calculateMinOutput(amount, slippageBps);
 
   // Step 1: Approve underlying → SY (if needed)
@@ -226,7 +252,7 @@ export function buildDepositAndEarnCalls(params: DepositAndEarnParams): Call[] {
   }
 
   // Step 2: Wrap underlying → SY
-  calls.push(buildDepositToSyCall(syAddress, userAddress, amount));
+  calls.push(buildDepositToSyCall(syAddress, userAddress, amount, minSyOut));
 
   // Step 3: Approve SY → Router (if needed)
   // After wrap, we'll have ~amount of SY (1:1 ratio)
@@ -270,6 +296,7 @@ export function buildWithdrawCalls(params: WithdrawParams): Call[] {
 
   const calls: Call[] = [];
   const minSyOut = calculateMinOutput(amount, slippageBps);
+  const minUnderlyingOut = calculateMinOutput(minSyOut, slippageBps);
 
   if (isExpired) {
     // Post-expiry flow: PT only
@@ -301,7 +328,7 @@ export function buildWithdrawCalls(params: WithdrawParams): Call[] {
   }
 
   // Final step: Unwrap SY → underlying
-  calls.push(buildUnwrapSyCall(syAddress, userAddress, minSyOut));
+  calls.push(buildUnwrapSyCall(syAddress, userAddress, minSyOut, minUnderlyingOut, false));
 
   return calls;
 }

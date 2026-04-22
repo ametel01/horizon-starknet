@@ -1,15 +1,14 @@
 'use client';
 
-import { useQuery, useQueries, type UseQueryResult } from '@tanstack/react-query';
-
 import { useStarknet } from '@features/wallet';
 import {
   getMarketContract,
+  getPTContract,
   getRouterContract,
   getSYContract,
-  getPTContract,
   getYTContract,
 } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQueries, useQuery } from '@tanstack/react-query';
 
 /**
  * Pause status checking hooks

@@ -6,18 +6,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { uint256 } from 'starknet';
 
-/**
- * Convert Uint256 or bigint to bigint
- */
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
-}
+import { toBigInt } from '@shared/lib';
 
 /**
  * Convert felt252 to string
@@ -25,11 +15,11 @@ function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
 function feltToString(felt: bigint): string {
   let hex = felt.toString(16);
   if (hex.length % 2 !== 0) {
-    hex = '0' + hex;
+    hex = `0${hex}`;
   }
   let str = '';
   for (let i = 0; i < hex.length; i += 2) {
-    const charCode = parseInt(hex.substring(i, i + 2), 16);
+    const charCode = Number.parseInt(hex.substring(i, i + 2), 16);
     if (charCode > 0) {
       str += String.fromCharCode(charCode);
     }

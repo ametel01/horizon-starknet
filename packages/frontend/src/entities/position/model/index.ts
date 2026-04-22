@@ -1,12 +1,12 @@
 // Position model - types and data structures
 export type {
-  PositionValue,
-  YieldData,
+  CostBasis,
+  EnhancedPosition,
   LpDetails,
   PnlData,
-  RedemptionStatus,
-  EnhancedPosition,
   PortfolioSummary,
+  PositionValue,
+  RedemptionStatus,
   TokenPrices,
-  CostBasis,
+  YieldData,
 } from './types';

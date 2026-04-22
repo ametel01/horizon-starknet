@@ -1,19 +1,39 @@
 use starknet::{ClassHash, ContractAddress};
 
+/// Market configuration returned by get_market_config
+/// @param treasury Address receiving reserve fees
+/// @param ln_fee_rate_root Effective ln fee rate root (override if set, else 0 = use market
+/// default)
+/// @param reserve_fee_percent Reserve fee percentage (0-100)
+/// @param rate_impact_sensitivity Sensitivity factor for dynamic fee based on rate impact (in WAD)
+///        Higher values = larger fee increase for trades that move the rate
+///        E.g., 0.1 WAD (10%) means 10% rate change → ~1% fee increase
+#[derive(Copy, Drop, Serde)]
+pub struct MarketConfig {
+    pub treasury: ContractAddress,
+    pub ln_fee_rate_root: u256,
+    pub reserve_fee_percent: u8,
+    pub rate_impact_sensitivity: u256,
+}
+
 #[starknet::interface]
 pub trait IMarketFactory<TContractState> {
     /// Create a new market for a PT token
     /// @param pt The PT token address
     /// @param scalar_root Controls rate sensitivity (in WAD)
     /// @param initial_anchor Initial ln(implied rate) (in WAD)
-    /// @param fee_rate Fee rate in WAD (e.g., 0.01 WAD = 1%)
+    /// @param ln_fee_rate_root Log fee rate root (Pendle-style) in WAD
+    /// @param reserve_fee_percent Reserve fee in base-100 (0-100), sent to treasury
+    /// @param reward_tokens Span of reward token addresses for LP rewards
     /// @return The address of the created market
     fn create_market(
         ref self: TContractState,
         pt: ContractAddress,
         scalar_root: u256,
         initial_anchor: u256,
-        fee_rate: u256,
+        ln_fee_rate_root: u256,
+        reserve_fee_percent: u8,
+        reward_tokens: Span<ContractAddress>,
     ) -> ContractAddress;
 
     /// Get the market address for a given PT
@@ -57,4 +77,63 @@ pub trait IMarketFactory<TContractState> {
 
     /// Initialize RBAC after upgrade (one-time setup)
     fn initialize_rbac(ref self: TContractState);
+
+    // ============ Fee Configuration (Pendle-style) ============
+
+    /// Get market configuration for a specific router
+    /// Returns treasury, effective ln_fee_rate_root (override or 0), and reserve_fee_percent
+    /// @param market The market address
+    /// @param router The router address (for per-router overrides)
+    /// @return MarketConfig with treasury, ln_fee_rate_root override (0 if none),
+    /// reserve_fee_percent
+    fn get_market_config(
+        self: @TContractState, market: ContractAddress, router: ContractAddress,
+    ) -> MarketConfig;
+
+    /// Get the treasury address
+    fn get_treasury(self: @TContractState) -> ContractAddress;
+
+    /// Get the default reserve fee percent
+    fn get_default_reserve_fee_percent(self: @TContractState) -> u8;
+
+    /// Set the treasury address (owner only)
+    /// @param treasury New treasury address
+    fn set_treasury(ref self: TContractState, treasury: ContractAddress);
+
+    /// Set the default reserve fee percent (owner only)
+    /// @param percent New reserve fee percent (0-100)
+    fn set_default_reserve_fee_percent(ref self: TContractState, percent: u8);
+
+    /// Set fee override for a specific router/market pair (owner only)
+    /// @param router Router address
+    /// @param market Market address
+    /// @param ln_fee_rate_root Override ln fee rate root (must be < market's base rate, or 0 to
+    /// clear)
+    fn set_override_fee(
+        ref self: TContractState,
+        router: ContractAddress,
+        market: ContractAddress,
+        ln_fee_rate_root: u256,
+    );
+
+    // ============ Rate Impact Fee Configuration ============
+
+    /// Get the default rate impact sensitivity
+    /// @return Sensitivity factor in WAD (e.g., 0.1 WAD = 10% sensitivity)
+    fn get_default_rate_impact_sensitivity(self: @TContractState) -> u256;
+
+    /// Set the default rate impact sensitivity (owner only)
+    /// Controls how much fees increase based on trade's rate impact
+    /// @param sensitivity Sensitivity factor in WAD (0 to disable, max ~10 WAD for safety)
+    fn set_default_rate_impact_sensitivity(ref self: TContractState, sensitivity: u256);
+
+    // ============ Yield Contract Factory Configuration ============
+
+    /// Get the yield contract factory address used for PT validation
+    /// @return Factory address (zero address means PT validation is disabled)
+    fn get_yield_contract_factory(self: @TContractState) -> ContractAddress;
+
+    /// Set the yield contract factory address (owner only)
+    /// @param factory New factory address (zero address disables PT validation)
+    fn set_yield_contract_factory(ref self: TContractState, factory: ContractAddress);
 }

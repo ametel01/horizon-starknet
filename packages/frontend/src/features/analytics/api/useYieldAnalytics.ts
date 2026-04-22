@@ -1,8 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-
 import { api } from '@shared/api';
+import { useQuery } from '@tanstack/react-query';
 
 // ============================================================================
 // Yield Curve Hook

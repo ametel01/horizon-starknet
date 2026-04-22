@@ -1,7 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import { useAccount, useStarknet } from '@features/wallet';
 import {
   getFactoryContract,
@@ -11,7 +9,6 @@ import {
   getRouterContract,
   getSYContract,
   getYTContract,
-  getMockYieldTokenContract,
   type TypedFactory,
   type TypedMarket,
   type TypedMarketFactory,
@@ -19,8 +16,8 @@ import {
   type TypedRouter,
   type TypedSY,
   type TypedYT,
-  type TypedMockYieldToken,
 } from '@shared/starknet/contracts';
+import { useMemo } from 'react';
 
 export interface UseContractsReturn {
   // Core protocol contracts (for writes, needs account)
@@ -38,7 +35,6 @@ export interface UseContractsReturn {
   getSY: (address: string) => TypedSY;
   getPT: (address: string) => TypedPT;
   getYT: (address: string) => TypedYT;
-  getMockYieldToken: (address: string) => TypedMockYieldToken;
 }
 
 export function useContracts(): UseContractsReturn {
@@ -92,11 +88,6 @@ export function useContracts(): UseContractsReturn {
     [account, provider]
   );
 
-  const getMockYieldToken = useMemo(
-    () => (address: string) => getMockYieldTokenContract(address, account ?? provider),
-    [account, provider]
-  );
-
   return {
     factory,
     marketFactory,
@@ -108,6 +99,5 @@ export function useContracts(): UseContractsReturn {
     getSY,
     getPT,
     getYT,
-    getMockYieldToken,
   };
 }

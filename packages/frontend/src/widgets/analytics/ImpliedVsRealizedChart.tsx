@@ -1,24 +1,23 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
-import {
-  Area,
-  ComposedChart,
-  CartesianGrid,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts';
-
 import { useImpliedVsRealized } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo, useState } from 'react';
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 /**
  * Format APY percentage with appropriate precision

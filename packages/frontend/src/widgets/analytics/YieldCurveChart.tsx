@@ -1,5 +1,10 @@
 'use client';
 
+import { usePtPriceHistory, useYieldCurve, type YieldCurveMarket } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { Badge } from '@shared/ui/badge';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 import { Activity, Calendar, CircleDot, Clock, Coins, Layers, TrendingUp } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
@@ -15,12 +20,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useYieldCurve, usePtPriceHistory, type YieldCurveMarket } from '@features/analytics';
-import { useDashboardMarkets } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { Badge } from '@shared/ui/badge';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Color palette for different underlying assets
@@ -176,6 +175,157 @@ function ApyHistoryTooltip({
 }
 
 /**
+ * Single market APY stats - extracted to reduce main component complexity.
+ */
+interface SingleMarketStatsProps {
+  impliedApyPercent: number;
+  ptPriceInSy: number;
+  timeToExpiryYears: number;
+}
+
+function SingleMarketStats({
+  impliedApyPercent,
+  ptPriceInSy,
+  timeToExpiryYears,
+}: SingleMarketStatsProps): ReactNode {
+  return (
+    <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
+      <div className="text-center">
+        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+          <TrendingUp className="h-3 w-3" />
+          Current APY
+        </div>
+        <div className="text-primary font-mono text-lg font-semibold">
+          {formatApy(impliedApyPercent)}
+        </div>
+      </div>
+      <div className="text-center">
+        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+          <Coins className="h-3 w-3" />
+          PT Price
+        </div>
+        <div className="text-foreground font-mono text-lg font-semibold">
+          {ptPriceInSy.toFixed(4)}
+        </div>
+      </div>
+      <div className="text-center">
+        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+          <Clock className="h-3 w-3" />
+          Maturity
+        </div>
+        <div className="text-foreground font-mono text-lg font-semibold">
+          {formatTimeToExpiry(timeToExpiryYears)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Multi-market term structure stats - extracted to reduce main component complexity.
+ */
+interface TermStructureStatsProps {
+  activeMarketsCount: number;
+  underlyingsCount: number;
+  avgApyPercent: number;
+}
+
+function TermStructureStats({
+  activeMarketsCount,
+  underlyingsCount,
+  avgApyPercent,
+}: TermStructureStatsProps): ReactNode {
+  return (
+    <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
+      <div className="text-center">
+        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+          <CircleDot className="h-3 w-3" />
+          Active Markets
+        </div>
+        <div className="text-foreground font-mono text-lg font-semibold">{activeMarketsCount}</div>
+      </div>
+      <div className="text-center">
+        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+          <Layers className="h-3 w-3" />
+          Underlyings
+        </div>
+        <div className="text-foreground font-mono text-lg font-semibold">{underlyingsCount}</div>
+      </div>
+      <div className="text-center">
+        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
+          <TrendingUp className="h-3 w-3" />
+          Avg APY
+        </div>
+        <div className="text-primary font-mono text-lg font-semibold">
+          {formatApy(avgApyPercent)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * APY history chart content for single market view - extracted to reduce complexity.
+ */
+interface ApyHistoryContentProps {
+  apyChartData: { date: string; impliedApyPercent: number }[];
+  isLoading: boolean;
+  height: number;
+}
+
+function ApyHistoryContent({ apyChartData, isLoading, height }: ApyHistoryContentProps): ReactNode {
+  if (isLoading) {
+    return <Skeleton className="w-full rounded-lg" style={{ height }} />;
+  }
+
+  const hasHistoricalData = apyChartData.length > 1;
+  if (!hasHistoricalData) {
+    return (
+      <div className="flex h-[200px] items-center justify-center">
+        <div className="text-center">
+          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+          <p className="text-muted-foreground text-sm">
+            Historical data is building up. Check back soon for APY trends.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const maxApyValue = Math.max(...apyChartData.map((d) => d.impliedApyPercent), 0);
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={apyChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+        <defs>
+          <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+        <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+        <YAxis
+          domain={[0, Math.ceil(maxApyValue * 1.2) || 10]}
+          tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip content={<ApyHistoryTooltip />} />
+        <Area
+          type="monotone"
+          dataKey="impliedApyPercent"
+          stroke="var(--primary)"
+          strokeWidth={2}
+          fill="url(#apyGradient)"
+          name="Implied APY"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+/**
  * Yield Curve (Term Structure) Chart
  *
  * Visualizes the relationship between time to maturity and implied APY
@@ -327,9 +477,6 @@ export function YieldCurveChart({
       impliedApyPercent: p.impliedApyPercent,
     }));
 
-    const hasHistoricalData = apyChartData.length > 1;
-    const maxApyValue = Math.max(...apyChartData.map((d) => d.impliedApyPercent), 0);
-
     return (
       <div
         className={cn(
@@ -360,78 +507,18 @@ export function YieldCurveChart({
 
         {/* Chart */}
         <div className="p-4">
-          {isApyHistoryLoading ? (
-            <Skeleton className="w-full rounded-lg" style={{ height }} />
-          ) : hasHistoricalData ? (
-            <ResponsiveContainer width="100%" height={height}>
-              <AreaChart data={apyChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                <defs>
-                  <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis
-                  domain={[0, Math.ceil(maxApyValue * 1.2) || 10]}
-                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip content={<ApyHistoryTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="impliedApyPercent"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  fill="url(#apyGradient)"
-                  name="Implied APY"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-[200px] items-center justify-center">
-              <div className="text-center">
-                <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p className="text-muted-foreground text-sm">
-                  Historical data is building up. Check back soon for APY trends.
-                </p>
-              </div>
-            </div>
-          )}
+          <ApyHistoryContent
+            apyChartData={apyChartData}
+            isLoading={isApyHistoryLoading}
+            height={height}
+          />
 
           {/* Summary stats */}
-          <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
-            <div className="text-center">
-              <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-                <TrendingUp className="h-3 w-3" />
-                Current APY
-              </div>
-              <div className="text-primary font-mono text-lg font-semibold">
-                {formatApy(singleMarket.impliedApyPercent)}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-                <Coins className="h-3 w-3" />
-                PT Price
-              </div>
-              <div className="text-foreground font-mono text-lg font-semibold">
-                {singleMarket.ptPriceInSy.toFixed(4)}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-                <Clock className="h-3 w-3" />
-                Maturity
-              </div>
-              <div className="text-foreground font-mono text-lg font-semibold">
-                {formatTimeToExpiry(singleMarket.timeToExpiryYears)}
-              </div>
-            </div>
-          </div>
+          <SingleMarketStats
+            impliedApyPercent={singleMarket.impliedApyPercent}
+            ptPriceInSy={singleMarket.ptPriceInSy}
+            timeToExpiryYears={singleMarket.timeToExpiryYears}
+          />
 
           {/* Info note */}
           <div className="bg-muted/30 mt-4 flex items-start gap-2 rounded-lg p-3">
@@ -540,40 +627,16 @@ export function YieldCurveChart({
         </ResponsiveContainer>
 
         {/* Summary stats */}
-        <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
-          <div className="text-center">
-            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <CircleDot className="h-3 w-3" />
-              Active Markets
-            </div>
-            <div className="text-foreground font-mono text-lg font-semibold">
-              {enhancedActiveMarkets.length}
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <Layers className="h-3 w-3" />
-              Underlyings
-            </div>
-            <div className="text-foreground font-mono text-lg font-semibold">
-              {allUnderlyings.length}
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <TrendingUp className="h-3 w-3" />
-              Avg APY
-            </div>
-            <div className="text-primary font-mono text-lg font-semibold">
-              {formatApy(
-                enhancedActiveMarkets.length > 0
-                  ? enhancedActiveMarkets.reduce((sum, m) => sum + m.impliedApyPercent, 0) /
-                      enhancedActiveMarkets.length
-                  : 0
-              )}
-            </div>
-          </div>
-        </div>
+        <TermStructureStats
+          activeMarketsCount={enhancedActiveMarkets.length}
+          underlyingsCount={allUnderlyings.length}
+          avgApyPercent={
+            enhancedActiveMarkets.length > 0
+              ? enhancedActiveMarkets.reduce((sum, m) => sum + m.impliedApyPercent, 0) /
+                enhancedActiveMarkets.length
+              : 0
+          }
+        />
       </div>
     </div>
   );

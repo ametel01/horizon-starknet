@@ -51,6 +51,30 @@ export const SY_ABI = [
     ],
   },
   {
+    type: 'struct',
+    name: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+    members: [
+      {
+        name: 'snapshot',
+        type: '@core::array::Array::<core::starknet::contract_address::ContractAddress>',
+      },
+    ],
+  },
+  {
+    type: 'enum',
+    name: 'horizon::interfaces::i_sy::AssetType',
+    variants: [
+      {
+        name: 'Token',
+        type: '()',
+      },
+      {
+        name: 'Liquidity',
+        type: '()',
+      },
+    ],
+  },
+  {
     type: 'interface',
     name: 'horizon::interfaces::i_sy::ISY',
     items: [
@@ -207,7 +231,15 @@ export const SY_ABI = [
             type: 'core::starknet::contract_address::ContractAddress',
           },
           {
+            name: 'token_in',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
             name: 'amount_shares_to_deposit',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'min_shares_out',
             type: 'core::integer::u256',
           },
         ],
@@ -229,6 +261,18 @@ export const SY_ABI = [
           {
             name: 'amount_sy_to_redeem',
             type: 'core::integer::u256',
+          },
+          {
+            name: 'token_out',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+          {
+            name: 'min_token_out',
+            type: 'core::integer::u256',
+          },
+          {
+            name: 'burn_from_internal_balance',
+            type: 'core::bool',
           },
         ],
         outputs: [
@@ -256,6 +300,114 @@ export const SY_ABI = [
         outputs: [
           {
             type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_tokens_in',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_tokens_out',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'is_valid_token_in',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'is_valid_token_out',
+        inputs: [
+          {
+            name: 'token',
+            type: 'core::starknet::contract_address::ContractAddress',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::bool',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'asset_info',
+        inputs: [],
+        outputs: [
+          {
+            type: '(horizon::interfaces::i_sy::AssetType, core::starknet::contract_address::ContractAddress, core::integer::u8)',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_deposit',
+        inputs: [
+          {
+            name: 'amount_to_deposit',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'preview_redeem',
+        inputs: [
+          {
+            name: 'amount_sy',
+            type: 'core::integer::u256',
+          },
+        ],
+        outputs: [
+          {
+            type: 'core::integer::u256',
+          },
+        ],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'get_exchange_rate_watermark',
+        inputs: [],
+        outputs: [
+          {
+            type: 'core::integer::u256',
           },
         ],
         state_mutability: 'view',
@@ -493,8 +645,20 @@ export const SY_ABI = [
         type: 'core::bool',
       },
       {
+        name: 'asset_type',
+        type: 'horizon::interfaces::i_sy::AssetType',
+      },
+      {
         name: 'pauser',
         type: 'core::starknet::contract_address::ContractAddress',
+      },
+      {
+        name: 'tokens_in',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
+      },
+      {
+        name: 'tokens_out',
+        type: 'core::array::Span::<core::starknet::contract_address::ContractAddress>',
       },
     ],
   },
@@ -803,7 +967,13 @@ export const SY_ABI = [
   },
   {
     type: 'event',
-    name: 'horizon::tokens::sy::SY::Deposit',
+    name: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
+    kind: 'enum',
+    variants: [],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::sy_component::SYComponent::Deposit',
     kind: 'struct',
     members: [
       {
@@ -850,7 +1020,7 @@ export const SY_ABI = [
   },
   {
     type: 'event',
-    name: 'horizon::tokens::sy::SY::Redeem',
+    name: 'horizon::components::sy_component::SYComponent::Redeem',
     kind: 'struct',
     members: [
       {
@@ -897,7 +1067,7 @@ export const SY_ABI = [
   },
   {
     type: 'event',
-    name: 'horizon::tokens::sy::SY::OracleRateUpdated',
+    name: 'horizon::components::sy_component::SYComponent::OracleRateUpdated',
     kind: 'struct',
     members: [
       {
@@ -929,6 +1099,70 @@ export const SY_ABI = [
         name: 'timestamp',
         type: 'core::integer::u64',
         kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::sy_component::SYComponent::NegativeYieldDetected',
+    kind: 'struct',
+    members: [
+      {
+        name: 'sy',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'underlying',
+        type: 'core::starknet::contract_address::ContractAddress',
+        kind: 'key',
+      },
+      {
+        name: 'watermark_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'current_rate',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'rate_drop_bps',
+        type: 'core::integer::u256',
+        kind: 'data',
+      },
+      {
+        name: 'timestamp',
+        type: 'core::integer::u64',
+        kind: 'data',
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'horizon::components::sy_component::SYComponent::Event',
+    kind: 'enum',
+    variants: [
+      {
+        name: 'Deposit',
+        type: 'horizon::components::sy_component::SYComponent::Deposit',
+        kind: 'nested',
+      },
+      {
+        name: 'Redeem',
+        type: 'horizon::components::sy_component::SYComponent::Redeem',
+        kind: 'nested',
+      },
+      {
+        name: 'OracleRateUpdated',
+        type: 'horizon::components::sy_component::SYComponent::OracleRateUpdated',
+        kind: 'nested',
+      },
+      {
+        name: 'NegativeYieldDetected',
+        type: 'horizon::components::sy_component::SYComponent::NegativeYieldDetected',
+        kind: 'nested',
       },
     ],
   },
@@ -968,19 +1202,14 @@ export const SY_ABI = [
         kind: 'flat',
       },
       {
-        name: 'Deposit',
-        type: 'horizon::tokens::sy::SY::Deposit',
-        kind: 'nested',
+        name: 'ReentrancyGuardEvent',
+        type: 'openzeppelin_security::reentrancyguard::ReentrancyGuardComponent::Event',
+        kind: 'flat',
       },
       {
-        name: 'Redeem',
-        type: 'horizon::tokens::sy::SY::Redeem',
-        kind: 'nested',
-      },
-      {
-        name: 'OracleRateUpdated',
-        type: 'horizon::tokens::sy::SY::OracleRateUpdated',
-        kind: 'nested',
+        name: 'SYEvent',
+        type: 'horizon::components::sy_component::SYComponent::Event',
+        kind: 'flat',
       },
     ],
   },

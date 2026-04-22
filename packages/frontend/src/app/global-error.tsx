@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-
 import { logError } from '@shared/server/logger';
+import { useEffect } from 'react';
 
 /**
  * Global error boundary for the entire application.
@@ -60,6 +59,7 @@ export default function GlobalError({
             </p>
           )}
           <button
+            type="button"
             onClick={reset}
             style={{
               padding: '0.75rem 1.5rem',

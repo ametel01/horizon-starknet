@@ -11,8 +11,8 @@ The Horizon Protocol is organized into layered components with clearly defined r
 \textbf{Layer} & \textbf{Components} & \textbf{Upgrade Scope} \\
 \midrule
 External & Underlying yield tokens, Pragma Oracle & Outside protocol control \\
-Core & SY, PT, YT, Market & Upgradeable via governed proxy \\
-Periphery & Router, Factory, MarketFactory & Upgradeable via governed proxy \\
+Core & SY/SYWithRewards, PT, YT, Market & Mixed: SY variants upgradeable; PT/YT/Market non-upgradeable \\
+Periphery & Router, RouterStatic, Factory, MarketFactory, PyLpOracle & Mixed: Router/Factory/MarketFactory upgradeable; RouterStatic/PyLpOracle non-upgradeable \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -40,6 +40,7 @@ The protocol implements a reversible asset flow centered around a deterministic 
 \section{Token System}
 
 The protocol defines four token types representing distinct economic claims. All tokens implement the ERC-20 interface pattern and impose no transfer restrictions.
+SY can be deployed in a rewards-enabled variant (SYWithRewards) to track external reward tokens for SY holders.
 
 \begin{center}
 \begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l l}

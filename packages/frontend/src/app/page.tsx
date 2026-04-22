@@ -1,13 +1,12 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import type { ReactNode } from 'react';
-
 import { MarketList, SimpleMarketList } from '@entities/market';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { StatCardSkeleton } from '@shared/ui/StatCard';
 import { HeroSection } from '@widgets/hero';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 // Dynamic import for ProtocolStats to reduce initial bundle
 const ProtocolStats = dynamic(

@@ -1,11 +1,10 @@
 'use client';
 
-import { type ReactNode } from 'react';
-
-import type { MarketApyBreakdown } from '@/types/apy';
 import { cn } from '@shared/lib/utils';
 import { formatApyPercent, getApyColorClass } from '@shared/math/apy-breakdown';
 import { Card, CardContent } from '@shared/ui/Card';
+import type { ReactNode } from 'react';
+import type { MarketApyBreakdown } from '@/types/apy';
 
 interface ApyBreakdownProps {
   breakdown: MarketApyBreakdown;

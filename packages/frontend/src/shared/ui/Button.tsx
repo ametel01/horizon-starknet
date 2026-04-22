@@ -1,9 +1,8 @@
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { cn } from '@shared/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
-import * as React from 'react';
-
-import { cn } from '@shared/lib/utils';
+import type * as React from 'react';
 
 const buttonVariants = cva(
   [
@@ -118,5 +117,5 @@ function Button({
   );
 }
 
-export { Button, buttonVariants };
 export type { ButtonProps };
+export { Button, buttonVariants };

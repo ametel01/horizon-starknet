@@ -1,26 +1,34 @@
 # Horizon Protocol vs Pendle V2: Comprehensive Gap Analysis Report
 
-> **Date:** 2025-12-30
+> **Date:** 2025-12-31 (Updated)
 > **Scope:** Deep code analysis of Horizon Protocol implementation against Pendle V2 specifications
 > **Status:** Horizon Alpha on Starknet Mainnet
+>
+> **Change Log:**
+> - 2025-01-07: ✅ **Section 2.3 Fee System corrected to 85%** - Code review revealed LP fee auto-compounding
+>   was already working at `amm.cairo:560`. `collect_fees()` is analytics-only; LP fees stay in `sy_reserve` automatically.
+>   Rate-impact fees deferred to Phase 2, governance split to Phase 4.
+> - 2025-12-31: ✅ **Section 1.1 SY (Standardized Yield) Wrapper marked COMPLETE (95%)** - All major gaps implemented: slippage protection, burnFromInternalBalance, reentrancy guard, multi-token support (getTokensIn/Out, isValidToken), assetInfo, previewDeposit/Redeem, pausable transfers, negative yield watermark, SYWithRewards with RewardManagerComponent
 
 ---
 
 ## Executive Summary
 
-Horizon Protocol implements **~60% of Pendle V2's core functionality**, focusing on yield tokenization primitives while omitting advanced governance and composability features. The protocol is production-ready for its stated alpha scope but requires significant work for full Pendle V2 feature parity.
+Horizon Protocol implements **~65% of Pendle V2's core functionality**, focusing on yield tokenization primitives while omitting advanced governance and composability features. The protocol is production-ready for its stated alpha scope. **The SY (Standardized Yield) wrapper is now at 95% parity** with Pendle's SYBase, including full reward distribution via SYWithRewards.
 
 ### Key Findings
 
 | Category | Parity Level | Critical Gaps |
 |----------|--------------|---------------|
-| **Core Tokenization (SY/PT/YT)** | 75% | Multi-token SY, SY rewards, multi-reward YT, asset classification |
-| **AMM/Market** | 60% | PYIndex integration, reserve fee system, TWAP oracle (6 gaps), RewardManager/PendleGauge, flash callbacks |
+| **Core Tokenization (SY/PT/YT)** | 90% | ✅ SY: 95% complete (multi-token, rewards, slippage, assetInfo all implemented); Remaining: multi-reward YT + YT flash mint (minor: packing) |
+| **AMM/Market** | ~85% | ✅ 0 CRITICAL (PYIndex, reserve fees, TWAP all implemented); 8 remaining gaps: RewardManager/PendleGauge, flash callbacks |
 | **Router** | 55% | Single-sided liquidity (7 functions), token aggregation (8 functions), batch operations |
-| **Factory** | 70% | Protocol fee infrastructure (interestFeeRate, rewardFeeRate, treasury), expiryDivisor |
-| **MarketFactory** | 65% | Protocol fee infrastructure (treasury, reserveFeePercent), router fee overrides, getMarketConfig |
-| **Oracle System** | 35% | Market TWAP (CRITICAL), PT/LP price oracles, Chainlink/Pragma wrapper |
+| **Factory** | 70% | Protocol fee infrastructure (interestFeeRate, rewardFeeRate), expiryDivisor |
+| **MarketFactory** | 95% | ✅ Treasury/fee infrastructure implemented; governance integration (vePendle, gaugeController) |
+| **Oracle System** | 95% | ✅ Market TWAP + PT/YT/LP oracles implemented; Remaining: Chainlink/Pragma wrapper (optional) |
 | **Governance/Rewards** | 0% | Complete absence |
+
+**Oracle/TWAP references (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol). Horizon: [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo), [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo).
 
 ---
 
@@ -43,9 +51,9 @@ Horizon Protocol implements **~60% of Pendle V2's core functionality**, focusing
 
 ### 1.1 SY (Standardized Yield) Wrapper
 
-**Implementation Status: 70%** (Core deposit/redeem works; missing slippage, rewards, multi-token, permit)
+**Implementation Status: 95%** ✅ COMPLETE (Core features + slippage, rewards, multi-token all implemented)
 
-**Reference:** Pendle's `SYBase.sol` from [Pendle-SY-Public](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol)
+**Reference (Pendle V2 code):** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
@@ -56,128 +64,133 @@ Horizon Protocol implements **~60% of Pendle V2's core functionality**, focusing
 | Dual oracle source | N/A | ERC-4626 OR custom oracle | ✅ **Horizon exceeds** |
 | OracleRateUpdated event | ❌ None | ✅ Emits on rate change | ✅ **Horizon exceeds** |
 | Built-in upgradeability | Separate `SYBaseUpg` variant | ✅ Via UpgradeableComponent | ✅ **Horizon exceeds** |
-| Slippage protection | `minSharesOut`, `minTokenOut` | ❌ Relies on Router | 🟡 MEDIUM |
-| burnFromInternalBalance | ✅ For Router patterns | ❌ Only burns msg.sender | 🟡 MEDIUM |
-| Reentrancy guard | `nonReentrant` modifier | ❌ CEI pattern only | 🟡 MEDIUM |
-| `getTokensIn()` / `getTokensOut()` | Returns supported tokens | ❌ Missing | 🔴 HIGH |
-| `isValidTokenIn/Out()` | Token validation | ❌ Missing | 🔴 HIGH |
-| `assetInfo()` | Returns (AssetType, address, decimals) | ❌ Missing | 🔴 HIGH |
-| `previewDeposit/Redeem()` | External view functions | ❌ Internal only | 🟢 LOW |
-| EIP-2612 Permit | `PendleERC20Permit` | ❌ No permit support | 🟡 MEDIUM |
-| Native ETH support | `receive() external payable` | ❌ No ETH | 🟢 LOW |
-| `getRewardTokens()` | Lists claimable rewards | ❌ Missing | 🟡 MEDIUM |
-| `claimRewards()` | Claims external rewards | ❌ Missing | 🟡 MEDIUM |
-| `SYBaseWithRewards` | Full reward distribution | ❌ No reward system | 🟡 MEDIUM |
-| Pausable transfers | `_beforeTokenTransfer` pauses all | ❌ Only deposit paused | 🟢 LOW |
-| Negative yield watermark | In SY contract | Only in YT | 🟡 MEDIUM |
+| Slippage protection | `minSharesOut`, `minTokenOut` | ✅ `min_shares_out`, `min_token_out` params | ✅ |
+| burnFromInternalBalance | ✅ For Router patterns | ✅ `burn_from_internal_balance` param | ✅ |
+| Reentrancy guard | `nonReentrant` modifier | ✅ ReentrancyGuardComponent | ✅ |
+| `getTokensIn()` / `getTokensOut()` | Returns supported tokens | ✅ `get_tokens_in()`, `get_tokens_out()` | ✅ |
+| `isValidTokenIn/Out()` | Token validation | ✅ O(1) lookup via maps | ✅ |
+| `assetInfo()` | Returns (AssetType, address, decimals) | ✅ Matches Pendle interface | ✅ |
+| `previewDeposit/Redeem()` | External view functions | ✅ External view functions | ✅ |
+| EIP-2612 Permit | `PendleERC20Permit` | ❌ No permit support | 🟡 MEDIUM (N/A for Starknet) |
+| Native ETH support | `receive() external payable` | ❌ No ETH | 🟢 LOW (Starknet-specific) |
+| `getRewardTokens()` | Lists claimable rewards | ✅ Via SYWithRewards | ✅ |
+| `claimRewards()` | Claims external rewards | ✅ Via SYWithRewards | ✅ |
+| `SYBaseWithRewards` | Full reward distribution | ✅ SYWithRewards contract + RewardManagerComponent | ✅ |
+| Pausable transfers | `_beforeTokenTransfer` pauses all | ✅ Blocks mints AND transfers (allows redemptions) | ✅ **Horizon exceeds** |
+| Negative yield watermark | In SY contract | ✅ `get_exchange_rate_watermark()` + NegativeYieldDetected event | ✅ |
 
-**Gap Detail - Slippage Protection:**
+**~~Gap Detail - Slippage Protection:~~** ✅ IMPLEMENTED
 
-Pendle's `SYBase.sol` has built-in slippage protection on deposit/redeem:
-```solidity
-// Pendle - slippage protection at SY level
-function deposit(
-    address receiver,
-    address tokenIn,
-    uint256 amountTokenToDeposit,
-    uint256 minSharesOut  // ← Reverts if output < minimum
-) external returns (uint256 amountSharesOut) {
-    // ...
-    if (amountSharesOut < minSharesOut)
-        revert Errors.SYInsufficientSharesOut(amountSharesOut, minSharesOut);
-}
-```
-
-Horizon's SY has no slippage protection:
+Horizon now matches Pendle's slippage protection:
 ```cairo
-// Horizon - no slippage protection at SY level
+// Horizon - slippage protection implemented (sy.cairo:285-294)
 fn deposit(
     ref self: ContractState,
     receiver: ContractAddress,
-    amount_shares_to_deposit: u256  // No min_out parameter
+    amount_shares_to_deposit: u256,
+    min_shares_out: u256,  // ← Reverts if output < minimum
+) -> u256
+
+fn redeem(
+    ref self: ContractState,
+    receiver: ContractAddress,
+    amount_sy_to_redeem: u256,
+    min_token_out: u256,  // ← Slippage protection for redemptions
+    burn_from_internal_balance: bool,
 ) -> u256
 ```
 
-**Impact:** Direct SY calls have no protection; users must use Router for slippage. Lower-level integrators may be caught off-guard.
+**Tests:** `test_deposit_slippage_reverts`, `test_redeem_slippage_reverts`, `test_deposit_with_slippage_protection`, `test_redeem_with_slippage_protection`
 
 ---
 
-**Gap Detail - burnFromInternalBalance:**
+**~~Gap Detail - burnFromInternalBalance:~~** ✅ IMPLEMENTED
 
-Pendle allows burning from the contract's own balance (useful for Router patterns):
-```solidity
-// Pendle - burn from contract balance or sender
-function redeem(..., bool burnFromInternalBalance) external {
-    if (burnFromInternalBalance) {
-        _burn(address(this), amountSharesToRedeem);  // From contract
+Horizon now matches Pendle's pattern:
+```cairo
+// Horizon - burn from internal balance implemented (sy_component.cairo:357-364)
+fn redeem(
+    ref self: ComponentState<TContractState>,
+    receiver: ContractAddress,
+    amount_sy_to_redeem: u256,
+    min_token_out: u256,
+    burn_from_internal_balance: bool,  // ← Router pattern supported
+) -> u256 {
+    let burn_from = if burn_from_internal_balance {
+        get_contract_address()  // Burn from contract's own balance
     } else {
-        _burn(msg.sender, amountSharesToRedeem);      // From sender
-    }
+        caller  // Standard pattern: burn from caller
+    };
+    // ...
 }
 ```
 
-Horizon only burns from msg.sender:
-```cairo
-// Horizon - only burns from caller
-self.erc20.burn(caller, amount_sy_to_redeem);
-```
-
-**Impact:** Router/aggregator patterns that transfer tokens to SY before redeem require extra steps. Pendle's pattern is more gas-efficient for integrations.
+**Tests:** `test_redeem_from_internal_balance`, `test_redeem_from_internal_balance_insufficient`, `test_redeem_to_different_receiver_from_internal_balance`
 
 ---
 
-**Gap Detail - Multi-Token Support:**
+**~~Gap Detail - Multi-Token Support:~~** ✅ IMPLEMENTED
 
-Pendle's SY interface supports wrapping assets that accept multiple deposit tokens:
-```solidity
-// Pendle - supports multiple input/output tokens
-function getTokensIn() external view returns (address[] memory);
-function getTokensOut() external view returns (address[] memory);
-function isValidTokenIn(address token) public view returns (bool);
-function isValidTokenOut(address token) public view returns (bool);
-```
-
-Horizon assumes single underlying:
+Horizon now fully supports multi-token SY wrappers:
 ```cairo
-// Horizon - single token only
-underlying: ContractAddress  // One asset per SY
-```
-
-**Impact:** Cannot create SY wrappers for Curve LP tokens, Yearn vaults with multiple deposit routes, or aggregated yield sources.
-
----
-
-**Gap Detail - Reward System (SYBaseWithRewards):**
-
-Pendle's `SYBaseWithRewards.sol` extends the base with full reward distribution:
-```solidity
-// Pendle - inherits from SYBase + RewardManager
-abstract contract SYBaseWithRewards is SYBase, RewardManager {
-    function claimRewards(address user) external returns (uint256[] memory rewardAmounts) {
-        _updateAndDistributeRewards(user);
-        rewardAmounts = _doTransferOutRewards(user, user);
-        emit ClaimRewards(user, _getRewardTokens(), rewardAmounts);
-    }
-
-    function _beforeTokenTransfer(address from, address to, uint256) internal {
-        _updateAndDistributeRewardsForTwo(from, to);  // Update on transfer
-    }
+// Horizon - multi-token support implemented (sy_component.cairo:75-82, 506-541)
+#[storage]
+pub struct Storage {
+    // Multi-token support: valid tokens for deposit
+    pub tokens_in: Map<u32, ContractAddress>,
+    pub tokens_in_count: u32,
+    // Multi-token support: valid tokens for redemption
+    pub tokens_out: Map<u32, ContractAddress>,
+    pub tokens_out_count: u32,
+    // O(1) token validation maps
+    pub valid_tokens_in: Map<ContractAddress, bool>,
+    pub valid_tokens_out: Map<ContractAddress, bool>,
 }
+
+// View functions matching Pendle interface
+fn get_tokens_in(self: @ComponentState<TContractState>) -> Span<ContractAddress>
+fn get_tokens_out(self: @ComponentState<TContractState>) -> Span<ContractAddress>
+fn is_valid_token_in(self: @ComponentState<TContractState>, token: ContractAddress) -> bool
+fn is_valid_token_out(self: @ComponentState<TContractState>, token: ContractAddress) -> bool
 ```
 
-Horizon has no reward system:
+**Tests:** `test_sy_get_tokens_in_out_single`, `test_sy_get_tokens_in_out_multiple`, `test_sy_is_valid_token_in_single`, `test_sy_is_valid_token_out_single`, `test_sy_is_valid_token_multiple`
+
+---
+
+**~~Gap Detail - Reward System (SYBaseWithRewards):~~** ✅ IMPLEMENTED
+
+Horizon now has a complete reward system via `SYWithRewards` contract + `RewardManagerComponent`:
 ```cairo
-// Horizon - no reward tracking in SY
-// Rewards are only handled at YT level via interest
+// Horizon - SYWithRewards contract (sy_with_rewards.cairo:47-77)
+// Composes: SYComponent + RewardManagerComponent
+component!(path: SYComponent, storage: sy, event: SYEvent);
+component!(path: RewardManagerComponent, storage: rewards, event: RewardsEvent);
+
+// Reward hooks triggered on every ERC20 transfer (sy_with_rewards.cairo:175-178)
+fn before_update(ref self: ..., from: ContractAddress, recipient: ContractAddress, amount: u256) {
+    // Update rewards for both parties BEFORE balance changes
+    let mut contract = self.get_contract_mut();
+    contract.rewards.update_rewards_for_two(from, recipient);
+}
+
+// ISYWithRewards interface (i_sy_with_rewards.cairo:93-128)
+fn get_reward_tokens(self: @TContractState) -> Span<ContractAddress>;
+fn claim_rewards(ref self: TContractState, user: ContractAddress) -> Span<u256>;
+fn accrued_rewards(self: @TContractState, user: ContractAddress) -> Span<u256>;
+fn reward_index(self: @TContractState, token: ContractAddress) -> u256;
+fn user_reward_index(self: @TContractState, user: ContractAddress, token: ContractAddress) -> u256;
+fn is_reward_token(self: @TContractState, token: ContractAddress) -> bool;
+fn reward_tokens_count(self: @TContractState) -> u32;
 ```
 
-**Impact:** Cannot wrap GLP-style tokens (ETH + esGMX rewards), staked tokens with native emissions, or any asset with multiple reward streams.
+**Tests:** (in `test_sy_with_rewards.cairo`) `test_preview_functions`, `test_user_reward_index_tracks_global`, `test_claim_twice_returns_zero`, `test_no_retroactive_rewards_for_new_depositor`, `test_tokens_in_out` (82 total SY tests passing)
 
 ---
 
 ### 1.2 YT (Yield Token) Interest System
 
-**Implementation Status: 70%** (Core interest mechanics work; formula differs from Pendle's `InterestManagerYT`)
+**Implementation Status: 90%** (Pendle-style interest math + reserve/treasury/fee plumbing implemented; remaining: multi-reward support, flash mint, minor packing)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
@@ -186,17 +199,17 @@ Horizon has no reward system:
 | Transfer hooks | Update both parties | Update both parties | ✅ |
 | Post-expiry index freeze | `postExpiry.firstPYIndex` | `py_index_at_expiry` | ✅ |
 | Interest claim | `redeemDueInterest()` | `redeem_due_interest()` | ✅ |
-| Interest formula | `bal × Δidx / (prev × curr)` | `bal × Δidx / prev` | 🟡 MEDIUM (see below) |
+| Interest formula | `bal × Δidx / (prev × curr)` | `bal × Δidx / (prev × curr)` | ✅ |
 | UserInterest struct packing | `{uint128 idx, uint128 accrued}` | Two separate Maps | 🟢 LOW |
 | Two-user distribution | `_distributeInterestForTwo()` | Separate calls | ✅ Equivalent |
-| Multi-reward claiming | `redeemDueInterestAndRewards()` | ❌ Missing | 🔴 HIGH |
-| Reward token registry | `getRewardTokens()` | ❌ Missing | 🔴 HIGH |
-| syReserve tracking | Tracks SY balance for accounting | ❌ Missing | 🟡 MEDIUM |
-| Post-expiry treasury | Interest → protocol treasury | ❌ Interest locked | 🟡 MEDIUM |
-| Protocol fee on interest | Via factory `_doTransferOutInterest()` | ❌ Missing | 🟡 MEDIUM |
-| Same-block index caching | `doCacheIndexSameBlock` | ❌ Missing | 🟢 LOW |
-| Batch mint/redeem | `mintPYMulti()`, `redeemPYMulti()` | ❌ Missing | 🟢 LOW |
-| Claim interest on redeem | `redeemPY(redeemInterest=true)` | ❌ Separate call required | 🟢 LOW |
+| Multi-reward claiming | `redeemDueInterestAndRewards()` | ❌ Missing | 🔴 HIGH | **NOT PART OF THE REQUIREMENTS**
+| Reward token registry | `getRewardTokens()` | ❌ Missing | 🔴 HIGH | **NOT PART OF THE REQUIREMENTS**
+| syReserve tracking | `syReserve` + floating SY | `sy_reserve` + `get_floating_sy()` | ✅ |
+| Post-expiry treasury | `totalSyInterestForTreasury` | `post_expiry_sy_for_treasury` + treasury redeem | ✅ |
+| Protocol fee on interest | Factory-managed | Per-YT `interest_fee_rate` | ✅ (per-YT admin) |
+| Same-block index caching | `doCacheIndexSameBlock` | Always-on cache | ✅ (no toggle) |
+| Batch mint/redeem | `mintPYMulti()`, `redeemPYMulti()` | `mint_py_multi()`, `redeem_py_multi()` | ✅ |
+| Claim interest on redeem | `redeemPY(redeemInterest=true)` | `redeem_py_with_interest()` | ✅ |
 | Flash mint | Supported | ❌ Missing | 🟡 MEDIUM |
 
 **Gap Detail - Multi-Reward Support:**
@@ -211,7 +224,7 @@ function redeemDueInterestAndRewards(
 ) external returns (uint256 interestOut, uint256[] memory rewardsOut);
 ```
 
-Horizon only tracks interest from SY appreciation:
+Horizon only tracks interest from SY appreciation (no reward registry/claim path in YT):
 ```cairo
 // Horizon - interest only
 fn redeem_due_interest(user: ContractAddress) -> u256
@@ -223,99 +236,52 @@ user_interest: Map<ContractAddress, u256>
 
 ---
 
-**Gap Detail - syReserve Tracking:**
+**Resolved - syReserve Tracking:**
 
-Pendle tracks the SY reserve to detect "floating" SY (donations or accidental transfers):
-```solidity
-// Pendle - tracks reserve for accurate accounting
-uint128 public syReserve;  // Expected SY balance
-
-function _getFloatingSy() internal view returns (uint256) {
-    return IStandardizedYield(SY).balanceOf(address(this)) - syReserve;
-}
-```
-
-Horizon relies on actual SY balance without reserve tracking:
-```cairo
-// Horizon - no reserve concept
-// Direct transfer from SY balance without floating detection
-let success = sy.transfer(receiver, amount_sy);
-```
-
-**Impact:** Cannot detect and handle unexpected SY deposits. Minor accounting concern.
+Horizon now tracks expected SY balance via `sy_reserve` and exposes `get_floating_sy()` to detect
+unexpected transfers. Mint/redeem paths update the reserve to match the actual SY balance,
+mirroring Pendle's accounting model.
 
 ---
 
-**Gap Detail - Post-Expiry Treasury:**
+**Resolved - Post-Expiry Treasury:**
 
-Pendle redirects post-expiry interest to the protocol treasury:
-```solidity
-// Pendle - post-expiry interest goes to treasury
-struct PostExpiryData {
-    uint128 firstPYIndex;              // Frozen index at expiry
-    uint128 totalSyInterestForTreasury; // Accumulated post-expiry yield
-    // ...
-}
-
-function redeemInterestAndRewardsPostExpiryForTreasury() external;
-```
-
-Horizon freezes the index at expiry but doesn't capture ongoing yield:
-```cairo
-// Horizon - index frozen, but post-expiry yield is effectively locked
-if self.py_index_at_expiry.read() == 0 {
-    self.py_index_at_expiry.write(current_index);  // Freeze
-}
-// Any SY appreciation after expiry stays in the contract forever
-```
-
-**Impact:** Post-expiry yield from underlying assets (e.g., stETH continues earning) is locked in the contract rather than flowing to protocol treasury or LPs.
+Horizon implements `post_expiry_sy_for_treasury` plus `redeem_post_expiry_interest_for_treasury()`,
+and `redeem_py_post_expiry()` carves out post-expiry yield per redemption. Post-expiry interest is
+redirected to treasury rather than being locked in the contract.
 
 ---
 
-**Gap Detail - Interest Calculation Formula Difference:**
+**Resolved - Interest Calculation Formula (matches Pendle):**
 
-Pendle uses a **normalized interest formula** from `InterestManagerYT`:
-```solidity
-// Pendle - normalizes interest to current SY value
-interestFromYT = (principal × (currentIndex - prevIndex)) / (prevIndex × currentIndex)
-// Simplifies to: interest = balance × indexGrowth / currentIndex
+Horizon now uses the normalized formula from Pendle's `InterestManagerYT`:
+```text
+interest = balance × (currentIndex - prevIndex) / (prevIndex × currentIndex)
 ```
-
-Horizon uses a **simpler absolute formula**:
-```cairo
-// Horizon - absolute interest calculation
-new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index)
-// Simplifies to: interest = balance × indexGrowth
-```
-
-**Concrete Example** (100 YT, index grows from 1.0 to 1.1 = 10% yield):
-- **Pendle**: `100 × 0.1 / (1.0 × 1.1) = 100 × 0.1 / 1.1 = ~9.09 SY`
-- **Horizon**: `100 × 0.1 / 1.0 = 10.0 SY`
-
-**Why the difference?** Pendle's formula maintains the invariant that "totalSyRedeemable will not change over time" - the division by `currentIndex` accounts for SY's increased value. Horizon's simpler approach gives ~10% more interest in this example.
-
-**Impact:** Economic divergence from Pendle. Horizon users receive slightly more SY tokens as interest, but those tokens are worth more in underlying terms due to the higher index. The NET economic value is arguably the same, but accounting differs. This is a **design choice** rather than a bug, but should be documented for users.
+This preserves Pendle's invariant that total redeemable SY remains stable as the index grows.
 
 ---
 
 ### 1.3 PT (Principal Token)
 
-**Implementation Status: 95%**
+**Implementation Status: 95%** (PT contract is minimal; differences are mostly init/immutables and metadata/versioning)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| 1:1 redemption at expiry | ✅ | ✅ | ✅ |
-| Only YT can mint/burn | ✅ | `assert_only_yt()` | ✅ |
-| Circular reference init | Via factory | Via `initialize_yt()` | ✅ |
-| Standard ERC20 | ✅ | ✅ | ✅ |
+| Only YT can mint/burn | ✅ `mintByYT/burnByYT` | ✅ `mint/burn` + `assert_only_yt()` | ✅ |
+| YT set once after deploy | `initialize()` onlyYieldFactory | `initialize_yt()` only deployer (YT) | ⚠️ Different |
+| SY/expiry recorded | Immutable `SY`, `expiry` | Stored on deploy (no setters) | ⚠️ Different |
+| isExpired() | ✅ `isExpired()` | ✅ `is_expired()` | ✅ |
+| Standard ERC20 | ✅ `PendleERC20` | ✅ `ERC20Component` | ✅ |
 | Emergency pause | ❌ Not pausable | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
 | VERSION constant | `VERSION = 6` | ❌ None | 🟢 LOW |
 | Reentrancy guard exposure | `reentrancyGuardEntered()` | ❌ None | 🟢 LOW |
 
-**Horizon exceeds Pendle in emergency controls** - PT mint can be paused in emergencies via PAUSER_ROLE.
+**Note:** Pendle's PT contract is intentionally minimal; it does **not** implement redemption logic. Redemption at expiry is handled by YT/router flows, not PT itself. Horizon follows the same pattern.
 
-**Minor gaps:** VERSION constant and reentrancy guard exposure are useful for integrations and on-chain versioning but not critical for core functionality.
+**Horizon exceeds Pendle in emergency controls** - PT mint can be paused in emergencies via `PAUSER_ROLE`.
+
+**Minor gaps:** VERSION constant and reentrancy guard exposure are useful for integrations and on-chain versioning but not critical for core functionality. The `factory` immutability difference (Pendle stores `factory` immutable; Horizon uses `deployer`/storage) is a trust-boundary nuance rather than a functional gap.
 
 ---
 
@@ -323,7 +289,7 @@ new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index)
 
 ### 2.1 Core AMM Curve (MarketMathCore)
 
-**Implementation Status: 75%** (Core curve math works; missing PYIndex integration, reserve fee system, signed arithmetic)
+**Implementation Status: 100%** (Core curve math, PYIndex integration, Pendle-style fee decay + reserve split, bounds/rounding parity, signed math, and initial implied-rate initialization implemented)
 
 **Reference:** Pendle's `MarketMathCore.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/MarketMathCore.sol)
 
@@ -331,98 +297,101 @@ new_interest = wad_div(wad_mul(yt_balance, index_diff), user_index)
 |---------|-----------|---------|--------|
 | Logit-based curve | `ln(p/(1-p))/scalar + anchor` | Same formula | ✅ |
 | Rate scalar time decay | `scalarRoot * 365d / timeToExpiry` | Same formula | ✅ |
-| Rate anchor continuity | Recalculated post-trade | Recalculated post-trade | ✅ |
+| Rate anchor continuity | Anchor derived from `lastLnImpliedRate` each trade | Same pattern | ✅ |
 | `MINIMUM_LIQUIDITY` | 1000 | 1000 | ✅ |
-| `MAX_MARKET_PROPORTION` | 96% | 96% (FP), 99.9% (WAD) | ⚠️ Inconsistent |
+| `MAX_MARKET_PROPORTION` | 96% | 96% (FP + WAD) | ✅ |
+| Proportion bound enforcement | Revert if `proportion > MAX_MARKET_PROPORTION` | Revert (`MARKET_PROPORTION_TOO_HIGH`) | ✅ |
+| Exchange-rate lower bound | Revert if `exchangeRate < 1` | Revert (`MARKET_RATE_BELOW_ONE`) | ✅ |
 | PT price convergence | Approaches 1 at expiry | Approaches 1 at expiry | ✅ |
 | Dual math implementations | N/A | WAD + cubit FP | ✅ **Horizon exceeds** |
-| 4 swap variants | 2 (exact PT in/out) | 4 (all combinations) | ✅ **Horizon exceeds** |
-| PYIndex integration | `syToAsset()`, `assetToSy()` | ❌ Direct SY only | 🔴 HIGH |
-| Reserve fee splitting | `reserveFeePercent`, `netSyToReserve` | ❌ Single fee bucket | 🔴 HIGH |
-| Treasury address | `address treasury` in MarketState | ❌ None | 🟡 MEDIUM |
-| LP fee on add liquidity | `lpToReserve` returned | ❌ All LP to user | 🟡 MEDIUM |
-| Signed integer arithmetic | `int256` for netPtToAccount | ❌ `u256` only | 🟡 MEDIUM |
-| Fee formula | `e^(lnFeeRateRoot * t)` | Linear decay | 🟡 MEDIUM |
-| Rounding protection | `rawDivUp()` for LP | ❌ Standard division | 🟢 LOW |
-| `setInitialLnImpliedRate()` | Explicit initialization | ❌ Via anchor | 🟢 LOW |
+| Swap variants in core math | 2 wrappers (exact PT in / exact PT out) | 4 (all combinations) | ✅ **Horizon exceeds** |
+| PYIndex integration | `syToAsset()`, `assetToSy()`, `assetToSyUp()` | ✅ Asset-based via `py_index` | ✅ |
+| Reserve fee splitting | `reserveFeePercent`, `netSyToReserve` | ✅ `net_sy_to_reserve` + `reserve_fee_percent` | ✅ |
+| Treasury address | `address treasury` in MarketState | ✅ Factory treasury queried by Market | ✅ |
+| Initial liquidity recipient | `MINIMUM_LIQUIDITY` to reserve (treasury) | Treasury if set; dead address fallback | ✅ |
+| Signed integer arithmetic | `int256` for netPtToAccount | ✅ `SignedValue` (mag + sign) | ✅ |
+| Fee formula | `exp(lnFeeRateRoot * timeToExpiry / 365d)` | ✅ `get_fee_rate()` with exp | ✅ |
+| Rounding protection | `rawDivUp()` on sy/pt used; `assetToSyUp()` for negative | ✅ `asset_to_sy_up()` on negative | ✅ |
+| `setInitialLnImpliedRate()` | Explicit init using `PYIndex` + `initialAnchor` | ✅ `set_initial_ln_implied_rate()` in first mint | ✅ |
 
 ---
 
-**Gap Detail - PYIndex Integration (HIGH):**
+**Authoritative Flow (Code-Verified):**
 
-Pendle's MarketMathCore operates in **asset** (underlying) terms, not raw SY terms:
-```solidity
-// Pendle - converts SY to asset value before calculations
-function getMarketPreCompute(...) {
-    res.totalAsset = index.syToAsset(market.totalSy);  // ← Key conversion
-    // All pricing uses totalAsset, not totalSy
-}
-
-function calcTrade(...) {
-    int256 preFeeExchangeRate = _getExchangeRate(
-        market.totalPt,
-        comp.totalAsset,  // ← Asset value, not SY
-        ...
-    );
-    // Convert back to SY for output
-    netSyToAccount = index.assetToSy(netAssetToAccount);
-}
-```
-
-Horizon works directly with SY values without asset conversion:
-```cairo
-// Horizon - works in SY terms only
-let exchange_rate = get_exchange_rate(
-    *state.pt_reserve,
-    *state.sy_reserve,  // ← Raw SY, not asset value
-    ...
-);
-```
-
-**Impact:** Economic difference in how the AMM prices PT. Pendle prices PT against the **underlying value** of SY (accounting for SY appreciation), while Horizon prices PT against raw SY tokens. This matters when SY has grown significantly - Pendle's approach ensures consistent economic behavior regardless of when the market was created.
+- `contracts/src/market/amm.cairo` is the on-chain entry point for swaps/mints/burns and calls
+  `contracts/src/market/market_math_fp.cairo` for all pricing math.
+- `contracts/src/market/market_math.cairo` mirrors the curve in WAD and is used in tests/off-chain
+  checks; it is kept in parity with the FP path.
 
 ---
 
-**Gap Detail - Reserve Fee System (HIGH):**
+**Implementation Detail - PYIndex Integration (COMPLETED):**
 
-Pendle splits fees between LPs and protocol treasury:
-```solidity
-// Pendle - MarketState includes fee infrastructure
-struct MarketState {
-    address treasury;              // Protocol treasury address
-    uint256 lnFeeRateRoot;         // Fee rate parameter (log form)
-    uint256 reserveFeePercent;     // % of fees to reserve (base 100)
-    // ...
-}
+Horizon now mirrors Pendle's asset-based math. `MarketState` carries `py_index`, and core math
+converts SY to asset value before pricing, then converts back using `asset_to_sy`/`asset_to_sy_up`.
 
-// Trade returns three values
-function calcTrade(...) returns (
-    int256 netSyToAccount,   // Amount to trader
-    int256 netSyFee,         // Total fee collected
-    int256 netSyToReserve    // Fee portion to treasury
-) {
-    int256 netAssetToReserve = (fee * market.reserveFeePercent.Int()) / 100;
-    // ...
-}
-```
+Code-verified:
+- `contracts/src/market/market_math.cairo`: `MarketState.py_index`, `sy_to_asset` in `get_proportion`,
+  `asset_to_sy`/`asset_to_sy_up` in trade output conversion.
+- `contracts/src/market/market_math_fp.cairo`: same asset-based flow for the FP math path.
+- `contracts/src/market/amm.cairo`: `_get_market_state*` loads `py_index` from YT (`update_py_index` for
+  swaps, `py_index_current` for views).
 
-Horizon has a simpler single-bucket fee model:
-```cairo
-// Horizon - all fees to one bucket, owner-collected
-fn calc_swap_exact_pt_for_sy(...) -> (u256, u256) {  // (output, fee)
-    let fee = wad_mul(sy_out_before_fee, adjusted_fee_rate);
-    // Fee stays in pool or accumulated for owner collection
-    (sy_out, fee)
-}
-```
-
-**Impact:** No protocol revenue sharing mechanism. All fees either stay with LPs or go to owner. Pendle's model allows configurable fee distribution (e.g., 80% LPs / 20% treasury).
+**Result:** PT pricing is based on underlying asset value (Pendle-equivalent), not raw SY balance.
 
 ---
 
-**Gap Detail - LP Fee on Liquidity Addition (MEDIUM):**
+**Implementation Detail - Reserve Fee System + Treasury Wiring (COMPLETED):**
 
-Pendle takes a protocol fee when liquidity is added:
+Horizon now splits fees into LP + reserve portions and wires treasury via MarketFactory, matching
+Pendle's fee flow.
+
+Code-verified:
+- `contracts/src/market/market_math.cairo` and `contracts/src/market/market_math_fp.cairo`:
+  `MarketState.reserve_fee_percent` and trade outputs include `net_sy_fee` + `net_sy_to_reserve`.
+- `contracts/src/market/market_factory.cairo`:
+  `treasury`, `default_reserve_fee_percent`, per-router `ln_fee_rate_root` overrides, and
+  `get_market_config()` returning `{ treasury, ln_fee_rate_root, reserve_fee_percent }`.
+- `contracts/src/market/amm.cairo`:
+  `_get_market_state_with_effective_fee()` pulls factory config (router overrides + default reserve
+  fee), `_get_effective_reserve_fee()` checks treasury, and `_transfer_reserve_fee_to_treasury()`
+  transfers reserve fees immediately and emits `ReserveFeeTransferred`.
+
+**Result:** Reserve fees are carved out of trades and sent to treasury (if configured). When the
+factory or treasury is zero, the reserve portion stays in the pool as LP fees (Pendle-compatible
+fallback semantics).
+
+**See:** `market_math.cairo:317, 410-432` and `amm.cairo:554-569, 638-653, 721-736, 804-819, 1208-1275`
+
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| Reserve fee splitting | ✅ Implemented | `net_sy_to_reserve` in trade outputs |
+| Fee transfer to treasury | ✅ Implemented | `_transfer_reserve_fee_to_treasury()` |
+| ReserveFeeTransferred event | ✅ Implemented | Emitted on every swap |
+| Effective fee calculation | ✅ Implemented | `_get_effective_reserve_fee()` |
+
+---
+
+**Implementation Detail - Bounds + Rounding Parity (COMPLETED):**
+
+Pendle’s hard bounds and rounding behavior are now enforced in both FP and WAD paths.
+
+Code-verified:
+- `contracts/src/market/market_math_fp.cairo` + `contracts/src/market/market_math.cairo`:
+  `MAX_PROPORTION` hard-asserted in `get_rate_anchor`, `get_exchange_rate`, and
+  `get_ln_implied_rate`; exchange rate reverts if `< 1`.
+- Signed anchor handling via `(rate_anchor, rate_anchor_is_negative)` aligns with Pendle’s signed
+  arithmetic in logit/anchor composition.
+- `asset_to_sy_up()` is used when net asset to account is negative (rounding against the trader).
+- Exact-output paths assert infeasible trades via `MARKET_INFEASIBLE_TRADE`.
+
+**Result:** Horizon now rejects out-of-bounds trades and matches Pendle’s rounding bias.
+
+---
+
+**Implementation Detail - Minimum Liquidity Recipient (COMPLETED):**
+
+Pendle mints `MINIMUM_LIQUIDITY` to the reserve (treasury) on first mint:
 ```solidity
 // Pendle - protocol gets LP tokens on add liquidity
 function addLiquidityCore(...) returns (
@@ -440,152 +409,103 @@ function addLiquidityCore(...) returns (
 }
 ```
 
-Horizon gives all LP to user (except MINIMUM_LIQUIDITY burned):
+Horizon mints `MINIMUM_LIQUIDITY` to treasury when configured (factory-backed markets),
+falling back to a dead address if treasury is unset:
 ```cairo
-// Horizon - all LP to user
-fn calc_mint_lp(...) -> (u256, u256, u256, bool) {  // (lp_to_mint, sy_used, pt_used, is_first)
-    if *state.total_lp == 0 {
-        let lp_to_user = lp - MINIMUM_LIQUIDITY;
-        // MINIMUM_LIQUIDITY is burned to zero address, not sent to treasury
-        return (lp_to_user, sy_amount, pt_amount, true);
-    }
+// Horizon - first mint locks MINIMUM_LIQUIDITY to treasury (or dead address fallback)
+if is_first_mint {
+    let recipient = self._get_minimum_liquidity_recipient();
+    self.erc20.mint(recipient, MINIMUM_LIQUIDITY);
 }
 ```
 
-**Impact:** Protocol has no mechanism to capture LP value from liquidity provision.
+**Result:** Factory-backed markets now match Pendle by minting the minimum liquidity to
+treasury. Standalone markets (no factory/treasury) still lock it to a dead address.
 
 ---
 
-**Gap Detail - Fee Decay Formula (MEDIUM):**
+### 2.2 TWAP Oracle (Implemented)
 
-Pendle uses **exponential** fee decay via log-space parameters:
-```solidity
-// Pendle - exponential decay
-// lnFeeRateRoot is stored as ln(feeRate) base
-function _getExchangeRateFromImpliedRate(uint256 lnImpliedRate, uint256 timeToExpiry)
-    returns (int256 exchangeRate)
-{
-    uint256 rt = (lnImpliedRate * timeToExpiry) / IMPLIED_RATE_TIME;
-    exchangeRate = LogExpMath.exp(rt.Int());
-}
-// Fee also uses this: feeRate = e^(lnFeeRateRoot * timeToExpiry / year)
-```
+The Market TWAP Oracle is implemented in three key files:
 
-Horizon uses **linear** fee decay:
-```cairo
-// Horizon - linear decay
-fn get_time_adjusted_fee_rate(fee_rate: u256, time_to_expiry: u64) -> u256 {
-    wad_div(wad_mul(fee_rate, time_to_expiry_u256), SECONDS_PER_YEAR)
-    // Result: feeRate * timeToExpiry / year
-}
-```
+| File | Purpose | Size |
+|------|---------|------|
+| [`libraries/oracle_lib.cairo`](../contracts/src/libraries/oracle_lib.cairo) | Core TWAP library with ring buffer, binary search | ~670 lines |
+| [`market/amm.cairo`](../contracts/src/market/amm.cairo) (IMarketOracle) | Oracle storage and interface | ~110 lines |
+| [`oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) | PT/YT/LP price helpers | ~320 lines |
 
-**Impact:** Different fee economics near expiry. Linear is simpler but not mathematically equivalent to Pendle's continuous compounding approach.
+**Implementation Status: ~95%**
 
----
+| Feature | Status | Location |
+|---------|--------|----------|
+| Observation struct | ✅ | `oracle_lib.cairo:26-33` |
+| initialize() | ✅ | `oracle_lib.cairo:72-80` |
+| transform() | ✅ | `oracle_lib.cairo:112-124` |
+| write() | ✅ | `oracle_lib.cairo:185-217` |
+| observe_single() | ✅ | `oracle_lib.cairo:274-318` |
+| observe() batch | ✅ | `oracle_lib.cairo:348-374` |
+| get_surrounding_observations() | ✅ | `oracle_lib.cairo:416-448` |
+| get_oldest_observation_index() | ✅ | `oracle_lib.cairo:471-482` |
+| binary_search() | ✅ | `oracle_lib.cairo:615-672` |
+| grow() | ✅ | `oracle_lib.cairo:542-572` |
+| IMarketOracle.observe() | ✅ | `amm.cairo:1003-1062` |
+| increase_observations_cardinality_next() | ✅ | `amm.cairo:1066-1083` |
+| get_oracle_state() | ✅ | `amm.cairo:1097-1104` |
+| get_observation() | ✅ | `amm.cairo:1088-1093` |
+| MAX_CARDINALITY = 8760 | ✅ | `amm.cairo:38` |
+| PyLpOracle.get_pt_to_sy_rate() | ✅ | `py_lp_oracle.cairo:47-75` |
+| PyLpOracle.get_yt_to_sy_rate() | ✅ | `py_lp_oracle.cairo:77-100` |
+| PyLpOracle.get_lp_to_sy_rate() | ✅ | `py_lp_oracle.cairo:102-140` |
+| PyLpOracle.get_pt_to_asset_rate() | ✅ | `py_lp_oracle.cairo:142-175` |
+| PyLpOracle.get_yt_to_asset_rate() | ✅ | `py_lp_oracle.cairo:177-210` |
+| PyLpOracle.get_lp_to_asset_rate() | ✅ | `py_lp_oracle.cairo:212-260` |
+| PyLpOracle.get_oracle_state() | ✅ | `py_lp_oracle.cairo:262-290` |
+| Test coverage | ✅ | 860 lines in `tests/market/test_market_oracle.cairo` |
+| Chainlink adapter | ❌ | Not implemented (optional for DeFi integrations) |
 
-**Gap Detail - Signed Integer Arithmetic (MEDIUM):**
+**Remaining Gap (~5%):**
+- **Chainlink-style adapters** (`latestRoundData()` compatibility) - Optional for integration with protocols expecting Chainlink interface
+- **Reentrancy guard check** in oracle queries - Low priority, Cairo's execution model provides inherent protection
 
-Pendle uses signed integers for bidirectional trades:
-```solidity
-// Pendle - single function handles both buy and sell
-function executeTradeCore(
-    MarketState memory market,
-    PYIndex index,
-    int256 netPtToAccount,  // Positive = buy PT, Negative = sell PT
-    uint256 blockTime
-) {
-    // Single code path with signed arithmetic
-    market.totalPt = market.totalPt.subNoNeg(netPtToAccount);
-    market.totalSy = market.totalSy.subNoNeg(netSyToAccount + netSyToReserve);
-}
-```
-
-Horizon uses unsigned integers with separate handling:
-```cairo
-// Horizon - separate functions for each direction
-fn calc_swap_exact_pt_for_sy(...)   // Sell PT
-fn calc_swap_exact_sy_for_pt(...)   // Buy PT
-fn calc_swap_sy_for_exact_pt(...)   // Buy exact PT
-fn calc_swap_pt_for_exact_sy(...)   // Sell for exact SY
-
-// With explicit direction flags
-let new_pt_reserve = if is_pt_out {
-    pt_reserve - net_pt_change
-} else {
-    pt_reserve + net_pt_change
-};
-```
-
-**Impact:** More verbose code but functionally equivalent. Horizon's approach with 4 explicit functions is actually more complete than Pendle's 2 wrapper functions (exactPt in/out).
-
----
-
-### 2.2 TWAP Oracle (Critical Gap)
-
-**Implementation Status: 0%**
-
-| Feature | Pendle V2 | Horizon | Status |
-|---------|-----------|---------|--------|
-| Observation ring buffer | 32-256 slots | ❌ None | 🔴 CRITICAL |
-| `lnImpliedRateCumulative` | Accumulated for TWAP | ❌ None | 🔴 CRITICAL |
-| `observe(secondsAgos[])` | Returns historical rates | ❌ None | 🔴 CRITICAL |
-| `getPtToSyRate(duration)` | TWAP for PT price | ❌ None | 🔴 CRITICAL |
-| `getLpToSyRate(duration)` | TWAP for LP price | ❌ None | 🔴 CRITICAL |
-| Chainlink adapter | `PendleChainlinkOracleFactory` | ❌ None | 🔴 HIGH |
-
-**Impact:**
-- **Cannot integrate with lending protocols** (Aave, Compound forks require TWAP)
-- **No manipulation resistance** for PT/LP prices
-- **DeFi composability blocked** until implemented
-
-**Recommended Implementation:**
-```cairo
-// Market contract additions
-struct Observation {
-    timestamp: u64,
-    ln_implied_rate_cumulative: u256,
-}
-
-observations: LegacyMap<u32, Observation>
-observations_cardinality: u32
-observations_index: u32
-
-fn increase_observations_cardinality(cardinality: u32)
-fn observe(seconds_agos: Span<u32>) -> Span<u256>
-fn get_pt_to_sy_rate(twap_duration: u32) -> u256
-fn get_lp_to_sy_rate(twap_duration: u32) -> u256
-```
+**Architecture Notes:**
+- Uses u64 timestamps (Starknet native) vs Pendle's uint32
+- Uses u256 for cumulative values (Cairo native) vs Pendle's uint216
+- Ring buffer stored as `Map<u16, Observation>` in market contract
+- Maximum cardinality capped at 8760 (1 year of hourly observations)
 
 ---
 
 ### 2.3 Fee System
 
-**Implementation Status: 40%**
+**Implementation Status: 85%**
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Fee collection | Auto-compounded to LPs | Accumulated, owner-collects | 🔴 HIGH |
-| Fee reinvestment | Into SY side of pool | ❌ None | 🔴 HIGH |
-| Protocol fee split | 80% voters / 20% LPs | ❌ None | 🟡 MEDIUM |
-| Dynamic fee rate | Based on rate impact | Fixed rate | 🟡 MEDIUM |
+| Fee collection | Auto-compounded to LPs | ✅ Auto-compounded (stays in sy_reserve) | ✅ |
+| Fee reinvestment | Into SY side of pool | ✅ LP fees remain in pool reserves | ✅ |
+| Protocol fee split | 80% voters / 20% LPs | ❌ 100% to treasury (no governance) | 🟡 Phase 4 |
+| Dynamic fee rate | Rate-impact adjustment | ⚠️ Time-decay only | 🟡 Phase 2 |
 
-**Gap Detail - Fee Auto-Compounding:**
+**Implementation Detail - Fee Auto-Compounding:** ✅ IMPLEMENTED
 
-Pendle automatically reinvests fees into the pool:
-```solidity
-// Pendle - fees compound into reserves
-totalSy += feeInSy;  // Directly adds to LP holdings
-```
-
-Horizon collects fees separately:
+Horizon matches Pendle's fee model - LP fees stay in pool reserves:
 ```cairo
-// Horizon - fees accumulate in separate bucket
-self.total_fees_collected.write(self.total_fees_collected.read() + fee);
-// Must be manually collected by owner
+// Horizon - LP fees auto-compound (amm.cairo:560)
+// Note: sy_reserve is reduced by ONLY (sy_out + actual_reserve_fee)
+// LP fee portion (total_fee - reserve_fee) stays in the pool
+self.sy_reserve.write(self.sy_reserve.read() - sy_out - actual_reserve_fee);
+
+// Reserve fee goes to treasury immediately
+self._transfer_reserve_fee_to_treasury(sy_contract, treasury, actual_reserve_fee, caller);
 ```
 
-**Impact:** LPs miss out on ~0.5-2% annual returns from fee compounding.
+**Result:** LP fees compound automatically. When LPs burn LP tokens, they receive a proportional
+share of the grown reserves (including accumulated LP fees).
+
+**Note:** The `collect_fees()` function at `amm.cairo:922` is for **analytics only** - it resets
+a counter and emits an event but does NOT transfer funds. LP fees are already embedded in reserves.
+
+**Test Evidence:** `test_market_fees.cairo:520-522` verifies LP fees stay in pool (receiver balance unchanged).
 
 ---
 
@@ -607,72 +527,90 @@ self.total_fees_collected.write(self.total_fees_collected.read() + fee);
 
 ### 2.5 Market Contract (PendleMarketV6)
 
-**Implementation Status: 60%** (Core liquidity/swap works; missing TWAP oracle, rewards, flash callbacks)
+**Implementation Status: 85%** (Core liquidity/swap works + TWAP oracle implemented; remaining: RewardManager/PendleGauge, flash callbacks)
 
-**Reference:** Pendle's `PendleMarketV6.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)
+**Reference (Pendle V2 code):** [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) (market contract) and [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) (TWAP observations)
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Market is LP token | ✅ (SRC20Permit) | ✅ (ERC20Component) | ✅ |
+| Market is LP token | ✅ (PendleERC20, nonReentrant transfer/transferFrom) | ✅ (ERC20Component) | ✅ |
 | mint() add liquidity | ✅ | ✅ | ✅ |
 | burn() remove liquidity | ✅ | ✅ | ✅ |
 | swapExactPtForSy | ✅ | ✅ swap_exact_pt_for_sy | ✅ |
 | swapSyForExactPt | ✅ | ✅ swap_sy_for_exact_pt | ✅ |
-| 4 swap function variants | 2 with callback | 4 explicit functions | ✅ **Horizon exceeds** |
+| 4 swap function variants | 2 in Market (optional callback) | 4 explicit functions | ✅ **Horizon exceeds** |
 | Emergency pause | ❌ No pause | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
 | Admin scalar adjustment | ❌ Immutable | ✅ set_scalar_root() | ✅ **Horizon exceeds** |
 | Rich swap events | Basic | Detailed (rate before/after, exchange rate) | ✅ **Horizon exceeds** |
-| TWAP observation buffer | 65,535 slots | ❌ None | 🔴 CRITICAL |
-| observe(secondsAgos[]) | ✅ | ❌ None | 🔴 CRITICAL |
-| increaseObservationsCardinality | ✅ | ❌ None | 🔴 CRITICAL |
+| TWAP observation buffer | `OracleLib.Observation[65_535]` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `oracle_lib::Observation` + `Map<u16, Observation>` (8,760 slots) | ✅ |
+| observe(secondsAgos[]) | `observations.observe` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `IMarketOracle::observe()` | ✅ |
+| increaseObservationsCardinalityNext | `observations.grow` ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `increase_observations_cardinality_next()` | ✅ |
 | RewardManager integration | Via PendleGauge parent | ❌ None | 🔴 HIGH |
 | redeemRewards(user) | ✅ | ❌ None | 🔴 HIGH |
 | getRewardTokens() | ✅ | ❌ None | 🔴 HIGH |
-| Flash swap callback | `bytes calldata data` | ❌ Direct transfer | 🟡 MEDIUM |
+| Swap callback hook | `IPMarketSwapCallback` via `bytes data` | ❌ None (transfer_from + direct transfer) | 🟡 MEDIUM |
 | skim() balance reconciliation | ✅ | ❌ None | 🟡 MEDIUM |
+| Token transfer pattern | Pre-transfer + balance checks | Pulls via `transfer_from` | 🟡 MEDIUM |
 | Separate burn receivers | (receiverSy, receiverPt) | Single receiver | 🟡 MEDIUM |
 | Storage packing | int128/uint96/uint16 | u256 per field | 🟡 MEDIUM (gas) |
 | Fee config from factory | getMarketConfig() | Stored in contract | 🟡 MEDIUM |
 | notExpired modifier | ✅ Modifier pattern | assert(!is_expired()) | ✅ Equivalent |
-| nonReentrant | ✅ Modifier | CEI pattern | ⚠️ Different approach |
-| readState(router) | External view | _get_market_state() internal | 🟢 LOW |
+| nonReentrant | ✅ Modifier | ❌ No reentrancy guard | ⚠️ Different approach |
+| readState(router) | External view | ❌ Not exposed (internal only) | 🟢 LOW |
 
 ---
 
-**Gap Detail - TWAP Observation Buffer (CRITICAL):**
+**~~Gap Detail - TWAP Observation Buffer (CRITICAL):~~** ✅ IMPLEMENTED
 
-Pendle's Market contract has a built-in Uniswap V3-style TWAP oracle:
-```solidity
-// Pendle - 65,535-slot observation ring buffer
-OracleLib.Observation[65_535] public observations;
+**Reference (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)
 
-struct MarketStorage {
-    int128 totalPt;
-    int128 totalSy;
-    uint96 lastLnImpliedRate;
-    uint16 observationIndex;          // Current position
-    uint16 observationCardinality;    // Initialized slots
-    uint16 observationCardinalityNext; // Target cardinality
-}
-
-// Retrieve historical cumulative rates
-function observe(uint32[] memory secondsAgos)
-    external view returns (uint216[] memory lnImpliedRateCumulative);
-
-// Expand observation buffer
-function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
-```
-
-Horizon has no TWAP infrastructure:
+Horizon now has full TWAP infrastructure matching Pendle's architecture:
 ```cairo
-// Horizon - no observations
-struct Storage {
-    last_ln_implied_rate: u256,  // Only current rate, no history
-    // No observation buffer, index, or cardinality
+// Horizon - full TWAP implementation (oracle_lib.cairo + amm.cairo)
+struct Observation {
+    block_timestamp: u64,
+    ln_implied_rate_cumulative: u256,
+    initialized: bool,
+}
+
+// 8,760-slot ring buffer (1 year of hourly observations)
+observations: Map<u16, Observation>,
+observation_index: u16,
+observation_cardinality: u16,
+observation_cardinality_next: u16,
+
+// IMarketOracle trait - observe() and increase_observations_cardinality_next()
+```
+
+**Implementation files:**
+- [`contracts/src/libraries/oracle_lib.cairo`](../contracts/src/libraries/oracle_lib.cairo) - Core TWAP library (~670 lines)
+- [`contracts/src/market/amm.cairo`](../contracts/src/market/amm.cairo) - Oracle storage and IMarketOracle interface
+- [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) - PT/YT/LP price helpers (~320 lines)
+
+#### IMarketOracle Interface
+
+The Market contract implements `IMarketOracle` providing TWAP functionality:
+
+```cairo
+trait IMarketOracle<TContractState> {
+    /// Query cumulative ln(implied rate) values at multiple time offsets.
+    /// Used for TWAP calculations: TWAP = (cumulative_now - cumulative_past) / duration
+    fn observe(self: @TContractState, seconds_agos: Array<u32>) -> Array<u256>;
+
+    /// Pre-allocate observation buffer slots to reduce gas costs during swaps.
+    fn increase_observations_cardinality_next(ref self: TContractState, cardinality_next: u16);
+
+    /// Read a single observation from the ring buffer.
+    /// Returns (block_timestamp, ln_implied_rate_cumulative, initialized)
+    fn get_observation(self: @TContractState, index: u16) -> (u64, u256, bool);
+
+    /// Get the oracle state needed for external TWAP calculations.
+    /// Returns OracleState containing last_ln_implied_rate and buffer indices
+    fn get_oracle_state(self: @TContractState) -> OracleState;
 }
 ```
 
-**Impact:** Cannot provide manipulation-resistant price feeds. Lending protocols (Aave, Compound forks) require TWAP for collateral valuation. This is the #1 blocker for DeFi composability.
+**Usage:** Use `IMarketOracleDispatcher` to query TWAP data from external contracts.
 
 ---
 
@@ -807,24 +745,28 @@ fn burn(
 
 | Feature | Pendle V2 | Horizon | Status |
 |---------|-----------|---------|--------|
-| Architecture | Diamond/Proxy with facets | Monolithic contract | ⚠️ Different |
-| Contract count | 11+ action contracts | 1 router.cairo | ⚠️ Simpler |
-| Upgradeability | Facet-based modular | Single class upgrade | ⚠️ Less modular |
-| ReentrancyGuard | Via modifier | ReentrancyGuardComponent | ✅ |
+| Architecture | Selector-based proxy (PendleRouterV4) + action facets | Monolithic contract | ⚠️ Different |
+| Contract count | Proxy + ActionStorageV4 + ~7 action modules + helpers | 1 router.cairo | ⚠️ Simpler |
+| Upgradeability | Selector → facet mapping (ActionStorageV4) | Single class upgrade | ⚠️ Less modular |
+| ReentrancyGuard | ❌ None in router actions | ReentrancyGuardComponent | ✅ **Horizon exceeds** |
 | Emergency pause | ❌ No pause | ✅ PAUSER_ROLE | ✅ **Horizon exceeds** |
-| RBAC system | ❌ Owner only | ✅ AccessControlComponent | ✅ **Horizon exceeds** |
-| Deadline enforcement | ✅ | ✅ | ✅ |
+| RBAC system | Ownable (selector admin only) | ✅ AccessControlComponent | ✅ **Horizon exceeds** |
+| Deadline enforcement | ❌ No explicit deadline params | ✅ | ✅ **Horizon exceeds** |
 | Slippage protection | ✅ min_out params | ✅ min_out params | ✅ |
 
 **Pendle Router Contracts:**
-- `PendleRouterV4.sol` - Main proxy with selector routing
+- `PendleRouterV4.sol` - Proxy that dispatches by selector → facet mapping
+- `RouterStorage.sol` - Core storage (owner + selectorToFacet)
+- `ActionStorageV4.sol` - Owner admin to set selectors for facets
 - `ActionSimple.sol` - Simplified swap/liquidity (no limit orders)
-- `ActionSwapPTV3.sol` - PT swaps with ApproxParams, LimitOrderData
+- `ActionSwapPTV3.sol` - PT swaps with ApproxParams + LimitOrderData
 - `ActionSwapYTV3.sol` - YT swaps with flash mechanics
-- `ActionAddRemoveLiqV3.sol` - Extensive liquidity operations
-- `ActionMiscV3.sol` - multicall, boostMarkets, reward redemption
+- `ActionAddRemoveLiqV3.sol` - Single-sided + multi-sided liquidity ops
+- `ActionCallbackV3.sol` - Swap/limit-order callback handling
+- `ActionMiscV3.sol` - multicall, reward redemption, misc utilities
 - `ActionCrossChain.sol` - Cross-chain messaging
-- `CallbackHelper.sol` - Flash swap callback infrastructure
+- `Reflector.sol` - helper for tokenized input scaling/dust sweep
+- `router/base/*` + `router/swap-aggregator/*` - shared helpers and aggregator interfaces
 
 ---
 
@@ -836,13 +778,13 @@ fn burn(
 |----------|-----------|---------|--------|
 | `mintPyFromSy` | ✅ | `mint_py_from_sy` | ✅ |
 | `redeemPyToSy` | ✅ | `redeem_py_to_sy` | ✅ |
-| `redeemPyPostExpiry` | ✅ | `redeem_pt_post_expiry` | ✅ |
-| `addLiquidity` | ✅ | `add_liquidity` | ✅ |
-| `removeLiquidity` | ✅ | `remove_liquidity` | ✅ |
+| PT-only redeem post-expiry | ❌ Not in router (uses `redeemPyToSy` w/ PT+YT; `exitPostExpToSy` handles PT+LP) | `redeem_pt_post_expiry` | 🟡 Horizon-only |
+| `addLiquidityDualSyAndPt` | ✅ | `add_liquidity` | ✅ |
+| `removeLiquidityDualSyAndPt` | ✅ | `remove_liquidity` | ✅ |
 | `swapExactPtForSy` | ✅ | `swap_exact_pt_for_sy` | ✅ |
-| `swapExactSyForPt` | ✅ | `swap_exact_sy_for_pt` | ✅ |
-| `swapSyForExactPt` | ✅ | `swap_sy_for_exact_pt` | ✅ |
-| `swapPtForExactSy` | ✅ | `swap_pt_for_exact_sy` | ✅ |
+| `swapExactSyForPt` | ✅ (ApproxParams + LimitOrderData) | `swap_exact_sy_for_pt` | ✅ |
+| `swapSyForExactPt` | ❌ Not exposed (router uses exact-in + ApproxParams) | `swap_sy_for_exact_pt` | 🟡 Horizon-only |
+| `swapPtForExactSy` | ❌ Not exposed (router uses exact-in) | `swap_pt_for_exact_sy` | 🟡 Horizon-only |
 | `swapExactSyForYt` | ✅ | `swap_exact_sy_for_yt` | ✅ |
 | `swapExactYtForSy` | ✅ | `swap_exact_yt_for_sy` | ✅ |
 | Convenience wrappers | N/A | `buy_pt_from_sy`, `sell_pt_for_sy`, `mint_py_and_keep` | ✅ **Horizon exceeds** |
@@ -1151,13 +1093,13 @@ function redeemDueInterestAndRewards(
 | Class hash updates | ❌ None | ✅ `set_class_hashes()` + event | ✅ **Horizon exceeds** |
 | `interestFeeRate` | Up to 20%, configurable | ❌ None | 🔴 HIGH |
 | `rewardFeeRate` | Up to 20%, configurable | ❌ None | 🔴 HIGH |
-| `treasury` address | Configurable fee destination | ❌ None | 🔴 HIGH |
+| `treasury` address | Configurable fee destination | ✅ `treasury` stored + passed to YT | ✅ |
 | `setInterestFeeRate()` | Owner-protected | ❌ None | 🔴 HIGH |
 | `setRewardFeeRate()` | Owner-protected | ❌ None | 🔴 HIGH |
-| `setTreasury()` | Owner-protected | ❌ None | 🔴 HIGH |
+| `setTreasury()` | Owner-protected | ✅ `set_treasury()` | ✅ |
 | `expiryDivisor` | Expiry must be divisible | ❌ Only checks future | 🟡 MEDIUM |
 | `setExpiryDivisor()` | Owner-protected | ❌ None | 🟡 MEDIUM |
-| `doCacheIndexSameBlock` | Same-block index caching | ❌ None | 🟡 MEDIUM |
+| `doCacheIndexSameBlock` | Same-block index caching | Always-on cache in YT | ⚠️ Different |
 | `VERSION` constant | `VERSION = 6` | ❌ None | 🟢 LOW |
 | Deterministic addresses | Create2 for PT | deploy_syscall with salt | ⚠️ Different |
 
@@ -1185,13 +1127,16 @@ function setRewardFeeRate(uint128 newRewardFeeRate) public onlyOwner {
 }
 ```
 
-Horizon has no protocol fee infrastructure:
+Horizon does not implement factory-level fee schedules; interest fees are configured per YT and
+reward fees are still missing:
 ```cairo
-// Horizon - no fee configuration at factory level
-// All interest goes to YT holders, no protocol cut
+// Horizon - fee config lives in YT, not the factory
+fn set_interest_fee_rate(ref self: ContractState, rate: u256)
+treasury: ContractAddress
 ```
 
-**Impact:** Protocol cannot capture revenue from interest or rewards. Essential for sustainable protocol economics.
+**Impact:** Protocol can collect interest fees on a per-YT basis, but lacks a centralized fee
+schedule and any reward fee capture.
 
 ---
 
@@ -1309,7 +1254,7 @@ self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
 
 ### 5.1 PendleMarketFactoryV6Upg Comparison
 
-**Implementation Status: 65%** (Core market deployment works; missing protocol fee infrastructure and governance integration)
+**Implementation Status: 95%** (Core market deployment works; treasury/fee infrastructure fully implemented; only governance integration remaining)
 
 **Reference:** Pendle's `PendleMarketFactoryV6Upg.sol` from [pendle-core-v2-public](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketFactoryV6Upg.sol)
 
@@ -1327,12 +1272,13 @@ self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
 | Active markets filter | ❌ None | ✅ `get_active_markets_paginated()` | ✅ **Horizon exceeds** |
 | Market by index | ❌ None | ✅ `get_market_at(index)` | ✅ **Horizon exceeds** |
 | Class hash updates | ❌ Immutable | ✅ `set_market_class_hash()` + event | ✅ **Horizon exceeds** |
-| `treasury` address | ✅ Configurable | ❌ None | 🔴 HIGH |
-| `reserveFeePercent` | ✅ Up to 100% | ❌ None | 🔴 HIGH |
-| `setTreasuryAndFeeReserve()` | ✅ Owner-protected | ❌ None | 🔴 HIGH |
-| `getMarketConfig(market, router)` | ✅ Returns treasury, fees | ❌ None | 🔴 HIGH |
-| Router fee overrides | `overriddenFee` mapping | ❌ None | 🔴 HIGH |
-| `setOverriddenFee(router, market, fee)` | ✅ Owner-protected | ❌ None | 🔴 HIGH |
+| `treasury` address | ✅ Configurable | ✅ `treasury` | Implemented (line 95) |
+| `reserveFeePercent` | ✅ Up to 100% | ✅ `default_reserve_fee_percent` | Implemented (line 97) |
+| `set_treasury()` | ✅ Owner-protected | ✅ | Implemented (line 507) |
+| `set_default_reserve_fee_percent()` | ✅ Owner-protected | ✅ | Implemented (line 517) |
+| `get_market_config(market, router)` | ✅ Returns treasury, fees | ✅ | Implemented (lines 484-493) |
+| Router fee overrides | `overriddenFee` mapping | ✅ `overridden_fee` | Implemented (line 100) |
+| `set_override_fee()` | ✅ Owner-protected | ✅ | Implemented (lines 531-556) |
 | `vePendle` integration | ✅ Immutable reference | ❌ None | 🟡 Future |
 | `gaugeController` integration | ✅ Immutable reference | ❌ None | 🟡 Future |
 | `yieldContractFactory` reference | ✅ Immutable | ❌ None | 🟡 MEDIUM |
@@ -1340,77 +1286,53 @@ self.access_control._grant_role(DEFAULT_ADMIN_ROLE, owner);
 | `minInitialAnchor` | `PMath.IONE` | ❌ Only MAX check | 🟢 LOW |
 | Split-code factory | ✅ Gas optimization | deploy_syscall with salt | ⚠️ Different |
 
----
-
-**Gap Detail - Protocol Fee Infrastructure (HIGH):**
-
-Pendle's MarketFactory manages market-level protocol fees:
-```solidity
-// Pendle - factory manages market fee configuration
-address public treasury;           // Fee destination
-uint8 public reserveFeePercent;    // % of fees to protocol (max 100)
-
-function setTreasuryAndFeeReserve(
-    address newTreasury,
-    uint8 newReserveFeePercent
-) public onlyOwner {
-    if (newReserveFeePercent > maxReserveFeePercent) revert Errors.FeeExceeded();
-    treasury = newTreasury;
-    reserveFeePercent = newReserveFeePercent;
-    emit NewTreasuryAndFeeReserve(newTreasury, newReserveFeePercent);
-}
-
-// Markets query factory for fee config
-function getMarketConfig(address market, address router)
-    external view returns (
-        address _treasury,
-        uint80 _overriddenFee,
-        uint8 _reserveFeePercent
-    )
-{
-    return (treasury, overriddenFee[router][market], reserveFeePercent);
-}
-```
-
-Horizon has no market-level protocol fee infrastructure:
-```cairo
-// Horizon - markets have fees but no protocol revenue sharing
-fn create_market(..., fee_rate: u256) -> ContractAddress {
-    // fee_rate is passed to market but no treasury/reserve system
-}
-```
-
-**Impact:** Protocol cannot capture revenue from market trading fees. Markets operate independently without centralized fee management.
+**Returns:** `MarketConfig { treasury, ln_fee_rate_root, reserve_fee_percent }`
 
 ---
 
-**Gap Detail - Router Fee Overrides (HIGH):**
+**✅ IMPLEMENTED - Protocol Fee Infrastructure:**
 
-Pendle allows different fee rates for different routers/aggregators:
-```solidity
-// Pendle - router-specific fee overrides
-mapping(address => mapping(address => uint80)) internal overriddenFee;
+Horizon now fully implements Pendle-style protocol fee infrastructure in `market_factory.cairo`:
 
-function setOverriddenFee(
-    address router,
-    address market,
-    uint80 newFee
-) public onlyOwner {
-    // Override fee must be less than market's base fee
-    if (newFee > IPMarket(market).getLnFeeRateRoot() && newFee > 0)
-        revert Errors.InvalidFee();
-    overriddenFee[router][market] = newFee;
-    emit SetOverriddenFee(router, market, newFee);
+```cairo
+// Horizon - factory manages market fee configuration (lines 93-100)
+treasury: ContractAddress,                           // Fee destination
+default_reserve_fee_percent: u8,                     // % of fees to protocol (max 100)
+overridden_fee: Map<(ContractAddress, ContractAddress), u256>, // Router fee overrides
+
+fn set_treasury(ref self: ContractState, treasury: ContractAddress) // line 507
+fn set_default_reserve_fee_percent(ref self: ContractState, percent: u8) // line 517
+
+// Markets query factory for fee config (lines 484-493)
+fn get_market_config(self: @ContractState, market: ContractAddress, router: ContractAddress) -> MarketConfig {
+    MarketConfig { treasury, ln_fee_rate_root, reserve_fee_percent }
 }
 ```
 
-Horizon has no router-specific fee overrides:
+**Implementation:** Markets call `factory.get_market_config()` to retrieve treasury address and fee configuration. Reserve fees are transferred to treasury immediately during swaps via `_transfer_reserve_fee_to_treasury()`.
+
+---
+
+**✅ IMPLEMENTED - Router Fee Overrides:**
+
+Horizon now supports router-specific fee overrides in `market_factory.cairo`:
+
 ```cairo
-// Horizon - same fees for all callers
-// No mechanism to give preferred rates to partner aggregators
+// Horizon - router-specific fee overrides (lines 531-556)
+fn set_override_fee(
+    ref self: ContractState,
+    router: ContractAddress,
+    market: ContractAddress,
+    ln_fee_rate_root: u256,  // 0 to clear override
+) {
+    // Validates market is deployed by this factory
+    // Validates override is less than market's base fee
+    self.overridden_fee.write((router, market), ln_fee_rate_root);
+    self.emit(OverrideFeeSet { router, market, ln_fee_rate_root });
+}
 ```
 
-**Impact:** Cannot offer reduced fees to partner integrators (AVNU, Fibrous, etc.) or implement tiered fee structures.
+**Implementation:** Partner integrators (AVNU, Fibrous, etc.) can receive reduced fees. The `get_market_config()` function returns the override fee for the router/market pair, and markets use this in `_get_state_for_swap()` to apply effective fee rates.
 
 ---
 
@@ -1499,12 +1421,14 @@ fn set_market_class_hash(ref self: ContractState, new_class_hash: ClassHash) {
 
 Pendle's oracle infrastructure serves **two distinct purposes** that Horizon partially implements:
 
+**Reference (Pendle V2 code):** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol), [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)
+
 | Oracle Type | Purpose | Pendle V2 | Horizon | Status |
 |-------------|---------|-----------|---------|--------|
-| **Yield Index Oracle** | SY exchange rate (asset → shares) | Various adapters | `PragmaIndexOracle` | ✅ 75% |
-| **Market TWAP Oracle** | PT/YT/LP token pricing | Built into Market | ❌ None | 🔴 CRITICAL 0% |
+| **Yield Index Oracle** | SY exchange rate (asset → shares) | `SYBase` + `IIndexOracle` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `PragmaIndexOracle` ([contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo)) | ✅ 75% |
+| **Market TWAP Oracle** | PT/YT/LP token pricing | Market + oracle libs ([PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)) | ✅ `oracle_lib.cairo` + `py_lp_oracle.cairo` ([contracts/src/libraries/oracle_lib.cairo](../contracts/src/libraries/oracle_lib.cairo), [contracts/src/oracles/py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo)) | ✅ ~95% |
 
-**Key Insight:** These are complementary systems, not alternatives. Pendle has BOTH. Horizon only has the first.
+**Key Insight:** These are complementary systems, not alternatives. Pendle has BOTH and Horizon now has BOTH.
 
 ---
 
@@ -1512,24 +1436,24 @@ Pendle's oracle infrastructure serves **two distinct purposes** that Horizon par
 
 **What it does:** Provides the exchange rate for yield-bearing assets (e.g., "1 wstETH = 1.18 stETH")
 
-**Reference:** Horizon's `PragmaIndexOracle` at `src/oracles/pragma_index_oracle.cairo`
+**Reference (Pendle V2 code):** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol). **Horizon reference:** [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo)
 
-| Feature | Pendle V2 | Horizon | Status |
+| Feature | Pendle V2 (reference) | Horizon | Status |
 |---------|-----------|---------|--------|
-| ERC-4626 direct | `convert_to_assets()` | ✅ `is_erc4626` flag | ✅ |
-| Custom oracle adapter | Various implementations | `PragmaIndexOracle` | ✅ |
-| TWAP window | Configurable | Configurable (default 1hr) | ✅ |
-| Staleness check | ✅ | `max_staleness` (default 24hr) | ✅ |
-| Watermark (monotonic) | ✅ | ✅ `stored_index` | ✅ |
-| Single-feed mode | ✅ | ✅ `denominator_pair_id = 0` | ✅ |
-| Dual-feed ratio mode | ❌ None | ✅ `numerator/denominator` | ✅ **Horizon exceeds** |
-| Emergency pause | ❌ None | ✅ `PAUSER_ROLE` | ✅ **Horizon exceeds** |
-| Emergency index override | ❌ None | ✅ `emergency_set_index()` | ✅ **Horizon exceeds** |
-| RBAC for config changes | ❌ Owner only | ✅ `OPERATOR_ROLE` | ✅ **Horizon exceeds** |
-| Pragma integration | ❌ None (EVM) | ✅ Native | ✅ (Starknet-specific) |
-| Chainlink integration | ✅ Native | ❌ None | 🟡 MEDIUM |
-| Oracle factory | ✅ `PendleChainlinkOracleFactory` | ❌ Manual deployment | 🟡 MEDIUM |
-| Rich events | ❌ Basic | ✅ `IndexUpdated`, `ConfigUpdated` | ✅ **Horizon exceeds** |
+| ERC-4626 direct | `SYBase` uses ERC-4626 `convertToAssets` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol)) | ✅ `is_erc4626` flag | ✅ |
+| Custom oracle adapter | `IIndexOracle` adapter interface ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `PragmaIndexOracle` | ✅ |
+| TWAP window | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | Configurable (default 1hr) | ✅ **Horizon exceeds** |
+| Staleness check | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `max_staleness` (default 24hr) | ✅ **Horizon exceeds** |
+| Watermark (monotonic) | Oracle-specific expectation via `index()` ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | ✅ `stored_index` | ✅ **Horizon exceeds** |
+| Single-feed mode | Adapter-specific | ✅ `denominator_pair_id = 0` | ✅ **Horizon exceeds** |
+| Dual-feed ratio mode | Adapter-specific | ✅ `numerator/denominator` | ✅ **Horizon exceeds** |
+| Emergency pause | Adapter-specific | ✅ `PAUSER_ROLE` | ✅ **Horizon exceeds** |
+| Emergency index override | Adapter-specific | ✅ `emergency_set_index()` | ✅ **Horizon exceeds** |
+| RBAC for config changes | Adapter-specific | ✅ `OPERATOR_ROLE` | ✅ **Horizon exceeds** |
+| Pragma integration | N/A (EVM) | ✅ Native | ✅ (Starknet-specific) |
+| Rich events | Adapter-specific | ✅ `IndexUpdated`, `ConfigUpdated` | ✅ **Horizon exceeds** |
+
+**Pendle note:** `IIndexOracle` only standardizes `index()`; TWAP window, staleness, and pause semantics are adapter-specific and not centralized.
 
 **Horizon's PragmaIndexOracle Advantages:**
 
@@ -1558,58 +1482,172 @@ assert(new_index >= old_index, 'HZN: cannot decrease index');
 
 ---
 
-### 6.3 Market TWAP Oracle (Horizon: 0% - CRITICAL GAP)
+### 6.3 Market TWAP Oracle (Horizon: ~95% Implemented)
 
-**What it does:** Provides manipulation-resistant TWAP prices for PT, YT, and LP tokens themselves
+**What it does:** Provides manipulation-resistant TWAP prices for PT, YT, and LP tokens themselves.
 
-**Reference:** Pendle's `PendlePYLpOracle.sol`, `PendlePYOracleLib.sol`, `PendleLpOracleLib.sol`
+**Horizon Implementation:** The TWAP oracle system is now fully implemented across three key files:
 
-**Why it matters:** This oracle is REQUIRED for:
+| File | Purpose | Size |
+|------|---------|------|
+| [`libraries/oracle_lib.cairo`](../contracts/src/libraries/oracle_lib.cairo) | Core TWAP library with ring buffer, binary search | ~670 lines |
+| [`market/amm.cairo`](../contracts/src/market/amm.cairo) (IMarketOracle) | Oracle storage and interface | ~110 lines |
+| [`oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) | PT/YT/LP price helpers | ~320 lines |
+
+---
+
+#### 6.3.1 oracle_lib.cairo - TWAP Library
+
+Core library for Time-Weighted Average Price calculations. Implements a circular buffer (ring buffer) of observations storing cumulative ln(implied rate). This is a direct port of Pendle's [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol) adapted for Cairo's storage model.
+
+**Key Components:**
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `Observation` | struct | `{ block_timestamp: u64, ln_implied_rate_cumulative: u256, initialized: bool }` - Single observation in the ring buffer |
+| `InitializeResult` | struct | Return type for `initialize()` with observation and initial cardinality values |
+| `WriteResult` | struct | Return type for `write()` with new observation, index, and cardinality |
+| `SurroundingObservations` | struct | Two observations bracketing a target timestamp for interpolation |
+| `GrowResult` | struct | Return type for `grow()` with new cardinality and slots to pre-initialize |
+
+**Core Functions:**
+
+| Function | Signature | Purpose |
+|----------|-----------|---------|
+| `initialize()` | `fn(timestamp: u64) -> InitializeResult` | Create first observation at market creation (slot 0) |
+| `transform()` | `fn(last: Observation, block_timestamp: u64, ln_implied_rate: u256) -> Observation` | Accumulate rate over time delta: `cumulative += rate × Δt` |
+| `write()` | `fn(last, index, timestamp, rate, cardinality, cardinality_next) -> WriteResult` | Add new observation, handle buffer wraparound, same-block no-op |
+| `observe_single()` | `fn(time, target, newest, rate, surrounding) -> u256` | Query cumulative value at specific timestamp (with interpolation) |
+| `observe()` | `fn(time, seconds_agos, newest, rate, surrounding_observations) -> Array<u256>` | Batch query for multiple timestamps |
+| `get_surrounding_observations()` | `fn(target, newest, oldest, rate) -> Option<SurroundingObservations>` | Find bracketing observations (returns None if binary search needed) |
+| `get_oldest_observation_index()` | `fn(index, cardinality, slot_initialized) -> u16` | Get physical index of oldest observation in ring buffer |
+| `binary_search()` | `fn(observations, target, index, cardinality) -> SurroundingObservations` | Find surrounding observations when target is between oldest and newest |
+| `grow()` | `fn(current: u16, next: u16) -> GrowResult` | Expand buffer capacity by pre-initializing slots |
+
+**TWAP Calculation Flow:**
+
+```
+1. On every swap: write() adds new observation to ring buffer
+   └─ Accumulates: cumulative += ln_implied_rate × time_delta
+
+2. To query TWAP over duration D:
+   └─ observe([D, 0]) returns [cumulative_past, cumulative_now]
+   └─ TWAP = (cumulative_now - cumulative_past) / D
+
+3. For past queries (seconds_ago > 0):
+   └─ get_surrounding_observations() finds bracket
+   └─ If None: binary_search() on ring buffer
+   └─ observe_single() interpolates between surrounding observations
+```
+
+**Cairo-Specific Design:**
+
+Unlike Solidity libraries that can take storage references, Cairo functions return values and the caller handles storage writes:
+
+```cairo
+// In Market contract - caller manages all storage
+let result = oracle_lib::write(last, index, timestamp, old_rate, cardinality, cardinality_next);
+self.observations.write(result.index, result.observation);
+self.observation_index.write(result.index);
+self.observation_cardinality.write(result.cardinality);
+```
+
+**Usage:** Called by Market contract ([amm.cairo](../contracts/src/market/amm.cairo)) on every swap to update observations. The `IMarketOracle` trait exposes `observe()` and `increase_observations_cardinality_next()` as external entrypoints.
+
+**Tests:** Comprehensive coverage in [`contracts/tests/market/test_market_oracle.cairo`](../contracts/tests/market/test_market_oracle.cairo) (~860 lines)
+
+---
+
+#### 6.3.2 py_lp_oracle.cairo - PT/YT/LP Oracle Helper
+
+Pre-deployed oracle contract providing Pendle-style TWAP queries for token pricing.
+Stateless contract that queries Market's observation buffer.
+
+**Reference (Pendle V2):** [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol)
+
+**Horizon Implementation:** [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) (~320 lines)
+
+**Functions:**
+
+| Function | Description |
+|----------|-------------|
+| `get_pt_to_sy_rate(market, duration)` | PT price in SY terms using TWAP |
+| `get_pt_to_asset_rate(market, duration)` | PT price in underlying asset terms |
+| `get_yt_to_sy_rate(market, duration)` | YT price in SY terms |
+| `get_yt_to_asset_rate(market, duration)` | YT price in underlying asset terms |
+| `get_lp_to_sy_rate(market, duration)` | LP token price in SY terms |
+| `get_lp_to_asset_rate(market, duration)` | LP token price in underlying asset terms |
+| `get_ln_implied_rate_twap(market, duration)` | Raw TWAP of ln(implied rate) |
+| `check_oracle_state(market, duration)` | Verify oracle readiness for queries |
+
+**Formulas:**
+
+- **PT to SY:** `exp(-ln_rate_twap * time_to_expiry / SECONDS_PER_YEAR)`
+- **YT to SY:** `WAD - PT_to_SY` (before expiry), `0` (after expiry)
+- **LP to SY:** `(SY_reserve + PT_reserve * PT_to_SY) / total_LP`
+- **Asset rates:** Apply SY exchange rate with Pendle-style index adjustment:
+  - If `sy_index >= py_index`: `rate_in_asset = rate_in_sy * sy_index / WAD`
+  - If `sy_index < py_index`: `rate_in_asset = rate_in_sy * sy_index / py_index`
+
+**Oracle Readiness Check:**
+
+The `check_oracle_state()` function verifies TWAP query feasibility:
+1. Calculates required cardinality: `(duration / MIN_BLOCK_TIME) + 1`
+2. Checks if `observation_cardinality_next >= cardinality_required`
+3. Verifies oldest observation is at least `duration` seconds old
+
+**Tests:** Comprehensive coverage in [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) (~842 lines)
+
+---
+
+**Why it matters:** This oracle enables:
 - Using PT as collateral in lending protocols (Aave, Compound forks)
 - Using LP tokens as collateral
 - DeFi derivatives and structured products
 - External price feeds and aggregators
 
-| Feature | Pendle V2 | Horizon | Status |
+| Feature | Pendle V2 (reference) | Horizon (contracts/src) | Status |
 |---------|-----------|---------|--------|
-| Observation buffer | 65,535 slots | ❌ None | 🔴 CRITICAL |
-| `lnImpliedRateCumulative` | ✅ Accumulated | ❌ None | 🔴 CRITICAL |
-| `observe(secondsAgos[])` | ✅ Historical rates | ❌ None | 🔴 CRITICAL |
-| `increaseObservationsCardinalityNext()` | ✅ Buffer expansion | ❌ None | 🔴 CRITICAL |
-| `getOracleState(market, duration)` | ✅ Readiness check | ❌ None | 🔴 CRITICAL |
-| `getPtToSyRate(duration)` | ✅ PT TWAP | ❌ None | 🔴 CRITICAL |
-| `getPtToAssetRate(duration)` | ✅ PT to underlying | ❌ None | 🔴 CRITICAL |
-| `getYtToSyRate(duration)` | ✅ YT TWAP | ❌ None | 🔴 CRITICAL |
-| `getYtToAssetRate(duration)` | ✅ YT to underlying | ❌ None | 🔴 CRITICAL |
-| `getLpToSyRate(duration)` | ✅ LP TWAP | ❌ None | 🔴 CRITICAL |
-| `getLpToAssetRate(duration)` | ✅ LP to underlying | ❌ None | 🔴 CRITICAL |
-| Pre-deployed oracle contract | ✅ `PendlePYLpOracle` | ❌ None | 🔴 HIGH |
-| Chainlink wrapper | ✅ `PendleChainlinkOracle` | ❌ None | 🔴 HIGH |
-| `latestRoundData()` compatibility | ✅ Chainlink interface | ❌ None | 🔴 HIGH |
-| Reentrancy guard check | ✅ `_checkMarketReentrancy()` | ❌ None | 🟡 MEDIUM |
-| SY/PY index adjustment | ✅ For insolvency | ❌ None | 🟡 MEDIUM |
+| Observation buffer | `OracleLib.Observation[65_535]` | `oracle_lib::Observation` struct + `Map<u16, Observation>` in market | ✅ Implemented |
+| `lnImpliedRateCumulative` | `Observation.lnImpliedRateCumulative` (`uint216`) | `Observation.ln_implied_rate_cumulative` (`u256`) | ✅ Implemented |
+| `observe(uint32[] secondsAgos)` | Market TWAP via `observations.observe` | `IMarketOracle::observe()` at `amm.cairo:1003-1062` | ✅ Implemented |
+| `increaseObservationsCardinalityNext(uint16)` | Buffer expansion via `observations.grow` | `IMarketOracle::increase_observations_cardinality_next()` at `amm.cairo:1066-1083` | ✅ Implemented |
+| `getOracleState(market, duration)` | Readiness check in PendlePYLpOracle | `PyLpOracle::get_oracle_state()` at `py_lp_oracle.cairo:262-290` | ✅ Implemented |
+| `getPtToSyRate(duration)` | PendlePYOracleLib.getPtToSyRate | `PyLpOracle::get_pt_to_sy_rate()` at `py_lp_oracle.cairo:47-75` | ✅ Implemented |
+| `getPtToAssetRate(duration)` | PendlePYOracleLib.getPtToAssetRate | `PyLpOracle::get_pt_to_asset_rate()` at `py_lp_oracle.cairo:142-175` | ✅ Implemented |
+| `getYtToSyRate(duration)` | PendlePYOracleLib.getYtToSyRate | `PyLpOracle::get_yt_to_sy_rate()` at `py_lp_oracle.cairo:77-100` | ✅ Implemented |
+| `getYtToAssetRate(duration)` | PendlePYOracleLib.getYtToAssetRate | `PyLpOracle::get_yt_to_asset_rate()` at `py_lp_oracle.cairo:177-210` | ✅ Implemented |
+| `getLpToSyRate(duration)` | PendleLpOracleLib.getLpToSyRate | `PyLpOracle::get_lp_to_sy_rate()` at `py_lp_oracle.cairo:102-140` | ✅ Implemented |
+| `getLpToAssetRate(duration)` | PendleLpOracleLib.getLpToAssetRate | `PyLpOracle::get_lp_to_asset_rate()` at `py_lp_oracle.cairo:212-260` | ✅ Implemented |
+| Pre-deployed oracle contract | `PendlePYLpOracle` | `PyLpOracle` contract at `py_lp_oracle.cairo` | ✅ Implemented |
+| MAX_CARDINALITY | 65,535 | 8,760 (1 year of hourly observations) at `amm.cairo:38` | ✅ Implemented |
+| Test coverage | Various test files | 860 lines in `tests/market/test_market_oracle.cairo` | ✅ Implemented |
+| Chainlink wrapper | `PendleChainlinkOracle` / `PendleChainlinkOracleWithQuote` | ❌ None | 🟡 Optional |
+| `latestRoundData()` compatibility | Chainlink-style interface | ❌ None | 🟡 Optional |
+| Reentrancy guard check | `_checkMarketReentrancy` in PendleLpOracleLib | ❌ None (Cairo's execution model provides inherent protection) | 🟢 N/A |
+
+**Horizon now has full Market TWAP Oracle functionality**, enabling PT/YT/LP tokens to be used as collateral in lending protocols and other DeFi integrations.
 
 ---
 
 **Gap Detail - Pendle's TWAP Oracle Architecture:**
 
-Pendle's Market TWAP is inspired by UniswapV3 but uses **implied rate** instead of price:
+Pendle's Market TWAP is built into the market itself via [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol) using [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol). It stores a ring buffer of cumulative ln(implied rate) and updates it on every state write.
 
 ```solidity
-// Pendle - Market stores observations (in MarketStorage)
+// Pendle - Market stores observations (MarketStorage + OracleLib)
 struct MarketStorage {
     int128 totalPt;
     int128 totalSy;
-    uint96 lastLnImpliedRate;              // Current implied rate (log form)
-    uint16 observationIndex;               // Ring buffer position
-    uint16 observationCardinality;         // Initialized slots
-    uint16 observationCardinalityNext;     // Target expansion
+    uint96 lastLnImpliedRate;
+    uint16 observationIndex;
+    uint16 observationCardinality;
+    uint16 observationCardinalityNext;
 }
 
-// Each observation stores cumulative ln(impliedRate)
 struct Observation {
     uint32 blockTimestamp;
-    uint216 lnImpliedRateCumulative;       // Running sum
+    uint216 lnImpliedRateCumulative;
     bool initialized;
 }
 
@@ -1619,28 +1657,26 @@ OracleLib.Observation[65_535] public observations;
 **TWAP Calculation Flow:**
 
 ```
-1. lnImpliedRate = (cumulative₁ - cumulative₀) / (t₁ - t₀)
-
-2. impliedRate = e^(lnImpliedRate)
-
-3. assetToPtPrice = impliedRate^(timeToMaturity / oneYear)
-
-4. ptToAssetPrice = 1 / assetToPtPrice
+1. getMarketLnImpliedRate: observe([duration, 0]) and compute
+   lnImpliedRate = (cumulative_now - cumulative_then) / duration
+2. assetToPtRate = MarketMathCore._getExchangeRateFromImpliedRate(lnImpliedRate, timeToExpiry)
+3. ptToAssetRate = 1 / assetToPtRate
+4. ytToAssetRate = 1 - ptToAssetRate
+5. pt/yt to SY rates adjust by syIndex vs pyIndex (solvency handling)
 ```
 
-**Why Geometric Mean?** The geometric mean (via log-space averaging) is more manipulation-resistant than arithmetic mean and properly handles compound interest dynamics.
+Reference flow lives in [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol) and [MarketMathCore.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/MarketMathCore.sol).
 
 ---
 
 **Gap Detail - Oracle Initialization Requirements:**
 
-Lending protocols require specific cardinality based on TWAP duration:
+Pendle’s pre-deployed oracle checks TWAP readiness with `getOracleState` in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol). Cardinality required is computed from the on-chain formula:
 
-| Chain | Block Time | 15min TWAP Cardinality | 30min TWAP Cardinality |
-|-------|-----------|------------------------|------------------------|
-| Ethereum | ~12s | 85 | 165 |
-| Arbitrum | ~0.26s | 900 | 1,800 |
-| Starknet | ~3-6s | ~180-360 | ~360-720 |
+```
+cardinalityRequired =
+  (duration * BLOCK_CYCLE_DENOMINATOR + blockCycleNumerator - 1) / blockCycleNumerator + 1
+```
 
 ```solidity
 // Pendle - initialize oracle before use
@@ -1652,7 +1688,7 @@ IPMarket(market).increaseObservationsCardinalityNext(cardinalityRequired);
 
 **Gap Detail - PT as Collateral Requirements:**
 
-From Pendle's documentation, using PT as lending collateral requires:
+From Pendle documentation (not on-chain code), using PT as lending collateral requires:
 
 ```
 Liquidation capacity = dCap × cRatio × k × f × (1+p)
@@ -1671,19 +1707,15 @@ Where:
 
 **Gap Detail - LP Oracle Additional Complexity:**
 
-LP pricing requires additional calculations beyond PT:
+LP pricing requires additional calculations beyond PT (see [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)):
 
 ```solidity
-// Pendle - LP oracle considers market state
-function _getLpToAssetRateRaw() {
-    if (market.isExpired()) {
-        // Post-expiry: 1 PT = 1 asset
-        return totalAsset + totalPt;
-    } else {
-        // Pre-expiry: complex calculation using implied rate
-        uint256 assetFromPt = totalPt * getExchangeRateFromImpliedRate(...);
-        return totalAsset + assetFromPt;
-    }
+if (state.expiry <= block.timestamp) {
+    totalHypotheticalAsset = state.totalPt + PYIndexLib.syToAsset(pyIndex, state.totalSy);
+} else {
+    MarketPreCompute memory comp = state.getMarketPreCompute(pyIndex, block.timestamp);
+    (int256 rateOracle, int256 rateHypTrade) = _getPtRatesRaw(market, state, duration);
+    // ... trade-size simulation using rateOracle and rateHypTrade ...
 }
 ```
 
@@ -1742,25 +1774,114 @@ pub mod HorizonPtLpOracle {
 
 ### 6.5 Oracle System Summary
 
-| Oracle Component | Pendle V2 | Horizon | Implementation Priority |
+| Oracle Component | Pendle V2 (reference) | Horizon (contracts/src) | Implementation Priority |
 |-----------------|-----------|---------|------------------------|
-| Yield Index Oracle | ✅ Various | ✅ `PragmaIndexOracle` | Done |
-| Market Observation Buffer | ✅ 65k slots | ❌ None | Priority 0 (CRITICAL) |
-| PT TWAP Functions | ✅ Full suite | ❌ None | Priority 0 (CRITICAL) |
-| LP TWAP Functions | ✅ Full suite | ❌ None | Priority 0 (CRITICAL) |
-| Oracle State Check | ✅ `getOracleState()` | ❌ None | Priority 0 (CRITICAL) |
-| Pre-deployed Oracle | ✅ `PendlePYLpOracle` | ❌ None | Priority 1 (HIGH) |
-| Chainlink/Pragma Wrapper | ✅ `PendleChainlinkOracle` | ❌ None | Priority 1 (HIGH) |
-| Oracle Factory | ✅ `PendleChainlinkOracleFactory` | ❌ None | Priority 2 (MEDIUM) |
+| Yield Index Oracle | `SYBase` + `IIndexOracle` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | ✅ `PragmaIndexOracle` ([contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo)) | Done |
+| Market Observation Buffer | `OracleLib.Observation[65_535]` ([OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol)) | ✅ `oracle_lib::Observation` + `Map<u16, Observation>` in [amm.cairo](../contracts/src/market/amm.cairo) | Done |
+| PT TWAP Functions | `PendlePYOracleLib.getPtToSyRate/getPtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ✅ `get_pt_to_sy_rate()`, `get_pt_to_asset_rate()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| YT TWAP Functions | `PendlePYOracleLib.getYtToSyRate/getYtToAssetRate` ([PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol)) | ✅ `get_yt_to_sy_rate()`, `get_yt_to_asset_rate()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| LP TWAP Functions | `PendleLpOracleLib.getLpToSyRate/getLpToAssetRate` ([PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol)) | ✅ `get_lp_to_sy_rate()`, `get_lp_to_asset_rate()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| Oracle State Check | `getOracleState` in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `get_oracle_state()`, `check_oracle_state()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| Pre-deployed Oracle | [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `PyLpOracle` contract in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| getLnImpliedRateTwap | `getOracleState` return in [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol) | ✅ `get_ln_implied_rate_twap()` in [py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo) | Done |
+| Chainlink/Pragma Wrapper | [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol) / [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol) | ❌ None | 🟡 Optional |
+| Oracle Factory | [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol) | ❌ None | 🟡 Optional |
 
-**Total Oracle Gaps: 18** (8 CRITICAL, 6 HIGH, 4 MEDIUM)
+**Implementation:** [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo)
+**Tests:** [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) (842 lines)
 
-**Blocking Impact:**
-- ❌ Cannot use PT as collateral in lending protocols
-- ❌ Cannot use LP as collateral in lending protocols
-- ❌ No manipulation-resistant price feeds for external integrations
-- ❌ Blocked from Aave, Compound, and fork integrations
-- ❌ Cannot build derivatives or structured products on Horizon tokens
+**Total Oracle Gaps: 2** (0 CRITICAL, 0 HIGH, 2 OPTIONAL)
+
+**Oracle Capabilities:**
+- ✅ PT can be used as collateral in lending protocols
+- ✅ LP can be used as collateral in lending protocols
+- ✅ Manipulation-resistant TWAP price feeds for external integrations
+- ✅ Ready for Aave, Compound, and fork integrations
+- ✅ Can build derivatives or structured products on Horizon tokens
+
+---
+
+### 6.6 Using the Market TWAP Oracle
+
+This section documents the workflow for using the Market TWAP oracle for integrations.
+
+#### Initialization (happens at market creation)
+
+When a market is created, the TWAP oracle is automatically initialized:
+
+```cairo
+let result = oracle_lib::initialize(timestamp);
+self.observations.write(0_u16, result.observation);
+self.observation_index.write(0_u16);
+self.observation_cardinality.write(result.cardinality);
+self.observation_cardinality_next.write(result.cardinality_next);
+```
+
+This sets up the ring buffer with an initial observation and cardinality of 1.
+
+#### Expanding Cardinality (optional, for longer TWAP windows)
+
+The default cardinality is 1, which only supports very short TWAP windows. To enable longer TWAP durations (e.g., 30 minutes, 1 hour), expand the observation buffer:
+
+```cairo
+let oracle = IMarketOracleDispatcher { contract_address: market };
+oracle.increase_observations_cardinality_next(desired_cardinality);
+```
+
+**Note:** Cardinality expansion takes effect after the next trade/liquidity operation that writes a new observation.
+
+#### Querying TWAP
+
+Use the `PyLpOracle` contract to query manipulation-resistant TWAP prices:
+
+```cairo
+let py_lp_oracle = IPyLpOracleDispatcher { contract_address: oracle_address };
+
+// Get PT price in terms of SY (30-minute TWAP)
+let pt_rate = py_lp_oracle.get_pt_to_sy_rate(market, 1800);
+
+// Get PT price in terms of underlying asset
+let pt_asset_rate = py_lp_oracle.get_pt_to_asset_rate(market, 1800);
+
+// Get LP price in terms of SY
+let lp_rate = py_lp_oracle.get_lp_to_sy_rate(market, 1800);
+
+// Get YT price in terms of SY
+let yt_rate = py_lp_oracle.get_yt_to_sy_rate(market, 1800);
+```
+
+#### Checking Oracle Readiness
+
+Before querying TWAP, verify the oracle has sufficient historical data:
+
+```cairo
+let state = py_lp_oracle.check_oracle_state(market, duration);
+assert(state == OracleReadinessState::Ready, 'Oracle not ready');
+```
+
+**Oracle States:**
+- `Ready`: Sufficient observations exist for the requested duration
+- `NotReady`: More time/observations needed before TWAP is reliable
+- `NotInitialized`: Market oracle not yet initialized
+
+#### Integration Example (Lending Protocol)
+
+```cairo
+// In a lending protocol's price oracle
+fn get_pt_collateral_value(market: ContractAddress, pt_amount: u256) -> u256 {
+    let oracle = IPyLpOracleDispatcher { contract_address: self.py_lp_oracle.read() };
+
+    // Check oracle is ready for 30-minute TWAP
+    let state = oracle.check_oracle_state(market, 1800);
+    assert(state == OracleReadinessState::Ready, 'Oracle not ready');
+
+    // Get manipulation-resistant PT price
+    let pt_to_asset_rate = oracle.get_pt_to_asset_rate(market, 1800);
+
+    // Calculate collateral value
+    math::wmul(pt_amount, pt_to_asset_rate)
+}
+```
 
 ---
 
@@ -1813,38 +1934,49 @@ Governance is explicitly **Phase 4** on the roadmap:
 
 ### 8.1 Priority 0 - Critical (Blocks Integrations)
 
+> **✅ TWAP Oracle System - IMPLEMENTED**
+>
+> The following items have been fully implemented and are no longer blockers:
+> - Market Observation Buffer (ring buffer in `oracle_lib.cairo`)
+> - lnImpliedRateCumulative tracking
+> - observe(secondsAgos[]) for historical queries
+> - increaseObservationsCardinalityNext() for buffer expansion
+> - getOracleState(market, duration) readiness check
+> - getPtToSyRate/getPtToAssetRate for PT TWAP prices
+> - getLpToSyRate/getLpToAssetRate for LP TWAP prices
+> - getYtToSyRate/getYtToAssetRate for YT TWAP prices
+> - Pre-deployed Oracle Contract (PendlePtLpOracle)
+> - Pragma integration via PragmaIndexOracle
+>
+> See: `contracts/src/oracles/oracle_lib.cairo`, `contracts/src/oracles/pendle_pt_lp_oracle.cairo`
+
 | Gap | Impact | Effort | Blocking |
 |-----|--------|--------|----------|
-| **Market Observation Buffer** | TWAP foundation | High | All PT/LP oracles |
-| **lnImpliedRateCumulative** | TWAP calculation | High | All price feeds |
-| **observe(secondsAgos[])** | Historical rate query | High | Lending protocols |
-| **increaseObservationsCardinalityNext()** | Buffer expansion | Medium | Oracle initialization |
-| **getOracleState(market, duration)** | Readiness check | Medium | Integration safety |
-| **getPtToSyRate/getPtToAssetRate** | PT TWAP price | High | PT as collateral |
-| **getLpToSyRate/getLpToAssetRate** | LP TWAP price | High | LP as collateral |
-| **getYtToSyRate/getYtToAssetRate** | YT TWAP price | Medium | YT derivatives |
-| **Pre-deployed Oracle Contract** | External access | Medium | DeFi integrations |
-| **Pragma/Chainlink Wrapper** | Standard interface | Medium | Oracle aggregators |
+| **Multi-Reward YT** | Reward distribution for multi-reward assets | High | Reward token integrations |
+| **Single-sided liquidity Router** | One-click LP from PT or SY only | Medium | Convenience for LPs |
+| **Token aggregation** | Trade from any token via DEX | High | DEX aggregator integration |
 
 ### 8.2 Priority 1 - High (User Experience)
 
+> **✅ Reserve Fee & Treasury System - IMPLEMENTED**
+>
+> The following items have been implemented:
+> - MarketFactory treasury address and reserve_fee_percent
+> - set_treasury() and set_default_reserve_fee_percent() admin functions
+> - Router fee overrides (overridden_fee, set_override_fee(), get_market_config())
+>
+> See: `contracts/src/market/market_factory.cairo`
+
 | Gap | Impact | Effort | Affected Users |
 |-----|--------|--------|----------------|
-| **Single-Sided Liquidity** | One-click LP from PT or SY | High | All LPs |
-| **Token Aggregation (TokenInput/Output)** | Trade from any token | High | All users |
 | **Aggregator Integration (AVNU, etc)** | Volume, discovery | High | All users |
 | **addLiquiditySingleToken** | LP from any token | High | New users |
 | **swapExactTokenForPt/Yt** | Buy PT/YT from any token | High | All traders |
 | **PYIndex Integration** | AMM prices underlying, not raw SY | High | All traders, LPs |
-| **Reserve Fee System** | Protocol revenue sharing | Medium | Protocol treasury |
 | **RewardManager/PendleGauge** | LP incentive programs, yield farming | High | All LPs |
-| **Factory Protocol Fees** | interestFeeRate, rewardFeeRate, treasury | Medium | Protocol treasury |
-| **MarketFactory Protocol Fees** | treasury, reserveFeePercent, setTreasuryAndFeeReserve() | Medium | Protocol treasury |
-| **MarketFactory Router Fee Overrides** | overriddenFee, setOverriddenFee(), getMarketConfig() | Medium | Aggregator partners |
+| **Factory Protocol Fees** | interestFeeRate, rewardFeeRate (factory-level) | Medium | Protocol treasury |
 | **SY Multi-Token Support** | Curve LP, Yearn vaults | Medium | Yield seekers |
 | **SY assetInfo()** | Risk assessment, integrations | Low | Integrators |
-| **Fee Auto-Compounding** | LP returns -1-2% annually | Medium | LPs |
-| **Multi-Reward YT** | GLP, staking tokens | Medium | Yield seekers |
 | **RouterStatic** | Frontend quotes | Low | All users |
 
 ### 8.3 Priority 2 - Medium (Feature Completeness)
@@ -1875,12 +2007,8 @@ Governance is explicitly **Phase 4** on the roadmap:
 | Permit signatures | UX improvement | Low |
 | Batch operations (boostMarkets, etc) | Gas efficiency | Medium |
 | redeemDueInterestAndRewards | Combined redemption | Medium |
-| Post-expiry treasury | Captures ongoing yield | Low |
-| syReserve tracking | Floating SY detection | Low |
-| Protocol fee on interest | Protocol revenue | Low |
-| Interest formula alignment | Pendle parity | Low |
 | Factory expiryDivisor | Standardized expiry dates | Low |
-| Factory doCacheIndexSameBlock | Same-block optimization | Low |
+| Factory cache toggle | Optional parity vs Pendle | Low |
 | Factory VERSION constant | Contract versioning | Low |
 | MarketFactory yieldContractFactory reference | Cross-factory queries | Low |
 | MarketFactory VERSION constant | Contract versioning | Low |
@@ -1903,6 +2031,8 @@ Governance is explicitly **Phase 4** on the roadmap:
 
 ### 9.1 Complete Feature Matrix
 
+**Oracle/TWAP references for this matrix:** [SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol), [IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol), [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol). Horizon: [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo), [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo).
+
 ```
 FEATURE                              PENDLE V2    HORIZON      GAP LEVEL
 ═══════════════════════════════════════════════════════════════════════════
@@ -1913,19 +2043,20 @@ CORE TOKENS
   SY dual oracle support                ✗            ✓         None (EXCEEDS)
   SY OracleRateUpdated event            ✗            ✓         None (EXCEEDS)
   SY built-in upgradeability            ✗            ✓         None (EXCEEDS)
-  SY slippage protection                ✓            ✗         MEDIUM
-  SY burnFromInternalBalance            ✓            ✗         MEDIUM
-  SY reentrancy guard                   ✓            ✗         MEDIUM
-  SY getTokensIn/Out()                  ✓            ✗         HIGH
-  SY isValidTokenIn/Out()               ✓            ✗         HIGH
-  SY assetInfo()                        ✓            ✗         HIGH
-  SY previewDeposit/Redeem()            ✓            ✗         LOW
-  SY EIP-2612 Permit                    ✓            ✗         MEDIUM
-  SY native ETH support                 ✓            ✗         LOW
-  SY getRewardTokens()                  ✓            ✗         MEDIUM
-  SY claimRewards()                     ✓            ✗         MEDIUM
-  SY SYBaseWithRewards                  ✓            ✗         MEDIUM
-  SY pausable transfers                 ✓            ✗         LOW
+  SY slippage protection                ✓            ✓         None ✅ IMPLEMENTED
+  SY burnFromInternalBalance            ✓            ✓         None ✅ IMPLEMENTED
+  SY reentrancy guard                   ✓            ✓         None ✅ IMPLEMENTED
+  SY getTokensIn/Out()                  ✓            ✓         None ✅ IMPLEMENTED
+  SY isValidTokenIn/Out()               ✓            ✓         None ✅ IMPLEMENTED
+  SY assetInfo()                        ✓            ✓         None ✅ IMPLEMENTED
+  SY previewDeposit/Redeem()            ✓            ✓         None ✅ IMPLEMENTED
+  SY EIP-2612 Permit                    ✓            ✗         N/A (Starknet)
+  SY native ETH support                 ✓            ✗         N/A (Starknet)
+  SY getRewardTokens()                  ✓            ✓         None ✅ (SYWithRewards)
+  SY claimRewards()                     ✓            ✓         None ✅ (SYWithRewards)
+  SY SYBaseWithRewards                  ✓            ✓         None ✅ IMPLEMENTED
+  SY pausable transfers                 ✓            ✓         None (EXCEEDS) ✅
+  SY negative yield watermark           ✓            ✓         None ✅ IMPLEMENTED
   PT 1:1 redemption                     ✓            ✓         None
   PT only-YT-mints                      ✓            ✓         None
   PT emergency pause                    ✗            ✓         None (EXCEEDS)
@@ -1933,15 +2064,15 @@ CORE TOKENS
   PT reentrancy guard exposure          ✓            ✗         LOW
   YT interest tracking                  ✓            ✓         None
   YT post-expiry index freeze           ✓            ✓         None
-  YT interest formula                   normalized   absolute  MEDIUM (design choice)
+  YT interest formula                   normalized   normalized  None
   YT UserInterest struct packing        ✓            ✗         LOW
   YT multi-reward                       ✓            ✗         HIGH
-  YT syReserve tracking                 ✓            ✗         MEDIUM
-  YT post-expiry treasury               ✓            ✗         MEDIUM
-  YT protocol fee on interest           ✓            ✗         MEDIUM
-  YT same-block index caching           ✓            ✗         LOW
-  YT batch mint/redeem                  ✓            ✗         LOW
-  YT claim interest on redeem           ✓            ✗         LOW
+  YT syReserve tracking                 ✓            ✓         None
+  YT post-expiry treasury               ✓            ✓         None
+  YT protocol fee on interest           ✓            ✓         None
+  YT same-block index caching           ✓            ✓         None
+  YT batch mint/redeem                  ✓            ✓         None
+  YT claim interest on redeem           ✓            ✓         None
   YT flash mint                         ✓            ✗         MEDIUM
 
 AMM/MARKET (MarketMathCore)
@@ -1953,18 +2084,18 @@ AMM/MARKET (MarketMathCore)
   Binary search for swaps               ✓            ✓         None
   Dual math implementations             ✗            ✓         None (EXCEEDS)
   4 swap function variants              ✗            ✓         None (EXCEEDS)
-  PYIndex integration                   ✓            ✗         HIGH
-  Reserve fee splitting                 ✓            ✗         HIGH
+  PYIndex integration                   ✓            ✓         None
+  Reserve fee splitting                 ✓            ✓         None
   Fee collection                        Auto-compound Manual   HIGH
-  Treasury address                      ✓            ✗         MEDIUM
+  Treasury address                      ✓            ✓         None
   LP fee on add liquidity               ✓            ✗         MEDIUM
-  Fee formula (exponential)             ✓            Linear    MEDIUM
-  Signed integer arithmetic             ✓            u256      MEDIUM
-  Rounding protection (rawDivUp)        ✓            ✗         LOW
-  setInitialLnImpliedRate()             ✓            ✗         LOW
-  TWAP oracle                           ✓            ✗         CRITICAL
-  Observation buffer                    ✓            ✗         CRITICAL
-  PT/LP price oracle                    ✓            ✗         CRITICAL
+  Fee formula (exponential)             ✓            ✓         None
+  Signed integer arithmetic             ✓            ✓         None
+  Rounding protection (rawDivUp)        ✓            ✓         None
+  setInitialLnImpliedRate()             ✓            ✓         None
+  TWAP oracle                           ✓            ✓         None
+  Observation buffer                    ✓            ✓         None
+  PT/LP price oracle                    ✓            ✓         None
 
 MARKET CONTRACT (PendleMarketV6)
   mint() add liquidity                  ✓            ✓         None
@@ -1973,9 +2104,9 @@ MARKET CONTRACT (PendleMarketV6)
   Emergency pause                       ✗            ✓         None (EXCEEDS)
   Admin scalar adjustment               ✗            ✓         None (EXCEEDS)
   Rich event emissions                  Basic        Detailed  None (EXCEEDS)
-  TWAP observation buffer (65k)         ✓            ✗         CRITICAL
-  observe(secondsAgos[])                ✓            ✗         CRITICAL
-  increaseObservationsCardinality       ✓            ✗         CRITICAL
+  TWAP observation buffer (65k)         ✓            ✓         None
+  observe(secondsAgos[])                ✓            ✓         None
+  increaseObservationsCardinality       ✓            ✓         None
   RewardManager/PendleGauge             ✓            ✗         HIGH
   redeemRewards(user)                   ✓            ✗         HIGH
   getRewardTokens()                     ✓            ✗         HIGH
@@ -2044,13 +2175,13 @@ FACTORY (YieldContractFactory)
   Class hash updates                    ✗            ✓         None (EXCEEDS)
   interestFeeRate                       ✓            ✗         HIGH
   rewardFeeRate                         ✓            ✗         HIGH
-  treasury address                      ✓            ✗         HIGH
+  treasury address                      ✓            ✓         None
   setInterestFeeRate()                  ✓            ✗         HIGH
   setRewardFeeRate()                    ✓            ✗         HIGH
-  setTreasury()                         ✓            ✗         HIGH
+  setTreasury()                         ✓            ✓         None
   expiryDivisor                         ✓            ✗         MEDIUM
   setExpiryDivisor()                    ✓            ✗         MEDIUM
-  doCacheIndexSameBlock                 ✓            ✗         MEDIUM
+  doCacheIndexSameBlock                 ✓            ✓         LOW (always-on)
   VERSION constant                      ✓            ✗         LOW
 
 MARKET FACTORY (PendleMarketFactoryV6Upg)
@@ -2065,12 +2196,13 @@ MARKET FACTORY (PendleMarketFactoryV6Upg)
   Active markets filter                  ✗            ✓         None (EXCEEDS)
   Market by index                        ✗            ✓         None (EXCEEDS)
   Class hash updates                     ✗            ✓         None (EXCEEDS)
-  treasury address                       ✓            ✗         HIGH
-  reserveFeePercent                      ✓            ✗         HIGH
-  setTreasuryAndFeeReserve()             ✓            ✗         HIGH
-  getMarketConfig(market, router)        ✓            ✗         HIGH
-  Router fee overrides                   ✓            ✗         HIGH
-  setOverriddenFee()                     ✓            ✗         HIGH
+  treasury address                       ✓            ✓         None (line 95)
+  default_reserve_fee_percent            ✓            ✓         None (line 97)
+  set_treasury()                         ✓            ✓         None (line 507)
+  set_default_reserve_fee_percent()      ✓            ✓         None (line 517)
+  get_market_config(market, router)      ✓            ✓         None (lines 484-493)
+  Router fee overrides                   ✓            ✓         None (line 100)
+  set_override_fee()                     ✓            ✓         None (lines 531-556)
   vePendle integration                   ✓            ✗         Future
   gaugeController integration            ✓            ✗         Future
   yieldContractFactory reference         ✓            ✗         MEDIUM
@@ -2095,23 +2227,25 @@ YIELD INDEX ORACLE (SY Exchange Rate)
   Chainlink integration                 ✓            ✗         MEDIUM
   Oracle factory                        ✓            ✗         MEDIUM
 
-MARKET TWAP ORACLE (PT/YT/LP Pricing)
-  Observation buffer (65k slots)        ✓            ✗         CRITICAL
-  lnImpliedRateCumulative               ✓            ✗         CRITICAL
-  observe(secondsAgos[])                ✓            ✗         CRITICAL
-  increaseObservationsCardinalityNext   ✓            ✗         CRITICAL
-  getOracleState(market, duration)      ✓            ✗         CRITICAL
-  getPtToSyRate(duration)               ✓            ✗         CRITICAL
-  getPtToAssetRate(duration)            ✓            ✗         CRITICAL
-  getYtToSyRate(duration)               ✓            ✗         CRITICAL
-  getYtToAssetRate(duration)            ✓            ✗         CRITICAL
-  getLpToSyRate(duration)               ✓            ✗         CRITICAL
-  getLpToAssetRate(duration)            ✓            ✗         CRITICAL
-  Pre-deployed oracle contract          ✓            ✗         HIGH
-  Chainlink wrapper (latestRoundData)   ✓            ✗         HIGH
-  Reentrancy guard check                ✓            ✗         MEDIUM
-  SY/PY index adjustment                ✓            ✗         MEDIUM
-  Oracle factory                        ✓            ✗         MEDIUM
+MARKET TWAP ORACLE (PT/YT/LP Pricing) - ~95% Implemented
+  Observation buffer (8.7k slots)       ✓            ✓         None (oracle_lib.cairo)
+  lnImpliedRateCumulative               ✓            ✓         None (oracle_lib.cairo)
+  observe(secondsAgos[])                ✓            ✓         None (amm.cairo:1003-1062)
+  increaseObservationsCardinalityNext   ✓            ✓         None (amm.cairo:1066-1083)
+  getOracleState(market, duration)      ✓            ✓         None (py_lp_oracle.cairo:262-290)
+  getPtToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:47-75)
+  getPtToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:142-175)
+  getYtToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:77-100)
+  getYtToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:177-210)
+  getLpToSyRate(duration)               ✓            ✓         None (py_lp_oracle.cairo:102-140)
+  getLpToAssetRate(duration)            ✓            ✓         None (py_lp_oracle.cairo:212-260)
+  Pre-deployed oracle contract          ✓            ✓         None (PyLpOracle)
+  getLnImpliedRateTwap                  ✓            ✓         None (py_lp_oracle.cairo)
+  checkOracleState                      ✓            ✓         None (py_lp_oracle.cairo)
+  Chainlink wrapper (latestRoundData)   ✓            ✗         OPTIONAL
+  Reentrancy guard check                ✓            N/A       N/A (Cairo inherent)
+  SY/PY index adjustment                ✓            ✓         None (py_lp_oracle.cairo)
+  Oracle factory                        ✓            ✗         OPTIONAL
 
 GOVERNANCE
   veToken                               ✓            ✗         Future
@@ -2127,13 +2261,15 @@ GOVERNANCE
 
 | Category | Implementation | Gap Count | Critical Gaps | Notes |
 |----------|---------------|-----------|---------------|-------|
-| Core Tokens | 75% | 28 | 5 (multi-token SY, asset info, multi-reward YT) | SY: 13 gaps (3 HIGH, 7 MEDIUM); YT: 12 gaps; PT: 2 gaps; Horizon exceeds in 4 areas |
-| AMM/Market | 60% | 24 | 8 (PYIndex, reserve fees, TWAP×6) | MarketMath: 9 gaps; Market contract: 11 gaps (6 CRITICAL/HIGH, 5 MEDIUM); Horizon exceeds in 5 areas |
+| Core Tokens | 90% | 8 | 2 (multi-reward YT) | ✅ **SY: 95% complete** (2 gaps: EIP-2612 Permit N/A, native ETH N/A); YT: 4 gaps (multi-reward, reward registry, flash mint, packing); PT: 2 gaps; Horizon exceeds in 7 areas |
+| AMM/Market | 85% | 6 | 0 | ✅ **Core math: 100%** (PYIndex, reserve fees, TWAP oracle, **fee auto-compounding all implemented**); Remaining: RewardManager/PendleGauge, flash callbacks, rate-impact fees (Phase 2); Horizon exceeds in 5 areas |
 | Router | 55% | 29 | 14 (single-sided×7, token aggregation×8) | Core ops: 85%; Missing: single-sided liquidity, token aggregation, batch ops; Horizon exceeds in 3 areas (pause, RBAC, wrappers) |
-| Factory | 70% | 10 | 6 (interestFeeRate, rewardFeeRate, treasury, setters) | Core deployment: 100%; Missing: protocol fee infrastructure; Horizon exceeds in 3 areas (enriched events, RBAC, class hash updates) |
-| MarketFactory | 65% | 12 | 6 (treasury, reserveFeePercent, router overrides, getMarketConfig) | Core deployment: 100%; Missing: protocol fee infrastructure, router fee overrides; Horizon exceeds in 6 areas (pagination, active filter, events, RBAC) |
-| Oracle | 35% | 18 | 8 CRITICAL (Market TWAP buffer, observe(), PT/YT/LP rate functions) | Yield Index Oracle: 75% with 5 areas Horizon EXCEEDS; Market TWAP Oracle: 0% - complete absence blocks lending integrations |
+| Factory | 70% | 8 | 4 (interestFeeRate, rewardFeeRate, setters) | Core deployment: 100%; Missing: factory-level fee schedule; Horizon exceeds in 3 areas (enriched events, RBAC, class hash updates) |
+| MarketFactory | 95% | 5 | 0 | ✅ **Treasury/fee infrastructure: 100%** (treasury, reserve_fee_percent, router overrides, get_market_config); Remaining: governance integration (vePendle, gaugeController); Horizon exceeds in 6 areas (pagination, active filter, events, RBAC) |
+| Oracle | 95% | 2 | 0 | ✅ **Yield Index Oracle: 75%** with 5 areas Horizon EXCEEDS; ✅ **Market TWAP Oracle: 95%** - full PT/YT/LP price functions in `py_lp_oracle.cairo`; 2 optional gaps (Chainlink wrapper, Oracle factory) |
 | Governance | 0% | 7 | All (by design) | |
+
+**Oracle/TWAP references (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol). Horizon: [contracts/src/market/amm.cairo](../contracts/src/market/amm.cairo), [contracts/src/libraries/oracle_lib.cairo](../contracts/src/libraries/oracle_lib.cairo), [contracts/src/oracles/py_lp_oracle.cairo](../contracts/src/oracles/py_lp_oracle.cairo), [contracts/src/oracles/pragma_index_oracle.cairo](../contracts/src/oracles/pragma_index_oracle.cairo).
 
 ---
 
@@ -2143,32 +2279,44 @@ GOVERNANCE
 
 | Contract | Location | Lines |
 |----------|----------|-------|
-| SY Token | `contracts/src/tokens/sy.cairo` | ~472 |
+| SY Token | `contracts/src/tokens/sy.cairo` | ~407 |
+| SY Component | `contracts/src/components/sy_component.cairo` | ~577 |
+| SYWithRewards | `contracts/src/tokens/sy_with_rewards.cairo` | ~300+ |
+| RewardManager Component | `contracts/src/components/reward_manager_component.cairo` | ~400+ |
+| ISY Interface | `contracts/src/interfaces/i_sy.cairo` | ~99 |
+| ISYWithRewards Interface | `contracts/src/interfaces/i_sy_with_rewards.cairo` | ~140 |
 | PT Token | `contracts/src/tokens/pt.cairo` | ~246 |
 | YT Token | `contracts/src/tokens/yt.cairo` | ~722 |
-| Market AMM | `contracts/src/market/amm.cairo` | ~900 |
+| Market AMM | `contracts/src/market/amm.cairo` | ~1400 |
 | Market Math | `contracts/src/market/market_math.cairo` | ~752 |
 | Market Math FP | `contracts/src/market/market_math_fp.cairo` | ~647 |
 | Market Factory | `contracts/src/market/market_factory.cairo` | ~429 |
 | Factory | `contracts/src/factory.cairo` | ~308 |
 | Router | `contracts/src/router.cairo` | ~900 |
-| Pragma Oracle | `contracts/src/oracles/pragma_index_oracle.cairo` | ~450 |
+| Oracle Library | `contracts/src/libraries/oracle_lib.cairo` | ~672 |
+| PT/YT/LP Oracle | `contracts/src/oracles/py_lp_oracle.cairo` | ~319 |
+| Pragma Index Oracle | `contracts/src/oracles/pragma_index_oracle.cairo` | ~448 |
 
 ### 10.2 Key Code Locations for Gap Implementation
 
+**Reference (Pendle V2 code):** [OracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/OracleLib.sol), [PendleMarketV6.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/core/Market/PendleMarketV6.sol), [PendlePYOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYOracleLib.sol), [PendleLpOracleLib.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendleLpOracleLib.sol), [PendlePYLpOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/PendlePYLpOracle.sol), [PendleChainlinkOracleFactory.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleFactory.sol), [PendleChainlinkOracle.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracle.sol), [PendleChainlinkOracleWithQuote.sol](https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/oracles/PtYtLpOracle/chainlink/PendleChainlinkOracleWithQuote.sol)
+
 | Gap | Target File | Suggested Location |
 |-----|-------------|-------------------|
-| **Oracle Gaps (CRITICAL)** | | |
-| Observation Buffer | `market/amm.cairo` | New storage: `observations: LegacyMap<u32, Observation>`, `observation_index`, `observation_cardinality` |
-| lnImpliedRateCumulative | `market/amm.cairo` | Track cumulative ln(impliedRate) on each swap |
-| observe(secondsAgos[]) | `market/amm.cairo` | New function returning historical cumulative rates |
-| increaseObservationsCardinalityNext | `market/amm.cairo` | New function to expand observation buffer |
-| getOracleState | `market/amm.cairo` | New view function checking oracle readiness |
-| PT Rate Functions | New file | `oracles/pt_oracle_lib.cairo`: `get_pt_to_sy_rate()`, `get_pt_to_asset_rate()` |
-| YT Rate Functions | New file | `oracles/yt_oracle_lib.cairo`: `get_yt_to_sy_rate()`, `get_yt_to_asset_rate()` |
-| LP Rate Functions | New file | `oracles/lp_oracle_lib.cairo`: `get_lp_to_sy_rate()`, `get_lp_to_asset_rate()` |
-| Pre-deployed Oracle | New file | `oracles/horizon_pt_lp_oracle.cairo`: centralized oracle contract |
-| Pragma Wrapper | New file | `oracles/pragma_pt_oracle.cairo`: Pragma-compatible interface for PT prices |
+| **Oracle Gaps (✅ IMPLEMENTED)** | | |
+| Observation Buffer | ✅ `libraries/oracle_lib.cairo` | `Observation` struct + `Map<u16, Observation>` ring buffer (~670 lines) |
+| lnImpliedRateCumulative | ✅ `libraries/oracle_lib.cairo` | `Observation.ln_implied_rate_cumulative` updated on each swap |
+| observe(secondsAgos[]) | ✅ `market/amm.cairo:1003-1062` | `IMarketOracle::observe()` returns historical cumulative rates |
+| increaseObservationsCardinalityNext | ✅ `market/amm.cairo:1066-1083` | `IMarketOracle::increase_observations_cardinality_next()` |
+| getOracleState | ✅ `oracles/py_lp_oracle.cairo:262-290` | `PyLpOracle::get_oracle_state()` checks readiness |
+| PT Rate Functions | ✅ `oracles/py_lp_oracle.cairo:47-175` | `get_pt_to_sy_rate()`, `get_pt_to_asset_rate()` |
+| YT Rate Functions | ✅ `oracles/py_lp_oracle.cairo:77-210` | `get_yt_to_sy_rate()`, `get_yt_to_asset_rate()` |
+| LP Rate Functions | ✅ `oracles/py_lp_oracle.cairo:102-260` | `get_lp_to_sy_rate()`, `get_lp_to_asset_rate()` |
+| Pre-deployed Oracle | ✅ `oracles/py_lp_oracle.cairo` | `PyLpOracle` contract (~320 lines) |
+| getLnImpliedRateTwap | ✅ `oracles/py_lp_oracle.cairo` | `get_ln_implied_rate_twap()` |
+| checkOracleState | ✅ `oracles/py_lp_oracle.cairo` | `check_oracle_state()` |
+| Pragma Wrapper | ❌ Optional | `oracles/pragma_pt_oracle.cairo`: Pragma-compatible interface for PT prices |
+| Oracle Factory | ❌ Optional | `oracles/oracle_factory.cairo`: Factory for deploying oracle instances |
 | **Market Gaps** | | |
 | RewardManager/PendleGauge | `market/amm.cairo` + new `rewards/` | Inherit reward tracking, add redeemRewards() |
 | Flash swap callback | `market/amm.cairo` | Add `data: Span<felt252>` param + callback logic |
@@ -2187,18 +2335,18 @@ GOVERNANCE
 | Permit signatures | `router.cairo` | Add permit param to swap functions |
 | redeemDueInterestAndRewards | `router.cairo` | Combined redemption across contracts |
 | **Factory Gaps** | | |
-| Protocol fee infrastructure | `factory.cairo` | Add `interest_fee_rate`, `reward_fee_rate`, `treasury` storage |
+| Protocol fee infrastructure | `factory.cairo` | Add `interest_fee_rate`, `reward_fee_rate` storage (treasury already present) |
 | setInterestFeeRate | `factory.cairo` | New admin function with MAX_FEE_RATE validation |
 | setRewardFeeRate | `factory.cairo` | New admin function with MAX_FEE_RATE validation |
 | setTreasury | `factory.cairo` | New admin function |
 | expiryDivisor | `factory.cairo` | Add `expiry_divisor` storage + validation in `create_yield_contracts()` |
-| doCacheIndexSameBlock | `factory.cairo` + `yt.cairo` | Pass caching hint to YT constructor |
+| doCacheIndexSameBlock | `factory.cairo` + `yt.cairo` | Optional parity: add factory flag to disable cache (currently always-on) |
 | **MarketFactory Gaps** | | |
-| Protocol fee infrastructure | `market/market_factory.cairo` | Add `treasury`, `reserve_fee_percent` storage |
-| setTreasuryAndFeeReserve | `market/market_factory.cairo` | New admin function with fee validation |
-| Router fee overrides | `market/market_factory.cairo` | Add `overridden_fee: Map<(router, market), u80>` |
-| setOverriddenFee | `market/market_factory.cairo` | New admin function with fee validation |
-| getMarketConfig | `market/market_factory.cairo` | New view function returning treasury, fees |
+| Protocol fee infrastructure | `market/market_factory.cairo` | ✅ **Implemented**: `treasury`, `default_reserve_fee_percent` storage |
+| setTreasuryAndFeeReserve | `market/market_factory.cairo` | ✅ **Implemented**: `set_treasury()`, `set_default_reserve_fee_percent()` |
+| Router fee overrides | `market/market_factory.cairo` | ✅ **Implemented**: `overridden_fee` mapping |
+| setOverriddenFee | `market/market_factory.cairo` | ✅ **Implemented**: `set_override_fee()` with validation |
+| getMarketConfig | `market/market_factory.cairo` | ✅ **Implemented**: Returns `{ treasury, ln_fee_rate_root, reserve_fee_percent }` |
 | yieldContractFactory reference | `market/market_factory.cairo` | Add immutable factory address |
 | **Governance Gaps** | | |
 | Gauge System | New files | `gauge/` directory |
@@ -2216,37 +2364,67 @@ GOVERNANCE
 | `test_market_first_depositor.cairo` | 10 | First depositor attack |
 | `test_yt_interest.cairo` | 20 | Interest calculation |
 | `test_router_yt_swaps.cairo` | 18 | Flash swap pattern |
-| `test_sy.cairo` | ~30 | SY wrapper |
+| `test_sy.cairo` | 54 | SY wrapper (deposit, redeem, slippage, multi-token, pausable, watermark) |
+| `test_sy_with_rewards.cairo` | 28 | SY reward distribution |
+| `test_reward_manager.cairo` | ~20 | RewardManagerComponent |
 | `test_pragma_index_oracle.cairo` | ~20 | Oracle adapter |
 | `fuzz/fuzz_market_math.cairo` | 20 (256 runs each) | AMM math |
 
-**Total: ~514 passing tests**
+**Total: 878 test functions across 39 test files** (as of January 2025)
+
+Notable test coverage:
+- `test_market_oracle.cairo` - 860 lines, comprehensive TWAP testing
+- `test_py_lp_oracle.cairo` - 842 lines, PT/YT/LP oracle testing
+
+### Oracle Test Coverage
+
+| Test File | Lines | Tests | Coverage Focus |
+|-----------|-------|-------|----------------|
+| `test_market_oracle.cairo` | 860 | ~40 | TWAP observation, binary search, cardinality growth |
+| `test_py_lp_oracle.cairo` | 842 | ~35 | PT/YT/LP rate calculations, oracle state checks |
+
+**Key Test Scenarios:**
+- Observation accumulation over time
+- Binary search edge cases (before/after buffer)
+- Cardinality expansion
+- Rate calculations at/after expiry
+- Oracle readiness state transitions
 
 ---
 
 ## Appendix B: Implementation Roadmap Suggestion
 
-### Phase 1: Critical (DeFi Composability - Oracle Focus)
-**This is Horizon's principal weak point - must be prioritized**
+### Phase 1: Critical (DeFi Composability - Oracle Focus) ✅ COMPLETE
+**Horizon's Market TWAP Oracle is now fully implemented**
 
-1. **Market Observation Buffer** - Add storage for observation ring buffer (65k slots)
-2. **lnImpliedRateCumulative** - Track cumulative ln(impliedRate) on each swap
-3. **observe(secondsAgos[])** - Function to query historical cumulative rates
-4. **increaseObservationsCardinalityNext()** - Buffer expansion for oracle initialization
-5. **getOracleState(market, duration)** - Readiness check for integrations
-6. **getPtToSyRate/getPtToAssetRate** - PT TWAP price functions (critical for PT collateral)
-7. **getLpToSyRate/getLpToAssetRate** - LP TWAP price functions (critical for LP collateral)
-8. **getYtToSyRate** - YT TWAP price functions
-9. **Pre-deployed HorizonPtLpOracle** - External oracle contract for easy integration
-10. **Pragma/Chainlink Wrapper** - Standard interface for oracle aggregators
-11. RouterStatic for frontend quotes
+**Implementation files:**
+- [`contracts/src/libraries/oracle_lib.cairo`](../contracts/src/libraries/oracle_lib.cairo) - Core TWAP library (~670 lines)
+- [`contracts/src/market/amm.cairo`](../contracts/src/market/amm.cairo) - Oracle storage and interface (IMarketOracle)
+- [`contracts/src/oracles/py_lp_oracle.cairo`](../contracts/src/oracles/py_lp_oracle.cairo) - PT/YT/LP price helpers (~320 lines)
+- [`contracts/tests/oracles/test_py_lp_oracle.cairo`](../contracts/tests/oracles/test_py_lp_oracle.cairo) - Tests (842 lines)
+
+| Item | Status | Implementation |
+|------|--------|----------------|
+| Market Observation Buffer | ✅ Done | `oracle_lib.cairo` - 8,760 slot ring buffer (1 year hourly) |
+| lnImpliedRateCumulative | ✅ Done | `oracle_lib.cairo` - `Observation.ln_implied_rate_cumulative` |
+| observe(secondsAgos[]) | ✅ Done | `amm.cairo:1003-1062` - `IMarketOracle::observe()` |
+| increaseObservationsCardinalityNext() | ✅ Done | `amm.cairo:1066-1083` |
+| getOracleState(market, duration) | ✅ Done | `py_lp_oracle.cairo:262-290` |
+| getPtToSyRate/getPtToAssetRate | ✅ Done | `py_lp_oracle.cairo:47-175` |
+| getLpToSyRate/getLpToAssetRate | ✅ Done | `py_lp_oracle.cairo:102-260` |
+| getYtToSyRate/getYtToAssetRate | ✅ Done | `py_lp_oracle.cairo:77-210` |
+| Pre-deployed PyLpOracle | ✅ Done | `py_lp_oracle.cairo` |
+| getLnImpliedRateTwap | ✅ Done | `py_lp_oracle.cairo` |
+| checkOracleState | ✅ Done | `py_lp_oracle.cairo` |
+| Pragma/Chainlink Wrapper | 🟡 Optional | Not yet implemented |
+| RouterStatic for frontend quotes | 🟡 Optional | Not yet implemented |
 
 ### Phase 2: High Priority (User Experience)
 1. **Single-sided liquidity operations** (addLiquiditySinglePt/Sy/Token)
 2. **Token aggregation** (TokenInput/Output + AVNU/Fibrous integration)
 3. **swapExactTokenForPt/Yt** functions
-4. **Factory protocol fees** (interestFeeRate, rewardFeeRate, treasury)
-5. **MarketFactory protocol fees** (treasury, reserveFeePercent, router fee overrides)
+4. **Factory protocol fees** (interestFeeRate, rewardFeeRate)
+5. ~~**MarketFactory protocol fees** (treasury, reserveFeePercent, router fee overrides)~~ ✅ IMPLEMENTED
 6. Fee auto-compounding into LP reserves
 7. Multi-reward YT support
 
@@ -2267,6 +2445,60 @@ GOVERNANCE
 4. Fee distribution mechanism
 5. MarketFactory vePendle/gaugeController integration
 6. Cross-chain messaging (if expanding beyond Starknet)
+
+---
+
+## Appendix C: Verification Commands
+
+Verify the implementation claims in this document by running these commands from the repository root:
+
+```bash
+# TWAP Oracle implementation (expected: ~670 lines, ~320 lines)
+wc -l contracts/src/libraries/oracle_lib.cairo
+wc -l contracts/src/oracles/py_lp_oracle.cairo
+
+# MarketFactory treasury/fee infrastructure
+grep -n "treasury\|reserve_fee_percent" contracts/src/market/market_factory.cairo
+
+# IMarketOracle interface in Market contract
+grep -n "fn observe\|fn increase_observations" contracts/src/market/amm.cairo
+
+# Total test count (expected: 878)
+grep -r '#\[test\]' contracts/tests/ | wc -l
+
+# Oracle test coverage (expected: 860 + 842 = 1,702 lines)
+wc -l contracts/tests/market/test_market_oracle.cairo
+wc -l contracts/tests/oracles/test_py_lp_oracle.cairo
+
+# Verify Observation struct exists
+grep -n "struct Observation" contracts/src/libraries/oracle_lib.cairo
+
+# Verify get_market_config returns full MarketConfig
+grep -n "fn get_market_config\|MarketConfig {" contracts/src/market/market_factory.cairo
+```
+
+**Expected Output Summary:**
+| Verification | Command | Expected Result |
+|--------------|---------|-----------------|
+| oracle_lib.cairo | `wc -l` | ~670 lines |
+| py_lp_oracle.cairo | `wc -l` | ~320 lines |
+| Treasury storage | `grep treasury` | Lines 95, 150-151, 487-497 |
+| Reserve fee storage | `grep reserve_fee_percent` | Lines 97, 132, 228, 488 |
+| IMarketOracle::observe | `grep "fn observe"` | Line 1003 |
+| IMarketOracle::increase_observations | `grep "fn increase"` | Line 1066 |
+| Test count | `grep -r '#[test]'` | 878 tests |
+| Oracle test lines | `wc -l` | 860 + 842 = 1,702 lines |
+
+> **Note:** Line numbers may shift as the codebase evolves. The commands remain valid but specific line references should be re-verified.
+
+---
+
+## Revision History
+
+| Date | Version | Changes |
+|------|---------|---------|
+| 2025-01-07 | 2.0 | Major corrections: TWAP Oracle status updated from 0% to ~95%, MarketFactory treasury/fees confirmed implemented, Oracle System parity updated from 35% to ~90%, test count corrected to 878 |
+| 2025-12-31 | 1.1 | Section 1.1 SY marked COMPLETE (95%) - slippage protection, rewards, multi-token implemented |
 
 ---
 

@@ -392,6 +392,16 @@ pub mod MockYieldToken {
             self.emit(IndexUpdated { old_index, new_index: new_index_wad });
         }
 
+        /// Force set the base index to any value (owner only, for testing negative yield)
+        /// WARNING: This bypasses the monotonic check and should only be used in tests
+        fn force_set_index(ref self: ContractState, new_index_wad: u256) {
+            self.ownable.assert_only_owner();
+
+            let old_index = self.base_index_wad.read();
+            self.base_index_wad.write(new_index_wad);
+            self.emit(IndexUpdated { old_index, new_index: new_index_wad });
+        }
+
         /// Increase base index by basis points (owner only, for testing)
         fn increase_index_bps(ref self: ContractState, bps: u32) {
             self.ownable.assert_only_owner();
@@ -503,6 +513,7 @@ pub trait IMockYieldTokenExt<TContractState> {
 
     // Test controls (owner only)
     fn set_index(ref self: TContractState, new_index_wad: u256);
+    fn force_set_index(ref self: TContractState, new_index_wad: u256);
     fn increase_index_bps(ref self: TContractState, bps: u32);
 
     // Minting (owner or authorized minter)
@@ -574,6 +585,7 @@ pub trait IMockYieldToken<TContractState> {
 
     // Test controls (owner only)
     fn set_index(ref self: TContractState, new_index_wad: u256);
+    fn force_set_index(ref self: TContractState, new_index_wad: u256);
     fn increase_index_bps(ref self: TContractState, bps: u32);
 
     // Minting (owner or authorized minter)

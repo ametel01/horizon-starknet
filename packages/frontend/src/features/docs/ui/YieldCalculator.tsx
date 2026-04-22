@@ -1,20 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-
 import { Input } from '@shared/ui/Input';
 import { Label } from '@shared/ui/label';
+import { useState } from 'react';
 
 export function YieldCalculator(): React.ReactNode {
   const [ptPrice, setPtPrice] = useState('0.95');
   const [daysToExpiry, setDaysToExpiry] = useState('180');
 
-  const ptPriceNum = parseFloat(ptPrice) || 0;
-  const daysNum = parseFloat(daysToExpiry) || 1;
+  const ptPriceNum = Number.parseFloat(ptPrice) || 0;
+  const daysNum = Number.parseFloat(daysToExpiry) || 1;
 
   // Calculate implied APY: (1 / PT_Price)^(365 / days) - 1
   const impliedApy =
-    ptPriceNum > 0 && ptPriceNum < 1 ? (Math.pow(1 / ptPriceNum, 365 / daysNum) - 1) * 100 : 0;
+    ptPriceNum > 0 && ptPriceNum < 1 ? ((1 / ptPriceNum) ** (365 / daysNum) - 1) * 100 : 0;
 
   // Calculate YT price
   const ytPrice = ptPriceNum > 0 && ptPriceNum < 1 ? 1 - ptPriceNum : 0;

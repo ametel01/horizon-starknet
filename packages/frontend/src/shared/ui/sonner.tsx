@@ -8,7 +8,7 @@ import {
   TriangleAlertIcon,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import * as React from 'react';
+import type * as React from 'react';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
 const Toaster = ({ ...props }: ToasterProps): React.JSX.Element => {

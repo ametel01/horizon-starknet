@@ -13,30 +13,46 @@ import { describe, expect, it } from "vitest";
 
 // Import all event tables to verify their structure
 import {
-  factoryYieldContractsCreated,
   factoryClassHashesUpdated,
-  marketFactoryMarketCreated,
-  marketFactoryClassHashUpdated,
-  syDeposit,
-  syRedeem,
-  syOracleRateUpdated,
-  ytMintPY,
-  ytRedeemPY,
-  ytRedeemPYPostExpiry,
-  ytInterestClaimed,
-  ytExpiryReached,
-  marketMint,
+  factoryYieldContractsCreated,
   marketBurn,
-  marketSwap,
-  marketImpliedRateUpdated,
+  marketFactoryClassHashUpdated,
+  marketFactoryDefaultReserveFeeUpdated,
+  marketFactoryMarketCreated,
+  marketFactoryOverrideFeeSet,
+  marketFactoryTreasuryUpdated,
   marketFeesCollected,
+  marketImpliedRateUpdated,
+  marketMint,
+  marketReserveFeeTransferred,
   marketScalarRootUpdated,
+  marketSwap,
+  routerAddLiquidity,
   routerMintPY,
   routerRedeemPY,
-  routerAddLiquidity,
   routerRemoveLiquidity,
   routerSwap,
   routerSwapYT,
+  syDeposit,
+  syNegativeYieldDetected,
+  syOracleRateUpdated,
+  syPauseState,
+  syRedeem,
+  syRewardIndexUpdated,
+  syRewardsClaimed,
+  syRewardTokenAdded,
+  ytExpiryReached,
+  ytInterestClaimed,
+  ytInterestFeeRateSet,
+  ytMintPY,
+  ytMintPYMulti,
+  ytPostExpiryDataSet,
+  ytPyIndexUpdated,
+  ytRedeemPY,
+  ytRedeemPYMulti,
+  ytRedeemPYPostExpiry,
+  ytRedeemPYWithInterest,
+  ytTreasuryInterestRedeemed,
 } from "../src/schema";
 
 // ============================================================
@@ -44,7 +60,7 @@ import {
 // ============================================================
 
 /**
- * All 24 event tables must have these three columns for idempotency:
+ * All 40 event tables must have these three columns for idempotency:
  * - block_number: The block where the event occurred
  * - transaction_hash: The transaction containing the event
  * - event_index: The position of the event within the transaction
@@ -60,20 +76,48 @@ const ALL_EVENT_TABLES = [
     name: "marketFactoryClassHashUpdated",
     table: marketFactoryClassHashUpdated,
   },
+  {
+    name: "marketFactoryTreasuryUpdated",
+    table: marketFactoryTreasuryUpdated,
+  },
+  {
+    name: "marketFactoryDefaultReserveFeeUpdated",
+    table: marketFactoryDefaultReserveFeeUpdated,
+  },
+  {
+    name: "marketFactoryOverrideFeeSet",
+    table: marketFactoryOverrideFeeSet,
+  },
   { name: "syDeposit", table: syDeposit },
   { name: "syRedeem", table: syRedeem },
   { name: "syOracleRateUpdated", table: syOracleRateUpdated },
+  // SY Phase 4: Monitoring tables
+  { name: "syNegativeYieldDetected", table: syNegativeYieldDetected },
+  { name: "syPauseState", table: syPauseState },
+  // SY Phase 4: Reward tables
+  { name: "syRewardsClaimed", table: syRewardsClaimed },
+  { name: "syRewardIndexUpdated", table: syRewardIndexUpdated },
+  { name: "syRewardTokenAdded", table: syRewardTokenAdded },
   { name: "ytMintPY", table: ytMintPY },
   { name: "ytRedeemPY", table: ytRedeemPY },
   { name: "ytRedeemPYPostExpiry", table: ytRedeemPYPostExpiry },
   { name: "ytInterestClaimed", table: ytInterestClaimed },
   { name: "ytExpiryReached", table: ytExpiryReached },
+  // YT Pendle-style interest system events
+  { name: "ytTreasuryInterestRedeemed", table: ytTreasuryInterestRedeemed },
+  { name: "ytInterestFeeRateSet", table: ytInterestFeeRateSet },
+  { name: "ytMintPYMulti", table: ytMintPYMulti },
+  { name: "ytRedeemPYMulti", table: ytRedeemPYMulti },
+  { name: "ytRedeemPYWithInterest", table: ytRedeemPYWithInterest },
+  { name: "ytPostExpiryDataSet", table: ytPostExpiryDataSet },
+  { name: "ytPyIndexUpdated", table: ytPyIndexUpdated },
   { name: "marketMint", table: marketMint },
   { name: "marketBurn", table: marketBurn },
   { name: "marketSwap", table: marketSwap },
   { name: "marketImpliedRateUpdated", table: marketImpliedRateUpdated },
   { name: "marketFeesCollected", table: marketFeesCollected },
   { name: "marketScalarRootUpdated", table: marketScalarRootUpdated },
+  { name: "marketReserveFeeTransferred", table: marketReserveFeeTransferred },
   { name: "routerMintPY", table: routerMintPY },
   { name: "routerRedeemPY", table: routerRedeemPY },
   { name: "routerAddLiquidity", table: routerAddLiquidity },
@@ -89,30 +133,28 @@ describe("Schema Idempotency Constraints", () => {
       expect(columns).toContain("block_number");
     });
 
-    it.each(ALL_EVENT_TABLES)(
-      "$name has transaction_hash column",
-      ({ table }) => {
-        const columns = Object.keys(table);
-        expect(columns).toContain("transaction_hash");
-      },
-    );
+    it.each(ALL_EVENT_TABLES)("$name has transaction_hash column", ({
+      table,
+    }) => {
+      const columns = Object.keys(table);
+      expect(columns).toContain("transaction_hash");
+    });
 
     it.each(ALL_EVENT_TABLES)("$name has event_index column", ({ table }) => {
       const columns = Object.keys(table);
       expect(columns).toContain("event_index");
     });
 
-    it.each(ALL_EVENT_TABLES)(
-      "$name has _id primary key column",
-      ({ table }) => {
-        const columns = Object.keys(table);
-        expect(columns).toContain("_id");
-      },
-    );
+    it.each(ALL_EVENT_TABLES)("$name has _id primary key column", ({
+      table,
+    }) => {
+      const columns = Object.keys(table);
+      expect(columns).toContain("_id");
+    });
   });
 
-  it("verifies we have all 24 event tables", () => {
-    expect(ALL_EVENT_TABLES).toHaveLength(24);
+  it("verifies we have all 40 event tables", () => {
+    expect(ALL_EVENT_TABLES).toHaveLength(40);
   });
 });
 
@@ -259,8 +301,8 @@ describe("Idempotent Insert Pattern", () => {
     const uniqueKeys = new Set(
       batch.map(
         (e) =>
-          `${String(e.block_number)}-${e.transaction_hash}-${String(e.event_index)}`,
-      ),
+          `${String(e.block_number)}-${e.transaction_hash}-${String(e.event_index)}`
+      )
     );
 
     // 4 events but only 3 unique
@@ -304,7 +346,7 @@ describe("Reorg Handling", () => {
 
     // These are different events (different tx hash)
     expect(originalEvent.transaction_hash).not.toBe(
-      reorgEvent.transaction_hash,
+      reorgEvent.transaction_hash
     );
   });
 
@@ -337,38 +379,38 @@ describe("Reorg Handling", () => {
 describe("Complete Table Coverage", () => {
   it("covers all Factory events (2)", () => {
     const factoryTables = ALL_EVENT_TABLES.filter((t) =>
-      t.name.startsWith("factory"),
+      t.name.startsWith("factory")
     );
     expect(factoryTables).toHaveLength(2);
   });
 
-  it("covers all MarketFactory events (2)", () => {
+  it("covers all MarketFactory events (5)", () => {
     const marketFactoryTables = ALL_EVENT_TABLES.filter((t) =>
-      t.name.startsWith("marketFactory"),
+      t.name.startsWith("marketFactory")
     );
-    expect(marketFactoryTables).toHaveLength(2);
+    expect(marketFactoryTables).toHaveLength(5);
   });
 
-  it("covers all SY events (3)", () => {
+  it("covers all SY events (8)", () => {
     const syTables = ALL_EVENT_TABLES.filter((t) => t.name.startsWith("sy"));
-    expect(syTables).toHaveLength(3);
+    expect(syTables).toHaveLength(8);
   });
 
-  it("covers all YT events (5)", () => {
+  it("covers all YT events (12)", () => {
     const ytTables = ALL_EVENT_TABLES.filter((t) => t.name.startsWith("yt"));
-    expect(ytTables).toHaveLength(5);
+    expect(ytTables).toHaveLength(12);
   });
 
-  it("covers all Market events (6)", () => {
+  it("covers all Market events (7)", () => {
     const marketTables = ALL_EVENT_TABLES.filter(
-      (t) => t.name.startsWith("market") && !t.name.startsWith("marketFactory"),
+      (t) => t.name.startsWith("market") && !t.name.startsWith("marketFactory")
     );
-    expect(marketTables).toHaveLength(6);
+    expect(marketTables).toHaveLength(7);
   });
 
   it("covers all Router events (6)", () => {
     const routerTables = ALL_EVENT_TABLES.filter((t) =>
-      t.name.startsWith("router"),
+      t.name.startsWith("router")
     );
     expect(routerTables).toHaveLength(6);
   });

@@ -13,47 +13,79 @@ import { describe, expect, test } from 'bun:test';
  */
 function toHexAddress(value: unknown): string {
   if (typeof value === 'bigint') {
-    return '0x' + value.toString(16).padStart(64, '0');
+    return `0x${value.toString(16).padStart(64, '0')}`;
   }
   return String(value);
+}
+
+/** Result type for paginated contract calls */
+type PaginatedResult = { addresses: unknown[]; hasMore: boolean };
+
+/** Default empty result */
+const EMPTY_RESULT: PaginatedResult = { addresses: [], hasMore: false };
+
+/**
+ * Try parsing array tuple format: [addresses[], hasMore]
+ * Returns null if format doesn't match
+ */
+function tryParseArrayTuple(result: unknown): PaginatedResult | null {
+  if (!Array.isArray(result) || result.length !== 2) return null;
+
+  const [first, second] = result;
+  if (!Array.isArray(first) || typeof second !== 'boolean') return null;
+
+  return { addresses: first, hasMore: second };
+}
+
+/**
+ * Try parsing object with numeric keys: { 0: addresses[], 1: hasMore }
+ * Returns null if format doesn't match
+ */
+function tryParseNumericKeys(obj: Record<string, unknown>): PaginatedResult | null {
+  if (!('0' in obj) || !('1' in obj)) return null;
+
+  const addresses = obj['0'];
+  if (!Array.isArray(addresses)) return null;
+
+  return { addresses, hasMore: Boolean(obj['1']) };
+}
+
+/**
+ * Try parsing object with named keys: { addresses: [], has_more: boolean }
+ * Handles variations: addresses/active_markets, has_more/hasMore
+ * Returns null if format doesn't match
+ */
+function tryParseNamedKeys(obj: Record<string, unknown>): PaginatedResult | null {
+  if (!('addresses' in obj) && !('active_markets' in obj)) return null;
+
+  // @ts-expect-error TS4111
+  const addresses = (obj.addresses ??
+    // @ts-expect-error TS4111
+    obj.active_markets ??
+    // @ts-expect-error TS4111
+    obj.markets) as unknown[];
+  // @ts-expect-error TS4111
+  const hasMore = Boolean(obj.has_more ?? obj.hasMore ?? false);
+
+  return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
 }
 
 /**
  * Parse paginated result from contract call
  * Handles different return formats from starknet.js
  */
-function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore: boolean } {
-  // Handle array tuple format: [addresses[], hasMore]
-  if (Array.isArray(result) && result.length === 2) {
-    const first: unknown = result[0];
-    const second: unknown = result[1];
-    if (Array.isArray(first) && typeof second === 'boolean') {
-      return { addresses: first, hasMore: second };
-    }
-  }
+function parsePaginatedResult(result: unknown): PaginatedResult {
+  // Try array tuple format first
+  const arrayResult = tryParseArrayTuple(result);
+  if (arrayResult) return arrayResult;
 
-  // Handle object format: { 0: addresses[], 1: hasMore } or named properties
+  // Try object formats
   if (result !== null && typeof result === 'object') {
     const obj = result as Record<string, unknown>;
-
-    // Try numeric keys
-    if ('0' in obj && '1' in obj) {
-      const addresses = obj['0'];
-      const hasMore = obj['1'];
-      if (Array.isArray(addresses)) {
-        return { addresses, hasMore: Boolean(hasMore) };
-      }
-    }
-
-    // Try named keys (some typed contracts return named tuples)
-    if ('addresses' in obj || 'active_markets' in obj) {
-      const addresses = (obj['addresses'] ?? obj['active_markets'] ?? obj['markets']) as unknown[];
-      const hasMore = Boolean(obj['has_more'] ?? obj['hasMore'] ?? false);
-      return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
-    }
+    return tryParseNumericKeys(obj) ?? tryParseNamedKeys(obj) ?? EMPTY_RESULT;
   }
 
-  return { addresses: [], hasMore: false };
+  return EMPTY_RESULT;
 }
 
 /**
@@ -61,7 +93,7 @@ function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore:
  */
 function addressToHex(addr: unknown): string {
   if (typeof addr === 'bigint') {
-    return '0x' + addr.toString(16).padStart(64, '0');
+    return `0x${addr.toString(16).padStart(64, '0')}`;
   }
   if (typeof addr === 'string') {
     return addr;
@@ -159,13 +191,19 @@ describe('parsePaginatedResult', () => {
 
   describe('object with named keys', () => {
     test('parses object with "addresses" key', () => {
-      const result = parsePaginatedResult({ addresses: ['0xa1', '0xb2'], has_more: true });
+      const result = parsePaginatedResult({
+        addresses: ['0xa1', '0xb2'],
+        has_more: true,
+      });
       expect(result.addresses).toEqual(['0xa1', '0xb2']);
       expect(result.hasMore).toBe(true);
     });
 
     test('parses object with "active_markets" key', () => {
-      const result = parsePaginatedResult({ active_markets: ['0xc3'], hasMore: false });
+      const result = parsePaginatedResult({
+        active_markets: ['0xc3'],
+        hasMore: false,
+      });
       expect(result.addresses).toEqual(['0xc3']);
       expect(result.hasMore).toBe(false);
     });

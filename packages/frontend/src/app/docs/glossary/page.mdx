@@ -9,6 +9,9 @@ Key terms used in Horizon Protocol.
 
 ## A
 
+### Advanced Mode
+Interface mode for experienced users, providing PT/YT trading, manual minting, and full market controls. See [Simple vs Advanced Mode](/docs/getting-started#simple-vs-advanced-mode).
+
 ### AMM (Automated Market Maker)
 A smart contract that enables trading without order books. Horizon's AMM is optimized for time-decaying assets like PT. See [AMM Mechanics](/docs/how-it-works/amm-mechanics).
 
@@ -17,6 +20,13 @@ Simple interest rate without compounding. <Formula>{"\\text{APR} = r \\times t"}
 
 ### APY (Annual Percentage Yield)
 Interest rate with compounding. <Formula>{"\\text{APY} = (1 + r)^t - 1"}</Formula>. Horizon displays APY for all yields. See [APY Calculation](/docs/mechanics/apy-calculation).
+
+---
+
+## C
+
+### Claim All
+A batch operation that collects all pending rewards and accrued yield across multiple positions in a single transaction. Available in the Portfolio view to save gas compared to claiming individually.
 
 ---
 
@@ -35,16 +45,38 @@ The difference between PT price and 1.0. A PT at 0.95 has a 5% discount, which b
 ### Expiry
 See [Maturity](#maturity).
 
+### Expiry Divisor
+A factory parameter that enforces expiry date alignment. When set (e.g., 86400 for daily alignment), all market expiries must be evenly divisible by this value. Used to standardize expiry dates across markets. A value of 0 disables alignment checks.
+
 ---
 
 ## F
 
+### Faucet
+A testnet utility that distributes free test tokens for development and testing purposes. On devnet, the Faucet provides mock yield-bearing tokens to experiment with the protocol without real funds.
+
+### Fee Decay
+The automatic reduction of swap fees as a market approaches maturity. Fees scale linearly with time-to-expiry: a 6-month market pays roughly half the fee rate of a 1-year market, and fees reach zero at expiry. See [AMM Mechanics](/docs/how-it-works/amm-mechanics#fee-decay).
+
 ### Fixed Yield
 A guaranteed return locked in at the time of purchase. Achieved by buying PT at a discount and holding to maturity. See [Earn Fixed Yield](/docs/guides/earn-fixed-yield).
+
+### Flash Mint
+An atomic operation that mints PT and YT from SY, uses them within the same transaction, and returns the required tokens. Enables capital-efficient arbitrage and complex DeFi strategies without upfront capital. See [Flash Mint Mechanics](/docs/mechanics/flash-mint).
+
+---
+
+## H
+
+### hrzSTRK
+Horizon's wrapped staked STRK token. An SY (Standardized Yield) wrapper around sSTRK that enables yield tokenization within the Horizon protocol. Users deposit sSTRK to receive hrzSTRK, which can then be split into PT and YT.
 
 ---
 
 ## I
+
+### IFlashCallback
+A contract interface that must be implemented to use Flash Mint. The YT contract calls your callback function with the minted tokens, and you must return the required SY by the end of the transaction. See [Flash Mint Mechanics](/docs/mechanics/flash-mint).
 
 ### IL (Impermanent Loss)
 The difference between LP returns and simply holding the underlying assets. Occurs when asset prices diverge from entry point. See [Risks](/docs/risks#lp-risks).
@@ -53,6 +85,9 @@ The difference between LP returns and simply holding the underlying assets. Occu
 The annualized return implied by the current PT price. See [Pricing](/docs/mechanics/pricing).
 
 <Formula display>{"\\text{Implied APY} = \\left( \\frac{1}{P_{PT}} \\right)^{\\frac{365}{d}} - 1"}</Formula>
+
+### Interest Fee Rate
+The percentage of accrued yield that the protocol collects as a fee. Applied when YT holders claim their accumulated interest. Typical value: 3%. For example, if YT earns 100 tokens of interest and the fee rate is 3%, the holder receives 97 tokens.
 
 ---
 
@@ -81,6 +116,12 @@ Creating PT and YT by depositing SY. You receive equal amounts of PT and YT.
 
 ## P
 
+### PnL (Profit and Loss)
+The net gain or loss on a position, calculated as the difference between current value and cost basis. Displayed in Portfolio view for each position, showing both absolute value and percentage return.
+
+### Portfolio Value
+The total USD value of all positions held in Horizon, including SY, PT, YT, and LP tokens. Updated in real-time based on current market prices and accrued yield.
+
 ### Price Impact
 How much your trade moves the market price. Large trades in low-liquidity pools have high price impact.
 
@@ -99,9 +140,18 @@ The exchange rate used for minting and redemption. Always uses the maximum histo
 ### Redemption
 Converting PT back to underlying assets. After maturity: PT → underlying (1:1). Before maturity: PT + YT → SY. See [Redemption](/docs/mechanics/redemption).
 
+### Reward Fee Rate
+The percentage of reward tokens that the protocol collects as a fee. Applied when users claim reward tokens distributed by SYWithRewards implementations. Typical value: 3%. Separate from the interest fee rate, which applies to base yield.
+
+### Reward Tokens
+Additional tokens distributed to SY holders beyond the base yield. Some yield-bearing assets provide incentive rewards (e.g., protocol tokens, governance tokens) that are separate from the underlying yield. Only SY tokens that implement the SYWithRewards interface support reward token distribution.
+
 ---
 
 ## S
+
+### Simple Mode
+Default interface mode for new users, featuring streamlined deposit/withdraw and automatic yield optimization. See [Simple vs Advanced Mode](/docs/getting-started#simple-vs-advanced-mode).
 
 ### Slippage
 The difference between expected and actual execution price. Set slippage tolerance to limit maximum acceptable deviation.
@@ -111,6 +161,9 @@ The current market price for immediate execution (before accounting for price im
 
 ### Standardized Yield (SY)
 A wrapper token that standardizes different yield-bearing assets for use in Horizon. SY can be split into PT + YT.
+
+### SYWithRewards
+An extended SY implementation that supports distributing reward tokens in addition to the base yield. SY tokens for assets like sSTRK use this interface to pass through staking rewards and other incentives to holders. See [Reward Tokens](#reward-tokens).
 
 ### Starknet
 An Ethereum Layer 2 network using ZK rollups. Horizon is deployed on Starknet.
@@ -125,6 +178,9 @@ The native token of Starknet, used for gas fees.
 ### Time Decay
 The gradual decrease in YT value as maturity approaches. As less time remains, less yield can be collected.
 
+### Token Aggregator
+A service that sources liquidity across multiple DEXs to find optimal swap routes. Horizon integrates with aggregators like AVNU for efficient token swaps when converting between assets.
+
 ### TVL (Total Value Locked)
 The total value of assets deposited in a protocol or pool.
 
@@ -137,6 +193,9 @@ The base yield-bearing token (e.g., sSTRK). SY wraps the underlying, and PT rede
 
 ### Underlying Yield
 The current yield being generated by the underlying asset. May differ from implied yield.
+
+### Unwrap
+The process of converting SY tokens back to the underlying yield-bearing asset. For example, unwrapping hrzSTRK returns sSTRK. The inverse of wrapping/depositing into SY.
 
 ---
 

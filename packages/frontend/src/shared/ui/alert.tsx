@@ -1,7 +1,6 @@
-import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
 
 /**
  * Alert variants following the project's semantic color system.
@@ -82,4 +81,4 @@ function AlertAction({ className, ...props }: React.ComponentProps<'div'>): Reac
   );
 }
 
-export { Alert, AlertAction, AlertDescription, alertVariants, AlertTitle };
+export { Alert, AlertAction, AlertDescription, AlertTitle, alertVariants };

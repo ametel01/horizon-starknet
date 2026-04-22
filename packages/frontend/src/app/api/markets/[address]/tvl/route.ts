@@ -1,10 +1,9 @@
-import { eq, desc, gte, and } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, marketCurrentState, marketDailyStats, marketHourlyStats } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { and, desc, eq, gte } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +44,7 @@ export async function GET(
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   const resolution = searchParams.get('resolution') === 'hourly' ? 'hourly' : 'daily';
-  const days = Math.min(parseInt(searchParams.get('days') ?? '30'), 365);
+  const days = Math.min(Number.parseInt(searchParams.get('days') ?? '30', 10), 365);
 
   const since = new Date();
   since.setDate(since.getDate() - days);

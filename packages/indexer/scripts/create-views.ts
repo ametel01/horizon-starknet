@@ -22,6 +22,17 @@ const VIEWS = [
   "market_hourly_stats",
   "user_py_positions",
   "market_lp_positions",
+  // Phase 4: SY Monitoring views
+  "user_reward_history",
+  "sy_current_pause_state",
+  "negative_yield_alerts",
+  "sy_reward_stats",
+  "exchange_rate_history",
+  // Phase 5: YT Interest analytics views
+  "yt_fee_analytics",
+  "treasury_yield_summary",
+  "batch_operations_summary",
+  // Note: redeem_with_interest_analytics is a regular view, not materialized
 ];
 
 async function createViews() {
@@ -29,7 +40,7 @@ async function createViews() {
     process.env["DATABASE_URL"] ?? process.env["POSTGRES_CONNECTION_STRING"];
   if (!databaseUrl) {
     log.fatal(
-      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required",
+      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required"
     );
     process.exit(1);
   }
@@ -60,6 +71,16 @@ async function createViews() {
     await sql`REFRESH MATERIALIZED VIEW market_hourly_stats`;
     await sql`REFRESH MATERIALIZED VIEW user_py_positions`;
     await sql`REFRESH MATERIALIZED VIEW market_lp_positions`;
+    // Phase 4: SY Monitoring views
+    await sql`REFRESH MATERIALIZED VIEW user_reward_history`;
+    await sql`REFRESH MATERIALIZED VIEW sy_current_pause_state`;
+    await sql`REFRESH MATERIALIZED VIEW negative_yield_alerts`;
+    await sql`REFRESH MATERIALIZED VIEW sy_reward_stats`;
+    await sql`REFRESH MATERIALIZED VIEW exchange_rate_history`;
+    // Phase 5: YT Interest analytics views
+    await sql`REFRESH MATERIALIZED VIEW yt_fee_analytics`;
+    await sql`REFRESH MATERIALIZED VIEW treasury_yield_summary`;
+    await sql`REFRESH MATERIALIZED VIEW batch_operations_summary`;
     log.info("Initial refresh complete");
   } catch (error) {
     // Check if error is because views already exist

@@ -1,5 +1,16 @@
 use starknet::ContractAddress;
 
+/// Asset type classification for SY tokens
+/// Matches Pendle V2's AssetType enum for compatibility
+#[derive(Drop, Serde, Copy, starknet::Store, PartialEq, Default)]
+pub enum AssetType {
+    /// Regular ERC20 token (e.g., stETH, wstETH, aUSDC)
+    #[default]
+    Token,
+    /// Liquidity pool token (e.g., Curve LP, Uniswap LP)
+    Liquidity,
+}
+
 #[starknet::interface]
 pub trait ISY<TContractState> {
     // ERC20 standard
@@ -16,14 +27,68 @@ pub trait ISY<TContractState> {
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
 
     // SY-specific
+    /// Deposit a valid token to mint SY
+    /// @param receiver Address to receive the minted SY
+    /// @param token_in Token used for deposit (must be a valid token_in)
+    /// @param amount_shares_to_deposit Amount of shares to deposit
+    /// @param min_shares_out Minimum SY shares to receive (slippage protection)
+    /// @return Amount of SY minted
     fn deposit(
-        ref self: TContractState, receiver: ContractAddress, amount_shares_to_deposit: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        token_in: ContractAddress,
+        amount_shares_to_deposit: u256,
+        min_shares_out: u256,
     ) -> u256;
+    /// Redeem SY for a valid token
+    /// @param receiver Address to receive the tokens
+    /// @param amount_sy_to_redeem Amount of SY to burn
+    /// @param token_out Token used for redemption (must be a valid token_out)
+    /// @param min_token_out Minimum tokens to receive (slippage protection)
+    /// @param burn_from_internal_balance If true, burn from contract's own balance (Router pattern)
+    ///        If false, burn from caller's balance (standard pattern)
+    /// @return Amount of shares redeemed
     fn redeem(
-        ref self: TContractState, receiver: ContractAddress, amount_sy_to_redeem: u256,
+        ref self: TContractState,
+        receiver: ContractAddress,
+        amount_sy_to_redeem: u256,
+        token_out: ContractAddress,
+        min_token_out: u256,
+        burn_from_internal_balance: bool,
     ) -> u256;
     fn exchange_rate(self: @TContractState) -> u256;
     fn underlying_asset(self: @TContractState) -> ContractAddress;
+
+    // Multi-token support
+    /// Returns all valid tokens that can be deposited to mint SY
+    fn get_tokens_in(self: @TContractState) -> Span<ContractAddress>;
+    /// Returns all valid tokens that can be received when redeeming SY
+    fn get_tokens_out(self: @TContractState) -> Span<ContractAddress>;
+    /// Check if a token can be deposited to mint SY (O(1) lookup)
+    fn is_valid_token_in(self: @TContractState, token: ContractAddress) -> bool;
+    /// Check if a token can be received when redeeming SY (O(1) lookup)
+    fn is_valid_token_out(self: @TContractState, token: ContractAddress) -> bool;
+
+    // Asset metadata
+    /// Returns asset classification, underlying address, and decimals
+    /// Matches Pendle V2's assetInfo() for compatibility
+    fn asset_info(self: @TContractState) -> (AssetType, ContractAddress, u8);
+
+    // Preview functions
+    /// Preview how much SY would be minted for a given deposit amount
+    /// @param amount_to_deposit Amount of underlying shares to deposit
+    /// @return Amount of SY that would be minted (1:1 with underlying shares)
+    fn preview_deposit(self: @TContractState, amount_to_deposit: u256) -> u256;
+    /// Preview how much underlying would be returned for a given redemption
+    /// @param amount_sy Amount of SY to redeem
+    /// @return Amount of underlying shares that would be returned (1:1 with SY)
+    fn preview_redeem(self: @TContractState, amount_sy: u256) -> u256;
+
+    // Negative yield detection
+    /// Get the exchange rate watermark (highest rate ever seen)
+    /// If current exchange_rate() drops below this, negative yield has occurred
+    /// @return The watermark exchange rate in WAD (10^18) precision
+    fn get_exchange_rate_watermark(self: @TContractState) -> u256;
 }
 
 /// Admin interface for SY pausability

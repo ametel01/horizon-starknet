@@ -1,0 +1,298 @@
+import { DocsNavigation } from '@features/docs';
+import { Callout } from '@features/docs';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@features/docs';
+
+# Analytics
+
+Understand market dynamics through yield curves, liquidity metrics, and performance indicators.
+
+---
+
+## Yield Curve
+
+The yield curve shows implied yield rates across different maturities.
+
+### Reading the Curve
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Shape</TableHead>
+      <TableHead>Meaning</TableHead>
+      <TableHead>Market Sentiment</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Upward sloping</TableCell>
+      <TableCell>Higher yields for longer maturities</TableCell>
+      <TableCell>Bullish on future rates</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Flat</TableCell>
+      <TableCell>Similar yields across maturities</TableCell>
+      <TableCell>Neutral outlook</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Downward sloping</TableCell>
+      <TableCell>Lower yields for longer maturities</TableCell>
+      <TableCell>Bearish on future rates</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Inverted</TableCell>
+      <TableCell>Short-term yields exceed long-term</TableCell>
+      <TableCell>Expecting rate decline</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### Using Yield Curves
+
+- Compare implied yields to underlying APY for opportunities
+- Track historical changes to identify trends
+- Find maturities with best risk/reward
+
+---
+
+## TVL Statistics
+
+Total Value Locked (TVL) measures the total assets deposited in the protocol.
+
+### TVL Breakdown
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Metric</TableHead>
+      <TableHead>Description</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Total Protocol TVL</TableCell>
+      <TableCell>Sum of all assets across all markets</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Market TVL</TableCell>
+      <TableCell>Assets locked in a specific PT/SY pool</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>SY TVL</TableCell>
+      <TableCell>Underlying assets wrapped in SY tokens</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### What TVL Indicates
+
+- **Higher TVL** — More liquidity, lower slippage, more stable prices
+- **Growing TVL** — Increasing protocol adoption
+- **TVL per market** — Indicates which maturities are most popular
+
+<Callout type="info">
+TVL is denominated in the underlying asset value, not token counts.
+</Callout>
+
+---
+
+## PT Convergence
+
+Principal Tokens converge to 1:1 with the underlying as maturity approaches.
+
+### The Convergence Curve
+
+PT trades at a discount before maturity. This discount shrinks over time:
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Time to Maturity</TableHead>
+      <TableHead>Typical PT Price</TableHead>
+      <TableHead>Fixed Yield Opportunity</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>12 months</TableCell>
+      <TableCell>~0.90-0.95</TableCell>
+      <TableCell>5-10% annualized</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>6 months</TableCell>
+      <TableCell>~0.95-0.97</TableCell>
+      <TableCell>5-10% annualized</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>1 month</TableCell>
+      <TableCell>~0.99</TableCell>
+      <TableCell>~10% annualized</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>At maturity</TableCell>
+      <TableCell>1.00</TableCell>
+      <TableCell>N/A — redeemable</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### Tracking Convergence
+
+- Monitor PT price relative to theoretical fair value
+- Deviations create arbitrage opportunities
+- Faster convergence occurs in high-liquidity markets
+
+---
+
+## Market Depth
+
+Market depth shows available liquidity at different price levels.
+
+### Depth Chart Interpretation
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Characteristic</TableHead>
+      <TableHead>Deep Market</TableHead>
+      <TableHead>Shallow Market</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Bid/ask spread</TableCell>
+      <TableCell>Tight (low cost)</TableCell>
+      <TableCell>Wide (high cost)</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Price impact</TableCell>
+      <TableCell>Low for large trades</TableCell>
+      <TableCell>High for large trades</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Execution</TableCell>
+      <TableCell>Predictable</TableCell>
+      <TableCell>May slip significantly</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### Using Depth Data
+
+- Check depth before large trades
+- Split large orders if depth is insufficient
+- Compare depth across markets for best execution
+
+<Callout type="warning">
+Low depth markets can have high slippage. Always check price impact before confirming trades.
+</Callout>
+
+---
+
+## Liquidity Health Score
+
+A composite metric indicating overall market liquidity quality.
+
+### Score Components
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Factor</TableHead>
+      <TableHead>Weight</TableHead>
+      <TableHead>What It Measures</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>TVL</TableCell>
+      <TableCell>30%</TableCell>
+      <TableCell>Total assets in pool</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Volume/TVL ratio</TableCell>
+      <TableCell>25%</TableCell>
+      <TableCell>Capital efficiency</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Spread</TableCell>
+      <TableCell>25%</TableCell>
+      <TableCell>Trading cost</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>LP count</TableCell>
+      <TableCell>20%</TableCell>
+      <TableCell>Liquidity distribution</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### Interpreting Scores
+
+- **80-100**: Excellent — low slippage, suitable for large trades
+- **60-79**: Good — reasonable for medium trades
+- **40-59**: Fair — expect some slippage, split large orders
+- **Below 40**: Poor — high risk of slippage, trade cautiously
+
+---
+
+## Advanced Analytics
+
+### Implied vs Realized Yield
+
+Track the spread between market-implied yield and actual underlying yield:
+
+- **Implied > Realized**: Market expects rates to rise
+- **Implied < Realized**: Market expects rates to fall
+- **Convergence**: Accurate market pricing
+
+### Volume Trends
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Metric</TableHead>
+      <TableHead>Use Case</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>24h Volume</TableCell>
+      <TableCell>Short-term activity indicator</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>7d Average Volume</TableCell>
+      <TableCell>Baseline activity level</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Volume/TVL Ratio</TableCell>
+      <TableCell>Capital efficiency (higher = more active)</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+### Fee Analysis
+
+- **Cumulative fees**: Total fees generated by a pool
+- **Fee APY**: Annualized return for LPs from fees
+- **Fee trends**: Rising fees indicate growing activity
+
+### Historical Yield Analysis
+
+- View past implied yield movements
+- Identify seasonal patterns
+- Compare current rates to historical averages
+
+<Callout type="info">
+Historical data helps identify whether current yields are above or below typical levels.
+</Callout>
+
+---
+
+## Tips
+
+- Check yield curves before choosing a maturity
+- Use liquidity health scores to assess trade viability
+- Monitor PT convergence for arbitrage opportunities
+- Compare implied vs realized yields for market sentiment
+
+<DocsNavigation />

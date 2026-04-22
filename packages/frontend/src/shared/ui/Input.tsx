@@ -1,7 +1,6 @@
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Label } from '@shared/ui/label';
+import * as React from 'react';
 
 /**
  * Input component with focus micro-interactions.
@@ -103,6 +102,12 @@ interface NumberInputProps extends Omit<FormInputProps, 'type' | 'onChange'> {
 
 const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
   ({ value, onChange, decimals = 18, ...props }, ref) => {
+    // Hoist RegExp creation to avoid allocation on every keystroke (js-hoist-regexp)
+    const regex = React.useMemo(
+      () => new RegExp(`^\\d*\\.?\\d{0,${String(decimals)}}$`),
+      [decimals]
+    );
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
       const inputValue = e.target.value;
 
@@ -111,7 +116,6 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
         return;
       }
 
-      const regex = new RegExp(`^\\d*\\.?\\d{0,${String(decimals)}}$`);
       if (regex.test(inputValue)) {
         onChange(inputValue);
       }
@@ -131,4 +135,4 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 );
 NumberInput.displayName = 'NumberInput';
 
-export { Input, FormInput, NumberInput };
+export { FormInput, Input, NumberInput };

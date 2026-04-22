@@ -1,11 +1,10 @@
 'use client';
 
-import { Search, FileText, X } from 'lucide-react';
+import { cn } from '@shared/lib/utils';
+import { FileText, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-import { cn } from '@shared/lib/utils';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SearchResult {
   title: string;
@@ -199,6 +198,7 @@ export function DocsSearch(): React.ReactNode {
     <>
       {/* Search trigger button */}
       <button
+        type="button"
         onClick={() => {
           setIsOpen(true);
         }}
@@ -239,6 +239,7 @@ export function DocsSearch(): React.ReactNode {
                 className="text-foreground placeholder:text-muted-foreground flex-1 bg-transparent focus:outline-none"
               />
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                 }}

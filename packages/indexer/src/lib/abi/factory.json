@@ -104,5 +104,110 @@
         "kind": "data"
       }
     ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::SYWithRewardsDeployed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "sy",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "name",
+        "type": "core::byte_array::ByteArray",
+        "kind": "data"
+      },
+      {
+        "name": "symbol",
+        "type": "core::byte_array::ByteArray",
+        "kind": "data"
+      },
+      {
+        "name": "underlying",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "deployer",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::SYWithRewardsClassHashUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_class_hash",
+        "type": "core::starknet::class_hash::ClassHash",
+        "kind": "data"
+      },
+      {
+        "name": "new_class_hash",
+        "type": "core::starknet::class_hash::ClassHash",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::RewardFeeRateSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::DefaultInterestFeeRateSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_fee_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::factory::Factory::ExpiryDivisorSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_expiry_divisor",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "new_expiry_divisor",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
   }
 ]

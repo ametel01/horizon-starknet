@@ -73,7 +73,7 @@ export class DataError extends Error {
  */
 export function invariant(
   condition: unknown,
-  message: string,
+  message: string
 ): asserts condition {
   if (!condition) {
     throw new InvariantError(message);

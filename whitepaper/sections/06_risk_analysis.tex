@@ -113,8 +113,8 @@ The protocol depends on Pragma oracle for yield index data used in YT interest a
 \toprule
 \textbf{Parameter} & \textbf{Value} \\
 \midrule
-TWAP window & 5 minutes (configurable per SY) \\
-Staleness threshold & 3600 seconds (1 hour) \\
+TWAP window & 1 hour (configurable per SY) \\
+Staleness threshold & 86400 seconds (24 hours) \\
 Data source & Pragma aggregated feed \\
 \bottomrule
 \end{tabular}
@@ -170,7 +170,7 @@ AMM pricing & Internal pool state only & None (oracle not used) \\
 \begin{itemize}
 \item TWAP (5-minute window) increases manipulation cost and duration required.
 \item Watermark prevents exploitation of rate \emph{drops} (only increases can inflate index).
-\item Staleness check rejects data older than 1 hour.
+\item Staleness check rejects data older than 24 hours.
 \end{itemize}
 
 \paragraph{Residual risk.} Sustained oracle manipulation over the TWAP window can still inflate the index. Mitigation requires oracle-level security (Pragma's aggregation and data source diversity).
@@ -366,4 +366,3 @@ The following risks are explicitly outside the protocol's protection scope:
 
 \item \textbf{MEV and front-running.} Users can mitigate with slippage settings but cannot eliminate; this is inherent to public blockchains.
 \end{enumerate}
-

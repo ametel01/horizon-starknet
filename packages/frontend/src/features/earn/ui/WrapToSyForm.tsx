@@ -1,14 +1,20 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import { useWrapToSy } from '@features/earn';
 import { TokenInput, TokenOutput } from '@features/mint';
+import { useTransactionSettings } from '@features/tx-settings';
 import { useAccount } from '@features/wallet';
-import { useUnderlyingAddress } from '@features/yield';
+import {
+  calculateMinOutputWithSlippage,
+  NegativeYieldWarning,
+  PausedWarningBanner,
+  useIsSyPaused,
+  useSyDepositPreview,
+  useUnderlyingAddress,
+} from '@features/yield';
 import { useEstimateFee } from '@shared/hooks';
-import { toWad } from '@shared/math/wad';
+import { formatWad, toWad } from '@shared/math/wad';
 import { Button } from '@shared/ui/Button';
 import {
   FormActions,
@@ -23,6 +29,7 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface WrapToSyFormProps {
   market: MarketData;
@@ -31,7 +38,11 @@ interface WrapToSyFormProps {
 
 export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNode {
   const { isConnected } = useAccount();
+  const { slippageBps, slippagePercent } = useTransactionSettings();
   const [amount, setAmount] = useState('');
+
+  // Check if SY contract is paused
+  const isPaused = useIsSyPaused(market.syAddress);
 
   // Fetch underlying address from SY contract
   const { underlyingAddress, isLoading: underlyingLoading } = useUnderlyingAddress(
@@ -53,17 +64,37 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
     syAddress: market.syAddress,
   });
 
-  // Calculate output amount (1:1 ratio for SY)
-  const outputAmount = useMemo(() => {
+  // Parse input amount to WAD
+  const inputAmountWad = useMemo(() => {
     if (!amount || amount === '0') {
-      return BigInt(0);
+      return 0n;
     }
     try {
       return toWad(amount);
     } catch {
-      return BigInt(0);
+      return 0n;
     }
   }, [amount]);
+
+  // Preview deposit output from SY contract
+  const { data: depositPreview, isLoading: previewLoading } = useSyDepositPreview(
+    market.syAddress,
+    inputAmountWad > 0n ? inputAmountWad : undefined
+  );
+
+  // Calculate output amount (from preview or fallback to 1:1)
+  const outputAmount = useMemo(() => {
+    if (depositPreview?.expectedOutput !== undefined && depositPreview.expectedOutput > 0n) {
+      return depositPreview.expectedOutput;
+    }
+    // Fallback to 1:1 ratio when preview not available
+    return inputAmountWad;
+  }, [depositPreview?.expectedOutput, inputAmountWad]);
+
+  // Calculate minimum received with slippage protection
+  const minReceived = useMemo(() => {
+    return calculateMinOutputWithSlippage(outputAmount, slippageBps);
+  }, [outputAmount, slippageBps]);
 
   // Validate input
   const validationError = useMemo(() => {
@@ -71,29 +102,22 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
       return null;
     }
 
-    try {
-      const amountWad = toWad(amount);
-
-      if (underlyingBalance !== undefined && amountWad > underlyingBalance) {
-        return 'Insufficient balance';
-      }
-    } catch {
+    if (inputAmountWad === 0n) {
       return 'Invalid amount';
     }
 
+    if (underlyingBalance !== undefined && inputAmountWad > underlyingBalance) {
+      return 'Insufficient balance';
+    }
+
     return null;
-  }, [amount, underlyingBalance]);
+  }, [amount, inputAmountWad, underlyingBalance]);
 
   // Build calls for gas estimation
   const wrapCalls = useMemo(() => {
-    if (!amount || amount === '0' || validationError || !underlyingAddress) return null;
-    try {
-      const amountWad = toWad(amount);
-      return buildWrapCalls(amountWad);
-    } catch {
-      return null;
-    }
-  }, [amount, validationError, underlyingAddress, buildWrapCalls]);
+    if (inputAmountWad === 0n || validationError || !underlyingAddress) return null;
+    return buildWrapCalls(inputAmountWad);
+  }, [inputAmountWad, validationError, underlyingAddress, buildWrapCalls]);
 
   // Estimate gas fee
   const {
@@ -130,17 +154,27 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
     !!validationError ||
     isLoading ||
     !underlyingAddress ||
-    underlyingLoading;
+    underlyingLoading ||
+    isPaused;
 
   const buttonText = useMemo(() => {
     if (!isConnected) return 'Connect Wallet';
     if (underlyingLoading) return 'Loading...';
     if (!underlyingAddress) return 'Token not found';
+    if (isPaused) return 'Deposits Paused';
     if (isLoading) return 'Depositing...';
     if (validationError) return validationError;
     if (!amount || amount === '0') return 'Enter Amount';
     return 'Deposit';
-  }, [isConnected, underlyingLoading, underlyingAddress, isLoading, validationError, amount]);
+  }, [
+    isConnected,
+    underlyingLoading,
+    underlyingAddress,
+    isPaused,
+    isLoading,
+    validationError,
+    amount,
+  ]);
 
   // Transaction steps for StepProgress
   const transactionSteps: Step[] = useMemo(() => {
@@ -170,6 +204,12 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
         description={`Deposit your ${tokenName} to use in the protocol`}
         action={<ExpiryBadge expiryTimestamp={market.expiry} />}
       />
+
+      {/* Paused Warning */}
+      <PausedWarningBanner syAddress={market.syAddress} context="deposit" />
+
+      {/* Negative Yield Warning */}
+      <NegativeYieldWarning syAddress={market.syAddress} variant="banner" />
 
       {/* Input Section */}
       <FormInputSection>
@@ -214,7 +254,21 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
       {/* Info Section */}
       <FormInfoSection>
         <FormRow label="Exchange Rate" value="1:1" />
-        {outputAmount > BigInt(0) && (
+        {outputAmount > 0n && (
+          <FormRow
+            label={`Min Received (${slippagePercent} slippage)`}
+            value={
+              previewLoading ? (
+                <span className="text-muted-foreground">Loading...</span>
+              ) : (
+                <span className="font-mono">
+                  {formatWad(minReceived, 4)} {sySymbol}
+                </span>
+              )
+            }
+          />
+        )}
+        {outputAmount > 0n && (
           <FormRow
             label="Estimated Gas"
             value={

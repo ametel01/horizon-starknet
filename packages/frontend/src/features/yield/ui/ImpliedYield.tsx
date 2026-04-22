@@ -1,8 +1,7 @@
-import BigNumber from 'bignumber.js';
-import { type ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { lnRateToApy } from '@shared/math/yield';
+import BigNumber from 'bignumber.js';
+import type { ReactNode } from 'react';
 
 interface ImpliedYieldProps {
   /** The ln(implied_rate) from the AMM in WAD format */
@@ -83,7 +82,7 @@ export function ImpliedYieldFromPrice({
   } else {
     const priceRatio = new BigNumber(1).dividedBy(ptPrice);
     const exponent = 365 / daysRemaining;
-    const annualizedReturn = Math.pow(priceRatio.toNumber(), exponent) - 1;
+    const annualizedReturn = priceRatio.toNumber() ** exponent - 1;
     apy = new BigNumber(annualizedReturn);
   }
 

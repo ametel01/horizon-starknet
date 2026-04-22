@@ -1,7 +1,6 @@
+import { daysToExpiry, formatExpiry, isExpired } from '@shared/math/yield';
 import { AlertTriangleIcon, ClockIcon, InfoIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-
-import { daysToExpiry, formatExpiry, isExpired } from '@shared/math/yield';
 
 import { Alert, AlertDescription, AlertTitle } from './alert';
 

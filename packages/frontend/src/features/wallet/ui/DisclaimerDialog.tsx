@@ -1,9 +1,5 @@
 'use client';
 
-import { AlertTriangle, ExternalLink, FlaskConical } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
-
 import { Button } from '@shared/ui/Button';
 import {
   Dialog,
@@ -14,6 +10,9 @@ import {
   DialogTitle,
 } from '@shared/ui/dialog';
 import { Separator } from '@shared/ui/separator';
+import { AlertTriangle, ExternalLink, FlaskConical } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface DisclaimerDialogProps {
   open: boolean;
@@ -102,6 +101,7 @@ export function DisclaimerDialog({
           <label className="hover:bg-muted/50 flex cursor-pointer items-start gap-3 rounded-lg p-2 transition-colors">
             <input
               type="checkbox"
+              name="acknowledge-risks"
               checked={acknowledged}
               onChange={(e) => {
                 setAcknowledged(e.target.checked);

@@ -6,11 +6,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { uint256 } from 'starknet';
-
-import { WAD } from '@/test/setup';
 import { getDeadline } from '@shared/lib/deadline';
 import { toWad } from '@shared/math/wad';
+import { uint256 } from 'starknet';
+import { WAD } from '@/test/setup';
 
 describe('Mint amount conversion', () => {
   test('converts string amount to WAD', () => {

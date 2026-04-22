@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import { useSimpleWithdraw } from '@features/earn';
 import { useAccount, useStarknet } from '@features/wallet';
@@ -23,10 +21,101 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { NumberInput } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface SimpleWithdrawFormProps {
   market: MarketData;
   className?: string;
+}
+
+/**
+ * Balance display row with loading state
+ */
+function BalanceRow({
+  label,
+  value,
+  isLoading,
+  emphasized = false,
+}: {
+  label: string;
+  value: bigint;
+  isLoading: boolean;
+  emphasized?: boolean;
+}): ReactNode {
+  const labelClass = emphasized
+    ? 'text-foreground text-sm font-medium'
+    : 'text-muted-foreground text-sm';
+  const valueClass = emphasized
+    ? 'text-foreground font-mono font-medium'
+    : 'text-foreground font-mono';
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className={labelClass}>{label}</span>
+      {isLoading ? (
+        <Skeleton className="h-5 w-20" />
+      ) : (
+        <span className={valueClass}>{formatWad(value, 4)}</span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Expiry-aware info section
+ */
+function WithdrawInfoSection({
+  isExpired,
+  maturityDate,
+}: {
+  isExpired: boolean;
+  maturityDate: string;
+}): ReactNode {
+  if (isExpired) {
+    return (
+      <div className="border-primary/30 bg-primary/5 rounded-lg border p-3">
+        <p className="text-primary text-sm">
+          Your position has matured. You can now withdraw your full Fixed-Rate Position.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-muted-foreground space-y-1 text-xs">
+      <p>
+        Withdrawing before maturity ({maturityDate}) requires equal amounts of both positions. After
+        maturity, you can withdraw your Fixed-Rate Position directly.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Derive validation error message based on withdraw constraints.
+ * Pre-expiry: need equal PT and YT, so error indicates which is limiting.
+ * Post-expiry: only PT matters.
+ */
+function deriveValidationError(
+  amountWad: bigint,
+  maxWithdrawable: bigint,
+  isExpired: boolean,
+  ptBalance: bigint | undefined,
+  ytBalance: bigint | undefined
+): string | null {
+  if (amountWad <= maxWithdrawable) {
+    return null;
+  }
+
+  // Post-expiry or missing balances: generic message
+  if (isExpired || ptBalance === undefined || ytBalance === undefined) {
+    return 'Insufficient balance';
+  }
+
+  // Pre-expiry: indicate which position is limiting
+  return ptBalance < ytBalance
+    ? 'Exceeds Fixed-Rate Position balance'
+    : 'Exceeds Variable-Rate Position balance';
 }
 
 /**
@@ -87,25 +176,28 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
     }
   }, [amount]);
 
-  // Validate input
+  // Validate input - skip validation for empty input
   const validationError = useMemo(() => {
-    if (!amount || amount === '0') {
-      return null;
-    }
-
-    if (amountWad > maxWithdrawable) {
-      if (!market.isExpired && ptBalance !== undefined && ytBalance !== undefined) {
-        if (ptBalance < ytBalance) {
-          return 'Exceeds Fixed-Rate Position balance';
-        } else {
-          return 'Exceeds Variable-Rate Position balance';
-        }
-      }
-      return 'Insufficient balance';
-    }
-
-    return null;
+    if (!amount || amount === '0') return null;
+    return deriveValidationError(
+      amountWad,
+      maxWithdrawable,
+      market.isExpired,
+      ptBalance,
+      ytBalance
+    );
   }, [amount, amountWad, maxWithdrawable, market.isExpired, ptBalance, ytBalance]);
+
+  // Pre-compute UI display state to reduce render-time branching
+  const uiState = useMemo(
+    () => ({
+      showYtBalance: !market.isExpired,
+      showGasEstimate: amountWad > BigInt(0),
+      showTxStatus: status !== 'idle',
+      isSuccess: status === 'success',
+    }),
+    [market.isExpired, amountWad, status]
+  );
 
   // Build calls for gas estimation
   const withdrawCalls = useMemo(() => {
@@ -216,39 +308,25 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
               <span className="text-muted-foreground text-sm">Your Position</span>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Fixed-Rate Position</span>
-                {balancesLoading ? (
-                  <Skeleton className="h-5 w-20" />
-                ) : (
-                  <span className="text-foreground font-mono">
-                    {formatWad(ptBalance ?? BigInt(0), 4)}
-                  </span>
-                )}
-              </div>
-              {!market.isExpired && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">Variable-Rate Position</span>
-                  {balancesLoading ? (
-                    <Skeleton className="h-5 w-20" />
-                  ) : (
-                    <span className="text-foreground font-mono">
-                      {formatWad(ytBalance ?? BigInt(0), 4)}
-                    </span>
-                  )}
-                </div>
+              <BalanceRow
+                label="Fixed-Rate Position"
+                value={ptBalance ?? BigInt(0)}
+                isLoading={balancesLoading}
+              />
+              {uiState.showYtBalance && (
+                <BalanceRow
+                  label="Variable-Rate Position"
+                  value={ytBalance ?? BigInt(0)}
+                  isLoading={balancesLoading}
+                />
               )}
               <div className="border-border border-t pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-foreground text-sm font-medium">Available to Withdraw</span>
-                  {balancesLoading ? (
-                    <Skeleton className="h-5 w-20" />
-                  ) : (
-                    <span className="text-foreground font-mono font-medium">
-                      {formatWad(maxWithdrawable, 4)}
-                    </span>
-                  )}
-                </div>
+                <BalanceRow
+                  label="Available to Withdraw"
+                  value={maxWithdrawable}
+                  isLoading={balancesLoading}
+                  emphasized
+                />
               </div>
             </div>
           </CardContent>
@@ -323,25 +401,10 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
       </Card>
 
       {/* Info */}
-      {!market.isExpired && (
-        <div className="text-muted-foreground space-y-1 text-xs">
-          <p>
-            Withdrawing before maturity ({maturityDate}) requires equal amounts of both positions.
-            After maturity, you can withdraw your Fixed-Rate Position directly.
-          </p>
-        </div>
-      )}
-
-      {market.isExpired && (
-        <div className="border-primary/30 bg-primary/5 rounded-lg border p-3">
-          <p className="text-primary text-sm">
-            Your position has matured. You can now withdraw your full Fixed-Rate Position.
-          </p>
-        </div>
-      )}
+      <WithdrawInfoSection isExpired={market.isExpired} maturityDate={maturityDate} />
 
       {/* Gas Estimate */}
-      {amountWad > BigInt(0) && (
+      {uiState.showGasEstimate && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Estimated Gas</span>
           <GasEstimate
@@ -354,7 +417,7 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
       )}
 
       {/* Transaction Status */}
-      {status !== 'idle' && (
+      {uiState.showTxStatus && (
         <TxStatus
           status={status}
           txHash={txHash}
@@ -370,7 +433,7 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
 
       {/* Actions */}
       <FormActions>
-        {status === 'success' ? (
+        {uiState.isSuccess ? (
           <Button onClick={handleReset} className="h-12 w-full text-base font-medium">
             Withdraw More
           </Button>

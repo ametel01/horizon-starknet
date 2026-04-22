@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
-import { type Call, uint256 } from 'starknet';
-
 import { useTokenBalance } from '@features/portfolio';
+import { useTransactionSettings } from '@features/tx-settings';
 import { useAccount } from '@features/wallet';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { toWad } from '@shared/math/wad';
+import { calculateMinOutput } from '@shared/starknet/transaction-builder';
+import { useCallback, useMemo } from 'react';
+import { type Call, uint256 } from 'starknet';
 
 interface UseUnwrapSyParams {
   underlyingAddress: string;
@@ -36,6 +37,7 @@ export function useUnwrapSy({
   syAddress,
 }: UseUnwrapSyParams): UseUnwrapSyReturn {
   const { address: userAddress } = useAccount();
+  const { slippageBps } = useTransactionSettings();
 
   // Fetch SY balance
   const {
@@ -60,8 +62,10 @@ export function useUnwrapSy({
 
       const calls: Call[] = [];
 
-      // SY.redeem(receiver, amount_sy_to_redeem) -> amount_redeemed
+      // SY.redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal) -> amount_redeemed
       const u256Amount = uint256.bnToUint256(amountWad);
+      const minTokenOut = calculateMinOutput(amountWad, slippageBps);
+      const u256MinTokenOut = uint256.bnToUint256(minTokenOut);
       calls.push({
         contractAddress: syAddress,
         entrypoint: 'redeem',
@@ -69,12 +73,15 @@ export function useUnwrapSy({
           userAddress, // receiver
           u256Amount.low,
           u256Amount.high, // amount_sy_to_redeem
+          u256MinTokenOut.low,
+          u256MinTokenOut.high, // min_token_out
+          '0x0', // burn_from_internal_balance (false for direct user calls)
         ],
       });
 
       return calls;
     },
-    [userAddress, syAddress]
+    [userAddress, syAddress, slippageBps]
   );
 
   // Execute unwrap

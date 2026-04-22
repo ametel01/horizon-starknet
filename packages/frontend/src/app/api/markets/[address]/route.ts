@@ -1,12 +1,13 @@
-import { eq, desc } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db, marketCurrentState, marketDailyStats } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { desc, eq } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+
+// ----- Types -----
 
 interface MarketDetailResponse {
   market: {
@@ -17,7 +18,12 @@ interface MarketDetailResponse {
     yt: string;
     underlying: string;
     underlyingSymbol: string;
+    /** @deprecated Use lnFeeRateRoot instead */
     feeRate: string;
+    /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
+    lnFeeRateRoot: string;
+    /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
+    reserveFeePercent: number;
     initialExchangeRate: string;
     createdAt: string;
   };
@@ -42,6 +48,123 @@ interface MarketDetailResponse {
   };
 }
 
+interface MarketCurrentStateRow {
+  market: string | null;
+  expiry: number | null;
+  sy: string | null;
+  pt: string | null;
+  yt: string | null;
+  underlying: string | null;
+  underlying_symbol: string | null;
+  ln_fee_rate_root: string | null;
+  reserve_fee_percent: number | null;
+  initial_exchange_rate: string | null;
+  created_at: Date | null;
+  sy_reserve: string | null;
+  pt_reserve: string | null;
+  implied_rate: string | null;
+  exchange_rate: string | null;
+  is_expired: boolean | null;
+  last_activity: Date | null;
+  sy_volume_24h: string | null;
+  pt_volume_24h: string | null;
+  fees_24h: string | null;
+  swaps_24h: number | null;
+}
+
+interface DailyStatsRow {
+  sy_volume: string | null;
+  total_fees: string | null;
+  swap_count: number | null;
+  unique_traders: number | null;
+}
+
+interface Stats7d {
+  volume: bigint;
+  fees: bigint;
+  swapCount: number;
+  uniqueTraders: Set<number>;
+}
+
+// ----- Helper Functions -----
+
+function buildMarketInfo(current: MarketCurrentStateRow): MarketDetailResponse['market'] {
+  const lnFeeRateRoot = current.ln_fee_rate_root ?? '0';
+  return {
+    address: current.market ?? '',
+    expiry: current.expiry ?? 0,
+    sy: current.sy ?? '',
+    pt: current.pt ?? '',
+    yt: current.yt ?? '',
+    underlying: current.underlying ?? '',
+    underlyingSymbol: current.underlying_symbol ?? '',
+    // Keep deprecated feeRate for backward compatibility
+    feeRate: lnFeeRateRoot,
+    lnFeeRateRoot,
+    reserveFeePercent: current.reserve_fee_percent ?? 0,
+    initialExchangeRate: current.initial_exchange_rate ?? '0',
+    createdAt: current.created_at?.toISOString() ?? '',
+  };
+}
+
+function buildCurrentState(current: MarketCurrentStateRow): MarketDetailResponse['currentState'] {
+  return {
+    syReserve: current.sy_reserve ?? '0',
+    ptReserve: current.pt_reserve ?? '0',
+    impliedRate: current.implied_rate ?? '0',
+    exchangeRate: current.exchange_rate ?? '0',
+    isExpired: current.is_expired ?? false,
+    lastActivity: current.last_activity?.toISOString() ?? null,
+  };
+}
+
+function buildStats24h(current: MarketCurrentStateRow): MarketDetailResponse['stats24h'] {
+  const syVolume = BigInt(current.sy_volume_24h ?? '0');
+  const ptVolume = BigInt(current.pt_volume_24h ?? '0');
+  return {
+    volume: (syVolume + ptVolume).toString(),
+    fees: current.fees_24h ?? '0',
+    swapCount: current.swaps_24h ?? 0,
+  };
+}
+
+function aggregateDailyStats(dailyStats: DailyStatsRow[]): Stats7d {
+  let volume = 0n;
+  let fees = 0n;
+  let swapCount = 0;
+  const uniqueTraders = new Set<number>();
+
+  for (const day of dailyStats) {
+    volume += BigInt(day.sy_volume ?? '0');
+    fees += BigInt(day.total_fees ?? '0');
+    swapCount += day.swap_count ?? 0;
+    const traders = day.unique_traders;
+    if (typeof traders === 'number') {
+      uniqueTraders.add(traders);
+    }
+  }
+
+  return { volume, fees, swapCount, uniqueTraders };
+}
+
+function buildStats7d(stats: Stats7d): MarketDetailResponse['stats7d'] {
+  return {
+    volume: stats.volume.toString(),
+    fees: stats.fees.toString(),
+    swapCount: stats.swapCount,
+    uniqueTraders: stats.uniqueTraders.size,
+  };
+}
+
+function buildResponse(current: MarketCurrentStateRow, stats7d: Stats7d): MarketDetailResponse {
+  return {
+    market: buildMarketInfo(current),
+    currentState: buildCurrentState(current),
+    stats24h: buildStats24h(current),
+    stats7d: buildStats7d(stats7d),
+  };
+}
+
 /**
  * GET /api/markets/[address]
  * Get detailed market information
@@ -50,15 +173,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<MarketDetailResponse | { error: string }>> {
-  // Apply rate limiting
   const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
-  if (rateLimitResult)
+  if (rateLimitResult) {
     return rateLimitResult as NextResponse<MarketDetailResponse | { error: string }>;
+  }
 
   const { address } = await params;
 
   try {
-    // Get current market state
     const [current] = await db
       .select()
       .from(marketCurrentState)
@@ -69,10 +191,6 @@ export async function GET(
       return NextResponse.json({ error: 'Market not found' }, { status: 404 });
     }
 
-    // Get 7-day stats
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
     const dailyStats = await db
       .select()
       .from(marketDailyStats)
@@ -80,57 +198,8 @@ export async function GET(
       .orderBy(desc(marketDailyStats.day))
       .limit(7);
 
-    // Aggregate 7-day stats
-    let volume7d = BigInt(0);
-    let fees7d = BigInt(0);
-    let swapCount7d = 0;
-    const uniqueTraders = new Set<number>();
-
-    for (const day of dailyStats) {
-      volume7d += BigInt(day.sy_volume ?? '0');
-      fees7d += BigInt(day.total_fees ?? '0');
-      swapCount7d += day.swap_count ?? 0;
-      const traders = day.unique_traders;
-      if (typeof traders === 'number') {
-        uniqueTraders.add(traders);
-      }
-    }
-
-    return NextResponse.json({
-      market: {
-        address: current.market ?? '',
-        expiry: current.expiry ?? 0,
-        sy: current.sy ?? '',
-        pt: current.pt ?? '',
-        yt: current.yt ?? '',
-        underlying: current.underlying ?? '',
-        underlyingSymbol: current.underlying_symbol ?? '',
-        feeRate: current.fee_rate ?? '0',
-        initialExchangeRate: current.initial_exchange_rate ?? '0',
-        createdAt: current.created_at?.toISOString() ?? '',
-      },
-      currentState: {
-        syReserve: current.sy_reserve ?? '0',
-        ptReserve: current.pt_reserve ?? '0',
-        impliedRate: current.implied_rate ?? '0',
-        exchangeRate: current.exchange_rate ?? '0',
-        isExpired: current.is_expired ?? false,
-        lastActivity: current.last_activity?.toISOString() ?? null,
-      },
-      stats24h: {
-        volume: (
-          BigInt(current.sy_volume_24h ?? '0') + BigInt(current.pt_volume_24h ?? '0')
-        ).toString(),
-        fees: current.fees_24h ?? '0',
-        swapCount: current.swaps_24h ?? 0,
-      },
-      stats7d: {
-        volume: volume7d.toString(),
-        fees: fees7d.toString(),
-        swapCount: swapCount7d,
-        uniqueTraders: uniqueTraders.size,
-      },
-    });
+    const stats7d = aggregateDailyStats(dailyStats);
+    return NextResponse.json(buildResponse(current, stats7d));
   } catch (error) {
     logError(error, { module: 'markets/detail', marketAddress: address });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -8,6 +8,7 @@
  * - RemoveLiquidity: Removing liquidity from market
  * - Swap: Swapping PT/SY in market
  * - SwapYT: Swapping YT via flash swap
+ * - RolloverLP: Rolling LP from old market to new market
  */
 
 import {
@@ -17,16 +18,16 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   routerAddLiquidity,
   routerMintPY,
   routerRedeemPY,
   routerRemoveLiquidity,
+  routerRolloverLp,
   routerSwap,
   routerSwapYT,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -44,12 +45,11 @@ import {
   routerMintPYSchema,
   routerRedeemPYSchema,
   routerRemoveLiquiditySchema,
+  routerRolloverLPSchema,
   routerSwapSchema,
   routerSwapYTSchema,
   validateEvent,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 const log = createIndexerLogger("router");
 
@@ -60,6 +60,7 @@ const ADD_LIQUIDITY = getSelector("AddLiquidity");
 const REMOVE_LIQUIDITY = getSelector("RemoveLiquidity");
 const SWAP = getSelector("Swap");
 const SWAP_YT = getSelector("SwapYT");
+const ROLLOVER_LP = getSelector("RolloverLP");
 
 export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
@@ -74,7 +75,8 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       routerRemoveLiquidity,
       routerSwap,
       routerSwapYT,
-    }),
+      routerRolloverLp,
+    })
   );
 
   logIndexerStart(log, { streamUrl, startingBlock: config.startingBlock });
@@ -103,6 +105,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         { address: config.router, keys: [REMOVE_LIQUIDITY] },
         { address: config.router, keys: [SWAP] },
         { address: config.router, keys: [SWAP_YT] },
+        { address: config.router, keys: [ROLLOVER_LP] },
       ],
     },
     async transform({ block, endCursor }) {
@@ -124,6 +127,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       type RemoveLiquidityRow = typeof routerRemoveLiquidity.$inferInsert;
       type SwapRow = typeof routerSwap.$inferInsert;
       type SwapYTRow = typeof routerSwapYT.$inferInsert;
+      type RolloverLpRow = typeof routerRolloverLp.$inferInsert;
 
       const mintPYRows: MintPYRow[] = [];
       const redeemPYRows: RedeemPYRow[] = [];
@@ -131,6 +135,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       const removeLiquidityRows: RemoveLiquidityRow[] = [];
       const swapRows: SwapRow[] = [];
       const swapYTRows: SwapYTRow[] = [];
+      const rolloverLpRows: RolloverLpRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -248,7 +253,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
                 eventName: "RemoveLiquidity",
                 blockNumber,
                 transactionHash,
-              },
+              }
             );
             if (!validated) {
               errorCount++;
@@ -341,6 +346,37 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               sy_out: syOut,
               yt_out: ytOut,
             });
+          } else if (matchSelector(eventKey, ROLLOVER_LP)) {
+            // Validate event structure
+            const validated = validateEvent(routerRolloverLPSchema, event, {
+              indexer: "router",
+              eventName: "RolloverLP",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            const data = validated.data;
+            const marketOld = data[0];
+            const marketNew = data[1];
+            const lpBurned = readU256(data, 2, "lp_burned");
+            const lpMinted = readU256(data, 4, "lp_minted");
+
+            rolloverLpRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              sender,
+              receiver,
+              market_old: marketOld ?? "",
+              market_new: marketNew ?? "",
+              lp_burned: lpBurned,
+              lp_minted: lpMinted,
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -357,7 +393,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -371,7 +407,7 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 
@@ -411,6 +447,12 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(swapYTRows)
               .onConflictDoNothing();
           }
+          if (rolloverLpRows.length > 0) {
+            await tx
+              .insert(routerRolloverLp)
+              .values(rolloverLpRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
@@ -421,7 +463,8 @@ export default function routerIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         addLiquidityRows.length +
         removeLiquidityRows.length +
         swapRows.length +
-        swapYTRows.length;
+        swapYTRows.length +
+        rolloverLpRows.length;
       recordEvents("router", successCount, errorCount);
       recordBlock("router", blockNumber);
 

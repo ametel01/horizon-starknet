@@ -1,6 +1,25 @@
 // Yield feature model
-export * from './useYield';
-export * from './useUserYield';
+
 export * from './useApyBreakdown';
-export * from './useUnderlying';
 export * from './useClaimGasCheck';
+// YT Interest system hooks
+export {
+  useClaimAllInterestAndRewards,
+  useClaimInterestAndRewards,
+} from './useClaimInterestAndRewards';
+export { type CombinedClaimPreview, useCombinedClaimPreview } from './useCombinedClaimPreview';
+export * from './useInterestFee';
+export * from './useNegativeYieldAlerts';
+export * from './usePostExpiryStatus';
+export * from './useSyAssetInfo';
+export * from './useSyPauseState';
+// Indexed data hooks (from API/database)
+export * from './useSyPauseStateIndexed';
+export * from './useSyPreview';
+export * from './useSyTokenValidation';
+export * from './useSyWatermark';
+// Treasury admin hooks
+export * from './useTreasuryYield';
+export * from './useUnderlying';
+export * from './useUserYield';
+export * from './useYield';

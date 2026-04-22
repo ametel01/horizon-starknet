@@ -1,11 +1,10 @@
 'use client';
 
-import { AlertTriangleIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Alert, AlertDescription } from '@shared/ui/alert';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { AlertTriangleIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { useClaimGasCheck } from '../model/useClaimGasCheck';
 

@@ -1,7 +1,6 @@
-import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
 
 /**
  * Badge variants following Von Restorff Effect and 60-30-10 color rule.

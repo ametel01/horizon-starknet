@@ -1,12 +1,13 @@
-import { desc, gte } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { getCacheHeaders } from '@shared/server/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@shared/server/db';
 import { logError, logWarn } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
-import { validateQuery, analyticsVolumeQuerySchema } from '@shared/server/validations/api';
+import { analyticsVolumeQuerySchema, validateQuery } from '@shared/server/validations/api';
+import { desc, gte } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+
+// ----- Types -----
 
 interface VolumeDataPoint {
   date: string;
@@ -32,6 +33,265 @@ export interface VolumeResponse {
   history: VolumeDataPoint[];
 }
 
+interface DateThresholds {
+  since: Date;
+  oneDayAgo: Date;
+  sevenDaysAgo: Date;
+}
+
+interface PeriodTotals {
+  syVolume24h: bigint;
+  ptVolume24h: bigint;
+  swapCount24h: number;
+  uniqueSwappers24h: number;
+  syVolume7d: bigint;
+  ptVolume7d: bigint;
+  swapCount7d: number;
+}
+
+interface DailyAggregate {
+  syVol: bigint;
+  ptVol: bigint;
+  swaps: number;
+  senders: Set<string>;
+}
+
+interface AggregationResult {
+  totals: PeriodTotals;
+  history: VolumeDataPoint[];
+}
+
+// ----- Helper Functions -----
+
+function createDateThresholds(days: number): DateThresholds {
+  const now = new Date();
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  return {
+    since,
+    oneDayAgo: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    sevenDaysAgo: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+  };
+}
+
+function createEmptyTotals(): PeriodTotals {
+  return {
+    syVolume24h: 0n,
+    ptVolume24h: 0n,
+    swapCount24h: 0,
+    uniqueSwappers24h: 0,
+    syVolume7d: 0n,
+    ptVolume7d: 0n,
+    swapCount7d: 0,
+  };
+}
+
+function createEmptyResponse(): VolumeResponse {
+  return {
+    total24h: { syVolume: '0', ptVolume: '0', swapCount: 0, uniqueSwappers: 0 },
+    total7d: { syVolume: '0', ptVolume: '0', swapCount: 0 },
+    history: [],
+  };
+}
+
+// ----- Materialized View Aggregation -----
+
+interface DailyStat {
+  day: Date | null;
+  total_sy_volume: string | null;
+  total_pt_volume: string | null;
+  swap_count: number | null;
+  unique_swappers: number | null;
+}
+
+function aggregateFromMaterializedView(
+  dailyStats: DailyStat[],
+  th: DateThresholds
+): AggregationResult {
+  const totals = createEmptyTotals();
+  const history: VolumeDataPoint[] = [];
+
+  for (const stat of dailyStats) {
+    const statDate = stat.day ?? new Date(0);
+    const syVol = BigInt(stat.total_sy_volume ?? '0');
+    const ptVol = BigInt(stat.total_pt_volume ?? '0');
+    const swapCount = stat.swap_count ?? 0;
+    const uniqueSwappers = stat.unique_swappers ?? 0;
+
+    history.push({
+      date: statDate.toISOString().split('T')[0] ?? '',
+      syVolume: stat.total_sy_volume ?? '0',
+      ptVolume: stat.total_pt_volume ?? '0',
+      swapCount,
+      uniqueSwappers,
+    });
+
+    if (statDate >= th.oneDayAgo) {
+      totals.syVolume24h += syVol;
+      totals.ptVolume24h += ptVol;
+      totals.swapCount24h += swapCount;
+      totals.uniqueSwappers24h = Math.max(totals.uniqueSwappers24h, uniqueSwappers);
+    }
+
+    if (statDate >= th.sevenDaysAgo) {
+      totals.syVolume7d += syVol;
+      totals.ptVolume7d += ptVol;
+      totals.swapCount7d += swapCount;
+    }
+  }
+
+  history.reverse(); // Oldest first
+  return { totals, history };
+}
+
+// ----- Fallback Swap Aggregation -----
+
+function getOrCreateDailyEntry(
+  dailyVolume: Map<string, DailyAggregate>,
+  dateKey: string
+): DailyAggregate {
+  let entry = dailyVolume.get(dateKey);
+  if (!entry) {
+    entry = { syVol: 0n, ptVol: 0n, swaps: 0, senders: new Set() };
+    dailyVolume.set(dateKey, entry);
+  }
+  return entry;
+}
+
+interface SwapRecord {
+  block_timestamp: Date;
+  sender: string;
+  sy_in: string;
+  sy_out: string;
+}
+
+interface PtSwapRecord extends SwapRecord {
+  pt_in: string;
+  pt_out: string;
+}
+
+function processPtSwap(
+  swap: PtSwapRecord,
+  totals: PeriodTotals,
+  dailyVolume: Map<string, DailyAggregate>,
+  uniqueSenders24h: Set<string>,
+  uniqueSenders7d: Set<string>,
+  th: DateThresholds
+): void {
+  const timestamp = swap.block_timestamp;
+  const dateKey = timestamp.toISOString().split('T')[0] ?? '';
+  const syVol = BigInt(swap.sy_in) + BigInt(swap.sy_out);
+  const ptVol = BigInt(swap.pt_in) + BigInt(swap.pt_out);
+
+  const dayEntry = getOrCreateDailyEntry(dailyVolume, dateKey);
+  dayEntry.syVol += syVol;
+  dayEntry.ptVol += ptVol;
+  dayEntry.swaps++;
+  dayEntry.senders.add(swap.sender);
+
+  if (timestamp >= th.oneDayAgo) {
+    totals.syVolume24h += syVol;
+    totals.ptVolume24h += ptVol;
+    totals.swapCount24h++;
+    uniqueSenders24h.add(swap.sender);
+  }
+
+  if (timestamp >= th.sevenDaysAgo) {
+    totals.syVolume7d += syVol;
+    totals.ptVolume7d += ptVol;
+    totals.swapCount7d++;
+    uniqueSenders7d.add(swap.sender);
+  }
+}
+
+function processYtSwap(
+  swap: SwapRecord,
+  totals: PeriodTotals,
+  dailyVolume: Map<string, DailyAggregate>,
+  uniqueSenders24h: Set<string>,
+  uniqueSenders7d: Set<string>,
+  th: DateThresholds
+): void {
+  const timestamp = swap.block_timestamp;
+  const dateKey = timestamp.toISOString().split('T')[0] ?? '';
+  const syVol = BigInt(swap.sy_in) + BigInt(swap.sy_out);
+
+  const dayEntry = getOrCreateDailyEntry(dailyVolume, dateKey);
+  dayEntry.syVol += syVol;
+  dayEntry.swaps++;
+  dayEntry.senders.add(swap.sender);
+
+  if (timestamp >= th.oneDayAgo) {
+    totals.syVolume24h += syVol;
+    totals.swapCount24h++;
+    uniqueSenders24h.add(swap.sender);
+  }
+
+  if (timestamp >= th.sevenDaysAgo) {
+    totals.syVolume7d += syVol;
+    totals.swapCount7d++;
+    uniqueSenders7d.add(swap.sender);
+  }
+}
+
+function dailyAggregateToHistory(dailyVolume: Map<string, DailyAggregate>): VolumeDataPoint[] {
+  return Array.from(dailyVolume.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, data]) => ({
+      date,
+      syVolume: data.syVol.toString(),
+      ptVolume: data.ptVol.toString(),
+      swapCount: data.swaps,
+      uniqueSwappers: data.senders.size,
+    }));
+}
+
+async function aggregateFromSwapEvents(th: DateThresholds): Promise<AggregationResult> {
+  logWarn('Using fallback query from router_swap', { module: 'analytics/volume' });
+
+  const [ptSwaps, ytSwaps] = await Promise.all([
+    db.select().from(routerSwap).where(gte(routerSwap.block_timestamp, th.since)),
+    db.select().from(routerSwapYT).where(gte(routerSwapYT.block_timestamp, th.since)),
+  ]);
+
+  const totals = createEmptyTotals();
+  const dailyVolume = new Map<string, DailyAggregate>();
+  const uniqueSenders24h = new Set<string>();
+  const uniqueSenders7d = new Set<string>();
+
+  for (const swap of ptSwaps) {
+    processPtSwap(swap, totals, dailyVolume, uniqueSenders24h, uniqueSenders7d, th);
+  }
+
+  for (const swap of ytSwaps) {
+    processYtSwap(swap, totals, dailyVolume, uniqueSenders24h, uniqueSenders7d, th);
+  }
+
+  totals.uniqueSwappers24h = uniqueSenders24h.size;
+
+  return { totals, history: dailyAggregateToHistory(dailyVolume) };
+}
+
+// ----- Response Builder -----
+
+function buildResponse(result: AggregationResult): VolumeResponse {
+  const { totals, history } = result;
+  return {
+    total24h: {
+      syVolume: totals.syVolume24h.toString(),
+      ptVolume: totals.ptVolume24h.toString(),
+      swapCount: totals.swapCount24h,
+      uniqueSwappers: totals.uniqueSwappers24h,
+    },
+    total7d: {
+      syVolume: totals.syVolume7d.toString(),
+      ptVolume: totals.ptVolume7d.toString(),
+      swapCount: totals.swapCount7d,
+    },
+    history,
+  };
+}
+
 /**
  * GET /api/analytics/volume
  * Get protocol-wide volume metrics
@@ -40,209 +300,32 @@ export interface VolumeResponse {
  * - days: number - how many days of history (default: 30, max: 365)
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  // Apply rate limiting
   const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
   if (rateLimitResult) return rateLimitResult;
 
-  // Validate query parameters
   const params = validateQuery(request.nextUrl.searchParams, analyticsVolumeQuerySchema);
   if (params instanceof NextResponse) return params;
 
-  const { days } = params;
-
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const th = createDateThresholds(params.days);
 
   try {
-    // First try the materialized view
+    // Try materialized view first
     const dailyStats = await db
       .select()
       .from(protocolDailyStats)
-      .where(gte(protocolDailyStats.day, since))
+      .where(gte(protocolDailyStats.day, th.since))
       .orderBy(desc(protocolDailyStats.day));
 
-    // Check if we have data from the materialized view
     const hasDataFromView =
       dailyStats.length > 0 && dailyStats.some((s) => (s.swap_count ?? 0) > 0);
 
-    // Calculate totals
-    let syVolume24h = BigInt(0);
-    let ptVolume24h = BigInt(0);
-    let swapCount24h = 0;
-    let uniqueSwappers24h = 0;
+    const result = hasDataFromView
+      ? aggregateFromMaterializedView(dailyStats, th)
+      : await aggregateFromSwapEvents(th);
 
-    let syVolume7d = BigInt(0);
-    let ptVolume7d = BigInt(0);
-    let swapCount7d = 0;
-
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    const history: VolumeDataPoint[] = [];
-
-    if (hasDataFromView) {
-      // Use the materialized view data
-      for (const stat of dailyStats) {
-        const statDate = stat.day ?? new Date(0);
-
-        // Build history array
-        history.push({
-          date: statDate.toISOString().split('T')[0] ?? '',
-          syVolume: stat.total_sy_volume ?? '0',
-          ptVolume: stat.total_pt_volume ?? '0',
-          swapCount: stat.swap_count ?? 0,
-          uniqueSwappers: stat.unique_swappers ?? 0,
-        });
-
-        // 24h totals
-        if (statDate >= oneDayAgo) {
-          syVolume24h += BigInt(stat.total_sy_volume ?? '0');
-          ptVolume24h += BigInt(stat.total_pt_volume ?? '0');
-          swapCount24h += stat.swap_count ?? 0;
-          uniqueSwappers24h = Math.max(uniqueSwappers24h, stat.unique_swappers ?? 0);
-        }
-
-        // 7d totals
-        if (statDate >= sevenDaysAgo) {
-          syVolume7d += BigInt(stat.total_sy_volume ?? '0');
-          ptVolume7d += BigInt(stat.total_pt_volume ?? '0');
-          swapCount7d += stat.swap_count ?? 0;
-        }
-      }
-
-      // Reverse to get oldest first (materialized view returns in DESC order)
-      history.reverse();
-    } else {
-      // Fallback: Query raw router_swap and router_swap_yt events directly
-      logWarn('Using fallback query from router_swap', { module: 'analytics/volume' });
-
-      // Get PT swaps from router
-      const ptSwaps = await db
-        .select()
-        .from(routerSwap)
-        .where(gte(routerSwap.block_timestamp, since));
-
-      // Get YT swaps from router
-      const ytSwaps = await db
-        .select()
-        .from(routerSwapYT)
-        .where(gte(routerSwapYT.block_timestamp, since));
-
-      const uniqueSenders24h = new Set<string>();
-      const uniqueSenders7d = new Set<string>();
-
-      // Aggregate by day for history
-      const dailyVolume = new Map<
-        string,
-        { syVol: bigint; ptVol: bigint; swaps: number; senders: Set<string> }
-      >();
-
-      // Process PT swaps
-      for (const swap of ptSwaps) {
-        const timestamp = swap.block_timestamp;
-        const dateKey = timestamp.toISOString().split('T')[0] ?? '';
-        const syVol = BigInt(swap.sy_in) + BigInt(swap.sy_out);
-        const ptVol = BigInt(swap.pt_in) + BigInt(swap.pt_out);
-
-        // Aggregate by day
-        if (!dailyVolume.has(dateKey)) {
-          dailyVolume.set(dateKey, { syVol: 0n, ptVol: 0n, swaps: 0, senders: new Set() });
-        }
-        const dayEntry = dailyVolume.get(dateKey);
-        if (dayEntry) {
-          dayEntry.syVol += syVol;
-          dayEntry.ptVol += ptVol;
-          dayEntry.swaps++;
-          dayEntry.senders.add(swap.sender);
-        }
-
-        if (timestamp >= oneDayAgo) {
-          syVolume24h += syVol;
-          ptVolume24h += ptVol;
-          swapCount24h++;
-          uniqueSenders24h.add(swap.sender);
-        }
-
-        if (timestamp >= sevenDaysAgo) {
-          syVolume7d += syVol;
-          ptVolume7d += ptVol;
-          swapCount7d++;
-          uniqueSenders7d.add(swap.sender);
-        }
-      }
-
-      // Process YT swaps (add SY volume, YT doesn't contribute to PT volume)
-      for (const swap of ytSwaps) {
-        const timestamp = swap.block_timestamp;
-        const dateKey = timestamp.toISOString().split('T')[0] ?? '';
-        const syVol = BigInt(swap.sy_in) + BigInt(swap.sy_out);
-
-        // Aggregate by day
-        if (!dailyVolume.has(dateKey)) {
-          dailyVolume.set(dateKey, { syVol: 0n, ptVol: 0n, swaps: 0, senders: new Set() });
-        }
-        const dayEntry = dailyVolume.get(dateKey);
-        if (dayEntry) {
-          dayEntry.syVol += syVol;
-          dayEntry.swaps++;
-          dayEntry.senders.add(swap.sender);
-        }
-
-        if (timestamp >= oneDayAgo) {
-          syVolume24h += syVol;
-          swapCount24h++;
-          uniqueSenders24h.add(swap.sender);
-        }
-
-        if (timestamp >= sevenDaysAgo) {
-          syVolume7d += syVol;
-          swapCount7d++;
-          uniqueSenders7d.add(swap.sender);
-        }
-      }
-
-      uniqueSwappers24h = uniqueSenders24h.size;
-
-      // Convert daily aggregates to history array (sorted oldest first)
-      const sortedDays = Array.from(dailyVolume.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-      for (const [date, data] of sortedDays) {
-        history.push({
-          date,
-          syVolume: data.syVol.toString(),
-          ptVolume: data.ptVol.toString(),
-          swapCount: data.swaps,
-          uniqueSwappers: data.senders.size,
-        });
-      }
-    }
-
-    return NextResponse.json(
-      {
-        total24h: {
-          syVolume: syVolume24h.toString(),
-          ptVolume: ptVolume24h.toString(),
-          swapCount: swapCount24h,
-          uniqueSwappers: uniqueSwappers24h,
-        },
-        total7d: {
-          syVolume: syVolume7d.toString(),
-          ptVolume: ptVolume7d.toString(),
-          swapCount: swapCount7d,
-        },
-        history,
-      },
-      { headers: getCacheHeaders('MEDIUM') }
-    );
+    return NextResponse.json(buildResponse(result), { headers: getCacheHeaders('MEDIUM') });
   } catch (error) {
     logError(error, { module: 'analytics/volume' });
-    return NextResponse.json(
-      {
-        total24h: { syVolume: '0', ptVolume: '0', swapCount: 0, uniqueSwappers: 0 },
-        total7d: { syVolume: '0', ptVolume: '0', swapCount: 0 },
-        history: [],
-      },
-      { status: 500 }
-    );
+    return NextResponse.json(createEmptyResponse(), { status: 500 });
   }
 }

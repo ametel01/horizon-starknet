@@ -1,9 +1,8 @@
 'use client';
 
 import { PreviewCard as PreviewCardPrimitive } from '@base-ui/react/preview-card';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
+import type { ReactNode } from 'react';
 
 function HoverCard({ ...props }: PreviewCardPrimitive.Root.Props): ReactNode {
   return <PreviewCardPrimitive.Root data-slot="hover-card" {...props} />;
@@ -47,4 +46,4 @@ function HoverCardContent({
   );
 }
 
-export { HoverCard, HoverCardTrigger, HoverCardContent };
+export { HoverCard, HoverCardContent, HoverCardTrigger };

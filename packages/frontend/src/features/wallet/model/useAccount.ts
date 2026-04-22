@@ -1,9 +1,8 @@
 'use client';
 
+import { useStarknet } from '@features/wallet';
 import { useEffect, useState } from 'react';
 import { WalletAccount } from 'starknet';
-
-import { useStarknet } from '@features/wallet';
 
 export interface UseAccountReturn {
   address: string | null;

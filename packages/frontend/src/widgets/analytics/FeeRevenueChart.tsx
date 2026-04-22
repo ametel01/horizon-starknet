@@ -1,5 +1,13 @@
 'use client';
 
+import { useProtocolFees } from '@features/analytics';
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
@@ -12,15 +20,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useProtocolFees } from '@features/analytics';
-import { useDashboardMarkets } from '@features/markets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
-import { cn } from '@shared/lib/utils';
-import { fromWad } from '@shared/math/wad';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -275,16 +274,18 @@ export function FeeRevenueChart({
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
               cursor={false}
-              formatter={(value: number | undefined, name: string | undefined) => {
-                if (name === 'feesUsd') {
+              formatter={(value, name) => {
+                const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+                const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                if (tooltipName === 'feesUsd') {
                   return [
-                    `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                    `$${numericValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
                     'Fees',
                   ];
                 }
-                return [value, name];
+                return [String(value ?? ''), tooltipName];
               }}
-              labelFormatter={(label: string) => label}
+              labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
             />
             <Bar dataKey="feesUsd" fill="var(--chart-2)" radius={[4, 4, 0, 0]} maxBarSize={40} />
           </BarChart>

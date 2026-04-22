@@ -1,9 +1,8 @@
 'use client';
 
-import { type ReactNode, useEffect, useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { type ReactNode, useEffect, useState } from 'react';
 
 interface ModeTransitionProps {
   children: ReactNode;

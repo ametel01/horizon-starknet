@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
+import { useEffect, useState } from 'react';
 
 interface TocItem {
   id: string;

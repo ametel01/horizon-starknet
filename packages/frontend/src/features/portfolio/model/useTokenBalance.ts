@@ -1,24 +1,14 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { uint256 } from 'starknet';
-
 import { useAccount, useStarknet } from '@features/wallet';
+import { toBigInt } from '@shared/lib';
 import { getERC20Contract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 interface TokenInfo {
   name: string;
   symbol: string;
   decimals: number;
-}
-
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
 }
 
 // Return type for balance hooks - stores as string to avoid BigInt serialization issues
@@ -48,7 +38,7 @@ export function useTokenBalance(
 
       const token = getERC20Contract(tokenAddress, provider);
       const balance = await token.balance_of(address);
-      return toBigInt(balance as bigint | { low: bigint; high: bigint }).toString();
+      return toBigInt(balance).toString();
     },
     enabled: enabled && !!tokenAddress && !!address,
     refetchInterval,
@@ -83,7 +73,7 @@ export function useTokenAllowance(
 
       const token = getERC20Contract(tokenAddress, provider);
       const allowance = await token.allowance(address, spenderAddress);
-      return toBigInt(allowance as bigint | { low: bigint; high: bigint }).toString();
+      return toBigInt(allowance).toString();
     },
     enabled: enabled && !!tokenAddress && !!address && !!spenderAddress,
     refetchInterval,
@@ -133,7 +123,7 @@ export function useTokenInfo(
       };
     },
     enabled: enabled && !!tokenAddress,
-    staleTime: Infinity, // Token info doesn't change
+    staleTime: Number.POSITIVE_INFINITY, // Token info doesn't change
   });
 }
 
@@ -141,11 +131,11 @@ export function useTokenInfo(
 function feltToString(felt: bigint): string {
   let hex = felt.toString(16);
   if (hex.length % 2 !== 0) {
-    hex = '0' + hex;
+    hex = `0${hex}`;
   }
   let str = '';
   for (let i = 0; i < hex.length; i += 2) {
-    const charCode = parseInt(hex.substring(i, i + 2), 16);
+    const charCode = Number.parseInt(hex.substring(i, i + 2), 16);
     if (charCode > 0) {
       str += String.fromCharCode(charCode);
     }

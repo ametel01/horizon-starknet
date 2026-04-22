@@ -1,11 +1,10 @@
 'use client';
 
+import { cn } from '@shared/lib/utils';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-
-import { cn } from '@shared/lib/utils';
 
 interface NavItem {
   title: string;
@@ -38,6 +37,7 @@ const navigation: NavItem[] = [
       { title: 'Trade Yield', href: '/docs/guides/trade-yield' },
       { title: 'Provide Liquidity', href: '/docs/guides/provide-liquidity' },
       { title: 'Manage Positions', href: '/docs/guides/manage-positions' },
+      { title: 'Analytics', href: '/docs/guides/analytics' },
     ],
   },
   {
@@ -47,6 +47,7 @@ const navigation: NavItem[] = [
       { title: 'Pricing', href: '/docs/mechanics/pricing' },
       { title: 'APY Calculation', href: '/docs/mechanics/apy-calculation' },
       { title: 'Redemption', href: '/docs/mechanics/redemption' },
+      { title: 'Flash Mint', href: '/docs/mechanics/flash-mint' },
     ],
   },
   {
@@ -92,6 +93,7 @@ function NavItemComponent({ item, level = 0 }: NavItemProps): React.ReactNode {
       <div className="flex items-center">
         {hasChildren && (
           <button
+            type="button"
             onClick={handleToggle}
             className="text-muted-foreground hover:text-foreground mr-1 p-0.5"
             aria-label={isOpen ? 'Collapse' : 'Expand'}
@@ -143,6 +145,6 @@ export function DocsSidebar(): React.ReactNode {
   );
 }
 
+export type { NavItem };
 // Export navigation for use in prev/next navigation
 export { navigation };
-export type { NavItem };

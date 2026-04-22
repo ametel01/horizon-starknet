@@ -1,14 +1,13 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -165,10 +164,13 @@ export function TvlBreakdown({ className, height = 300 }: TvlBreakdownProps): Re
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value: number | undefined, name: string | undefined) => [
-                formatUsdCompact(chartData.find((d) => d.name === name)?.valueUsd ?? 0),
-                name ?? '',
-              ]}
+              formatter={(_value, name) => {
+                const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                return [
+                  formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.valueUsd ?? 0),
+                  tooltipName,
+                ];
+              }}
             />
             <Legend
               wrapperStyle={{ fontSize: '12px' }}
@@ -266,10 +268,13 @@ export function TvlBreakdownCompact({ className, height = 200 }: TvlBreakdownPro
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value: number | undefined, name: string | undefined) => [
-              formatUsdCompact(chartData.find((d) => d.name === name)?.valueUsd ?? 0),
-              name ?? '',
-            ]}
+            formatter={(_value, name) => {
+              const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+              return [
+                formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.valueUsd ?? 0),
+                tooltipName,
+              ];
+            }}
           />
         </PieChart>
       </ResponsiveContainer>

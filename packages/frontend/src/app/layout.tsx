@@ -1,12 +1,11 @@
-import type { Metadata } from 'next';
-import { JetBrains_Mono, Outfit, Sora } from 'next/font/google';
-
-import { Providers } from '@/providers';
 import { Footer } from '@shared/layout/Footer';
 import { Header } from '@shared/layout/Header';
 import { MobileNav } from '@shared/layout/MobileNav';
 import { Toaster } from '@shared/ui/sonner';
 import { IndexerStatusBanner } from '@widgets/analytics/IndexerStatusBanner';
+import type { Metadata } from 'next';
+import { JetBrains_Mono, Outfit, Sora } from 'next/font/google';
+import { Providers } from '@/providers';
 
 import './globals.css';
 
@@ -107,6 +106,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
       lang="en"
       className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
       suppressHydrationWarning
+      style={{ colorScheme: 'light dark' }}
     >
       <head>
         {/* Preconnect to external origins used early in page lifecycle */}

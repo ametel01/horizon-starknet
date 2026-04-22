@@ -1,8 +1,5 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-
 import { useProtocolFees } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
@@ -10,6 +7,8 @@ import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo } from 'react';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -211,12 +210,13 @@ export function FeeByMarket({ className, height = 300, days = 30 }: FeeByMarketP
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value: number | undefined, name: string | undefined) => {
-                const market = chartData.find((d) => d.name === name);
-                if (!market) return [formatUsdCompact(0), name ?? ''];
+              formatter={(_value, name) => {
+                const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                const market = chartData.find((d) => d.name === tooltipName);
+                if (!market) return [formatUsdCompact(0), tooltipName];
                 return [
                   `${formatUsdCompact(market.valueUsd)} (${String(market.swapCount)} swaps)`,
-                  name ?? '',
+                  tooltipName,
                 ];
               }}
             />
@@ -352,9 +352,10 @@ export function FeeByMarketCompact({
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value: number | undefined, name: string | undefined) => {
-              const market = chartData.find((d) => d.name === name);
-              return [formatUsdCompact(market?.valueUsd ?? 0), name ?? ''];
+            formatter={(_value, name) => {
+              const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+              const market = chartData.find((d) => d.name === tooltipName);
+              return [formatUsdCompact(market?.valueUsd ?? 0), tooltipName];
             }}
           />
         </PieChart>

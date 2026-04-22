@@ -1,10 +1,11 @@
-use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
+use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
 
@@ -28,6 +29,10 @@ pub fn alice() -> ContractAddress {
 
 pub fn bob() -> ContractAddress {
     'bob'.try_into().unwrap()
+}
+
+pub fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
 }
 
 pub fn zero_address() -> ContractAddress {
@@ -87,12 +92,32 @@ pub fn deploy_mock_yield_token_default() -> (IMockERC20Dispatcher, IMockYieldTok
     (base_asset, yield_token)
 }
 
-/// Deploy SY token
+/// Deploy SY token with default single-token support (underlying for both in/out)
 /// For native yield tokens, underlying == index_oracle (same address)
 /// For bridged tokens, index_oracle would be a separate oracle contract
 /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+/// Defaults to AssetType::Token
 pub fn deploy_sy(
     underlying: ContractAddress, index_oracle: ContractAddress, is_erc4626: bool,
+) -> ISYDispatcher {
+    deploy_sy_with_tokens(
+        underlying,
+        index_oracle,
+        is_erc4626,
+        AssetType::Token,
+        array![underlying],
+        array![underlying],
+    )
+}
+
+/// Deploy SY token with explicit tokens_in and tokens_out
+pub fn deploy_sy_with_tokens(
+    underlying: ContractAddress,
+    index_oracle: ContractAddress,
+    is_erc4626: bool,
+    asset_type: AssetType,
+    tokens_in: Array<ContractAddress>,
+    tokens_out: Array<ContractAddress>,
 ) -> ISYDispatcher {
     let contract = declare("SY").unwrap_syscall().contract_class();
     let mut calldata = array![];
@@ -105,7 +130,24 @@ pub fn deploy_sy(
     } else {
         0
     });
+    // Serialize AssetType enum (0 = Token, 1 = Liquidity)
+    calldata.append(match asset_type {
+        AssetType::Token => 0,
+        AssetType::Liquidity => 1,
+    });
     calldata.append(admin().into()); // pauser
+
+    // Serialize tokens_in span
+    calldata.append(tokens_in.len().into());
+    for token in tokens_in {
+        calldata.append(token.into());
+    }
+
+    // Serialize tokens_out span
+    calldata.append(tokens_out.len().into());
+    for token in tokens_out {
+        calldata.append(token.into());
+    }
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -118,7 +160,15 @@ pub fn get_pt_class_hash() -> ClassHash {
 }
 
 /// Deploy YT token (which also deploys PT)
+/// Uses default 18 decimals (matching SY/underlying standard)
 pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> IYTDispatcher {
+    deploy_yt_with_decimals(sy, pt_class_hash, expiry, 18)
+}
+
+/// Deploy YT token with custom decimals
+pub fn deploy_yt_with_decimals(
+    sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64, decimals: u8,
+) -> IYTDispatcher {
     start_cheat_block_timestamp_global(CURRENT_TIME);
 
     let contract = declare("YT").unwrap_syscall().contract_class();
@@ -129,6 +179,11 @@ pub fn deploy_yt(sy: ContractAddress, pt_class_hash: ClassHash, expiry: u64) -> 
     calldata.append(pt_class_hash.into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury for post-expiry yield
+    calldata.append(decimals.into()); // token decimals
+    // Reward tokens (empty span for standard deployment)
+    let empty_reward_tokens: Array<ContractAddress> = array![];
+    Serde::serialize(@empty_reward_tokens, ref calldata);
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -183,10 +238,19 @@ pub fn mint_yield_token_to_user(
 }
 
 /// Set yield token index (simulate yield accrual)
+/// Disables time-based yield for precise control when manually setting index
+/// Also advances block number to invalidate YT's same-block cache
 pub fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    // Derive unique block number from index value (1e18 -> block 1001, 1.1e18 -> block 1101, etc.)
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 /// Mint yield token and deposit to SY for a user
@@ -202,13 +266,15 @@ pub fn mint_and_deposit_sy(
     stop_cheat_caller_address(yield_token.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    let sy_minted = sy.deposit(user, amount);
+    // deposit(receiver, token_in, amount_shares_to_deposit, min_shares_out)
+    let sy_minted = sy.deposit(user, yield_token.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     sy_minted
 }
 
 /// Mint yield token, deposit to SY, and mint PT/YT for a user
+/// Uses floating SY pattern: transfer SY to YT contract, then call mint_py
 pub fn mint_and_mint_py(
     yield_token: IMockYieldTokenDispatcher,
     sy: ISYDispatcher,
@@ -219,15 +285,179 @@ pub fn mint_and_mint_py(
     // Get SY first
     let sy_amount = mint_and_deposit_sy(yield_token, sy, user, amount);
 
-    // Approve YT to spend SY
+    // Transfer SY to YT contract (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, sy_amount);
+    sy.transfer(yt.contract_address, sy_amount);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Mint PT/YT
+    // Mint PT/YT using floating SY (same receiver for both)
     start_cheat_caller_address(yt.contract_address, user);
-    let (pt_minted, yt_minted) = yt.mint_py(user, sy_amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 
     (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer SY from user to YT contract and mint PT/YT
+/// This wraps the floating SY pattern for tests that already have SY balance
+pub fn transfer_sy_and_mint_py(
+    sy: ISYDispatcher, yt: IYTDispatcher, user: ContractAddress, amount: u256,
+) -> (u256, u256) {
+    // Transfer SY to YT contract (floating SY pattern)
+    start_cheat_caller_address(sy.contract_address, user);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT/YT using floating SY (same receiver for both)
+    start_cheat_caller_address(yt.contract_address, user);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer SY from user to YT contract and mint PT/YT to a different receiver
+pub fn transfer_sy_and_mint_py_to(
+    sy: ISYDispatcher,
+    yt: IYTDispatcher,
+    caller: ContractAddress,
+    receiver: ContractAddress,
+    amount: u256,
+) -> (u256, u256) {
+    // Transfer SY to YT contract (floating SY pattern)
+    start_cheat_caller_address(sy.contract_address, caller);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT/YT using floating SY (same receiver for both)
+    start_cheat_caller_address(yt.contract_address, caller);
+    let (pt_minted, yt_minted) = yt.mint_py(receiver, receiver);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer SY and mint PT/YT to distinct receivers (Pendle-style)
+pub fn transfer_sy_and_mint_py_split(
+    sy: ISYDispatcher,
+    yt: IYTDispatcher,
+    caller: ContractAddress,
+    receiver_pt: ContractAddress,
+    receiver_yt: ContractAddress,
+    amount: u256,
+) -> (u256, u256) {
+    // Transfer SY to YT contract (floating SY pattern)
+    start_cheat_caller_address(sy.contract_address, caller);
+    sy.transfer(yt.contract_address, amount);
+    stop_cheat_caller_address(sy.contract_address);
+
+    // Mint PT to receiver_pt, YT to receiver_yt
+    start_cheat_caller_address(yt.contract_address, caller);
+    let (pt_minted, yt_minted) = yt.mint_py(receiver_pt, receiver_yt);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (pt_minted, yt_minted)
+}
+
+/// Helper for tests: transfer PT and YT to YT contract and redeem for SY
+/// Uses floating token pattern - PT and YT must be pre-transferred before redeem
+pub fn transfer_py_and_redeem(
+    yt: IYTDispatcher, caller: ContractAddress, receiver: ContractAddress, amount_py: u256,
+) -> u256 {
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Transfer PT to YT contract
+    start_cheat_caller_address(pt.contract_address, caller);
+    pt.transfer(yt.contract_address, amount_py);
+    stop_cheat_caller_address(pt.contract_address);
+
+    // Transfer YT to YT contract
+    start_cheat_caller_address(yt.contract_address, caller);
+    yt.transfer(yt.contract_address, amount_py);
+
+    // Redeem floating PT+YT for SY
+    let sy_out = yt.redeem_py(receiver);
+    stop_cheat_caller_address(yt.contract_address);
+
+    sy_out
+}
+
+/// Helper for tests: transfer PT to YT contract and redeem post-expiry
+/// Uses floating token pattern - PT must be pre-transferred before redeem
+pub fn transfer_pt_and_redeem_post_expiry(
+    yt: IYTDispatcher, caller: ContractAddress, receiver: ContractAddress, amount_pt: u256,
+) -> u256 {
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Transfer PT to YT contract
+    start_cheat_caller_address(pt.contract_address, caller);
+    pt.transfer(yt.contract_address, amount_pt);
+    stop_cheat_caller_address(pt.contract_address);
+
+    // Redeem floating PT for SY (post-expiry)
+    start_cheat_caller_address(yt.contract_address, caller);
+    let sy_out = yt.redeem_py_post_expiry(receiver);
+    stop_cheat_caller_address(yt.contract_address);
+
+    sy_out
+}
+
+/// Helper for tests: transfer PT and YT to YT contract and redeem with optional interest claim
+pub fn transfer_py_and_redeem_with_interest(
+    yt: IYTDispatcher,
+    caller: ContractAddress,
+    receiver: ContractAddress,
+    amount_py: u256,
+    redeem_interest: bool,
+) -> (u256, u256) {
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Transfer PT to YT contract
+    start_cheat_caller_address(pt.contract_address, caller);
+    pt.transfer(yt.contract_address, amount_py);
+    stop_cheat_caller_address(pt.contract_address);
+
+    // Transfer YT to YT contract
+    start_cheat_caller_address(yt.contract_address, caller);
+    yt.transfer(yt.contract_address, amount_py);
+
+    // Redeem floating PT+YT with optional interest
+    let (sy_from_redeem, interest_claimed) = yt.redeem_py_with_interest(receiver, redeem_interest);
+    stop_cheat_caller_address(yt.contract_address);
+
+    (sy_from_redeem, interest_claimed)
+}
+
+/// Helper to transfer PT/YT and call redeem_py_multi (floating token pattern)
+pub fn transfer_py_and_redeem_multi(
+    yt: IYTDispatcher,
+    caller: ContractAddress,
+    receivers: Array<ContractAddress>,
+    amounts: Array<u256>,
+) -> Array<u256> {
+    let pt = IPTDispatcher { contract_address: yt.pt() };
+
+    // Calculate total amount to transfer
+    let mut total: u256 = 0;
+    let mut i: u32 = 0;
+    let len = amounts.len();
+    while i < len {
+        total += *amounts.at(i);
+        i += 1;
+    }
+
+    // Transfer PT to YT contract
+    start_cheat_caller_address(pt.contract_address, caller);
+    pt.transfer(yt.contract_address, total);
+    stop_cheat_caller_address(pt.contract_address);
+
+    // Transfer YT to YT contract
+    start_cheat_caller_address(yt.contract_address, caller);
+    yt.transfer(yt.contract_address, total);
+
+    // Redeem floating PT+YT using batch redeem
+    let sy_amounts = yt.redeem_py_multi(receivers, amounts);
+    stop_cheat_caller_address(yt.contract_address);
+
+    sy_amounts
 }

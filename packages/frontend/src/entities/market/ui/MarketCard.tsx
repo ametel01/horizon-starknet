@@ -1,21 +1,59 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { memo, type ReactNode, useMemo } from 'react';
-
 import { TokenAmount } from '@entities/token';
-import { useApyBreakdown, ApyBreakdown } from '@features/yield';
+import { MarketRates, useMarketExchangeRates } from '@features/markets';
+import { formatApyWithStatus, type OracleStatus, OracleStatusBadge } from '@features/oracle';
+import { ApyBreakdown, NegativeYieldWarning, useApyBreakdown } from '@features/yield';
+import { TWAP_DEFAULT_DURATION, TWAP_ESTIMATED_READY_DEFAULT } from '@shared/config/twap';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
-import { Badge } from '@shared/ui/badge';
 import { buttonVariants } from '@shared/ui/Button';
+import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
 import { RateSparkline } from '@widgets/analytics/RateSparkline';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { memo, type ReactNode, useMemo } from 'react';
 
 import type { MarketData } from '../model/types';
+
+import { AssetTypeBadge } from './AssetTypeBadge';
+
+/**
+ * Build OracleStatus object from MarketData for badge display
+ */
+function buildOracleStatus(market: MarketData): OracleStatus {
+  const baseStatus = {
+    rate: market.state.lnImpliedRate,
+  };
+
+  switch (market.oracleState) {
+    case 'ready':
+      return {
+        ...baseStatus,
+        state: 'ready',
+        apy: market.twapImpliedApy.toNumber(),
+        duration: market.twapDuration,
+      };
+    case 'partial':
+      return {
+        ...baseStatus,
+        state: 'partial',
+        apy: market.twapImpliedApy.toNumber(),
+        availableDuration: market.twapDuration,
+        requestedDuration: TWAP_DEFAULT_DURATION,
+      };
+    case 'spot-only':
+      return {
+        ...baseStatus,
+        state: 'spot-only',
+        apy: market.spotImpliedApy.toNumber(),
+        estimatedReadyIn: TWAP_ESTIMATED_READY_DEFAULT,
+      };
+  }
+}
 
 interface MarketCardProps {
   market: MarketData;
@@ -94,6 +132,13 @@ export const MarketCard = memo(function MarketCard({
   // Get APY breakdown for hover display
   const { data: apyBreakdown } = useApyBreakdown(market);
 
+  // Fetch live exchange rates from RouterStatic (updates every 30s)
+  const {
+    data: exchangeRates,
+    isLoading: isRatesLoading,
+    isError: isRatesError,
+  } = useMarketExchangeRates(market.address);
+
   return (
     <Card
       className={cn(
@@ -133,6 +178,8 @@ export const MarketCard = memo(function MarketCard({
                       <span>Top</span>
                     </Badge>
                   )}
+                  <AssetTypeBadge syAddress={market.syAddress} />
+                  <NegativeYieldWarning syAddress={market.syAddress} variant="badge" />
                   <ExpiryBadge expiryTimestamp={market.expiry} />
                 </div>
                 <p className="text-muted-foreground mt-0.5 truncate text-xs">{tokenName}</p>
@@ -140,22 +187,46 @@ export const MarketCard = memo(function MarketCard({
             </CardTitle>
           </div>
 
-          {/* APY Hero Display - compact with hover breakdown */}
+          {/* APY Hero Display - compact with hover breakdown and oracle status */}
           <HoverCard>
             <HoverCardTrigger className="flex-shrink-0 cursor-help text-right">
-              <div className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-                APY
+              <div className="flex items-center justify-end gap-1">
+                <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+                  APY
+                </span>
+                <OracleStatusBadge status={buildOracleStatus(market)} className="text-[10px]" />
               </div>
               <div className="text-primary font-mono text-xl font-semibold tabular-nums">
                 {apyPercent >= 0 ? '+' : ''}
                 {apyPercent.toFixed(1)}%
               </div>
+              {market.oracleState !== 'spot-only' && (
+                <div className="text-muted-foreground text-[10px]">
+                  Current: {formatApyWithStatus(market.spotImpliedApy.toNumber())}
+                </div>
+              )}
             </HoverCardTrigger>
             {apyBreakdown && (
               <HoverCardContent side="top" align="end" className="w-80">
                 <div className="space-y-2">
                   <div className="text-foreground text-sm font-medium">APY Breakdown</div>
                   <ApyBreakdown breakdown={apyBreakdown} view="pt" />
+                  {market.oracleState !== 'spot-only' && (
+                    <div className="border-border mt-2 border-t pt-2">
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
+                        <span>TWAP Rate ({market.twapDuration / 60}m)</span>
+                        <span className="font-medium">
+                          {formatApyWithStatus(market.twapImpliedApy.toNumber())}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
+                        <span>Spot Rate</span>
+                        <span className="font-medium">
+                          {formatApyWithStatus(market.spotImpliedApy.toNumber())}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </HoverCardContent>
             )}
@@ -217,6 +288,16 @@ export const MarketCard = memo(function MarketCard({
             </StatRow>
           )}
         </div>
+
+        {/* Live Exchange Rates (Advanced mode only) */}
+        {isAdvanced && (
+          <MarketRates
+            rates={exchangeRates}
+            isLoading={isRatesLoading && !exchangeRates}
+            isAvailable={!isRatesError}
+            className="border-border/50 mt-4 border-t pt-3"
+          />
+        )}
 
         {/* Action buttons with hover reveal */}
         <div className="mt-4 flex gap-2 opacity-80 transition-opacity group-hover:opacity-100">

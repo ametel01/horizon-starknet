@@ -99,6 +99,9 @@ if [[ -z "$DEPLOYER_ADDRESS" || "$DEPLOYER_ADDRESS" == "null" ]]; then
 fi
 
 log_info "Deployer address: $DEPLOYER_ADDRESS"
+TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"
+update_env "TREASURY_ADDRESS" "$TREASURY_ADDRESS"
+log_info "Treasury address: $TREASURY_ADDRESS"
 
 # Create accounts directory
 mkdir -p "$(dirname "$ACCOUNTS_FILE")"
@@ -186,7 +189,10 @@ declare_class() {
 log_info "Declaring contract classes..."
 
 PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
+PY_LP_ORACLE_CLASS_HASH=$(declare_class "PyLpOracle" "PY_LP_ORACLE_CLASS_HASH")
+ROUTER_STATIC_CLASS_HASH=$(declare_class "RouterStatic" "ROUTER_STATIC_CLASS_HASH")
 SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
+SY_WITH_REWARDS_CLASS_HASH=$(declare_class "SYWithRewards" "SY_WITH_REWARDS_CLASS_HASH")
 PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
 YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
 MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
@@ -295,17 +301,23 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(owner, yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash, treasury)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
-# MarketFactory: constructor(owner, market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash, yield_contract_factory)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH" "$FACTORY_ADDRESS")
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
     "$DEPLOYER_ADDRESS")
+
+# RouterStatic: constructor()
+ROUTER_STATIC_ADDRESS=$(deploy_contract "$ROUTER_STATIC_CLASS_HASH" "RouterStatic" "ROUTER_STATIC_ADDRESS")
+
+# PyLpOracle: constructor()
+PY_LP_ORACLE_ADDRESS=$(deploy_contract "$PY_LP_ORACLE_CLASS_HASH" "PyLpOracle" "PY_LP_ORACLE_ADDRESS")
 
 log_success "Core infrastructure deployed"
 
@@ -395,7 +407,11 @@ SY_SSTRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-sSTRK" "SY_SSTRK_ADDRESS
     0x0 0x53592d735354524b 0x8 \
     "$SSTRK_ADDRESS" \
     "$PRAGMA_SSTRK_ORACLE_ADDRESS" \
-    0x0)
+    0x0 \
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$SSTRK_ADDRESS" \
+    0x1 "$SSTRK_ADDRESS")
 
 # -----------------------------------------------------------------------------
 # SY-wstETH (wraps wstETH, uses PragmaIndexOracle)
@@ -407,7 +423,11 @@ SY_WSTETH_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-wstETH" "SY_WSTETH_ADDR
     0x0 0x53592d7773744554 0x9 \
     "$WSTETH_ADDRESS" \
     "$PRAGMA_WSTETH_ORACLE_ADDRESS" \
-    0x0)
+    0x0 \
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$WSTETH_ADDRESS" \
+    0x1 "$WSTETH_ADDRESS")
 
 # -----------------------------------------------------------------------------
 # SY-nstSTRK (wraps nstSTRK, may be ERC-4626 or use oracle)
@@ -419,7 +439,11 @@ SY_NST_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-nstSTRK" "SY_NST_STRK
     0x0 0x53592d6e73745354524b 0xa \
     "$NST_STRK_ADDRESS" \
     "$PRAGMA_NST_STRK_ORACLE_ADDRESS" \
-    0x0)
+    0x0 \
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$NST_STRK_ADDRESS" \
+    0x1 "$NST_STRK_ADDRESS")
 
 log_success "SY tokens deployed"
 
@@ -440,6 +464,7 @@ log_info "Expiry: $EXPIRY_TIMESTAMP ($(date -d "@$EXPIRY_TIMESTAMP" 2>/dev/null 
 SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
 FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
 DEFAULT_ANCHOR="${MARKET_INITIAL_ANCHOR:-50000000000000000}"
+RESERVE_FEE_PERCENT="${MARKET_RESERVE_FEE_PERCENT:-0}"
 
 SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
 FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
@@ -471,7 +496,9 @@ invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
     "$PT_SSTRK_ADDRESS" \
     "$SCALAR_ROOT_HEX" 0x0 \
     "$ANCHOR_HEX" 0x0 \
-    "$FEE_RATE_HEX" 0x0
+    "$FEE_RATE_HEX" 0x0 \
+    "$RESERVE_FEE_PERCENT" \
+    0x0
 
 sleep 2
 
@@ -504,7 +531,9 @@ invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
     "$PT_WSTETH_ADDRESS" \
     "$SCALAR_ROOT_HEX" 0x0 \
     "$ANCHOR_HEX" 0x0 \
-    "$FEE_RATE_HEX" 0x0
+    "$FEE_RATE_HEX" 0x0 \
+    "$RESERVE_FEE_PERCENT" \
+    0x0
 
 sleep 2
 
@@ -537,7 +566,9 @@ invoke_contract "$MARKET_FACTORY_ADDRESS" create_market \
     "$PT_NST_STRK_ADDRESS" \
     "$SCALAR_ROOT_HEX" 0x0 \
     "$ANCHOR_HEX" 0x0 \
-    "$FEE_RATE_HEX" 0x0
+    "$FEE_RATE_HEX" 0x0 \
+    "$RESERVE_FEE_PERCENT" \
+    0x0
 
 sleep 2
 
@@ -588,7 +619,10 @@ cat > "$JSON_FILE" << EOF
   "pragmaTwap": "$PRAGMA_TWAP_ADDRESS",
   "classHashes": {
     "PragmaIndexOracle": "$PRAGMA_INDEX_ORACLE_CLASS_HASH",
+    "PyLpOracle": "$PY_LP_ORACLE_CLASS_HASH",
+    "RouterStatic": "$ROUTER_STATIC_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
+    "SYWithRewards": "$SY_WITH_REWARDS_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
     "YT": "$YT_CLASS_HASH",
     "Market": "$MARKET_CLASS_HASH",
@@ -599,7 +633,9 @@ cat > "$JSON_FILE" << EOF
   "contracts": {
     "Factory": "$FACTORY_ADDRESS",
     "MarketFactory": "$MARKET_FACTORY_ADDRESS",
-    "Router": "$ROUTER_ADDRESS"
+    "Router": "$ROUTER_ADDRESS",
+    "RouterStatic": "$ROUTER_STATIC_ADDRESS",
+    "PyLpOracle": "$PY_LP_ORACLE_ADDRESS"
   },
   "mainnetTokens": {
     "sSTRK": "$SSTRK_ADDRESS",
@@ -661,6 +697,8 @@ echo "Core Contracts:"
 echo "  Factory:        $FACTORY_ADDRESS"
 echo "  MarketFactory:  $MARKET_FACTORY_ADDRESS"
 echo "  Router:         $ROUTER_ADDRESS"
+echo "  RouterStatic:   $ROUTER_STATIC_ADDRESS"
+echo "  PyLpOracle:     $PY_LP_ORACLE_ADDRESS"
 echo ""
 echo "Mainnet Yield Tokens:"
 echo "  sSTRK:          $SSTRK_ADDRESS"

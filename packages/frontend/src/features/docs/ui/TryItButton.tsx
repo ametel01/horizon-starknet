@@ -1,9 +1,8 @@
 'use client';
 
+import { cn } from '@shared/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-
-import { cn } from '@shared/lib/utils';
 
 interface TryItButtonProps {
   href: string;

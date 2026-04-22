@@ -67,8 +67,13 @@
         "kind": "data"
       },
       {
-        "name": "fee_rate",
+        "name": "ln_fee_rate_root",
         "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "reserve_fee_percent",
+        "type": "core::integer::u8",
         "kind": "data"
       },
       {
@@ -121,6 +126,96 @@
       {
         "name": "new_class_hash",
         "type": "core::starknet::class_hash::ClassHash",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::TreasuryUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_treasury",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_treasury",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::DefaultReserveFeeUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_percent",
+        "type": "core::integer::u8",
+        "kind": "data"
+      },
+      {
+        "name": "new_percent",
+        "type": "core::integer::u8",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::OverrideFeeSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "router",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "market",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "ln_fee_rate_root",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::DefaultRateImpactSensitivityUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_sensitivity",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "new_sensitivity",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "horizon::market::market_factory::MarketFactory::YieldContractFactoryUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_factory",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_factory",
+        "type": "core::starknet::contract_address::ContractAddress",
         "kind": "data"
       }
     ]

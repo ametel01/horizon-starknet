@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
  * Impact statistics by trade size bucket

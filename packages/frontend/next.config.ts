@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
     // Inline CSS to eliminate render-blocking stylesheet requests
     // This inlines CSS into <style> tags in the <head> instead of external <link> tags
     inlineCss: true,
+    // Optimize barrel file imports for libraries with many re-exports
+    // This transforms barrel imports to direct imports at build time
+    // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js
+    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons'],
   },
   typescript: {
     // We run TypeScript separately in CI

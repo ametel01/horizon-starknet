@@ -1,5 +1,9 @@
 'use client';
 
+import { useDashboardMarkets } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact, WAD_BIGINT } from '@shared/math/wad';
+import { Badge, Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
 import { type ReactNode, useMemo } from 'react';
 import {
   Bar,
@@ -11,11 +15,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useDashboardMarkets } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { WAD_BIGINT, formatWadCompact } from '@shared/math/wad';
-import { Badge, Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
 
 type HealthLevel = 'excellent' | 'good' | 'fair' | 'poor';
 

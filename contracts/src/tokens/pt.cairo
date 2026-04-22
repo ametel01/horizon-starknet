@@ -27,6 +27,8 @@ pub mod PT {
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
+    const VERSION: felt252 = 1;
+
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: access_control, event: AccessControlEvent);
@@ -67,6 +69,8 @@ pub mod PT {
         expiry: u64,
         // The deployer address (YT contract) - can only be set once
         deployer: ContractAddress,
+        // Token decimals (factory-provided, matches SY)
+        decimals: u8,
     }
 
     #[event]
@@ -92,6 +96,7 @@ pub mod PT {
         sy: ContractAddress,
         expiry: u64,
         pauser: ContractAddress,
+        decimals: u8,
     ) {
         // Initialize ERC20
         self.erc20.initializer(name, symbol);
@@ -110,6 +115,7 @@ pub mod PT {
 
         self.sy.write(sy);
         self.expiry.write(expiry);
+        self.decimals.write(decimals);
         // Store deployer (the YT contract) to restrict initialize_yt access
         self.deployer.write(get_caller_address());
         // YT address will be set after deployment via initialize_yt
@@ -127,7 +133,7 @@ pub mod PT {
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            18
+            self.decimals.read()
         }
 
         fn total_supply(self: @ContractState) -> u256 {

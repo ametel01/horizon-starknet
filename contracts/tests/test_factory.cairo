@@ -1,16 +1,20 @@
 use core::num::traits::Zero;
 use horizon::interfaces::i_factory::{IFactoryDispatcher, IFactoryDispatcherTrait};
 use horizon::interfaces::i_pt::{IPTDispatcher, IPTDispatcherTrait};
-use horizon::interfaces::i_sy::{ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy::{AssetType, ISYDispatcher, ISYDispatcherTrait};
+use horizon::interfaces::i_sy_with_rewards::{
+    ISYWithRewardsDispatcher, ISYWithRewardsDispatcherTrait,
+};
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
-use horizon::mocks::mock_erc20::IMockERC20Dispatcher;
+use horizon::mocks::mock_erc20::{IMockERC20Dispatcher, IMockERC20DispatcherTrait};
 use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldTokenDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ClassHash, ContractAddress, SyscallResultTrait};
+use super::utils::{transfer_pt_and_redeem_post_expiry, transfer_py_and_redeem};
 
 // Test addresses
 fn user1() -> ContractAddress {
@@ -27,6 +31,10 @@ fn zero_address() -> ContractAddress {
 
 fn zero_class_hash() -> ClassHash {
     0.try_into().unwrap()
+}
+
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
 }
 
 // Helper to serialize ByteArray for calldata
@@ -88,7 +96,16 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
+
+    // tokens_in: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
+    // tokens_out: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
@@ -101,6 +118,12 @@ fn get_class_hashes() -> (ClassHash, ClassHash) {
     (*yt_contract.class_hash, *pt_contract.class_hash)
 }
 
+// Get class hash for SYWithRewards
+fn get_sy_with_rewards_class_hash() -> ClassHash {
+    let contract = declare("SYWithRewards").unwrap_syscall().contract_class();
+    *contract.class_hash
+}
+
 // Deploy Factory
 fn deploy_factory(yt_class_hash: ClassHash, pt_class_hash: ClassHash) -> IFactoryDispatcher {
     start_cheat_block_timestamp_global(CURRENT_TIME);
@@ -110,6 +133,7 @@ fn deploy_factory(yt_class_hash: ClassHash, pt_class_hash: ClassHash) -> IFactor
     calldata.append(admin().into()); // owner
     calldata.append(yt_class_hash.into());
     calldata.append(pt_class_hash.into());
+    calldata.append(treasury().into()); // treasury
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IFactoryDispatcher { contract_address }
@@ -296,6 +320,11 @@ fn test_factory_created_contracts_are_functional() {
     let amount = 100 * WAD;
     let expiry = CURRENT_TIME + ONE_YEAR;
 
+    // Disable time-based yield for precise 1:1 math at index 1.0 WAD
+    start_cheat_caller_address(underlying.contract_address, admin());
+    underlying.set_yield_rate_bps(0);
+    stop_cheat_caller_address(underlying.contract_address);
+
     // Create yield contracts
     let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, expiry);
     let yt = IYTDispatcher { contract_address: yt_addr };
@@ -308,25 +337,23 @@ fn test_factory_created_contracts_are_functional() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
-    sy.approve(yt_addr, amount);
+    sy.deposit(user, underlying.contract_address, amount, 0);
+    sy.transfer(yt_addr, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     // Mint PY using factory-created YT
     start_cheat_caller_address(yt_addr, user);
-    let (pt_minted, yt_minted) = yt.mint_py(user, amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt_addr);
 
-    // Verify minting worked
+    // Verify minting worked (1:1 at index 1.0)
     assert(pt_minted == amount, 'Wrong PT minted');
     assert(yt_minted == amount, 'Wrong YT minted');
     assert(pt.balance_of(user) == amount, 'Wrong PT balance');
     assert(yt.balance_of(user) == amount, 'Wrong YT balance');
 
-    // Redeem PY
-    start_cheat_caller_address(yt_addr, user);
-    let sy_returned = yt.redeem_py(user, amount);
-    stop_cheat_caller_address(yt_addr);
+    // Redeem PY using floating token pattern
+    let sy_returned = transfer_py_and_redeem(yt, user, user, pt_minted);
 
     assert(sy_returned == amount, 'Wrong SY returned');
     assert(pt.balance_of(user) == 0, 'PT should be 0');
@@ -341,6 +368,11 @@ fn test_factory_post_expiry_redemption() {
     let amount = 100 * WAD;
     let expiry = CURRENT_TIME + ONE_YEAR;
 
+    // Disable time-based yield for precise 1:1 math at index 1.0 WAD
+    start_cheat_caller_address(underlying.contract_address, admin());
+    underlying.set_yield_rate_bps(0);
+    stop_cheat_caller_address(underlying.contract_address);
+
     // Create and setup
     let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, expiry);
     let yt = IYTDispatcher { contract_address: yt_addr };
@@ -352,24 +384,796 @@ fn test_factory_post_expiry_redemption() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount);
-    sy.approve(yt_addr, amount);
+    sy.deposit(user, underlying.contract_address, amount, 0);
+    sy.transfer(yt_addr, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt_addr, user);
-    yt.mint_py(user, amount);
+    let (pt_minted, yt_minted) = yt.mint_py(user, user);
     stop_cheat_caller_address(yt_addr);
 
     // Fast forward past expiry
     start_cheat_block_timestamp_global(expiry + 1);
 
-    // Redeem PT post-expiry (YT is worthless)
-    start_cheat_caller_address(yt_addr, user);
-    let sy_returned = yt.redeem_py_post_expiry(user, amount);
-    stop_cheat_caller_address(yt_addr);
+    // Redeem PT post-expiry using floating token pattern (YT is worthless)
+    let sy_returned = transfer_pt_and_redeem_post_expiry(yt, user, user, pt_minted);
 
     assert(sy_returned == amount, 'Wrong SY post-expiry');
     assert(pt.balance_of(user) == 0, 'PT should be burned');
     // YT remains but is worthless
-    assert(yt.balance_of(user) == amount, 'YT should remain');
+    assert(yt.balance_of(user) == yt_minted, 'YT should remain');
+}
+
+// ============ SYWithRewards Deployment Tests ============
+
+#[test]
+fn test_factory_set_sy_with_rewards_class_hash() {
+    let (_, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Initially should be zero
+    assert(factory.sy_with_rewards_class_hash().is_zero(), 'Should be zero initially');
+
+    // Set class hash as owner
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(
+        factory.sy_with_rewards_class_hash() == sy_with_rewards_class_hash, 'Class hash not set',
+    );
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_set_sy_with_rewards_class_hash_not_owner() {
+    let (_, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Try to set class hash as non-owner
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_factory_set_sy_with_rewards_class_hash_zero() {
+    let (_, _, factory) = setup();
+
+    // Try to set zero class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(zero_class_hash());
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_deploy_sy_with_rewards() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Deploy a mock reward token
+    let reward_token = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Build parameters
+    let name: ByteArray = "SY Reward Token";
+    let symbol: ByteArray = "SY-RWD";
+    let tokens_in = array![underlying.contract_address].span();
+    let tokens_out = array![underlying.contract_address].span();
+    let reward_tokens = array![reward_token.contract_address].span();
+
+    // Deploy SYWithRewards
+    let sy_address = factory
+        .deploy_sy_with_rewards(
+            name,
+            symbol,
+            underlying.contract_address, // underlying
+            underlying.contract_address, // index_oracle (same as underlying for ERC-4626)
+            true, // is_erc4626
+            AssetType::Token,
+            admin(), // pauser
+            tokens_in,
+            tokens_out,
+            reward_tokens,
+            'salt1' // salt
+        );
+
+    // Verify deployment
+    assert(!sy_address.is_zero(), 'SY should be deployed');
+    assert(factory.is_valid_sy(sy_address), 'SY should be valid');
+
+    // Verify SYWithRewards contract is functional
+    let sy = ISYWithRewardsDispatcher { contract_address: sy_address };
+    assert(sy.name() == "SY Reward Token", 'Wrong name');
+    assert(sy.symbol() == "SY-RWD", 'Wrong symbol');
+    assert(sy.underlying_asset() == underlying.contract_address, 'Wrong underlying');
+    assert(sy.reward_tokens_count() == 1, 'Wrong reward count');
+
+    // Verify reward token is registered
+    let registered_reward_tokens = sy.get_reward_tokens();
+    assert(registered_reward_tokens.len() == 1, 'Should have 1 reward token');
+    assert(*registered_reward_tokens[0] == reward_token.contract_address, 'Wrong reward token');
+}
+
+#[test]
+fn test_factory_deploy_sy_with_rewards_multiple_reward_tokens() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+
+    // Deploy multiple mock reward tokens
+    let reward_token1 = deploy_mock_erc20();
+    let reward_token2 = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Build parameters with multiple reward tokens
+    let name: ByteArray = "Multi Reward SY";
+    let symbol: ByteArray = "MR-SY";
+    let tokens_in = array![underlying.contract_address].span();
+    let tokens_out = array![underlying.contract_address].span();
+    let reward_tokens = array![reward_token1.contract_address, reward_token2.contract_address]
+        .span();
+
+    // Deploy SYWithRewards
+    let sy_address = factory
+        .deploy_sy_with_rewards(
+            name,
+            symbol,
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            tokens_in,
+            tokens_out,
+            reward_tokens,
+            'salt2',
+        );
+
+    // Verify multiple reward tokens
+    let sy = ISYWithRewardsDispatcher { contract_address: sy_address };
+    assert(sy.reward_tokens_count() == 2, 'Should have 2 reward tokens');
+
+    let registered_reward_tokens = sy.get_reward_tokens();
+    assert(registered_reward_tokens.len() == 2, 'Should have 2 reward tokens');
+    assert(*registered_reward_tokens[0] == reward_token1.contract_address, 'Wrong reward token 1');
+    assert(*registered_reward_tokens[1] == reward_token2.contract_address, 'Wrong reward token 2');
+}
+
+#[test]
+fn test_factory_deploy_sy_with_rewards_is_functional() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+    let reward_token = deploy_mock_erc20();
+    let user = user1();
+    let amount = 100 * WAD;
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Deploy SYWithRewards
+    let sy_address = factory
+        .deploy_sy_with_rewards(
+            "Functional SY",
+            "F-SY",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt3',
+        );
+
+    let sy = ISYWithRewardsDispatcher { contract_address: sy_address };
+
+    // Mint underlying to user
+    mint_yield_token_to_user(underlying, user, amount);
+
+    // Approve and deposit
+    start_cheat_caller_address(underlying.contract_address, user);
+    underlying.approve(sy_address, amount);
+    stop_cheat_caller_address(underlying.contract_address);
+
+    start_cheat_caller_address(sy_address, user);
+    let sy_minted = sy.deposit(user, underlying.contract_address, amount, 0);
+    stop_cheat_caller_address(sy_address);
+
+    // Verify deposit worked
+    assert(sy_minted == amount, 'Wrong SY minted');
+    assert(sy.balance_of(user) == amount, 'Wrong SY balance');
+
+    // Send rewards to SY contract
+    start_cheat_caller_address(reward_token.contract_address, admin());
+    reward_token.mint(sy_address, 10 * WAD);
+    stop_cheat_caller_address(reward_token.contract_address);
+
+    // Claim rewards
+    start_cheat_caller_address(sy_address, user);
+    let claimed = sy.claim_rewards(user);
+    stop_cheat_caller_address(sy_address);
+
+    // User should receive all rewards (they have 100% of supply)
+    assert(claimed.len() == 1, 'Should have 1 claimed amount');
+    assert(*claimed[0] == 10 * WAD, 'Wrong claimed amount');
+    assert(reward_token.balance_of(user) == 10 * WAD, 'Wrong reward balance');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_factory_deploy_sy_with_rewards_no_class_hash() {
+    let (underlying, _, factory) = setup();
+    let reward_token = deploy_mock_erc20();
+
+    // Try to deploy without setting class hash
+    factory
+        .deploy_sy_with_rewards(
+            "Test",
+            "TST",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt',
+        );
+}
+
+#[test]
+#[should_panic(expected: 'HZN: zero address')]
+fn test_factory_deploy_sy_with_rewards_zero_underlying() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+    let reward_token = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Try to deploy with zero underlying
+    factory
+        .deploy_sy_with_rewards(
+            "Test",
+            "TST",
+            zero_address(), // zero underlying
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt',
+        );
+}
+
+#[test]
+fn test_factory_is_valid_sy_returns_false_for_undeployed() {
+    let (_, _, factory) = setup();
+
+    // Random address should not be valid
+    let random_addr: ContractAddress = 'random_sy'.try_into().unwrap();
+    assert(!factory.is_valid_sy(random_addr), 'Random SY should be invalid');
+}
+
+#[test]
+fn test_factory_deploy_multiple_sy_with_rewards() {
+    let (underlying, _, factory) = setup();
+    let sy_with_rewards_class_hash = get_sy_with_rewards_class_hash();
+    let reward_token = deploy_mock_erc20();
+
+    // Set class hash
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_sy_with_rewards_class_hash(sy_with_rewards_class_hash);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Deploy two SYWithRewards contracts
+    let sy1 = factory
+        .deploy_sy_with_rewards(
+            "SY One",
+            "SY1",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt_a',
+        );
+
+    let sy2 = factory
+        .deploy_sy_with_rewards(
+            "SY Two",
+            "SY2",
+            underlying.contract_address,
+            underlying.contract_address,
+            true,
+            AssetType::Token,
+            admin(),
+            array![underlying.contract_address].span(),
+            array![underlying.contract_address].span(),
+            array![reward_token.contract_address].span(),
+            'salt_b',
+        );
+
+    // Both should be valid and different
+    assert(sy1 != sy2, 'SY addresses should differ');
+    assert(factory.is_valid_sy(sy1), 'SY1 should be valid');
+    assert(factory.is_valid_sy(sy2), 'SY2 should be valid');
+
+    // Verify they have correct names
+    let sy1_dispatcher = ISYWithRewardsDispatcher { contract_address: sy1 };
+    let sy2_dispatcher = ISYWithRewardsDispatcher { contract_address: sy2 };
+    assert(sy1_dispatcher.name() == "SY One", 'Wrong name for SY1');
+    assert(sy2_dispatcher.name() == "SY Two", 'Wrong name for SY2');
+}
+
+// ============ Fee Rate Management Tests ============
+// Tests for reward and interest fee rate setter/getter functions
+
+// Fee rate constants (copied from factory.cairo for tests)
+const MAX_REWARD_FEE_RATE: u256 = 200_000_000_000_000_000; // 20%
+const MAX_INTEREST_FEE_RATE: u256 = 500_000_000_000_000_000; // 50%
+
+#[test]
+fn test_factory_fee_rate_initial_values() {
+    let (_, _, factory) = setup();
+
+    // Fee rates should initially be zero
+    assert(factory.get_reward_fee_rate() == 0, 'Reward fee should be 0');
+    assert(factory.get_default_interest_fee_rate() == 0, 'Interest fee should be 0');
+}
+
+#[test]
+fn test_factory_fee_rate_set_reward_fee_rate() {
+    let (_, _, factory) = setup();
+
+    // Set reward fee rate as owner
+    let fee_rate = 30_000_000_000_000_000; // 3%
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_reward_fee_rate(fee_rate);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(factory.get_reward_fee_rate() == fee_rate, 'Reward fee not set');
+}
+
+#[test]
+fn test_factory_fee_rate_set_interest_fee_rate() {
+    let (_, _, factory) = setup();
+
+    // Set interest fee rate as owner
+    let fee_rate = 50_000_000_000_000_000; // 5%
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_interest_fee_rate(fee_rate);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(factory.get_default_interest_fee_rate() == fee_rate, 'Interest fee not set');
+}
+
+#[test]
+fn test_factory_fee_rate_set_max_reward_fee() {
+    let (_, _, factory) = setup();
+
+    // Set reward fee rate to max allowed (20%)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_reward_fee_rate(MAX_REWARD_FEE_RATE);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify max was set
+    assert(factory.get_reward_fee_rate() == MAX_REWARD_FEE_RATE, 'Max reward fee not set');
+}
+
+#[test]
+fn test_factory_fee_rate_set_max_interest_fee() {
+    let (_, _, factory) = setup();
+
+    // Set interest fee rate to max allowed (50%)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_interest_fee_rate(MAX_INTEREST_FEE_RATE);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify max was set
+    assert(
+        factory.get_default_interest_fee_rate() == MAX_INTEREST_FEE_RATE,
+        'Max interest fee not set',
+    );
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee rate')]
+fn test_factory_fee_rate_reward_exceeds_max() {
+    let (_, _, factory) = setup();
+
+    // Try to set reward fee rate above max (should fail)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_reward_fee_rate(MAX_REWARD_FEE_RATE + 1);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid fee rate')]
+fn test_factory_fee_rate_interest_exceeds_max() {
+    let (_, _, factory) = setup();
+
+    // Try to set interest fee rate above max (should fail)
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_default_interest_fee_rate(MAX_INTEREST_FEE_RATE + 1);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_fee_rate_set_reward_not_owner() {
+    let (_, _, factory) = setup();
+
+    // Try to set reward fee rate as non-owner (should fail)
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_reward_fee_rate(30_000_000_000_000_000);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_fee_rate_set_interest_not_owner() {
+    let (_, _, factory) = setup();
+
+    // Try to set interest fee rate as non-owner (should fail)
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_default_interest_fee_rate(50_000_000_000_000_000);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_update_reward_fee() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set initial fee rate
+    let initial_rate = 30_000_000_000_000_000; // 3%
+    factory.set_reward_fee_rate(initial_rate);
+    assert(factory.get_reward_fee_rate() == initial_rate, 'Initial rate not set');
+
+    // Update to new fee rate
+    let updated_rate = 100_000_000_000_000_000; // 10%
+    factory.set_reward_fee_rate(updated_rate);
+    assert(factory.get_reward_fee_rate() == updated_rate, 'Updated rate not set');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_update_interest_fee() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set initial fee rate
+    let initial_rate = 50_000_000_000_000_000; // 5%
+    factory.set_default_interest_fee_rate(initial_rate);
+    assert(factory.get_default_interest_fee_rate() == initial_rate, 'Initial rate not set');
+
+    // Update to new fee rate
+    let updated_rate = 250_000_000_000_000_000; // 25%
+    factory.set_default_interest_fee_rate(updated_rate);
+    assert(factory.get_default_interest_fee_rate() == updated_rate, 'Updated rate not set');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_set_to_zero() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set non-zero fee rates first
+    factory.set_reward_fee_rate(100_000_000_000_000_000);
+    factory.set_default_interest_fee_rate(200_000_000_000_000_000);
+
+    // Reset to zero (should succeed)
+    factory.set_reward_fee_rate(0);
+    factory.set_default_interest_fee_rate(0);
+
+    assert(factory.get_reward_fee_rate() == 0, 'Reward fee not zero');
+    assert(factory.get_default_interest_fee_rate() == 0, 'Interest fee not zero');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_fee_rate_independent_values() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set different fee rates for reward and interest
+    let reward_rate = 50_000_000_000_000_000; // 5%
+    let interest_rate = 150_000_000_000_000_000; // 15%
+
+    factory.set_reward_fee_rate(reward_rate);
+    factory.set_default_interest_fee_rate(interest_rate);
+
+    // Verify they are independent
+    assert(factory.get_reward_fee_rate() == reward_rate, 'Wrong reward rate');
+    assert(factory.get_default_interest_fee_rate() == interest_rate, 'Wrong interest rate');
+    assert(factory.get_reward_fee_rate() != factory.get_default_interest_fee_rate(), 'Rates equal');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+// ============ Decimals Consistency Tests ============
+// Tests that verify decimals are correctly propagated from SY to PT and YT
+
+/// Test that PT and YT decimals match SY decimals
+/// When the factory creates yield contracts, decimals should be consistent across all tokens
+#[test]
+fn test_decimals_consistency_sy_pt_yt() {
+    let (_, sy, factory) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    // Get SY decimals
+    let sy_decimals = sy.decimals();
+
+    // Create yield contracts
+    let (pt_address, yt_address) = factory.create_yield_contracts(sy.contract_address, expiry);
+
+    // Verify PT and YT have the same decimals as SY
+    let pt = IPTDispatcher { contract_address: pt_address };
+    let yt = IYTDispatcher { contract_address: yt_address };
+
+    assert(pt.decimals() == sy_decimals, 'PT decimals != SY decimals');
+    assert(yt.decimals() == sy_decimals, 'YT decimals != SY decimals');
+}
+
+/// Test that PT and YT have matching decimals
+/// PT and YT represent equal amounts of principal/yield, so decimals must match
+#[test]
+fn test_pt_yt_decimals_match() {
+    let (_, sy, factory) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    // Create yield contracts
+    let (pt_address, yt_address) = factory.create_yield_contracts(sy.contract_address, expiry);
+
+    let pt = IPTDispatcher { contract_address: pt_address };
+    let yt = IYTDispatcher { contract_address: yt_address };
+
+    // PT and YT decimals must match
+    assert(pt.decimals() == yt.decimals(), 'PT YT decimals mismatch');
+}
+
+/// Test that standard 18 decimals works correctly
+/// Most yield-bearing tokens use 18 decimals (standard for Ethereum/Starknet)
+#[test]
+fn test_standard_18_decimals() {
+    let (_, sy, factory) = setup();
+    let expiry = CURRENT_TIME + ONE_YEAR;
+
+    // MockYieldToken uses 18 decimals by default
+    let sy_decimals = sy.decimals();
+    assert(sy_decimals == 18, 'SY should have 18 decimals');
+
+    // Create yield contracts
+    let (pt_address, yt_address) = factory.create_yield_contracts(sy.contract_address, expiry);
+
+    let pt = IPTDispatcher { contract_address: pt_address };
+    let yt = IYTDispatcher { contract_address: yt_address };
+
+    // All should have 18 decimals
+    assert(pt.decimals() == 18, 'PT should have 18 decimals');
+    assert(yt.decimals() == 18, 'YT should have 18 decimals');
+}
+
+// ============ Expiry Divisor Tests ============
+// Tests for expiry divisor validation functionality
+
+// Time constant for expiry divisor testing
+const ONE_DAY: u64 = 86400;
+
+#[test]
+fn test_factory_expiry_divisor_initial_value() {
+    let (_, _, factory) = setup();
+
+    // Expiry divisor should initially be zero (disabled)
+    assert(factory.get_expiry_divisor() == 0, 'Divisor should be 0');
+}
+
+#[test]
+fn test_factory_expiry_divisor_set_daily() {
+    let (_, _, factory) = setup();
+
+    // Set expiry divisor to one day as owner
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Verify it was set
+    assert(factory.get_expiry_divisor() == ONE_DAY, 'Divisor not set');
+}
+
+#[test]
+fn test_factory_expiry_divisor_disabled_allows_any_expiry() {
+    let (_, sy, factory) = setup();
+
+    // Divisor is 0 (disabled) by default
+    assert(factory.get_expiry_divisor() == 0, 'Divisor should be 0');
+
+    // Any valid future expiry should work (not aligned to anything)
+    let unaligned_expiry = CURRENT_TIME + 12345; // arbitrary non-aligned value
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, unaligned_expiry);
+
+    // Should succeed
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+fn test_factory_expiry_divisor_valid_aligned_expiry() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one day
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Create contracts with an expiry aligned to day boundary
+    // Use a timestamp that is divisible by ONE_DAY
+    let aligned_expiry = ((CURRENT_TIME / ONE_DAY) + 365) * ONE_DAY; // ~1 year, aligned to day
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, aligned_expiry);
+
+    // Should succeed
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid expiry divisor')]
+fn test_factory_expiry_divisor_invalid_unaligned_expiry() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one day
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Try to create contracts with an unaligned expiry (should fail)
+    let unaligned_expiry = ((CURRENT_TIME / ONE_DAY) + 365) * ONE_DAY + 1; // off by 1 second
+
+    factory.create_yield_contracts(sy.contract_address, unaligned_expiry);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_factory_expiry_divisor_set_not_owner() {
+    let (_, _, factory) = setup();
+
+    // Try to set expiry divisor as non-owner (should fail)
+    start_cheat_caller_address(factory.contract_address, user1());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_expiry_divisor_update() {
+    let (_, _, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Set initial divisor
+    factory.set_expiry_divisor(ONE_DAY);
+    assert(factory.get_expiry_divisor() == ONE_DAY, 'Initial divisor not set');
+
+    // Update to different divisor (hourly)
+    let one_hour: u64 = 3600;
+    factory.set_expiry_divisor(one_hour);
+    assert(factory.get_expiry_divisor() == one_hour, 'Updated divisor not set');
+
+    stop_cheat_caller_address(factory.contract_address);
+}
+
+#[test]
+fn test_factory_expiry_divisor_disable() {
+    let (_, sy, factory) = setup();
+
+    start_cheat_caller_address(factory.contract_address, admin());
+
+    // Enable divisor
+    factory.set_expiry_divisor(ONE_DAY);
+    assert(factory.get_expiry_divisor() == ONE_DAY, 'Divisor not enabled');
+
+    // Disable divisor by setting to 0
+    factory.set_expiry_divisor(0);
+    assert(factory.get_expiry_divisor() == 0, 'Divisor not disabled');
+
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Now unaligned expiries should work again
+    let unaligned_expiry = CURRENT_TIME + 12345;
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, unaligned_expiry);
+
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+fn test_factory_expiry_divisor_weekly_alignment() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one week
+    let one_week: u64 = 7 * ONE_DAY;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(one_week);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Create contracts with a weekly-aligned expiry
+    let aligned_expiry = ((CURRENT_TIME / one_week) + 52) * one_week; // ~1 year, aligned to week
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, aligned_expiry);
+
+    // Should succeed
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
+}
+
+#[test]
+#[should_panic(expected: 'HZN: invalid expiry divisor')]
+fn test_factory_expiry_divisor_weekly_unaligned() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor to one week
+    let one_week: u64 = 7 * ONE_DAY;
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(one_week);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Try to create with daily-aligned but not weekly-aligned expiry (should fail)
+    let daily_aligned_expiry = ((CURRENT_TIME / ONE_DAY) + 365) * ONE_DAY;
+    // This is aligned to day but not to week (376 days is not divisible by 7)
+
+    factory.create_yield_contracts(sy.contract_address, daily_aligned_expiry);
+}
+
+#[test]
+fn test_factory_expiry_divisor_zero_expiry_aligned() {
+    let (_, sy, factory) = setup();
+
+    // Set expiry divisor
+    start_cheat_caller_address(factory.contract_address, admin());
+    factory.set_expiry_divisor(ONE_DAY);
+    stop_cheat_caller_address(factory.contract_address);
+
+    // Expiry that is exactly divisible (multiple of ONE_DAY)
+    let exact_multiple = ONE_DAY * 100; // arbitrary multiple, in the future
+
+    // Need to ensure it's in the future
+    start_cheat_block_timestamp_global(1); // reset to very early time
+
+    let (pt_addr, yt_addr) = factory.create_yield_contracts(sy.contract_address, exact_multiple);
+
+    assert(!pt_addr.is_zero(), 'PT should be deployed');
+    assert(!yt_addr.is_zero(), 'YT should be deployed');
 }

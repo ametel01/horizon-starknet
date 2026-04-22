@@ -54,7 +54,7 @@ fn create_fuzz_market(
     let pt_reserve = bound(pt_reserve_raw, min_reserve, max_reserve);
     let total_lp = bound(total_lp_raw, MINIMUM_LIQUIDITY + 1, max_reserve);
     let scalar_root = bound(scalar_root_raw, WAD / 1000, WAD / 10);
-    let fee_rate = bound(fee_rate_raw, 0, WAD / 20);
+    let ln_fee_rate_root = bound(fee_rate_raw, 0, WAD / 20);
     let last_ln_implied_rate = bound(ln_implied_rate_raw, 0, WAD * 2);
     let time_to_expiry = bound_u64(time_to_expiry_raw, 1, 2 * 31_536_000);
 
@@ -67,9 +67,12 @@ fn create_fuzz_market(
         total_lp,
         scalar_root,
         initial_anchor: WAD,
-        fee_rate,
+        ln_fee_rate_root,
+        reserve_fee_percent: 0,
         expiry,
         last_ln_implied_rate,
+        py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     (state, time_to_expiry)
@@ -87,10 +90,12 @@ fn create_fuzz_market(
 /// time_to_expiry_raw: 17023846189939904699 pt_in_raw:
 /// 98057365481471365512484798680179504999889643081322863440561094087081424811743
 ///
-/// This test now validates that the FIX works - it should panic with 'insufficient liquidity'
-/// because the bounds check was added to calc_swap_exact_pt_for_sy.
+/// This test now validates Pendle-style bounds enforcement.
+/// With the new MAX_PROPORTION (96%) hard limit, this market state triggers
+/// the proportion check before the liquidity check because the PT reserve
+/// is extremely high relative to SY.
 #[test]
-#[should_panic(expected: 'HZN: insufficient liquidity')]
+#[should_panic(expected: 'HZN: proportion > 96%')]
 fn test_debug_sy_out_exceeds_reserve() {
     // Raw values from the failure
     let sy_reserve_raw: u256 =
@@ -126,7 +131,7 @@ fn test_debug_sy_out_exceeds_reserve() {
     println!("pt_reserve: {}", state.pt_reserve);
     println!("total_lp: {}", state.total_lp);
     println!("scalar_root: {}", state.scalar_root);
-    println!("fee_rate: {}", state.fee_rate);
+    println!("ln_fee_rate_root: {}", state.ln_fee_rate_root);
     println!("last_ln_implied_rate: {}", state.last_ln_implied_rate);
     println!("time_to_expiry: {}", tte);
 
@@ -148,22 +153,28 @@ fn test_debug_sy_out_exceeds_reserve() {
     // Execute the swap - this should panic with 'HZN: insufficient liquidity'
     // because the fix added a bounds check in calc_swap_exact_pt_for_sy.
     // The swap would produce sy_out > sy_reserve without the check.
-    let (_sy_out, _fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let _result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
 }
 
-/// Test with extreme market conditions to find edge cases
+/// Test with extreme market conditions - high PT proportion (above 96%) should revert
+/// This validates Pendle-style bounds enforcement: proportion > 96% triggers revert
 #[test]
+#[should_panic(expected: 'HZN: proportion > 96%')]
 fn test_extreme_proportion_high_pt() {
-    // Create a market with very high PT proportion (near MAX_PROPORTION)
+    // Create a market with very high PT proportion (above MAX_PROPORTION of 96%)
+    // proportion = 9500 / (9500 + 100) = 98.96% > 96%
     let state = MarketState {
         sy_reserve: 100 * WAD, // Small SY reserve
-        pt_reserve: 9500 * WAD, // Large PT reserve (95% proportion)
+        pt_reserve: 9500 * WAD, // Large PT reserve (98.96% proportion, exceeds 96%)
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100, // 1%
         initial_anchor: WAD,
-        fee_rate: WAD / 100, // 1%
+        ln_fee_rate_root: WAD / 100, // 1%
+        reserve_fee_percent: 0,
         expiry: 1000000 + 31_536_000, // 1 year
-        last_ln_implied_rate: WAD / 10 // 10%
+        last_ln_implied_rate: WAD / 10, // 10%
+        py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 31_536_000;
@@ -172,14 +183,9 @@ fn test_extreme_proportion_high_pt() {
     println!("=== Extreme High PT Proportion ===");
     println!("proportion: {}", get_proportion(@state));
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
-    println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
-    println!("fee: {}", fee);
-    println!("sy_reserve: {}", state.sy_reserve);
-
-    // Check invariant
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    // This should panic with 'HZN: proportion > 96%' because the market
+    // starts with proportion 98.96% which exceeds Pendle's MAX_PROPORTION
+    let _result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
 }
 
 /// Test with extreme market conditions - low PT proportion
@@ -192,9 +198,12 @@ fn test_extreme_proportion_low_pt() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100, // 1%
         initial_anchor: WAD,
-        fee_rate: WAD / 100, // 1%
+        ln_fee_rate_root: WAD / 100, // 1%
+        reserve_fee_percent: 0,
         expiry: 1000000 + 31_536_000, // 1 year
-        last_ln_implied_rate: WAD / 10 // 10%
+        last_ln_implied_rate: WAD / 10, // 10%
+        py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 31_536_000;
@@ -203,14 +212,14 @@ fn test_extreme_proportion_low_pt() {
     println!("=== Extreme Low PT Proportion ===");
     println!("proportion: {}", get_proportion(@state));
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
-    println!("fee: {}", fee);
+    println!("sy_out: {}", result.net_sy_to_account);
+    println!("fee: {}", result.net_sy_fee);
     println!("sy_reserve: {}", state.sy_reserve);
 
     // Check invariant
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }
 
 /// Test near expiry conditions
@@ -222,9 +231,12 @@ fn test_near_expiry() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100,
         initial_anchor: WAD,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 1000000 + 100, // 100 seconds to expiry
         last_ln_implied_rate: WAD / 10,
+        py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 100;
@@ -236,13 +248,13 @@ fn test_near_expiry() {
     let comp = get_market_pre_compute(@state, tte);
     println!("rate_scalar: {}", comp.rate_scalar);
 
-    let (sy_out, fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
-    println!("fee: {}", fee);
+    println!("sy_out: {}", result.net_sy_to_account);
+    println!("fee: {}", result.net_sy_fee);
 
     // Near expiry, PT should be worth ~1 SY
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }
 
 /// Test with very high implied rate
@@ -254,9 +266,12 @@ fn test_high_implied_rate() {
         total_lp: 1000 * WAD,
         scalar_root: WAD / 100,
         initial_anchor: WAD,
-        fee_rate: WAD / 100,
+        ln_fee_rate_root: WAD / 100,
+        reserve_fee_percent: 0,
         expiry: 1000000 + 31_536_000,
-        last_ln_implied_rate: WAD * 2 // 200% implied rate
+        last_ln_implied_rate: WAD * 2, // 200% implied rate
+        py_index: WAD,
+        rate_impact_sensitivity: 0,
     };
 
     let tte: u64 = 31_536_000;
@@ -268,9 +283,9 @@ fn test_high_implied_rate() {
     let comp = get_market_pre_compute(@state, tte);
     println!("rate_anchor: {}", comp.rate_anchor);
 
-    let (sy_out, _fee) = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
+    let result = calc_swap_exact_pt_for_sy(@state, pt_in, tte);
     println!("pt_in: {}", pt_in);
-    println!("sy_out: {}", sy_out);
+    println!("sy_out: {}", result.net_sy_to_account);
 
-    assert(sy_out <= state.sy_reserve, 'sy_out > sy_reserve');
+    assert(result.net_sy_to_account <= state.sy_reserve, 'sy_out > sy_reserve');
 }

@@ -1,8 +1,7 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-
 import { logWarn } from '@shared/server/logger';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 const AVNU_PRICES_API = 'https://starknet.impulse.avnu.fi/v3/tokens/prices';
 
@@ -58,7 +57,7 @@ interface AvnuTokenPrice {
 function normalizeAddress(address: string): string {
   // Remove 0x prefix, lowercase, strip leading zeros, then re-add prefix
   const hex = address.toLowerCase().replace(/^0x/, '').replace(/^0+/, '');
-  return '0x' + (hex || '0'); // Ensure at least '0x0' for zero address
+  return `0x${hex || '0'}`; // Ensure at least '0x0' for zero address
 }
 
 /**

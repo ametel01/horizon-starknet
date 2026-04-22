@@ -1,0 +1,1 @@
+ALTER TABLE "market_swap" ALTER COLUMN "fee" DROP NOT NULL;

@@ -1,10 +1,9 @@
-import { desc, and, gte, or, sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
-import { db, ytInterestClaimed, userPyPositions } from '@shared/server/db';
+import { db, userPyPositions, ytInterestClaimed } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { and, desc, gte, or, sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +14,7 @@ export const dynamic = 'force-dynamic';
 function normalizeAddressForDb(address: string): string {
   const hex = address.toLowerCase().replace(/^0x/, '');
   const padded = hex.padStart(64, '0');
-  return '0x' + padded;
+  return `0x${padded}`;
 }
 
 interface YieldClaimEvent {
@@ -66,7 +65,7 @@ export async function GET(
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
   const days = searchParams.get('days');
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '100'), 500);
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '100', 10), 500);
 
   try {
     // Normalize the address for comparison
@@ -82,7 +81,10 @@ export async function GET(
     const conditions = days
       ? and(
           addressMatch,
-          gte(ytInterestClaimed.block_timestamp, new Date(Date.now() - parseInt(days) * 86400000))
+          gte(
+            ytInterestClaimed.block_timestamp,
+            new Date(Date.now() - Number.parseInt(days, 10) * 86400000)
+          )
         )
       : addressMatch;
 

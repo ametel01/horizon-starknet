@@ -1,31 +1,96 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { uint256, type ProviderInterface } from 'starknet';
-
 import type { MarketData } from '@entities/market';
+import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
 import {
-  getCostBasis,
-  calculateUnrealizedPnl,
-  calculatePtPriceInSy,
-  calculateYtPriceInSy,
   calculateLpValue,
   calculatePositionValue,
+  calculatePtPriceInSy,
+  calculateUnrealizedPnl,
+  calculateYtPriceInSy,
+  getCostBasis,
   getTimeToExpiry,
 } from '@entities/position';
-import type { EnhancedPosition, PortfolioSummary, PositionValue } from '@entities/position';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useAccount, useStarknet } from '@features/wallet';
-import { WAD_BIGINT, fromWad } from '@shared/math/wad';
+import { toBigInt } from '@shared/lib';
+import { fromWad, WAD_BIGINT } from '@shared/math/wad';
 import { getERC20Contract, getMarketContract, getYTContract } from '@shared/starknet/contracts';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import type { ProviderInterface } from 'starknet';
 
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
+/**
+ * Historical yield data per YT position from the indexed API
+ */
+interface YieldHistoryByYt {
+  /** Total yield claimed in SY (WAD) */
+  totalClaimed: bigint;
+  /** Number of claims */
+  claimCount: number;
+}
+
+/**
+ * Response from /api/users/[address]/yield
+ */
+interface YieldApiResponse {
+  address: string;
+  totalYieldClaimed: string;
+  claimHistory: Array<{
+    id: string;
+    yt: string;
+    sy: string;
+    expiry: number;
+    amountSy: string;
+    ytBalance: string;
+    pyIndexAtClaim: string;
+    exchangeRate: string;
+    blockTimestamp: string;
+    transactionHash: string;
+  }>;
+  summaryByPosition: Array<{
+    yt: string;
+    sy: string;
+    totalClaimed: string;
+    claimCount: number;
+    lastClaim: string | null;
+    currentYtBalance: string;
+  }>;
+}
+
+/**
+ * Fetch historical yield data from the indexed API
+ */
+async function fetchYieldHistory(userAddress: string): Promise<Map<string, YieldHistoryByYt>> {
+  const map = new Map<string, YieldHistoryByYt>();
+
+  // Basic validation - address should be a hex string
+  if (!userAddress || !/^0x[0-9a-fA-F]+$/.test(userAddress)) {
+    return map;
   }
-  return uint256.uint256ToBN(value);
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(userAddress)}/yield`);
+    if (!response.ok) {
+      // Return empty map on error - historical data is non-critical
+      return map;
+    }
+
+    const data = (await response.json()) as YieldApiResponse;
+
+    // Build map from YT address to historical yield data
+    for (const position of data.summaryByPosition) {
+      const ytAddress = position.yt.toLowerCase();
+      map.set(ytAddress, {
+        totalClaimed: BigInt(position.totalClaimed),
+        claimCount: position.claimCount,
+      });
+    }
+  } catch {
+    // Historical data is supplementary - errors are non-critical
+  }
+
+  return map;
 }
 
 /**
@@ -35,7 +100,8 @@ async function fetchMarketPositionData(
   market: MarketData,
   userAddress: string,
   provider: ProviderInterface,
-  prices: Map<string, number>
+  prices: Map<string, number>,
+  yieldHistory: Map<string, YieldHistoryByYt>
 ): Promise<EnhancedPosition> {
   const syContract = getERC20Contract(market.syAddress, provider);
   const ptContract = getERC20Contract(market.ptAddress, provider);
@@ -52,11 +118,11 @@ async function fetchMarketPositionData(
       ytContract.get_user_interest(userAddress).catch(() => BigInt(0)),
     ]);
 
-  const syBalance = toBigInt(syBalanceResult as bigint | { low: bigint; high: bigint });
-  const ptBalance = toBigInt(ptBalanceResult as bigint | { low: bigint; high: bigint });
-  const ytBalance = toBigInt(ytBalanceResult as bigint | { low: bigint; high: bigint });
-  const lpBalance = toBigInt(lpBalanceResult as bigint | { low: bigint; high: bigint });
-  const claimableYield = toBigInt(claimableYieldResult as bigint | { low: bigint; high: bigint });
+  const syBalance = toBigInt(syBalanceResult);
+  const ptBalance = toBigInt(ptBalanceResult);
+  const ytBalance = toBigInt(ytBalanceResult);
+  const lpBalance = toBigInt(lpBalanceResult);
+  const claimableYield = toBigInt(claimableYieldResult);
 
   // Get SY price in USD - use symbol mapping for mock tokens
   const priceAddr =
@@ -96,6 +162,15 @@ async function fetchMarketPositionData(
   // Calculate claimable yield in USD
   const claimableUsd = fromWad(claimableYield).toNumber() * syPriceUsd;
 
+  // Get historical yield data for this position
+  const historicalYield = yieldHistory.get(market.ytAddress.toLowerCase());
+  const totalClaimed = historicalYield?.totalClaimed ?? 0n;
+  const claimedUsd = fromWad(totalClaimed).toNumber() * syPriceUsd;
+
+  // Realized P&L includes claimed yield (yield is realized when claimed)
+  const realizedSy = totalClaimed;
+  const realizedUsd = claimedUsd;
+
   // Total value
   const totalValueUsd = syValue.valueUsd + ptValue.valueUsd + ytValue.valueUsd + lpValue.valueUsd;
 
@@ -113,20 +188,20 @@ async function fetchMarketPositionData(
     yield: {
       claimable: claimableYield,
       claimableUsd,
-      claimed: 0n, // TODO: Track historical claims
-      claimedUsd: 0,
+      claimed: totalClaimed,
+      claimedUsd,
     },
     lpDetails: {
       sharePercent: lpCalc.sharePercent,
       underlyingSy: lpCalc.underlyingSy,
       underlyingPt: lpCalc.underlyingPt,
-      fees: 0n, // TODO: Track accrued fees
+      fees: 0n, // LP fee tracking requires separate indexer query
     },
     pnl: {
       unrealizedSy: ptPnl.pnlSy,
       unrealizedUsd: fromWad(ptPnl.pnlSy).toNumber() * syPriceUsd,
-      realizedSy: 0n, // TODO: Track realized P&L
-      realizedUsd: 0,
+      realizedSy,
+      realizedUsd,
       totalPnlPercent: ptPnl.pnlPercent,
     },
     redemption: {
@@ -179,9 +254,14 @@ export function useEnhancedPositions(
         };
       }
 
+      // Fetch historical yield data from the indexed API
+      const yieldHistory = await fetchYieldHistory(address);
+
       // Fetch all market positions in parallel
       const positions = await Promise.all(
-        markets.map((market) => fetchMarketPositionData(market, address, provider, prices))
+        markets.map((market) =>
+          fetchMarketPositionData(market, address, provider, prices, yieldHistory)
+        )
       );
 
       // Filter out empty positions

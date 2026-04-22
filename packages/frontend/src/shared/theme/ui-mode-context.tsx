@@ -17,8 +17,11 @@ interface UIModeContextValue {
 
 const UIModeContext = createContext<UIModeContextValue | null>(null);
 
-const STORAGE_KEY = 'horizon-ui-mode';
-const ONBOARDING_KEY = 'horizon-ui-onboarding-seen';
+// Version localStorage keys to prevent data corruption on schema changes
+// Increment version when changing the stored data structure
+const STORAGE_VERSION = 'v1';
+const STORAGE_KEY = `horizon-ui-mode-${STORAGE_VERSION}`;
+const ONBOARDING_KEY = `horizon-ui-onboarding-seen-${STORAGE_VERSION}`;
 
 interface UIModeProviderProps {
   children: React.ReactNode;

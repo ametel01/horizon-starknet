@@ -1,12 +1,11 @@
-import { eq, desc, asc } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { getCacheHeaders } from '@shared/server/cache';
 import { db, marketCurrentState } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
-import { validateQuery, marketsQuerySchema } from '@shared/server/validations/api';
+import { marketsQuerySchema, validateQuery } from '@shared/server/validations/api';
+import { asc, desc, eq } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 interface MarketListItem {
   market: string;
@@ -16,7 +15,12 @@ interface MarketListItem {
   yt: string;
   underlying: string;
   underlyingSymbol: string;
+  /** @deprecated Use lnFeeRateRoot instead */
   feeRate: string;
+  /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
+  lnFeeRateRoot: string;
+  /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
+  reserveFeePercent: number;
   syReserve: string;
   ptReserve: string;
   impliedRate: string;
@@ -27,6 +31,90 @@ interface MarketListItem {
   swaps24h: number;
   createdAt: string;
   lastActivity: string | null;
+}
+
+/** Database row type for market current state */
+interface MarketRow {
+  market: string | null;
+  expiry: number | null;
+  sy: string | null;
+  pt: string | null;
+  yt: string | null;
+  underlying: string | null;
+  underlying_symbol: string | null;
+  ln_fee_rate_root: string | null;
+  reserve_fee_percent: number | null;
+  sy_reserve: string | null;
+  pt_reserve: string | null;
+  implied_rate: string | null;
+  exchange_rate: string | null;
+  is_expired: boolean | null;
+  sy_volume_24h: string | null;
+  pt_volume_24h: string | null;
+  fees_24h: string | null;
+  swaps_24h: number | null;
+  created_at: Date | null;
+  last_activity: Date | null;
+}
+
+/**
+ * Extracts core market identity fields from a database row
+ */
+function extractMarketIdentity(row: MarketRow) {
+  return {
+    market: row.market ?? '',
+    expiry: row.expiry ?? 0,
+    sy: row.sy ?? '',
+    pt: row.pt ?? '',
+    yt: row.yt ?? '',
+    underlying: row.underlying ?? '',
+    underlyingSymbol: row.underlying_symbol ?? '',
+  };
+}
+
+/**
+ * Extracts market state fields (rates, reserves) from a database row
+ */
+function extractMarketState(row: MarketRow) {
+  const lnFeeRateRoot = row.ln_fee_rate_root ?? '0';
+  return {
+    // Keep deprecated feeRate for backward compatibility
+    feeRate: lnFeeRateRoot,
+    lnFeeRateRoot,
+    reserveFeePercent: row.reserve_fee_percent ?? 0,
+    syReserve: row.sy_reserve ?? '0',
+    ptReserve: row.pt_reserve ?? '0',
+    impliedRate: row.implied_rate ?? '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    isExpired: row.is_expired ?? false,
+  };
+}
+
+/**
+ * Extracts market metrics (volume, fees, activity) from a database row
+ */
+function extractMarketMetrics(row: MarketRow) {
+  const syVol = BigInt(row.sy_volume_24h ?? '0');
+  const ptVol = BigInt(row.pt_volume_24h ?? '0');
+
+  return {
+    volume24h: (syVol + ptVol).toString(),
+    fees24h: row.fees_24h ?? '0',
+    swaps24h: row.swaps_24h ?? 0,
+    createdAt: row.created_at?.toISOString() ?? '',
+    lastActivity: row.last_activity?.toISOString() ?? null,
+  };
+}
+
+/**
+ * Maps a database row to a MarketListItem API response object
+ */
+function mapRowToMarketItem(row: MarketRow): MarketListItem {
+  return {
+    ...extractMarketIdentity(row),
+    ...extractMarketState(row),
+    ...extractMarketMetrics(row),
+  };
 }
 
 /** Response type for GET /api/markets */
@@ -96,34 +184,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     query = query.limit(limit).offset(offset);
 
     const results = await query;
-
-    const markets: MarketListItem[] = results.map((row) => {
-      // Combine SY and PT volume for total volume
-      const syVol = BigInt(row.sy_volume_24h ?? '0');
-      const ptVol = BigInt(row.pt_volume_24h ?? '0');
-      const totalVolume = (syVol + ptVol).toString();
-
-      return {
-        market: row.market ?? '',
-        expiry: row.expiry ?? 0,
-        sy: row.sy ?? '',
-        pt: row.pt ?? '',
-        yt: row.yt ?? '',
-        underlying: row.underlying ?? '',
-        underlyingSymbol: row.underlying_symbol ?? '',
-        feeRate: row.fee_rate ?? '0',
-        syReserve: row.sy_reserve ?? '0',
-        ptReserve: row.pt_reserve ?? '0',
-        impliedRate: row.implied_rate ?? '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        isExpired: row.is_expired ?? false,
-        volume24h: totalVolume,
-        fees24h: row.fees_24h ?? '0',
-        swaps24h: row.swaps_24h ?? 0,
-        createdAt: row.created_at?.toISOString() ?? '',
-        lastActivity: row.last_activity?.toISOString() ?? null,
-      };
-    });
+    const markets = results.map(mapRowToMarketItem);
 
     return NextResponse.json(
       {

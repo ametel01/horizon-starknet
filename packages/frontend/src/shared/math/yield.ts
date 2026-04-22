@@ -93,7 +93,7 @@ export function calculateImpliedYield(ptPrice: BigNumber, daysRemaining: number)
 
   // Annualize: (priceRatio)^(365/days) - 1
   const exponent = 365 / daysRemaining;
-  const annualizedReturn = Math.pow(priceRatio.toNumber(), exponent) - 1;
+  const annualizedReturn = priceRatio.toNumber() ** exponent - 1;
 
   return new BigNumber(annualizedReturn);
 }
@@ -108,7 +108,7 @@ export function calculatePTPrice(impliedYield: BigNumber, daysRemaining: number)
   }
 
   const exponent = daysRemaining / 365;
-  const discountFactor = Math.pow(1 + impliedYield.toNumber(), exponent);
+  const discountFactor = (1 + impliedYield.toNumber()) ** exponent;
 
   return new BigNumber(1).dividedBy(discountFactor);
 }

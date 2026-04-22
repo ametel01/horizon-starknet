@@ -1,6 +1,5 @@
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
+import type * as React from 'react';
 
 interface CardProps extends React.ComponentProps<'div'> {
   size?: 'default' | 'sm';
@@ -117,4 +116,4 @@ function CardFooter({ className, ...props }: React.ComponentProps<'div'>): React
   );
 }
 
-export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent };
+export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

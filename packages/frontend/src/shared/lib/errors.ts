@@ -26,6 +26,11 @@ const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   'HZN: zero deposit': 'Deposit amount cannot be zero.',
   'HZN: zero redeem': 'Redeem amount cannot be zero.',
   'HZN: insufficient balance': 'Insufficient token balance.',
+  'HZN: insufficient shares out': 'Slippage exceeded on wrap. Try increasing slippage tolerance.',
+  'HZN: insufficient token out': 'Slippage exceeded on unwrap. Try increasing slippage tolerance.',
+
+  // Pausable errors (OpenZeppelin)
+  'Pausable: paused': 'This token is temporarily paused. Withdrawals are still available.',
 
   // PT errors
   'HZN: only YT': 'Only the YT contract can perform this action.',
@@ -83,6 +88,11 @@ const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   'HZN: staleness < window': 'Invalid staleness configuration.',
   'HZN: zero denom price': 'Invalid denominator price.',
   'HZN: index below WAD': 'Index value is too low.',
+
+  // Reward errors (SYWithRewards)
+  'HZN: empty reward tokens': 'No reward tokens configured for this contract.',
+  'HZN: reward token exists': 'This reward token is already registered.',
+  'HZN: reward transfer failed': 'Failed to transfer reward tokens.',
 };
 
 /**
@@ -99,6 +109,9 @@ const CONTRACT_ERROR_SIMPLE: Record<string, string> = {
   'HZN: insufficient PT': 'Not enough Fixed-Rate Position.',
   'HZN: insufficient YT': 'Not enough Variable-Rate Position.',
   'HZN: insufficient SY': 'Not enough deposited tokens.',
+  'HZN: insufficient shares out': 'Price changed during wrap. Try again.',
+  'HZN: insufficient token out': 'Price changed during unwrap. Try again.',
+  'Pausable: paused': 'This token is temporarily unavailable.',
   'HZN: expired': 'This position has matured.',
   'HZN: not expired': 'Position is still active.',
   'HZN: market expired': 'This market has matured.',
@@ -111,6 +124,11 @@ const CONTRACT_ERROR_SIMPLE: Record<string, string> = {
   'HZN: underflow': 'Amount is too small.',
   'HZN: division by zero': 'Invalid calculation. Please try again.',
   'HZN: paused': 'Temporarily unavailable for maintenance.',
+
+  // Reward errors (SYWithRewards)
+  'HZN: empty reward tokens': 'No rewards available to claim.',
+  'HZN: reward token exists': 'Something went wrong. Please try again.',
+  'HZN: reward transfer failed': 'Failed to claim rewards. Please try again.',
 };
 
 /**
@@ -177,6 +195,49 @@ export function extractContractError(error: unknown): string | null {
     return erc20Match[0].trim();
   }
 
+  // Match Pausable: prefixed errors (OpenZeppelin)
+  const pausablePattern = /Pausable:\s*[^"'\]}\n]+/;
+  const pausableMatch = pausablePattern.test(errorString)
+    ? pausablePattern.exec(errorString)
+    : null;
+  if (pausableMatch) {
+    return pausableMatch[0].trim();
+  }
+
+  return null;
+}
+
+// ============================================================================
+// Error Prefix Configuration (used by multiple functions below)
+// ============================================================================
+
+/**
+ * Error prefix configuration - maps prefix to its message maps.
+ * Data-driven approach reduces cognitive complexity across error functions.
+ */
+interface ErrorPrefixConfig {
+  prefix: string;
+  messageMap: Record<string, string>;
+  simpleMap: Record<string, string>;
+}
+
+const ERROR_PREFIX_CONFIGS: ErrorPrefixConfig[] = [
+  { prefix: 'HZN:', messageMap: CONTRACT_ERROR_MESSAGES, simpleMap: CONTRACT_ERROR_SIMPLE },
+  { prefix: 'ERC20:', messageMap: ERC20_ERROR_MESSAGES, simpleMap: ERC20_ERROR_SIMPLE },
+  { prefix: 'Pausable:', messageMap: CONTRACT_ERROR_MESSAGES, simpleMap: CONTRACT_ERROR_SIMPLE },
+];
+
+/**
+ * Look up a contract error in the appropriate message map based on prefix.
+ * Returns the mapped message or null if no mapping exists.
+ */
+function lookupContractErrorMessage(contractError: string, isSimple: boolean): string | null {
+  for (const config of ERROR_PREFIX_CONFIGS) {
+    if (contractError.startsWith(config.prefix)) {
+      const messageMap = isSimple ? config.simpleMap : config.messageMap;
+      return messageMap[contractError] ?? null;
+    }
+  }
   return null;
 }
 
@@ -190,23 +251,8 @@ export function parseContractError(error: unknown, isSimple = false): string {
   const contractError = extractContractError(error);
 
   if (contractError) {
-    // Check HZN: errors first
-    if (contractError.startsWith('HZN:')) {
-      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) {
-        return message;
-      }
-    }
-
-    // Check ERC20: errors (OpenZeppelin)
-    if (contractError.startsWith('ERC20:')) {
-      const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) {
-        return message;
-      }
-    }
+    const mappedMessage = lookupContractErrorMessage(contractError, isSimple);
+    if (mappedMessage) return mappedMessage;
 
     // If we found an error but don't have a mapping, format it nicely
     return isSimple
@@ -235,17 +281,24 @@ export function isDeadlineError(error: unknown): boolean {
 
 /**
  * Check if error is a slippage exceeded error
+ * Includes market slippage and SY wrap/unwrap slippage
  */
 export function isSlippageError(error: unknown): boolean {
-  const hznError = extractContractError(error);
-  return hznError === 'HZN: slippage exceeded';
+  const contractError = extractContractError(error);
+  return (
+    contractError === 'HZN: slippage exceeded' ||
+    contractError === 'HZN: insufficient shares out' ||
+    contractError === 'HZN: insufficient token out'
+  );
 }
 
 /**
  * Check if error is a pause-related error
+ * Includes both HZN pause and OpenZeppelin Pausable
  */
 export function isPauseError(error: unknown): boolean {
-  return isContractError(error, 'HZN: paused');
+  const contractError = extractContractError(error);
+  return contractError === 'HZN: paused' || contractError === 'Pausable: paused';
 }
 
 /**
@@ -261,6 +314,19 @@ export function isInsufficientBalanceError(error: unknown): boolean {
     contractError === 'HZN: insufficient SY' ||
     contractError === 'ERC20: insufficient balance' ||
     contractError === 'ERC20: transfer amount exceeds balance'
+  );
+}
+
+/**
+ * Check if error is a reward-related error
+ */
+export function isRewardError(error: unknown): boolean {
+  const contractError = extractContractError(error);
+  if (!contractError) return false;
+  return (
+    contractError === 'HZN: empty reward tokens' ||
+    contractError === 'HZN: reward token exists' ||
+    contractError === 'HZN: reward transfer failed'
   );
 }
 
@@ -314,43 +380,49 @@ const errorMessageMap: Record<string, string> = {
 };
 
 /**
- * Get a user-friendly error message for simple mode
+ * Match an error string against a map using partial case-insensitive matching.
+ * Returns the mapped message or null if no match found.
  */
-export function getSimpleErrorMessage(error: string | Error | null | undefined): string {
-  if (error === null || error === undefined) return 'An error occurred';
-
-  // First, check for contract errors (HZN: and ERC20:)
-  const contractError = extractContractError(error);
-  if (contractError) {
-    if (contractError.startsWith('HZN:')) {
-      const message = CONTRACT_ERROR_SIMPLE[contractError];
-      if (message) return message;
-    }
-    if (contractError.startsWith('ERC20:')) {
-      const message = ERC20_ERROR_SIMPLE[contractError];
-      if (message) return message;
-    }
-  }
-
-  const errorString = error instanceof Error ? error.message : error;
-
+function matchPartialError(errorString: string, messageMap: Record<string, string>): string | null {
   // Check for exact matches first
-  const exactMatch = errorMessageMap[errorString];
+  const exactMatch = messageMap[errorString];
   if (exactMatch !== undefined) {
     return exactMatch;
   }
 
   // Check for partial matches (case-insensitive)
   const lowerError = errorString.toLowerCase();
-  for (const [key, value] of Object.entries(errorMessageMap)) {
+  for (const [key, value] of Object.entries(messageMap)) {
     if (lowerError.includes(key.toLowerCase())) {
       return value;
     }
   }
 
-  // Generic fallback
-  return 'Something went wrong. Please try again.';
+  return null;
 }
+
+/**
+ * Get a user-friendly error message for simple mode
+ */
+export function getSimpleErrorMessage(error: string | Error | null | undefined): string {
+  if (error === null || error === undefined) return 'An error occurred';
+
+  // First, check for contract errors (HZN:, ERC20:, and Pausable:)
+  const contractError = extractContractError(error);
+  if (contractError) {
+    const mappedMessage = lookupContractErrorMessage(contractError, true);
+    if (mappedMessage) return mappedMessage;
+  }
+
+  const errorString = error instanceof Error ? error.message : error;
+  return (
+    matchPartialError(errorString, errorMessageMap) ?? 'Something went wrong. Please try again.'
+  );
+}
+
+// ============================================================================
+// Mode-Aware Error Message
+// ============================================================================
 
 /**
  * Get the appropriate error message based on mode
@@ -359,22 +431,16 @@ export function getModeAwareErrorMessage(
   error: string | Error | null | undefined,
   isSimple: boolean
 ): string {
-  if (error === null || error === undefined)
+  if (error === null || error === undefined) {
     return isSimple ? 'An error occurred' : 'Unknown error';
+  }
 
-  // First, check for contract errors (HZN: and ERC20:)
+  // First, check for contract errors (HZN:, ERC20:, Pausable:)
   const contractError = extractContractError(error);
   if (contractError) {
-    if (contractError.startsWith('HZN:')) {
-      const messageMap = isSimple ? CONTRACT_ERROR_SIMPLE : CONTRACT_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) return message;
-    }
-    if (contractError.startsWith('ERC20:')) {
-      const messageMap = isSimple ? ERC20_ERROR_SIMPLE : ERC20_ERROR_MESSAGES;
-      const message = messageMap[contractError];
-      if (message) return message;
-    }
+    const mappedMessage = lookupContractErrorMessage(contractError, isSimple);
+    if (mappedMessage) return mappedMessage;
+
     // If no mapping, show the raw error in advanced mode
     if (!isSimple) {
       return `Contract error: ${contractError}`;
@@ -382,13 +448,7 @@ export function getModeAwareErrorMessage(
   }
 
   const errorString = error instanceof Error ? error.message : error;
-
-  if (isSimple) {
-    return getSimpleErrorMessage(errorString);
-  }
-
-  // In advanced mode, return the original technical error
-  return errorString;
+  return isSimple ? getSimpleErrorMessage(errorString) : errorString;
 }
 
 /**
@@ -427,6 +487,20 @@ const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> 
   'HZN: slippage exceeded': {
     simple: 'Market conditions changed. Please try again.',
     advanced: 'Increase slippage tolerance or reduce trade size.',
+  },
+  'HZN: insufficient shares out': {
+    simple: 'Price changed during the wrap. Please try again.',
+    advanced:
+      'Increase slippage tolerance in settings. The SY exchange rate moved during the transaction.',
+  },
+  'HZN: insufficient token out': {
+    simple: 'Price changed during the unwrap. Please try again.',
+    advanced:
+      'Increase slippage tolerance in settings. The SY exchange rate moved during the transaction.',
+  },
+  'Pausable: paused': {
+    simple: 'This token is temporarily paused for maintenance.',
+    advanced: 'The SY contract is paused. Deposits are disabled but withdrawals remain available.',
   },
   'HZN: deadline exceeded': {
     simple: 'The transaction took too long to process.',
@@ -479,7 +553,50 @@ const CONTRACT_ERROR_HELP: Record<string, { simple: string; advanced: string }> 
     advanced:
       'Transfer amount exceeds your wallet balance. Reduce the amount or acquire more tokens.',
   },
+
+  // Reward errors (SYWithRewards)
+  'HZN: empty reward tokens': {
+    simple: 'This position does not have any rewards to claim.',
+    advanced: 'No reward tokens are configured for this SYWithRewards contract.',
+  },
+  'HZN: reward transfer failed': {
+    simple: 'Could not transfer your rewards. Please try again.',
+    advanced: 'ERC20 transfer of reward tokens failed. Check contract balances and allowances.',
+  },
 };
+
+/**
+ * Keyword-based help text for simple mode.
+ * Each entry: [keywords to match, help text]
+ */
+const SIMPLE_HELP_PATTERNS: [string[], string][] = [
+  [['insufficient', 'not enough'], 'You need more tokens to complete this action.'],
+  [['slippage', 'price'], 'Market conditions changed. Please try again.'],
+  [['connect', 'wallet'], 'Connect your wallet using the button in the top right.'],
+  [['reject', 'cancel'], 'You cancelled the transaction in your wallet.'],
+];
+
+/**
+ * Keyword-based help text for advanced mode.
+ * Each entry: [keywords to match, help text]
+ */
+const ADVANCED_HELP_PATTERNS: [string[], string][] = [
+  [['insufficient sy'], 'Deposit more underlying tokens to increase your SY balance.'],
+  [['slippage'], 'Increase slippage tolerance or reduce trade size.'],
+  [['price impact'], 'Consider splitting into smaller trades to reduce impact.'],
+];
+
+/**
+ * Match an error string against keyword patterns and return help text.
+ */
+function matchHelpPattern(lowerError: string, patterns: [string[], string][]): string | null {
+  for (const [keywords, helpText] of patterns) {
+    if (keywords.some((keyword) => lowerError.includes(keyword))) {
+      return helpText;
+    }
+  }
+  return null;
+}
 
 /**
  * Get help text based on error type and mode
@@ -501,33 +618,7 @@ export function getErrorHelpText(
 
   const errorString = error instanceof Error ? error.message : error;
   const lowerError = errorString.toLowerCase();
+  const patterns = isSimple ? SIMPLE_HELP_PATTERNS : ADVANCED_HELP_PATTERNS;
 
-  if (isSimple) {
-    // Provide simple help text
-    if (lowerError.includes('insufficient') || lowerError.includes('not enough')) {
-      return 'You need more tokens to complete this action.';
-    }
-    if (lowerError.includes('slippage') || lowerError.includes('price')) {
-      return 'Market conditions changed. Please try again.';
-    }
-    if (lowerError.includes('connect') || lowerError.includes('wallet')) {
-      return 'Connect your wallet using the button in the top right.';
-    }
-    if (lowerError.includes('reject') || lowerError.includes('cancel')) {
-      return 'You cancelled the transaction in your wallet.';
-    }
-  } else {
-    // Provide technical help text
-    if (lowerError.includes('insufficient sy')) {
-      return 'Deposit more underlying tokens to increase your SY balance.';
-    }
-    if (lowerError.includes('slippage')) {
-      return 'Increase slippage tolerance or reduce trade size.';
-    }
-    if (lowerError.includes('price impact')) {
-      return 'Consider splitting into smaller trades to reduce impact.';
-    }
-  }
-
-  return null;
+  return matchHelpPattern(lowerError, patterns);
 }

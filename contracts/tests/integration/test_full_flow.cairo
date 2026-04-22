@@ -17,8 +17,8 @@ use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldToke
 /// 6. Redeem PT + YT back to SY
 
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 
@@ -38,6 +38,10 @@ fn bob() -> ContractAddress {
 
 fn charlie() -> ContractAddress {
     'charlie'.try_into().unwrap()
+}
+
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
 }
 
 /// Default deadline for router operations (far future - effectively no deadline)
@@ -94,7 +98,17 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
+
+    // tokens_in: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
+    // tokens_out: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -110,6 +124,11 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury
+    calldata.append(18); // decimals
+    // Reward tokens (empty span for standard deployment)
+    let empty_reward_tokens: Array<ContractAddress> = array![];
+    Serde::serialize(@empty_reward_tokens, ref calldata);
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -140,6 +159,10 @@ fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 // ============ Full Flow Test ============
@@ -180,7 +203,7 @@ fn test_full_yield_tokenization_flow() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), alice_deposit);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, alice_deposit, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Verify Alice got SY tokens
@@ -191,11 +214,11 @@ fn test_full_yield_tokenization_flow() {
     let mint_amount = 500 * WAD;
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, mint_amount);
+    sy.transfer(yt.contract_address, mint_amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let (pt_minted, yt_minted) = yt.mint_py(alice(), mint_amount);
+    let (pt_minted, yt_minted) = yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify equal amounts of PT and YT were minted
@@ -236,8 +259,17 @@ fn test_full_yield_tokenization_flow() {
 
     let sy_before_redeem = sy.balance_of(alice());
 
+    // Transfer PT and YT to YT contract (pre-transfer pattern)
+    start_cheat_caller_address(pt.contract_address, alice());
+    pt.transfer(yt.contract_address, redeem_amount);
+    stop_cheat_caller_address(pt.contract_address);
+
     start_cheat_caller_address(yt.contract_address, alice());
-    let sy_redeemed = yt.redeem_py(alice(), redeem_amount);
+    yt.transfer(yt.contract_address, redeem_amount);
+    stop_cheat_caller_address(yt.contract_address);
+
+    start_cheat_caller_address(yt.contract_address, alice());
+    let sy_redeemed = yt.redeem_py(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify SY was received
@@ -284,7 +316,7 @@ fn test_multiple_users_yield_flow() {
     underlying.approve(sy.contract_address, alice_amount);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), alice_amount);
+    sy.deposit(alice(), underlying.contract_address, alice_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Setup Bob
@@ -293,23 +325,23 @@ fn test_multiple_users_yield_flow() {
     underlying.approve(sy.contract_address, bob_amount);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.deposit(bob(), bob_amount);
+    sy.deposit(bob(), underlying.contract_address, bob_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Alice mints PT + YT
+    // Alice mints PT + YT (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, alice_amount);
+    sy.transfer(yt.contract_address, alice_amount);
     stop_cheat_caller_address(sy.contract_address);
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), alice_amount);
+    yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Bob mints PT + YT
+    // Bob mints PT + YT (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.approve(yt.contract_address, bob_amount);
+    sy.transfer(yt.contract_address, bob_amount);
     stop_cheat_caller_address(sy.contract_address);
     start_cheat_caller_address(yt.contract_address, bob());
-    yt.mint_py(bob(), bob_amount);
+    yt.mint_py(bob(), bob());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify balances
@@ -378,7 +410,7 @@ fn test_router_full_flow() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount);
+    sy.deposit(alice(), underlying.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Alice mints PT + YT through router
@@ -440,15 +472,15 @@ fn test_yield_accrual_over_time() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount);
+    sy.deposit(alice(), underlying.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), amount);
+    yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Record initial PY index
@@ -497,15 +529,15 @@ fn test_partial_redemptions() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), amount);
+    sy.deposit(alice(), underlying.contract_address, amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), amount);
+    yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Redeem 25% at a time
@@ -515,16 +547,17 @@ fn test_partial_redemptions() {
         let pt_before = pt.balance_of(alice());
         let yt_before = yt.balance_of(alice());
 
+        // Transfer PT and YT to YT contract (pre-transfer pattern)
         start_cheat_caller_address(pt.contract_address, alice());
-        pt.approve(yt.contract_address, redeem_portion);
+        pt.transfer(yt.contract_address, redeem_portion);
         stop_cheat_caller_address(pt.contract_address);
 
         start_cheat_caller_address(yt.contract_address, alice());
-        yt.approve(yt.contract_address, redeem_portion);
+        yt.transfer(yt.contract_address, redeem_portion);
         stop_cheat_caller_address(yt.contract_address);
 
         start_cheat_caller_address(yt.contract_address, alice());
-        let sy_out = yt.redeem_py(alice(), redeem_portion);
+        let sy_out = yt.redeem_py(alice());
         stop_cheat_caller_address(yt.contract_address);
 
         assert(sy_out > 0, 'Should receive SY each time');

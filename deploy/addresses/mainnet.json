@@ -17,7 +17,9 @@
     "Factory": "0x04fd6d42072f76612ae0a5f97d191ab4c5ede3688d2df0185352e01b7f2fc444",
     "MarketFactory": "0x0465bc423ddde2495e9d4c31563e0b333d9c8b818a86d3d76064fd652ee4be6f",
     "Router": "0x07ccd371e51703e562cf7c7789d4252b7a63845dc87f25a07cf8b5c28e80563b",
-    "Faucet": "0x01b472105605d569778515bcf7ea03759f77af0b2cc945dc999a19edc6572d71"
+    "RouterStatic": "0x0",
+    "Faucet": "0x01b472105605d569778515bcf7ea03759f77af0b2cc945dc999a19edc6572d71",
+    "PyLpOracle": "0x0"
   },
   "tokens": {
     "STRK": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",

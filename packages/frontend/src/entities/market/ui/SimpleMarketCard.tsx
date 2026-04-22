@@ -1,15 +1,17 @@
 'use client';
 
-import Link from 'next/link';
-import { type ReactNode } from 'react';
-
 import { TokenAmount } from '@entities/token';
+import { NegativeYieldWarning } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatExpiry } from '@shared/math/yield';
 import { buttonVariants } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 import type { MarketData } from '../model/types';
+
+import { AssetTypeBadge } from './AssetTypeBadge';
 
 interface SimpleMarketCardProps {
   market: MarketData;
@@ -43,7 +45,11 @@ export function SimpleMarketCard({ market, className }: SimpleMarketCardProps): 
             <CardTitle className="flex items-center gap-2">
               <span>{tokenName}</span>
             </CardTitle>
-            <p className="text-muted-foreground mt-1 text-sm">{tokenSymbol}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-muted-foreground text-sm">{tokenSymbol}</span>
+              <AssetTypeBadge syAddress={market.syAddress} />
+              <NegativeYieldWarning syAddress={market.syAddress} variant="badge" />
+            </div>
           </div>
           {market.isExpired ? (
             <span className="bg-destructive/20 text-destructive rounded-full px-2 py-1 text-xs font-medium">

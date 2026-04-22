@@ -17,8 +17,8 @@ use horizon::mocks::mock_yield_token::{IMockYieldTokenDispatcher, IMockYieldToke
 /// 5. Dust amounts
 
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 
@@ -46,6 +46,10 @@ fn dave() -> ContractAddress {
 
 fn eve() -> ContractAddress {
     'eve'.try_into().unwrap()
+}
+
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
 }
 
 // ============ Deploy Helpers ============
@@ -98,7 +102,17 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
+
+    // tokens_in: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
+    // tokens_out: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -114,6 +128,11 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury
+    calldata.append(18); // decimals
+    // Reward tokens (empty span for standard deployment)
+    let empty_reward_tokens: Array<ContractAddress> = array![];
+    Serde::serialize(@empty_reward_tokens, ref calldata);
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -134,7 +153,10 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
+    calldata.append(0); // factory (zero address for tests)
+    calldata.append(0); // reward_tokens array length (empty for tests)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -158,8 +180,14 @@ fn mint_yield_token_to_user(
 
 fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 // Helper: Setup user with SY and PT tokens
@@ -177,15 +205,15 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2);
+    sy.deposit(user, underlying.contract_address, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 }
 
@@ -201,7 +229,7 @@ fn test_zero_sy_deposit() {
     let sy = deploy_sy(underlying.contract_address, underlying.contract_address, true);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 0); // Should panic
+    sy.deposit(alice(), underlying.contract_address, 0, 0); // Should panic
 }
 
 #[test]
@@ -219,16 +247,16 @@ fn test_zero_sy_redeem() {
     underlying.approve(sy.contract_address, 100 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 100 * WAD);
+    sy.deposit(alice(), underlying.contract_address, 100 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Try to redeem zero
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.redeem(alice(), 0); // Should panic
+    sy.redeem(alice(), 0, underlying.contract_address, 0, false); // Should panic
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
+#[should_panic(expected: 'HZN: no floating SY')]
 fn test_zero_py_mint() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -238,12 +266,13 @@ fn test_zero_py_mint() {
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
+    // No SY transferred to YT contract = no floating SY = should panic
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), 0); // Should panic
+    yt.mint_py(alice(), alice()); // Should panic - no floating SY
 }
 
 #[test]
-#[should_panic(expected: 'HZN: zero amount')]
+#[should_panic(expected: 'HZN: no floating PT/YT')]
 fn test_zero_py_redeem() {
     let start_time: u64 = 1000;
     start_cheat_block_timestamp_global(start_time);
@@ -253,8 +282,9 @@ fn test_zero_py_redeem() {
     let expiry = start_time + 365 * 24 * 60 * 60;
     let yt = deploy_yt(sy.contract_address, expiry);
 
+    // No PT/YT transferred = no floating tokens = should panic
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.redeem_py(alice(), 0); // Should panic
+    yt.redeem_py(alice()); // Should panic - no floating PT/YT
 }
 
 #[test]
@@ -299,34 +329,34 @@ fn test_large_amounts() {
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), large_amount);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, large_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     assert(sy_received == large_amount, 'Large SY deposit');
 
-    // Mint PT + YT
+    // Mint PT + YT (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, large_amount);
+    sy.transfer(yt.contract_address, large_amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let (pt_out, yt_out) = yt.mint_py(alice(), large_amount);
+    let (pt_out, yt_out) = yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(pt_out == large_amount, 'Large PT mint');
     assert(yt_out == large_amount, 'Large YT mint');
 
-    // Redeem
+    // Redeem - transfer PT and YT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, large_amount);
+    pt.transfer(yt.contract_address, large_amount);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.approve(yt.contract_address, large_amount);
+    yt.transfer(yt.contract_address, large_amount);
     stop_cheat_caller_address(yt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let sy_back = yt.redeem_py(alice(), large_amount);
+    let sy_back = yt.redeem_py(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(sy_back > 0, 'Large redemption works');
@@ -437,7 +467,7 @@ fn test_sequential_swaps_same_user() {
         stop_cheat_caller_address(sy.contract_address);
 
         start_cheat_caller_address(market.contract_address, bob());
-        let pt_out = market.swap_exact_sy_for_pt(bob(), trade_amount, 0);
+        let pt_out = market.swap_exact_sy_for_pt(bob(), trade_amount, 0, array![].span());
         stop_cheat_caller_address(market.contract_address);
 
         total_sy_spent += trade_amount;
@@ -454,7 +484,7 @@ fn test_sequential_swaps_same_user() {
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    let sy_back = market.swap_exact_pt_for_sy(bob(), total_pt_received, 0);
+    let sy_back = market.swap_exact_pt_for_sy(bob(), total_pt_received, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Should get back less than spent due to fees and slippage
@@ -475,34 +505,36 @@ fn test_minimum_amounts() {
     let yt = deploy_yt(sy.contract_address, expiry);
     let _pt = IPTDispatcher { contract_address: yt.pt() };
 
-    // Minimum amount: 1 wei
-    let dust_amount: u256 = 1;
+    // Realistic minimum amount: 1000 wei (avoids rounding issues in WAD-based math)
+    // With Pendle-aligned syToAsset math: py = sy * index / WAD
+    // Very small amounts can round to zero after division
+    let min_amount: u256 = 1000;
 
-    mint_yield_token_to_user(underlying, alice(), dust_amount);
+    mint_yield_token_to_user(underlying, alice(), min_amount);
 
     start_cheat_caller_address(underlying.contract_address, alice());
-    underlying.approve(sy.contract_address, dust_amount);
+    underlying.approve(sy.contract_address, min_amount);
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, alice());
-    let sy_received = sy.deposit(alice(), dust_amount);
+    let sy_received = sy.deposit(alice(), underlying.contract_address, min_amount, 0);
     stop_cheat_caller_address(sy.contract_address);
 
-    // Even 1 wei should work
-    assert(sy_received > 0, 'Dust deposit works');
+    // Deposit should work
+    assert(sy_received > 0, 'Min deposit works');
 
-    // Mint PT + YT from dust
+    // Mint PT + YT from minimum amount (floating SY pattern)
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, sy_received);
+    sy.transfer(yt.contract_address, sy_received);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let (pt_out, yt_out) = yt.mint_py(alice(), sy_received);
+    let (pt_out, yt_out) = yt.mint_py(alice(), alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // At least some tokens minted
-    assert(pt_out > 0, 'Dust PT mint');
-    assert(yt_out > 0, 'Dust YT mint');
+    assert(pt_out > 0, 'Min PT mint');
+    assert(yt_out > 0, 'Min YT mint');
 }
 
 #[test]
@@ -540,7 +572,7 @@ fn test_mixed_operation_sizes() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    let pt_out = market.swap_exact_sy_for_pt(bob(), small_amount, 0);
+    let pt_out = market.swap_exact_sy_for_pt(bob(), small_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out > 0, 'Small swap works');
@@ -554,7 +586,7 @@ fn test_mixed_operation_sizes() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, charlie());
-    let pt_out_medium = market.swap_exact_sy_for_pt(charlie(), medium_amount, 0);
+    let pt_out_medium = market.swap_exact_sy_for_pt(charlie(), medium_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_out_medium > 0, 'Medium swap works');
@@ -606,15 +638,15 @@ fn test_operations_across_time() {
     underlying.approve(sy.contract_address, 500 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.deposit(bob(), 500 * WAD);
+    sy.deposit(bob(), underlying.contract_address, 500 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, bob());
-    sy.approve(yt.contract_address, 500 * WAD);
+    sy.transfer(yt.contract_address, 500 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, bob());
-    let (pt_out, yt_out) = yt.mint_py(bob(), 500 * WAD);
+    let (pt_out, yt_out) = yt.mint_py(bob(), bob());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(pt_out > 0, 'Late mint works');

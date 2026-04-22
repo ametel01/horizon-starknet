@@ -1,14 +1,13 @@
 'use client';
 
-import { AlertCircle, AlertTriangle } from 'lucide-react';
-import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
-
 import { useTokenBalance } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { formatWad, fromWad, toWad, WAD_BIGINT } from '@shared/math/wad';
 import { useAnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Card, CardContent } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { AlertCircle, AlertTriangle } from 'lucide-react';
+import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 
 /** Validation result with severity level */
 interface ValidationResult {
@@ -18,6 +17,116 @@ interface ValidationResult {
 
 /** Minimum meaningful amount (0.0001 = dust threshold) */
 const DUST_THRESHOLD = WAD_BIGINT / BigInt(10000); // 0.0001 in WAD
+
+/**
+ * Derive inline validation from input state.
+ * Pure function - easy to test and keeps component complexity low.
+ */
+function deriveInlineValidation(
+  value: string,
+  balance: bigint | undefined,
+  validateBalance: boolean,
+  disabled: boolean,
+  minAmount: bigint | undefined
+): ValidationResult | null {
+  if (!value || value === '' || disabled) return null;
+
+  try {
+    const inputAmount = toWad(value);
+
+    // Error: Insufficient balance (blocking)
+    if (validateBalance && balance !== undefined && inputAmount > balance) {
+      return { message: 'Insufficient balance', severity: 'error' };
+    }
+
+    // Warning: Zero amount
+    if (inputAmount === BigInt(0)) {
+      return { message: 'Enter an amount', severity: 'warning' };
+    }
+
+    // Warning: Dust amount (too small to be meaningful)
+    const dustLimit = minAmount ?? DUST_THRESHOLD;
+    if (inputAmount > BigInt(0) && inputAmount < dustLimit) {
+      return { message: 'Amount may be too small', severity: 'warning' };
+    }
+  } catch {
+    // Invalid input format - handled by input validation
+    return null;
+  }
+
+  return null;
+}
+
+/**
+ * Clean up input value on blur.
+ * Removes trailing decimals, leading zeros, and trailing zeros after decimal.
+ */
+function cleanupInputValue(value: string): string {
+  if (!value) return value;
+
+  let cleaned = value;
+
+  // Remove trailing decimal point: "123." -> "123"
+  if (cleaned.endsWith('.')) {
+    cleaned = cleaned.slice(0, -1);
+  }
+
+  // Remove leading zeros: "007" -> "7", but keep "0.7"
+  if (cleaned.length > 1 && cleaned.startsWith('0') && cleaned[1] !== '.') {
+    cleaned = cleaned.replace(/^0+/, '') || '0';
+  }
+
+  // Remove trailing zeros after decimal: "1.500" -> "1.5", but keep "1.0"
+  if (cleaned.includes('.')) {
+    cleaned = cleaned.replace(/\.?0+$/, '');
+    if (cleaned.endsWith('.')) {
+      cleaned = cleaned.slice(0, -1);
+    }
+  }
+
+  return cleaned;
+}
+
+/** Keys allowed during keydown (control/navigation) */
+const ALLOWED_CONTROL_KEYS = [
+  'Backspace',
+  'Delete',
+  'Tab',
+  'Escape',
+  'Enter',
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End',
+];
+
+/** Token type styling lookup - avoids repeated conditionals in JSX */
+const TOKEN_STYLES: Record<string, { bg: string; text: string }> = {
+  PT: { bg: 'bg-primary/10', text: 'text-primary' },
+  YT: { bg: 'bg-chart-2/10', text: 'text-chart-2' },
+  SY: { bg: 'bg-chart-1/10', text: 'text-chart-1' },
+};
+
+const DEFAULT_TOKEN_STYLE = { bg: 'bg-muted/80', text: 'text-muted-foreground' };
+
+/** Get token badge styling by type */
+function getTokenStyle(tokenType: string | undefined): { bg: string; text: string } {
+  return TOKEN_STYLES[tokenType ?? ''] ?? DEFAULT_TOKEN_STYLE;
+}
+
+/** Derive card ring class from validation state */
+function deriveCardRingClass(
+  isFocused: boolean,
+  hasError: boolean,
+  hasWarning: boolean
+): string | undefined {
+  if (hasError) return 'ring-destructive/50 ring-2';
+  if (hasWarning) return 'ring-warning/50 ring-2';
+  if (isFocused) return 'ring-primary/50 ring-2';
+  return undefined;
+}
 
 interface TokenInputProps {
   label: string;
@@ -65,37 +174,10 @@ export function TokenInput({
   const { data: balance, isLoading: balanceLoading } = useTokenBalance(tokenAddress);
 
   // Enhanced inline validation with severity levels (Error Prevention)
-  const inlineValidation = useMemo((): ValidationResult | null => {
-    // Skip validation if no value or disabled
-    if (!value || value === '' || disabled) {
-      return null;
-    }
-
-    try {
-      const inputAmount = toWad(value);
-
-      // Error: Insufficient balance (blocking)
-      if (validateBalance && balance !== undefined && inputAmount > balance) {
-        return { message: 'Insufficient balance', severity: 'error' };
-      }
-
-      // Warning: Zero amount
-      if (inputAmount === BigInt(0)) {
-        return { message: 'Enter an amount', severity: 'warning' };
-      }
-
-      // Warning: Dust amount (too small to be meaningful)
-      const dustLimit = minAmount ?? DUST_THRESHOLD;
-      if (inputAmount > BigInt(0) && inputAmount < dustLimit) {
-        return { message: 'Amount may be too small', severity: 'warning' };
-      }
-    } catch {
-      // Invalid input format - handled by input validation
-      return null;
-    }
-
-    return null;
-  }, [value, balance, validateBalance, disabled, minAmount]);
+  const inlineValidation = useMemo(
+    () => deriveInlineValidation(value, balance, validateBalance, disabled, minAmount),
+    [value, balance, validateBalance, disabled, minAmount]
+  );
 
   // Combined validation (prop error takes precedence as error)
   const displayValidation = useMemo((): ValidationResult | null => {
@@ -105,9 +187,12 @@ export function TokenInput({
     return inlineValidation;
   }, [error, inlineValidation]);
 
-  // Convenience flags for styling
+  // Pre-compute UI state to reduce JSX branching (Guideline #6)
   const hasError = displayValidation?.severity === 'error';
   const hasWarning = displayValidation?.severity === 'warning';
+  const cardRingClass = deriveCardRingClass(isFocused, hasError, hasWarning);
+  const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
+  const tokenStyle = getTokenStyle(displayTokenType);
 
   const handleMaxClick = (): void => {
     if (balance !== undefined) {
@@ -118,32 +203,10 @@ export function TokenInput({
 
   // Prevent non-numeric input at keydown level (Error Prevention)
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
-    // Allow control keys
-    const allowedKeys = [
-      'Backspace',
-      'Delete',
-      'Tab',
-      'Escape',
-      'Enter',
-      'ArrowLeft',
-      'ArrowRight',
-      'ArrowUp',
-      'ArrowDown',
-      'Home',
-      'End',
-    ];
-    if (allowedKeys.includes(e.key)) return;
-
-    // Allow Ctrl/Cmd + A, C, V, X
+    if (ALLOWED_CONTROL_KEYS.includes(e.key)) return;
     if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
-
-    // Allow numbers
     if (/^[0-9]$/.test(e.key)) return;
-
-    // Allow one decimal point if not already present
     if (e.key === '.' && !e.currentTarget.value.includes('.')) return;
-
-    // Block everything else
     e.preventDefault();
   }, []);
 
@@ -165,49 +228,17 @@ export function TokenInput({
   // Format cleanup on blur (Error Prevention)
   const handleBlur = useCallback((): void => {
     setIsFocused(false);
-
-    if (!value) return;
-
-    let cleanedValue = value;
-
-    // Remove trailing decimal point: "123." -> "123"
-    if (cleanedValue.endsWith('.')) {
-      cleanedValue = cleanedValue.slice(0, -1);
-    }
-
-    // Remove leading zeros: "007" -> "7", but keep "0.7"
-    if (cleanedValue.length > 1 && cleanedValue.startsWith('0') && cleanedValue[1] !== '.') {
-      cleanedValue = cleanedValue.replace(/^0+/, '') || '0';
-    }
-
-    // Remove trailing zeros after decimal: "1.500" -> "1.5", but keep "1.0"
-    if (cleanedValue.includes('.')) {
-      cleanedValue = cleanedValue.replace(/\.?0+$/, '');
-      // If we removed all decimals, ensure there's no trailing dot
-      if (cleanedValue.endsWith('.')) {
-        cleanedValue = cleanedValue.slice(0, -1);
-      }
-    }
-
-    // Only update if value changed
+    const cleanedValue = cleanupInputValue(value);
     if (cleanedValue !== value) {
       onChange(cleanedValue);
     }
   }, [value, onChange]);
 
-  // Derive token type from symbol if not provided
-  const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
-
   return (
     <Card
       className={cn(
         'group relative overflow-hidden transition-all duration-200',
-        // Focus ring (lowest priority)
-        isFocused && !hasError && !hasWarning && 'ring-primary/50 ring-2',
-        // Warning ring (medium priority)
-        hasWarning && 'ring-warning/50 ring-2',
-        // Error ring (highest priority)
-        hasError && 'ring-destructive/50 ring-2',
+        cardRingClass,
         className
       )}
       role="group"
@@ -284,21 +315,10 @@ export function TokenInput({
             className={cn(
               'flex h-10 shrink-0 items-center justify-center rounded-full px-3',
               'border-border/50 border',
-              displayTokenType === 'PT' && 'bg-primary/10',
-              displayTokenType === 'YT' && 'bg-chart-2/10',
-              displayTokenType === 'SY' && 'bg-chart-1/10',
-              !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'bg-muted/80'
+              tokenStyle.bg
             )}
           >
-            <span
-              className={cn(
-                'font-mono text-sm font-semibold',
-                displayTokenType === 'PT' && 'text-primary',
-                displayTokenType === 'YT' && 'text-chart-2',
-                displayTokenType === 'SY' && 'text-chart-1',
-                !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'text-muted-foreground'
-              )}
-            >
+            <span className={cn('font-mono text-sm font-semibold', tokenStyle.text)}>
               {displayTokenType ?? tokenSymbol.slice(0, 4)}
             </span>
           </div>
@@ -310,8 +330,7 @@ export function TokenInput({
             id={errorId}
             className={cn(
               'flex items-center gap-1.5 text-sm font-medium',
-              hasError && 'text-destructive',
-              hasWarning && 'text-warning'
+              hasError ? 'text-destructive' : 'text-warning'
             )}
             role={hasError ? 'alert' : 'status'}
           >
@@ -384,8 +403,9 @@ export function TokenOutput({
     return formatted;
   }, [animatedAmount]);
 
-  // Derive token type from symbol if not provided
+  // Pre-compute styling
   const displayTokenType = tokenType ?? tokenSymbol.split('-')[0];
+  const tokenStyle = getTokenStyle(displayTokenType);
 
   return (
     <Card
@@ -419,21 +439,10 @@ export function TokenOutput({
             className={cn(
               'flex h-10 shrink-0 items-center justify-center rounded-full px-3',
               'border-border/50 border',
-              displayTokenType === 'PT' && 'bg-primary/10',
-              displayTokenType === 'YT' && 'bg-chart-2/10',
-              displayTokenType === 'SY' && 'bg-chart-1/10',
-              !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'bg-muted/50'
+              tokenStyle.bg
             )}
           >
-            <span
-              className={cn(
-                'font-mono text-sm font-semibold',
-                displayTokenType === 'PT' && 'text-primary',
-                displayTokenType === 'YT' && 'text-chart-2',
-                displayTokenType === 'SY' && 'text-chart-1',
-                !['PT', 'YT', 'SY'].includes(displayTokenType ?? '') && 'text-muted-foreground'
-              )}
-            >
+            <span className={cn('font-mono text-sm font-semibold', tokenStyle.text)}>
               {displayTokenType ?? tokenSymbol.slice(0, 4)}
             </span>
           </div>

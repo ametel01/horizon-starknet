@@ -6,7 +6,8 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 24 event tables across 6 contracts
+ * Total: 52 event tables across 6 contracts
+ * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
  */
 
 import {
@@ -24,7 +25,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 // ============================================================
-// FACTORY EVENTS (2 tables)
+// FACTORY EVENTS (7 tables)
+// 2 core + 5 admin event tables
 // ============================================================
 
 export const factoryYieldContractsCreated = pgTable(
@@ -60,9 +62,9 @@ export const factoryYieldContractsCreated = pgTable(
     uniqueIndex("factory_ycc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const factoryClassHashesUpdated = pgTable(
@@ -80,13 +82,139 @@ export const factoryClassHashesUpdated = pgTable(
     uniqueIndex("factory_chu_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+export const factoryRewardFeeRateSet = pgTable(
+  "factory_reward_fee_rate_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_fee_rate: numeric("old_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    new_fee_rate: numeric("new_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_rfrs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factoryDefaultInterestFeeRateSet = pgTable(
+  "factory_default_interest_fee_rate_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_fee_rate: numeric("old_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    new_fee_rate: numeric("new_fee_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_difrs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factoryExpiryDivisorSet = pgTable(
+  "factory_expiry_divisor_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_expiry_divisor: bigint("old_expiry_divisor", {
+      mode: "number",
+    }).notNull(),
+    new_expiry_divisor: bigint("new_expiry_divisor", {
+      mode: "number",
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_eds_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factorySYWithRewardsDeployed = pgTable(
+  "factory_sy_with_rewards_deployed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed field (key)
+    sy: text("sy").notNull(),
+    // Event data
+    name: text("name").notNull(),
+    symbol: text("symbol").notNull(),
+    underlying: text("underlying").notNull(),
+    deployer: text("deployer").notNull(),
+    timestamp_field: bigint("timestamp_field", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("factory_sywrd_sy_idx").on(table.sy),
+    index("factory_sywrd_underlying_idx").on(table.underlying),
+    index("factory_sywrd_deployer_idx").on(table.deployer),
+    uniqueIndex("factory_sywrd_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const factorySYWithRewardsClassHashUpdated = pgTable(
+  "factory_sy_with_rewards_class_hash_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_class_hash: text("old_class_hash").notNull(),
+    new_class_hash: text("new_class_hash").notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_swrchu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 // ============================================================
-// MARKET FACTORY EVENTS (2 tables)
+// MARKET FACTORY EVENTS (7 tables)
+// 2 core + 3 AMM fee management + 2 admin tables
 // ============================================================
 
 export const marketFactoryMarketCreated = pgTable(
@@ -108,7 +236,11 @@ export const marketFactoryMarketCreated = pgTable(
       precision: 78,
       scale: 0,
     }).notNull(),
-    fee_rate: numeric("fee_rate", { precision: 78, scale: 0 }).notNull(),
+    ln_fee_rate_root: numeric("ln_fee_rate_root", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    reserve_fee_percent: integer("reserve_fee_percent").notNull(),
     sy: text("sy").notNull(),
     yt: text("yt").notNull(),
     underlying: text("underlying").notNull(),
@@ -127,9 +259,9 @@ export const marketFactoryMarketCreated = pgTable(
     uniqueIndex("mf_mc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketFactoryClassHashUpdated = pgTable(
@@ -147,13 +279,126 @@ export const marketFactoryClassHashUpdated = pgTable(
     uniqueIndex("mf_chu_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+export const marketFactoryTreasuryUpdated = pgTable(
+  "market_factory_treasury_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_treasury: text("old_treasury").notNull(),
+    new_treasury: text("new_treasury").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_tu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryDefaultReserveFeeUpdated = pgTable(
+  "market_factory_default_reserve_fee_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_percent: integer("old_percent").notNull(),
+    new_percent: integer("new_percent").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_drfu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryOverrideFeeSet = pgTable(
+  "market_factory_override_fee_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    router: text("router").notNull(),
+    market: text("market").notNull(),
+    ln_fee_rate_root: numeric("ln_fee_rate_root", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("mf_ofs_router_idx").on(table.router),
+    index("mf_ofs_market_idx").on(table.market),
+    uniqueIndex("mf_ofs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryDefaultRateImpactSensitivityUpdated = pgTable(
+  "market_factory_default_rate_impact_sensitivity_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_sensitivity: numeric("old_sensitivity", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    new_sensitivity: numeric("new_sensitivity", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_drisu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+export const marketFactoryYieldContractFactoryUpdated = pgTable(
+  "market_factory_yield_contract_factory_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    old_factory: text("old_factory").notNull(),
+    new_factory: text("new_factory").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mf_ycfu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 // ============================================================
-// SY (STANDARDIZED YIELD) EVENTS (3 tables)
+// SY (STANDARDIZED YIELD) EVENTS (8 tables)
+// 3 core tables + 5 Phase 4 monitoring tables
 // ============================================================
 
 export const syDeposit = pgTable(
@@ -196,9 +441,9 @@ export const syDeposit = pgTable(
     uniqueIndex("sy_deposit_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const syRedeem = pgTable(
@@ -240,9 +485,9 @@ export const syRedeem = pgTable(
     uniqueIndex("sy_redeem_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const syOracleRateUpdated = pgTable(
@@ -270,9 +515,176 @@ export const syOracleRateUpdated = pgTable(
     uniqueIndex("sy_oru_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+// Phase 4: Negative Yield Detection (monitoring)
+// Source: contracts/src/components/sy_component.cairo:143-158
+export const syNegativeYieldDetected = pgTable(
+  "sy_negative_yield_detected",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    sy: text("sy").notNull(),
+    underlying: text("underlying").notNull(),
+    // Event data
+    watermark_rate: numeric("watermark_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    current_rate: numeric("current_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    rate_drop_bps: numeric("rate_drop_bps", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_nyd_sy_idx").on(table.sy),
+    index("sy_nyd_underlying_idx").on(table.underlying),
+    index("sy_nyd_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_nyd_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Phase 4: Pause State Tracking
+// Source: OpenZeppelin PausableComponent (Paused/Unpaused events)
+export const syPauseState = pgTable(
+  "sy_pause_state",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Contract address (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    account: text("account").notNull(), // Who triggered pause/unpause
+    is_paused: boolean("is_paused").notNull(), // true = Paused, false = Unpaused
+  },
+  (table) => [
+    index("sy_ps_sy_idx").on(table.sy),
+    index("sy_ps_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_ps_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Phase 4: Rewards Claimed (SYWithRewards)
+// Source: contracts/src/components/reward_manager_component.cairo:85-94
+export const syRewardsClaimed = pgTable(
+  "sy_rewards_claimed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    user: text("user").notNull(),
+    reward_token: text("reward_token").notNull(),
+    // SYWithRewards contract (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_rc_user_idx").on(table.user),
+    index("sy_rc_sy_idx").on(table.sy),
+    index("sy_rc_token_idx").on(table.reward_token),
+    index("sy_rc_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_rc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Phase 4: Reward Index Updated (for APY calculation)
+// Source: contracts/src/components/reward_manager_component.cairo:96-106
+export const syRewardIndexUpdated = pgTable(
+  "sy_reward_index_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // SYWithRewards contract (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    old_index: numeric("old_index", { precision: 78, scale: 0 }).notNull(),
+    new_index: numeric("new_index", { precision: 78, scale: 0 }).notNull(),
+    rewards_added: numeric("rewards_added", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_supply: numeric("total_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_riu_sy_idx").on(table.sy),
+    index("sy_riu_token_idx").on(table.reward_token),
+    index("sy_riu_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("sy_riu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Phase 4: Reward Token Added (registry)
+// Source: contracts/src/components/reward_manager_component.cairo:108-115
+export const syRewardTokenAdded = pgTable(
+  "sy_reward_token_added",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // SYWithRewards contract (derived from event source)
+    sy: text("sy").notNull(),
+    // Event data
+    token_index: integer("token_index").notNull(), // Index in reward tokens array
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("sy_rta_sy_idx").on(table.sy),
+    index("sy_rta_token_idx").on(table.reward_token),
+    uniqueIndex("sy_rta_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 // ============================================================
@@ -289,7 +701,8 @@ export const ytMintPY = pgTable(
     event_index: integer("event_index").notNull(),
     // Indexed fields (keys)
     caller: text("caller").notNull(),
-    receiver: text("receiver").notNull(),
+    receiver_pt: text("receiver_pt").notNull(),
+    receiver_yt: text("receiver_yt").notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
     // Event data (YT contract from event source)
     yt: text("yt").notNull(),
@@ -319,15 +732,16 @@ export const ytMintPY = pgTable(
   },
   (table) => [
     index("yt_mint_caller_idx").on(table.caller),
-    index("yt_mint_receiver_idx").on(table.receiver),
+    index("yt_mint_receiver_pt_idx").on(table.receiver_pt),
+    index("yt_mint_receiver_yt_idx").on(table.receiver_yt),
     index("yt_mint_expiry_idx").on(table.expiry),
     index("yt_mint_yt_idx").on(table.yt),
     uniqueIndex("yt_mint_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytRedeemPY = pgTable(
@@ -367,9 +781,9 @@ export const ytRedeemPY = pgTable(
     uniqueIndex("yt_redeem_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytRedeemPYPostExpiry = pgTable(
@@ -412,9 +826,9 @@ export const ytRedeemPYPostExpiry = pgTable(
     uniqueIndex("yt_redeem_pe_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytInterestClaimed = pgTable(
@@ -449,9 +863,9 @@ export const ytInterestClaimed = pgTable(
     uniqueIndex("yt_ic_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const ytExpiryReached = pgTable(
@@ -495,13 +909,299 @@ export const ytExpiryReached = pgTable(
     uniqueIndex("yt_er_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+// PostExpiryDataSet: emitted once when post-expiry data is initialized
+export const ytPostExpiryDataSet = pgTable(
+  "yt_post_expiry_data_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt, pt]
+    yt: text("yt").notNull(),
+    pt: text("pt").notNull(),
+    // Data fields
+    sy: text("sy").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    first_py_index: numeric("first_py_index", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    exchange_rate_at_init: numeric("exchange_rate_at_init", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_pt_supply: numeric("total_pt_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_yt_supply: numeric("total_yt_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_peds_yt_idx").on(table.yt),
+    index("yt_peds_pt_idx").on(table.pt),
+    uniqueIndex("yt_peds_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// PyIndexUpdated: emitted when PY index changes
+export const ytPyIndexUpdated = pgTable(
+  "yt_py_index_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt]
+    yt: text("yt").notNull(),
+    // Data fields
+    old_index: numeric("old_index", { precision: 78, scale: 0 }).notNull(),
+    new_index: numeric("new_index", { precision: 78, scale: 0 }).notNull(),
+    exchange_rate: numeric("exchange_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    index_block_number: bigint("index_block_number", {
+      mode: "number",
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_piu_yt_idx").on(table.yt),
+    index("yt_piu_block_idx").on(table.index_block_number),
+    uniqueIndex("yt_piu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// TreasuryInterestRedeemed: admin claims post-expiry yield
+export const ytTreasuryInterestRedeemed = pgTable(
+  "yt_treasury_interest_redeemed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt, treasury]
+    yt: text("yt").notNull(),
+    treasury: text("treasury").notNull(),
+    // Data fields
+    amount_sy: numeric("amount_sy", { precision: 78, scale: 0 }).notNull(),
+    sy: text("sy").notNull(),
+    expiry_index: numeric("expiry_index", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    current_index: numeric("current_index", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_yt_supply: numeric("total_yt_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_tir_yt_idx").on(table.yt),
+    index("yt_tir_treasury_idx").on(table.treasury),
+    uniqueIndex("yt_tir_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// InterestFeeRateSet: admin changes fee rate
+export const ytInterestFeeRateSet = pgTable(
+  "yt_interest_fee_rate_set",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, yt]
+    yt: text("yt").notNull(),
+    // Data fields
+    old_rate: numeric("old_rate", { precision: 78, scale: 0 }).notNull(),
+    new_rate: numeric("new_rate", { precision: 78, scale: 0 }).notNull(),
+  },
+  (table) => [
+    index("yt_ifrs_yt_idx").on(table.yt),
+    uniqueIndex("yt_ifrs_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// MintPYMulti: batch minting
+export const ytMintPYMulti = pgTable(
+  "yt_mint_py_multi",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, expiry]
+    caller: text("caller").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    // Data fields (yt derived from event.address)
+    yt: text("yt").notNull(),
+    total_sy_deposited: numeric("total_sy_deposited", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_py_minted: numeric("total_py_minted", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    receiver_count: integer("receiver_count").notNull(),
+  },
+  (table) => [
+    index("yt_mpm_caller_idx").on(table.caller),
+    index("yt_mpm_expiry_idx").on(table.expiry),
+    index("yt_mpm_yt_idx").on(table.yt),
+    uniqueIndex("yt_mpm_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// RedeemPYMulti: batch redemption
+export const ytRedeemPYMulti = pgTable(
+  "yt_redeem_py_multi",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, expiry]
+    caller: text("caller").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    // Data fields
+    yt: text("yt").notNull(),
+    total_py_redeemed: numeric("total_py_redeemed", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_sy_returned: numeric("total_sy_returned", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    receiver_count: integer("receiver_count").notNull(),
+  },
+  (table) => [
+    index("yt_rpm_caller_idx").on(table.caller),
+    index("yt_rpm_expiry_idx").on(table.expiry),
+    index("yt_rpm_yt_idx").on(table.yt),
+    uniqueIndex("yt_rpm_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// RedeemPYWithInterest: combined redeem + claim
+export const ytRedeemPYWithInterest = pgTable(
+  "yt_redeem_py_with_interest",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, receiver, expiry]
+    caller: text("caller").notNull(),
+    receiver: text("receiver").notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    // Data fields
+    yt: text("yt").notNull(),
+    amount_py_redeemed: numeric("amount_py_redeemed", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    amount_sy_from_redeem: numeric("amount_sy_from_redeem", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    amount_interest_claimed: numeric("amount_interest_claimed", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("yt_rpwi_caller_idx").on(table.caller),
+    index("yt_rpwi_receiver_idx").on(table.receiver),
+    index("yt_rpwi_expiry_idx").on(table.expiry),
+    index("yt_rpwi_yt_idx").on(table.yt),
+    uniqueIndex("yt_rpwi_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// FlashMintPY: flash mint PT + YT tokens (atomic borrow-and-repay)
+export const ytFlashMintPY = pgTable(
+  "yt_flash_mint_py",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Keys: [selector, caller, receiver]
+    caller: text("caller").notNull(),
+    receiver: text("receiver").notNull(),
+    // Data fields
+    yt: text("yt").notNull(), // derived from event.address
+    amount_py: numeric("amount_py", { precision: 78, scale: 0 }).notNull(),
+    fee_sy: numeric("fee_sy", { precision: 78, scale: 0 }).notNull(),
+    sy: text("sy").notNull(),
+    pt: text("pt").notNull(),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("yt_fmpy_caller_idx").on(table.caller),
+    index("yt_fmpy_receiver_idx").on(table.receiver),
+    index("yt_fmpy_yt_idx").on(table.yt),
+    uniqueIndex("yt_fmpy_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 // ============================================================
-// MARKET (AMM) EVENTS (6 tables)
+// MARKET (AMM) EVENTS (8 tables)
+// 7 core + 1 reserve fee transfer table
 // ============================================================
 
 export const marketMint = pgTable(
@@ -552,9 +1252,9 @@ export const marketMint = pgTable(
     uniqueIndex("market_mint_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketBurn = pgTable(
@@ -605,9 +1305,64 @@ export const marketBurn = pgTable(
     uniqueIndex("market_burn_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+export const marketBurnWithReceivers = pgTable(
+  "market_burn_with_receivers",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    sender: text("sender").notNull(),
+    receiver_sy: text("receiver_sy").notNull(),
+    receiver_pt: text("receiver_pt").notNull(),
+    // Event data
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    market: text("market").notNull(),
+    sy: text("sy").notNull(),
+    pt: text("pt").notNull(),
+    lp_amount: numeric("lp_amount", { precision: 78, scale: 0 }).notNull(),
+    sy_amount: numeric("sy_amount", { precision: 78, scale: 0 }).notNull(),
+    pt_amount: numeric("pt_amount", { precision: 78, scale: 0 }).notNull(),
+    exchange_rate: numeric("exchange_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    implied_rate: numeric("implied_rate", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    sy_reserve_after: numeric("sy_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    pt_reserve_after: numeric("pt_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_lp_after: numeric("total_lp_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+  },
+  (table) => [
+    index("market_burn_with_receivers_sender_idx").on(table.sender),
+    index("market_burn_with_receivers_receiver_sy_idx").on(table.receiver_sy),
+    index("market_burn_with_receivers_receiver_pt_idx").on(table.receiver_pt),
+    index("market_burn_with_receivers_expiry_idx").on(table.expiry),
+    index("market_burn_with_receivers_market_idx").on(table.market),
+    uniqueIndex("market_burn_with_receivers_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 export const marketSwap = pgTable(
@@ -630,7 +1385,12 @@ export const marketSwap = pgTable(
     sy_in: numeric("sy_in", { precision: 78, scale: 0 }).notNull(),
     pt_out: numeric("pt_out", { precision: 78, scale: 0 }).notNull(),
     sy_out: numeric("sy_out", { precision: 78, scale: 0 }).notNull(),
-    fee: numeric("fee", { precision: 78, scale: 0 }).notNull(),
+    // Fee columns - total_fee is the sum of lp_fee + reserve_fee
+    // Note: 'fee' column kept nullable for historical data compatibility (deprecated)
+    fee: numeric("fee", { precision: 78, scale: 0 }),
+    total_fee: numeric("total_fee", { precision: 78, scale: 0 }),
+    lp_fee: numeric("lp_fee", { precision: 78, scale: 0 }),
+    reserve_fee: numeric("reserve_fee", { precision: 78, scale: 0 }),
     implied_rate_before: numeric("implied_rate_before", {
       precision: 78,
       scale: 0,
@@ -661,9 +1421,9 @@ export const marketSwap = pgTable(
     uniqueIndex("market_swap_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketImpliedRateUpdated = pgTable(
@@ -696,9 +1456,9 @@ export const marketImpliedRateUpdated = pgTable(
     uniqueIndex("market_iru_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketFeesCollected = pgTable(
@@ -716,7 +1476,10 @@ export const marketFeesCollected = pgTable(
     // Event data
     amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
     expiry: bigint("expiry", { mode: "number" }).notNull(),
-    fee_rate: numeric("fee_rate", { precision: 78, scale: 0 }).notNull(),
+    ln_fee_rate_root: numeric("ln_fee_rate_root", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
   },
   (table) => [
     index("market_fc_collector_idx").on(table.collector),
@@ -725,9 +1488,9 @@ export const marketFeesCollected = pgTable(
     uniqueIndex("market_fc_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const marketScalarRootUpdated = pgTable(
@@ -750,13 +1513,183 @@ export const marketScalarRootUpdated = pgTable(
     uniqueIndex("market_sru_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+export const marketReserveFeeTransferred = pgTable(
+  "market_reserve_fee_transferred",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    market: text("market").notNull(),
+    treasury: text("treasury").notNull(),
+    caller: text("caller").notNull(),
+    // Event data
+    amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+    expiry: bigint("expiry", { mode: "number" }).notNull(),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_rft_market_idx").on(table.market),
+    index("market_rft_treasury_idx").on(table.treasury),
+    index("market_rft_caller_idx").on(table.caller),
+    index("market_rft_expiry_idx").on(table.expiry),
+    uniqueIndex("market_rft_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 // ============================================================
-// ROUTER EVENTS (6 tables)
+// MARKET LP REWARD EVENTS (3 tables)
+// ============================================================
+
+// Market LP Rewards Claimed
+// Source: contracts/src/components/reward_manager_component.cairo:85-94
+export const marketRewardsClaimed = pgTable(
+  "market_rewards_claimed",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    user: text("user").notNull(),
+    reward_token: text("reward_token").notNull(),
+    // Market contract (derived from event source)
+    market: text("market").notNull(),
+    // Event data
+    amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_rc_user_idx").on(table.user),
+    index("market_rc_market_idx").on(table.market),
+    index("market_rc_token_idx").on(table.reward_token),
+    index("market_rc_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_rc_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Market LP Reward Index Updated (for APY calculation)
+// Source: contracts/src/components/reward_manager_component.cairo:96-106
+export const marketRewardIndexUpdated = pgTable(
+  "market_reward_index_updated",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // Market contract (derived from event source)
+    market: text("market").notNull(),
+    // Event data
+    old_index: numeric("old_index", { precision: 78, scale: 0 }).notNull(),
+    new_index: numeric("new_index", { precision: 78, scale: 0 }).notNull(),
+    rewards_added: numeric("rewards_added", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    total_supply: numeric("total_supply", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_riu_market_idx").on(table.market),
+    index("market_riu_token_idx").on(table.reward_token),
+    index("market_riu_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("market_riu_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Market LP Reward Token Added (registry)
+// Source: contracts/src/components/reward_manager_component.cairo:108-115
+export const marketRewardTokenAdded = pgTable(
+  "market_reward_token_added",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    reward_token: text("reward_token").notNull(),
+    // Market contract (derived from event source)
+    market: text("market").notNull(),
+    // Event data
+    token_index: integer("token_index").notNull(), // Index in reward tokens array
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_rta_market_idx").on(table.market),
+    index("market_rta_token_idx").on(table.reward_token),
+    uniqueIndex("market_rta_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// Market Skim event - emitted when reserves are reconciled with actual balances
+export const marketSkim = pgTable(
+  "market_skim",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    market: text("market").notNull(),
+    caller: text("caller").notNull(),
+    // Event data
+    sy_excess: numeric("sy_excess", { precision: 78, scale: 0 }).notNull(), // SY tokens added to reserves
+    pt_excess: numeric("pt_excess", { precision: 78, scale: 0 }).notNull(), // PT tokens added to reserves
+    sy_reserve_after: numeric("sy_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    pt_reserve_after: numeric("pt_reserve_after", {
+      precision: 78,
+      scale: 0,
+    }).notNull(),
+    event_timestamp: bigint("event_timestamp", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("market_skim_market_idx").on(table.market),
+    index("market_skim_caller_idx").on(table.caller),
+    uniqueIndex("market_skim_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
+);
+
+// ============================================================
+// ROUTER EVENTS (7 tables)
 // ============================================================
 
 export const routerMintPY = pgTable(
@@ -784,9 +1717,9 @@ export const routerMintPY = pgTable(
     uniqueIndex("router_mint_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerRedeemPY = pgTable(
@@ -812,9 +1745,9 @@ export const routerRedeemPY = pgTable(
     uniqueIndex("router_redeem_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerAddLiquidity = pgTable(
@@ -842,9 +1775,9 @@ export const routerAddLiquidity = pgTable(
     uniqueIndex("router_al_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerRemoveLiquidity = pgTable(
@@ -872,9 +1805,9 @@ export const routerRemoveLiquidity = pgTable(
     uniqueIndex("router_rl_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerSwap = pgTable(
@@ -903,9 +1836,9 @@ export const routerSwap = pgTable(
     uniqueIndex("router_swap_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
 );
 
 export const routerSwapYT = pgTable(
@@ -936,9 +1869,40 @@ export const routerSwapYT = pgTable(
     uniqueIndex("router_swap_yt_event_key").on(
       table.block_number,
       table.transaction_hash,
-      table.event_index,
+      table.event_index
     ),
-  ],
+  ]
+);
+
+export const routerRolloverLp = pgTable(
+  "router_rollover_lp",
+  {
+    _id: uuid("_id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "number" }).notNull(),
+    block_timestamp: timestamp("block_timestamp").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    // Indexed fields (keys)
+    sender: text("sender").notNull(),
+    receiver: text("receiver").notNull(),
+    // Event data
+    market_old: text("market_old").notNull(),
+    market_new: text("market_new").notNull(),
+    lp_burned: numeric("lp_burned", { precision: 78, scale: 0 }).notNull(),
+    lp_minted: numeric("lp_minted", { precision: 78, scale: 0 }).notNull(),
+  },
+  (table) => [
+    index("router_rollover_sender_idx").on(table.sender),
+    index("router_rollover_receiver_idx").on(table.receiver),
+    index("router_rollover_market_old_idx").on(table.market_old),
+    index("router_rollover_market_new_idx").on(table.market_new),
+    index("router_rollover_timestamp_idx").on(table.block_timestamp),
+    uniqueIndex("router_rollover_event_key").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+  ]
 );
 
 // ============================================================
@@ -979,7 +1943,9 @@ export const enrichedRouterSwap = pgView("enriched_router_swap", {
     precision: 78,
     scale: 0,
   }),
-  fee: numeric("fee", { precision: 78, scale: 0 }),
+  total_fee: numeric("total_fee", { precision: 78, scale: 0 }),
+  lp_fee: numeric("lp_fee", { precision: 78, scale: 0 }),
+  reserve_fee: numeric("reserve_fee", { precision: 78, scale: 0 }),
   sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
   pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
 }).existing();
@@ -1016,7 +1982,9 @@ export const enrichedRouterSwapYT = pgView("enriched_router_swap_yt", {
     precision: 78,
     scale: 0,
   }),
-  fee: numeric("fee", { precision: 78, scale: 0 }),
+  total_fee: numeric("total_fee", { precision: 78, scale: 0 }),
+  lp_fee: numeric("lp_fee", { precision: 78, scale: 0 }),
+  reserve_fee: numeric("reserve_fee", { precision: 78, scale: 0 }),
 }).existing();
 
 /**
@@ -1048,7 +2016,7 @@ export const enrichedRouterAddLiquidity = pgView(
     sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
     pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
     total_lp_after: numeric("total_lp_after", { precision: 78, scale: 0 }),
-  },
+  }
 ).existing();
 
 /**
@@ -1080,7 +2048,7 @@ export const enrichedRouterRemoveLiquidity = pgView(
     sy_reserve_after: numeric("sy_reserve_after", { precision: 78, scale: 0 }),
     pt_reserve_after: numeric("pt_reserve_after", { precision: 78, scale: 0 }),
     total_lp_after: numeric("total_lp_after", { precision: 78, scale: 0 }),
-  },
+  }
 ).existing();
 
 /**
@@ -1172,6 +2140,8 @@ export const marketDailyStats = pgView("market_daily_stats", {
   sy_volume: numeric("sy_volume", { precision: 78, scale: 0 }),
   pt_volume: numeric("pt_volume", { precision: 78, scale: 0 }),
   total_fees: numeric("total_fees", { precision: 78, scale: 0 }),
+  lp_fees: numeric("lp_fees", { precision: 78, scale: 0 }),
+  reserve_fees: numeric("reserve_fees", { precision: 78, scale: 0 }),
   swap_count: bigint("swap_count", { mode: "number" }),
   unique_traders: bigint("unique_traders", { mode: "number" }),
 }).existing();
@@ -1189,6 +2159,8 @@ export const marketHourlyStats = pgView("market_hourly_stats", {
   sy_volume: numeric("sy_volume", { precision: 78, scale: 0 }),
   pt_volume: numeric("pt_volume", { precision: 78, scale: 0 }),
   total_fees: numeric("total_fees", { precision: 78, scale: 0 }),
+  lp_fees: numeric("lp_fees", { precision: 78, scale: 0 }),
+  reserve_fees: numeric("reserve_fees", { precision: 78, scale: 0 }),
   swap_count: bigint("swap_count", { mode: "number" }),
 }).existing();
 
@@ -1290,6 +2262,11 @@ export const protocolDailyStats = pgView("protocol_daily_stats", {
   total_sy_volume: numeric("total_sy_volume", { precision: 78, scale: 0 }),
   total_pt_volume: numeric("total_pt_volume", { precision: 78, scale: 0 }),
   total_fees: numeric("total_fees", { precision: 78, scale: 0 }),
+  total_lp_fees: numeric("total_lp_fees", { precision: 78, scale: 0 }),
+  total_reserve_fees: numeric("total_reserve_fees", {
+    precision: 78,
+    scale: 0,
+  }),
   swap_count: bigint("swap_count", { mode: "number" }),
   unique_swappers: bigint("unique_swappers", { mode: "number" }),
   total_py_minted: numeric("total_py_minted", { precision: 78, scale: 0 }),
@@ -1320,7 +2297,8 @@ export const marketCurrentState = pgView("market_current_state", {
   yt: text("yt"),
   underlying: text("underlying"),
   underlying_symbol: text("underlying_symbol"),
-  fee_rate: numeric("fee_rate", { precision: 78, scale: 0 }),
+  ln_fee_rate_root: numeric("ln_fee_rate_root", { precision: 78, scale: 0 }),
+  reserve_fee_percent: integer("reserve_fee_percent"),
   initial_exchange_rate: numeric("initial_exchange_rate", {
     precision: 78,
     scale: 0,
@@ -1350,6 +2328,14 @@ export const userTradingStats = pgView("user_trading_stats", {
   total_sy_volume: numeric("total_sy_volume", { precision: 78, scale: 0 }),
   total_pt_volume: numeric("total_pt_volume", { precision: 78, scale: 0 }),
   total_fees_paid: numeric("total_fees_paid", { precision: 78, scale: 0 }),
+  total_lp_fees_paid: numeric("total_lp_fees_paid", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_reserve_fees_paid: numeric("total_reserve_fees_paid", {
+    precision: 78,
+    scale: 0,
+  }),
   first_swap: timestamp("first_swap"),
   last_swap: timestamp("last_swap"),
   active_days: bigint("active_days", { mode: "number" }),
@@ -1379,13 +2365,246 @@ export const rateHistory = pgView("rate_history", {
 
 /**
  * Exchange rate history - from SY oracle updates
+ * Includes transaction_hash and event_index to handle multiple events per block
  */
 export const exchangeRateHistory = pgView("exchange_rate_history", {
   sy: text("sy"),
   underlying: text("underlying"),
   block_timestamp: timestamp("block_timestamp"),
   block_number: bigint("block_number", { mode: "number" }),
+  transaction_hash: text("transaction_hash"),
+  event_index: integer("event_index"),
   old_rate: numeric("old_rate", { precision: 78, scale: 0 }),
   new_rate: numeric("new_rate", { precision: 78, scale: 0 }),
   rate_change_bps: numeric("rate_change_bps", { precision: 78, scale: 0 }),
+}).existing();
+
+// ============================================================
+// PHASE 4: SY MONITORING VIEWS (4 views)
+// Views for negative yield alerts, pause state, and rewards
+// ============================================================
+
+/**
+ * User Reward History View
+ * Aggregates reward claims per user per SY per reward token
+ * Use for: Portfolio page, reward claim history
+ */
+export const userRewardHistory = pgView("user_reward_history", {
+  user: text("user"),
+  sy: text("sy"),
+  reward_token: text("reward_token"),
+  total_claimed: numeric("total_claimed", { precision: 78, scale: 0 }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+  last_claim_timestamp: timestamp("last_claim_timestamp"),
+}).existing();
+
+/**
+ * SY Current Pause State View
+ * Latest pause state for each SY contract
+ * Use for: Market cards, warning banners
+ */
+export const syCurrentPauseState = pgView("sy_current_pause_state", {
+  sy: text("sy"),
+  is_paused: boolean("is_paused"),
+  last_updated_at: timestamp("last_updated_at"),
+  last_updated_by: text("last_updated_by"),
+}).existing();
+
+/**
+ * Negative Yield Alerts View
+ * Aggregated negative yield events per SY
+ * Use for: Monitoring dashboard, alert banners
+ */
+export const negativeYieldAlerts = pgView("negative_yield_alerts", {
+  sy: text("sy"),
+  underlying: text("underlying"),
+  event_count: bigint("event_count", { mode: "number" }),
+  max_drop_bps: numeric("max_drop_bps", { precision: 78, scale: 0 }),
+  last_detected_at: timestamp("last_detected_at"),
+}).existing();
+
+/**
+ * SY Reward Stats View
+ * Rolling 7-day reward statistics per SY per reward token
+ * NOTE: Named "stats" not "APY" - consumers must compute APY using token decimals and prices
+ * Use for: Raw reward data for APY calculations
+ */
+export const syRewardStats = pgView("sy_reward_stats", {
+  sy: text("sy"),
+  reward_token: text("reward_token"),
+  rewards_last_7_days: numeric("rewards_last_7_days", {
+    precision: 78,
+    scale: 0,
+  }),
+  avg_total_supply: numeric("avg_total_supply", { precision: 78, scale: 0 }),
+  update_count: bigint("update_count", { mode: "number" }),
+}).existing();
+
+// ============================================================
+// PHASE 5: YT INTEREST ANALYTICS VIEWS (4 views)
+// Views for fee rate tracking, treasury yields, and batch operations
+// ============================================================
+
+/**
+ * YT Fee Analytics View
+ * Tracks current fee rate per YT and rate change history
+ * Use for: Fee rate display, governance monitoring
+ */
+export const ytFeeAnalytics = pgView("yt_fee_analytics", {
+  yt: text("yt"),
+  current_fee_rate: numeric("current_fee_rate", { precision: 78, scale: 0 }),
+  initial_fee_rate: numeric("initial_fee_rate", { precision: 78, scale: 0 }),
+  rate_change_count: bigint("rate_change_count", { mode: "number" }),
+  first_change: timestamp("first_change"),
+  last_change: timestamp("last_change"),
+  net_change_direction: bigint("net_change_direction", { mode: "number" }),
+}).existing();
+
+/**
+ * Treasury Yield Summary View
+ * Aggregates total treasury claims per YT
+ * Use for: Treasury analytics, protocol revenue tracking
+ */
+export const treasuryYieldSummary = pgView("treasury_yield_summary", {
+  yt: text("yt"),
+  treasury: text("treasury"),
+  sy: text("sy"),
+  total_sy_claimed: numeric("total_sy_claimed", { precision: 78, scale: 0 }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+  first_claim: timestamp("first_claim"),
+  last_claim: timestamp("last_claim"),
+  avg_claim_size: numeric("avg_claim_size", { precision: 78, scale: 0 }),
+  latest_index: numeric("latest_index", { precision: 78, scale: 0 }),
+  latest_yt_supply: numeric("latest_yt_supply", { precision: 78, scale: 0 }),
+}).existing();
+
+/**
+ * Batch Operations Summary View
+ * Aggregates batch mint/redeem activity per caller
+ * Use for: Whale tracking, batch operation analytics
+ */
+export const batchOperationsSummary = pgView("batch_operations_summary", {
+  caller: text("caller"),
+  yt: text("yt"),
+  expiry: bigint("expiry", { mode: "number" }),
+  total_batch_minted_sy: numeric("total_batch_minted_sy", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_batch_minted_py: numeric("total_batch_minted_py", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_mint_receivers: bigint("total_mint_receivers", { mode: "number" }),
+  batch_mint_count: bigint("batch_mint_count", { mode: "number" }),
+  total_batch_redeemed_py: numeric("total_batch_redeemed_py", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_batch_redeemed_sy: numeric("total_batch_redeemed_sy", {
+    precision: 78,
+    scale: 0,
+  }),
+  total_redeem_receivers: bigint("total_redeem_receivers", { mode: "number" }),
+  batch_redeem_count: bigint("batch_redeem_count", { mode: "number" }),
+  total_batch_operations: bigint("total_batch_operations", { mode: "number" }),
+  first_batch_operation: timestamp("first_batch_operation"),
+  last_batch_operation: timestamp("last_batch_operation"),
+}).existing();
+
+/**
+ * Redeem With Interest Analytics View
+ * Tracks redemptions that also claimed interest
+ * Use for: User transaction history, interest tracking
+ */
+export const redeemWithInterestAnalytics = pgView(
+  "redeem_with_interest_analytics",
+  {
+    _id: uuid("_id"),
+    block_number: bigint("block_number", { mode: "number" }),
+    block_timestamp: timestamp("block_timestamp"),
+    transaction_hash: text("transaction_hash"),
+    yt: text("yt"),
+    caller: text("caller"),
+    receiver: text("receiver"),
+    expiry: bigint("expiry", { mode: "number" }),
+    amount_py_redeemed: numeric("amount_py_redeemed", {
+      precision: 78,
+      scale: 0,
+    }),
+    amount_sy_from_redeem: numeric("amount_sy_from_redeem", {
+      precision: 78,
+      scale: 0,
+    }),
+    amount_interest_claimed: numeric("amount_interest_claimed", {
+      precision: 78,
+      scale: 0,
+    }),
+    total_sy_received: numeric("total_sy_received", {
+      precision: 78,
+      scale: 0,
+    }),
+    interest_percentage_bps: numeric("interest_percentage_bps", {
+      precision: 78,
+      scale: 0,
+    }),
+    sy: text("sy"),
+    pt: text("pt"),
+    underlying: text("underlying"),
+    underlying_symbol: text("underlying_symbol"),
+  }
+).existing();
+
+// ============================================================
+// PHASE 6: MARKET LP REWARDS VIEWS (1 view)
+// Views for Market LP reward analytics
+// ============================================================
+
+/**
+ * Market Rewards Summary View
+ * Aggregates Market LP reward claims per user per market per reward token
+ * Use for: Portfolio page, LP reward claim history
+ */
+export const marketRewardsSummary = pgView("market_rewards_summary", {
+  user: text("user"),
+  market: text("market"),
+  reward_token: text("reward_token"),
+  total_claimed: numeric("total_claimed", { precision: 78, scale: 0 }),
+  claim_count: bigint("claim_count", { mode: "number" }),
+  last_claim_timestamp: timestamp("last_claim_timestamp"),
+}).existing();
+
+// ============================================================
+// PHASE 7: LP ROLLOVER VIEWS (1 view)
+// Views for LP rollover analytics and migration tracking
+// ============================================================
+
+/**
+ * Rollover Activity View
+ * Enriched LP rollover events with market metadata for both old and new markets
+ * Use for: LP rollover analytics, migration tracking
+ */
+export const rolloverActivity = pgView("rollover_activity", {
+  _id: uuid("_id"),
+  block_number: bigint("block_number", { mode: "number" }),
+  block_timestamp: timestamp("block_timestamp"),
+  transaction_hash: text("transaction_hash"),
+  event_index: integer("event_index"),
+  sender: text("sender"),
+  receiver: text("receiver"),
+  // Old market data
+  market_old: text("market_old"),
+  market_old_expiry: bigint("market_old_expiry", { mode: "number" }),
+  market_old_sy: text("market_old_sy"),
+  market_old_pt: text("market_old_pt"),
+  market_old_yt: text("market_old_yt"),
+  // New market data
+  market_new: text("market_new"),
+  market_new_expiry: bigint("market_new_expiry", { mode: "number" }),
+  market_new_sy: text("market_new_sy"),
+  market_new_pt: text("market_new_pt"),
+  market_new_yt: text("market_new_yt"),
+  // Rollover amounts
+  lp_burned: numeric("lp_burned", { precision: 78, scale: 0 }),
+  lp_minted: numeric("lp_minted", { precision: 78, scale: 0 }),
 }).existing();

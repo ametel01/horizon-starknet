@@ -1,10 +1,9 @@
 'use client';
 
 import { Slider as SliderPrimitive } from '@base-ui/react/slider';
+import { cn } from '@shared/lib/utils';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-
-import { cn } from '@shared/lib/utils';
 
 function Slider({
   className,

@@ -41,7 +41,10 @@ interface TransactionSettingsContextValue extends TransactionSettings {
 // Constants
 // ============================================================================
 
-const STORAGE_KEY = 'horizon-tx-settings';
+// Version localStorage keys to prevent data corruption on schema changes
+// Increment version when changing the stored data structure
+const STORAGE_VERSION = 'v1';
+const STORAGE_KEY = `horizon-tx-settings-${STORAGE_VERSION}`;
 
 /** Default slippage: 50 basis points = 0.5% */
 export const DEFAULT_SLIPPAGE_BPS = 50;
@@ -94,9 +97,9 @@ export function TransactionSettingsProvider({
 }: TransactionSettingsProviderProps): React.ReactNode {
   const [slippageBps, setSlippageBpsState] = useState<number>(DEFAULT_SLIPPAGE_BPS);
   const [deadlineMinutes, setDeadlineMinutesState] = useState<number>(DEFAULT_DEADLINE_MINUTES);
-  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount (client-side only)
+  // Values start with defaults during SSR, then update to stored values
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -116,8 +119,6 @@ export function TransactionSettingsProvider({
     } catch {
       // localStorage unavailable or invalid JSON, use defaults
     }
-
-    setIsHydrated(true);
   }, []);
 
   // Persist to localStorage helper
@@ -176,11 +177,9 @@ export function TransactionSettingsProvider({
     deadlineSeconds,
   };
 
-  // Prevent hydration mismatch
-  if (!isHydrated) {
-    return null;
-  }
-
+  // Render with default values during SSR and hydration to prevent layout shift
+  // Values will update to localStorage values after hydration completes
+  // This follows Vercel's rendering-hydration-no-flicker guideline
   return (
     <TransactionSettingsContext.Provider value={value}>
       {children}

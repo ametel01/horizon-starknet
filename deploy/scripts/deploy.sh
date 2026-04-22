@@ -138,6 +138,9 @@ fi
 
 log_info "Deployer address: $DEPLOYER_ADDRESS"
 log_info "Test recipient:   $TEST_RECIPIENT"
+TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"
+update_env "TREASURY_ADDRESS" "$TREASURY_ADDRESS"
+log_info "Treasury address: $TREASURY_ADDRESS"
 
 # Create accounts directory if not exists
 mkdir -p "$(dirname "$ACCOUNTS_FILE")"
@@ -225,13 +228,29 @@ declare_class() {
 
 # Check if all required class hashes are already set
 if [[ -n "$MOCK_ERC20_CLASS_HASH" && -n "$MOCK_YIELD_TOKEN_CLASS_HASH" && \
-      -n "$SY_CLASS_HASH" && -n "$PT_CLASS_HASH" && -n "$YT_CLASS_HASH" && \
-      -n "$MARKET_CLASS_HASH" && -n "$FACTORY_CLASS_HASH" && \
-      -n "$MARKET_FACTORY_CLASS_HASH" && -n "$ROUTER_CLASS_HASH" ]]; then
+      -n "$MOCK_PRAGMA_CLASS_HASH" && -n "$MOCK_AGGREGATOR_CLASS_HASH" && \
+      -n "$MOCK_SWAP_CALLBACK_CLASS_HASH" && -n "$MOCK_FLASH_CALLBACK_CLASS_HASH" && \
+      -n "$MOCK_REENTRANT_TOKEN_CLASS_HASH" && -n "$FAUCET_CLASS_HASH" && \
+      -n "$PRAGMA_INDEX_ORACLE_CLASS_HASH" && -n "$PY_LP_ORACLE_CLASS_HASH" && \
+      -n "$ROUTER_STATIC_CLASS_HASH" && -n "$SY_CLASS_HASH" && \
+      -n "$SY_WITH_REWARDS_CLASS_HASH" && -n "$PT_CLASS_HASH" && \
+      -n "$YT_CLASS_HASH" && -n "$MARKET_CLASS_HASH" && \
+      -n "$FACTORY_CLASS_HASH" && -n "$MARKET_FACTORY_CLASS_HASH" && \
+      -n "$ROUTER_CLASS_HASH" ]]; then
     log_info "All class hashes found in env, skipping declarations"
     log_info "  MockERC20: $MOCK_ERC20_CLASS_HASH"
     log_info "  MockYieldToken: $MOCK_YIELD_TOKEN_CLASS_HASH"
+    log_info "  MockPragmaSummaryStats: $MOCK_PRAGMA_CLASS_HASH"
+    log_info "  MockAggregator: $MOCK_AGGREGATOR_CLASS_HASH"
+    log_info "  MockSwapCallback: $MOCK_SWAP_CALLBACK_CLASS_HASH"
+    log_info "  MockFlashCallback: $MOCK_FLASH_CALLBACK_CLASS_HASH"
+    log_info "  MockReentrantToken: $MOCK_REENTRANT_TOKEN_CLASS_HASH"
+    log_info "  Faucet: $FAUCET_CLASS_HASH"
+    log_info "  PragmaIndexOracle: $PRAGMA_INDEX_ORACLE_CLASS_HASH"
+    log_info "  PyLpOracle: $PY_LP_ORACLE_CLASS_HASH"
+    log_info "  RouterStatic: $ROUTER_STATIC_CLASS_HASH"
     log_info "  SY: $SY_CLASS_HASH"
+    log_info "  SYWithRewards: $SY_WITH_REWARDS_CLASS_HASH"
     log_info "  PT: $PT_CLASS_HASH"
     log_info "  YT: $YT_CLASS_HASH"
     log_info "  Market: $MARKET_CLASS_HASH"
@@ -244,8 +263,16 @@ else
     MOCK_ERC20_CLASS_HASH=$(declare_class "MockERC20" "MOCK_ERC20_CLASS_HASH")
     MOCK_YIELD_TOKEN_CLASS_HASH=$(declare_class "MockYieldToken" "MOCK_YIELD_TOKEN_CLASS_HASH")
     MOCK_PRAGMA_CLASS_HASH=$(declare_class "MockPragmaSummaryStats" "MOCK_PRAGMA_CLASS_HASH")
+    MOCK_AGGREGATOR_CLASS_HASH=$(declare_class "MockAggregator" "MOCK_AGGREGATOR_CLASS_HASH")
+    MOCK_SWAP_CALLBACK_CLASS_HASH=$(declare_class "MockSwapCallback" "MOCK_SWAP_CALLBACK_CLASS_HASH")
+    MOCK_FLASH_CALLBACK_CLASS_HASH=$(declare_class "MockFlashCallback" "MOCK_FLASH_CALLBACK_CLASS_HASH")
+    MOCK_REENTRANT_TOKEN_CLASS_HASH=$(declare_class "MockReentrantToken" "MOCK_REENTRANT_TOKEN_CLASS_HASH")
+    FAUCET_CLASS_HASH=$(declare_class "Faucet" "FAUCET_CLASS_HASH")
     PRAGMA_INDEX_ORACLE_CLASS_HASH=$(declare_class "PragmaIndexOracle" "PRAGMA_INDEX_ORACLE_CLASS_HASH")
+    PY_LP_ORACLE_CLASS_HASH=$(declare_class "PyLpOracle" "PY_LP_ORACLE_CLASS_HASH")
+    ROUTER_STATIC_CLASS_HASH=$(declare_class "RouterStatic" "ROUTER_STATIC_CLASS_HASH")
     SY_CLASS_HASH=$(declare_class "SY" "SY_CLASS_HASH")
+    SY_WITH_REWARDS_CLASS_HASH=$(declare_class "SYWithRewards" "SY_WITH_REWARDS_CLASS_HASH")
     PT_CLASS_HASH=$(declare_class "PT" "PT_CLASS_HASH")
     YT_CLASS_HASH=$(declare_class "YT" "YT_CLASS_HASH")
     MARKET_CLASS_HASH=$(declare_class "Market" "MARKET_CLASS_HASH")
@@ -372,17 +399,23 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(owner, yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash, treasury)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
-# MarketFactory: constructor(owner, market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash, yield_contract_factory)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH" "$FACTORY_ADDRESS")
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
     "$DEPLOYER_ADDRESS")
+
+# RouterStatic: constructor()
+ROUTER_STATIC_ADDRESS=$(deploy_contract "$ROUTER_STATIC_CLASS_HASH" "RouterStatic" "ROUTER_STATIC_ADDRESS")
+
+# PyLpOracle: constructor()
+PY_LP_ORACLE_ADDRESS=$(deploy_contract "$PY_LP_ORACLE_CLASS_HASH" "PyLpOracle" "PY_LP_ORACLE_ADDRESS")
 
 log_success "Core infrastructure deployed"
 
@@ -435,7 +468,7 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     # Deploy SY 1: SY-nstSTRK (wraps nstSTRK, ERC-4626 mode)
     # -------------------------------------------------------------------------
 
-    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, pauser)
+    # SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, asset_type, pauser, tokens_in, tokens_out)
     # "SY Nostra Staked STRK" = 21 chars
     # "SY-nstSTRK" = 10 chars
     # ERC-4626 mode: uses yield token's convertToAssets() for exchange rate
@@ -446,7 +479,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$NST_STRK_ADDRESS" \
         "$NST_STRK_ADDRESS" \
         0x1 \
-        "$DEPLOYER_ADDRESS")
+        0x0 \
+        "$DEPLOYER_ADDRESS" \
+        0x1 "$NST_STRK_ADDRESS" \
+        0x1 "$NST_STRK_ADDRESS")
 
     # -------------------------------------------------------------------------
     # Deploy SY 2: SY-sSTRK (wraps sSTRK, ERC-4626 mode)
@@ -462,7 +498,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$SSTRK_ADDRESS" \
         "$SSTRK_ADDRESS" \
         0x1 \
-        "$DEPLOYER_ADDRESS")
+        0x0 \
+        "$DEPLOYER_ADDRESS" \
+        0x1 "$SSTRK_ADDRESS" \
+        0x1 "$SSTRK_ADDRESS")
 
     # -------------------------------------------------------------------------
     # Deploy Yield Token 3: wstETH (Starknet Wrapped Staked Ether)
@@ -503,7 +542,10 @@ if [[ "$NETWORK" != "mainnet" ]]; then
         "$WSTETH_ADDRESS" \
         "$WSTETH_ADDRESS" \
         0x1 \
-        "$DEPLOYER_ADDRESS")
+        0x0 \
+        "$DEPLOYER_ADDRESS" \
+        0x1 "$WSTETH_ADDRESS" \
+        0x1 "$WSTETH_ADDRESS")
 
     log_success "Yield tokens and SY tokens deployed"
 
@@ -620,6 +662,7 @@ if [[ "$NETWORK" != "mainnet" ]]; then
     SCALAR_ROOT="${MARKET_SCALAR_ROOT:-5000000000000000000}"
     FEE_RATE="${MARKET_FEE_RATE:-3000000000000000}"
     DEFAULT_ANCHOR="${MARKET_INITIAL_ANCHOR:-76961041136128000}"  # ~8% APY default
+    RESERVE_FEE_PERCENT="${MARKET_RESERVE_FEE_PERCENT:-0}"
 
     # Per-market initial anchors (override with MARKET_INITIAL_ANCHOR_<NAME>)
     # Use calc-anchor.sh to calculate: ./deploy/scripts/calc-anchor.sh <apy%>
@@ -641,7 +684,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             "$PT_NST_STRK_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
             "$ANCHOR_HEX" 0x0 \
-            "$FEE_RATE_HEX" 0x0
+            "$FEE_RATE_HEX" 0x0 \
+            "$RESERVE_FEE_PERCENT" \
+            0x0
 
         sleep 1
         MARKET_NST_STRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
@@ -665,7 +710,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             "$PT_SSTRK_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
             "$ANCHOR_HEX" 0x0 \
-            "$FEE_RATE_HEX" 0x0
+            "$FEE_RATE_HEX" 0x0 \
+            "$RESERVE_FEE_PERCENT" \
+            0x0
 
         sleep 1
         MARKET_SSTRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
@@ -689,7 +736,9 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             "$PT_WSTETH_ADDRESS" \
             "$SCALAR_ROOT_HEX" 0x0 \
             "$ANCHOR_HEX" 0x0 \
-            "$FEE_RATE_HEX" 0x0
+            "$FEE_RATE_HEX" 0x0 \
+            "$RESERVE_FEE_PERCENT" \
+            0x0
 
         sleep 1
         MARKET_WSTETH_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
@@ -765,23 +814,23 @@ if [[ "$NETWORK" != "mainnet" ]]; then
             # Step 3: Deposit yield tokens to get SY
             log_info "  Depositing to SY..."
             if ! invoke_contract "$sy_token" deposit \
-                "$DEPLOYER_ADDRESS" "$SEED_HEX" 0x0; then
+                "$DEPLOYER_ADDRESS" "$yield_token" "$SEED_HEX" 0x0; then
                 log_error "  Failed to deposit to SY"
                 return 1
             fi
 
-            # Step 4: Approve YT to spend SY (for minting PT+YT)
-            log_info "  Approving YT to spend SY..."
-            if ! invoke_contract "$sy_token" approve \
+            # Step 4: Transfer floating SY to YT
+            log_info "  Transferring SY to YT..."
+            if ! invoke_contract "$sy_token" transfer \
                 "$yt_token" "$HALF_HEX" 0x0; then
-                log_error "  Failed to approve YT"
+                log_error "  Failed to transfer SY to YT"
                 return 1
             fi
 
-            # Step 5: Mint PT+YT from SY
+            # Step 5: Mint PT+YT from floating SY
             log_info "  Minting PT+YT..."
             if ! invoke_contract "$yt_token" mint_py \
-                "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0; then
+                "$DEPLOYER_ADDRESS" "$DEPLOYER_ADDRESS"; then
                 log_error "  Failed to mint PT+YT"
                 return 1
             fi
@@ -867,8 +916,16 @@ cat > "$JSON_FILE" << EOF
     "MockERC20": "$MOCK_ERC20_CLASS_HASH",
     "MockYieldToken": "$MOCK_YIELD_TOKEN_CLASS_HASH",
     "MockPragmaSummaryStats": "$MOCK_PRAGMA_CLASS_HASH",
+    "MockAggregator": "$MOCK_AGGREGATOR_CLASS_HASH",
+    "MockSwapCallback": "$MOCK_SWAP_CALLBACK_CLASS_HASH",
+    "MockFlashCallback": "$MOCK_FLASH_CALLBACK_CLASS_HASH",
+    "MockReentrantToken": "$MOCK_REENTRANT_TOKEN_CLASS_HASH",
+    "Faucet": "$FAUCET_CLASS_HASH",
     "PragmaIndexOracle": "$PRAGMA_INDEX_ORACLE_CLASS_HASH",
+    "PyLpOracle": "$PY_LP_ORACLE_CLASS_HASH",
+    "RouterStatic": "$ROUTER_STATIC_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
+    "SYWithRewards": "$SY_WITH_REWARDS_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
     "YT": "$YT_CLASS_HASH",
     "Market": "$MARKET_CLASS_HASH",
@@ -879,7 +936,9 @@ cat > "$JSON_FILE" << EOF
   "contracts": {
     "Factory": "$FACTORY_ADDRESS",
     "MarketFactory": "$MARKET_FACTORY_ADDRESS",
-    "Router": "$ROUTER_ADDRESS"
+    "Router": "$ROUTER_ADDRESS",
+    "RouterStatic": "$ROUTER_STATIC_ADDRESS",
+    "PyLpOracle": "$PY_LP_ORACLE_ADDRESS"
   },
   "testSetup": {
     "testRecipient": "$TEST_RECIPIENT",
@@ -975,6 +1034,8 @@ echo "Core Contracts:"
 echo "  Factory:        $FACTORY_ADDRESS"
 echo "  MarketFactory:  $MARKET_FACTORY_ADDRESS"
 echo "  Router:         $ROUTER_ADDRESS"
+echo "  RouterStatic:   $ROUTER_STATIC_ADDRESS"
+echo "  PyLpOracle:     $PY_LP_ORACLE_ADDRESS"
 
 if [[ "$NETWORK" != "mainnet" ]]; then
     echo ""

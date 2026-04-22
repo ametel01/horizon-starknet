@@ -1,5 +1,172 @@
 services:
   # ===========================================================================
+  # PostgreSQL - Indexer Database
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: horizon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: horizon
+      POSTGRES_PASSWORD: horizon
+      POSTGRES_DB: horizon_indexer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U horizon -d horizon_indexer"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - yield-network
+
+  # ===========================================================================
+  # Database Migrations - Applies Drizzle migrations on startup
+  # ===========================================================================
+  indexer-migrate:
+    build:
+      context: ./packages/indexer
+      dockerfile: Dockerfile.migrate
+    container_name: indexer-migrate
+    environment:
+      POSTGRES_CONNECTION_STRING: postgres://horizon:horizon@postgres:5432/horizon_indexer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yield-network
+
+  # ===========================================================================
+  # Apibara DNA Stack - Required for local indexer (optional)
+  # ===========================================================================
+  etcd:
+    image: quay.io/coreos/etcd:v3.6.7
+    container_name: horizon-etcd
+    restart: unless-stopped
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/etcd-data
+    command:
+      - etcd
+      - --data-dir=/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["indexer"]
+    networks:
+      - yield-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: horizon-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["indexer"]
+    networks:
+      - yield-network
+
+  minio-setup:
+    image: minio/mc:latest
+    container_name: horizon-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/dna-data --ignore-existing;
+      exit 0;
+      "
+    profiles: ["indexer"]
+    networks:
+      - yield-network
+
+  dna-starknet:
+    image: apibara-dna-starknet:latest
+    container_name: horizon-dna-starknet
+    restart: unless-stopped
+    ports:
+      - "7171:7007"
+    volumes:
+      - dna_cache:/cache
+    environment:
+      RUST_LOG: info
+      STARKNET_RPC_URL: http://devnet:5050
+      DNA_S3_BUCKET: dna-data
+      DNA_S3_ENDPOINT: http://minio:9000
+      DNA_S3_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      DNA_ETCD_ENDPOINTS: http://etcd:2379
+      DNA_ETCD_PREFIX: /dna/starknet
+      DNA_INGESTION_ENABLED: "true"
+      DNA_COMPACTION_ENABLED: "true"
+      DNA_SERVER_ENABLED: "true"
+      DNA_INGESTION_MAX_CONCURRENT_TASKS: "1"
+      DNA_SERVER_ADDRESS: "0.0.0.0:7007"
+      DNA_CACHE_DIR: /cache
+      DNA_CACHE_DATA_DISK_SIZE: 5Gi
+      DNA_CACHE_INDEX_DISK_SIZE: 5Gi
+      STARKNET_NO_INGEST_PENDING: "true"
+      DNA_INGESTION_DANGEROUSLY_OVERRIDE_STARTING_BLOCK: "0"
+    command: ["start"]
+    depends_on:
+      devnet:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+      etcd:
+        condition: service_healthy
+    profiles: ["indexer"]
+    networks:
+      - yield-network
+
+  # ===========================================================================
+  # Indexer - Apibara indexers running against local devnet
+  # ===========================================================================
+  indexer:
+    build:
+      context: ./packages/indexer
+      dockerfile: Dockerfile
+    container_name: horizon-indexer
+    environment:
+      PRESET: devnet
+      DNA_STREAM_URL: http://dna-starknet:7007
+      POSTGRES_CONNECTION_STRING: postgres://horizon:horizon@postgres:5432/horizon_indexer
+      DATABASE_URL: postgres://horizon:horizon@postgres:5432/horizon_indexer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dna-starknet:
+        condition: service_started
+      indexer-migrate:
+        condition: service_completed_successfully
+    profiles: ["indexer"]
+    networks:
+      - yield-network
+
+  # ===========================================================================
   # Starknet Devnet - Local Starknet Development Network
   # ===========================================================================
   devnet:
@@ -52,6 +219,12 @@ services:
         condition: service_healthy
     networks:
       - yield-network
+
+volumes:
+  postgres_data:
+  minio_data:
+  dna_cache:
+  etcd_data:
 
 networks:
   yield-network:

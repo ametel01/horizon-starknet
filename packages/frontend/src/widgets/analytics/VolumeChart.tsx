@@ -1,5 +1,11 @@
 'use client';
 
+import { useDashboardMarkets } from '@features/markets';
+import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useProtocolVolume } from '@features/protocol-status';
+import { cn } from '@shared/lib/utils';
+import { fromWad } from '@shared/math/wad';
+import { ChartSkeleton } from '@shared/ui/Skeleton';
 import {
   Activity,
   ArrowLeftRight,
@@ -11,13 +17,6 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-
-import { useDashboardMarkets } from '@features/markets';
-import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
-import { useProtocolVolume } from '@features/protocol-status';
-import { cn } from '@shared/lib/utils';
-import { fromWad } from '@shared/math/wad';
-import { ChartSkeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format USD value with compact notation for large numbers

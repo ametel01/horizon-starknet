@@ -1,9 +1,8 @@
 'use client';
 
 import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
-import type { ReactNode } from 'react';
-
 import { cn } from '@shared/lib/utils';
+import type { ReactNode } from 'react';
 
 function Progress({
   className,
@@ -69,4 +68,4 @@ function ProgressValue({ className, ...props }: ProgressPrimitive.Value.Props): 
   );
 }
 
-export { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue };
+export { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue };

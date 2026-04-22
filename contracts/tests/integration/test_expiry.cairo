@@ -19,8 +19,8 @@ const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
 /// 5. Market behavior at and after expiry
 
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 
@@ -40,6 +40,10 @@ fn charlie() -> ContractAddress {
 
 fn admin() -> ContractAddress {
     'admin'.try_into().unwrap()
+}
+
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
 }
 
 // ============ Deploy Helpers ============
@@ -92,7 +96,17 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
+
+    // tokens_in: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
+    // tokens_out: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -108,6 +122,11 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury
+    calldata.append(18); // decimals
+    // Reward tokens (empty span for standard deployment)
+    let empty_reward_tokens: Array<ContractAddress> = array![];
+    Serde::serialize(@empty_reward_tokens, ref calldata);
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -128,7 +147,10 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
+    calldata.append(0); // factory (zero address for tests)
+    calldata.append(0); // reward_tokens array length (empty for tests)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -154,8 +176,14 @@ fn mint_yield_token_to_user(
 
 fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 // Helper: Setup user with SY and PT tokens
@@ -173,15 +201,15 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2);
+    sy.deposit(user, underlying.contract_address, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 }
 
@@ -220,12 +248,13 @@ fn test_expiry_pt_only_redemption() {
     let pt_balance = pt.balance_of(alice());
     let sy_before = sy.balance_of(alice());
 
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, pt_balance);
+    pt.transfer(yt.contract_address, pt_balance);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let sy_received = yt.redeem_py_post_expiry(alice(), pt_balance);
+    let sy_received = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     // Verify SY received
@@ -267,12 +296,13 @@ fn test_yt_worthless_after_expiry() {
     start_cheat_block_timestamp_global(expiry + 1);
 
     // Alice can redeem PT without needing YT
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, amount);
+    pt.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let alice_sy = yt.redeem_py_post_expiry(alice(), amount);
+    let alice_sy = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(alice_sy > 0, 'Alice redeemed PT');
@@ -333,7 +363,7 @@ fn test_cannot_mint_after_expiry() {
     underlying.approve(sy.contract_address, 1000 * WAD);
     stop_cheat_caller_address(underlying.contract_address);
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.deposit(alice(), 1000 * WAD);
+    sy.deposit(alice(), underlying.contract_address, 1000 * WAD, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     // Fast forward past expiry
@@ -341,11 +371,11 @@ fn test_cannot_mint_after_expiry() {
 
     // Try to mint - should fail
     start_cheat_caller_address(sy.contract_address, alice());
-    sy.approve(yt.contract_address, 100 * WAD);
+    sy.transfer(yt.contract_address, 100 * WAD);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.mint_py(alice(), 100 * WAD); // Should panic
+    yt.mint_py(alice(), alice()); // Should panic
 }
 
 #[test]
@@ -368,12 +398,13 @@ fn test_cannot_redeem_post_expiry_before_expiry() {
     assert(!yt.is_expired(), 'Not expired');
 
     // Try to redeem post-expiry function before expiry - should fail
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, amount);
+    pt.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    yt.redeem_py_post_expiry(alice(), amount); // Should panic
+    yt.redeem_py_post_expiry(alice()); // Should panic
 }
 
 #[test]
@@ -471,7 +502,7 @@ fn test_market_no_swaps_after_expiry() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    market.swap_exact_sy_for_pt(bob(), 50 * WAD, 0); // Should panic
+    market.swap_exact_sy_for_pt(bob(), 50 * WAD, 0, array![].span()); // Should panic
 }
 
 #[test]
@@ -563,12 +594,14 @@ fn test_yield_accumulation_until_expiry() {
     start_cheat_block_timestamp_global(expiry + 1);
 
     let pt_balance = pt.balance_of(alice());
+
+    // Transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, pt_balance);
+    pt.transfer(yt.contract_address, pt_balance);
     stop_cheat_caller_address(pt.contract_address);
 
     start_cheat_caller_address(yt.contract_address, alice());
-    let final_sy = yt.redeem_py_post_expiry(alice(), pt_balance);
+    let final_sy = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
     assert(final_sy > 0, 'Final PT redemption');
@@ -604,28 +637,28 @@ fn test_multiple_users_expiry_redemption() {
     let bob_pt = pt.balance_of(bob());
     let charlie_pt = pt.balance_of(charlie());
 
-    // Alice redeems
+    // Alice redeems - transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, alice());
-    pt.approve(yt.contract_address, alice_pt);
+    pt.transfer(yt.contract_address, alice_pt);
     stop_cheat_caller_address(pt.contract_address);
     start_cheat_caller_address(yt.contract_address, alice());
-    let alice_sy = yt.redeem_py_post_expiry(alice(), alice_pt);
+    let alice_sy = yt.redeem_py_post_expiry(alice());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Bob redeems
+    // Bob redeems - transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, bob());
-    pt.approve(yt.contract_address, bob_pt);
+    pt.transfer(yt.contract_address, bob_pt);
     stop_cheat_caller_address(pt.contract_address);
     start_cheat_caller_address(yt.contract_address, bob());
-    let bob_sy = yt.redeem_py_post_expiry(bob(), bob_pt);
+    let bob_sy = yt.redeem_py_post_expiry(bob());
     stop_cheat_caller_address(yt.contract_address);
 
-    // Charlie redeems
+    // Charlie redeems - transfer PT to YT contract (pre-transfer pattern)
     start_cheat_caller_address(pt.contract_address, charlie());
-    pt.approve(yt.contract_address, charlie_pt);
+    pt.transfer(yt.contract_address, charlie_pt);
     stop_cheat_caller_address(pt.contract_address);
     start_cheat_caller_address(yt.contract_address, charlie());
-    let charlie_sy = yt.redeem_py_post_expiry(charlie(), charlie_pt);
+    let charlie_sy = yt.redeem_py_post_expiry(charlie());
     stop_cheat_caller_address(yt.contract_address);
 
     // All received SY

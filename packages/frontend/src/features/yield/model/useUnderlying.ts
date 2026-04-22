@@ -1,9 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-
 import { useStarknet } from '@features/wallet';
 import { getSYContract } from '@shared/starknet/contracts';
+import { useQuery } from '@tanstack/react-query';
 
 /**
  * Hook to fetch the underlying token address from an SY contract
@@ -24,7 +23,7 @@ export function useUnderlyingAddress(syAddress: string | undefined): {
       const underlying: unknown = await sy.underlying_asset();
       // Convert bigint to hex string
       if (typeof underlying === 'bigint') {
-        return '0x' + underlying.toString(16).padStart(64, '0');
+        return `0x${underlying.toString(16).padStart(64, '0')}`;
       }
       return String(underlying);
     },

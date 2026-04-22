@@ -1,11 +1,10 @@
 'use client';
 
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { StaggeredList } from '@shared/ui/animations';
 import { Card, CardContent } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { MarketCard } from './MarketCard';
 

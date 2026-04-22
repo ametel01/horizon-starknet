@@ -1,0 +1,22 @@
+# Dockerfile for running Drizzle migrations
+# This is a lightweight container that applies database migrations and exits
+
+FROM oven/bun:1.3-alpine
+
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY package.json bun.lock* ./
+
+# Install dependencies (skip prepare script - we only need drizzle-kit)
+RUN bun install --ignore-scripts
+
+# Copy Drizzle configuration and migrations
+COPY drizzle.config.ts ./
+COPY drizzle/ ./drizzle/
+
+# Copy schema (required by drizzle-kit migrate)
+COPY src/schema/ ./src/schema/
+
+# Push schema to database (dev mode - creates tables directly, --force skips prompts)
+CMD ["bunx", "drizzle-kit", "push", "--force"]

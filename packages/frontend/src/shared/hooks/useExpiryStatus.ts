@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import { daysToExpiry, isExpired } from '@shared/math/yield';
+import { useMemo } from 'react';
 
 /**
  * Severity levels for expiry warnings

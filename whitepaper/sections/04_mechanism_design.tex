@@ -598,7 +598,7 @@ Each failure mode is documented with detection mechanism, on-chain mitigation, a
 \toprule
 \textbf{Aspect} & \textbf{Description} \\
 \midrule
-Detection & Oracle returns stale data (age $>$ MAX\_ORACLE\_AGE, default 1 hour) \\
+Detection & Oracle returns stale data (age $>$ MAX\_ORACLE\_AGE, default 24 hours) \\
 On-chain response & Watermark index used; new yield not distributed until recovery \\
 Trigger & Permissionless (watermark logic is automatic) \\
 Residual risk & Yield generated during outage may not accrue to YT holders \\
@@ -644,7 +644,7 @@ Residual risk & Temporarily reduced liquidity in one direction \\
 \midrule
 Price manipulation & Logit curve provides increasing resistance at proportion extremes \\
 Sandwich attacks & User-specified slippage protection ($sy_{min}$ / $pt_{max}$) \\
-Oracle manipulation & Pragma TWAP with configurable window (default: 5 minutes) \\
+Oracle manipulation & Pragma TWAP with configurable window (default: 1 hour) \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -665,4 +665,3 @@ Claim Interest & Allowed & Allowed \\
 \bottomrule
 \end{tabular}
 \end{center}
-

@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { MarketData } from '@entities/market';
 import { useSimpleDeposit } from '@features/earn';
 import { TokenInput } from '@features/mint';
@@ -22,6 +20,7 @@ import {
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { TxStatus } from '@widgets/display/TxStatus';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface SimpleEarnFormProps {
   market: MarketData;

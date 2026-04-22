@@ -16,6 +16,7 @@ const ADD_LIQUIDITY = hash.getSelectorFromName("AddLiquidity");
 const REMOVE_LIQUIDITY = hash.getSelectorFromName("RemoveLiquidity");
 const SWAP = hash.getSelectorFromName("Swap");
 const SWAP_YT = hash.getSelectorFromName("SwapYT");
+const ROLLOVER_LP = hash.getSelectorFromName("RolloverLP");
 
 // Transform function (extracted from indexer logic)
 function transformRouterEvent(event: {
@@ -109,6 +110,19 @@ function transformRouterEvent(event: {
       yt_in: readU256(data, 4),
       sy_out: readU256(data, 6),
       yt_out: readU256(data, 8),
+    };
+  } else if (matchSelector(eventKey, ROLLOVER_LP)) {
+    return {
+      event_type: "RolloverLP",
+      block_number: blockNumber,
+      block_timestamp: blockTimestamp,
+      transaction_hash: transactionHash,
+      sender,
+      receiver,
+      market_old: data[0],
+      market_new: data[1],
+      lp_burned: readU256(data, 2),
+      lp_minted: readU256(data, 4),
     };
   }
 
@@ -316,6 +330,38 @@ describe("Router Indexer", () => {
       yt_in: "0",
       sy_out: "0",
       yt_out: "1000000000000000000",
+    });
+  });
+
+  it("should transform RolloverLP event", () => {
+    const event = {
+      keys: [ROLLOVER_LP, "0xsender", "0xreceiver"],
+      data: [
+        "0xmarket_old_address",
+        "0xmarket_new_address",
+        "0xde0b6b3a7640000", // lp_burned low (1e18)
+        "0x0", // lp_burned high
+        "0x1bc16d674ec80000", // lp_minted low (2e18)
+        "0x0", // lp_minted high
+      ],
+      transactionHash: "0xrollover123",
+      blockNumber: 4643700,
+      blockTimestamp: "1234568100",
+    };
+
+    const result = transformRouterEvent(event);
+
+    expect(result).toEqual({
+      event_type: "RolloverLP",
+      block_number: 4643700,
+      block_timestamp: "1234568100",
+      transaction_hash: "0xrollover123",
+      sender: "0xsender",
+      receiver: "0xreceiver",
+      market_old: "0xmarket_old_address",
+      market_new: "0xmarket_new_address",
+      lp_burned: "1000000000000000000",
+      lp_minted: "2000000000000000000",
     });
   });
 

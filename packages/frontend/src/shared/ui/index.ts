@@ -1,6 +1,5 @@
 // UI primitives - shadcn/ui components
 
-export { Alert, AlertAction, AlertDescription, alertVariants, AlertTitle } from './alert';
 export {
   AnimatedCurrency,
   AnimatedNumber,
@@ -8,10 +7,23 @@ export {
   easings,
   useAnimatedNumber,
 } from './AnimatedNumber';
-export { Badge, badgeVariants } from './badge';
-export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './Collapsible';
+export { Alert, AlertAction, AlertDescription, AlertTitle, alertVariants } from './alert';
+// Animation components
+export {
+  AnimatedValue,
+  BounceIn,
+  FadeUp,
+  GlowPulse,
+  InteractiveCard,
+  ScaleIn,
+  SkeletonPulse,
+  SlideIn,
+  StaggeredList,
+} from './animations';
 export { Button, buttonVariants } from './Button';
+export { Badge, badgeVariants } from './badge';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './Collapsible';
 export {
   Dialog,
   DialogClose,
@@ -41,10 +53,35 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './dropdown-menu';
+// Form layout components (UI/UX Law compliant)
+export {
+  FormActions,
+  FormDivider,
+  FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormOutputSection,
+  FormRow,
+} from './FormLayout';
 export { GasEstimate } from './GasEstimate';
+export { HoverCard, HoverCardContent, HoverCardTrigger } from './hover-card';
 export { Input } from './Input';
 export { Label } from './label';
-export { Separator } from './separator';
+// Near-expiry warning component
+export {
+  type ExpiryThreshold,
+  NearExpiryWarning,
+  type NearExpiryWarningProps,
+  type Severity as ExpirySeverity,
+} from './NearExpiryWarning';
+export {
+  Progress,
+  ProgressIndicator,
+  ProgressLabel,
+  ProgressTrack,
+  ProgressValue,
+} from './progress';
 export {
   ChartSkeleton,
   FormSkeleton,
@@ -58,20 +95,17 @@ export {
   StatCardSkeleton,
   TableSkeleton,
 } from './Skeleton';
-export { Toaster } from './sonner';
-export { Switch } from './switch';
-export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
-export { ToggleGroup, ToggleGroupItem } from './toggle-group';
-export { Toggle, toggleVariants } from './toggle';
-export { Slider } from './slider';
+// Sparkline and mini-chart components
 export {
-  Progress,
-  ProgressTrack,
-  ProgressIndicator,
-  ProgressLabel,
-  ProgressValue,
-} from './progress';
-export { HoverCard, HoverCardTrigger, HoverCardContent } from './hover-card';
+  MiniBarChart,
+  Sparkline,
+  type SparklineDataPoint,
+  SparklineStat,
+  SparklineWithValue,
+  TrendIndicator,
+} from './Sparkline';
+// Step progress components for multi-step flows
+export { type Step, StepCounter, StepIndicator, StepProgress } from './StepProgress';
 export {
   Select,
   SelectContent,
@@ -84,15 +118,13 @@ export {
   SelectTrigger,
   SelectValue,
 } from './select';
-
-// Near-expiry warning component
-export {
-  NearExpiryWarning,
-  type ExpiryThreshold,
-  type NearExpiryWarningProps,
-  type Severity as ExpirySeverity,
-} from './NearExpiryWarning';
-
+export { Separator } from './separator';
+export { Slider } from './slider';
+export { Toaster } from './sonner';
+export { Switch } from './switch';
+export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
+export { Toggle, toggleVariants } from './toggle';
+export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 // Typography components
 export {
   AddressDisplay,
@@ -105,41 +137,3 @@ export {
   Metric,
   StatDisplay,
 } from './typography';
-
-// Animation components
-export {
-  AnimatedValue,
-  BounceIn,
-  FadeUp,
-  GlowPulse,
-  InteractiveCard,
-  ScaleIn,
-  SkeletonPulse,
-  SlideIn,
-  StaggeredList,
-} from './animations';
-
-// Form layout components (UI/UX Law compliant)
-export {
-  FormActions,
-  FormDivider,
-  FormHeader,
-  FormInfoSection,
-  FormInputSection,
-  FormLayout,
-  FormOutputSection,
-  FormRow,
-} from './FormLayout';
-
-// Sparkline and mini-chart components
-export {
-  MiniBarChart,
-  Sparkline,
-  SparklineStat,
-  SparklineWithValue,
-  TrendIndicator,
-  type SparklineDataPoint,
-} from './Sparkline';
-
-// Step progress components for multi-step flows
-export { StepCounter, StepIndicator, StepProgress, type Step } from './StepProgress';

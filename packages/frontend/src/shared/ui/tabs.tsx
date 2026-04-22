@@ -1,10 +1,9 @@
 'use client';
 
 import { Tabs as TabsPrimitive } from '@base-ui/react/tabs';
-import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-
 import { cn } from '@shared/lib/utils';
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
 
 function Tabs({
   className,
@@ -77,4 +76,4 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props): React.
   );
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants };
+export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants };

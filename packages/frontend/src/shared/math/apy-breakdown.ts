@@ -6,7 +6,7 @@
 
 import type { ApyCalculationParams, MarketApyBreakdown } from '@/types/apy';
 
-import { WAD_BIGINT, fromWad } from './wad';
+import { fromWad, WAD_BIGINT } from './wad';
 
 const SECONDS_PER_DAY = 86400;
 const SECONDS_PER_YEAR = 31_536_000;
@@ -26,6 +26,7 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
     swapVolume24h,
     feeRate,
     lpFeeShare = 0.2, // Default: 20% of fees go to LPs
+    rewardApr = 0, // Default: 0 if no reward data available
   } = params;
 
   const now = BigInt(Math.floor(Date.now() / 1000));
@@ -47,7 +48,7 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
 
   const lpPtYield = ptFixedApy * ptPortion;
   const lpSyYield = interestApy * syPortion;
-  const lpRewards = 0; // TODO: Add when gauge/rewards implemented
+  const lpRewards = rewardApr;
   const lpTotalApy = lpPtYield + lpSyYield + swapFeeApy + lpRewards;
 
   // 5. YT Long Yield APY
@@ -57,8 +58,8 @@ export function calculateApyBreakdown(params: ApyCalculationParams): MarketApyBr
     ptFixedApy,
     underlying: {
       interestApy,
-      rewardsApr: 0, // TODO: Add reward tracking
-      totalApy: interestApy,
+      rewardsApr: rewardApr,
+      totalApy: interestApy + rewardApr,
     },
     lpApy: {
       ptYield: lpPtYield,
@@ -128,7 +129,7 @@ export function calculateUnderlyingApy(
 
   // APY = (current/previous)^(365/days) - 1
   const rateRatio = current / previous;
-  const annualized = Math.pow(rateRatio, 365 / daysDelta) - 1;
+  const annualized = rateRatio ** (365 / daysDelta) - 1;
 
   // Cap at reasonable value (1000% APY)
   return Math.min(annualized, 10);
@@ -192,7 +193,7 @@ function calculateYtMetrics(
 ): { longYieldApy: number; breakEvenApy: number; leverage: number } {
   // YT price ≈ 1 - PT price
   // PT price ≈ 1 / (1 + implied_apy)^years_to_expiry
-  const ptPrice = 1 / Math.pow(1 + ptFixedApy, yearsToExpiry);
+  const ptPrice = 1 / (1 + ptFixedApy) ** yearsToExpiry;
   const ytPrice = Math.max(1 - ptPrice, 0.001); // Floor to prevent division issues
 
   // Leverage = 1 / YT_price (how much yield exposure per dollar)

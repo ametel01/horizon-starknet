@@ -1,20 +1,38 @@
 'use client';
 
-import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet } from 'lucide-react';
+import { useDashboardMarkets } from '@features/markets';
+import { usePositions } from '@features/portfolio';
+import { SwapForm, TokenAggregatorSwapForm } from '@features/swap';
+import { useStarknet } from '@features/wallet';
+import { ApyBreakdown, useApyBreakdown } from '@features/yield';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@shared/ui';
+import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
+import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { useDashboardMarkets } from '@features/markets';
-import { usePositions } from '@features/portfolio';
-import { SwapForm } from '@features/swap';
-import { useStarknet } from '@features/wallet';
-import { ApyBreakdown, useApyBreakdown } from '@features/yield';
-import { cn } from '@shared/lib/utils';
-import { formatWadCompact } from '@shared/math/wad';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
+// ============================================================================
+// Constants
+// ============================================================================
+
+// Version localStorage keys to prevent data corruption on schema changes
+const STORAGE_VERSION = 'v1';
+const FORM_MODE_STORAGE_KEY = `horizon-trade-form-mode-${STORAGE_VERSION}`;
+type FormMode = 'standard' | 'any-token';
 
 // Lazy load chart components (recharts is heavy)
 const ImpliedRateChart = dynamic(
@@ -35,6 +53,44 @@ function getMarketSymbol(market: {
   return market.metadata?.yieldTokenSymbol ?? market.address.slice(0, 8);
 }
 
+/**
+ * Renders loading, error, or empty state messages for trade page.
+ * Returns null if data is ready to render.
+ */
+interface LoadingStateProps {
+  mounted: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  hasData: boolean;
+}
+
+function TradeLoadingState({ mounted, isLoading, isError, hasData }: LoadingStateProps): ReactNode {
+  if (!mounted || isLoading) {
+    return <SkeletonCard className="h-[600px]" />;
+  }
+
+  if (isError) {
+    return (
+      <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+        <p className="text-destructive">Failed to load markets. Please try again.</p>
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <div className="border-border bg-card rounded-lg border p-8 text-center">
+        <p className="text-muted-foreground">No markets available.</p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Markets will appear here once they are created.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function TradePageContent(): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -42,8 +98,31 @@ function TradePageContent(): ReactNode {
   const [mounted, setMounted] = useState(false);
   const { isConnected } = useStarknet();
 
+  // Form mode state with localStorage persistence
+  const [formMode, setFormMode] = useState<FormMode>('standard');
+
+  // Load form mode preference from localStorage on mount
   useEffect(() => {
     setMounted(true);
+    try {
+      const savedMode = localStorage.getItem(FORM_MODE_STORAGE_KEY);
+      if (savedMode === 'standard' || savedMode === 'any-token') {
+        setFormMode(savedMode);
+      }
+    } catch {
+      // localStorage unavailable (private browsing, disabled cookies, etc.)
+    }
+  }, []);
+
+  // Handle form mode change with localStorage persistence
+  const handleFormModeChange = useCallback((value: unknown) => {
+    if (value !== 'standard' && value !== 'any-token') return;
+    setFormMode(value);
+    try {
+      localStorage.setItem(FORM_MODE_STORAGE_KEY, value);
+    } catch {
+      // localStorage unavailable, mode still works in memory
+    }
   }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
@@ -83,20 +162,13 @@ function TradePageContent(): ReactNode {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Swap Form */}
         <div>
-          {!mounted || isLoading ? (
-            <SkeletonCard className="h-[600px]" />
-          ) : isError ? (
-            <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
-              <p className="text-destructive">Failed to load markets. Please try again.</p>
-            </div>
-          ) : !selectedMarket ? (
-            <div className="border-border bg-card rounded-lg border p-8 text-center">
-              <p className="text-muted-foreground">No markets available.</p>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Markets will appear here once they are created.
-              </p>
-            </div>
-          ) : (
+          <TradeLoadingState
+            mounted={mounted}
+            isLoading={isLoading}
+            isError={isError}
+            hasData={!!selectedMarket}
+          />
+          {selectedMarket && mounted && !isLoading && !isError && (
             <div className="space-y-4">
               {/* Market Selector */}
               <div>
@@ -134,8 +206,28 @@ function TradePageContent(): ReactNode {
                 </Select>
               </div>
 
-              {/* Swap Form */}
-              <SwapForm market={selectedMarket} />
+              {/* Form Mode Tabs */}
+              <Tabs value={formMode} onValueChange={handleFormModeChange}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="standard" className="flex-1 gap-1.5">
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                    Standard
+                  </TabsTrigger>
+                  <TabsTrigger value="any-token" className="flex-1 gap-1.5">
+                    <Zap className="h-3.5 w-3.5" />
+                    Any Token
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="standard">
+                  <SwapForm key={`standard-${selectedMarket.address}`} market={selectedMarket} />
+                </TabsContent>
+                <TabsContent value="any-token">
+                  <TokenAggregatorSwapForm
+                    key={`any-token-${selectedMarket.address}`}
+                    market={selectedMarket}
+                  />
+                </TabsContent>
+              </Tabs>
 
               {/* Implied Rate Chart */}
               <ImpliedRateChart

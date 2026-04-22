@@ -1,11 +1,12 @@
+import { getCacheHeaders } from '@shared/server/cache';
+import { db, enrichedRouterSwap, marketCurrentState, marketSwap } from '@shared/server/db';
+import { logError, logWarn } from '@shared/server/logger';
+import { applyRateLimit } from '@shared/server/rate-limit';
 import { desc, sql } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { getCacheHeaders } from '@shared/server/cache';
-import { db, marketCurrentState, marketSwap, enrichedRouterSwap } from '@shared/server/db';
-import { logError, logWarn } from '@shared/server/logger';
-import { applyRateLimit } from '@shared/server/rate-limit';
+// ----- Types -----
 
 interface TvlDataPoint {
   date: string;
@@ -23,6 +24,152 @@ interface TvlResponse {
   history: TvlDataPoint[];
 }
 
+interface ReserveResult {
+  totalSyReserve: bigint;
+  totalPtReserve: bigint;
+  source: 'view' | 'enriched_swap' | 'market_swap';
+}
+
+interface MarketState {
+  sy_reserve: string | null;
+  pt_reserve: string | null;
+  is_expired: boolean | null;
+}
+
+// ----- Reserve Calculation Strategies -----
+
+function sumReservesFromView(markets: MarketState[]): ReserveResult | null {
+  let totalSyReserve = 0n;
+  let totalPtReserve = 0n;
+  let hasReserves = false;
+
+  for (const market of markets) {
+    const sy = BigInt(market.sy_reserve ?? '0');
+    const pt = BigInt(market.pt_reserve ?? '0');
+    if (sy > 0n || pt > 0n) hasReserves = true;
+    totalSyReserve += sy;
+    totalPtReserve += pt;
+  }
+
+  return hasReserves ? { totalSyReserve, totalPtReserve, source: 'view' } : null;
+}
+
+async function fetchReservesFromEnrichedSwaps(): Promise<ReserveResult | null> {
+  const latestRouterSwaps = await db
+    .select({
+      market: enrichedRouterSwap.market,
+      syReserve: enrichedRouterSwap.sy_reserve_after,
+      ptReserve: enrichedRouterSwap.pt_reserve_after,
+      blockNumber: enrichedRouterSwap.block_number,
+    })
+    .from(enrichedRouterSwap)
+    .orderBy(desc(enrichedRouterSwap.block_number));
+
+  const marketReserves = new Map<string, { sy: bigint; pt: bigint }>();
+
+  for (const swap of latestRouterSwaps) {
+    const market = swap.market ?? '';
+    if (!market || marketReserves.has(market)) continue;
+
+    const syRes = BigInt(swap.syReserve ?? '0');
+    const ptRes = BigInt(swap.ptReserve ?? '0');
+    if (syRes > 0n || ptRes > 0n) {
+      marketReserves.set(market, { sy: syRes, pt: ptRes });
+    }
+  }
+
+  if (marketReserves.size === 0) return null;
+
+  let totalSyReserve = 0n;
+  let totalPtReserve = 0n;
+  for (const reserves of marketReserves.values()) {
+    totalSyReserve += reserves.sy;
+    totalPtReserve += reserves.pt;
+  }
+
+  logWarn('Used enriched_router_swap fallback', {
+    module: 'analytics/tvl',
+    marketCount: marketReserves.size,
+  });
+
+  return { totalSyReserve, totalPtReserve, source: 'enriched_swap' };
+}
+
+async function fetchReservesFromMarketSwaps(): Promise<ReserveResult> {
+  const latestSwapsPerMarket = await db
+    .select({
+      market: marketSwap.market,
+      syReserve: marketSwap.sy_reserve_after,
+      ptReserve: marketSwap.pt_reserve_after,
+    })
+    .from(marketSwap)
+    .where(
+      sql`(${marketSwap.market}, ${marketSwap.block_number}) IN (
+        SELECT market, MAX(block_number)
+        FROM market_swap
+        GROUP BY market
+      )`
+    );
+
+  let totalSyReserve = 0n;
+  let totalPtReserve = 0n;
+  for (const swap of latestSwapsPerMarket) {
+    totalSyReserve += BigInt(swap.syReserve);
+    totalPtReserve += BigInt(swap.ptReserve);
+  }
+
+  logWarn('Used market_swap fallback', {
+    module: 'analytics/tvl',
+    marketCount: latestSwapsPerMarket.length,
+  });
+
+  return { totalSyReserve, totalPtReserve, source: 'market_swap' };
+}
+
+async function calculateTotalReserves(markets: MarketState[]): Promise<ReserveResult> {
+  // Try strategies in order of preference
+  const fromView = sumReservesFromView(markets);
+  if (fromView) return fromView;
+
+  const fromEnrichedSwaps = await fetchReservesFromEnrichedSwaps();
+  if (fromEnrichedSwaps) return fromEnrichedSwaps;
+
+  return fetchReservesFromMarketSwaps();
+}
+
+// ----- Response Helpers -----
+
+function createEmptyResponse(): TvlResponse {
+  return {
+    current: { totalSyReserve: '0', totalPtReserve: '0', marketCount: 0 },
+    history: [],
+  };
+}
+
+function buildTvlResponse(
+  reserves: ReserveResult,
+  totalMarketCount: number,
+  activeMarketCount: number
+): TvlResponse {
+  const today = new Date().toISOString().split('T')[0] ?? '';
+
+  return {
+    current: {
+      totalSyReserve: reserves.totalSyReserve.toString(),
+      totalPtReserve: reserves.totalPtReserve.toString(),
+      marketCount: totalMarketCount,
+    },
+    history: [
+      {
+        date: today,
+        totalSyReserve: reserves.totalSyReserve.toString(),
+        totalPtReserve: reserves.totalPtReserve.toString(),
+        marketCount: activeMarketCount,
+      },
+    ],
+  };
+}
+
 /**
  * GET /api/analytics/tvl
  * Get protocol-wide TVL metrics
@@ -31,132 +178,28 @@ interface TvlResponse {
  * Currently only returns current TVL from market_current_state.
  */
 export async function GET(request: NextRequest): Promise<NextResponse<TvlResponse>> {
-  // Apply rate limiting
   const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
   if (rateLimitResult) return rateLimitResult as NextResponse<TvlResponse>;
 
   try {
-    // Get current TVL from all markets (including expired for total count)
     const allMarkets = await db.select().from(marketCurrentState);
-    const currentMarkets = allMarkets.filter((m) => !m.is_expired);
+    const activeMarkets = allMarkets.filter((m) => !m.is_expired);
 
-    let totalSyReserve = BigInt(0);
-    let totalPtReserve = BigInt(0);
+    const reserves = await calculateTotalReserves(allMarkets);
 
-    // Check if we have reserves from the materialized view
-    const hasReservesFromView = allMarkets.some(
-      (m) => BigInt(m.sy_reserve ?? '0') > 0n || BigInt(m.pt_reserve ?? '0') > 0n
-    );
-
-    if (hasReservesFromView) {
-      // Sum reserves from the materialized view
-      for (const market of allMarkets) {
-        totalSyReserve += BigInt(market.sy_reserve ?? '0');
-        totalPtReserve += BigInt(market.pt_reserve ?? '0');
-      }
-    } else {
-      // Fallback 1: Try enriched_router_swap view (has reserves from market events)
-      // Get latest swap per market from the enriched view
-      const latestRouterSwaps = await db
-        .select({
-          market: enrichedRouterSwap.market,
-          syReserve: enrichedRouterSwap.sy_reserve_after,
-          ptReserve: enrichedRouterSwap.pt_reserve_after,
-          blockNumber: enrichedRouterSwap.block_number,
-        })
-        .from(enrichedRouterSwap)
-        .orderBy(desc(enrichedRouterSwap.block_number));
-
-      // Get latest per market
-      const marketReserves = new Map<string, { sy: bigint; pt: bigint }>();
-      for (const swap of latestRouterSwaps) {
-        const market = swap.market ?? '';
-        if (!market || marketReserves.has(market)) continue;
-
-        const syRes = BigInt(swap.syReserve ?? '0');
-        const ptRes = BigInt(swap.ptReserve ?? '0');
-        if (syRes > 0n || ptRes > 0n) {
-          marketReserves.set(market, { sy: syRes, pt: ptRes });
-        }
-      }
-
-      // If we found reserves from router swaps, use them
-      if (marketReserves.size > 0) {
-        for (const reserves of marketReserves.values()) {
-          totalSyReserve += reserves.sy;
-          totalPtReserve += reserves.pt;
-        }
-        logWarn('Used enriched_router_swap fallback', {
-          module: 'analytics/tvl',
-          marketCount: marketReserves.size,
-        });
-      } else {
-        // Fallback 2: Try direct market_swap events
-        const latestSwapsPerMarket = await db
-          .select({
-            market: marketSwap.market,
-            syReserve: marketSwap.sy_reserve_after,
-            ptReserve: marketSwap.pt_reserve_after,
-          })
-          .from(marketSwap)
-          .where(
-            sql`(${marketSwap.market}, ${marketSwap.block_number}) IN (
-              SELECT market, MAX(block_number)
-              FROM market_swap
-              GROUP BY market
-            )`
-          );
-
-        for (const swap of latestSwapsPerMarket) {
-          totalSyReserve += BigInt(swap.syReserve);
-          totalPtReserve += BigInt(swap.ptReserve);
-        }
-
-        logWarn('Used market_swap fallback', {
-          module: 'analytics/tvl',
-          marketCount: latestSwapsPerMarket.length,
-        });
-      }
-    }
-
-    // Log for debugging
     logWarn('TVL calculation complete', {
       module: 'analytics/tvl',
+      source: reserves.source,
       totalMarkets: allMarkets.length,
-      activeMarkets: currentMarkets.length,
-      totalSyReserve: totalSyReserve.toString(),
-      totalPtReserve: totalPtReserve.toString(),
+      activeMarkets: activeMarkets.length,
+      totalSyReserve: reserves.totalSyReserve.toString(),
+      totalPtReserve: reserves.totalPtReserve.toString(),
     });
 
-    // Return current TVL (historical TVL would require a snapshot table)
-    const today = new Date().toISOString().split('T')[0] ?? '';
-
-    return NextResponse.json(
-      {
-        current: {
-          totalSyReserve: totalSyReserve.toString(),
-          totalPtReserve: totalPtReserve.toString(),
-          marketCount: allMarkets.length, // Show total markets, not just active
-        },
-        history: [
-          {
-            date: today,
-            totalSyReserve: totalSyReserve.toString(),
-            totalPtReserve: totalPtReserve.toString(),
-            marketCount: currentMarkets.length,
-          },
-        ],
-      },
-      { headers: getCacheHeaders('MEDIUM') }
-    );
+    const response = buildTvlResponse(reserves, allMarkets.length, activeMarkets.length);
+    return NextResponse.json(response, { headers: getCacheHeaders('MEDIUM') });
   } catch (error) {
     logError(error, { module: 'analytics/tvl' });
-    return NextResponse.json(
-      {
-        current: { totalSyReserve: '0', totalPtReserve: '0', marketCount: 0 },
-        history: [],
-      },
-      { status: 500 }
-    );
+    return NextResponse.json(createEmptyResponse(), { status: 500 });
   }
 }

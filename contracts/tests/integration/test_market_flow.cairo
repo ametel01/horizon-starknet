@@ -22,8 +22,8 @@ const DEFAULT_DEADLINE: u64 = 0xFFFFFFFFFFFFFFFF;
 /// 5. Remove liquidity
 
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, SyscallResultTrait};
 
@@ -43,6 +43,10 @@ fn charlie() -> ContractAddress {
 
 fn admin() -> ContractAddress {
     'admin'.try_into().unwrap()
+}
+
+fn treasury() -> ContractAddress {
+    'treasury'.try_into().unwrap()
 }
 
 // ============ Deploy Helpers ============
@@ -95,7 +99,17 @@ fn deploy_sy(
     } else {
         0
     });
+    calldata.append(0); // AssetType::Token
     calldata.append(admin().into()); // pauser
+
+    // tokens_in: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
+    // tokens_out: single token (underlying)
+    calldata.append(1);
+    calldata.append(underlying.into());
+
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     ISYDispatcher { contract_address }
 }
@@ -111,6 +125,11 @@ fn deploy_yt(sy: ContractAddress, expiry: u64) -> IYTDispatcher {
     calldata.append((*pt_class.class_hash).into());
     calldata.append(expiry.into());
     calldata.append(admin().into()); // pauser
+    calldata.append(treasury().into()); // treasury
+    calldata.append(18); // decimals
+    // Reward tokens (empty span for standard deployment)
+    let empty_reward_tokens: Array<ContractAddress> = array![];
+    Serde::serialize(@empty_reward_tokens, ref calldata);
 
     let (contract_address, _) = yt_class.deploy(@calldata).unwrap_syscall();
     IYTDispatcher { contract_address }
@@ -132,7 +151,10 @@ fn deploy_market(pt: ContractAddress) -> IMarketDispatcher {
     calldata.append(initial_anchor.high.into());
     calldata.append(fee_rate.low.into());
     calldata.append(fee_rate.high.into());
+    calldata.append(0); // reserve_fee_percent
     calldata.append(admin().into()); // pauser
+    calldata.append(0); // factory (zero address for tests)
+    calldata.append(0); // reward_tokens array length (empty for tests)
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketDispatcher { contract_address }
@@ -144,6 +166,8 @@ fn deploy_market_factory() -> IMarketFactoryDispatcher {
     let mut calldata = array![];
     calldata.append(admin().into()); // owner
     calldata.append((*market_class.class_hash).into());
+    let zero: ContractAddress = 0.try_into().unwrap();
+    calldata.append(zero.into()); // yield_contract_factory (zero = no validation)
     let (contract_address, _) = contract.deploy(@calldata).unwrap_syscall();
     IMarketFactoryDispatcher { contract_address }
 }
@@ -168,8 +192,14 @@ fn mint_yield_token_to_user(
 // Helper: Set yield index as admin
 fn set_yield_index(yield_token: IMockYieldTokenDispatcher, new_index: u256) {
     start_cheat_caller_address(yield_token.contract_address, admin());
+    // Disable time-based yield for precise control when manually setting index
+    yield_token.set_yield_rate_bps(0);
     yield_token.set_index(new_index);
     stop_cheat_caller_address(yield_token.contract_address);
+
+    // Advance block number to invalidate YT's same-block cache
+    let block_num: u64 = (new_index / 1000000000000000).try_into().unwrap_or(1000) + 1;
+    start_cheat_block_number_global(block_num);
 }
 
 // Helper: Setup user with SY and PT tokens
@@ -188,15 +218,15 @@ fn setup_user_with_tokens(
     stop_cheat_caller_address(underlying.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.deposit(user, amount * 2);
+    sy.deposit(user, underlying.contract_address, amount * 2, 0);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(sy.contract_address, user);
-    sy.approve(yt.contract_address, amount);
+    sy.transfer(yt.contract_address, amount);
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(yt.contract_address, user);
-    yt.mint_py(user, amount);
+    yt.mint_py(user, user);
     stop_cheat_caller_address(yt.contract_address);
 }
 
@@ -264,7 +294,7 @@ fn test_complete_market_trading_flow() {
     let bob_pt_before = pt.balance_of(bob());
 
     start_cheat_caller_address(market.contract_address, bob());
-    let pt_received = market.swap_exact_sy_for_pt(bob(), trade_amount, 0);
+    let pt_received = market.swap_exact_sy_for_pt(bob(), trade_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(pt_received > 0, 'Bob received PT');
@@ -282,7 +312,7 @@ fn test_complete_market_trading_flow() {
     let bob_sy_before = sy.balance_of(bob());
 
     start_cheat_caller_address(market.contract_address, bob());
-    let sy_received = market.swap_exact_pt_for_sy(bob(), pt_received, 0);
+    let sy_received = market.swap_exact_pt_for_sy(bob(), pt_received, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     assert(sy_received > 0, 'Bob received SY');
@@ -333,12 +363,15 @@ fn test_market_with_factory() {
     let market_factory = deploy_market_factory();
 
     // Create market via factory
+    // initial_anchor must be >= 1 WAD (Pendle bound)
     let scalar_root = 50 * WAD;
-    let initial_anchor = WAD / 10;
+    let initial_anchor = WAD; // 1 WAD (minimum allowed)
     let fee_rate = WAD / 100;
 
     let market_address = market_factory
-        .create_market(pt.contract_address, scalar_root, initial_anchor, fee_rate);
+        .create_market(
+            pt.contract_address, scalar_root, initial_anchor, fee_rate, 0, array![].span(),
+        );
 
     // Verify market created
     assert(market_factory.is_valid_market(market_address), 'Market is valid');
@@ -406,7 +439,7 @@ fn test_multiple_lps_and_traders() {
         stop_cheat_caller_address(sy.contract_address);
 
         start_cheat_caller_address(market.contract_address, charlie());
-        let pt_out = market.swap_exact_sy_for_pt(charlie(), trade_amount, 0);
+        let pt_out = market.swap_exact_sy_for_pt(charlie(), trade_amount, 0, array![].span());
         stop_cheat_caller_address(market.contract_address);
 
         // Swap PT for SY
@@ -415,7 +448,7 @@ fn test_multiple_lps_and_traders() {
         stop_cheat_caller_address(pt.contract_address);
 
         start_cheat_caller_address(market.contract_address, charlie());
-        market.swap_exact_pt_for_sy(charlie(), pt_out, 0);
+        market.swap_exact_pt_for_sy(charlie(), pt_out, 0, array![].span());
         stop_cheat_caller_address(market.contract_address);
     }
 
@@ -535,7 +568,7 @@ fn test_implied_rate_tracking() {
     stop_cheat_caller_address(sy.contract_address);
 
     start_cheat_caller_address(market.contract_address, bob());
-    market.swap_exact_sy_for_pt(bob(), trade_amount, 0);
+    market.swap_exact_sy_for_pt(bob(), trade_amount, 0, array![].span());
     stop_cheat_caller_address(market.contract_address);
 
     // Rate should have changed

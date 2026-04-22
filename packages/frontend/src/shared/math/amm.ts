@@ -13,7 +13,7 @@
  * @see Security Audit I-08 - Fixed-Point Library Integration
  */
 
-import { expWad as fpExpWad, expNegWad as fpExpNegWad, lnWad as fpLnWad } from './fp';
+import { expNegWad as fpExpNegWad, expWad as fpExpWad, lnWad as fpLnWad } from './fp';
 import { WAD_BIGINT, wadDiv, wadMul } from './wad';
 
 // ============================================================================

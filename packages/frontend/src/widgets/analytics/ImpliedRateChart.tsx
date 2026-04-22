@@ -1,5 +1,11 @@
 'use client';
 
+import { type ProcessedRateDataPoint, useMarketRates } from '@features/markets';
+import { cn } from '@shared/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { Button } from '@shared/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
@@ -13,13 +19,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-import { useMarketRates, type ProcessedRateDataPoint } from '@features/markets';
-import { cn } from '@shared/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { Button } from '@shared/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
 
 /**
  * Format percentage with appropriate precision
@@ -37,6 +36,13 @@ function formatPercent(value: number): string {
 function formatPercentCompact(value: number): string {
   return `${value.toFixed(1)}%`;
 }
+
+const OHLC_TOOLTIP_LABELS: Record<string, string> = {
+  bodyEnd: 'Close',
+  bodyStart: 'Open',
+  wickHigh: 'High',
+  wickLow: 'Low',
+};
 
 type ViewMode = 'line' | 'ohlc';
 type Resolution = 'tick' | 'daily';
@@ -61,6 +67,73 @@ interface ChartDataPoint {
   high?: number | undefined;
   low?: number | undefined;
   close?: number | undefined;
+}
+
+/**
+ * Rate subtitle with current rate and 24h change - extracted to reduce complexity.
+ */
+interface RateSubtitleProps {
+  currentRate: number;
+  rateChange24h: number;
+}
+
+function RateSubtitle({ currentRate, rateChange24h }: RateSubtitleProps): ReactNode {
+  return (
+    <p className="text-muted-foreground text-sm">
+      Current: <span className="text-primary font-medium">{formatPercent(currentRate)}</span>
+      {rateChange24h !== 0 && (
+        <span
+          className={cn('ml-2 text-xs', rateChange24h >= 0 ? 'text-primary' : 'text-destructive')}
+        >
+          {rateChange24h >= 0 ? '+' : ''}
+          {formatPercent(rateChange24h)} (24h)
+        </span>
+      )}
+    </p>
+  );
+}
+
+/**
+ * Rate statistics summary - extracted to reduce main component complexity.
+ */
+interface RateStatsSummaryProps {
+  minRate: number;
+  maxRate: number;
+  avgRate: number;
+  rateChange24h: number;
+}
+
+function RateStatsSummary({
+  minRate,
+  maxRate,
+  avgRate,
+  rateChange24h,
+}: RateStatsSummaryProps): ReactNode {
+  return (
+    <div className="mt-4 grid grid-cols-4 gap-4 border-t pt-4 text-sm">
+      <div>
+        <div className="text-muted-foreground text-xs">Min</div>
+        <div className="text-foreground font-medium">{formatPercent(minRate)}</div>
+      </div>
+      <div>
+        <div className="text-muted-foreground text-xs">Max</div>
+        <div className="text-foreground font-medium">{formatPercent(maxRate)}</div>
+      </div>
+      <div>
+        <div className="text-muted-foreground text-xs">Average</div>
+        <div className="text-foreground font-medium">{formatPercent(avgRate)}</div>
+      </div>
+      <div>
+        <div className="text-muted-foreground text-xs">24h Change</div>
+        <div
+          className={cn('font-medium', rateChange24h >= 0 ? 'text-primary' : 'text-destructive')}
+        >
+          {rateChange24h >= 0 ? '+' : ''}
+          {formatPercent(rateChange24h)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -152,23 +225,10 @@ export function ImpliedRateChart({
         <div>
           <CardTitle>Implied Rate (APY)</CardTitle>
           {ratesData && (
-            <p className="text-muted-foreground text-sm">
-              Current:{' '}
-              <span className="text-primary font-medium">
-                {formatPercent(ratesData.currentRate)}
-              </span>
-              {ratesData.rateChange24h !== 0 && (
-                <span
-                  className={cn(
-                    'ml-2 text-xs',
-                    ratesData.rateChange24h >= 0 ? 'text-primary' : 'text-destructive'
-                  )}
-                >
-                  {ratesData.rateChange24h >= 0 ? '+' : ''}
-                  {formatPercent(ratesData.rateChange24h)} (24h)
-                </span>
-              )}
-            </p>
+            <RateSubtitle
+              currentRate={ratesData.currentRate}
+              rateChange24h={ratesData.rateChange24h}
+            />
           )}
         </div>
 
@@ -259,32 +319,12 @@ export function ImpliedRateChart({
 
         {/* Stats summary */}
         {ratesData && (
-          <div className="mt-4 grid grid-cols-4 gap-4 border-t pt-4 text-sm">
-            <div>
-              <div className="text-muted-foreground text-xs">Min</div>
-              <div className="text-foreground font-medium">{formatPercent(ratesData.minRate)}</div>
-            </div>
-            <div>
-              <div className="text-muted-foreground text-xs">Max</div>
-              <div className="text-foreground font-medium">{formatPercent(ratesData.maxRate)}</div>
-            </div>
-            <div>
-              <div className="text-muted-foreground text-xs">Average</div>
-              <div className="text-foreground font-medium">{formatPercent(ratesData.avgRate)}</div>
-            </div>
-            <div>
-              <div className="text-muted-foreground text-xs">24h Change</div>
-              <div
-                className={cn(
-                  'font-medium',
-                  ratesData.rateChange24h >= 0 ? 'text-primary' : 'text-destructive'
-                )}
-              >
-                {ratesData.rateChange24h >= 0 ? '+' : ''}
-                {formatPercent(ratesData.rateChange24h)}
-              </div>
-            </div>
-          </div>
+          <RateStatsSummary
+            minRate={ratesData.minRate}
+            maxRate={ratesData.maxRate}
+            avgRate={ratesData.avgRate}
+            rateChange24h={ratesData.rateChange24h}
+          />
         )}
       </CardContent>
     </Card>
@@ -333,13 +373,15 @@ function LineChart({
       )}
       <Tooltip
         contentStyle={{ borderRadius: '8px' }}
-        formatter={(value: number | undefined, name: string | undefined) => {
-          if (name === 'impliedRate') {
-            return [formatPercent(value ?? 0), 'Implied Rate'];
+        formatter={(value, name) => {
+          const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+          const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+          if (tooltipName === 'impliedRate') {
+            return [formatPercent(numericValue), 'Implied Rate'];
           }
-          return [(value ?? 0).toFixed(4), 'Exchange Rate'];
+          return [numericValue.toFixed(4), 'Exchange Rate'];
         }}
-        labelFormatter={(label: string) => label}
+        labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
       />
       <Area
         yAxisId="rate"
@@ -416,20 +458,12 @@ function OhlcChart({
       )}
       <Tooltip
         contentStyle={{ borderRadius: '8px' }}
-        formatter={(value: number | undefined, name: string | undefined) => {
-          const label =
-            name === 'wickHigh'
-              ? 'High'
-              : name === 'wickLow'
-                ? 'Low'
-                : name === 'bodyStart'
-                  ? 'Open'
-                  : name === 'bodyEnd'
-                    ? 'Close'
-                    : name;
-          return [formatPercent(value ?? 0), label];
+        formatter={(value, name) => {
+          const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+          const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+          return [formatPercent(numericValue), OHLC_TOOLTIP_LABELS[tooltipName] ?? tooltipName];
         }}
-        labelFormatter={(label: string) => label}
+        labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
       />
       {/* Wick (line from low to high) */}
       <Bar

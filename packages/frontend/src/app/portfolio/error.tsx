@@ -1,8 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect } from 'react';
-
 import { logError } from '@shared/server/logger';
 import { Button } from '@shared/ui/Button';
 import {
@@ -13,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@shared/ui/Card';
+import Link from 'next/link';
+import { useEffect } from 'react';
 
 interface PortfolioErrorProps {
   error: Error & { digest?: string };

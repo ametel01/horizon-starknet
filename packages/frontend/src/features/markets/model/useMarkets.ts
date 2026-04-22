@@ -1,16 +1,23 @@
 'use client';
 
-import { useQuery, useQueries } from '@tanstack/react-query';
-import BigNumber from 'bignumber.js';
-import { uint256, type ProviderInterface } from 'starknet';
-
 import type { MarketData, MarketInfo, MarketState } from '@entities/market';
 import { useStarknet } from '@features/wallet';
-import { getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
+import { getAddresses, getMarketInfoByAddress, getMarketInfos } from '@shared/config/addresses';
+import { TWAP_DEFAULT_DURATION, TWAP_DURATIONS } from '@shared/config/twap';
+import { toHexAddress } from '@shared/lib/abi-helpers';
+import { calculateAnnualFeeRate } from '@shared/lib/fees';
+import { toBigInt } from '@shared/lib/uint256';
 import { daysToExpiry, lnRateToApy } from '@shared/math/yield';
 import { logError, logWarn } from '@shared/server/logger';
-import { getMarketContract, getMarketFactoryContract } from '@shared/starknet/contracts';
+import {
+  getMarketContract,
+  getMarketFactoryContract,
+  getPyLpOracleContract,
+} from '@shared/starknet/contracts';
 import type { NetworkId } from '@shared/starknet/provider';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import BigNumber from 'bignumber.js';
+import type { ProviderInterface } from 'starknet';
 
 /**
  * Page size for paginated market fetching
@@ -18,21 +25,19 @@ import type { NetworkId } from '@shared/starknet/provider';
  */
 const MARKETS_PAGE_SIZE = 20;
 
-// Helper to convert Uint256 or bigint to bigint
-function toBigInt(value: bigint | { low: bigint; high: bigint }): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-  // Handle Uint256 struct
-  return uint256.uint256ToBN(value);
-}
-
-// Helper to convert address (bigint or string) to hex string
-function toHexAddress(value: unknown): string {
-  if (typeof value === 'bigint') {
-    return '0x' + value.toString(16).padStart(64, '0');
-  }
-  return String(value);
+// Contract MarketState struct shape from get_market_state()
+// Must match contracts/src/interfaces/i_market.cairo MarketState struct
+interface ContractMarketState {
+  sy_reserve: bigint | { low: bigint; high: bigint };
+  pt_reserve: bigint | { low: bigint; high: bigint };
+  total_lp: bigint | { low: bigint; high: bigint };
+  scalar_root: bigint | { low: bigint; high: bigint };
+  initial_anchor: bigint | { low: bigint; high: bigint };
+  ln_fee_rate_root: bigint | { low: bigint; high: bigint };
+  reserve_fee_percent: number | bigint;
+  expiry: number | bigint;
+  last_ln_implied_rate: bigint | { low: bigint; high: bigint };
+  py_index: bigint | { low: bigint; high: bigint };
 }
 
 async function fetchMarketData(
@@ -41,53 +46,92 @@ async function fetchMarketData(
   network: NetworkId
 ): Promise<MarketData> {
   const market = getMarketContract(marketAddress, provider);
+  const addresses = getAddresses(network);
 
   try {
-    // Fetch all market data in parallel using typed contract calls
-    const [
-      syAddress,
-      ptAddress,
-      ytAddress,
-      expiry,
-      isExpiredVal,
-      reserves,
-      totalLpSupply,
-      lnRate,
-      feesCollected,
-    ] = await Promise.all([
-      market.sy(),
-      market.pt(),
-      market.yt(),
-      market.expiry(),
-      market.is_expired(),
-      market.get_reserves(),
-      market.total_lp_supply(),
-      market.get_ln_implied_rate(),
-      market.get_total_fees_collected(),
-    ]);
+    // Use get_market_state() to reduce RPC calls from 11 to 6
+    // get_market_state() returns: sy_reserve, pt_reserve, total_lp, scalar_root,
+    // initial_anchor, ln_fee_rate_root, reserve_fee_percent, expiry, last_ln_implied_rate, py_index
+    const [syAddress, ptAddress, ytAddress, isExpiredVal, contractState, feesCollected] =
+      await Promise.all([
+        market.sy(),
+        market.pt(),
+        market.yt(),
+        market.is_expired(),
+        market.get_market_state() as Promise<ContractMarketState>,
+        market.get_total_fees_collected(),
+      ]);
 
     const info: MarketInfo = {
       address: marketAddress,
       syAddress: toHexAddress(syAddress),
       ptAddress: toHexAddress(ptAddress),
       ytAddress: toHexAddress(ytAddress),
-      expiry: Number(expiry),
-      isExpired: isExpiredVal,
+      expiry: Number(contractState.expiry),
+      isExpired: Boolean(isExpiredVal),
     };
 
-    // Reserves are returned as a tuple [sy_reserve, pt_reserve]
-    const reservesArr = reserves as unknown[];
+    const lnFeeRateRootValue = toBigInt(contractState.ln_fee_rate_root);
     const state: MarketState = {
-      syReserve: toBigInt(reservesArr[0] as bigint | { low: bigint; high: bigint }),
-      ptReserve: toBigInt(reservesArr[1] as bigint | { low: bigint; high: bigint }),
-      totalLpSupply: toBigInt(totalLpSupply as bigint | { low: bigint; high: bigint }),
-      lnImpliedRate: toBigInt(lnRate as bigint | { low: bigint; high: bigint }),
+      syReserve: toBigInt(contractState.sy_reserve),
+      ptReserve: toBigInt(contractState.pt_reserve),
+      totalLpSupply: toBigInt(contractState.total_lp),
+      lnImpliedRate: toBigInt(contractState.last_ln_implied_rate),
       feesCollected: toBigInt(feesCollected as bigint | { low: bigint; high: bigint }),
+      lnFeeRateRoot: lnFeeRateRootValue,
+      reserveFeePercent: Number(contractState.reserve_fee_percent),
     };
 
-    const impliedApy = lnRateToApy(state.lnImpliedRate);
+    // Spot rate (always available)
+    const spotRate = state.lnImpliedRate;
+    const spotApy = lnRateToApy(spotRate);
+
+    // TWAP rate with graceful fallback
+    let twapRate = spotRate;
+    let twapDuration = 0;
+    let oracleState: 'ready' | 'partial' | 'spot-only' = 'spot-only';
+
+    // Only attempt TWAP if PyLpOracle is configured
+    if (addresses.pyLpOracle && addresses.pyLpOracle !== '0x0') {
+      try {
+        const pyLpOracle = getPyLpOracleContract(addresses.pyLpOracle, provider);
+
+        // Check if full TWAP is available
+        const readiness = await pyLpOracle.check_oracle_state(marketAddress, TWAP_DEFAULT_DURATION);
+
+        if (readiness.oldest_observation_satisfied) {
+          const rawRate = await pyLpOracle.get_ln_implied_rate_twap(
+            marketAddress,
+            TWAP_DEFAULT_DURATION
+          );
+          twapRate = toBigInt(rawRate as bigint | { low: bigint; high: bigint });
+          twapDuration = TWAP_DEFAULT_DURATION;
+          oracleState = 'ready';
+        } else {
+          // Try shorter duration (minimum 5 min)
+          const shortDuration = TWAP_DURATIONS.MINIMUM;
+          const shortReadiness = await pyLpOracle.check_oracle_state(marketAddress, shortDuration);
+          if (shortReadiness.oldest_observation_satisfied) {
+            const rawRate = await pyLpOracle.get_ln_implied_rate_twap(marketAddress, shortDuration);
+            twapRate = toBigInt(rawRate as bigint | { low: bigint; high: bigint });
+            twapDuration = shortDuration;
+            oracleState = 'partial';
+          }
+        }
+      } catch (twapError) {
+        // Log TWAP error but continue with spot rate
+        logWarn('TWAP fetch failed, using spot rate', {
+          module: 'useMarkets',
+          marketAddress,
+          error: String(twapError),
+        });
+      }
+    }
+
+    const twapApy = lnRateToApy(twapRate);
     const days = daysToExpiry(info.expiry);
     const tvlSy = state.syReserve + state.ptReserve;
+    const annualFeeRate = calculateAnnualFeeRate(lnFeeRateRootValue);
 
     // Get token metadata from static config if available
     const staticInfo = getMarketInfoByAddress(network, marketAddress);
@@ -95,9 +139,16 @@ async function fetchMarketData(
     const baseData = {
       ...info,
       state,
-      impliedApy,
+      // Primary display now uses TWAP (falls back to spot)
+      impliedApy: twapApy,
       tvlSy,
       daysToExpiry: days,
+      annualFeeRate,
+      // TWAP-specific fields
+      twapImpliedApy: twapApy,
+      spotImpliedApy: spotApy,
+      oracleState,
+      twapDuration,
     };
 
     if (staticInfo) {
@@ -185,56 +236,69 @@ function getStaticMarketAddresses(network: NetworkId): string[] {
   return marketInfos.map((m) => m.marketAddress).filter((addr) => addr !== '' && addr !== '0x0');
 }
 
+/** Result type for paginated contract calls */
+type PaginatedResult = { addresses: unknown[]; hasMore: boolean };
+
+/** Default empty result */
+const EMPTY_PAGINATED_RESULT: PaginatedResult = { addresses: [], hasMore: false };
+
+/**
+ * Try parsing array tuple format: [addresses[], hasMore]
+ * Returns null if format doesn't match
+ */
+function tryParseArrayTuple(result: unknown): PaginatedResult | null {
+  if (!Array.isArray(result) || result.length !== 2) return null;
+
+  const [first, second] = result;
+  if (!Array.isArray(first) || typeof second !== 'boolean') return null;
+
+  return { addresses: first, hasMore: second };
+}
+
+/**
+ * Try parsing object with numeric keys: { 0: addresses[], 1: hasMore }
+ * Returns null if format doesn't match
+ */
+function tryParseNumericKeys(obj: Record<string, unknown>): PaginatedResult | null {
+  if (!('0' in obj) || !('1' in obj)) return null;
+
+  const addresses = obj['0'];
+  if (!Array.isArray(addresses)) return null;
+
+  return { addresses, hasMore: Boolean(obj['1']) };
+}
+
+/**
+ * Try parsing object with named keys: { addresses: [], has_more: boolean }
+ * Handles variations: addresses/active_markets, has_more/hasMore
+ * Returns null if format doesn't match
+ */
+function tryParseNamedKeys(obj: Record<string, unknown>): PaginatedResult | null {
+  if (!('addresses' in obj) && !('active_markets' in obj)) return null;
+
+  const addresses = (obj['addresses'] ?? obj['active_markets'] ?? obj['markets']) as unknown[];
+  const hasMore = Boolean(obj['has_more'] ?? obj['hasMore'] ?? false);
+
+  return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
+}
+
 /**
  * Parse paginated result from contract call
  * Handles different return formats from starknet.js
  */
-function parsePaginatedResult(result: unknown): { addresses: unknown[]; hasMore: boolean } {
-  // Handle array tuple format: [addresses[], hasMore]
-  if (Array.isArray(result) && result.length === 2) {
-    const first: unknown = result[0];
-    const second: unknown = result[1];
-    if (Array.isArray(first) && typeof second === 'boolean') {
-      return { addresses: first, hasMore: second };
-    }
-  }
+function parsePaginatedResult(result: unknown): PaginatedResult {
+  // Try array tuple format first
+  const arrayResult = tryParseArrayTuple(result);
+  if (arrayResult) return arrayResult;
 
-  // Handle object format: { 0: addresses[], 1: hasMore } or named properties
+  // Try object formats
   if (result !== null && typeof result === 'object') {
     const obj = result as Record<string, unknown>;
-
-    // Try numeric keys
-    if ('0' in obj && '1' in obj) {
-      const addresses = obj['0'];
-      const hasMore = obj['1'];
-      if (Array.isArray(addresses)) {
-        return { addresses, hasMore: Boolean(hasMore) };
-      }
-    }
-
-    // Try named keys (some typed contracts return named tuples)
-    if ('addresses' in obj || 'active_markets' in obj) {
-      const addresses = (obj['addresses'] ?? obj['active_markets'] ?? obj['markets']) as unknown[];
-      const hasMore = Boolean(obj['has_more'] ?? obj['hasMore'] ?? false);
-      return { addresses: Array.isArray(addresses) ? addresses : [], hasMore };
-    }
+    return tryParseNumericKeys(obj) ?? tryParseNamedKeys(obj) ?? EMPTY_PAGINATED_RESULT;
   }
 
   logWarn('Unexpected result format in parsePaginatedResult', { module: 'useMarkets' });
-  return { addresses: [], hasMore: false };
-}
-
-/**
- * Convert address value to hex string
- */
-function addressToHex(addr: unknown): string {
-  if (typeof addr === 'bigint') {
-    return '0x' + addr.toString(16).padStart(64, '0');
-  }
-  if (typeof addr === 'string') {
-    return addr;
-  }
-  return String(addr);
+  return EMPTY_PAGINATED_RESULT;
 }
 
 /**
@@ -258,7 +322,7 @@ async function fetchActiveMarketsPaginated(
     const parsed = parsePaginatedResult(result);
 
     const pageAddresses = parsed.addresses
-      .map(addressToHex)
+      .map(toHexAddress)
       .filter(
         (addr) =>
           addr !== '0x0' &&
@@ -361,7 +425,7 @@ async function fetchAllMarketsPaginated(
     const parsed = parsePaginatedResult(result);
 
     const pageAddresses = parsed.addresses
-      .map(addressToHex)
+      .map(toHexAddress)
       .filter(
         (addr) =>
           addr !== '0x0' &&

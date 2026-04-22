@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import { useMarketRates } from '@features/markets';
 import { usePriceImpact } from '@features/price';
+import { useMemo } from 'react';
 
 /**
  * Smart Slippage Calculation
@@ -75,6 +74,116 @@ interface UseSmartSlippageOptions {
 }
 
 // ============================================================================
+// Helper Types for Calculation
+// ============================================================================
+
+interface ImpactData {
+  avgImpact: number;
+  maxImpact: number;
+  totalSwaps: number;
+}
+
+interface RatesData {
+  rateChangePercent: number;
+  maxRate: number;
+  minRate: number;
+  avgRate: number;
+  dataPoints: unknown[];
+}
+
+// ============================================================================
+// Pure Calculation Helpers (for complexity reduction)
+// ============================================================================
+
+function createDefaultResult(isLoading: boolean, reason: string): SmartSlippageResult {
+  return {
+    recommendedBps: DEFAULT_SMART_SLIPPAGE_BPS,
+    confidence: 'low',
+    reason,
+    isLoading,
+    factors: {
+      impactBaseBps: isLoading ? 0 : DEFAULT_SMART_SLIPPAGE_BPS,
+      volatilityAdjustmentBps: 0,
+      hasMarketData: false,
+    },
+  };
+}
+
+function calculateImpactBaseBps(impactData: ImpactData | undefined, hasData: boolean): number {
+  if (!hasData || impactData === undefined) {
+    return MIN_SMART_SLIPPAGE_BPS;
+  }
+
+  const avgImpactPercent = impactData.avgImpact;
+  let baseBps = Math.round(avgImpactPercent * 100 * IMPACT_SAFETY_MULTIPLIER);
+
+  // Consider max impact for additional safety in volatile markets
+  const maxImpactPercent = impactData.maxImpact;
+  if (maxImpactPercent > avgImpactPercent * 3) {
+    baseBps = Math.round(baseBps * 1.2);
+  }
+
+  return baseBps;
+}
+
+function calculateVolatilityAdjustmentBps(
+  ratesData: RatesData | undefined,
+  hasData: boolean
+): number {
+  if (!hasData || ratesData === undefined) {
+    return 0;
+  }
+
+  const absRateChange = Math.abs(ratesData.rateChangePercent);
+  const rateRange = ratesData.maxRate - ratesData.minRate;
+  const rateRangePercent = ratesData.avgRate > 0 ? (rateRange / ratesData.avgRate) * 100 : 0;
+
+  const volatilityScore = Math.max(absRateChange, rateRangePercent / 2);
+
+  if (volatilityScore <= VOLATILITY_THRESHOLD_PERCENT) {
+    return 0;
+  }
+
+  const excessVolatility = volatilityScore - VOLATILITY_THRESHOLD_PERCENT;
+  return Math.min(Math.round(excessVolatility * 2.5), MAX_VOLATILITY_ADJUSTMENT_BPS);
+}
+
+function determineConfidence(
+  hasImpactData: boolean,
+  totalSwaps: number,
+  hasRatesData: boolean
+): 'high' | 'medium' | 'low' {
+  if (hasImpactData && totalSwaps >= 50 && hasRatesData) {
+    return 'high';
+  }
+  if (hasImpactData && totalSwaps >= 10) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+function generateReason(
+  hasImpactData: boolean,
+  avgImpact: number,
+  volatilityAdjustmentBps: number,
+  hasRatesData: boolean
+): string {
+  const reasons: string[] = [];
+
+  if (hasImpactData) {
+    reasons.push(`${avgImpact.toFixed(2)}% avg impact`);
+  }
+
+  if (volatilityAdjustmentBps > 0) {
+    reasons.push('elevated volatility');
+  } else if (hasRatesData) {
+    reasons.push('stable rates');
+  }
+
+  return reasons.length > 0 ? `Based on ${reasons.join(' + ')}` : 'Using default settings';
+}
+
+// ============================================================================
 // Hook
 // ============================================================================
 
@@ -114,131 +223,38 @@ export function useSmartSlippage(
   const result = useMemo((): SmartSlippageResult => {
     const isLoading = isLoadingImpact || isLoadingRates;
 
-    // Default result when loading or no data
-    if (!marketAddress || isLoading) {
-      return {
-        recommendedBps: DEFAULT_SMART_SLIPPAGE_BPS,
-        confidence: 'low',
-        reason: isLoading ? 'Calculating optimal slippage...' : 'Enter market address',
-        isLoading,
-        factors: {
-          impactBaseBps: 0,
-          volatilityAdjustmentBps: 0,
-          hasMarketData: false,
-        },
-      };
+    // Early returns for loading/missing data states
+    if (!marketAddress) {
+      return createDefaultResult(false, 'Enter market address');
+    }
+    if (isLoading) {
+      return createDefaultResult(true, 'Calculating optimal slippage...');
     }
 
-    // Check if we have enough data
+    // Check data availability
     const hasImpactData = impactData !== undefined && impactData.totalSwaps > 0;
     const hasRatesData = ratesData !== undefined && ratesData.dataPoints.length > 0;
 
     if (!hasImpactData && !hasRatesData) {
-      return {
-        recommendedBps: DEFAULT_SMART_SLIPPAGE_BPS,
-        confidence: 'low',
-        reason: 'Limited market data - using default slippage',
-        isLoading: false,
-        factors: {
-          impactBaseBps: DEFAULT_SMART_SLIPPAGE_BPS,
-          volatilityAdjustmentBps: 0,
-          hasMarketData: false,
-        },
-      };
+      return createDefaultResult(false, 'Limited market data - using default slippage');
     }
 
-    // ========================================================================
-    // Calculate Base Slippage from Price Impact
-    // ========================================================================
+    // Calculate components using helper functions
+    const impactBaseBps = calculateImpactBaseBps(impactData, hasImpactData);
+    const volatilityAdjustmentBps = calculateVolatilityAdjustmentBps(ratesData, hasRatesData);
 
-    let impactBaseBps = 0;
-
-    if (hasImpactData) {
-      // Use average impact with safety multiplier
-      // avgImpact is in percentage (e.g., 0.5 means 0.5%)
-      const avgImpactPercent = impactData.avgImpact;
-      impactBaseBps = Math.round(avgImpactPercent * 100 * IMPACT_SAFETY_MULTIPLIER);
-
-      // Consider max impact for additional safety in volatile markets
-      const maxImpactPercent = impactData.maxImpact;
-      if (maxImpactPercent > avgImpactPercent * 3) {
-        // Market has occasional large impacts - add buffer
-        impactBaseBps = Math.round(impactBaseBps * 1.2);
-      }
-    } else {
-      // No impact data - use minimum as base
-      impactBaseBps = MIN_SMART_SLIPPAGE_BPS;
-    }
-
-    // ========================================================================
-    // Calculate Volatility Adjustment
-    // ========================================================================
-
-    let volatilityAdjustmentBps = 0;
-
-    if (hasRatesData) {
-      // Use rate change percentage as volatility indicator
-      const absRateChange = Math.abs(ratesData.rateChangePercent);
-
-      // Rate range as percentage of average (another volatility measure)
-      const rateRange = ratesData.maxRate - ratesData.minRate;
-      const rateRangePercent = ratesData.avgRate > 0 ? (rateRange / ratesData.avgRate) * 100 : 0;
-
-      // Take the higher of the two volatility measures
-      const volatilityScore = Math.max(absRateChange, rateRangePercent / 2);
-
-      if (volatilityScore > VOLATILITY_THRESHOLD_PERCENT) {
-        // Scale volatility adjustment based on how much we exceed threshold
-        const excessVolatility = volatilityScore - VOLATILITY_THRESHOLD_PERCENT;
-        // Each 10% excess volatility adds ~25 BPS
-        volatilityAdjustmentBps = Math.min(
-          Math.round(excessVolatility * 2.5),
-          MAX_VOLATILITY_ADJUSTMENT_BPS
-        );
-      }
-    }
-
-    // ========================================================================
-    // Combine and Bound
-    // ========================================================================
-
+    // Combine and bound to valid range
     const rawRecommendedBps = impactBaseBps + volatilityAdjustmentBps;
     const recommendedBps = Math.max(
       MIN_SMART_SLIPPAGE_BPS,
       Math.min(MAX_SMART_SLIPPAGE_BPS, rawRecommendedBps)
     );
 
-    // ========================================================================
-    // Determine Confidence Level
-    // ========================================================================
-
-    let confidence: 'high' | 'medium' | 'low';
-    if (hasImpactData && impactData.totalSwaps >= 50 && hasRatesData) {
-      confidence = 'high';
-    } else if (hasImpactData && impactData.totalSwaps >= 10) {
-      confidence = 'medium';
-    } else {
-      confidence = 'low';
-    }
-
-    // ========================================================================
-    // Generate Explanation
-    // ========================================================================
-
-    const reasons: string[] = [];
-
-    if (hasImpactData) {
-      reasons.push(`${impactData.avgImpact.toFixed(2)}% avg impact`);
-    }
-
-    if (volatilityAdjustmentBps > 0) {
-      reasons.push('elevated volatility');
-    } else if (hasRatesData) {
-      reasons.push('stable rates');
-    }
-
-    const reason =
-      reasons.length > 0 ? `Based on ${reasons.join(' + ')}` : 'Using default settings';
+    // Determine confidence and generate explanation
+    const totalSwaps = impactData?.totalSwaps ?? 0;
+    const confidence = determineConfidence(hasImpactData, totalSwaps, hasRatesData);
+    const avgImpact = impactData?.avgImpact ?? 0;
+    const reason = generateReason(hasImpactData, avgImpact, volatilityAdjustmentBps, hasRatesData);
 
     return {
       recommendedBps,

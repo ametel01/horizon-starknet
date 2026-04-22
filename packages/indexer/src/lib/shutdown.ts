@@ -11,9 +11,8 @@
  * - Logging of cleanup progress
  */
 
-import { logger } from "./logger";
-
 import type { Logger } from "./logger";
+import { logger } from "./logger";
 
 const log: Logger = logger.child({ module: "shutdown" });
 
@@ -142,7 +141,7 @@ async function performShutdown(signal: string): Promise<void> {
   const timeoutId = setTimeout(() => {
     log.fatal(
       { timeoutMs: SHUTDOWN_TIMEOUT_MS },
-      "Shutdown timeout exceeded, forcing exit",
+      "Shutdown timeout exceeded, forcing exit"
     );
     // eslint-disable-next-line n/no-process-exit -- Intentional: force exit on timeout
     process.exit(1);

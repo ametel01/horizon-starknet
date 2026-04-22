@@ -1,10 +1,5 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { type ReactNode, useState } from 'react';
-
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { cn } from '@shared/lib/utils';
@@ -22,6 +17,10 @@ import {
 } from '@shared/ui';
 import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
+import { ChevronDown } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { type ReactNode, useState } from 'react';
 
 // Lazy load yield-native chart components (primary focus)
 const YieldCurveChart = dynamic(

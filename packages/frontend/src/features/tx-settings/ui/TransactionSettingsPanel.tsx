@@ -1,9 +1,5 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
-import { type ReactNode, useCallback, useState } from 'react';
-import { toast } from 'sonner';
-
 import {
   DEADLINE_OPTIONS,
   DEFAULT_DEADLINE_MINUTES,
@@ -23,6 +19,224 @@ import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
+import { Sparkles } from 'lucide-react';
+import { type ReactNode, useCallback, useState } from 'react';
+import { toast } from 'sonner';
+
+/**
+ * Decision table for confidence indicator display.
+ * Maps confidence level to styling and symbol.
+ */
+type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+const CONFIDENCE_DISPLAY: Record<ConfidenceLevel, { className: string; symbol: string }> = {
+  high: { className: 'text-success', symbol: '●' },
+  medium: { className: 'text-warning', symbol: '◐' },
+  low: { className: 'text-muted-foreground', symbol: '○' },
+};
+
+function getConfidenceDisplay(confidence: ConfidenceLevel): { className: string; symbol: string } {
+  return CONFIDENCE_DISPLAY[confidence];
+}
+
+/**
+ * Compute slippage header status for display.
+ * Separates render logic from computation.
+ */
+function computeSlippageStatus(
+  isUsingSmartSlippage: boolean,
+  isSlippagePreset: boolean,
+  slippageBps: number
+): { type: 'smart' | 'custom' | 'preset'; displayValue?: string } {
+  if (isUsingSmartSlippage) return { type: 'smart' };
+  if (!isSlippagePreset) return { type: 'custom', displayValue: (slippageBps / 100).toFixed(2) };
+  return { type: 'preset' };
+}
+
+/**
+ * Slippage status badge component - renders the appropriate badge based on status type
+ */
+function SlippageStatusBadge({
+  status,
+  slippageBps,
+}: {
+  status: { type: 'smart' | 'custom' | 'preset'; displayValue?: string };
+  slippageBps: number;
+}): ReactNode {
+  if (status.type === 'smart') {
+    return (
+      <span className="text-success flex items-center gap-1 text-xs">
+        <Sparkles className="size-3" />
+        Auto: {formatSlippagePercent(slippageBps)}
+      </span>
+    );
+  }
+  if (status.type === 'custom') {
+    return (
+      <span className="text-primary text-xs">
+        Custom: {status.displayValue}%{' '}
+        <span className="text-muted-foreground">({getSlippageLabel(slippageBps)})</span>
+      </span>
+    );
+  }
+  return null;
+}
+
+/**
+ * Slippage description shown below the slippage options.
+ * Shows smart slippage reason or preset description.
+ */
+interface SlippageDescriptionProps {
+  isUsingSmartSlippage: boolean;
+  isSlippagePreset: boolean;
+  showCustomSlippage: boolean;
+  slippageBps: number;
+  smartSlippage: {
+    confidence: ConfidenceLevel;
+    reason: string;
+  };
+}
+
+function SlippageDescription({
+  isUsingSmartSlippage,
+  isSlippagePreset,
+  showCustomSlippage,
+  slippageBps,
+  smartSlippage,
+}: SlippageDescriptionProps): ReactNode {
+  if (isUsingSmartSlippage) {
+    const display = getConfidenceDisplay(smartSlippage.confidence);
+    return (
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+        <span className={display.className}>{display.symbol}</span>
+        {smartSlippage.reason}
+      </p>
+    );
+  }
+  if (isSlippagePreset && !showCustomSlippage) {
+    const option = SLIPPAGE_OPTIONS.find((opt) => opt.value === slippageBps);
+    return <p className="text-muted-foreground text-xs">{option?.description}</p>;
+  }
+  return null;
+}
+
+/**
+ * Slippage warning messages for extreme values.
+ */
+function SlippageWarning({ slippageBps }: { slippageBps: number }): ReactNode {
+  if (slippageBps > 200) {
+    return (
+      <p className="text-chart-1 mt-1 text-xs">
+        High slippage increases risk of unfavorable trades
+      </p>
+    );
+  }
+  if (slippageBps < 10) {
+    return <p className="text-chart-1 mt-1 text-xs">Low slippage may cause transaction failures</p>;
+  }
+  return null;
+}
+
+/**
+ * Deadline settings section - extracted to reduce main component complexity.
+ */
+interface DeadlineSettingsProps {
+  deadlineMinutes: number;
+  isDeadlinePreset: boolean;
+  showCustomDeadline: boolean;
+  customDeadline: string;
+  setCustomDeadline: (value: string) => void;
+  setShowCustomDeadline: (value: boolean) => void;
+  handleDeadlinePresetChange: (value: number) => void;
+  handleCustomDeadlineSubmit: () => void;
+}
+
+function DeadlineSettings({
+  deadlineMinutes,
+  isDeadlinePreset,
+  showCustomDeadline,
+  customDeadline,
+  setCustomDeadline,
+  setShowCustomDeadline,
+  handleDeadlinePresetChange,
+  handleCustomDeadlineSubmit,
+}: DeadlineSettingsProps): ReactNode {
+  return (
+    <div>
+      <div className="text-muted-foreground mb-2 flex items-center justify-between text-sm">
+        <span>Transaction Deadline</span>
+        {!isDeadlinePreset && (
+          <span className="text-primary text-xs">Custom: {deadlineMinutes} min</span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <ToggleGroup className="flex gap-1">
+          {DEADLINE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              pressed={deadlineMinutes === option.value && !showCustomDeadline}
+              onPressedChange={() => {
+                handleDeadlinePresetChange(option.value);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+
+        {showCustomDeadline ? (
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min={MIN_DEADLINE_MINUTES}
+              max={MAX_DEADLINE_MINUTES}
+              step={1}
+              value={customDeadline}
+              onChange={(e) => {
+                setCustomDeadline(e.target.value);
+              }}
+              placeholder="20"
+              className="h-8 w-16"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCustomDeadlineSubmit();
+                if (e.key === 'Escape') setShowCustomDeadline(false);
+              }}
+              autoFocus
+            />
+            <span className="text-muted-foreground text-sm">min</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCustomDeadlineSubmit}
+              className="h-8 px-2"
+            >
+              Set
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setShowCustomDeadline(true);
+            }}
+            className="text-muted-foreground h-8 px-2 text-xs"
+          >
+            Custom
+          </Button>
+        )}
+      </div>
+
+      {/* Deadline Info */}
+      <p className="text-muted-foreground mt-1 text-xs">
+        Transaction will revert if not confirmed within {deadlineMinutes} minutes
+      </p>
+    </div>
+  );
+}
 
 /**
  * Transaction Settings Panel
@@ -69,8 +283,12 @@ export function TransactionSettingsPanel({
 
   // Handle custom slippage submit with confirmation feedback
   const handleCustomSlippageSubmit = (): void => {
-    const value = parseFloat(customSlippage);
-    if (!isNaN(value) && value >= MIN_SLIPPAGE_BPS / 100 && value <= MAX_SLIPPAGE_BPS / 100) {
+    const value = Number.parseFloat(customSlippage);
+    if (
+      !Number.isNaN(value) &&
+      value >= MIN_SLIPPAGE_BPS / 100 &&
+      value <= MAX_SLIPPAGE_BPS / 100
+    ) {
       const bps = Math.round(value * 100);
       setSlippageBps(bps);
       setShowCustomSlippage(false);
@@ -84,8 +302,8 @@ export function TransactionSettingsPanel({
 
   // Handle custom deadline submit with confirmation feedback
   const handleCustomDeadlineSubmit = (): void => {
-    const value = parseInt(customDeadline, 10);
-    if (!isNaN(value) && value >= MIN_DEADLINE_MINUTES && value <= MAX_DEADLINE_MINUTES) {
+    const value = Number.parseInt(customDeadline, 10);
+    if (!Number.isNaN(value) && value >= MIN_DEADLINE_MINUTES && value <= MAX_DEADLINE_MINUTES) {
       setDeadlineMinutes(value);
       setShowCustomDeadline(false);
       setCustomDeadline('');
@@ -164,17 +382,10 @@ export function TransactionSettingsPanel({
       <div>
         <div className="text-muted-foreground mb-2 flex items-center justify-between text-sm">
           <span>Slippage Tolerance</span>
-          {isUsingSmartSlippage ? (
-            <span className="text-success flex items-center gap-1 text-xs">
-              <Sparkles className="size-3" />
-              Auto: {formatSlippagePercent(slippageBps)}
-            </span>
-          ) : !isSlippagePreset ? (
-            <span className="text-primary text-xs">
-              Custom: {(slippageBps / 100).toFixed(2)}%{' '}
-              <span className="text-muted-foreground">({getSlippageLabel(slippageBps)})</span>
-            </span>
-          ) : null}
+          <SlippageStatusBadge
+            status={computeSlippageStatus(isUsingSmartSlippage, isSlippagePreset, slippageBps)}
+            slippageBps={slippageBps}
+          />
         </div>
 
         <div className="space-y-2">
@@ -268,118 +479,31 @@ export function TransactionSettingsPanel({
           </div>
 
           {/* Show description for smart slippage or selected preset */}
-          {isUsingSmartSlippage ? (
-            <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <span
-                className={
-                  smartSlippage.confidence === 'high'
-                    ? 'text-success'
-                    : smartSlippage.confidence === 'medium'
-                      ? 'text-warning'
-                      : 'text-muted-foreground'
-                }
-              >
-                {smartSlippage.confidence === 'high'
-                  ? '●'
-                  : smartSlippage.confidence === 'medium'
-                    ? '◐'
-                    : '○'}
-              </span>
-              {smartSlippage.reason}
-            </p>
-          ) : isSlippagePreset && !showCustomSlippage ? (
-            <p className="text-muted-foreground text-xs">
-              {SLIPPAGE_OPTIONS.find((opt) => opt.value === slippageBps)?.description}
-            </p>
-          ) : null}
+          <SlippageDescription
+            isUsingSmartSlippage={isUsingSmartSlippage}
+            isSlippagePreset={isSlippagePreset}
+            showCustomSlippage={showCustomSlippage}
+            slippageBps={slippageBps}
+            smartSlippage={smartSlippage}
+          />
         </div>
 
         {/* Slippage Warning */}
-        {slippageBps > 200 && (
-          <p className="text-chart-1 mt-1 text-xs">
-            High slippage increases risk of unfavorable trades
-          </p>
-        )}
-        {slippageBps < 10 && (
-          <p className="text-chart-1 mt-1 text-xs">Low slippage may cause transaction failures</p>
-        )}
+        <SlippageWarning slippageBps={slippageBps} />
       </div>
 
       {/* Deadline Settings (Advanced mode only by default) */}
       {shouldShowDeadline && (
-        <div>
-          <div className="text-muted-foreground mb-2 flex items-center justify-between text-sm">
-            <span>Transaction Deadline</span>
-            {!isDeadlinePreset && (
-              <span className="text-primary text-xs">Custom: {deadlineMinutes} min</span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <ToggleGroup className="flex gap-1">
-              {DEADLINE_OPTIONS.map((option) => (
-                <ToggleGroupItem
-                  key={option.value}
-                  pressed={deadlineMinutes === option.value && !showCustomDeadline}
-                  onPressedChange={() => {
-                    handleDeadlinePresetChange(option.value);
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  {option.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-
-            {showCustomDeadline ? (
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  min={MIN_DEADLINE_MINUTES}
-                  max={MAX_DEADLINE_MINUTES}
-                  step={1}
-                  value={customDeadline}
-                  onChange={(e) => {
-                    setCustomDeadline(e.target.value);
-                  }}
-                  placeholder="20"
-                  className="h-8 w-16"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCustomDeadlineSubmit();
-                    if (e.key === 'Escape') setShowCustomDeadline(false);
-                  }}
-                  autoFocus
-                />
-                <span className="text-muted-foreground text-sm">min</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCustomDeadlineSubmit}
-                  className="h-8 px-2"
-                >
-                  Set
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowCustomDeadline(true);
-                }}
-                className="text-muted-foreground h-8 px-2 text-xs"
-              >
-                Custom
-              </Button>
-            )}
-          </div>
-
-          {/* Deadline Info */}
-          <p className="text-muted-foreground mt-1 text-xs">
-            Transaction will revert if not confirmed within {deadlineMinutes} minutes
-          </p>
-        </div>
+        <DeadlineSettings
+          deadlineMinutes={deadlineMinutes}
+          isDeadlinePreset={isDeadlinePreset}
+          showCustomDeadline={showCustomDeadline}
+          customDeadline={customDeadline}
+          setCustomDeadline={setCustomDeadline}
+          setShowCustomDeadline={setShowCustomDeadline}
+          handleDeadlinePresetChange={handleDeadlinePresetChange}
+          handleCustomDeadlineSubmit={handleCustomDeadlineSubmit}
+        />
       )}
 
       {/* Reset Button */}

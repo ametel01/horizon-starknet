@@ -35,6 +35,8 @@ interface SepoliaAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    RouterStatic?: string;
+    PyLpOracle?: string;
   };
   testSetup: {
     testRecipient: string;
@@ -76,7 +78,7 @@ interface SepoliaAddresses {
 function normalizeAddress(address: string): string {
   // Remove 0x prefix, strip leading zeros, add back 0x, lowercase
   const hex = address.toLowerCase().replace(/^0x0*/, '');
-  return '0x' + hex;
+  return `0x${hex}`;
 }
 
 // Type definitions for the dual-market JSON structure
@@ -107,6 +109,8 @@ interface DevnetAddresses {
     Factory?: string;
     MarketFactory?: string;
     Router?: string;
+    RouterStatic?: string;
+    PyLpOracle?: string;
   };
   testSetup: {
     testRecipient?: string;
@@ -155,6 +159,8 @@ interface ForkAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    RouterStatic?: string;
+    PyLpOracle?: string;
   };
   mainnetTokens: {
     sSTRK: string;
@@ -205,7 +211,9 @@ interface MainnetAddresses {
     Factory: string;
     MarketFactory: string;
     Router: string;
+    RouterStatic?: string;
     Faucet: string;
+    PyLpOracle?: string;
   };
   tokens: {
     STRK: string;
@@ -235,6 +243,8 @@ export interface ContractAddresses {
   factory: string;
   marketFactory: string;
   router: string;
+  routerStatic: string;
+  pyLpOracle: string;
 }
 
 // New market info structure for dual-market support
@@ -261,21 +271,29 @@ const ADDRESSES: Record<NetworkId, ContractAddresses> = {
     factory: devnetAddresses.contracts.Factory ?? ZERO_ADDRESS,
     marketFactory: devnetAddresses.contracts.MarketFactory ?? ZERO_ADDRESS,
     router: devnetAddresses.contracts.Router ?? ZERO_ADDRESS,
+    routerStatic: devnetAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
+    pyLpOracle: devnetAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   fork: {
     factory: forkAddresses.contracts.Factory,
     marketFactory: forkAddresses.contracts.MarketFactory,
     router: forkAddresses.contracts.Router,
+    routerStatic: forkAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
+    pyLpOracle: forkAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   sepolia: {
     factory: sepoliaAddresses.contracts.Factory,
     marketFactory: sepoliaAddresses.contracts.MarketFactory,
     router: sepoliaAddresses.contracts.Router,
+    routerStatic: sepoliaAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
+    pyLpOracle: sepoliaAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
   mainnet: {
     factory: mainnetAddresses.contracts.Factory,
     marketFactory: mainnetAddresses.contracts.MarketFactory,
     router: mainnetAddresses.contracts.Router,
+    routerStatic: mainnetAddresses.contracts.RouterStatic ?? ZERO_ADDRESS,
+    pyLpOracle: mainnetAddresses.contracts.PyLpOracle ?? ZERO_ADDRESS,
   },
 };
 

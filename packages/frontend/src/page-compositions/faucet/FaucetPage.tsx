@@ -1,18 +1,105 @@
 'use client';
 
-import { AlertTriangle, Check, Copy, Droplets, ExternalLink, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import type { Call } from 'starknet';
-
 import { useStarknet } from '@features/wallet';
 import { getFaucetInfo } from '@shared/config/addresses';
 import { useTransaction } from '@shared/hooks/useTransaction';
 import { logError } from '@shared/server/logger';
-import { getFaucetContract } from '@shared/starknet/contracts';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Separator } from '@shared/ui/separator';
+import { AlertTriangle, Check, Copy, Droplets, ExternalLink, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { Call, ProviderInterface } from 'starknet';
+import { Contract } from 'starknet';
+
+/**
+ * Minimal Faucet ABI for can_mint and mint functions.
+ *
+ * Note: Faucet is test infrastructure, not a production contract, so its ABI
+ * is not included in the generated types. This inline definition provides
+ * only the two functions needed for this page. If the Faucet contract changes,
+ * update this ABI accordingly.
+ */
+const FAUCET_ABI = [
+  {
+    type: 'function',
+    name: 'can_mint',
+    inputs: [{ name: 'user', type: 'core::starknet::contract_address::ContractAddress' }],
+    outputs: [{ type: 'core::bool' }],
+    state_mutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'mint',
+    inputs: [],
+    outputs: [],
+    state_mutability: 'external',
+  },
+] as const;
+
+function getFaucetContract(address: string, provider: ProviderInterface) {
+  return new Contract({ abi: FAUCET_ABI, address, providerOrAccount: provider });
+}
+
+/**
+ * Eligibility status component - extracted to reduce complexity.
+ */
+interface EligibilityStatusProps {
+  isChecking: boolean;
+  canMint: boolean | null;
+  tokenSymbol: string;
+}
+
+function EligibilityStatus({
+  isChecking,
+  canMint,
+  tokenSymbol,
+}: EligibilityStatusProps): React.ReactNode {
+  if (isChecking) {
+    return (
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Checking eligibility...
+      </div>
+    );
+  }
+
+  if (canMint === false) {
+    return (
+      <div className="border-warning/20 bg-warning/5 rounded-lg border p-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="text-warning mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="text-foreground font-medium">Already minted today</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              You can only mint once every 24 hours. Please try again later.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (canMint === true) {
+    return (
+      <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
+        <div className="flex items-start gap-3">
+          <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="text-foreground font-medium">Eligible to mint</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              You can claim your 100 {tokenSymbol} test tokens.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export function FaucetPage(): React.ReactNode {
   const { address, isConnected, provider, network } = useStarknet();
@@ -40,8 +127,10 @@ export function FaucetPage(): React.ReactNode {
 
     try {
       const faucet = getFaucetContract(faucetInfo.faucetAddress, provider);
-      const result = await faucet.can_mint(targetAddress);
-      setCanMint(result);
+      const result = await faucet['can_mint'](targetAddress);
+      // Starknet returns booleans as bigint (0n/1n) for untyped contracts
+      // Must explicitly convert to boolean - cannot use `as boolean` cast
+      setCanMint(result === 1n || result === true);
     } catch (err) {
       logError(err, { module: 'faucet', action: 'checkCanMint', targetAddress });
       setError('Failed to check mint status');
@@ -211,36 +300,11 @@ export function FaucetPage(): React.ReactNode {
         {/* Status */}
         {targetAddress && (
           <div className="mt-6">
-            {isChecking ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking eligibility...
-              </div>
-            ) : canMint === false ? (
-              <div className="border-warning/20 bg-warning/5 rounded-lg border p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="text-warning mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-foreground font-medium">Already minted today</p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      You can only mint once every 24 hours. Please try again later.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : canMint === true ? (
-              <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
-                <div className="flex items-start gap-3">
-                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-foreground font-medium">Eligible to mint</p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      You can claim your 100 {faucetInfo.tokenSymbol} test tokens.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            <EligibilityStatus
+              isChecking={isChecking}
+              canMint={canMint}
+              tokenSymbol={faucetInfo.tokenSymbol}
+            />
           </div>
         )}
 

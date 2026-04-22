@@ -1,8 +1,5 @@
 'use client';
 
-import { Activity, DollarSign, TrendingUp, Users } from 'lucide-react';
-import { type ReactNode, useMemo } from 'react';
-
 import { useProtocolStats } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
@@ -10,6 +7,8 @@ import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { StatCard, StatCardGrid, StatCardSkeleton } from '@shared/ui/StatCard';
+import { Activity, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format USD value with compact notation for large numbers

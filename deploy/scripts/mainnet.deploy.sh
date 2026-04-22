@@ -79,6 +79,9 @@ fi
 log_info "RPC: $STARKNET_RPC_URL"
 log_info "Deployer: $DEPLOYER_ADDRESS"
 log_info "Test Recipient: $TEST_RECIPIENT"
+TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"
+update_env "TREASURY_ADDRESS" "$TREASURY_ADDRESS"
+log_info "Treasury: $TREASURY_ADDRESS"
 
 # =============================================================================
 # Step 1: Declare Classes (using declare.sh)
@@ -256,17 +259,23 @@ invoke_contract() {
 
 log_info "Deploying core infrastructure..."
 
-# Factory: constructor(owner, yt_class_hash, pt_class_hash)
+# Factory: constructor(owner, yt_class_hash, pt_class_hash, treasury)
 FACTORY_ADDRESS=$(deploy_contract "$FACTORY_CLASS_HASH" "Factory" "FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$YT_CLASS_HASH" "$PT_CLASS_HASH" "$TREASURY_ADDRESS")
 
-# MarketFactory: constructor(owner, market_class_hash)
+# MarketFactory: constructor(owner, market_class_hash, yield_contract_factory)
 MARKET_FACTORY_ADDRESS=$(deploy_contract "$MARKET_FACTORY_CLASS_HASH" "MarketFactory" "MARKET_FACTORY_ADDRESS" \
-    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH")
+    "$DEPLOYER_ADDRESS" "$MARKET_CLASS_HASH" "$FACTORY_ADDRESS")
 
 # Router: constructor(owner)
 ROUTER_ADDRESS=$(deploy_contract "$ROUTER_CLASS_HASH" "Router" "ROUTER_ADDRESS" \
     "$DEPLOYER_ADDRESS")
+
+# RouterStatic: constructor()
+ROUTER_STATIC_ADDRESS=$(deploy_contract "$ROUTER_STATIC_CLASS_HASH" "RouterStatic" "ROUTER_STATIC_ADDRESS")
+
+# PyLpOracle: constructor()
+PY_LP_ORACLE_ADDRESS=$(deploy_contract "$PY_LP_ORACLE_CLASS_HASH" "PyLpOracle" "PY_LP_ORACLE_ADDRESS")
 
 log_success "Core infrastructure deployed"
 
@@ -328,7 +337,7 @@ fi
 
 log_info "Deploying SY-hrzSTRK..."
 
-# SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, pauser)
+# SY: constructor(name, symbol, underlying, index_oracle, is_erc4626, asset_type, pauser, tokens_in, tokens_out)
 # "SY Horizon Mock Staked STRK" = 27 chars = 0x1b
 # "SY-hrzSTRK" = 10 chars = 0xa
 SY_HRZ_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-hrzSTRK" "SY_HRZ_STRK_ADDRESS" \
@@ -337,7 +346,10 @@ SY_HRZ_STRK_ADDRESS=$(deploy_contract "$SY_CLASS_HASH" "SY-hrzSTRK" "SY_HRZ_STRK
     "$HRZ_STRK_ADDRESS" \
     "$HRZ_STRK_ADDRESS" \
     0x1 \
-    "$DEPLOYER_ADDRESS")
+    0x0 \
+    "$DEPLOYER_ADDRESS" \
+    0x1 "$HRZ_STRK_ADDRESS" \
+    0x1 "$HRZ_STRK_ADDRESS")
 
 log_success "SY-hrzSTRK deployed: $SY_HRZ_STRK_ADDRESS"
 
@@ -390,6 +402,7 @@ ANCHOR_HRZ_STRK="${MARKET_INITIAL_ANCHOR_HRZ_STRK:-$DEFAULT_ANCHOR}"
 SCALAR_ROOT_HEX=$(printf "0x%x" "$SCALAR_ROOT")
 FEE_RATE_HEX=$(printf "0x%x" "$FEE_RATE")
 ANCHOR_HEX=$(printf "0x%x" "$ANCHOR_HRZ_STRK")
+RESERVE_FEE_PERCENT="${MARKET_RESERVE_FEE_PERCENT:-0}"
 
 if [[ -n "$MARKET_HRZ_STRK_ADDRESS" && "$MARKET_HRZ_STRK_ADDRESS" != "" && "$MARKET_HRZ_STRK_ADDRESS" != "0x0" ]]; then
     log_warning "Market for hrzSTRK already exists: $MARKET_HRZ_STRK_ADDRESS"
@@ -399,7 +412,9 @@ else
         "$PT_HRZ_STRK_ADDRESS" \
         "$SCALAR_ROOT_HEX" 0x0 \
         "$ANCHOR_HEX" 0x0 \
-        "$FEE_RATE_HEX" 0x0
+        "$FEE_RATE_HEX" 0x0 \
+        "$RESERVE_FEE_PERCENT" \
+        0x0
 
     MARKET_HRZ_STRK_ADDRESS=$(call_contract "$MARKET_FACTORY_ADDRESS" get_market \
         "$PT_HRZ_STRK_ADDRESS")
@@ -450,15 +465,15 @@ invoke_contract "$HRZ_STRK_ADDRESS" approve "$SY_HRZ_STRK_ADDRESS" "$LIQUIDITY_H
 
 # Step 3: Deposit hrzSTRK to get SY
 log_info "Step 3: Depositing hrzSTRK to get SY..."
-invoke_contract "$SY_HRZ_STRK_ADDRESS" deposit "$DEPLOYER_ADDRESS" "$LIQUIDITY_HEX" 0x0
+invoke_contract "$SY_HRZ_STRK_ADDRESS" deposit "$DEPLOYER_ADDRESS" "$HRZ_STRK_ADDRESS" "$LIQUIDITY_HEX" 0x0
 
-# Step 4: Approve YT to spend SY (for minting PT+YT)
-log_info "Step 4: Approving YT to spend SY..."
-invoke_contract "$SY_HRZ_STRK_ADDRESS" approve "$YT_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
+# Step 4: Transfer floating SY to YT
+log_info "Step 4: Transferring SY to YT..."
+invoke_contract "$SY_HRZ_STRK_ADDRESS" transfer "$YT_HRZ_STRK_ADDRESS" "$HALF_HEX" 0x0
 
-# Step 5: Mint PT+YT from SY (use half for PT+YT)
-log_info "Step 5: Minting PT+YT from SY..."
-invoke_contract "$YT_HRZ_STRK_ADDRESS" mint_py "$DEPLOYER_ADDRESS" "$HALF_HEX" 0x0
+# Step 5: Mint PT+YT from floating SY (use half for PT+YT)
+log_info "Step 5: Minting PT+YT from floating SY..."
+invoke_contract "$YT_HRZ_STRK_ADDRESS" mint_py "$DEPLOYER_ADDRESS" "$DEPLOYER_ADDRESS"
 
 # Step 6: Approve Market to spend SY
 log_info "Step 6: Approving Market to spend SY..."
@@ -491,7 +506,10 @@ cat > "$JSON_FILE" << EOF
   "classHashes": {
     "MockYieldToken": "$MOCK_YIELD_TOKEN_CLASS_HASH",
     "Faucet": "$FAUCET_CLASS_HASH",
+    "PyLpOracle": "$PY_LP_ORACLE_CLASS_HASH",
+    "RouterStatic": "$ROUTER_STATIC_CLASS_HASH",
     "SY": "$SY_CLASS_HASH",
+    "SYWithRewards": "$SY_WITH_REWARDS_CLASS_HASH",
     "PT": "$PT_CLASS_HASH",
     "YT": "$YT_CLASS_HASH",
     "Market": "$MARKET_CLASS_HASH",
@@ -503,6 +521,8 @@ cat > "$JSON_FILE" << EOF
     "Factory": "$FACTORY_ADDRESS",
     "MarketFactory": "$MARKET_FACTORY_ADDRESS",
     "Router": "$ROUTER_ADDRESS",
+    "RouterStatic": "$ROUTER_STATIC_ADDRESS",
+    "PyLpOracle": "$PY_LP_ORACLE_ADDRESS",
     "Faucet": "$FAUCET_ADDRESS"
   },
   "tokens": {
@@ -562,6 +582,8 @@ echo "Core Contracts:"
 echo "  Factory:        $FACTORY_ADDRESS"
 echo "  MarketFactory:  $MARKET_FACTORY_ADDRESS"
 echo "  Router:         $ROUTER_ADDRESS"
+echo "  RouterStatic:   $ROUTER_STATIC_ADDRESS"
+echo "  PyLpOracle:     $PY_LP_ORACLE_ADDRESS"
 echo ""
 echo "Mock Token Setup:"
 echo "  STRK:           $STRK_ADDRESS"

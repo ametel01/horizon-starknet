@@ -1,5 +1,5 @@
 
-This section specifies the governance structure, upgrade capabilities, and admin powers. All protocol contracts are upgradeable; users must evaluate admin trust before depositing.
+This section specifies the governance structure, upgrade capabilities, and admin powers. Most protocol-controlled contracts are upgradeable; PT, YT, Market, RouterStatic, and PyLpOracle are not. Users must evaluate admin trust before depositing.
 
 \paragraph{Authority model.}
 All upgradeable contracts use OpenZeppelin's \texttt{OwnableComponent} and \texttt{UpgradeableComponent}. A single authority (the \emph{owner}) holds \texttt{DEFAULT\_ADMIN\_ROLE} and can:
@@ -34,12 +34,15 @@ Horizon distinguishes between \emph{internal} contracts (protocol-controlled) an
 \textbf{Contract} & \textbf{Upgradeable} & \textbf{Scope of Upgrade Impact} & \textbf{Risk} \\
 \midrule
 SY & Yes & Share accounting, deposit/redeem logic & Critical \\
-PT & Yes & Redemption logic, mint authority validation & Critical \\
-YT & Yes & Yield distribution, interest index accounting & Critical \\
-Market & Yes & AMM curve, swap execution, fee calculation & Critical \\
+SYWithRewards & Yes & SY accounting plus reward distribution & Critical \\
+PT & No & Redemption logic, mint authority validation & Critical \\
+YT & No & Yield distribution, interest index accounting & Critical \\
+Market & No & AMM curve, swap execution, fee calculation & Critical \\
 Factory & Yes & Templates for new SY/PT/YT deployments & High \\
 MarketFactory & Yes & Templates for new Market deployments & High \\
 Router & Yes & Routing logic, could insert hidden fees & High \\
+RouterStatic & No & Read-only quotes and previews & Low \\
+PyLpOracle & No & PT/YT/LP TWAP pricing helper & Medium \\
 PragmaIndexOracle & Yes & Index source configuration, staleness thresholds & High \\
 \bottomrule
 \end{tabularx}
@@ -71,7 +74,7 @@ The protocol cannot upgrade or control external dependencies. Users accept these
 
 \section{Admin Powers}
 
-All admin functions require \texttt{DEFAULT\_ADMIN\_ROLE}. This section enumerates the exact on-chain powers.
+Most admin functions require \texttt{DEFAULT\_ADMIN\_ROLE} unless otherwise noted (e.g., PragmaIndexOracle uses OPERATOR\_ROLE and PAUSER\_ROLE for specific controls). This section enumerates the exact on-chain powers.
 
 \subsection{Powers Available on All Upgradeable Contracts}
 
@@ -113,9 +116,11 @@ Every contract with \texttt{OwnableComponent} and \texttt{UpgradeableComponent} 
 \textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
 \midrule
 \texttt{set\_market\_class\_hash} & Change template for future Market deployments & Critical \\
-\texttt{set\_default\_fee\_rate} & Configure default swap fee for new markets & Medium \\
-\texttt{set\_default\_scalar\_root} & Configure default price sensitivity & Medium \\
-\texttt{set\_default\_initial\_anchor} & Configure default implied rate anchor & Medium \\
+\texttt{set\_treasury} & Update reserve fee recipient & High \\
+\texttt{set\_default\_reserve\_fee\_percent} & Configure default reserve fee percentage & Medium \\
+\texttt{set\_override\_fee} & Set per-router per-market fee override & Medium \\
+\texttt{set\_default\_rate\_impact\_sensitivity} & Configure rate impact fee sensitivity & Medium \\
+\texttt{set\_yield\_contract\_factory} & Update PT validation source & Medium \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -138,18 +143,19 @@ Every contract with \texttt{OwnableComponent} and \texttt{UpgradeableComponent} 
 \toprule
 \textbf{Function} & \textbf{Effect} & \textbf{Risk} \\
 \midrule
-\texttt{set\_staleness\_threshold} & Configure maximum age for oracle data & Medium \\
-\texttt{set\_twap\_duration} & Configure TWAP averaging window & Medium \\
-\texttt{set\_feed\_id} & Change Pragma feed identifier & High \\
+\texttt{set\_config} & Update TWAP window and staleness limits & Medium \\
+\texttt{pause} / \texttt{unpause} & Freeze/unfreeze oracle reads & Medium \\
+\texttt{emergency\_set\_index} & Override stored index (recovery) & High \\
+\texttt{initialize\_rbac} & One-time RBAC initialization after upgrade & Medium \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\paragraph{Token Contracts (SY, PT, YT).}
+\paragraph{Token Contracts (SY, SYWithRewards).}
 Token contracts expose only \texttt{upgrade}. Minting/burning authority is enforced by code (YT contract controls PT/YT minting), not by admin-configurable roles.
 
-\paragraph{Market.}
-Market contracts expose only \texttt{upgrade}. AMM parameters (fee rate, scalar root, anchor) are set at deployment and cannot be modified post-deployment.
+\paragraph{PT, YT, and Market.}
+These contracts are not upgradeable. Their parameters are set at deployment and cannot be modified post-deployment.
 
 
 \section{Role-Based Access Control}
@@ -162,8 +168,8 @@ The protocol uses OpenZeppelin's \texttt{AccessControlComponent} with three role
 \textbf{Role} & \textbf{Permissions} & \textbf{Holder} \\
 \midrule
 \texttt{DEFAULT\_ADMIN\_ROLE} & All admin functions; grant/revoke other roles & Owner (multisig target) \\
-\texttt{PAUSER\_ROLE} & \texttt{pause()}, \texttt{unpause()} on Router & Owner (initially) \\
-\texttt{OPERATOR\_ROLE} & Reserved for future operational functions & Not assigned \\
+\texttt{PAUSER\_ROLE} & \texttt{pause()}, \texttt{unpause()} on Router and PragmaIndexOracle & Owner (initially) \\
+\texttt{OPERATOR\_ROLE} & PragmaIndexOracle configuration updates & Owner (initially) \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -184,6 +190,7 @@ The following actions are available during emergencies:
 \textbf{Action} & \textbf{Effect} \\
 \midrule
 Pause Router & Blocks new swaps, mints, and complex operations via Router \\
+Pause PragmaIndexOracle & Freezes index updates at the stored watermark \\
 Emergency upgrade & Replace contract implementation without timelock (if active exploit) \\
 \bottomrule
 \end{tabularx}
@@ -191,7 +198,7 @@ Emergency upgrade & Replace contract implementation without timelock (if active 
 
 \subsection{Pause Scope}
 
-The pause mechanism affects only the Router contract. Its purpose is to stop new protocol interactions while preserving user exit paths.
+Pause mechanisms exist on the Router and PragmaIndexOracle. Router pause stops complex protocol interactions, while oracle pause freezes index updates to the stored watermark.
 
 \begin{center}
 \begin{tabularx}{\textwidth}{l l >{raggedright\arraybackslash}X}
@@ -369,4 +376,3 @@ Full decentralization (governance token, on-chain voting) is not planned for ini
 \end{itemize}
 
 \noindent The protocol may consider decentralized governance once the codebase is stable and user base is established.
-

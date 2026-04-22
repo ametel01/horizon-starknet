@@ -1,4 +1,4 @@
-import { RpcProvider, type BlockTag, type Call, type CallContractResponse } from 'starknet';
+import { type BlockTag, type Call, type CallContractResponse, RpcProvider } from 'starknet';
 
 export type NetworkId = 'mainnet' | 'sepolia' | 'devnet' | 'fork';
 

@@ -1,20 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-
 import { Input } from '@shared/ui/Input';
 import { Label } from '@shared/ui/label';
+import { useState } from 'react';
 
 export function PriceSimulator(): React.ReactNode {
   const [impliedYield, setImpliedYield] = useState('10');
   const [daysToExpiry, setDaysToExpiry] = useState('180');
 
-  const yieldNum = parseFloat(impliedYield) / 100 || 0;
-  const daysNum = parseFloat(daysToExpiry) || 1;
+  const yieldNum = Number.parseFloat(impliedYield) / 100 || 0;
+  const daysNum = Number.parseFloat(daysToExpiry) || 1;
   const yearsToExpiry = daysNum / 365;
 
   // Calculate PT price: 1 / (1 + yield)^time
-  const ptPrice = yieldNum >= 0 ? 1 / Math.pow(1 + yieldNum, yearsToExpiry) : 0;
+  const ptPrice = yieldNum >= 0 ? 1 / (1 + yieldNum) ** yearsToExpiry : 0;
 
   // Calculate YT price
   const ytPrice = 1 - ptPrice;
@@ -22,8 +21,8 @@ export function PriceSimulator(): React.ReactNode {
   // Calculate what happens if yield changes by ±2%
   const yieldUp = yieldNum + 0.02;
   const yieldDown = Math.max(0, yieldNum - 0.02);
-  const ptPriceUp = 1 / Math.pow(1 + yieldUp, yearsToExpiry);
-  const ptPriceDown = 1 / Math.pow(1 + yieldDown, yearsToExpiry);
+  const ptPriceUp = 1 / (1 + yieldUp) ** yearsToExpiry;
+  const ptPriceDown = 1 / (1 + yieldDown) ** yearsToExpiry;
 
   return (
     <div className="not-prose border-border bg-card my-6 rounded-lg border p-6">

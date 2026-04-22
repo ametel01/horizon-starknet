@@ -19,14 +19,14 @@ async function cleanupTriggers() {
     process.env["DATABASE_URL"] ?? process.env["POSTGRES_CONNECTION_STRING"];
   if (!databaseUrl) {
     log.fatal(
-      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required",
+      "DATABASE_URL or POSTGRES_CONNECTION_STRING environment variable is required"
     );
     process.exit(1);
   }
 
   log.info(
     { url: databaseUrl.replace(/:[^:@]+@/, ":***@") },
-    "Connecting to database...",
+    "Connecting to database..."
   );
   const sql = postgres(databaseUrl, {
     connect_timeout: 10, // 10 second connection timeout
@@ -41,7 +41,7 @@ async function cleanupTriggers() {
     >`SELECT current_database() as db, current_schema() as schema`;
     log.info(
       { database: dbInfo[0]?.db, schema: dbInfo[0]?.schema },
-      "Database connection verified",
+      "Database connection verified"
     );
 
     // Check total trigger count to verify query works
@@ -53,7 +53,7 @@ async function cleanupTriggers() {
     `;
     log.info(
       { totalPublicTriggers: allTriggers[0]?.cnt },
-      "Trigger count in public schema",
+      "Trigger count in public schema"
     );
 
     log.info("Querying for reorg triggers in pg_trigger...");
@@ -80,17 +80,17 @@ async function cleanupTriggers() {
           count: triggers.length,
           triggers: triggers.map((t) => t.trigger_name),
         },
-        "Found reorg triggers to drop",
+        "Found reorg triggers to drop"
       );
 
       for (const { trigger_name, table_name } of triggers) {
         try {
           await sql.unsafe(
-            `DROP TRIGGER IF EXISTS "${trigger_name}" ON "${table_name}"`,
+            `DROP TRIGGER IF EXISTS "${trigger_name}" ON "${table_name}"`
           );
           log.info(
             { trigger: trigger_name, table: table_name },
-            "Dropped trigger",
+            "Dropped trigger"
           );
         } catch (e: unknown) {
           const error = e as Error;
@@ -100,7 +100,7 @@ async function cleanupTriggers() {
               table: table_name,
               error: error.message,
             },
-            "Could not drop trigger",
+            "Could not drop trigger"
           );
         }
       }

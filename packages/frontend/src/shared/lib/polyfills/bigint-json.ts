@@ -22,12 +22,12 @@ if (typeof window !== 'undefined') {
   }
 
   // Patch JSON.stringify to handle BigInt
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (JSON.stringify as any) = function (
+  // biome-ignore lint/suspicious/noExplicitAny: Required for patching global JSON.stringify
+  (JSON.stringify as any) = (
     value: unknown,
     replacer?: Parameters<typeof originalStringify>[1],
     space?: Parameters<typeof originalStringify>[2]
-  ): string {
+  ): string => {
     try {
       return originalStringify(value, replacer, space);
     } catch (error) {

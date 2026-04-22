@@ -118,6 +118,24 @@ See [Trade Yield guide](/docs/guides/trade-yield) for YT strategies.
 
 See [Provide Liquidity guide](/docs/guides/provide-liquidity) for LP strategies.
 
+### Reward Token Risks
+
+Some yield-bearing assets distribute external reward tokens in addition to their base yield. Not all markets on Horizon have reward tokens — this section applies only to positions that do.
+
+<Callout type="warning">
+**Reward rates can change** — External reward programs may be reduced, paused, or discontinued by the underlying protocol at any time.
+</Callout>
+
+- **Reward rate volatility** — APR from rewards fluctuates based on emissions schedule, token price, and total deposits
+- **Protocol dependency** — Rewards depend on the external protocol's continued operation and incentive programs
+- **Smart contract risk** — Reward distribution contracts are separate from the yield source and carry their own risks
+- **Claiming requirements** — Rewards must be claimed before YT expiry; unclaimed rewards may be forfeited
+
+**Before relying on reward yields:**
+- Verify the reward program is active and check its duration
+- Understand that projected reward APR is an estimate, not a guarantee
+- Factor in potential reward token price volatility
+
 ---
 
 ## Operational Risks
@@ -133,6 +151,24 @@ See [Provide Liquidity guide](/docs/guides/provide-liquidity) for LP strategies.
 - **Transaction failures** — Gas estimation or network congestion
 - **Reorg risk** — Wait for confirmations on large transactions
 - **RPC issues** — Consider using multiple RPC endpoints
+
+### Flash Mint Risks
+
+<Callout type="warning">
+**Developer-facing only** — This section is for integrators building on top of Horizon. Regular users do not interact with flash mints directly.
+</Callout>
+
+Flash minting allows atomically minting PT+YT, using them within a callback, and returning them in a single transaction. Integrators should be aware of:
+
+- **Callback implementation errors** — Your `IFlashCallback.flashCallback` must return the exact SY amount requested, or the transaction reverts
+- **Reentrancy considerations** — Flash mints invoke external callback code; ensure your callback does not make unsafe assumptions about contract state
+- **Revert conditions** — Flash mints revert if:
+  - The callback does not return sufficient SY
+  - The market has expired (minting PT/YT is disabled)
+  - The callback reverts for any reason
+- **Gas limits** — Complex callback logic may exceed block gas limits
+
+See [Flash Mint glossary entry](/docs/glossary#flash-mint) for technical details.
 
 ---
 

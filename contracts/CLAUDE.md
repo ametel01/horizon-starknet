@@ -58,6 +58,75 @@ Underlying Asset → SY (deposit) → PT + YT (mint_py)
 
 **Upgradeability:** All core contracts use OpenZeppelin's OwnableComponent and UpgradeableComponent.
 
+### Token Aggregation Functions
+
+The Router supports swapping arbitrary tokens to/from PT, YT, and LP positions via external aggregators (e.g., DEX aggregators like Fibrous, AVNU). This enables users to enter/exit positions using any token, not just SY.
+
+**Core Data Structures:**
+
+```cairo
+// Aggregator swap configuration
+struct SwapData {
+    aggregator: ContractAddress,  // DEX aggregator contract
+    calldata: Span<felt252>,      // Encoded swap calldata
+}
+
+// Input token to swap via aggregator
+struct TokenInput {
+    token: ContractAddress,       // ERC20 token address
+    amount: u256,                 // Amount to swap
+    swap_data: SwapData,          // Aggregator routing data
+}
+
+// Output token to receive via aggregator
+struct TokenOutput {
+    token: ContractAddress,       // ERC20 token address
+    min_amount: u256,             // Minimum to receive (slippage)
+    swap_data: SwapData,          // Aggregator routing data
+}
+```
+
+**Token → PT/YT/LP Functions:**
+
+| Function | Flow |
+|----------|------|
+| `swap_exact_token_for_pt` | token → aggregator → underlying → SY → market → PT |
+| `swap_exact_token_for_yt` | token → aggregator → underlying → SY → mint PT+YT → sell PT → YT |
+| `add_liquidity_single_token` | token → aggregator → underlying → SY → add_liquidity_single_sy → LP |
+| `add_liquidity_single_token_keep_yt` | token → aggregator → underlying → SY → mint PT+YT → add liquidity → LP + YT |
+
+**PT/YT/LP → Token Functions:**
+
+| Function | Flow |
+|----------|------|
+| `swap_exact_pt_for_token` | PT → market → SY → redeem → underlying → aggregator → token |
+| `swap_exact_yt_for_token` | YT + collateral → buy PT → redeem → SY → underlying → aggregator → token |
+| `remove_liquidity_single_token` | LP → burn → SY+PT → swap PT→SY → redeem → underlying → aggregator → token |
+
+### ApproxParams (Binary Search Hints)
+
+Several router functions use binary search to calculate optimal swap amounts. `ApproxParams` allows callers to provide hints for faster convergence:
+
+```cairo
+struct ApproxParams {
+    guess_min: u256,      // Lower bound (0 = use default)
+    guess_max: u256,      // Upper bound (0 = use default)
+    guess_offchain: u256, // Pre-computed guess (0 = no hint)
+    max_iteration: u256,  // Max iterations (default: 20)
+    eps: u256,            // Precision in WAD (1e15 = 0.1%)
+}
+```
+
+**Functions accepting ApproxParams:**
+
+- `swap_exact_sy_for_pt_with_approx` - Optimized SY→PT swap
+- `add_liquidity_single_sy_with_approx` - Optimized single-sided LP add
+
+**Usage pattern:**
+- For on-chain calls without hints, use zero values (falls back to defaults)
+- For optimized off-chain integration, pre-compute `guess_offchain` using preview functions
+- `eps` of `1e15` (0.1%) is typical; lower values need more iterations
+
 ## Testing
 
 the tests should expose smart contract bugs not be adapted to implementation to make them pass, always assume the smart contract is wrong until full investigation is completed.

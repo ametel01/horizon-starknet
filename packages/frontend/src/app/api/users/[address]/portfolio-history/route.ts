@@ -1,66 +1,56 @@
-import { desc, or, sql } from 'drizzle-orm';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { db } from '@shared/server/db';
 import {
-  enrichedRouterSwap,
-  enrichedRouterSwapYT,
   enrichedRouterAddLiquidity,
-  enrichedRouterRemoveLiquidity,
   enrichedRouterMintPY,
   enrichedRouterRedeemPY,
+  enrichedRouterRemoveLiquidity,
+  enrichedRouterSwap,
+  enrichedRouterSwapYT,
   syDeposit,
   syRedeem,
 } from '@shared/server/db/schema';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import type { SQL } from 'drizzle-orm';
+import { desc, or, sql } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Normalize a Starknet address for database comparison.
- */
-function normalizeAddressForDb(address: string): string {
-  const hex = address.toLowerCase().replace(/^0x/, '');
-  const padded = hex.padStart(64, '0');
-  return '0x' + padded;
-}
+// ----- Types -----
+
+type EventType =
+  | 'deposit'
+  | 'withdraw'
+  | 'mint_py'
+  | 'redeem_py'
+  | 'swap'
+  | 'swap_yt'
+  | 'add_liquidity'
+  | 'remove_liquidity';
 
 interface ValueEvent {
-  type:
-    | 'deposit'
-    | 'withdraw'
-    | 'mint_py'
-    | 'redeem_py'
-    | 'swap'
-    | 'swap_yt'
-    | 'add_liquidity'
-    | 'remove_liquidity';
+  type: EventType;
   timestamp: string;
   transactionHash: string;
-  market?: string;
-  underlyingSymbol?: string;
-  // Value changes (in underlying token units, WAD scaled)
-  syDelta: string; // Positive = gained, negative = spent
+  market?: string | undefined;
+  underlyingSymbol?: string | undefined;
+  syDelta: string;
   ptDelta: string;
   ytDelta: string;
   lpDelta: string;
-  // Exchange rate at time of event
   exchangeRate: string;
-  // Calculated value in underlying terms
-  valueChange: string; // Net value change from this event
+  valueChange: string;
 }
 
 interface PortfolioSnapshot {
   date: string;
-  // Cumulative position values at this point
-  totalValueSy: string; // Total value denominated in SY
+  totalValueSy: string;
   syBalance: string;
   ptBalance: string;
   ytBalance: string;
   lpBalance: string;
-  // P&L tracking
   realizedPnl: string;
   unrealizedPnl: string;
   eventCount: number;
@@ -80,6 +70,460 @@ interface PortfolioHistoryResponse {
   };
 }
 
+interface QueryParams {
+  normalizedAddress: string;
+  lowerAddress: string;
+  limit: number;
+}
+
+// ----- Helper Functions -----
+
+function normalizeAddressForDb(address: string): string {
+  const hex = address.toLowerCase().replace(/^0x/, '');
+  const padded = hex.padStart(64, '0');
+  return `0x${padded}`;
+}
+
+function buildCallerReceiverCondition(
+  callerCol: { name: string },
+  receiverCol: { name: string },
+  params: QueryParams
+): SQL | undefined {
+  return or(
+    sql`LOWER(${callerCol}) = ${params.normalizedAddress}`,
+    sql`LOWER(${callerCol}) = ${params.lowerAddress}`,
+    sql`LOWER(${receiverCol}) = ${params.normalizedAddress}`,
+    sql`LOWER(${receiverCol}) = ${params.lowerAddress}`
+  );
+}
+
+function buildSenderReceiverCondition(
+  senderCol: { name: string },
+  receiverCol: { name: string },
+  params: QueryParams
+): SQL | undefined {
+  return or(
+    sql`LOWER(${senderCol}) = ${params.normalizedAddress}`,
+    sql`LOWER(${senderCol}) = ${params.lowerAddress}`,
+    sql`LOWER(${receiverCol}) = ${params.normalizedAddress}`,
+    sql`LOWER(${receiverCol}) = ${params.lowerAddress}`
+  );
+}
+
+function createEmptyResponse(address: string): PortfolioHistoryResponse {
+  return {
+    address,
+    events: [],
+    snapshots: [],
+    summary: {
+      totalDeposited: '0',
+      totalWithdrawn: '0',
+      realizedPnl: '0',
+      firstActivity: null,
+      lastActivity: null,
+      eventCount: 0,
+    },
+  };
+}
+
+// ----- Event Mappers -----
+
+interface DepositRow {
+  block_timestamp: Date;
+  transaction_hash: string;
+  amount_sy_minted: string;
+  exchange_rate: string;
+}
+
+function mapDeposit(row: DepositRow): ValueEvent {
+  return {
+    type: 'deposit',
+    timestamp: row.block_timestamp.toISOString(),
+    transactionHash: row.transaction_hash,
+    syDelta: row.amount_sy_minted,
+    ptDelta: '0',
+    ytDelta: '0',
+    lpDelta: '0',
+    exchangeRate: row.exchange_rate,
+    valueChange: row.amount_sy_minted,
+  };
+}
+
+interface RedeemRow {
+  block_timestamp: Date;
+  transaction_hash: string;
+  amount_sy_burned: string;
+  exchange_rate: string;
+}
+
+function mapWithdraw(row: RedeemRow): ValueEvent {
+  return {
+    type: 'withdraw',
+    timestamp: row.block_timestamp.toISOString(),
+    transactionHash: row.transaction_hash,
+    syDelta: `-${row.amount_sy_burned}`,
+    ptDelta: '0',
+    ytDelta: '0',
+    lpDelta: '0',
+    exchangeRate: row.exchange_rate,
+    valueChange: `-${row.amount_sy_burned}`,
+  };
+}
+
+interface MintRow {
+  block_timestamp: Date | null;
+  transaction_hash: string | null;
+  sy_in: string | null;
+  pt_out: string | null;
+  yt_out: string | null;
+  exchange_rate: string | null;
+}
+
+function mapMintPY(row: MintRow): ValueEvent {
+  return {
+    type: 'mint_py',
+    timestamp: row.block_timestamp?.toISOString() ?? '',
+    transactionHash: row.transaction_hash ?? '',
+    syDelta: `-${row.sy_in ?? '0'}`,
+    ptDelta: row.pt_out ?? '0',
+    ytDelta: row.yt_out ?? '0',
+    lpDelta: '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    valueChange: '0',
+  };
+}
+
+interface RedeemPYRow {
+  block_timestamp: Date | null;
+  transaction_hash: string | null;
+  sy_out: string | null;
+  py_in: string | null;
+  exchange_rate: string | null;
+}
+
+function mapRedeemPY(row: RedeemPYRow): ValueEvent {
+  return {
+    type: 'redeem_py',
+    timestamp: row.block_timestamp?.toISOString() ?? '',
+    transactionHash: row.transaction_hash ?? '',
+    syDelta: row.sy_out ?? '0',
+    ptDelta: `-${row.py_in ?? '0'}`,
+    ytDelta: `-${row.py_in ?? '0'}`,
+    lpDelta: '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    valueChange: '0',
+  };
+}
+
+interface SwapRow {
+  block_timestamp: Date | null;
+  transaction_hash: string | null;
+  sy_in: string | null;
+  sy_out: string | null;
+  pt_in: string | null;
+  pt_out: string | null;
+  total_fee: string | null;
+  exchange_rate: string | null;
+  market: string | null;
+  underlying_symbol: string | null;
+}
+
+function mapSwap(row: SwapRow): ValueEvent {
+  const syIn = BigInt(row.sy_in ?? '0');
+  const syOut = BigInt(row.sy_out ?? '0');
+  const ptIn = BigInt(row.pt_in ?? '0');
+  const ptOut = BigInt(row.pt_out ?? '0');
+  const fee = BigInt(row.total_fee ?? '0');
+
+  return {
+    type: 'swap',
+    timestamp: row.block_timestamp?.toISOString() ?? '',
+    transactionHash: row.transaction_hash ?? '',
+    syDelta: (syOut - syIn).toString(),
+    ptDelta: (ptOut - ptIn).toString(),
+    ytDelta: '0',
+    lpDelta: '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    valueChange: `-${fee.toString()}`,
+    market: row.market ?? undefined,
+    underlyingSymbol: row.underlying_symbol ?? undefined,
+  };
+}
+
+interface SwapYTRow {
+  block_timestamp: Date | null;
+  transaction_hash: string | null;
+  sy_in: string | null;
+  sy_out: string | null;
+  yt_in: string | null;
+  yt_out: string | null;
+  exchange_rate: string | null;
+  market: string | null;
+  underlying_symbol: string | null;
+}
+
+function mapSwapYT(row: SwapYTRow): ValueEvent {
+  const syIn = BigInt(row.sy_in ?? '0');
+  const syOut = BigInt(row.sy_out ?? '0');
+  const ytIn = BigInt(row.yt_in ?? '0');
+  const ytOut = BigInt(row.yt_out ?? '0');
+
+  return {
+    type: 'swap_yt',
+    timestamp: row.block_timestamp?.toISOString() ?? '',
+    transactionHash: row.transaction_hash ?? '',
+    syDelta: (syOut - syIn).toString(),
+    ptDelta: '0',
+    ytDelta: (ytOut - ytIn).toString(),
+    lpDelta: '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    valueChange: '0',
+    market: row.market ?? undefined,
+    underlyingSymbol: row.underlying_symbol ?? undefined,
+  };
+}
+
+interface AddLiqRow {
+  block_timestamp: Date | null;
+  transaction_hash: string | null;
+  sy_used: string | null;
+  pt_used: string | null;
+  lp_out: string | null;
+  exchange_rate: string | null;
+  market: string | null;
+  underlying_symbol: string | null;
+}
+
+function mapAddLiquidity(row: AddLiqRow): ValueEvent {
+  return {
+    type: 'add_liquidity',
+    timestamp: row.block_timestamp?.toISOString() ?? '',
+    transactionHash: row.transaction_hash ?? '',
+    syDelta: `-${row.sy_used ?? '0'}`,
+    ptDelta: `-${row.pt_used ?? '0'}`,
+    ytDelta: '0',
+    lpDelta: row.lp_out ?? '0',
+    exchangeRate: row.exchange_rate ?? '0',
+    valueChange: '0',
+    market: row.market ?? undefined,
+    underlyingSymbol: row.underlying_symbol ?? undefined,
+  };
+}
+
+interface RemoveLiqRow {
+  block_timestamp: Date | null;
+  transaction_hash: string | null;
+  sy_out: string | null;
+  pt_out: string | null;
+  lp_in: string | null;
+  exchange_rate: string | null;
+  market: string | null;
+  underlying_symbol: string | null;
+}
+
+function mapRemoveLiquidity(row: RemoveLiqRow): ValueEvent {
+  return {
+    type: 'remove_liquidity',
+    timestamp: row.block_timestamp?.toISOString() ?? '',
+    transactionHash: row.transaction_hash ?? '',
+    syDelta: row.sy_out ?? '0',
+    ptDelta: row.pt_out ?? '0',
+    ytDelta: '0',
+    lpDelta: `-${row.lp_in ?? '0'}`,
+    exchangeRate: row.exchange_rate ?? '0',
+    valueChange: '0',
+    market: row.market ?? undefined,
+    underlyingSymbol: row.underlying_symbol ?? undefined,
+  };
+}
+
+// ----- Query Builder -----
+
+function createPortfolioHistoryQueries(params: QueryParams) {
+  return Promise.all([
+    db
+      .select()
+      .from(syDeposit)
+      .where(buildCallerReceiverCondition(syDeposit.caller, syDeposit.receiver, params))
+      .orderBy(desc(syDeposit.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(syRedeem)
+      .where(buildCallerReceiverCondition(syRedeem.caller, syRedeem.receiver, params))
+      .orderBy(desc(syRedeem.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(enrichedRouterMintPY)
+      .where(
+        buildSenderReceiverCondition(
+          enrichedRouterMintPY.sender,
+          enrichedRouterMintPY.receiver,
+          params
+        )
+      )
+      .orderBy(desc(enrichedRouterMintPY.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(enrichedRouterRedeemPY)
+      .where(
+        buildSenderReceiverCondition(
+          enrichedRouterRedeemPY.sender,
+          enrichedRouterRedeemPY.receiver,
+          params
+        )
+      )
+      .orderBy(desc(enrichedRouterRedeemPY.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(enrichedRouterSwap)
+      .where(
+        buildSenderReceiverCondition(enrichedRouterSwap.sender, enrichedRouterSwap.receiver, params)
+      )
+      .orderBy(desc(enrichedRouterSwap.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(enrichedRouterSwapYT)
+      .where(
+        buildSenderReceiverCondition(
+          enrichedRouterSwapYT.sender,
+          enrichedRouterSwapYT.receiver,
+          params
+        )
+      )
+      .orderBy(desc(enrichedRouterSwapYT.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(enrichedRouterAddLiquidity)
+      .where(
+        buildSenderReceiverCondition(
+          enrichedRouterAddLiquidity.sender,
+          enrichedRouterAddLiquidity.receiver,
+          params
+        )
+      )
+      .orderBy(desc(enrichedRouterAddLiquidity.block_timestamp))
+      .limit(params.limit),
+    db
+      .select()
+      .from(enrichedRouterRemoveLiquidity)
+      .where(
+        buildSenderReceiverCondition(
+          enrichedRouterRemoveLiquidity.sender,
+          enrichedRouterRemoveLiquidity.receiver,
+          params
+        )
+      )
+      .orderBy(desc(enrichedRouterRemoveLiquidity.block_timestamp))
+      .limit(params.limit),
+  ]);
+}
+
+// ----- Event Collection -----
+
+function collectValueEvents(
+  deposits: DepositRow[],
+  syRedeems: RedeemRow[],
+  mints: MintRow[],
+  redeems: RedeemPYRow[],
+  swaps: SwapRow[],
+  ytSwaps: SwapYTRow[],
+  addLiq: AddLiqRow[],
+  removeLiq: RemoveLiqRow[]
+): ValueEvent[] {
+  const events: ValueEvent[] = [
+    ...deposits.map(mapDeposit),
+    ...syRedeems.map(mapWithdraw),
+    ...mints.map(mapMintPY),
+    ...redeems.map(mapRedeemPY),
+    ...swaps.map(mapSwap),
+    ...ytSwaps.map(mapSwapYT),
+    ...addLiq.map(mapAddLiquidity),
+    ...removeLiq.map(mapRemoveLiquidity),
+  ];
+
+  // Sort oldest first for cumulative calculation
+  events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  return events;
+}
+
+// ----- Snapshot Calculation -----
+
+interface SnapshotResult {
+  snapshots: PortfolioSnapshot[];
+  totalDeposited: bigint;
+  totalWithdrawn: bigint;
+}
+
+function calculateSnapshots(events: ValueEvent[]): SnapshotResult {
+  const snapshots: PortfolioSnapshot[] = [];
+  let cumulativeSy = 0n;
+  let cumulativePt = 0n;
+  let cumulativeYt = 0n;
+  let cumulativeLp = 0n;
+  let totalDeposited = 0n;
+  let totalWithdrawn = 0n;
+
+  for (const event of events) {
+    cumulativeSy += BigInt(event.syDelta);
+    cumulativePt += BigInt(event.ptDelta);
+    cumulativeYt += BigInt(event.ytDelta);
+    cumulativeLp += BigInt(event.lpDelta);
+
+    const syDelta = BigInt(event.syDelta);
+    if (event.type === 'deposit' && syDelta > 0n) {
+      totalDeposited += syDelta;
+    }
+    if (event.type === 'withdraw' && syDelta < 0n) {
+      totalWithdrawn += -syDelta;
+    }
+
+    // Calculate total value in SY terms (simplified valuation)
+    const ptValueSy = cumulativePt;
+    const ytValueSy = cumulativeYt / 10n;
+    const lpValueSy = cumulativeLp * 2n;
+    const totalValueSy = cumulativeSy + ptValueSy + ytValueSy + lpValueSy;
+
+    snapshots.push({
+      date: event.timestamp,
+      totalValueSy: totalValueSy.toString(),
+      syBalance: cumulativeSy.toString(),
+      ptBalance: cumulativePt.toString(),
+      ytBalance: cumulativeYt.toString(),
+      lpBalance: cumulativeLp.toString(),
+      realizedPnl: '0',
+      unrealizedPnl: '0',
+      eventCount: 1,
+    });
+  }
+
+  return { snapshots, totalDeposited, totalWithdrawn };
+}
+
+// ----- Summary Builder -----
+
+function buildSummary(
+  events: ValueEvent[],
+  snapshotResult: SnapshotResult
+): PortfolioHistoryResponse['summary'] {
+  const firstActivity = events.length > 0 ? (events[0]?.timestamp ?? null) : null;
+  const lastActivity = events.length > 0 ? (events[events.length - 1]?.timestamp ?? null) : null;
+
+  return {
+    totalDeposited: snapshotResult.totalDeposited.toString(),
+    totalWithdrawn: snapshotResult.totalWithdrawn.toString(),
+    realizedPnl: '0',
+    firstActivity,
+    lastActivity,
+    eventCount: events.length,
+  };
+}
+
 /**
  * GET /api/users/[address]/portfolio-history
  * Get portfolio value history for a user
@@ -92,380 +536,46 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ): Promise<NextResponse<PortfolioHistoryResponse>> {
-  // Apply rate limiting
   const rateLimitResult = await applyRateLimit(request, 'USER');
   if (rateLimitResult) return rateLimitResult as NextResponse<PortfolioHistoryResponse>;
 
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  // days parameter reserved for future date filtering
-  const _days = parseInt(searchParams.get('days') ?? '90');
-  void _days;
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '500'), 1000);
+  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '500', 10), 1000);
 
   try {
-    const normalizedAddress = normalizeAddressForDb(address);
-    const lowerAddress = address.toLowerCase();
+    const queryParams: QueryParams = {
+      normalizedAddress: normalizeAddressForDb(address),
+      lowerAddress: address.toLowerCase(),
+      limit,
+    };
 
-    // Run ALL queries in parallel for ~8x speedup
     const [deposits, syRedeems, mints, redeems, swaps, ytSwaps, addLiq, removeLiq] =
-      await Promise.all([
-        // Fetch SY deposit events
-        db
-          .select()
-          .from(syDeposit)
-          .where(
-            or(
-              sql`LOWER(${syDeposit.caller}) = ${normalizedAddress}`,
-              sql`LOWER(${syDeposit.caller}) = ${lowerAddress}`,
-              sql`LOWER(${syDeposit.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${syDeposit.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(syDeposit.block_timestamp))
-          .limit(limit),
+      await createPortfolioHistoryQueries(queryParams);
 
-        // Fetch SY redeem events
-        db
-          .select()
-          .from(syRedeem)
-          .where(
-            or(
-              sql`LOWER(${syRedeem.caller}) = ${normalizedAddress}`,
-              sql`LOWER(${syRedeem.caller}) = ${lowerAddress}`,
-              sql`LOWER(${syRedeem.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${syRedeem.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(syRedeem.block_timestamp))
-          .limit(limit),
-
-        // Fetch mint events
-        db
-          .select()
-          .from(enrichedRouterMintPY)
-          .where(
-            or(
-              sql`LOWER(${enrichedRouterMintPY.sender}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterMintPY.sender}) = ${lowerAddress}`,
-              sql`LOWER(${enrichedRouterMintPY.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterMintPY.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(enrichedRouterMintPY.block_timestamp))
-          .limit(limit),
-
-        // Fetch redeem events
-        db
-          .select()
-          .from(enrichedRouterRedeemPY)
-          .where(
-            or(
-              sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterRedeemPY.sender}) = ${lowerAddress}`,
-              sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterRedeemPY.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(enrichedRouterRedeemPY.block_timestamp))
-          .limit(limit),
-
-        // Fetch swap events
-        db
-          .select()
-          .from(enrichedRouterSwap)
-          .where(
-            or(
-              sql`LOWER(${enrichedRouterSwap.sender}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterSwap.sender}) = ${lowerAddress}`,
-              sql`LOWER(${enrichedRouterSwap.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterSwap.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(enrichedRouterSwap.block_timestamp))
-          .limit(limit),
-
-        // Fetch YT swap events
-        db
-          .select()
-          .from(enrichedRouterSwapYT)
-          .where(
-            or(
-              sql`LOWER(${enrichedRouterSwapYT.sender}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterSwapYT.sender}) = ${lowerAddress}`,
-              sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterSwapYT.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(enrichedRouterSwapYT.block_timestamp))
-          .limit(limit),
-
-        // Fetch add liquidity events
-        db
-          .select()
-          .from(enrichedRouterAddLiquidity)
-          .where(
-            or(
-              sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterAddLiquidity.sender}) = ${lowerAddress}`,
-              sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterAddLiquidity.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(enrichedRouterAddLiquidity.block_timestamp))
-          .limit(limit),
-
-        // Fetch remove liquidity events
-        db
-          .select()
-          .from(enrichedRouterRemoveLiquidity)
-          .where(
-            or(
-              sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterRemoveLiquidity.sender}) = ${lowerAddress}`,
-              sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${normalizedAddress}`,
-              sql`LOWER(${enrichedRouterRemoveLiquidity.receiver}) = ${lowerAddress}`
-            )
-          )
-          .orderBy(desc(enrichedRouterRemoveLiquidity.block_timestamp))
-          .limit(limit),
-      ]);
-
-    // Process results into events
-    const events: ValueEvent[] = [];
-
-    // Process deposits
-    for (const row of deposits) {
-      events.push({
-        type: 'deposit',
-        timestamp: row.block_timestamp.toISOString(),
-        transactionHash: row.transaction_hash,
-        syDelta: row.amount_sy_minted,
-        ptDelta: '0',
-        ytDelta: '0',
-        lpDelta: '0',
-        exchangeRate: row.exchange_rate,
-        valueChange: row.amount_sy_minted,
-      });
-    }
-
-    // Process redeems
-    for (const row of syRedeems) {
-      events.push({
-        type: 'withdraw',
-        timestamp: row.block_timestamp.toISOString(),
-        transactionHash: row.transaction_hash,
-        syDelta: `-${row.amount_sy_burned}`,
-        ptDelta: '0',
-        ytDelta: '0',
-        lpDelta: '0',
-        exchangeRate: row.exchange_rate,
-        valueChange: `-${row.amount_sy_burned}`,
-      });
-    }
-
-    // Process mints
-    for (const row of mints) {
-      events.push({
-        type: 'mint_py',
-        timestamp: row.block_timestamp?.toISOString() ?? '',
-        transactionHash: row.transaction_hash ?? '',
-        syDelta: `-${row.sy_in ?? '0'}`,
-        ptDelta: row.pt_out ?? '0',
-        ytDelta: row.yt_out ?? '0',
-        lpDelta: '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0',
-      });
-    }
-
-    // Process redeems
-    for (const row of redeems) {
-      events.push({
-        type: 'redeem_py',
-        timestamp: row.block_timestamp?.toISOString() ?? '',
-        transactionHash: row.transaction_hash ?? '',
-        syDelta: row.sy_out ?? '0',
-        ptDelta: `-${row.py_in ?? '0'}`,
-        ytDelta: `-${row.py_in ?? '0'}`,
-        lpDelta: '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0',
-      });
-    }
-
-    // Process swaps
-    for (const row of swaps) {
-      const syIn = BigInt(row.sy_in ?? '0');
-      const syOut = BigInt(row.sy_out ?? '0');
-      const ptIn = BigInt(row.pt_in ?? '0');
-      const ptOut = BigInt(row.pt_out ?? '0');
-      const fee = BigInt(row.fee ?? '0');
-
-      const event: ValueEvent = {
-        type: 'swap',
-        timestamp: row.block_timestamp?.toISOString() ?? '',
-        transactionHash: row.transaction_hash ?? '',
-        syDelta: (syOut - syIn).toString(),
-        ptDelta: (ptOut - ptIn).toString(),
-        ytDelta: '0',
-        lpDelta: '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        valueChange: `-${fee.toString()}`,
-      };
-      if (row.market) event.market = row.market;
-      if (row.underlying_symbol) event.underlyingSymbol = row.underlying_symbol;
-      events.push(event);
-    }
-
-    // Process YT swaps
-    for (const row of ytSwaps) {
-      const syIn = BigInt(row.sy_in ?? '0');
-      const syOut = BigInt(row.sy_out ?? '0');
-      const ytIn = BigInt(row.yt_in ?? '0');
-      const ytOut = BigInt(row.yt_out ?? '0');
-
-      const event: ValueEvent = {
-        type: 'swap_yt',
-        timestamp: row.block_timestamp?.toISOString() ?? '',
-        transactionHash: row.transaction_hash ?? '',
-        syDelta: (syOut - syIn).toString(),
-        ptDelta: '0',
-        ytDelta: (ytOut - ytIn).toString(),
-        lpDelta: '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0',
-      };
-      if (row.market) event.market = row.market;
-      if (row.underlying_symbol) event.underlyingSymbol = row.underlying_symbol;
-      events.push(event);
-    }
-
-    // Process add liquidity
-    for (const row of addLiq) {
-      const event: ValueEvent = {
-        type: 'add_liquidity',
-        timestamp: row.block_timestamp?.toISOString() ?? '',
-        transactionHash: row.transaction_hash ?? '',
-        syDelta: `-${row.sy_used ?? '0'}`,
-        ptDelta: `-${row.pt_used ?? '0'}`,
-        ytDelta: '0',
-        lpDelta: row.lp_out ?? '0',
-        exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0',
-      };
-      if (row.market) event.market = row.market;
-      if (row.underlying_symbol) event.underlyingSymbol = row.underlying_symbol;
-      events.push(event);
-    }
-
-    // Process remove liquidity
-    for (const row of removeLiq) {
-      const event: ValueEvent = {
-        type: 'remove_liquidity',
-        timestamp: row.block_timestamp?.toISOString() ?? '',
-        transactionHash: row.transaction_hash ?? '',
-        syDelta: row.sy_out ?? '0',
-        ptDelta: row.pt_out ?? '0',
-        ytDelta: '0',
-        lpDelta: `-${row.lp_in ?? '0'}`,
-        exchangeRate: row.exchange_rate ?? '0',
-        valueChange: '0',
-      };
-      if (row.market) event.market = row.market;
-      if (row.underlying_symbol) event.underlyingSymbol = row.underlying_symbol;
-      events.push(event);
-    }
-
-    // Sort all events by timestamp (oldest first for cumulative calculation)
-    events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    // Calculate cumulative snapshots after EACH event (for dynamic charting)
-    const eventSnapshots: PortfolioSnapshot[] = [];
-    let cumulativeSy = 0n;
-    let cumulativePt = 0n;
-    let cumulativeYt = 0n;
-    let cumulativeLp = 0n;
-    let totalDeposited = 0n;
-    let totalWithdrawn = 0n;
-
-    for (const event of events) {
-      // Update cumulative balances
-      cumulativeSy += BigInt(event.syDelta);
-      cumulativePt += BigInt(event.ptDelta);
-      cumulativeYt += BigInt(event.ytDelta);
-      cumulativeLp += BigInt(event.lpDelta);
-
-      // Track deposits/withdrawals for P&L
-      const syDelta = BigInt(event.syDelta);
-      if (event.type === 'deposit' && syDelta > 0n) {
-        totalDeposited += syDelta;
-      }
-      if (event.type === 'withdraw' && syDelta < 0n) {
-        totalWithdrawn += -syDelta;
-      }
-
-      // Calculate total value in SY terms
-      // - PT ≈ SY at expiry (simplified)
-      // - YT has value based on yield, simplified as ~10% of SY
-      // - LP represents shares of both SY and PT reserves, so ~2x value
-      const ptValueSy = cumulativePt;
-      const ytValueSy = cumulativeYt / 10n;
-      const lpValueSy = cumulativeLp * 2n;
-
-      const totalValueSy = cumulativeSy + ptValueSy + ytValueSy + lpValueSy;
-
-      // Create snapshot after each event
-      eventSnapshots.push({
-        date: event.timestamp,
-        totalValueSy: totalValueSy.toString(),
-        syBalance: cumulativeSy.toString(),
-        ptBalance: cumulativePt.toString(),
-        ytBalance: cumulativeYt.toString(),
-        lpBalance: cumulativeLp.toString(),
-        realizedPnl: '0',
-        unrealizedPnl: '0',
-        eventCount: 1,
-      });
-    }
-
-    // Calculate summary
-    const firstActivity = events.length > 0 ? (events[0]?.timestamp ?? null) : null;
-    const lastActivity = events.length > 0 ? (events[events.length - 1]?.timestamp ?? null) : null;
+    const events = collectValueEvents(
+      deposits,
+      syRedeems,
+      mints,
+      redeems,
+      swaps,
+      ytSwaps,
+      addLiq,
+      removeLiq
+    );
+    const snapshotResult = calculateSnapshots(events);
 
     // Reverse events for response (most recent first)
-    events.reverse();
+    const reversedEvents = [...events].reverse();
 
     return NextResponse.json({
       address,
-      events: events.slice(0, limit),
-      snapshots: eventSnapshots,
-      summary: {
-        totalDeposited: totalDeposited.toString(),
-        totalWithdrawn: totalWithdrawn.toString(),
-        realizedPnl: '0',
-        firstActivity,
-        lastActivity,
-        eventCount: events.length,
-      },
+      events: reversedEvents.slice(0, limit),
+      snapshots: snapshotResult.snapshots,
+      summary: buildSummary(events, snapshotResult),
     });
   } catch (error) {
     logError(error, { module: 'users/portfolio-history', address });
-    return NextResponse.json(
-      {
-        address,
-        events: [],
-        snapshots: [],
-        summary: {
-          totalDeposited: '0',
-          totalWithdrawn: '0',
-          realizedPnl: '0',
-          firstActivity: null,
-          lastActivity: null,
-          eventCount: 0,
-        },
-      },
-      { status: 500 }
-    );
+    return NextResponse.json(createEmptyResponse(address), { status: 500 });
   }
 }

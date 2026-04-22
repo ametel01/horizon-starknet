@@ -1,14 +1,13 @@
 'use client';
 
-import { type ReactNode, useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-
 import type { MarketData } from '@entities/market';
 import { useDashboardMarkets } from '@features/markets';
 import { usePositions } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
+import { type ReactNode, useMemo } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const WAD = 10n ** 18n;
 

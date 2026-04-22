@@ -1,11 +1,10 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
-
 import { useMarketRates } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo, useState } from 'react';
 
 /**
  * Format percentage with appropriate precision
@@ -228,6 +227,7 @@ export function RateHistoryTable({
             </p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   setPage((p) => Math.max(0, p - 1));
                 }}
@@ -237,6 +237,7 @@ export function RateHistoryTable({
                 Previous
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setPage((p) => Math.min(totalPages - 1, p + 1));
                 }}

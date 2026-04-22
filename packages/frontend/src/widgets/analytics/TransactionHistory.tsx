@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReactNode, useCallback, useRef } from 'react';
-
 import { useUserHistory } from '@features/portfolio';
 import type { HistoryEvent } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
@@ -9,6 +7,7 @@ import { formatWadCompact } from '@shared/math/wad';
 import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useCallback, useRef } from 'react';
 
 interface TransactionHistoryProps {
   /** Filter by event types */
@@ -44,9 +43,9 @@ function formatTimeAgo(timestamp: string): string {
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (seconds < 60) return 'just now';
-  if (seconds < 3600) return String(Math.floor(seconds / 60)) + 'm ago';
-  if (seconds < 86400) return String(Math.floor(seconds / 3600)) + 'h ago';
-  if (seconds < 604800) return String(Math.floor(seconds / 86400)) + 'd ago';
+  if (seconds < 3600) return `${String(Math.floor(seconds / 60))}m ago`;
+  if (seconds < 86400) return `${String(Math.floor(seconds / 3600))}h ago`;
+  if (seconds < 604800) return `${String(Math.floor(seconds / 86400))}d ago`;
   return date.toLocaleDateString();
 }
 
@@ -65,50 +64,51 @@ function isNonZero(amount: string | undefined): amount is string {
   }
 }
 
-function TransactionRow({ event }: { event: HistoryEvent }): ReactNode {
-  // Format the amounts based on event type
-  const getAmountDisplay = (): string => {
-    const amounts = event.amounts;
-    switch (event.type) {
-      case 'swap':
-      case 'swap_yt': {
-        // Find the actual non-zero input and output amounts
-        const inAmount = isNonZero(amounts['ptIn'])
-          ? amounts['ptIn']
-          : isNonZero(amounts['syIn'])
-            ? amounts['syIn']
-            : amounts['ytIn'];
-        const outAmount = isNonZero(amounts['ptOut'])
-          ? amounts['ptOut']
-          : isNonZero(amounts['syOut'])
-            ? amounts['syOut']
-            : amounts['ytOut'];
-        if (inAmount && outAmount) {
-          return `${formatWadCompact(inAmount)} -> ${formatWadCompact(outAmount)}`;
-        }
-        return '-';
-      }
-      case 'add_liquidity':
-        return `+${formatWadCompact(amounts['lpOut'] ?? amounts['lpMinted'] ?? '0')} LP`;
-      case 'remove_liquidity':
-        return `-${formatWadCompact(amounts['lpIn'] ?? amounts['lpBurned'] ?? '0')} LP`;
-      case 'mint_py': {
-        // mint_py returns syIn, ptOut, ytOut - show syIn -> ptOut
-        const syIn = amounts['syIn'] ?? '0';
-        const ptOut = amounts['ptOut'] ?? amounts['amountPy'] ?? '0';
-        return `${formatWadCompact(syIn)} SY -> ${formatWadCompact(ptOut)} PT/YT`;
-      }
-      case 'redeem_py': {
-        // redeem_py returns pyIn, syOut
-        const pyIn = amounts['pyIn'] ?? amounts['amountPy'] ?? '0';
-        const syOut = amounts['syOut'] ?? amounts['amountSy'] ?? '0';
-        return `${formatWadCompact(pyIn)} PT/YT -> ${formatWadCompact(syOut)} SY`;
-      }
-      default:
-        return '-';
-    }
-  };
+/**
+ * Find the first non-zero amount from a list of candidates.
+ * Reduces nested ternaries to a simple array search.
+ */
+function findNonZeroAmount(...amounts: (string | undefined)[]): string | undefined {
+  return amounts.find(isNonZero);
+}
 
+/**
+ * Format amount display based on event type.
+ * Pure function extracted from component to reduce complexity.
+ */
+function formatEventAmounts(event: HistoryEvent): string {
+  const amounts = event.amounts;
+
+  switch (event.type) {
+    case 'swap':
+    case 'swap_yt': {
+      const inAmount = findNonZeroAmount(amounts['ptIn'], amounts['syIn'], amounts['ytIn']);
+      const outAmount = findNonZeroAmount(amounts['ptOut'], amounts['syOut'], amounts['ytOut']);
+      if (inAmount && outAmount) {
+        return `${formatWadCompact(inAmount)} -> ${formatWadCompact(outAmount)}`;
+      }
+      return '-';
+    }
+    case 'add_liquidity':
+      return `+${formatWadCompact(amounts['lpOut'] ?? amounts['lpMinted'] ?? '0')} LP`;
+    case 'remove_liquidity':
+      return `-${formatWadCompact(amounts['lpIn'] ?? amounts['lpBurned'] ?? '0')} LP`;
+    case 'mint_py': {
+      const syIn = amounts['syIn'] ?? '0';
+      const ptOut = amounts['ptOut'] ?? amounts['amountPy'] ?? '0';
+      return `${formatWadCompact(syIn)} SY -> ${formatWadCompact(ptOut)} PT/YT`;
+    }
+    case 'redeem_py': {
+      const pyIn = amounts['pyIn'] ?? amounts['amountPy'] ?? '0';
+      const syOut = amounts['syOut'] ?? amounts['amountSy'] ?? '0';
+      return `${formatWadCompact(pyIn)} PT/YT -> ${formatWadCompact(syOut)} SY`;
+    }
+    default:
+      return '-';
+  }
+}
+
+function TransactionRow({ event }: { event: HistoryEvent }): ReactNode {
   return (
     <div className="hover:bg-muted/50 flex items-center justify-between border-b px-4 py-3 last:border-b-0">
       <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ function TransactionRow({ event }: { event: HistoryEvent }): ReactNode {
           {EVENT_TYPE_LABELS[event.type]}
         </Badge>
         <div className="flex flex-col">
-          <span className="text-sm font-medium">{getAmountDisplay()}</span>
+          <span className="text-sm font-medium">{formatEventAmounts(event)}</span>
           {event.underlyingSymbol && (
             <span className="text-muted-foreground text-xs">{event.underlyingSymbol}</span>
           )}

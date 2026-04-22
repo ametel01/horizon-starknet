@@ -1,3 +1,4 @@
+use horizon::interfaces::i_sy::AssetType;
 use starknet::{ClassHash, ContractAddress};
 
 #[starknet::interface]
@@ -5,6 +6,18 @@ pub trait IFactory<TContractState> {
     fn create_yield_contracts(
         ref self: TContractState, sy: ContractAddress, expiry: u64,
     ) -> (ContractAddress, ContractAddress); // (PT, YT)
+
+    /// Create new PT and YT contracts with reward tokens for a given SY and expiry
+    /// @param sy The standardized yield token address
+    /// @param expiry The expiry timestamp
+    /// @param reward_tokens Reward tokens to track for YT holders
+    /// @return (PT address, YT address)
+    fn create_yield_contracts_with_rewards(
+        ref self: TContractState,
+        sy: ContractAddress,
+        expiry: u64,
+        reward_tokens: Span<ContractAddress>,
+    ) -> (ContractAddress, ContractAddress);
 
     fn get_pt(self: @TContractState, sy: ContractAddress, expiry: u64) -> ContractAddress;
     fn get_yt(self: @TContractState, sy: ContractAddress, expiry: u64) -> ContractAddress;
@@ -24,4 +37,76 @@ pub trait IFactory<TContractState> {
 
     /// Initialize RBAC after upgrade (one-time setup)
     fn initialize_rbac(ref self: TContractState);
+
+    // ============ SYWithRewards Support ============
+
+    /// Get the SYWithRewards class hash used for deployments
+    fn sy_with_rewards_class_hash(self: @TContractState) -> ClassHash;
+
+    /// Set the SYWithRewards class hash (owner only)
+    fn set_sy_with_rewards_class_hash(ref self: TContractState, class_hash: ClassHash);
+
+    /// Deploy a new SYWithRewards contract
+    /// @param name Token name
+    /// @param symbol Token symbol
+    /// @param underlying The underlying yield-bearing token
+    /// @param index_oracle The index source (same as underlying for ERC-4626, or oracle)
+    /// @param is_erc4626 Whether the index_oracle is an ERC-4626 vault
+    /// @param asset_type Asset classification (Token or Liquidity)
+    /// @param pauser Address with PAUSER_ROLE for emergency pause
+    /// @param tokens_in Valid tokens for deposit
+    /// @param tokens_out Valid tokens for redemption
+    /// @param reward_tokens Reward tokens to track
+    /// @param salt Unique salt for deterministic deployment
+    /// @return The deployed SYWithRewards contract address
+    fn deploy_sy_with_rewards(
+        ref self: TContractState,
+        name: ByteArray,
+        symbol: ByteArray,
+        underlying: ContractAddress,
+        index_oracle: ContractAddress,
+        is_erc4626: bool,
+        asset_type: AssetType,
+        pauser: ContractAddress,
+        tokens_in: Span<ContractAddress>,
+        tokens_out: Span<ContractAddress>,
+        reward_tokens: Span<ContractAddress>,
+        salt: felt252,
+    ) -> ContractAddress;
+
+    /// Check if an SY address was deployed by this factory
+    fn is_valid_sy(self: @TContractState, sy: ContractAddress) -> bool;
+
+    // ============ Treasury Support ============
+
+    /// Get the treasury address for protocol fee collection and post-expiry yield
+    fn treasury(self: @TContractState) -> ContractAddress;
+
+    /// Set the treasury address (owner only)
+    fn set_treasury(ref self: TContractState, treasury: ContractAddress);
+
+    // ============ Fee Rate Management ============
+
+    /// Get the reward fee rate (in WAD, 10^18 = 100%)
+    fn get_reward_fee_rate(self: @TContractState) -> u256;
+
+    /// Set the reward fee rate (owner only)
+    /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
+    fn set_reward_fee_rate(ref self: TContractState, rate: u256);
+
+    /// Get the default interest fee rate (in WAD, 10^18 = 100%)
+    fn get_default_interest_fee_rate(self: @TContractState) -> u256;
+
+    /// Set the default interest fee rate (owner only)
+    /// @param rate Fee rate in WAD (e.g., 3% = 0.03 * 10^18)
+    fn set_default_interest_fee_rate(ref self: TContractState, rate: u256);
+
+    // ============ Expiry Divisor Management ============
+
+    /// Get the expiry divisor for expiry validation (0 = disabled)
+    fn get_expiry_divisor(self: @TContractState) -> u64;
+
+    /// Set the expiry divisor (owner only)
+    /// @param divisor Expiry divisor (0 = disabled, e.g., 86400 for daily alignment)
+    fn set_expiry_divisor(ref self: TContractState, divisor: u64);
 }

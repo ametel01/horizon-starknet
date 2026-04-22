@@ -1,10 +1,9 @@
 'use client';
 
-import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
-
 import { cn } from '@shared/lib/utils';
 import { Button } from '@shared/ui/Button';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
 
 import { DocsSearch } from './DocsSearch';
 import { DocsSidebar } from './DocsSidebar';

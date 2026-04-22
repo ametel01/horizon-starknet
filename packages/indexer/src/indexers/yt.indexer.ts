@@ -18,15 +18,22 @@ import {
 } from "@apibara/plugin-drizzle";
 import { getSelector, StarknetStream } from "@apibara/starknet";
 import { defineIndexer } from "apibara/indexer";
-
+import type { ApibaraRuntimeConfig } from "apibara/types";
 import {
   ytExpiryReached,
+  ytFlashMintPY,
   ytInterestClaimed,
+  ytInterestFeeRateSet,
   ytMintPY,
+  ytMintPYMulti,
+  ytPostExpiryDataSet,
+  ytPyIndexUpdated,
   ytRedeemPY,
+  ytRedeemPYMulti,
   ytRedeemPYPostExpiry,
+  ytRedeemPYWithInterest,
+  ytTreasuryInterestRedeemed,
 } from "@/schema";
-
 import { getNetworkConfig } from "../lib/constants";
 import { getDrizzleOptions } from "../lib/database";
 import { isProgrammerError } from "../lib/errors";
@@ -43,13 +50,19 @@ import { matchSelector, readU256 } from "../lib/utils";
 import {
   validateEvent,
   ytExpiryReachedSchema,
+  ytFlashMintPYSchema,
   ytInterestClaimedSchema,
+  ytInterestFeeRateSetSchema,
+  ytMintPYMultiSchema,
   ytMintPYSchema,
+  ytPostExpiryDataSetSchema,
+  ytPyIndexUpdatedSchema,
+  ytRedeemPYMultiSchema,
   ytRedeemPYPostExpirySchema,
   ytRedeemPYSchema,
+  ytRedeemPYWithInterestSchema,
+  ytTreasuryInterestRedeemedSchema,
 } from "../lib/validation";
-
-import type { ApibaraRuntimeConfig } from "apibara/types";
 
 const log = createIndexerLogger("yt");
 
@@ -63,6 +76,16 @@ const REDEEM_PY_POST_EXPIRY = getSelector("RedeemPYPostExpiry");
 const INTEREST_CLAIMED = getSelector("InterestClaimed");
 const EXPIRY_REACHED = getSelector("ExpiryReached");
 
+// New YT events (Pendle-style interest system)
+const TREASURY_INTEREST_REDEEMED = getSelector("TreasuryInterestRedeemed");
+const INTEREST_FEE_RATE_SET = getSelector("InterestFeeRateSet");
+const MINT_PY_MULTI = getSelector("MintPYMulti");
+const REDEEM_PY_MULTI = getSelector("RedeemPYMulti");
+const REDEEM_PY_WITH_INTEREST = getSelector("RedeemPYWithInterest");
+const POST_EXPIRY_DATA_SET = getSelector("PostExpiryDataSet");
+const PY_INDEX_UPDATED = getSelector("PyIndexUpdated");
+const FLASH_MINT_PY = getSelector("FlashMintPY");
+
 export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
   const config = getNetworkConfig(runtimeConfig.network);
   const streamUrl =
@@ -75,7 +98,16 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       ytRedeemPYPostExpiry,
       ytInterestClaimed,
       ytExpiryReached,
-    }),
+      // New tables (Pendle-style interest system)
+      ytPostExpiryDataSet,
+      ytPyIndexUpdated,
+      ytTreasuryInterestRedeemed,
+      ytInterestFeeRateSet,
+      ytMintPYMulti,
+      ytRedeemPYMulti,
+      ytRedeemPYWithInterest,
+      ytFlashMintPY,
+    })
   );
 
   logIndexerStart(log, {
@@ -94,7 +126,16 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       { address: ytAddress, keys: [REDEEM_PY_POST_EXPIRY] },
       { address: ytAddress, keys: [INTEREST_CLAIMED] },
       { address: ytAddress, keys: [EXPIRY_REACHED] },
-    ],
+      // New events (Pendle-style interest system)
+      { address: ytAddress, keys: [TREASURY_INTEREST_REDEEMED] },
+      { address: ytAddress, keys: [INTEREST_FEE_RATE_SET] },
+      { address: ytAddress, keys: [MINT_PY_MULTI] },
+      { address: ytAddress, keys: [REDEEM_PY_MULTI] },
+      { address: ytAddress, keys: [REDEEM_PY_WITH_INTEREST] },
+      { address: ytAddress, keys: [POST_EXPIRY_DATA_SET] },
+      { address: ytAddress, keys: [PY_INDEX_UPDATED] },
+      { address: ytAddress, keys: [FLASH_MINT_PY] },
+    ]
   );
 
   return defineIndexer(StarknetStream)({
@@ -136,6 +177,15 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
           { address: ytAddress, keys: [REDEEM_PY_POST_EXPIRY] },
           { address: ytAddress, keys: [INTEREST_CLAIMED] },
           { address: ytAddress, keys: [EXPIRY_REACHED] },
+          // New events (Pendle-style interest system)
+          { address: ytAddress, keys: [TREASURY_INTEREST_REDEEMED] },
+          { address: ytAddress, keys: [INTEREST_FEE_RATE_SET] },
+          { address: ytAddress, keys: [MINT_PY_MULTI] },
+          { address: ytAddress, keys: [REDEEM_PY_MULTI] },
+          { address: ytAddress, keys: [REDEEM_PY_WITH_INTEREST] },
+          { address: ytAddress, keys: [POST_EXPIRY_DATA_SET] },
+          { address: ytAddress, keys: [PY_INDEX_UPDATED] },
+          { address: ytAddress, keys: [FLASH_MINT_PY] },
         ];
       });
 
@@ -165,12 +215,31 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
       type RedeemPostExpiryRow = typeof ytRedeemPYPostExpiry.$inferInsert;
       type InterestClaimedRow = typeof ytInterestClaimed.$inferInsert;
       type ExpiryReachedRow = typeof ytExpiryReached.$inferInsert;
+      // New types (Pendle-style interest system)
+      type PostExpiryDataSetRow = typeof ytPostExpiryDataSet.$inferInsert;
+      type PyIndexUpdatedRow = typeof ytPyIndexUpdated.$inferInsert;
+      type TreasuryInterestRedeemedRow =
+        typeof ytTreasuryInterestRedeemed.$inferInsert;
+      type InterestFeeRateSetRow = typeof ytInterestFeeRateSet.$inferInsert;
+      type MintPYMultiRow = typeof ytMintPYMulti.$inferInsert;
+      type RedeemPYMultiRow = typeof ytRedeemPYMulti.$inferInsert;
+      type RedeemPYWithInterestRow = typeof ytRedeemPYWithInterest.$inferInsert;
+      type FlashMintPYRow = typeof ytFlashMintPY.$inferInsert;
 
       const mintPYRows: MintPYRow[] = [];
       const redeemPYRows: RedeemPYRow[] = [];
       const redeemPostExpiryRows: RedeemPostExpiryRow[] = [];
       const interestClaimedRows: InterestClaimedRow[] = [];
       const expiryReachedRows: ExpiryReachedRow[] = [];
+      // New arrays (Pendle-style interest system)
+      const postExpiryDataSetRows: PostExpiryDataSetRow[] = [];
+      const pyIndexUpdatedRows: PyIndexUpdatedRow[] = [];
+      const treasuryInterestRedeemedRows: TreasuryInterestRedeemedRow[] = [];
+      const interestFeeRateSetRows: InterestFeeRateSetRow[] = [];
+      const mintPYMultiRows: MintPYMultiRow[] = [];
+      const redeemPYMultiRows: RedeemPYMultiRow[] = [];
+      const redeemPYWithInterestRows: RedeemPYWithInterestRow[] = [];
+      const flashMintPYRows: FlashMintPYRow[] = [];
 
       // Track errors for this block
       let errorCount = 0;
@@ -197,19 +266,23 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               continue;
             }
 
+            // NEW layout: keys[selector, caller, receiver_pt, receiver_yt]
             const caller = validated.keys[1] ?? "";
-            const receiver = validated.keys[2] ?? "";
-            const expiry = Number(BigInt(validated.keys[3] ?? "0"));
+            const receiverPt = validated.keys[2] ?? "";
+            const receiverYt = validated.keys[3] ?? "";
 
+            // NEW layout: data[expiry, amount_sy_deposited(u256), amount_py_minted(u256), pt, sy, py_index(u256),
+            //             exchange_rate(u256), total_pt_supply(u256), total_yt_supply(u256), timestamp]
             const data = validated.data;
-            const amountSyDeposited = readU256(data, 0, "amount_sy_deposited");
-            const amountPyMinted = readU256(data, 2, "amount_py_minted");
-            const pt = data[4] ?? "";
-            const sy = data[5] ?? "";
-            const pyIndex = readU256(data, 6, "py_index");
-            const exchangeRate = readU256(data, 8, "exchange_rate");
-            const totalPtSupply = readU256(data, 10, "total_pt_supply");
-            const totalYtSupply = readU256(data, 12, "total_yt_supply");
+            const expiry = Number(BigInt(data[0] ?? "0"));
+            const amountSyDeposited = readU256(data, 1, "amount_sy_deposited");
+            const amountPyMinted = readU256(data, 3, "amount_py_minted");
+            const pt = data[5] ?? "";
+            const sy = data[6] ?? "";
+            const pyIndex = readU256(data, 7, "py_index");
+            const exchangeRate = readU256(data, 9, "exchange_rate");
+            const totalPtSupply = readU256(data, 11, "total_pt_supply");
+            const totalYtSupply = readU256(data, 13, "total_yt_supply");
 
             mintPYRows.push({
               block_number: blockNumber,
@@ -217,7 +290,8 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               transaction_hash: transactionHash,
               event_index: eventIndex,
               caller,
-              receiver,
+              receiver_pt: receiverPt,
+              receiver_yt: receiverYt,
               expiry,
               yt: ytAddress,
               sy,
@@ -393,6 +467,307 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               sy_reserve: syReserve,
               pt_reserve: ptReserve,
             });
+          } else if (matchSelector(eventKey, POST_EXPIRY_DATA_SET)) {
+            const validated = validateEvent(ytPostExpiryDataSetSchema, event, {
+              indexer: "yt",
+              eventName: "PostExpiryDataSet",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, yt, pt]
+            const yt = validated.keys[1] ?? ytAddress;
+            const pt = validated.keys[2] ?? "";
+
+            // data: [sy, expiry, first_py_index(u256), exchange_rate_at_init(u256),
+            //        total_pt_supply(u256), total_yt_supply(u256), timestamp]
+            const data = validated.data;
+            const sy = data[0] ?? "";
+            const expiry = Number(BigInt(data[1] ?? "0"));
+            const firstPyIndex = readU256(data, 2, "first_py_index");
+            const exchangeRateAtInit = readU256(
+              data,
+              4,
+              "exchange_rate_at_init"
+            );
+            const totalPtSupply = readU256(data, 6, "total_pt_supply");
+            const totalYtSupply = readU256(data, 8, "total_yt_supply");
+
+            postExpiryDataSetRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              yt,
+              pt,
+              sy,
+              expiry,
+              first_py_index: firstPyIndex,
+              exchange_rate_at_init: exchangeRateAtInit,
+              total_pt_supply: totalPtSupply,
+              total_yt_supply: totalYtSupply,
+            });
+          } else if (matchSelector(eventKey, PY_INDEX_UPDATED)) {
+            const validated = validateEvent(ytPyIndexUpdatedSchema, event, {
+              indexer: "yt",
+              eventName: "PyIndexUpdated",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, yt]
+            const yt = validated.keys[1] ?? ytAddress;
+
+            // data: [old_index(u256), new_index(u256), exchange_rate(u256), block_number, timestamp]
+            const data = validated.data;
+            const oldIndex = readU256(data, 0, "old_index");
+            const newIndex = readU256(data, 2, "new_index");
+            const exchangeRate = readU256(data, 4, "exchange_rate");
+            const indexBlockNumber = Number(BigInt(data[6] ?? "0"));
+
+            pyIndexUpdatedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              yt,
+              old_index: oldIndex,
+              new_index: newIndex,
+              exchange_rate: exchangeRate,
+              index_block_number: indexBlockNumber,
+            });
+          } else if (matchSelector(eventKey, TREASURY_INTEREST_REDEEMED)) {
+            const validated = validateEvent(
+              ytTreasuryInterestRedeemedSchema,
+              event,
+              {
+                indexer: "yt",
+                eventName: "TreasuryInterestRedeemed",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, yt, treasury]
+            const yt = validated.keys[1] ?? ytAddress;
+            const treasury = validated.keys[2] ?? "";
+
+            // data: [amount_sy(u256), sy, expiry_index(u256), current_index(u256), total_yt_supply(u256), timestamp]
+            const data = validated.data;
+            const amountSy = readU256(data, 0, "amount_sy");
+            const sy = data[2] ?? "";
+            const expiryIndex = readU256(data, 3, "expiry_index");
+            const currentIndex = readU256(data, 5, "current_index");
+            const totalYtSupply = readU256(data, 7, "total_yt_supply");
+
+            treasuryInterestRedeemedRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              yt,
+              treasury,
+              amount_sy: amountSy,
+              sy,
+              expiry_index: expiryIndex,
+              current_index: currentIndex,
+              total_yt_supply: totalYtSupply,
+            });
+          } else if (matchSelector(eventKey, INTEREST_FEE_RATE_SET)) {
+            const validated = validateEvent(ytInterestFeeRateSetSchema, event, {
+              indexer: "yt",
+              eventName: "InterestFeeRateSet",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, yt]
+            const yt = validated.keys[1] ?? ytAddress;
+
+            // data: [old_rate(u256), new_rate(u256), timestamp]
+            const data = validated.data;
+            const oldRate = readU256(data, 0, "old_rate");
+            const newRate = readU256(data, 2, "new_rate");
+
+            interestFeeRateSetRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              yt,
+              old_rate: oldRate,
+              new_rate: newRate,
+            });
+          } else if (matchSelector(eventKey, MINT_PY_MULTI)) {
+            const validated = validateEvent(ytMintPYMultiSchema, event, {
+              indexer: "yt",
+              eventName: "MintPYMulti",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, caller, expiry]
+            const caller = validated.keys[1] ?? "";
+            const expiry = Number(BigInt(validated.keys[2] ?? "0"));
+
+            // data: [total_sy_deposited(u256), total_py_minted(u256), receiver_count, timestamp]
+            const data = validated.data;
+            const totalSyDeposited = readU256(data, 0, "total_sy_deposited");
+            const totalPyMinted = readU256(data, 2, "total_py_minted");
+            const receiverCount = Number(BigInt(data[4] ?? "0"));
+
+            mintPYMultiRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              expiry,
+              yt: ytAddress,
+              total_sy_deposited: totalSyDeposited,
+              total_py_minted: totalPyMinted,
+              receiver_count: receiverCount,
+            });
+          } else if (matchSelector(eventKey, REDEEM_PY_MULTI)) {
+            const validated = validateEvent(ytRedeemPYMultiSchema, event, {
+              indexer: "yt",
+              eventName: "RedeemPYMulti",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, caller, expiry]
+            const caller = validated.keys[1] ?? "";
+            const expiry = Number(BigInt(validated.keys[2] ?? "0"));
+
+            // data: [total_py_redeemed(u256), total_sy_returned(u256), receiver_count, timestamp]
+            const data = validated.data;
+            const totalPyRedeemed = readU256(data, 0, "total_py_redeemed");
+            const totalSyReturned = readU256(data, 2, "total_sy_returned");
+            const receiverCount = Number(BigInt(data[4] ?? "0"));
+
+            redeemPYMultiRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              expiry,
+              yt: ytAddress,
+              total_py_redeemed: totalPyRedeemed,
+              total_sy_returned: totalSyReturned,
+              receiver_count: receiverCount,
+            });
+          } else if (matchSelector(eventKey, REDEEM_PY_WITH_INTEREST)) {
+            const validated = validateEvent(
+              ytRedeemPYWithInterestSchema,
+              event,
+              {
+                indexer: "yt",
+                eventName: "RedeemPYWithInterest",
+                blockNumber,
+                transactionHash,
+              }
+            );
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, caller, receiver, expiry]
+            const caller = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+            const expiry = Number(BigInt(validated.keys[3] ?? "0"));
+
+            // data: [amount_py_redeemed(u256), amount_sy_from_redeem(u256), amount_interest_claimed(u256), timestamp]
+            const data = validated.data;
+            const amountPyRedeemed = readU256(data, 0, "amount_py_redeemed");
+            const amountSyFromRedeem = readU256(
+              data,
+              2,
+              "amount_sy_from_redeem"
+            );
+            const amountInterestClaimed = readU256(
+              data,
+              4,
+              "amount_interest_claimed"
+            );
+
+            redeemPYWithInterestRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              receiver,
+              expiry,
+              yt: ytAddress,
+              amount_py_redeemed: amountPyRedeemed,
+              amount_sy_from_redeem: amountSyFromRedeem,
+              amount_interest_claimed: amountInterestClaimed,
+            });
+          } else if (matchSelector(eventKey, FLASH_MINT_PY)) {
+            const validated = validateEvent(ytFlashMintPYSchema, event, {
+              indexer: "yt",
+              eventName: "FlashMintPY",
+              blockNumber,
+              transactionHash,
+            });
+            if (!validated) {
+              errorCount++;
+              continue;
+            }
+
+            // keys: [selector, caller, receiver]
+            const caller = validated.keys[1] ?? "";
+            const receiver = validated.keys[2] ?? "";
+
+            // data: [amount_py(u256), fee_sy(u256), sy, pt, timestamp]
+            const data = validated.data;
+            const amountPy = readU256(data, 0, "amount_py");
+            const feeSy = readU256(data, 2, "fee_sy");
+            const sy = data[4] ?? "";
+            const pt = data[5] ?? "";
+            const eventTimestamp = Number(BigInt(data[6] ?? "0"));
+
+            flashMintPYRows.push({
+              block_number: blockNumber,
+              block_timestamp: blockTimestamp,
+              transaction_hash: transactionHash,
+              event_index: eventIndex,
+              caller,
+              receiver,
+              yt: ytAddress,
+              amount_py: amountPy,
+              fee_sy: feeSy,
+              sy,
+              pt,
+              timestamp: eventTimestamp,
+            });
           }
         } catch (err) {
           // Re-throw programmer errors - these should crash the indexer
@@ -409,7 +784,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               eventIndex,
               eventKey,
             },
-            "Event processing failed",
+            "Event processing failed"
           );
           errorCount++;
         }
@@ -423,7 +798,7 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
             errorCount,
             totalEvents: events.length,
           },
-          "Block completed with errors",
+          "Block completed with errors"
         );
       }
 
@@ -457,6 +832,54 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
               .values(expiryReachedRows)
               .onConflictDoNothing();
           }
+          if (postExpiryDataSetRows.length > 0) {
+            await tx
+              .insert(ytPostExpiryDataSet)
+              .values(postExpiryDataSetRows)
+              .onConflictDoNothing();
+          }
+          if (pyIndexUpdatedRows.length > 0) {
+            await tx
+              .insert(ytPyIndexUpdated)
+              .values(pyIndexUpdatedRows)
+              .onConflictDoNothing();
+          }
+          if (treasuryInterestRedeemedRows.length > 0) {
+            await tx
+              .insert(ytTreasuryInterestRedeemed)
+              .values(treasuryInterestRedeemedRows)
+              .onConflictDoNothing();
+          }
+          if (interestFeeRateSetRows.length > 0) {
+            await tx
+              .insert(ytInterestFeeRateSet)
+              .values(interestFeeRateSetRows)
+              .onConflictDoNothing();
+          }
+          if (mintPYMultiRows.length > 0) {
+            await tx
+              .insert(ytMintPYMulti)
+              .values(mintPYMultiRows)
+              .onConflictDoNothing();
+          }
+          if (redeemPYMultiRows.length > 0) {
+            await tx
+              .insert(ytRedeemPYMulti)
+              .values(redeemPYMultiRows)
+              .onConflictDoNothing();
+          }
+          if (redeemPYWithInterestRows.length > 0) {
+            await tx
+              .insert(ytRedeemPYWithInterest)
+              .values(redeemPYWithInterestRows)
+              .onConflictDoNothing();
+          }
+          if (flashMintPYRows.length > 0) {
+            await tx
+              .insert(ytFlashMintPY)
+              .values(flashMintPYRows)
+              .onConflictDoNothing();
+          }
         });
       });
 
@@ -466,7 +889,15 @@ export default function ytIndexer(runtimeConfig: ApibaraRuntimeConfig) {
         redeemPYRows.length +
         redeemPostExpiryRows.length +
         interestClaimedRows.length +
-        expiryReachedRows.length;
+        expiryReachedRows.length +
+        postExpiryDataSetRows.length +
+        pyIndexUpdatedRows.length +
+        treasuryInterestRedeemedRows.length +
+        interestFeeRateSetRows.length +
+        mintPYMultiRows.length +
+        redeemPYMultiRows.length +
+        redeemPYWithInterestRows.length +
+        flashMintPYRows.length;
       recordEvents("yt", successCount, errorCount);
       recordBlock("yt", blockNumber);
 

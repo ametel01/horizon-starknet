@@ -1,5 +1,16 @@
 'use client';
 
+import type { MarketData } from '@entities/market';
+import { AddLiquidityForm, RemoveLiquidityForm } from '@features/liquidity';
+import { FeeStructure, useDashboardMarkets } from '@features/markets';
+import { useTokenBalance } from '@features/portfolio';
+import { useStarknet } from '@features/wallet';
+import { ApyBreakdown, useApyBreakdown } from '@features/yield';
+import { cn } from '@shared/lib/utils';
+import { formatWadCompact } from '@shared/math/wad';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { SkeletonCard } from '@shared/ui/Skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 import BigNumber from 'bignumber.js';
 import {
   AlertTriangle,
@@ -14,19 +25,136 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { MarketData } from '@entities/market';
-import { AddLiquidityForm, RemoveLiquidityForm } from '@features/liquidity';
-import { useDashboardMarkets } from '@features/markets';
-import { useTokenBalance } from '@features/portfolio';
-import { useStarknet } from '@features/wallet';
-import { ApyBreakdown, useApyBreakdown } from '@features/yield';
-import { cn } from '@shared/lib/utils';
-import { formatWadCompact } from '@shared/math/wad';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { SkeletonCard } from '@shared/ui/Skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
-
 type PoolTab = 'add' | 'remove';
+
+/**
+ * Calculate user's share of pool reserves.
+ * Extracted to reduce component complexity.
+ */
+function calculateUserReserves(
+  lpBalance: bigint | undefined,
+  market: { state: { syReserve: bigint; ptReserve: bigint; totalLpSupply: bigint } } | undefined
+): { sy: bigint; pt: bigint } {
+  if (lpBalance === undefined || market === undefined || market.state.totalLpSupply === 0n) {
+    return { sy: 0n, pt: 0n };
+  }
+  const { syReserve, ptReserve, totalLpSupply } = market.state;
+  return {
+    sy: (lpBalance * syReserve) / totalLpSupply,
+    pt: (lpBalance * ptReserve) / totalLpSupply,
+  };
+}
+
+/**
+ * Calculate user's share of pool as percentage.
+ */
+function calculatePoolSharePercent(
+  lpBalance: bigint | undefined,
+  totalLpSupply: bigint | undefined
+): BigNumber {
+  if (lpBalance === undefined || totalLpSupply === undefined || totalLpSupply === 0n) {
+    return new BigNumber(0);
+  }
+  return new BigNumber(lpBalance.toString()).dividedBy(totalLpSupply.toString()).multipliedBy(100);
+}
+
+/**
+ * Select market based on URL param or default to first.
+ */
+function selectMarketByParam<T extends { address: string }>(
+  markets: T[],
+  param: string | null
+): T | undefined {
+  if (param) {
+    return markets.find((m) => m.address === param);
+  }
+  return markets[0];
+}
+
+/**
+ * User LP position display content - extracted to reduce main component complexity.
+ */
+interface UserPositionContentProps {
+  lpBalanceLoading: boolean;
+  lpBalance: bigint | undefined;
+  userPoolShare: BigNumber;
+  userReserves: { sy: bigint; pt: bigint };
+}
+
+function UserPositionContent({
+  lpBalanceLoading,
+  lpBalance,
+  userPoolShare,
+  userReserves,
+}: UserPositionContentProps): ReactNode {
+  if (lpBalanceLoading) {
+    return (
+      <div className="space-y-2">
+        <div className="bg-muted h-6 w-32 animate-pulse rounded" />
+        <div className="bg-muted h-4 w-24 animate-pulse rounded" />
+      </div>
+    );
+  }
+  if (lpBalance !== undefined && lpBalance > BigInt(0)) {
+    return (
+      <LpPositionDisplay
+        lpBalance={lpBalance}
+        userPoolShare={userPoolShare}
+        userReserves={userReserves}
+      />
+    );
+  }
+  return <div className="text-muted-foreground">No LP position in this market</div>;
+}
+
+/**
+ * State-based content resolver for the main form area.
+ * Extracted to reduce complexity of the parent component.
+ */
+interface FormAreaProps {
+  mounted: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  selectedMarket: MarketData | undefined;
+  activeTab: PoolTab;
+}
+
+function FormAreaContent({
+  mounted,
+  isLoading,
+  isError,
+  selectedMarket,
+  activeTab,
+}: FormAreaProps): ReactNode {
+  if (!mounted || isLoading) {
+    return <SkeletonCard className="h-[600px]" />;
+  }
+
+  if (isError) {
+    return (
+      <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
+        <p className="text-destructive">Failed to load markets. Please try again.</p>
+      </div>
+    );
+  }
+
+  if (!selectedMarket) {
+    return (
+      <div className="border-border bg-card rounded-lg border p-8 text-center">
+        <p className="text-muted-foreground">No markets available.</p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Markets will appear here once they are created.
+        </p>
+      </div>
+    );
+  }
+
+  return activeTab === 'add' ? (
+    <AddLiquidityForm market={selectedMarket} />
+  ) : (
+    <RemoveLiquidityForm market={selectedMarket} />
+  );
+}
 
 // Helper to get pool display name
 function getPoolName(market: MarketData): string {
@@ -40,6 +168,62 @@ function getPoolName(market: MarketData): string {
 // Helper to get pool symbol
 function getPoolSymbol(market: MarketData): string {
   return market.metadata?.yieldTokenSymbol ?? market.address.slice(0, 8);
+}
+
+/**
+ * Component for displaying LP position details.
+ * Extracted to reduce complexity of parent component.
+ */
+interface LpPositionDisplayProps {
+  lpBalance: bigint;
+  userPoolShare: BigNumber;
+  userReserves: { sy: bigint; pt: bigint };
+}
+
+function LpPositionDisplay({
+  lpBalance,
+  userPoolShare,
+  userReserves,
+}: LpPositionDisplayProps): ReactNode {
+  const formattedLp = formatWadCompact(lpBalance);
+
+  // Check for effectively zero LP balance
+  if (formattedLp === '0' || formattedLp === '< 0.01') {
+    return <div className="text-muted-foreground">No significant LP position</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="text-foreground font-mono text-2xl font-semibold">{formattedLp} LP</div>
+        <div className="text-muted-foreground text-sm">
+          {userPoolShare.lt(0.01) ? '< 0.01' : userPoolShare.toFixed(2)}% of pool
+        </div>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-3">
+        <div className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
+          Your share of reserves
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">SY:</span>
+          <span className="text-foreground font-mono">{formatWadCompact(userReserves.sy)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">PT:</span>
+          <span className="text-foreground font-mono">{formatWadCompact(userReserves.pt)}</span>
+        </div>
+      </div>
+      <div className="border-chart-2/30 bg-chart-2/10 rounded-lg border p-3">
+        <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
+          <TrendingUp className="h-3.5 w-3.5" />
+          LP Rewards
+        </div>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Swap fees auto-compound into your position, growing your share of reserves.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function PoolsPageContent(): ReactNode {
@@ -57,12 +241,10 @@ function PoolsPageContent(): ReactNode {
   const { isConnected } = useStarknet();
 
   // Select market based on URL param or default to first market
-  const selectedMarket = useMemo(() => {
-    if (marketParam) {
-      return markets.find((m) => m.address === marketParam);
-    }
-    return markets[0];
-  }, [markets, marketParam]);
+  const selectedMarket = useMemo(
+    () => selectMarketByParam(markets, marketParam),
+    [markets, marketParam]
+  );
 
   // Handle market selection change
   const handleMarketChange = useCallback(
@@ -81,54 +263,23 @@ function PoolsPageContent(): ReactNode {
   const { data: apyBreakdown } = useApyBreakdown(selectedMarket);
 
   // Calculate user's share of pool
-  const userPoolShare = useMemo(() => {
-    if (
-      selectedMarket === undefined ||
-      lpBalance === undefined ||
-      selectedMarket.state.totalLpSupply === BigInt(0)
-    ) {
-      return new BigNumber(0);
-    }
-    return new BigNumber(lpBalance.toString())
-      .dividedBy(selectedMarket.state.totalLpSupply.toString())
-      .multipliedBy(100);
-  }, [lpBalance, selectedMarket]);
+  const userPoolShare = useMemo(
+    () => calculatePoolSharePercent(lpBalance, selectedMarket?.state.totalLpSupply),
+    [lpBalance, selectedMarket]
+  );
 
   // Calculate user's share of reserves
-  const userReserves = useMemo(() => {
-    if (
-      selectedMarket === undefined ||
-      lpBalance === undefined ||
-      selectedMarket.state.totalLpSupply === BigInt(0)
-    ) {
-      return { sy: BigInt(0), pt: BigInt(0) };
-    }
-    const { syReserve, ptReserve, totalLpSupply } = selectedMarket.state;
-    return {
-      sy: (lpBalance * syReserve) / totalLpSupply,
-      pt: (lpBalance * ptReserve) / totalLpSupply,
-    };
-  }, [lpBalance, selectedMarket]);
+  const userReserves = useMemo(
+    () => calculateUserReserves(lpBalance, selectedMarket),
+    [lpBalance, selectedMarket]
+  );
 
   return (
     <div className="space-y-8">
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Main Content */}
         <div>
-          {!mounted || isLoading ? (
-            <SkeletonCard className="h-[600px]" />
-          ) : isError ? (
-            <div className="border-destructive/20 bg-destructive/10 rounded-lg border p-8 text-center">
-              <p className="text-destructive">Failed to load markets. Please try again.</p>
-            </div>
-          ) : !selectedMarket ? (
-            <div className="border-border bg-card rounded-lg border p-8 text-center">
-              <p className="text-muted-foreground">No markets available.</p>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Markets will appear here once they are created.
-              </p>
-            </div>
-          ) : (
+          {selectedMarket && mounted && !isLoading && !isError ? (
             <div className="space-y-4">
               {/* Pool Selector */}
               <div>
@@ -184,13 +335,23 @@ function PoolsPageContent(): ReactNode {
                 </TabsList>
 
                 {/* Form */}
-                {activeTab === 'add' ? (
-                  <AddLiquidityForm market={selectedMarket} />
-                ) : (
-                  <RemoveLiquidityForm market={selectedMarket} />
-                )}
+                <FormAreaContent
+                  mounted={mounted}
+                  isLoading={false}
+                  isError={false}
+                  selectedMarket={selectedMarket}
+                  activeTab={activeTab}
+                />
               </Tabs>
             </div>
+          ) : (
+            <FormAreaContent
+              mounted={mounted}
+              isLoading={isLoading}
+              isError={isError}
+              selectedMarket={selectedMarket}
+              activeTab={activeTab}
+            />
           )}
         </div>
 
@@ -211,63 +372,12 @@ function PoolsPageContent(): ReactNode {
                 <h3 className="text-foreground text-sm font-semibold">Your Position</h3>
               </div>
               <div className="p-4">
-                {lpBalanceLoading ? (
-                  <div className="space-y-2">
-                    <div className="bg-muted h-6 w-32 animate-pulse rounded" />
-                    <div className="bg-muted h-4 w-24 animate-pulse rounded" />
-                  </div>
-                ) : lpBalance !== undefined && lpBalance > BigInt(0) ? (
-                  (() => {
-                    const formattedLp = formatWadCompact(lpBalance);
-                    // If LP balance is effectively zero, show "no position"
-                    if (formattedLp === '0' || formattedLp === '< 0.01') {
-                      return (
-                        <div className="text-muted-foreground">No significant LP position</div>
-                      );
-                    }
-                    return (
-                      <div className="space-y-3">
-                        <div>
-                          <div className="text-foreground font-mono text-2xl font-semibold">
-                            {formattedLp} LP
-                          </div>
-                          <div className="text-muted-foreground text-sm">
-                            {userPoolShare.lt(0.01) ? '< 0.01' : userPoolShare.toFixed(2)}% of pool
-                          </div>
-                        </div>
-                        <div className="bg-muted/50 rounded-lg p-3">
-                          <div className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
-                            Your share of reserves
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">SY:</span>
-                            <span className="text-foreground font-mono">
-                              {formatWadCompact(userReserves.sy)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">PT:</span>
-                            <span className="text-foreground font-mono">
-                              {formatWadCompact(userReserves.pt)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="border-chart-2/30 bg-chart-2/10 rounded-lg border p-3">
-                          <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
-                            <TrendingUp className="h-3.5 w-3.5" />
-                            LP Rewards
-                          </div>
-                          <p className="text-muted-foreground mt-1 text-xs">
-                            Swap fees auto-compound into your position, growing your share of
-                            reserves.
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="text-muted-foreground">No LP position in this market</div>
-                )}
+                <UserPositionContent
+                  lpBalanceLoading={lpBalanceLoading}
+                  lpBalance={lpBalance}
+                  userPoolShare={userPoolShare}
+                  userReserves={userReserves}
+                />
               </div>
             </div>
           )}
@@ -321,6 +431,10 @@ function PoolsPageContent(): ReactNode {
                       {selectedMarket.impliedApy.multipliedBy(100).toFixed(2)}%
                     </span>
                   </div>
+                </div>
+                {/* Fee Structure */}
+                <div className="border-border/50 border-t pt-3">
+                  <FeeStructure market={selectedMarket} />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Days to Expiry</span>

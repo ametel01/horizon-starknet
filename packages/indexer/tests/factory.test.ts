@@ -7,11 +7,11 @@
 import { hash } from "starknet";
 import { describe, expect, it } from "vitest";
 
-import { matchSelector, decodeByteArray, readU256 } from "../src/lib/utils";
+import { decodeByteArray, matchSelector, readU256 } from "../src/lib/utils";
 
 // Event selectors
 const YIELD_CONTRACTS_CREATED = hash.getSelectorFromName(
-  "YieldContractsCreated",
+  "YieldContractsCreated"
 );
 const CLASS_HASHES_UPDATED = hash.getSelectorFromName("ClassHashesUpdated");
 

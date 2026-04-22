@@ -1,27 +1,26 @@
 'use client';
 
+import { useDashboardMarkets } from '@features/markets';
+import {
+  type BeatImpliedPosition,
+  getScoreBgColor,
+  getScoreColor,
+  useBeatImplied,
+} from '@features/portfolio';
+import { cn } from '@shared/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
 import { type ReactNode, useMemo } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  ReferenceLine,
 } from 'recharts';
-
-import { useDashboardMarkets } from '@features/markets';
-import {
-  useBeatImplied,
-  getScoreColor,
-  getScoreBgColor,
-  type BeatImpliedPosition,
-} from '@features/portfolio';
-import { cn } from '@shared/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
 
 /**
  * Format APY percentage
