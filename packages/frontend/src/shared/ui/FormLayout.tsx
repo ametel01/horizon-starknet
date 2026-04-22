@@ -183,12 +183,12 @@ function FormRow({
 }
 
 export {
-  FormLayout,
-  FormInputSection,
-  FormOutputSection,
-  FormInfoSection,
   FormActions,
   FormDivider,
   FormHeader,
+  FormInfoSection,
+  FormInputSection,
+  FormLayout,
+  FormOutputSection,
   FormRow,
 };

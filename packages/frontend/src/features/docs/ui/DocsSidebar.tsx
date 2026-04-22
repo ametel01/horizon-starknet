@@ -145,6 +145,6 @@ export function DocsSidebar(): React.ReactNode {
   );
 }
 
+export type { NavItem };
 // Export navigation for use in prev/next navigation
 export { navigation };
-export type { NavItem };

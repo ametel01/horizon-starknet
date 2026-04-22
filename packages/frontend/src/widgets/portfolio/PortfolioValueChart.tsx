@@ -308,11 +308,15 @@ export function PortfolioValueChart({
             />
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(value: number | undefined, name: string | undefined) => [
-                `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                getChartDisplayName(name),
-              ]}
-              labelFormatter={(label: string) => label}
+              formatter={(value, name) => {
+                const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+                const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                return [
+                  `$${numericValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                  getChartDisplayName(tooltipName),
+                ];
+              }}
+              labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
             />
             <Area
               type="monotone"

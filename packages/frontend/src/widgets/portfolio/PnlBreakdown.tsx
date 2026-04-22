@@ -311,10 +311,12 @@ export function PnlBreakdown({
                   </Pie>
                   <Tooltip
                     contentStyle={{ borderRadius: '8px' }}
-                    formatter={(value: number | undefined, name: string | undefined) => {
-                      const entry = chartData.find((d) => d.name === name);
+                    formatter={(value, name) => {
+                      const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+                      const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                      const entry = chartData.find((d) => d.name === tooltipName);
                       const prefix = entry?.isNegative ? '-' : '';
-                      return [`${prefix}${formatUsdCompact(value ?? 0)}`, name ?? ''];
+                      return [`${prefix}${formatUsdCompact(numericValue)}`, tooltipName];
                     }}
                   />
                 </PieChart>

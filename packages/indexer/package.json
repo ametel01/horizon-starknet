@@ -40,22 +40,22 @@
     "@apibara/protocol": "^2.1.0-beta.47",
     "@apibara/starknet": "^2.1.0-beta.47",
     "apibara": "^2.1.0-beta.47",
-    "drizzle-orm": "0.45.1",
-    "pg": "^8.16.3",
-    "pino": "^10.1.0",
+    "drizzle-orm": "0.45.2",
+    "pg": "^8.20.0",
+    "pino": "^10.3.1",
     "postgres": "latest",
     "starknet": "latest",
-    "zod": "^4.3.4"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.10",
-    "@electric-sql/pglite": "^0.3.14",
+    "@biomejs/biome": "^2.4.12",
+    "@electric-sql/pglite": "^0.4.4",
     "@types/bun": "latest",
-    "@types/node": "^25.0.3",
-    "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
     "pino-pretty": "^13.1.3",
     "typescript": "latest",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.5"
   }
 }

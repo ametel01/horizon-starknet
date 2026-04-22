@@ -37,6 +37,13 @@ function formatPercentCompact(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+const OHLC_TOOLTIP_LABELS: Record<string, string> = {
+  bodyEnd: 'Close',
+  bodyStart: 'Open',
+  wickHigh: 'High',
+  wickLow: 'Low',
+};
+
 type ViewMode = 'line' | 'ohlc';
 type Resolution = 'tick' | 'daily';
 
@@ -366,13 +373,15 @@ function LineChart({
       )}
       <Tooltip
         contentStyle={{ borderRadius: '8px' }}
-        formatter={(value: number | undefined, name: string | undefined) => {
-          if (name === 'impliedRate') {
-            return [formatPercent(value ?? 0), 'Implied Rate'];
+        formatter={(value, name) => {
+          const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+          const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+          if (tooltipName === 'impliedRate') {
+            return [formatPercent(numericValue), 'Implied Rate'];
           }
-          return [(value ?? 0).toFixed(4), 'Exchange Rate'];
+          return [numericValue.toFixed(4), 'Exchange Rate'];
         }}
-        labelFormatter={(label: string) => label}
+        labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
       />
       <Area
         yAxisId="rate"
@@ -449,20 +458,12 @@ function OhlcChart({
       )}
       <Tooltip
         contentStyle={{ borderRadius: '8px' }}
-        formatter={(value: number | undefined, name: string | undefined) => {
-          const label =
-            name === 'wickHigh'
-              ? 'High'
-              : name === 'wickLow'
-                ? 'Low'
-                : name === 'bodyStart'
-                  ? 'Open'
-                  : name === 'bodyEnd'
-                    ? 'Close'
-                    : name;
-          return [formatPercent(value ?? 0), label];
+        formatter={(value, name) => {
+          const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+          const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+          return [formatPercent(numericValue), OHLC_TOOLTIP_LABELS[tooltipName] ?? tooltipName];
         }}
-        labelFormatter={(label: string) => label}
+        labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
       />
       {/* Wick (line from low to high) */}
       <Bar

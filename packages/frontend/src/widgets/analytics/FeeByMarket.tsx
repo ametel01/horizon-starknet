@@ -210,12 +210,13 @@ export function FeeByMarket({ className, height = 300, days = 30 }: FeeByMarketP
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value: number | undefined, name: string | undefined) => {
-                const market = chartData.find((d) => d.name === name);
-                if (!market) return [formatUsdCompact(0), name ?? ''];
+              formatter={(_value, name) => {
+                const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                const market = chartData.find((d) => d.name === tooltipName);
+                if (!market) return [formatUsdCompact(0), tooltipName];
                 return [
                   `${formatUsdCompact(market.valueUsd)} (${String(market.swapCount)} swaps)`,
-                  name ?? '',
+                  tooltipName,
                 ];
               }}
             />
@@ -351,9 +352,10 @@ export function FeeByMarketCompact({
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value: number | undefined, name: string | undefined) => {
-              const market = chartData.find((d) => d.name === name);
-              return [formatUsdCompact(market?.valueUsd ?? 0), name ?? ''];
+            formatter={(_value, name) => {
+              const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+              const market = chartData.find((d) => d.name === tooltipName);
+              return [formatUsdCompact(market?.valueUsd ?? 0), tooltipName];
             }}
           />
         </PieChart>

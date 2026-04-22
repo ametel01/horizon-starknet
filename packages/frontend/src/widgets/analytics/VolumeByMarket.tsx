@@ -181,10 +181,13 @@ export function VolumeByMarket({ className, height = 300 }: VolumeByMarketProps)
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value: number | undefined, name: string | undefined) => [
-                formatUsdCompact(chartData.find((d) => d.name === name)?.value ?? 0),
-                name ?? '',
-              ]}
+              formatter={(_value, name) => {
+                const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+                return [
+                  formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.value ?? 0),
+                  tooltipName,
+                ];
+              }}
             />
             <Legend
               wrapperStyle={{ fontSize: '12px' }}
@@ -294,10 +297,13 @@ export function VolumeBreakdownCompact({
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value: number | undefined, name: string | undefined) => [
-              formatUsdCompact(chartData.find((d) => d.name === name)?.value ?? 0),
-              name ?? '',
-            ]}
+            formatter={(_value, name) => {
+              const tooltipName = typeof name === 'string' ? name : String(name ?? '');
+              return [
+                formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.value ?? 0),
+                tooltipName,
+              ];
+            }}
           />
         </PieChart>
       </ResponsiveContainer>

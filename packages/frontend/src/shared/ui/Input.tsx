@@ -135,4 +135,4 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 );
 NumberInput.displayName = 'NumberInput';
 
-export { Input, FormInput, NumberInput };
+export { FormInput, Input, NumberInput };
