@@ -121,8 +121,10 @@ test.describe('Responsive Design', () => {
     const nav = page.getByRole('navigation');
 
     // Either nav is visible or there's a menu button to open it
-    const navVisible = await nav.isVisible().catch(() => false);
-    const menuVisible = await menuButton.isVisible().catch(() => false);
+    const [navVisible, menuVisible] = await Promise.all([
+      nav.isVisible().catch(() => false),
+      menuButton.isVisible().catch(() => false),
+    ]);
 
     expect(navVisible || menuVisible).toBe(true);
   });

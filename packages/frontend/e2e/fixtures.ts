@@ -10,7 +10,7 @@ import { test as base, expect as baseExpect } from '@playwright/test';
  * @see https://github.com/microsoft/playwright/issues/21785
  */
 export const test = base.extend({
-  page: async ({ page, browserName }, use) => {
+  page: async ({ page, browserName }, runWithPage) => {
     // Wrap goto to add networkidle wait and extra delay for webkit
     const originalGoto = page.goto.bind(page);
     page.goto = async (url, options) => {
@@ -24,7 +24,7 @@ export const test = base.extend({
       return response;
     };
 
-    await use(page);
+    await runWithPage(page);
   },
 });
 

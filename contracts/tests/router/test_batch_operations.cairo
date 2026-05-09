@@ -9,7 +9,6 @@ use horizon::interfaces::i_router::{IRouterDispatcher, IRouterDispatcherTrait};
 use horizon::interfaces::i_sy::ISYDispatcherTrait;
 use horizon::interfaces::i_yt::{IYTDispatcher, IYTDispatcherTrait};
 use horizon::libraries::math::WAD;
-use horizon::mocks::mock_yield_token::IMockYieldTokenDispatcherTrait;
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,

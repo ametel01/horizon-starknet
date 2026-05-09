@@ -38,14 +38,16 @@ test.describe('Trade Page', () => {
     await expect(page.getByRole('heading', { name: /Trade/i })).toBeVisible();
 
     // Should show swap form or loading/empty state
-    const hasForm = await page
-      .locator('form, [data-testid="swap-form"], .swap-form')
-      .isVisible()
-      .catch(() => false);
-    const hasLoadingOrEmpty = await page
-      .getByText(/Loading|No markets|Failed to load/i)
-      .isVisible()
-      .catch(() => false);
+    const [hasForm, hasLoadingOrEmpty] = await Promise.all([
+      page
+        .locator('form, [data-testid="swap-form"], .swap-form')
+        .isVisible()
+        .catch(() => false),
+      page
+        .getByText(/Loading|No markets|Failed to load/i)
+        .isVisible()
+        .catch(() => false),
+    ]);
 
     expect(hasForm || hasLoadingOrEmpty).toBe(true);
   });
@@ -100,8 +102,10 @@ test.describe('Pools Page', () => {
     const addTab = page.getByRole('tab', { name: /Add Liquidity/i });
     const removeTab = page.getByRole('tab', { name: /Remove Liquidity/i });
 
-    const addVisible = await addTab.isVisible().catch(() => false);
-    const removeVisible = await removeTab.isVisible().catch(() => false);
+    const [addVisible, removeVisible] = await Promise.all([
+      addTab.isVisible().catch(() => false),
+      removeTab.isVisible().catch(() => false),
+    ]);
 
     // Accept if tabs are visible or if there's a loading/no markets state
     expect(addVisible || removeVisible || true).toBe(true);
@@ -136,15 +140,17 @@ test.describe('Mint Page', () => {
     await page.waitForTimeout(2000);
 
     // Should show form, market selection, or loading/empty state
-    const hasContent = await page
-      .locator('form, [data-testid="mint-form"], .mint-form, button')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    const hasLoadingOrEmpty = await page
-      .getByText(/Loading|No markets|Select.*Market/i)
-      .isVisible()
-      .catch(() => false);
+    const [hasContent, hasLoadingOrEmpty] = await Promise.all([
+      page
+        .locator('form, [data-testid="mint-form"], .mint-form, button')
+        .first()
+        .isVisible()
+        .catch(() => false),
+      page
+        .getByText(/Loading|No markets|Select.*Market/i)
+        .isVisible()
+        .catch(() => false),
+    ]);
 
     expect(hasContent || hasLoadingOrEmpty || true).toBe(true);
   });
