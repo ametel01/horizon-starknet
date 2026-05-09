@@ -1,0 +1,1063 @@
+{
+  "id": "repo_profile_37b032da-3259-4c7c-b91a-3f0a01877b62",
+  "repoId": "local",
+  "version": 1,
+  "owner": "source",
+  "name": "horizon-starknet",
+  "defaultBranch": "main",
+  "primaryLanguages": [
+    "Cairo",
+    "TypeScript"
+  ],
+  "frameworks": [
+    "next",
+    "react",
+    "drizzle-orm",
+    "typescript",
+    "zod",
+    "vitest",
+    "Scarb",
+    "Starknet Foundry"
+  ],
+  "packageManager": "bun",
+  "commands": [
+    {
+      "name": "dev",
+      "command": "bun run --cwd packages/frontend dev",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "build",
+      "command": "bun run --cwd packages/frontend build",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "typecheck",
+      "command": "bun run --cwd packages/frontend typecheck",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "lint",
+      "command": "bun run --cwd packages/frontend lint",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "format",
+      "command": "bun run --cwd packages/frontend format",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "format:check",
+      "command": "bun run --cwd packages/frontend format:check",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "check",
+      "command": "bun run --cwd packages/frontend check",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "test",
+      "command": "bun run --cwd packages/frontend test",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "test:e2e",
+      "command": "bun run --cwd packages/frontend test:e2e",
+      "source": "packages/frontend/package.json"
+    },
+    {
+      "name": "dev",
+      "command": "bun run --cwd packages/indexer dev",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "build",
+      "command": "bun run --cwd packages/indexer build",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "format",
+      "command": "bun run --cwd packages/indexer format",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "format:check",
+      "command": "bun run --cwd packages/indexer format:check",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "lint",
+      "command": "bun run --cwd packages/indexer lint",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "check",
+      "command": "bun run --cwd packages/indexer check",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "typecheck",
+      "command": "bun run --cwd packages/indexer typecheck",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "test",
+      "command": "bun run --cwd packages/indexer test",
+      "source": "packages/indexer/package.json"
+    },
+    {
+      "name": "dev-up",
+      "command": "make dev-up",
+      "source": "Makefile"
+    },
+    {
+      "name": "dev-down",
+      "command": "make dev-down",
+      "source": "Makefile"
+    },
+    {
+      "name": "dev-fork",
+      "command": "make dev-fork",
+      "source": "Makefile"
+    },
+    {
+      "name": "dev-fork-down",
+      "command": "make dev-fork-down",
+      "source": "Makefile"
+    },
+    {
+      "name": "build",
+      "command": "make build",
+      "source": "Makefile"
+    },
+    {
+      "name": "test",
+      "command": "make test",
+      "source": "Makefile"
+    },
+    {
+      "name": "clean-env",
+      "command": "make clean-env",
+      "source": "Makefile"
+    },
+    {
+      "name": "test",
+      "command": "cd contracts && snforge test",
+      "source": "contracts/Scarb.toml"
+    }
+  ],
+  "ciWorkflows": [
+    ".github/workflows/cairo-build.yml",
+    ".github/workflows/cairo-fmt.yml",
+    ".github/workflows/cairo-lint.yml",
+    ".github/workflows/cairo-test.yml",
+    ".github/workflows/frontend-ci.yml",
+    ".github/workflows/frontend-deploy.yml",
+    ".github/workflows/indexer-ci.yml",
+    ".github/workflows/release.yml"
+  ],
+  "importantDocs": [
+    "docs/AMM-MARKET-V2-FRONTEND-INDEXER-CHANGES.md",
+    "docs/BRIDGED_YIELD_TOKENS.md",
+    "docs/EVENTS.md",
+    "docs/FUCTION_COMPLEXITY_GUIDELINES.md",
+    "docs/gap-analysis/00-consolidated-pending-gaps.md",
+    "docs/gap-analysis/01-core-token-system-gaps.md",
+    "docs/gap-analysis/02-amm-market-system-gaps.md",
+    "docs/gap-analysis/03-router-flash-swap-gaps.md",
+    "docs/gap-analysis/04-factory-system-gaps.md",
+    "docs/gap-analysis/05-marketfactory-system-gaps.md",
+    "docs/gap-analysis/06-oracle-system-gaps.md",
+    "docs/gap-analysis/07-governance-incentive-gaps.md",
+    "docs/gap-analysis/08-implementation-priority-matrix.md",
+    "docs/gap-analysis/09-detailed-feature-comparison.md",
+    "docs/gap-analysis/10-code-location-reference.md",
+    "docs/gap-analysis/README.md",
+    "docs/HORIZON-SPEC-COMPRESSED.md",
+    "docs/INDEXER_FRONTEND_INTEGRATION.md",
+    "docs/ORACLE_INTEGRATION.md",
+    "docs/package-integration-gaps.md",
+    "docs/PENDLE_AMM_CURVE.md",
+    "docs/PENDLE-V2-SPECS.md",
+    "docs/plans/frontend-integration-gaps_findings.md",
+    "docs/plans/frontend-integration-gaps_plan.md",
+    "docs/plans/package-integration-gaps-implementation.md",
+    "docs/plans/pending-gaps-implementation_findings.md",
+    "docs/plans/pending-gaps-implementation.md",
+    "docs/SENTRY.md",
+    "docs/shallow-security-review-contracts-src-2026-04-22.md",
+    "docs/spec.md",
+    "docs/TEST_QUALITY_AUDIT.md",
+    "docs/UPGRADE_RBAC.md",
+    "README.md"
+  ],
+  "architecturePathGroups": [
+    "contracts",
+    "docs",
+    "packages/frontend",
+    "packages/indexer"
+  ],
+  "generatedFileHints": [
+    "AGENTS.md",
+    ".agents/skills/repo-overview/SKILL.md",
+    ".agents/skills/testing-workflow/SKILL.md",
+    ".agents/skills/pr-review/SKILL.md",
+    ".open-maintainer/profile.json",
+    ".open-maintainer/report.md",
+    ".open-maintainer.yml"
+  ],
+  "existingContextFiles": [],
+  "detectedRiskAreas": [
+    "Authentication, secret, payment, or security-sensitive paths are present.",
+    "No repo-local agent context files detected."
+  ],
+  "reviewRuleCandidates": [
+    "Use bun for dependency and script commands.",
+    "Run `bun run --cwd packages/frontend build` before finishing changes that affect build.",
+    "Run `bun run --cwd packages/frontend typecheck` before finishing changes that affect typecheck.",
+    "Run `bun run --cwd packages/frontend lint` before finishing changes that affect lint.",
+    "Run `bun run --cwd packages/frontend check` before finishing changes that affect check.",
+    "Run `bun run --cwd packages/frontend test` before finishing changes that affect test.",
+    "Run `bun run --cwd packages/indexer build` before finishing changes that affect build.",
+    "Run `bun run --cwd packages/indexer lint` before finishing changes that affect lint.",
+    "Run `bun run --cwd packages/indexer check` before finishing changes that affect check.",
+    "Run `bun run --cwd packages/indexer typecheck` before finishing changes that affect typecheck.",
+    "Run `bun run --cwd packages/indexer test` before finishing changes that affect test.",
+    "Run `make build` before finishing changes that affect build.",
+    "Run `make test` before finishing changes that affect test.",
+    "Run `cd contracts && snforge test` before finishing changes that affect test."
+  ],
+  "evidence": [
+    {
+      "path": "packages/frontend/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/indexer/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "Makefile",
+      "reason": "make targets"
+    },
+    {
+      "path": "contracts/Scarb.toml",
+      "reason": "Scarb manifest"
+    },
+    {
+      "path": "packages/indexer/bun.lock",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/cairo-build.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/cairo-fmt.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/cairo-lint.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/cairo-test.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/frontend-ci.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/frontend-deploy.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/indexer-ci.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/AMM-MARKET-V2-FRONTEND-INDEXER-CHANGES.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/BRIDGED_YIELD_TOKENS.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/EVENTS.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/FUCTION_COMPLEXITY_GUIDELINES.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/00-consolidated-pending-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/01-core-token-system-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/02-amm-market-system-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/03-router-flash-swap-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/04-factory-system-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/05-marketfactory-system-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/06-oracle-system-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/07-governance-incentive-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/08-implementation-priority-matrix.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/09-detailed-feature-comparison.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/10-code-location-reference.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/gap-analysis/README.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/HORIZON-SPEC-COMPRESSED.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/INDEXER_FRONTEND_INTEGRATION.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/ORACLE_INTEGRATION.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/package-integration-gaps.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/PENDLE_AMM_CURVE.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/PENDLE-V2-SPECS.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/plans/frontend-integration-gaps_findings.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/plans/frontend-integration-gaps_plan.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/plans/package-integration-gaps-implementation.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/plans/pending-gaps-implementation_findings.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/plans/pending-gaps-implementation.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/SENTRY.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/shallow-security-review-contracts-src-2026-04-22.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/spec.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/TEST_QUALITY_AUDIT.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docs/UPGRADE_RBAC.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "README.md",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "contracts/Scarb.toml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "docker-compose.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "Makefile",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "packages/frontend/biome.json",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "packages/frontend/tsconfig.json",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "packages/indexer/biome.json",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "packages/indexer/docker-compose.yml",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "packages/indexer/drizzle.config.ts",
+      "reason": "detected repository context"
+    },
+    {
+      "path": "packages/indexer/tsconfig.json",
+      "reason": "detected repository context"
+    }
+  ],
+  "workspaceManifests": [],
+  "lockfiles": [
+    "packages/indexer/bun.lock"
+  ],
+  "configFiles": [
+    "contracts/Scarb.toml",
+    "docker-compose.yml",
+    "Makefile",
+    "packages/frontend/biome.json",
+    "packages/frontend/tsconfig.json",
+    "packages/indexer/biome.json",
+    "packages/indexer/docker-compose.yml",
+    "packages/indexer/drizzle.config.ts",
+    "packages/indexer/tsconfig.json"
+  ],
+  "createdAt": "2026-04-30T20:28:23.732Z",
+  "agentReadiness": {
+    "score": 67,
+    "categories": [
+      {
+        "name": "setup clarity",
+        "score": 20,
+        "maxScore": 20,
+        "missing": [],
+        "evidence": [
+          {
+            "path": "packages/frontend/package.json",
+            "reason": "package manifest"
+          },
+          {
+            "path": "packages/indexer/package.json",
+            "reason": "package manifest"
+          },
+          {
+            "path": "Makefile",
+            "reason": "make targets"
+          },
+          {
+            "path": "contracts/Scarb.toml",
+            "reason": "Scarb manifest"
+          },
+          {
+            "path": "packages/indexer/bun.lock",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/AMM-MARKET-V2-FRONTEND-INDEXER-CHANGES.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/BRIDGED_YIELD_TOKENS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/EVENTS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/FUCTION_COMPLEXITY_GUIDELINES.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/00-consolidated-pending-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/01-core-token-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/02-amm-market-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/03-router-flash-swap-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/04-factory-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/05-marketfactory-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/06-oracle-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/07-governance-incentive-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/08-implementation-priority-matrix.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/09-detailed-feature-comparison.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/10-code-location-reference.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/README.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/HORIZON-SPEC-COMPRESSED.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/INDEXER_FRONTEND_INTEGRATION.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/ORACLE_INTEGRATION.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/package-integration-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/PENDLE_AMM_CURVE.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/PENDLE-V2-SPECS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/frontend-integration-gaps_findings.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/frontend-integration-gaps_plan.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/package-integration-gaps-implementation.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/pending-gaps-implementation_findings.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/pending-gaps-implementation.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/SENTRY.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/shallow-security-review-contracts-src-2026-04-22.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/spec.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/TEST_QUALITY_AUDIT.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/UPGRADE_RBAC.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "README.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "contracts/Scarb.toml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "Makefile",
+            "reason": "detected repository context"
+          }
+        ]
+      },
+      {
+        "name": "architecture clarity",
+        "score": 20,
+        "maxScore": 20,
+        "missing": [],
+        "evidence": [
+          {
+            "path": "packages/frontend/package.json",
+            "reason": "package manifest"
+          },
+          {
+            "path": "packages/indexer/package.json",
+            "reason": "package manifest"
+          },
+          {
+            "path": "Makefile",
+            "reason": "make targets"
+          },
+          {
+            "path": "contracts/Scarb.toml",
+            "reason": "Scarb manifest"
+          },
+          {
+            "path": "packages/indexer/bun.lock",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/AMM-MARKET-V2-FRONTEND-INDEXER-CHANGES.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/BRIDGED_YIELD_TOKENS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/EVENTS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/FUCTION_COMPLEXITY_GUIDELINES.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/00-consolidated-pending-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/01-core-token-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/02-amm-market-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/03-router-flash-swap-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/04-factory-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/05-marketfactory-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/06-oracle-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/07-governance-incentive-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/08-implementation-priority-matrix.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/09-detailed-feature-comparison.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/10-code-location-reference.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/README.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/HORIZON-SPEC-COMPRESSED.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/INDEXER_FRONTEND_INTEGRATION.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/ORACLE_INTEGRATION.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/package-integration-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/PENDLE_AMM_CURVE.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/PENDLE-V2-SPECS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/frontend-integration-gaps_findings.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/frontend-integration-gaps_plan.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/package-integration-gaps-implementation.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/pending-gaps-implementation_findings.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/pending-gaps-implementation.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/SENTRY.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/shallow-security-review-contracts-src-2026-04-22.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/spec.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/TEST_QUALITY_AUDIT.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/UPGRADE_RBAC.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "README.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "contracts/Scarb.toml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docker-compose.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "Makefile",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "packages/frontend/biome.json",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "packages/frontend/tsconfig.json",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "packages/indexer/biome.json",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "packages/indexer/docker-compose.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "packages/indexer/drizzle.config.ts",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "packages/indexer/tsconfig.json",
+            "reason": "detected repository context"
+          }
+        ]
+      },
+      {
+        "name": "testing and CI",
+        "score": 20,
+        "maxScore": 20,
+        "missing": [],
+        "evidence": [
+          {
+            "path": "packages/frontend/package.json",
+            "reason": "package manifest"
+          },
+          {
+            "path": "packages/indexer/package.json",
+            "reason": "package manifest"
+          },
+          {
+            "path": "Makefile",
+            "reason": "make targets"
+          },
+          {
+            "path": "contracts/Scarb.toml",
+            "reason": "Scarb manifest"
+          },
+          {
+            "path": ".github/workflows/cairo-build.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/cairo-fmt.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/cairo-lint.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/cairo-test.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/frontend-ci.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/frontend-deploy.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/indexer-ci.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": ".github/workflows/release.yml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "contracts/Scarb.toml",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "Makefile",
+            "reason": "detected repository context"
+          }
+        ]
+      },
+      {
+        "name": "agent instructions",
+        "score": 0,
+        "maxScore": 20,
+        "missing": [
+          "AGENTS.md or CLAUDE.md is missing.",
+          "Repo-local skills are missing."
+        ],
+        "evidence": []
+      },
+      {
+        "name": "safety and review rules",
+        "score": 7,
+        "maxScore": 20,
+        "missing": [
+          ".open-maintainer.yml policy file is missing.",
+          "CONTRIBUTING.md is missing."
+        ],
+        "evidence": [
+          {
+            "path": "docs/AMM-MARKET-V2-FRONTEND-INDEXER-CHANGES.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/BRIDGED_YIELD_TOKENS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/EVENTS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/FUCTION_COMPLEXITY_GUIDELINES.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/00-consolidated-pending-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/01-core-token-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/02-amm-market-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/03-router-flash-swap-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/04-factory-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/05-marketfactory-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/06-oracle-system-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/07-governance-incentive-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/08-implementation-priority-matrix.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/09-detailed-feature-comparison.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/10-code-location-reference.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/gap-analysis/README.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/HORIZON-SPEC-COMPRESSED.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/INDEXER_FRONTEND_INTEGRATION.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/ORACLE_INTEGRATION.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/package-integration-gaps.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/PENDLE_AMM_CURVE.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/PENDLE-V2-SPECS.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/frontend-integration-gaps_findings.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/frontend-integration-gaps_plan.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/package-integration-gaps-implementation.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/pending-gaps-implementation_findings.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/plans/pending-gaps-implementation.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/SENTRY.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/shallow-security-review-contracts-src-2026-04-22.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/spec.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/TEST_QUALITY_AUDIT.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "docs/UPGRADE_RBAC.md",
+            "reason": "detected repository context"
+          },
+          {
+            "path": "README.md",
+            "reason": "detected repository context"
+          }
+        ]
+      }
+    ],
+    "missingItems": [
+      "agent instructions: AGENTS.md or CLAUDE.md is missing.",
+      "agent instructions: Repo-local skills are missing.",
+      "safety and review rules: .open-maintainer.yml policy file is missing.",
+      "safety and review rules: CONTRIBUTING.md is missing."
+    ],
+    "generatedAt": "2026-04-30T20:28:23.732Z"
+  },
+  "openMaintainerProfileHash": "69a80b69d4d03976"
+}

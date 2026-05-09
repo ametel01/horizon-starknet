@@ -1,0 +1,72 @@
+version: 1
+repo:
+  profileVersion: 1
+  defaultBranch: main
+rules:
+  - Use bun for dependency and script commands.
+  - Run `bun run --cwd packages/frontend build` before finishing changes that
+    affect build.
+  - Run `bun run --cwd packages/frontend typecheck` before finishing changes
+    that affect typecheck.
+  - Run `bun run --cwd packages/frontend lint` before finishing changes that
+    affect lint.
+  - Run `bun run --cwd packages/frontend check` before finishing changes that
+    affect check.
+  - Run `bun run --cwd packages/frontend test` before finishing changes that
+    affect test.
+  - Run `bun run --cwd packages/indexer build` before finishing changes that
+    affect build.
+  - Run `bun run --cwd packages/indexer lint` before finishing changes that
+    affect lint.
+  - Run `bun run --cwd packages/indexer check` before finishing changes that
+    affect check.
+  - Run `bun run --cwd packages/indexer typecheck` before finishing changes that
+    affect typecheck.
+  - Run `bun run --cwd packages/indexer test` before finishing changes that
+    affect test.
+  - Run `make build` before finishing changes that affect build.
+  - Run `make test` before finishing changes that affect test.
+  - Run `cd contracts && snforge test` before finishing changes that affect test.
+  - "Safe edit zone: Documentation under docs may be appropriate to edit when
+    aligning documented specs, integration notes, gap analyses, plans, Sentry
+    notes, security review, and testing quality guidance with code changes."
+  - "Safe edit zone: Package-local TypeScript files in packages/frontend and
+    packages/indexer can be scoped by package-specific Bun commands when changes
+    are limited to one package."
+  - "Use caution: contracts/src/factory.cairo is careful-edit because storage
+    order is explicitly marked as existing storage that must not be modified,
+    with new storage added at the end."
+  - "Use caution: Contracts involving upgradeability, ownership, AccessControl,
+    pausing, treasury, fees, expiry validation, class hashes, and deployment
+    registries are careful-edit zones."
+  - "Use caution: Oracle and pricing interfaces are careful-edit zones because
+    they define TWAP, rate, price feed, and readiness behavior used for DeFi
+    pricing."
+  - "Use caution: Router and market interfaces are careful-edit zones because
+    they include slippage, deadlines, callbacks, multicall constraints, swaps,
+    liquidity, fees, and reserve behavior."
+  - "Use caution: Reward accounting code is careful-edit because it manages
+    reward token registration, global indexes, user checkpoints, accrued
+    balances, and external ERC20 reward transfers."
+  - "Use caution: SY component code is careful-edit because it manages deposits,
+    redemptions, exchange rate oracle selection, token validation, and negative
+    yield detection."
+  - "Use caution: Database and indexer configuration is careful-edit because
+    drizzle.config.ts and package-local Docker Compose are present but their
+    contents are not provided."
+  - "Do not edit without explicit instruction: Do not reorder or modify existing
+    Factory storage layout without explicit upgrade/storage-layout
+    instructions."
+  - "Do not edit without explicit instruction: Do not change live mainnet
+    addresses in README without explicit deployment/address update
+    instructions."
+  - "Do not edit without explicit instruction: Do not change license terms
+    without explicit legal/license instructions."
+  - "Do not edit without explicit instruction: Do not alter
+    owner-only/admin/security-sensitive behavior casually; owner-upgradeable
+    core contracts, RBAC initialization, pause roles, treasuries, fee rates, and
+    class hashes are explicitly present."
+generated:
+  by: open-maintainer
+  artifactVersion: 2
+  generatedAt: 2026-04-30T20:33:40.247Z
