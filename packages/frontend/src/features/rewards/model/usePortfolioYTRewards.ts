@@ -40,6 +40,8 @@ export interface PortfolioYTRewards {
   distinctTokenCount: number;
 }
 
+type YTRewardsQueryResult = UseQueryResult<YTRewards | null>;
+
 /**
  * Fetch rewards for a single YT contract.
  * Returns null if the contract doesn't support rewards or has no reward tokens.
@@ -96,6 +98,55 @@ async function fetchYtRewards(
   }
 }
 
+function getValidYtResults(queries: readonly YTRewardsQueryResult[]): YTRewards[] {
+  const validResults: YTRewards[] = [];
+  for (const query of queries) {
+    if (query.data !== null && query.data !== undefined) {
+      validResults.push(query.data);
+    }
+  }
+  return validResults;
+}
+
+function aggregateYtRewardsByToken(results: readonly YTRewards[]): YTAccruedReward[] {
+  const rewardsByToken = new Map<string, bigint>();
+
+  for (const ytRewards of results) {
+    for (const reward of ytRewards.rewards) {
+      if (reward.amount > 0n) {
+        const current = rewardsByToken.get(reward.tokenAddress) ?? 0n;
+        rewardsByToken.set(reward.tokenAddress, current + reward.amount);
+      }
+    }
+  }
+
+  return Array.from(rewardsByToken.entries()).map(([tokenAddress, amount]) => ({
+    tokenAddress,
+    amount,
+  }));
+}
+
+function getClaimableYtAddresses(results: readonly YTRewards[]): string[] {
+  const addresses: string[] = [];
+  for (const ytRewards of results) {
+    if (ytRewards.hasRewards) addresses.push(ytRewards.ytAddress);
+  }
+  return addresses;
+}
+
+function aggregatePortfolioYtRewards(results: readonly YTRewards[]): PortfolioYTRewards {
+  const allRewards = aggregateYtRewardsByToken(results);
+  const claimableYtAddresses = getClaimableYtAddresses(results);
+
+  return {
+    byYt: [...results],
+    allRewards,
+    claimableYtAddresses,
+    hasAnyRewards: claimableYtAddresses.length > 0,
+    distinctTokenCount: allRewards.length,
+  };
+}
+
 /**
  * Hook to fetch accrued YT rewards across multiple YT addresses.
  *
@@ -150,49 +201,13 @@ export function usePortfolioYTRewards(ytAddresses: string[]): {
   });
 
   // Check if any query is loading
-  const isLoading = queries.some((q: UseQueryResult<YTRewards | null>) => q.isLoading);
-  const isError = queries.every(
-    (q: UseQueryResult<YTRewards | null>) => q.isError || q.data === null
-  );
+  const isLoading = queries.some((q: YTRewardsQueryResult) => q.isLoading);
+  const isError = queries.every((q: YTRewardsQueryResult) => q.isError || q.data === null);
 
   // Aggregate results
   const data = useMemo((): PortfolioYTRewards | undefined => {
     if (isLoading) return undefined;
-
-    // Filter out null results (non-reward YT contracts)
-    const validResults = queries
-      .map((q: UseQueryResult<YTRewards | null>) => q.data)
-      .filter((r): r is YTRewards => r !== null && r !== undefined);
-
-    // Collect all rewards and aggregate by token
-    const rewardsByToken = new Map<string, bigint>();
-    const claimableYtAddresses: string[] = [];
-
-    for (const ytRewards of validResults) {
-      if (ytRewards.hasRewards) {
-        claimableYtAddresses.push(ytRewards.ytAddress);
-      }
-
-      for (const reward of ytRewards.rewards) {
-        if (reward.amount > 0n) {
-          const current = rewardsByToken.get(reward.tokenAddress) ?? 0n;
-          rewardsByToken.set(reward.tokenAddress, current + reward.amount);
-        }
-      }
-    }
-
-    // Convert map to array
-    const allRewards: YTAccruedReward[] = Array.from(rewardsByToken.entries()).map(
-      ([tokenAddress, amount]) => ({ tokenAddress, amount })
-    );
-
-    return {
-      byYt: validResults,
-      allRewards,
-      claimableYtAddresses,
-      hasAnyRewards: claimableYtAddresses.length > 0,
-      distinctTokenCount: allRewards.length,
-    };
+    return aggregatePortfolioYtRewards(getValidYtResults(queries));
   }, [queries, isLoading]);
 
   return {

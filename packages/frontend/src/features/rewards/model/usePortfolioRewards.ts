@@ -39,6 +39,8 @@ export interface PortfolioRewards {
   distinctTokenCount: number;
 }
 
+type SyRewardsQueryResult = UseQueryResult<SyRewards | null>;
+
 // Convert address to hex string
 function toAddressString(address: unknown): string {
   if (typeof address === 'string') {
@@ -99,6 +101,55 @@ async function fetchSyRewards(
   }
 }
 
+function getValidSyResults(queries: readonly SyRewardsQueryResult[]): SyRewards[] {
+  const validResults: SyRewards[] = [];
+  for (const query of queries) {
+    if (query.data !== null && query.data !== undefined) {
+      validResults.push(query.data);
+    }
+  }
+  return validResults;
+}
+
+function aggregateRewardsByToken(results: readonly SyRewards[]): AccruedReward[] {
+  const rewardsByToken = new Map<string, bigint>();
+
+  for (const syRewards of results) {
+    for (const reward of syRewards.rewards) {
+      if (reward.amount > 0n) {
+        const current = rewardsByToken.get(reward.tokenAddress) ?? 0n;
+        rewardsByToken.set(reward.tokenAddress, current + reward.amount);
+      }
+    }
+  }
+
+  return Array.from(rewardsByToken.entries()).map(([tokenAddress, amount]) => ({
+    tokenAddress,
+    amount,
+  }));
+}
+
+function getClaimableSyAddresses(results: readonly SyRewards[]): string[] {
+  const addresses: string[] = [];
+  for (const syRewards of results) {
+    if (syRewards.hasRewards) addresses.push(syRewards.syAddress);
+  }
+  return addresses;
+}
+
+function aggregatePortfolioRewards(results: readonly SyRewards[]): PortfolioRewards {
+  const allRewards = aggregateRewardsByToken(results);
+  const claimableSyAddresses = getClaimableSyAddresses(results);
+
+  return {
+    bySy: [...results],
+    allRewards,
+    claimableSyAddresses,
+    hasAnyRewards: claimableSyAddresses.length > 0,
+    distinctTokenCount: allRewards.length,
+  };
+}
+
 /**
  * Hook to fetch accrued rewards across multiple SY addresses.
  *
@@ -149,49 +200,13 @@ export function usePortfolioRewards(syAddresses: string[]): {
   });
 
   // Check if any query is loading
-  const isLoading = queries.some((q: UseQueryResult<SyRewards | null>) => q.isLoading);
-  const isError = queries.every(
-    (q: UseQueryResult<SyRewards | null>) => q.isError || q.data === null
-  );
+  const isLoading = queries.some((q: SyRewardsQueryResult) => q.isLoading);
+  const isError = queries.every((q: SyRewardsQueryResult) => q.isError || q.data === null);
 
   // Aggregate results
   const data = useMemo((): PortfolioRewards | undefined => {
     if (isLoading) return undefined;
-
-    // Filter out null results (non-reward SY contracts)
-    const validResults = queries
-      .map((q: UseQueryResult<SyRewards | null>) => q.data)
-      .filter((r): r is SyRewards => r !== null && r !== undefined);
-
-    // Collect all rewards and aggregate by token
-    const rewardsByToken = new Map<string, bigint>();
-    const claimableSyAddresses: string[] = [];
-
-    for (const syRewards of validResults) {
-      if (syRewards.hasRewards) {
-        claimableSyAddresses.push(syRewards.syAddress);
-      }
-
-      for (const reward of syRewards.rewards) {
-        if (reward.amount > 0n) {
-          const current = rewardsByToken.get(reward.tokenAddress) ?? 0n;
-          rewardsByToken.set(reward.tokenAddress, current + reward.amount);
-        }
-      }
-    }
-
-    // Convert map to array
-    const allRewards: AccruedReward[] = Array.from(rewardsByToken.entries()).map(
-      ([tokenAddress, amount]) => ({ tokenAddress, amount })
-    );
-
-    return {
-      bySy: validResults,
-      allRewards,
-      claimableSyAddresses,
-      hasAnyRewards: claimableSyAddresses.length > 0,
-      distinctTokenCount: allRewards.length,
-    };
+    return aggregatePortfolioRewards(getValidSyResults(queries));
   }, [queries, isLoading]);
 
   return {

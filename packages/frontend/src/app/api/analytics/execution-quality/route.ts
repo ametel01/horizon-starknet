@@ -124,7 +124,13 @@ function mapSwapToImpact(swap: SwapRow): SwapWithImpact {
 }
 
 function filterAndMapSwaps(swaps: SwapRow[], since: Date): SwapWithImpact[] {
-  return swaps.filter((swap) => swap.block_timestamp >= since).map(mapSwapToImpact);
+  const filtered: SwapWithImpact[] = [];
+  for (const swap of swaps) {
+    if (swap.block_timestamp >= since) {
+      filtered.push(mapSwapToImpact(swap));
+    }
+  }
+  return filtered;
 }
 
 // ----- Statistics Helpers -----
@@ -165,11 +171,17 @@ function createDistributionBuckets(): ImpactDistributionBucket[] {
   ];
 }
 
+function getDistributionBucketIndex(impactBps: number): number {
+  const thresholds = [5, 10, 25, 50, 100];
+  const index = thresholds.findIndex((threshold) => impactBps < threshold);
+  return index === -1 ? thresholds.length : index;
+}
+
 function buildDistribution(swaps: SwapWithImpact[]): ImpactDistributionBucket[] {
   const buckets = createDistributionBuckets();
 
   for (const swap of swaps) {
-    const bucket = buckets.find((b) => swap.impactBps >= b.minBps && swap.impactBps < b.maxBps);
+    const bucket = buckets[getDistributionBucketIndex(swap.impactBps)];
     if (bucket) bucket.count++;
   }
 
