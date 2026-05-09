@@ -72,7 +72,7 @@ function PreviewRow({
         {label}
         {tooltip && (
           <Tooltip content={tooltip}>
-            <InfoIcon className="h-3 w-3 opacity-60" />
+            <InfoIcon className="size-3 opacity-60" />
           </Tooltip>
         )}
       </span>
@@ -116,7 +116,7 @@ export function FeeRateBadge({
         className
       )}
     >
-      <PercentIcon className="h-3 w-3" />
+      <PercentIcon className="size-3" />
       {feeRatePercent} Fee
     </span>
   );
@@ -203,7 +203,7 @@ export function InterestClaimPreview({
               value={feeFormatted}
               tooltip={`${preview.feeRatePercent} fee sent to protocol treasury`}
               variant="warning"
-              icon={<MinusIcon className="h-3 w-3" />}
+              icon={<MinusIcon className="size-3" />}
             />
           )}
 
@@ -220,7 +220,7 @@ export function InterestClaimPreview({
         {/* Info note for significant fees */}
         {preview.feeAmount > 0n && preview.feeAmount > preview.netYield / 10n && (
           <div className="bg-warning/10 border-warning/30 flex items-start gap-2 rounded border p-2">
-            <AlertCircleIcon className="text-warning mt-0.5 h-4 w-4 shrink-0" />
+            <AlertCircleIcon className="text-warning mt-0.5 size-4 shrink-0" />
             <p className="text-warning text-xs">
               A {preview.feeRatePercent} protocol fee is applied to all yield claims.
             </p>

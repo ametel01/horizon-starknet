@@ -5,9 +5,9 @@ import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/p
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from '@shared/ui/recharts';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -69,23 +69,29 @@ export function TvlBreakdown({ className, height = 300 }: TvlBreakdownProps): Re
   const chartData = useMemo((): MarketTvlData[] => {
     if (markets.length === 0) return [];
 
-    return markets
-      .filter((market) => market.tvlSy > 0n)
-      .map((market, index) => {
-        const symbol = market.metadata?.yieldTokenSymbol;
-        const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
-        const price = getTokenPrice(priceAddr, prices);
-        const tvlNum = Number(fromWad(market.tvlSy));
-        return {
-          name: symbol ?? `Market ${String(index + 1)}`,
-          value: tvlNum * price, // Use USD for chart segments
-          valueUsd: tvlNum * price,
-          tvlBigInt: market.tvlSy,
-          address: market.address,
-          color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
-        };
-      })
-      .sort((a, b) => b.value - a.value); // Sort by TVL descending
+    const data: MarketTvlData[] = [];
+    for (const market of markets) {
+      if (market.tvlSy <= 0n) {
+        continue;
+      }
+
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      const price = getTokenPrice(priceAddr, prices);
+      const tvlNum = Number(fromWad(market.tvlSy));
+      const index = data.length;
+
+      data.push({
+        name: symbol ?? `Market ${String(index + 1)}`,
+        value: tvlNum * price, // Use USD for chart segments
+        valueUsd: tvlNum * price,
+        tvlBigInt: market.tvlSy,
+        address: market.address,
+        color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
+      });
+    }
+
+    return data.sort((a, b) => b.value - a.value); // Sort by TVL descending
   }, [markets, prices]);
 
   // Calculate total TVL in USD
@@ -164,7 +170,7 @@ export function TvlBreakdown({ className, height = 300 }: TvlBreakdownProps): Re
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value, name) => {
+              formatter={(_value: unknown, name: unknown) => {
                 const tooltipName = typeof name === 'string' ? name : String(name ?? '');
                 return [
                   formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.valueUsd ?? 0),
@@ -186,7 +192,7 @@ export function TvlBreakdown({ className, height = 300 }: TvlBreakdownProps): Re
           {chartData.map((market) => (
             <div key={market.address} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: market.color }} />
+                <div className="size-3 rounded-full" style={{ backgroundColor: market.color }} />
                 <span className="text-foreground">{market.name}</span>
               </div>
               <span className="text-muted-foreground font-mono">
@@ -222,23 +228,29 @@ export function TvlBreakdownCompact({ className, height = 200 }: TvlBreakdownPro
   const chartData = useMemo((): MarketTvlData[] => {
     if (markets.length === 0) return [];
 
-    return markets
-      .filter((market) => market.tvlSy > 0n)
-      .map((market, index) => {
-        const symbol = market.metadata?.yieldTokenSymbol;
-        const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
-        const price = getTokenPrice(priceAddr, prices);
-        const tvlNum = Number(fromWad(market.tvlSy));
-        return {
-          name: symbol ?? `Market ${String(index + 1)}`,
-          value: tvlNum * price,
-          valueUsd: tvlNum * price,
-          tvlBigInt: market.tvlSy,
-          address: market.address,
-          color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
-        };
-      })
-      .sort((a, b) => b.value - a.value);
+    const data: MarketTvlData[] = [];
+    for (const market of markets) {
+      if (market.tvlSy <= 0n) {
+        continue;
+      }
+
+      const symbol = market.metadata?.yieldTokenSymbol;
+      const priceAddr = getTokenAddressForPricing(symbol) ?? market.metadata?.underlyingAddress;
+      const price = getTokenPrice(priceAddr, prices);
+      const tvlNum = Number(fromWad(market.tvlSy));
+      const index = data.length;
+
+      data.push({
+        name: symbol ?? `Market ${String(index + 1)}`,
+        value: tvlNum * price,
+        valueUsd: tvlNum * price,
+        tvlBigInt: market.tvlSy,
+        address: market.address,
+        color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
+      });
+    }
+
+    return data.sort((a, b) => b.value - a.value);
   }, [markets, prices]);
 
   if (isLoading || pricesLoading) {
@@ -268,7 +280,7 @@ export function TvlBreakdownCompact({ className, height = 200 }: TvlBreakdownPro
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value, name) => {
+            formatter={(_value: unknown, name: unknown) => {
               const tooltipName = typeof name === 'string' ? name : String(name ?? '');
               return [
                 formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.valueUsd ?? 0),

@@ -60,7 +60,7 @@ export default function PrivacyPage(): React.ReactNode {
         href="/"
         className="text-muted-foreground hover:text-foreground mb-8 inline-flex items-center gap-1 text-sm"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back to Home
@@ -68,7 +68,7 @@ export default function PrivacyPage(): React.ReactNode {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-foreground text-3xl font-bold">Privacy Policy</h1>
+        <h1 className="text-foreground text-3xl font-semibold">Privacy Policy</h1>
         <p className="text-muted-foreground mt-2">Last updated: December 2024</p>
       </div>
 
@@ -226,13 +226,13 @@ export default function PrivacyPage(): React.ReactNode {
         <p>The interface may interact with:</p>
         <ul className="mt-4 ml-6 list-disc space-y-2">
           <li>
-            <strong>Wallet providers</strong> (Argent, Braavos) — governed by their own policies
+            <strong>Wallet providers</strong> (Argent, Braavos), governed by their own policies
           </li>
           <li>
-            <strong>RPC providers</strong> — to communicate with Starknet
+            <strong>RPC providers</strong>, to communicate with Starknet
           </li>
           <li>
-            <strong>Price oracles</strong> — for market data
+            <strong>Price oracles</strong>, for market data
           </li>
         </ul>
       </Section>

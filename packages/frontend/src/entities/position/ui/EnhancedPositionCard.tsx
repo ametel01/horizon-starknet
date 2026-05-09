@@ -118,7 +118,7 @@ function ChevronIcon({ isExpanded }: { isExpanded: boolean }): ReactNode {
   return (
     <svg
       className={cn(
-        'text-muted-foreground h-5 w-5 transition-transform',
+        'text-muted-foreground size-5 transition-transform',
         isExpanded && 'rotate-180'
       )}
       fill="none"

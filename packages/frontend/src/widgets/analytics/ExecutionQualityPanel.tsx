@@ -6,6 +6,7 @@ import {
   useExecutionQuality,
 } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
+import { useDelayedMount } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import {
@@ -21,6 +22,19 @@ import {
   TabsList,
   TabsTrigger,
 } from '@shared/ui';
+import { ClientDateText } from '@shared/ui/client-time';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from '@shared/ui/recharts';
 import {
   Activity,
   AlertTriangle,
@@ -36,19 +50,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { type ReactNode, useMemo, useReducer } from 'react';
 
 /**
  * Format basis points with appropriate precision
@@ -63,7 +65,7 @@ function formatBps(value: number): string {
 interface ExecutionQualityPanelProps {
   marketAddress: string;
   className?: string;
-  defaultDays?: number;
+  initialDays?: number;
 }
 
 /**
@@ -84,7 +86,7 @@ function DistributionTooltip({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="mb-2 flex items-center gap-2">
-        <BarChart3 className="text-primary h-4 w-4" />
+        <BarChart3 className="text-primary size-4" />
         <span className="text-foreground font-medium">{data.label}</span>
       </div>
       <div className="flex items-center justify-between gap-4 text-sm">
@@ -113,20 +115,20 @@ function TimeSeriesTooltiop({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="mb-2 flex items-center gap-2">
-        <Calendar className="text-muted-foreground h-4 w-4" />
+        <Calendar className="text-muted-foreground size-4" />
         <span className="text-foreground font-medium">{data.displayDate}</span>
       </div>
       <div className="space-y-1.5 text-sm">
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <span className="bg-primary h-2 w-2 rounded-full" />
+            <span className="bg-primary size-2 rounded-full" />
             Median
           </span>
           <span className="text-primary font-mono font-medium">{formatBps(data.medianBps)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <span className="bg-destructive h-2 w-2 rounded-full" />
+            <span className="bg-destructive size-2 rounded-full" />
             95th %ile
           </span>
           <span className="text-destructive font-mono font-medium">{formatBps(data.p95Bps)}</span>
@@ -154,7 +156,7 @@ function getQualityGrade(medianImpactBps: number): {
       label: 'Excellent',
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      icon: <CheckCircle className="h-4 w-4" />,
+      icon: <CheckCircle className="size-4" />,
     };
   }
   if (medianImpactBps < 15) {
@@ -162,7 +164,7 @@ function getQualityGrade(medianImpactBps: number): {
       label: 'Good',
       color: 'text-chart-2',
       bgColor: 'bg-chart-2/10',
-      icon: <TrendingUp className="h-4 w-4" />,
+      icon: <TrendingUp className="size-4" />,
     };
   }
   if (medianImpactBps < 30) {
@@ -170,14 +172,14 @@ function getQualityGrade(medianImpactBps: number): {
       label: 'Fair',
       color: 'text-chart-4',
       bgColor: 'bg-chart-4/10',
-      icon: <Activity className="h-4 w-4" />,
+      icon: <Activity className="size-4" />,
     };
   }
   return {
     label: 'Poor',
     color: 'text-destructive',
     bgColor: 'bg-destructive/10',
-    icon: <AlertTriangle className="h-4 w-4" />,
+    icon: <AlertTriangle className="size-4" />,
   };
 }
 
@@ -187,22 +189,17 @@ function getQualityGrade(medianImpactBps: number): {
  * Shows price impact distribution, statistics, and trends for a market.
  * This helps traders understand execution quality and liquidity depth.
  */
-export function ExecutionQualityPanel({
+export function ExecutionQualityPanel(props: ExecutionQualityPanelProps): ReactNode {
+  return useExecutionQualityPanelContent(props);
+}
+
+function useExecutionQualityPanelContent({
   marketAddress,
   className,
-  defaultDays = 30,
+  initialDays = 30,
 }: ExecutionQualityPanelProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
-  const [days, setDays] = useState(defaultDays);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 50);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+  const mounted = useDelayedMount(50);
+  const [days, setDays] = useReducer((_current: number, next: number) => next, initialDays);
 
   const { summary, distribution, timeSeries, recentSwaps, underlyingSymbol, isLoading, isError } =
     useExecutionQuality({ market: marketAddress, days });
@@ -237,7 +234,7 @@ export function ExecutionQualityPanel({
         {/* Header skeleton */}
         <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5 rounded" variant="shimmer" />
+            <Skeleton className="size-5 rounded" variant="shimmer" />
             <div className="space-y-1.5">
               <Skeleton className="h-5 w-36" variant="shimmer" />
               <Skeleton className="h-3 w-24" />
@@ -284,11 +281,11 @@ export function ExecutionQualityPanel({
         )}
       >
         <div className="flex items-center gap-2 border-b p-4">
-          <Gauge className="text-destructive h-5 w-5" />
+          <Gauge className="text-destructive size-5" />
           <span className="font-medium">Execution Quality</span>
         </div>
         <div className="py-8 text-center">
-          <AlertTriangle className="text-destructive mx-auto mb-2 h-8 w-8" />
+          <AlertTriangle className="text-destructive mx-auto mb-2 size-8" />
           <p className="text-destructive text-sm">Failed to load execution quality data</p>
         </div>
       </div>
@@ -307,11 +304,11 @@ export function ExecutionQualityPanel({
         )}
       >
         <div className="flex items-center gap-2 border-b p-4">
-          <Gauge className="text-primary h-5 w-5" />
+          <Gauge className="text-primary size-5" />
           <span className="font-medium">Execution Quality</span>
         </div>
         <div className="py-8 text-center">
-          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+          <Activity className="text-muted-foreground mx-auto mb-2 size-8" />
           <p className="text-muted-foreground text-sm">No swap data available for this market</p>
         </div>
       </div>
@@ -332,7 +329,7 @@ export function ExecutionQualityPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
-          <Gauge className="text-primary h-5 w-5" />
+          <Gauge className="text-primary size-5" />
           <div>
             <span className="font-medium">Execution Quality</span>
             <p className="text-muted-foreground text-xs">
@@ -378,7 +375,7 @@ export function ExecutionQualityPanel({
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="mb-1 flex items-center gap-1.5">
-              <TrendingUp className="text-primary h-3.5 w-3.5" />
+              <TrendingUp className="text-primary size-3.5" />
               <span className="text-muted-foreground text-xs">Median Impact</span>
             </div>
             <div className="text-primary font-mono text-lg font-semibold">
@@ -387,7 +384,7 @@ export function ExecutionQualityPanel({
           </div>
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="mb-1 flex items-center gap-1.5">
-              <AlertTriangle className="text-destructive h-3.5 w-3.5" />
+              <AlertTriangle className="text-destructive size-3.5" />
               <span className="text-muted-foreground text-xs">95th Percentile</span>
             </div>
             <div className="text-destructive font-mono text-lg font-semibold">
@@ -396,7 +393,7 @@ export function ExecutionQualityPanel({
           </div>
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="mb-1 flex items-center gap-1.5">
-              <Layers className="text-muted-foreground h-3.5 w-3.5" />
+              <Layers className="text-muted-foreground size-3.5" />
               <span className="text-muted-foreground text-xs">Avg Trade Size</span>
             </div>
             <div className="text-foreground font-mono text-lg font-semibold">
@@ -405,7 +402,7 @@ export function ExecutionQualityPanel({
           </div>
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="mb-1 flex items-center gap-1.5">
-              <Zap className="text-chart-4 h-3.5 w-3.5" />
+              <Zap className="text-chart-4 size-3.5" />
               <span className="text-muted-foreground text-xs">Max Impact</span>
             </div>
             <div className="text-chart-4 font-mono text-lg font-semibold">
@@ -418,15 +415,15 @@ export function ExecutionQualityPanel({
         <Tabs defaultValue="distribution">
           <TabsList className="mb-4">
             <TabsTrigger value="distribution" className="gap-1.5">
-              <BarChart3 className="h-3.5 w-3.5" />
+              <BarChart3 className="size-3.5" />
               Distribution
             </TabsTrigger>
             <TabsTrigger value="timeseries" className="gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5" />
+              <TrendingUp className="size-3.5" />
               Trend
             </TabsTrigger>
             <TabsTrigger value="recent" className="gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
+              <Clock className="size-3.5" />
               Recent
             </TabsTrigger>
           </TabsList>
@@ -530,18 +527,16 @@ export function ExecutionQualityPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {recentSwaps.slice(0, 10).map((swap, i) => (
+                  {recentSwaps.slice(0, 10).map((swap) => (
                     <tr
-                      key={i}
+                      key={swap.txHash}
                       className="hover:bg-muted/30 border-b transition-colors last:border-0"
                     >
-                      <td className="text-muted-foreground px-3 py-2 text-xs">
-                        {new Date(swap.timestamp).toLocaleString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                      <td
+                        className="text-muted-foreground px-3 py-2 text-xs"
+                        suppressHydrationWarning
+                      >
+                        <ClientDateText value={swap.timestamp} format="swap-timestamp" />
                       </td>
                       <td className="px-3 py-2">
                         <span
@@ -553,9 +548,9 @@ export function ExecutionQualityPanel({
                           )}
                         >
                           {swap.direction === 'buy_pt' ? (
-                            <ArrowUpRight className="h-3 w-3" />
+                            <ArrowUpRight className="size-3" />
                           ) : (
-                            <ArrowDownRight className="h-3 w-3" />
+                            <ArrowDownRight className="size-3" />
                           )}
                           {swap.direction === 'buy_pt' ? 'Buy PT' : 'Sell PT'}
                         </span>
@@ -585,7 +580,7 @@ export function ExecutionQualityPanel({
 
         {/* Interpretation note */}
         <div className="bg-muted/50 mt-4 flex items-start gap-2 rounded-lg p-3">
-          <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+          <Info className="text-muted-foreground mt-0.5 size-4 shrink-0" />
           <p className="text-muted-foreground text-xs">
             <strong>Execution Quality:</strong> Lower impact is better. Median under 10 bps is
             excellent. High impact on large trades may indicate thin liquidity depth.
@@ -623,18 +618,18 @@ export function ExecutionQualityBadge({
       ? {
           label: 'Low Impact',
           color: 'bg-primary/10 text-primary',
-          icon: <CheckCircle className="h-3 w-3" />,
+          icon: <CheckCircle className="size-3" />,
         }
       : summary.medianImpactBps < 15
         ? {
             label: 'Medium',
             color: 'bg-chart-2/10 text-chart-2',
-            icon: <Activity className="h-3 w-3" />,
+            icon: <Activity className="size-3" />,
           }
         : {
             label: 'High Impact',
             color: 'bg-destructive/10 text-destructive',
-            icon: <AlertTriangle className="h-3 w-3" />,
+            icon: <AlertTriangle className="size-3" />,
           };
 
   return (

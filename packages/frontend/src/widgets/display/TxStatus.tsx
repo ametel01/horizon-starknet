@@ -66,9 +66,9 @@ function SuccessCard({
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-primary/20 flex h-10 w-10 items-center justify-center rounded-full">
+            <div className="bg-primary/20 flex size-10 items-center justify-center rounded-full">
               <svg
-                className="text-primary animate-bounce-in h-6 w-6"
+                className="text-primary animate-slide-in-bottom size-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -93,7 +93,7 @@ function SuccessCard({
                   className="text-primary/80 hover:text-primary mt-1 inline-flex items-center gap-1 font-mono text-sm transition-colors hover:underline"
                 >
                   View on Explorer
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -292,7 +292,7 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'signing') {
     return (
       <div
-        className="bg-chart-1 h-5 w-5 animate-pulse rounded-full"
+        className="bg-chart-1 size-5 animate-pulse rounded-full"
         role="img"
         aria-label="Waiting for signature"
       />
@@ -302,7 +302,7 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'pending') {
     return (
       <div
-        className="border-muted-foreground h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"
+        className="border-muted-foreground size-5 animate-spin rounded-full border-2 border-t-transparent"
         role="img"
         aria-label="Transaction pending"
       />
@@ -312,7 +312,7 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'success') {
     return (
       <svg
-        className="text-primary h-5 w-5"
+        className="text-primary size-5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -327,7 +327,7 @@ function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'error') {
     return (
       <svg
-        className="text-destructive h-5 w-5"
+        className="text-destructive size-5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

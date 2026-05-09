@@ -36,7 +36,7 @@ export function TryItButton({
         className={cn(baseStyles, variantStyles[variant], className)}
       >
         {children}
-        <ArrowRight className="h-4 w-4" />
+        <ArrowRight className="size-4" />
       </a>
     );
   }
@@ -44,7 +44,7 @@ export function TryItButton({
   return (
     <Link href={href} className={cn(baseStyles, variantStyles[variant], className)}>
       {children}
-      <ArrowRight className="h-4 w-4" />
+      <ArrowRight className="size-4" />
     </Link>
   );
 }

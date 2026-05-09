@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, use } from 'react';
 
 /**
  * Context for CSP nonce
@@ -32,5 +32,5 @@ export function NonceProvider({ nonce, children }: NonceProviderProps): React.Re
  * ```
  */
 export function useNonce(): string | undefined {
-  return useContext(NonceContext);
+  return use(NonceContext);
 }

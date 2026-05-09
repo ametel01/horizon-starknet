@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@shared/lib/utils';
-import { memo, type ReactNode, useEffect, useRef, useState } from 'react';
+import { memo, type ReactNode, useEffect, useReducer, useRef } from 'react';
 
 export interface UseAnimatedNumberOptions {
   /** Duration of animation in ms */
@@ -33,7 +33,10 @@ export const easings = {
 export function useAnimatedNumber(value: number, options: UseAnimatedNumberOptions = {}): number {
   const { duration = 600, easing = easings.easeOut, delay = 0, decimals = 2 } = options;
 
-  const [displayValue, setDisplayValue] = useState(value);
+  const [displayValue, dispatchDisplayValue] = useReducer(
+    (_current: number, next: number) => next,
+    value
+  );
   const previousValue = useRef(value);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -50,7 +53,7 @@ export function useAnimatedNumber(value: number, options: UseAnimatedNumberOptio
 
     // Skip animation if no change or very small change
     if (Math.abs(delta) < 0.0001) {
-      setDisplayValue(value);
+      dispatchDisplayValue(value);
       previousValue.current = value;
       return;
     }
@@ -72,13 +75,13 @@ export function useAnimatedNumber(value: number, options: UseAnimatedNumberOptio
 
       // Round to specified decimals during animation for smoother display
       const roundedValue = Math.round(currentValue * 10 ** decimals) / 10 ** decimals;
-      setDisplayValue(roundedValue);
+      dispatchDisplayValue(roundedValue);
 
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
         // Ensure we end exactly on the target value
-        setDisplayValue(endValue);
+        dispatchDisplayValue(endValue);
         previousValue.current = endValue;
         startTimeRef.current = null;
       }
@@ -142,7 +145,10 @@ export const AnimatedNumber = memo(function AnimatedNumber({
   highlightChange = false,
 }: AnimatedNumberProps): ReactNode {
   const animatedValue = useAnimatedNumber(value, { duration, delay, easing });
-  const [isChanging, setIsChanging] = useState(false);
+  const [isChanging, dispatchIsChanging] = useReducer(
+    (_current: boolean, next: boolean) => next,
+    false
+  );
   const previousValue = useRef(value);
   const changeDirection = useRef<'up' | 'down' | null>(null);
 
@@ -150,11 +156,11 @@ export const AnimatedNumber = memo(function AnimatedNumber({
   useEffect(() => {
     if (highlightChange && value !== previousValue.current) {
       changeDirection.current = value > previousValue.current ? 'up' : 'down';
-      setIsChanging(true);
+      dispatchIsChanging(true);
       previousValue.current = value;
 
       const timer = setTimeout(() => {
-        setIsChanging(false);
+        dispatchIsChanging(false);
       }, duration);
 
       return () => {

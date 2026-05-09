@@ -242,7 +242,15 @@ export function useEnhancedPositions(
   const { data: prices } = usePrices(tokenAddresses);
 
   return useQuery({
-    queryKey: ['enhanced-positions', address, [...markets.map((m) => m.address)].sort().join(',')],
+    queryKey: [
+      'enhanced-positions',
+      address,
+      markets
+        .map((m) => m.address)
+        .slice()
+        .sort()
+        .join(','),
+    ],
     queryFn: async (): Promise<PortfolioSummary> => {
       if (!address || markets.length === 0 || !prices) {
         return {

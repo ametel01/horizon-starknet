@@ -1,6 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+
+const subscribeHydration = (): (() => void) => () => {
+  // Hydration snapshot is static; there is no external source to unsubscribe from.
+};
+const getClientHydrationSnapshot = (): boolean => true;
+const getServerHydrationSnapshot = (): boolean => false;
+
+export function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot
+  );
+}
 
 /**
  * Hook that returns true after a specified delay.

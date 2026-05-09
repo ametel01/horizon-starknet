@@ -106,7 +106,7 @@ function ChartSkeleton({
       {showHeader && (
         <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-4 rounded" variant="shimmer" />
+            <Skeleton className="size-4 rounded" variant="shimmer" />
             <Skeleton className="h-5 w-32" variant="shimmer" />
           </div>
           <Skeleton className="h-4 w-20" variant="shimmer" />
@@ -273,7 +273,7 @@ function StatCardSkeleton({
     >
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-4 w-4 rounded" />
+        <Skeleton className="size-4 rounded" />
       </div>
       <Skeleton className={cn('mt-3', compact ? 'h-6 w-20' : 'h-8 w-24')} variant="shimmer" />
     </div>
@@ -375,7 +375,7 @@ function ListSkeleton({
           className="flex items-center gap-3"
           style={{ animationDelay: `${String(i * 75)}ms` }}
         >
-          {showAvatar && <Skeleton className="h-10 w-10 shrink-0 rounded-full" variant="shimmer" />}
+          {showAvatar && <Skeleton className="size-10 shrink-0 rounded-full" variant="shimmer" />}
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-3/4" />
             {showSecondary && <Skeleton className="h-3 w-1/2" />}
@@ -414,7 +414,7 @@ function MarketCardSkeleton({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-full" variant="shimmer" />
+          <Skeleton className="size-10 rounded-full" variant="shimmer" />
           <div className="space-y-2">
             <Skeleton className="h-5 w-24" />
             <Skeleton className="h-4 w-16" />

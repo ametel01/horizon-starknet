@@ -5,8 +5,6 @@ import { cn } from '@shared/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -18,7 +16,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo, useReducer, useState } from 'react';
 
 /**
  * Format percentage with appropriate precision
@@ -53,8 +53,8 @@ interface ImpliedRateChartProps {
   height?: number;
   showExchangeRate?: boolean;
   showControls?: boolean;
-  defaultResolution?: Resolution;
-  defaultDays?: number;
+  initialResolution?: Resolution;
+  initialDays?: number;
 }
 
 interface ChartDataPoint {
@@ -146,12 +146,15 @@ export function ImpliedRateChart({
   height = 300,
   showExchangeRate = false,
   showControls = true,
-  defaultResolution = 'daily',
-  defaultDays = 30,
+  initialResolution = 'daily',
+  initialDays = 30,
 }: ImpliedRateChartProps): ReactNode {
-  const [resolution, setResolution] = useState<Resolution>(defaultResolution);
+  const [resolution, setResolution] = useReducer(
+    (_current: Resolution, next: Resolution) => next,
+    initialResolution
+  );
   const [viewMode, setViewMode] = useState<ViewMode>('line');
-  const [days, setDays] = useState(defaultDays);
+  const [days, setDays] = useReducer((_current: number, next: number) => next, initialDays);
 
   const {
     data: ratesData,
@@ -373,7 +376,7 @@ function LineChart({
       )}
       <Tooltip
         contentStyle={{ borderRadius: '8px' }}
-        formatter={(value, name) => {
+        formatter={(value: unknown, name: unknown) => {
           const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
           const tooltipName = typeof name === 'string' ? name : String(name ?? '');
           if (tooltipName === 'impliedRate') {
@@ -381,7 +384,9 @@ function LineChart({
           }
           return [numericValue.toFixed(4), 'Exchange Rate'];
         }}
-        labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
+        labelFormatter={(label: unknown) =>
+          typeof label === 'string' ? label : String(label ?? '')
+        }
       />
       <Area
         yAxisId="rate"
@@ -458,12 +463,14 @@ function OhlcChart({
       )}
       <Tooltip
         contentStyle={{ borderRadius: '8px' }}
-        formatter={(value, name) => {
+        formatter={(value: unknown, name: unknown) => {
           const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
           const tooltipName = typeof name === 'string' ? name : String(name ?? '');
           return [formatPercent(numericValue), OHLC_TOOLTIP_LABELS[tooltipName] ?? tooltipName];
         }}
-        labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
+        labelFormatter={(label: unknown) =>
+          typeof label === 'string' ? label : String(label ?? '')
+        }
       />
       {/* Wick (line from low to high) */}
       <Bar

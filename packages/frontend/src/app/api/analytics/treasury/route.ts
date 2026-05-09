@@ -228,31 +228,31 @@ async function fetchReserveFeeData(limit: number, days: number): Promise<Reserve
       ? thresholds.historyStart
       : thresholds.thirtyDaysAgo;
 
-  // DB-side aggregation for per-market totals (all-time)
-  const marketAggregates = await db
-    .select({
-      market: marketReserveFeeTransferred.market,
-      treasury: marketReserveFeeTransferred.treasury,
-      totalAmount: sql<string>`SUM(${marketReserveFeeTransferred.amount})`,
-      transferCount: sql<number>`COUNT(*)::int`,
-      lastTransfer: sql<Date>`MAX(${marketReserveFeeTransferred.block_timestamp})`,
-    })
-    .from(marketReserveFeeTransferred)
-    .groupBy(marketReserveFeeTransferred.market, marketReserveFeeTransferred.treasury);
-
-  // Query for recent transfers (limited to N most recent)
-  const recentTransfersRaw = await db
-    .select()
-    .from(marketReserveFeeTransferred)
-    .orderBy(desc(marketReserveFeeTransferred.block_timestamp))
-    .limit(limit);
-
-  // Query for time-based data (covers both 30-day totals and history period)
-  const recentData = await db
-    .select()
-    .from(marketReserveFeeTransferred)
-    .where(gte(marketReserveFeeTransferred.block_timestamp, dataQueryStart))
-    .orderBy(desc(marketReserveFeeTransferred.block_timestamp));
+  const [marketAggregates, recentTransfersRaw, recentData] = await Promise.all([
+    // DB-side aggregation for per-market totals (all-time)
+    db
+      .select({
+        market: marketReserveFeeTransferred.market,
+        treasury: marketReserveFeeTransferred.treasury,
+        totalAmount: sql<string>`SUM(${marketReserveFeeTransferred.amount})`,
+        transferCount: sql<number>`COUNT(*)::int`,
+        lastTransfer: sql<Date>`MAX(${marketReserveFeeTransferred.block_timestamp})`,
+      })
+      .from(marketReserveFeeTransferred)
+      .groupBy(marketReserveFeeTransferred.market, marketReserveFeeTransferred.treasury),
+    // Query for recent transfers (limited to N most recent)
+    db
+      .select()
+      .from(marketReserveFeeTransferred)
+      .orderBy(desc(marketReserveFeeTransferred.block_timestamp))
+      .limit(limit),
+    // Query for time-based data (covers both 30-day totals and history period)
+    db
+      .select()
+      .from(marketReserveFeeTransferred)
+      .where(gte(marketReserveFeeTransferred.block_timestamp, dataQueryStart))
+      .orderBy(desc(marketReserveFeeTransferred.block_timestamp)),
+  ]);
 
   // Format recent transfers
   const recentTransfers: ReserveFeeTransferEvent[] = recentTransfersRaw.map((row) => ({

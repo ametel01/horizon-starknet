@@ -159,19 +159,17 @@ export function RateHistoryTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="text-muted-foreground px-2 py-2 text-left font-medium">Date</th>
-                <th className="text-muted-foreground px-2 py-2 text-right font-medium">
-                  Rate (APY)
-                </th>
-                <th className="text-muted-foreground px-2 py-2 text-right font-medium">Change</th>
+                <th className="text-muted-foreground p-2 text-left font-medium">Date</th>
+                <th className="text-muted-foreground p-2 text-right font-medium">Rate (APY)</th>
+                <th className="text-muted-foreground p-2 text-right font-medium">Change</th>
                 {hasOhlcData && (
                   <>
-                    <th className="text-muted-foreground px-2 py-2 text-right font-medium">High</th>
-                    <th className="text-muted-foreground px-2 py-2 text-right font-medium">Low</th>
+                    <th className="text-muted-foreground p-2 text-right font-medium">High</th>
+                    <th className="text-muted-foreground p-2 text-right font-medium">Low</th>
                   </>
                 )}
                 {showExchangeRate && (
-                  <th className="text-muted-foreground px-2 py-2 text-right font-medium">
+                  <th className="text-muted-foreground p-2 text-right font-medium">
                     Exchange Rate
                   </th>
                 )}
@@ -180,13 +178,13 @@ export function RateHistoryTable({
             <tbody>
               {paginatedData.map((row) => (
                 <tr key={row.date} className="hover:bg-muted/50 border-b transition-colors">
-                  <td className="text-foreground px-2 py-2">{row.displayDate}</td>
-                  <td className="text-foreground px-2 py-2 text-right font-medium">
+                  <td className="text-muted-foreground p-2 text-left">{row.displayDate}</td>
+                  <td className="text-foreground p-2 text-right font-medium">
                     {formatPercent(row.impliedRatePercent)}
                   </td>
                   <td
                     className={cn(
-                      'px-2 py-2 text-right font-medium',
+                      'p-2 text-right font-medium',
                       row.change > 0
                         ? 'text-primary'
                         : row.change < 0
@@ -199,16 +197,16 @@ export function RateHistoryTable({
                   </td>
                   {hasOhlcData && (
                     <>
-                      <td className="text-foreground px-2 py-2 text-right">
+                      <td className="text-foreground p-2 text-right">
                         {row.ohlc ? formatPercent(row.ohlc.high) : '-'}
                       </td>
-                      <td className="text-foreground px-2 py-2 text-right">
+                      <td className="text-foreground p-2 text-right">
                         {row.ohlc ? formatPercent(row.ohlc.low) : '-'}
                       </td>
                     </>
                   )}
                   {showExchangeRate && (
-                    <td className="text-muted-foreground px-2 py-2 text-right">
+                    <td className="text-muted-foreground p-2 text-right">
                       {formatExchangeRate(row.exchangeRateNum)}
                     </td>
                   )}

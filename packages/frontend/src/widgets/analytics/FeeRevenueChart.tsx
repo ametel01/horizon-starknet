@@ -6,9 +6,6 @@ import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/p
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
-import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -19,7 +16,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
+import { type ReactNode, useMemo, useReducer } from 'react';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -38,7 +38,7 @@ type TimeRange = '7d' | '30d' | '90d';
 interface FeeRevenueChartProps {
   className?: string;
   height?: number;
-  defaultRange?: TimeRange;
+  initialRange?: TimeRange;
   /** Show time range controls */
   showControls?: boolean;
 }
@@ -58,10 +58,13 @@ interface ChartDataPoint {
 export function FeeRevenueChart({
   className,
   height = 300,
-  defaultRange = '30d',
+  initialRange = '30d',
   showControls = true,
 }: FeeRevenueChartProps): ReactNode {
-  const [range, setRange] = useState<TimeRange>(defaultRange);
+  const [range, setRange] = useReducer(
+    (_current: TimeRange, next: TimeRange) => next,
+    initialRange
+  );
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
 
@@ -274,7 +277,7 @@ export function FeeRevenueChart({
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
               cursor={false}
-              formatter={(value, name) => {
+              formatter={(value: unknown, name: unknown) => {
                 const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
                 const tooltipName = typeof name === 'string' ? name : String(name ?? '');
                 if (tooltipName === 'feesUsd') {
@@ -285,7 +288,9 @@ export function FeeRevenueChart({
                 }
                 return [String(value ?? ''), tooltipName];
               }}
-              labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
+              labelFormatter={(label: unknown) =>
+                typeof label === 'string' ? label : String(label ?? '')
+              }
             />
             <Bar dataKey="feesUsd" fill="var(--chart-2)" radius={[4, 4, 0, 0]} maxBarSize={40} />
           </BarChart>

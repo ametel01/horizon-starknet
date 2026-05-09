@@ -22,55 +22,55 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '100vh',
-            padding: '2rem',
-            fontFamily: 'system-ui, sans-serif',
-            backgroundColor: '#0a0a0a',
-            color: '#fafafa',
-          }}
-        >
-          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Something went wrong</h1>
-          <p
-            style={{
-              color: '#a1a1aa',
-              marginBottom: '2rem',
-              textAlign: 'center',
-              maxWidth: '400px',
-            }}
-          >
+        <style>{`
+          .global-error-shell {
+            align-items: center;
+            background: #0a0a0a;
+            color: #fafafa;
+            display: flex;
+            flex-direction: column;
+            font-family: system-ui, sans-serif;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+          }
+
+          .global-error-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+          }
+
+          .global-error-message {
+            color: #a1a1aa;
+            margin-bottom: 2rem;
+            max-width: 400px;
+            text-align: center;
+          }
+
+          .global-error-digest {
+            color: #71717a;
+            font-family: monospace;
+            font-size: 0.75rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .global-error-action {
+            background: #3b82f6;
+            border: 0;
+            border-radius: 0.5rem;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.75rem 1.5rem;
+          }
+        `}</style>
+        <div className="global-error-shell">
+          <h1 className="global-error-title">Something went wrong</h1>
+          <p className="global-error-message">
             An unexpected error occurred. Our team has been notified.
           </p>
-          {error.digest && (
-            <p
-              style={{
-                fontSize: '0.75rem',
-                color: '#71717a',
-                marginBottom: '1.5rem',
-                fontFamily: 'monospace',
-              }}
-            >
-              Error ID: {error.digest}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={reset}
-            style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
-          >
+          {error.digest && <p className="global-error-digest">Error ID: {error.digest}</p>}
+          <button type="button" onClick={reset} className="global-error-action">
             Try again
           </button>
         </div>

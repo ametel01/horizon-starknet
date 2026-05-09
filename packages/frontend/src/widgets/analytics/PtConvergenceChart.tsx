@@ -5,8 +5,6 @@ import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -16,7 +14,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo, useReducer } from 'react';
 
 /**
  * Format PT price with appropriate precision
@@ -40,7 +40,7 @@ interface PtConvergenceChartProps {
   className?: string;
   height?: number;
   showControls?: boolean;
-  defaultDays?: number;
+  initialDays?: number;
 }
 
 interface ChartDataPoint {
@@ -104,9 +104,9 @@ export function PtConvergenceChart({
   className,
   height = 300,
   showControls = true,
-  defaultDays = 90,
+  initialDays = 90,
 }: PtConvergenceChartProps): ReactNode {
-  const [days, setDays] = useState(defaultDays);
+  const [days, setDays] = useReducer((_current: number, next: number) => next, initialDays);
 
   const {
     dataPoints,

@@ -33,7 +33,7 @@ function Tooltip({ content, children }: TooltipProps): ReactNode {
 
 function InfoIcon({ className }: { className?: string }): ReactNode {
   return (
-    <svg className={cn('h-3 w-3', className)} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={cn('size-3', className)} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

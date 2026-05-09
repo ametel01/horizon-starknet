@@ -81,14 +81,13 @@ export function TableOfContents(): React.ReactNode {
       <ul className="border-border space-y-1 border-l text-sm">
         {headings.map((heading) => (
           <li key={heading.id}>
-            <a
-              href={`#${heading.id}`}
+            <button
+              type="button"
               className={cn(
-                'text-muted-foreground hover:text-foreground -ml-px block border-l py-1 pl-3 transition-colors',
+                'text-muted-foreground hover:text-foreground -ml-px block w-full border-l py-1 pl-3 text-left transition-colors',
                 activeId === heading.id ? 'border-primary text-foreground' : 'border-transparent'
               )}
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={() => {
                 const element = document.getElementById(heading.id);
                 if (element) {
                   element.scrollIntoView({ behavior: 'smooth' });
@@ -97,7 +96,7 @@ export function TableOfContents(): React.ReactNode {
               }}
             >
               {heading.text}
-            </a>
+            </button>
           </li>
         ))}
       </ul>

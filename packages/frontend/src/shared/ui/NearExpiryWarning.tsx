@@ -68,13 +68,16 @@ const SEVERITY_ICONS: Record<Severity, typeof InfoIcon> = {
 function getSeverity(days: number, thresholds: ExpiryThreshold[]): Severity | null {
   // Find the most severe applicable threshold
   // Thresholds should be sorted descending by days (7, 3, 1)
-  for (const threshold of thresholds) {
+  for (let index = 0; index < thresholds.length; index += 1) {
+    const threshold = thresholds[index];
+    if (!threshold) {
+      continue;
+    }
     if (days <= threshold.days) {
       // Continue checking for more severe thresholds
       continue;
     }
     // Found the first threshold that days exceed - return the previous severity
-    const index = thresholds.indexOf(threshold);
     if (index > 0) {
       return thresholds[index - 1]?.severity ?? null;
     }

@@ -42,7 +42,7 @@ export function Callout({ type = 'info', title, children }: CalloutProps): React
   return (
     <div className={cn('my-4 rounded-lg border p-4', config.containerClass)}>
       <div className="flex gap-3">
-        <Icon className={cn('mt-0.5 h-5 w-5 shrink-0', config.iconClass)} />
+        <Icon className={cn('mt-0.5 size-5 shrink-0', config.iconClass)} />
         <div className="min-w-0 flex-1">
           {title && <p className="text-foreground mb-1 font-medium">{title}</p>}
           <div className="text-muted-foreground text-sm [&>p]:mb-0">{children}</div>

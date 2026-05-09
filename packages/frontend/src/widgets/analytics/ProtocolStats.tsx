@@ -108,7 +108,7 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
         numericValue={tvlUsd}
         valueFormatter={formatUsdCompact}
         delta={`${String(stats.marketCount)} markets`}
-        icon={<DollarSign className="h-4 w-4" />}
+        icon={<DollarSign className="size-4" />}
         compact
         animationDelay={0}
       />
@@ -116,7 +116,7 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
         label="24h Volume"
         numericValue={volumeUsd}
         valueFormatter={formatUsdCompact}
-        icon={<TrendingUp className="h-4 w-4" />}
+        icon={<TrendingUp className="size-4" />}
         compact
         animationDelay={50}
       />
@@ -124,7 +124,7 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
         label="24h Swaps"
         numericValue={stats.swaps24h}
         valueFormatter={(v) => Math.round(v).toLocaleString()}
-        icon={<Activity className="h-4 w-4" />}
+        icon={<Activity className="size-4" />}
         compact
         animationDelay={100}
       />
@@ -143,7 +143,7 @@ export function ProtocolStats({ className }: ProtocolStatsProps): ReactNode {
           numericValue={stats.uniqueUsers24h}
           valueFormatter={(v) => Math.round(v).toLocaleString()}
           delta="24h"
-          icon={<Users className="h-4 w-4" />}
+          icon={<Users className="size-4" />}
           compact
           animationDelay={200}
         />

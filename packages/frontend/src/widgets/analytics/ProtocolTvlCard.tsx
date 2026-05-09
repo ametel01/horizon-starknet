@@ -5,9 +5,9 @@ import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/p
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Area, AreaChart, ResponsiveContainer } from '@shared/ui/recharts';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 /**
  * Format USD value with compact notation for large numbers

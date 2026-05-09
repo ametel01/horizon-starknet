@@ -2,6 +2,7 @@
 
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { useUIMode } from '@shared/theme/ui-mode-context';
@@ -9,7 +10,7 @@ import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { Button } from '@shared/ui/Button';
 import { Skeleton } from '@shared/ui/Skeleton';
 import Link from 'next/link';
-import { type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 /**
  * HeroSection - Immersive landing hero with animated gradient horizon
@@ -23,11 +24,7 @@ import { type ReactNode, useEffect, useState } from 'react';
  */
 export function HeroSection(): ReactNode {
   const { isSimple } = useUIMode();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   return (
     <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden">
@@ -150,12 +147,15 @@ function HeroStats(): ReactNode {
   const { markets, avgApy, isLoading } = useDashboardMarkets();
 
   // Get token addresses for USD pricing
-  const tokenAddresses = markets
-    .map(
-      (m) =>
-        getTokenAddressForPricing(m.metadata?.yieldTokenSymbol) ?? m.metadata?.underlyingAddress
-    )
-    .filter((addr): addr is string => addr !== undefined);
+  const tokenAddresses: string[] = [];
+  for (const market of markets) {
+    const address =
+      getTokenAddressForPricing(market.metadata?.yieldTokenSymbol) ??
+      market.metadata?.underlyingAddress;
+    if (address !== undefined) {
+      tokenAddresses.push(address);
+    }
+  }
 
   const { data: prices } = usePrices(tokenAddresses);
 
@@ -216,7 +216,7 @@ function StatOrb({ label, value, formatter, highlight = false }: StatOrbProps): 
       {/* Value container with glass effect */}
       <div
         className={cn(
-          'relative flex h-20 w-20 items-center justify-center rounded-full sm:h-24 sm:w-24',
+          'relative flex size-20 items-center justify-center rounded-full sm:h-24 sm:w-24',
           'border transition-all duration-300',
           highlight
             ? 'border-primary/30 bg-primary/5 group-hover:border-primary/50 group-hover:bg-primary/10'
@@ -257,7 +257,7 @@ function StatOrb({ label, value, formatter, highlight = false }: StatOrbProps): 
 function StatOrbSkeleton(): ReactNode {
   return (
     <div className="flex flex-col items-center">
-      <Skeleton className="h-20 w-20 rounded-full sm:h-24 sm:w-24" />
+      <Skeleton className="size-20 rounded-full sm:h-24 sm:w-24" />
       <Skeleton className="mt-3 h-3 w-16" />
     </div>
   );

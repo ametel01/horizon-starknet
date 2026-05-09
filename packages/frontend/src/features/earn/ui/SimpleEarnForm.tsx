@@ -193,7 +193,7 @@ export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): Reac
       <FormDivider>
         <div className="bg-muted rounded-full p-2">
           <svg
-            className="text-muted-foreground h-4 w-4"
+            className="text-muted-foreground size-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

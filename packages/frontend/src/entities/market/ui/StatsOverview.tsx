@@ -1,18 +1,15 @@
 'use client';
 
 import { useDashboardMarkets } from '@features/markets';
+import { useHydrated } from '@shared/hooks';
 import { formatWadCompact, fromWad } from '@shared/math/wad';
 import { StatCard, StatCardGrid, StatCardSkeleton } from '@shared/ui/StatCard';
 import { Layers, Percent, Vault } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 export function StatsOverview(): ReactNode {
   const { markets, totalTvl, avgApy, isLoading } = useDashboardMarkets();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Show skeleton on server and during initial client render to prevent hydration mismatch
   if (!mounted || isLoading) {
@@ -35,14 +32,14 @@ export function StatsOverview(): ReactNode {
         label="Total Markets"
         numericValue={markets.length}
         valueFormatter={(v) => String(Math.round(v))}
-        icon={<Layers className="h-4 w-4" />}
+        icon={<Layers className="size-4" />}
         animationDelay={0}
       />
       <StatCard
         label="Total TVL"
         numericValue={tvlNumber}
         valueFormatter={(v) => `${formatWadCompact(BigInt(Math.round(v * 1e18)))} SY`}
-        icon={<Vault className="h-4 w-4" />}
+        icon={<Vault className="size-4" />}
         animationDelay={50}
       />
       <StatCard
@@ -50,7 +47,7 @@ export function StatsOverview(): ReactNode {
         numericValue={apyNumber}
         valueFormatter={(v) => `${v.toFixed(2)}%`}
         trend="up"
-        icon={<Percent className="h-4 w-4" />}
+        icon={<Percent className="size-4" />}
         animationDelay={100}
       />
     </StatCardGrid>

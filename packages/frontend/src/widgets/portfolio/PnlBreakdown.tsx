@@ -7,9 +7,9 @@ import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from '@shared/ui/recharts';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation
@@ -51,7 +51,11 @@ interface PnlBreakdownProps {
  * Component that displays P&L breakdown showing realized vs unrealized gains/losses.
  * Combines historical data with current position values.
  */
-export function PnlBreakdown({
+export function PnlBreakdown(props: PnlBreakdownProps): ReactNode {
+  return usePnlBreakdownContent(props);
+}
+
+function usePnlBreakdownContent({
   className,
   showChart = true,
   chartHeight = 200,
@@ -311,7 +315,7 @@ export function PnlBreakdown({
                   </Pie>
                   <Tooltip
                     contentStyle={{ borderRadius: '8px' }}
-                    formatter={(value, name) => {
+                    formatter={(value: unknown, name: unknown) => {
                       const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
                       const tooltipName = typeof name === 'string' ? name : String(name ?? '');
                       const entry = chartData.find((d) => d.name === tooltipName);
@@ -324,10 +328,7 @@ export function PnlBreakdown({
               <div className="mt-2 flex flex-wrap justify-center gap-4 text-xs">
                 {chartData.map((entry) => (
                   <div key={entry.name} className="flex items-center gap-1">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: entry.color }}
-                    />
+                    <div className="size-3 rounded-full" style={{ backgroundColor: entry.color }} />
                     <span className="text-muted-foreground">{entry.name}</span>
                   </div>
                 ))}

@@ -154,7 +154,7 @@ export function StatCard({
                   trendConfig?.className ?? 'text-muted-foreground'
                 )}
               >
-                {trendConfig !== null && <trendConfig.icon className="h-3 w-3" />}
+                {trendConfig !== null && <trendConfig.icon className="size-3" />}
                 {delta}
               </span>
             )}

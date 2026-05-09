@@ -46,7 +46,7 @@ export default function TermsPage(): React.ReactNode {
         href="/"
         className="text-muted-foreground hover:text-foreground mb-8 inline-flex items-center gap-1 text-sm"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back to Home
@@ -54,7 +54,7 @@ export default function TermsPage(): React.ReactNode {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-foreground text-3xl font-bold">Terms of Service</h1>
+        <h1 className="text-foreground text-3xl font-semibold">Terms of Service</h1>
         <p className="text-muted-foreground mt-2">Last updated: December 2024</p>
       </div>
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { useIndexerHealth } from '@features/analytics';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { Badge } from '@shared/ui/badge';
-import { type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 interface IndexerStatusBannerProps {
   /** Only show when there are issues (default: true) */
@@ -20,11 +21,7 @@ export function IndexerStatusBanner({
   className,
 }: IndexerStatusBannerProps): ReactNode {
   const { data, isHealthy, isDegraded, lagBlocks, isLoading } = useIndexerHealth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Don't render during SSR or initial load
   if (!mounted || isLoading) {
@@ -118,7 +115,7 @@ export function IndexerStatusBanner({
 
 function AlertIcon(): ReactNode {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -131,7 +128,7 @@ function AlertIcon(): ReactNode {
 
 function WarningIcon(): ReactNode {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -144,7 +141,7 @@ function WarningIcon(): ReactNode {
 
 function CheckIcon(): ReactNode {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
   );

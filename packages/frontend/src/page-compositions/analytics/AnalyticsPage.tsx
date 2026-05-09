@@ -127,6 +127,10 @@ function CardSkeleton(): ReactNode {
 }
 
 export function AnalyticsPage(): ReactNode {
+  return useAnalyticsPageContent();
+}
+
+function useAnalyticsPageContent(): ReactNode {
   const { markets, avgApy } = useDashboardMarkets();
   const [selectedMarket, setSelectedMarket] = useState<string | undefined>(undefined);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -138,12 +142,15 @@ export function AnalyticsPage(): ReactNode {
   const marketAddress = selectedMarket ?? activeMarkets[0]?.address;
 
   // Get token addresses for USD pricing
-  const tokenAddresses = markets
-    .map(
-      (m) =>
-        getTokenAddressForPricing(m.metadata?.yieldTokenSymbol) ?? m.metadata?.underlyingAddress
-    )
-    .filter((addr): addr is string => addr !== undefined);
+  const tokenAddresses: string[] = [];
+  for (const market of markets) {
+    const address =
+      getTokenAddressForPricing(market.metadata?.yieldTokenSymbol) ??
+      market.metadata?.underlyingAddress;
+    if (address !== undefined) {
+      tokenAddresses.push(address);
+    }
+  }
 
   const { data: prices } = usePrices(tokenAddresses);
 
@@ -168,7 +175,7 @@ export function AnalyticsPage(): ReactNode {
           href="/"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -341,7 +348,7 @@ export function AnalyticsPage(): ReactNode {
           </div>
           <ChevronDown
             className={cn(
-              'text-muted-foreground h-5 w-5 transition-transform',
+              'text-muted-foreground size-5 transition-transform',
               advancedOpen && 'rotate-180'
             )}
           />

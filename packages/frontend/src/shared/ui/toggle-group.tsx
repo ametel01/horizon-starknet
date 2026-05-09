@@ -6,6 +6,7 @@ import { cn } from '@shared/lib/utils';
 import { toggleVariants } from '@shared/ui/toggle';
 import type { VariantProps } from 'class-variance-authority';
 import * as React from 'react';
+import { use } from 'react';
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
@@ -60,7 +61,7 @@ function ToggleGroupItem({
   size = 'default',
   ...props
 }: TogglePrimitive.Props & VariantProps<typeof toggleVariants>): React.JSX.Element {
-  const context = React.useContext(ToggleGroupContext);
+  const context = use(ToggleGroupContext);
 
   return (
     <TogglePrimitive

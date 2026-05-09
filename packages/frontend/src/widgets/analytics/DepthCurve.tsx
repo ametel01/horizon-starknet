@@ -4,9 +4,6 @@ import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { calcSwapExactPtForSy, calcSwapExactSyForPt, type MarketState } from '@shared/math/amm';
 import { formatWadCompact, WAD_BIGINT } from '@shared/math/wad';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
-import { Activity, Gauge, Info, Layers, TrendingUp } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -17,7 +14,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
+import { Activity, Gauge, Info, Layers, TrendingUp } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 /**
  * Format basis points
@@ -53,14 +53,14 @@ function DepthTooltip({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="mb-2 flex items-center gap-2">
-        <Gauge className="text-muted-foreground h-4 w-4" />
+        <Gauge className="text-muted-foreground size-4" />
         <span className="text-foreground font-medium">{data.percent.toFixed(1)}% of TVL</span>
       </div>
       <div className="space-y-1.5 text-sm">
         {data.buyImpact !== null && (
           <div className="flex items-center justify-between gap-4">
             <span className="text-muted-foreground flex items-center gap-1.5">
-              <span className="bg-primary h-2 w-2 rounded-full" />
+              <span className="bg-primary size-2 rounded-full" />
               Buy PT
             </span>
             <span className="text-primary font-mono font-medium">{formatBps(data.buyImpact)}</span>
@@ -69,7 +69,7 @@ function DepthTooltip({
         {data.sellImpact !== null && (
           <div className="flex items-center justify-between gap-4">
             <span className="text-muted-foreground flex items-center gap-1.5">
-              <span className="bg-chart-2 h-2 w-2 rounded-full" />
+              <span className="bg-chart-2 size-2 rounded-full" />
               Sell PT
             </span>
             <span className="text-chart-2 font-mono font-medium">{formatBps(data.sellImpact)}</span>
@@ -311,11 +311,11 @@ export function DepthCurve({
         )}
       >
         <div className="flex items-center gap-2 border-b p-4">
-          <Layers className="text-primary h-5 w-5" />
+          <Layers className="text-primary size-5" />
           <span className="font-medium">Depth Curve</span>
         </div>
         <div className="py-8 text-center">
-          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+          <Activity className="text-muted-foreground mx-auto mb-2 size-8" />
           <p className="text-muted-foreground text-sm">No liquidity data available</p>
         </div>
       </div>
@@ -334,7 +334,7 @@ export function DepthCurve({
       {/* Header */}
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
-          <Layers className="text-primary h-5 w-5" />
+          <Layers className="text-primary size-5" />
           <div>
             <span className="font-medium">Depth Curve</span>
             <p className="text-muted-foreground text-xs">
@@ -353,7 +353,7 @@ export function DepthCurve({
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="mb-1 flex items-center gap-1.5">
-              <TrendingUp className="text-primary h-3.5 w-3.5" />
+              <TrendingUp className="text-primary size-3.5" />
               <span className="text-muted-foreground text-xs">50 bps slippage at</span>
             </div>
             <div className="text-primary font-mono text-lg font-semibold">
@@ -363,7 +363,7 @@ export function DepthCurve({
           </div>
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="mb-1 flex items-center gap-1.5">
-              <Activity className="text-chart-2 h-3.5 w-3.5" />
+              <Activity className="text-chart-2 size-3.5" />
               <span className="text-muted-foreground text-xs">100 bps slippage at</span>
             </div>
             <div className="text-chart-2 font-mono text-lg font-semibold">
@@ -469,7 +469,7 @@ export function DepthCurve({
 
         {/* Educational note */}
         <div className="bg-muted/50 mt-4 flex items-start gap-2 rounded-lg p-3">
-          <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+          <Info className="text-muted-foreground mt-0.5 size-4 shrink-0" />
           <p className="text-muted-foreground text-xs">
             <strong>Depth Curve:</strong> Shows how price impact increases with trade size. Lower
             curves indicate deeper liquidity. Use this to plan trade sizing and expected slippage.
@@ -509,17 +509,17 @@ export function DepthIndicator({ marketAddress, className }: DepthIndicatorProps
 
   const depth =
     slippage50bpsSize >= 5
-      ? { label: 'Deep', color: 'bg-primary/10 text-primary', icon: <Layers className="h-3 w-3" /> }
+      ? { label: 'Deep', color: 'bg-primary/10 text-primary', icon: <Layers className="size-3" /> }
       : slippage50bpsSize >= 2
         ? {
             label: 'Medium',
             color: 'bg-chart-2/10 text-chart-2',
-            icon: <Activity className="h-3 w-3" />,
+            icon: <Activity className="size-3" />,
           }
         : {
             label: 'Shallow',
             color: 'bg-destructive/10 text-destructive',
-            icon: <TrendingUp className="h-3 w-3" />,
+            icon: <TrendingUp className="size-3" />,
           };
 
   return (

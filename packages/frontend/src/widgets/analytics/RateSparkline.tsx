@@ -3,10 +3,10 @@
 import { useMarketRates } from '@features/markets';
 import { useDelayedMount } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
+import { Area, AreaChart, ResponsiveContainer } from '@shared/ui/recharts';
 import { Skeleton, SparklineSkeleton, StatCardSkeleton } from '@shared/ui/Skeleton';
 import { ArrowDown, ArrowUp, Minus, TrendingUp } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 /**
  * Format percentage with appropriate precision
@@ -77,7 +77,7 @@ export function RateSparkline({
         className={cn('bg-muted/50 flex items-center justify-center rounded', className)}
         style={{ width: typeof width === 'number' ? width : undefined, height }}
       >
-        <Minus className="text-muted-foreground h-3 w-3" />
+        <Minus className="text-muted-foreground size-3" />
       </div>
     );
   }
@@ -127,7 +127,7 @@ export function RateSparkline({
                 isPositive ? 'text-primary' : 'text-destructive'
               )}
             >
-              {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+              {isPositive ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
               {formatPercent(Math.abs(ratesData.rateChange24h))}
             </span>
           )}
@@ -184,7 +184,7 @@ export function RateSparklineLarge({
         className={cn('bg-muted/50 flex w-full items-center justify-center rounded', className)}
         style={{ height }}
       >
-        <Minus className="text-muted-foreground h-4 w-4" />
+        <Minus className="text-muted-foreground size-4" />
         <span className="text-muted-foreground ml-1 text-xs">No data</span>
       </div>
     );
@@ -298,7 +298,7 @@ export function RateBadgeWithSparkline({
             isPositive ? 'text-primary' : 'text-destructive'
           )}
         >
-          {isPositive ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
+          {isPositive ? <ArrowUp className="size-2.5" /> : <ArrowDown className="size-2.5" />}
           {formatPercent(Math.abs(ratesData.rateChange24h))}
         </span>
       </div>
@@ -346,7 +346,7 @@ export function RateSparklineCard({
           className
         )}
       >
-        <Minus className="text-muted-foreground h-4 w-4" />
+        <Minus className="text-muted-foreground size-4" />
         <span className="text-muted-foreground ml-1 text-sm">No rate data</span>
       </div>
     );
@@ -390,7 +390,7 @@ export function RateSparklineCard({
       {/* Content */}
       <div className="relative z-10">
         <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs">
-          <TrendingUp className="h-3.5 w-3.5" />
+          <TrendingUp className="size-3.5" />
           {label}
         </div>
         <div className="flex items-baseline gap-2">
@@ -403,11 +403,7 @@ export function RateSparklineCard({
               isPositive ? 'text-primary' : 'text-destructive'
             )}
           >
-            {isPositive ? (
-              <ArrowUp className="h-3.5 w-3.5" />
-            ) : (
-              <ArrowDown className="h-3.5 w-3.5" />
-            )}
+            {isPositive ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
             {formatPercent(Math.abs(ratesData.rateChange24h))}
           </span>
         </div>

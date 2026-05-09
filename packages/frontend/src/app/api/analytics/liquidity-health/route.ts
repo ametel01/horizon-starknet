@@ -297,15 +297,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(createEmptyResponse(now, since) satisfies LiquidityHealthResponse);
     }
 
-    const marketHealths: MarketLiquidityHealth[] = [];
+    const marketHealths = (
+      await Promise.all(markets.map((market) => processMarket(market, since)))
+    ).filter((health): health is MarketLiquidityHealth => health !== null);
     const totals: ProtocolTotals = { tvlSy: 0n, volume24hSy: 0n, spreadBps: 0, healthScore: 0 };
 
-    for (const market of markets) {
-      const health = await processMarket(market, since);
-      if (health) {
-        marketHealths.push(health);
-        accumulateTotals(health, totals);
-      }
+    for (const health of marketHealths) {
+      accumulateTotals(health, totals);
     }
 
     marketHealths.sort((a, b) => b.healthScore - a.healthScore);

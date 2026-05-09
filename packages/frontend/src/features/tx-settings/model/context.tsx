@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, use, useCallback, useEffect, useState } from 'react';
 
 /**
  * Transaction Settings Context
@@ -192,7 +192,7 @@ export function TransactionSettingsProvider({
 // ============================================================================
 
 export function useTransactionSettings(): TransactionSettingsContextValue {
-  const context = useContext(TransactionSettingsContext);
+  const context = use(TransactionSettingsContext);
   if (!context) {
     throw new Error('useTransactionSettings must be used within a TransactionSettingsProvider');
   }

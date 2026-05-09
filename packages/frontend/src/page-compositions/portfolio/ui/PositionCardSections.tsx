@@ -50,7 +50,7 @@ export function LpPositionSection({ position, symbols }: LpPositionSectionProps)
       </div>
       <div className="bg-background/50 mt-3 rounded-lg p-3">
         <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -417,7 +417,7 @@ export function PositionCardHeader({
 function ChevronIcon({ isExpanded }: { isExpanded: boolean }): ReactNode {
   return (
     <svg
-      className={`text-muted-foreground h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+      className={`text-muted-foreground size-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"

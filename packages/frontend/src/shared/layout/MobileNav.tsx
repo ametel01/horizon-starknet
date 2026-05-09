@@ -42,7 +42,7 @@ function NavItem({ href, icon, label, isActive, primary }: NavItemProps): ReactN
     >
       <div
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
+          'flex size-8 items-center justify-center rounded-xl transition-all',
           isActive && 'bg-primary/10 shadow-glow-primary-sm',
           primary && !isActive && 'bg-primary/5'
         )}
@@ -77,7 +77,7 @@ export function MobileNav(): ReactNode {
   const navItems = [
     {
       href: '/',
-      icon: <Home className="h-5 w-5" />,
+      icon: <Home className="size-5" />,
       label: isSimple ? 'Markets' : 'Home',
     },
     ...(isSimple
@@ -85,13 +85,13 @@ export function MobileNav(): ReactNode {
       : [
           {
             href: '/trade',
-            icon: <ArrowRightLeft className="h-5 w-5" />,
+            icon: <ArrowRightLeft className="size-5" />,
             label: 'Trade',
           },
         ]),
     {
       href: '/mint',
-      icon: <PlusCircle className="h-5 w-5" />,
+      icon: <PlusCircle className="size-5" />,
       label: isSimple ? 'Earn' : 'Mint',
       primary: true, // Center action button
     },
@@ -100,13 +100,13 @@ export function MobileNav(): ReactNode {
       : [
           {
             href: '/pools',
-            icon: <Droplets className="h-5 w-5" />,
+            icon: <Droplets className="size-5" />,
             label: 'Pools',
           },
         ]),
     {
       href: '/portfolio',
-      icon: <Wallet className="h-5 w-5" />,
+      icon: <Wallet className="size-5" />,
       label: 'Portfolio',
     },
   ];

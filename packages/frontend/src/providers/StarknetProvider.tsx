@@ -9,7 +9,7 @@ import {
   type WalletConnection,
 } from '@shared/starknet/wallet';
 import type { StarknetWindowObject } from '@starknet-io/get-starknet';
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useReducer } from 'react';
 import type { RpcProvider } from 'starknet';
 
 export interface StarknetContextValue {
@@ -35,14 +35,53 @@ interface StarknetProviderProps {
   children: React.ReactNode;
 }
 
-export function StarknetProvider({ children }: StarknetProviderProps): React.ReactNode {
-  const [network] = useState<NetworkId>(getNetworkId);
-  const [provider] = useState<RpcProvider>(() => createProvider(network));
+interface WalletState {
+  wallet: StarknetWindowObject | null;
+  address: string | null;
+  chainId: string | null;
+  isConnecting: boolean;
+}
 
-  const [wallet, setWallet] = useState<StarknetWindowObject | null>(null);
-  const [address, setAddress] = useState<string | null>(null);
-  const [chainId, setChainId] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+type WalletAction =
+  | { type: 'connecting'; value: boolean }
+  | { type: 'connected'; wallet: StarknetWindowObject; address: string; chainId: string }
+  | { type: 'address-changed'; address: string }
+  | { type: 'network-changed'; chainId: string }
+  | { type: 'disconnected' };
+
+const EMPTY_WALLET_STATE: WalletState = {
+  wallet: null,
+  address: null,
+  chainId: null,
+  isConnecting: false,
+};
+
+function walletReducer(state: WalletState, action: WalletAction): WalletState {
+  switch (action.type) {
+    case 'connecting':
+      return { ...state, isConnecting: action.value };
+    case 'connected':
+      return {
+        wallet: action.wallet,
+        address: action.address,
+        chainId: action.chainId,
+        isConnecting: false,
+      };
+    case 'address-changed':
+      return { ...state, address: action.address };
+    case 'network-changed':
+      return { ...state, chainId: action.chainId };
+    case 'disconnected':
+      return EMPTY_WALLET_STATE;
+  }
+}
+
+export function StarknetProvider({ children }: StarknetProviderProps): React.ReactNode {
+  const network = useMemo<NetworkId>(() => getNetworkId(), []);
+  const provider = useMemo<RpcProvider>(() => createProvider(network), [network]);
+
+  const [walletState, dispatchWallet] = useReducer(walletReducer, EMPTY_WALLET_STATE);
+  const { wallet, address, chainId, isConnecting } = walletState;
 
   const isConnected = address !== null;
 
@@ -52,16 +91,15 @@ export function StarknetProvider({ children }: StarknetProviderProps): React.Rea
 
     const handleAccountChange = (accounts?: string[]): void => {
       if (accounts?.[0]) {
-        setAddress(accounts[0]);
+        dispatchWallet({ type: 'address-changed', address: accounts[0] });
       } else {
-        setAddress(null);
-        setWallet(null);
+        dispatchWallet({ type: 'disconnected' });
       }
     };
 
     const handleNetworkChange = (newChainId?: string): void => {
       if (newChainId) {
-        setChainId(newChainId);
+        dispatchWallet({ type: 'network-changed', chainId: newChainId });
       }
     };
 
@@ -87,9 +125,12 @@ export function StarknetProvider({ children }: StarknetProviderProps): React.Rea
             const accounts = await getAccounts(silentWallet);
             if (accounts[0]) {
               const walletChainId = await getWalletChainId(silentWallet);
-              setWallet(silentWallet);
-              setAddress(accounts[0]);
-              setChainId(walletChainId);
+              dispatchWallet({
+                type: 'connected',
+                wallet: silentWallet,
+                address: accounts[0],
+                chainId: walletChainId,
+              });
             }
           } catch {
             // Wallet not ready or user hasn't approved
@@ -106,25 +147,26 @@ export function StarknetProvider({ children }: StarknetProviderProps): React.Rea
   const connect = useCallback(async (): Promise<void> => {
     if (isConnecting) return;
 
-    setIsConnecting(true);
+    dispatchWallet({ type: 'connecting', value: true });
     try {
       const connection: WalletConnection | null = await connectWallet();
 
       if (connection) {
-        setWallet(connection.wallet);
-        setAddress(connection.address);
-        setChainId(connection.chainId);
+        dispatchWallet({
+          type: 'connected',
+          wallet: connection.wallet,
+          address: connection.address,
+          chainId: connection.chainId,
+        });
       }
     } finally {
-      setIsConnecting(false);
+      dispatchWallet({ type: 'connecting', value: false });
     }
   }, [isConnecting]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     await disconnectWallet();
-    setWallet(null);
-    setAddress(null);
-    setChainId(null);
+    dispatchWallet({ type: 'disconnected' });
   }, []);
 
   const value = useMemo<StarknetContextValue>(

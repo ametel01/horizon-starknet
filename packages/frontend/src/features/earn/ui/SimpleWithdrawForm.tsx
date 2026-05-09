@@ -124,7 +124,11 @@ function deriveValidationError(
  * Pre-expiry: Requires equal PT and YT amounts
  * Post-expiry: Only requires PT
  */
-export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProps): ReactNode {
+export function SimpleWithdrawForm(props: SimpleWithdrawFormProps): ReactNode {
+  return useSimpleWithdrawFormContent(props);
+}
+
+function useSimpleWithdrawFormContent({ market, className }: SimpleWithdrawFormProps): ReactNode {
   const { isConnected, address } = useAccount();
   const { network } = useStarknet();
   const [amount, setAmount] = useState('');
@@ -367,7 +371,7 @@ export function SimpleWithdrawForm({ market, className }: SimpleWithdrawFormProp
       <FormDivider>
         <div className="bg-muted rounded-full p-2">
           <svg
-            className="text-muted-foreground h-4 w-4"
+            className="text-muted-foreground size-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

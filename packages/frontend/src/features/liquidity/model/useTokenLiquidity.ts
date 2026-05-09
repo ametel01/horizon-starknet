@@ -398,15 +398,17 @@ export function useAddLiquiditySingleTokenKeepYt(): UseAddLiquiditySingleTokenKe
       const { ytAddress } = params;
 
       // Cancel any outgoing refetches to prevent overwriting optimistic update
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', inputTokenAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.marketAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', ytAddress, address],
-      });
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', inputTokenAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.marketAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', ytAddress, address],
+        }),
+      ]);
 
       // Snapshot previous values for rollback
       const previousInputBalance = queryClient.getQueryData<string>([

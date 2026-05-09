@@ -8,7 +8,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
     // Headings with proper styling
     h1: ({ children }) => (
-      <h1 className="text-foreground mt-8 mb-4 text-3xl font-bold first:mt-0">{children}</h1>
+      <h1 className="text-foreground mt-8 mb-4 text-3xl font-semibold first:mt-0">
+        {children}
+      </h1>
     ),
     h2: ({ children }) => (
       <h2 className="text-foreground border-border mt-8 mb-4 border-b pb-2 text-2xl font-semibold">
@@ -80,7 +82,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
 
     // Blockquotes
     blockquote: ({ children }) => (
-      <blockquote className="border-border text-muted-foreground my-4 border-l-4 pl-4 italic">
+      <blockquote className="border-primary/25 text-muted-foreground my-4 border-l pl-4 italic">
         {children}
       </blockquote>
     ),

@@ -47,7 +47,7 @@ const RateItem = memo(function RateItem({
       <HoverCard>
         <HoverCardTrigger className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs transition-colors">
           <span>{label}</span>
-          <Info className="h-3 w-3 opacity-50" />
+          <Info className="size-3 opacity-50" />
         </HoverCardTrigger>
         <HoverCardContent side="top" align="start" className="w-56">
           <div className="space-y-1">

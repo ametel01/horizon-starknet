@@ -393,7 +393,7 @@ function matchPartialError(errorString: string, messageMap: Record<string, strin
   // Check for partial matches (case-insensitive)
   const lowerError = errorString.toLowerCase();
   for (const [key, value] of Object.entries(messageMap)) {
-    if (lowerError.includes(key.toLowerCase())) {
+    if (createLiteralPattern(key.toLowerCase()).test(lowerError)) {
       return value;
     }
   }
@@ -470,8 +470,9 @@ export function formatValidationError(error: string | null, isSimple: boolean): 
   if (!error) return null;
 
   if (isSimple) {
+    const lowerError = error.toLowerCase();
     for (const [key, value] of Object.entries(validationSimplifications)) {
-      if (error.toLowerCase().includes(key.toLowerCase())) {
+      if (createLiteralPattern(key.toLowerCase()).test(lowerError)) {
         return value;
       }
     }
@@ -591,11 +592,15 @@ const ADVANCED_HELP_PATTERNS: [string[], string][] = [
  */
 function matchHelpPattern(lowerError: string, patterns: [string[], string][]): string | null {
   for (const [keywords, helpText] of patterns) {
-    if (keywords.some((keyword) => lowerError.includes(keyword))) {
+    if (keywords.some((keyword) => createLiteralPattern(keyword).test(lowerError))) {
       return helpText;
     }
   }
   return null;
+}
+
+function createLiteralPattern(value: string): RegExp {
+  return new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 }
 
 /**

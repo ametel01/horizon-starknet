@@ -2,11 +2,9 @@
 
 import { usePtPriceHistory, useYieldCurve, type YieldCurveMarket } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { Badge } from '@shared/ui/badge';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
-import { Activity, Calendar, CircleDot, Clock, Coins, Layers, TrendingUp } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -19,7 +17,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
+import { Activity, Calendar, CircleDot, Clock, Coins, Layers, TrendingUp } from 'lucide-react';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Color palette for different underlying assets
@@ -99,7 +100,7 @@ function CustomTooltip({
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="mb-2 flex items-center gap-2">
         <div
-          className="h-2.5 w-2.5 rounded-full"
+          className="size-2.5 rounded-full"
           style={{ backgroundColor: getUnderlyingColor(market.underlyingSymbol) }}
         />
         <span className="font-semibold">{market.underlyingSymbol} Market</span>
@@ -107,7 +108,7 @@ function CustomTooltip({
       <div className="space-y-1.5 text-sm">
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <TrendingUp className="h-3 w-3" />
+            <TrendingUp className="size-3" />
             Implied APY
           </span>
           <span className="text-primary font-mono font-medium">
@@ -116,21 +117,21 @@ function CustomTooltip({
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <Clock className="h-3 w-3" />
+            <Clock className="size-3" />
             Time Left
           </span>
           <span className="font-mono">{formatTimeToExpiry(market.timeToExpiryYears)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <Calendar className="h-3 w-3" />
+            <Calendar className="size-3" />
             Days
           </span>
           <span className="font-mono">{Math.round(market.timeToExpiryDays)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <Coins className="h-3 w-3" />
+            <Coins className="size-3" />
             PT Price
           </span>
           <span className="font-mono">{market.ptPriceInSy.toFixed(4)} SY</span>
@@ -158,12 +159,12 @@ function ApyHistoryTooltip({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs">
-        <Calendar className="h-3 w-3" />
+        <Calendar className="size-3" />
         {data.date}
       </div>
       <div className="flex items-center justify-between gap-4 text-sm">
         <span className="text-muted-foreground flex items-center gap-1.5">
-          <TrendingUp className="h-3 w-3" />
+          <TrendingUp className="size-3" />
           Implied APY
         </span>
         <span className="text-primary font-mono font-medium">
@@ -192,7 +193,7 @@ function SingleMarketStats({
     <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
       <div className="text-center">
         <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-          <TrendingUp className="h-3 w-3" />
+          <TrendingUp className="size-3" />
           Current APY
         </div>
         <div className="text-primary font-mono text-lg font-semibold">
@@ -201,7 +202,7 @@ function SingleMarketStats({
       </div>
       <div className="text-center">
         <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-          <Coins className="h-3 w-3" />
+          <Coins className="size-3" />
           PT Price
         </div>
         <div className="text-foreground font-mono text-lg font-semibold">
@@ -210,7 +211,7 @@ function SingleMarketStats({
       </div>
       <div className="text-center">
         <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-          <Clock className="h-3 w-3" />
+          <Clock className="size-3" />
           Maturity
         </div>
         <div className="text-foreground font-mono text-lg font-semibold">
@@ -239,21 +240,21 @@ function TermStructureStats({
     <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
       <div className="text-center">
         <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-          <CircleDot className="h-3 w-3" />
+          <CircleDot className="size-3" />
           Active Markets
         </div>
         <div className="text-foreground font-mono text-lg font-semibold">{activeMarketsCount}</div>
       </div>
       <div className="text-center">
         <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-          <Layers className="h-3 w-3" />
+          <Layers className="size-3" />
           Underlyings
         </div>
         <div className="text-foreground font-mono text-lg font-semibold">{underlyingsCount}</div>
       </div>
       <div className="text-center">
         <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-          <TrendingUp className="h-3 w-3" />
+          <TrendingUp className="size-3" />
           Avg APY
         </div>
         <div className="text-primary font-mono text-lg font-semibold">
@@ -283,7 +284,7 @@ function ApyHistoryContent({ apyChartData, isLoading, height }: ApyHistoryConten
     return (
       <div className="flex h-[200px] items-center justify-center">
         <div className="text-center">
-          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+          <Activity className="text-muted-foreground mx-auto mb-2 size-8 opacity-50" />
           <p className="text-muted-foreground text-sm">
             Historical data is building up. Check back soon for APY trends.
           </p>
@@ -334,19 +335,19 @@ function ApyHistoryContent({ apyChartData, isLoading, height }: ApyHistoryConten
  *
  * When only one market exists, shows implied APY over time instead.
  */
-export function YieldCurveChart({
+export function YieldCurveChart(props: YieldCurveChartProps): ReactNode {
+  return useYieldCurveChartContent(props);
+}
+
+function useYieldCurveChartContent({
   className,
   height = 350,
   underlyings,
   showExpired = false,
 }: YieldCurveChartProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const { markets, isLoading, isError } = useYieldCurve();
   const { markets: dashboardMarkets } = useDashboardMarkets();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Build a map of market address to symbol from dashboard markets (static config)
   const addressToSymbol = useMemo(() => {
@@ -443,7 +444,7 @@ export function YieldCurveChart({
         className={cn('border-destructive/50 bg-card overflow-hidden rounded-xl border', className)}
       >
         <div className="py-8 text-center">
-          <Activity className="text-destructive mx-auto mb-2 h-8 w-8 opacity-50" />
+          <Activity className="text-destructive mx-auto mb-2 size-8 opacity-50" />
           <p className="text-destructive text-sm">Failed to load yield curve data</p>
         </div>
       </div>
@@ -455,11 +456,11 @@ export function YieldCurveChart({
     return (
       <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
         <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-          <Activity className="text-primary h-4 w-4" />
+          <Activity className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Yield Curve</h3>
         </div>
         <div className="py-8 text-center">
-          <CircleDot className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+          <CircleDot className="text-muted-foreground mx-auto mb-2 size-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No active markets available</p>
         </div>
       </div>
@@ -490,7 +491,7 @@ export function YieldCurveChart({
         {/* Header */}
         <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="text-primary h-4 w-4" />
+            <TrendingUp className="text-primary size-4" />
             <h3 className="text-foreground text-sm font-semibold">Implied APY History</h3>
             <Badge variant="live" className="text-[10px]">
               Live
@@ -498,7 +499,7 @@ export function YieldCurveChart({
           </div>
           <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
             <span
-              className="h-2 w-2 rounded-full"
+              className="size-2 rounded-full"
               style={{ backgroundColor: getUnderlyingColor(singleMarket.underlyingSymbol) }}
             />
             {singleMarket.underlyingSymbol} · {Math.round(singleMarket.timeToExpiryDays)}d
@@ -522,7 +523,7 @@ export function YieldCurveChart({
 
           {/* Info note */}
           <div className="bg-muted/30 mt-4 flex items-start gap-2 rounded-lg p-3">
-            <Activity className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <Activity className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
             <p className="text-muted-foreground text-xs">
               Term structure visualization requires multiple markets. Showing APY history for the
               single active market.
@@ -546,7 +547,7 @@ export function YieldCurveChart({
       {/* Header */}
       <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <Activity className="text-primary h-4 w-4" />
+          <Activity className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Term Structure</h3>
           <Badge variant="live" className="text-[10px]">
             Live
@@ -556,7 +557,7 @@ export function YieldCurveChart({
           {allUnderlyings.map((symbol) => (
             <span key={symbol} className="flex items-center gap-1">
               <span
-                className="h-2 w-2 rounded-full"
+                className="size-2 rounded-full"
                 style={{ backgroundColor: getUnderlyingColor(symbol) }}
               />
               {symbol}
@@ -657,9 +658,9 @@ export function YieldCurveCompact({ className }: { className?: string }): ReactN
   }
 
   // Sort by time to expiry and prepare data
-  const sortedMarkets = [...activeMarkets].sort(
-    (a, b) => a.timeToExpiryYears - b.timeToExpiryYears
-  );
+  const sortedMarkets = activeMarkets
+    .slice()
+    .sort((a, b) => a.timeToExpiryYears - b.timeToExpiryYears);
 
   const chartData = sortedMarkets.map((m) => ({
     x: m.timeToExpiryYears,

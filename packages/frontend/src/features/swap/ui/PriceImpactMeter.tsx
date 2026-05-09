@@ -1,5 +1,6 @@
 'use client';
 
+import { useDelayedMount } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import {
   formatPriceImpact,
@@ -7,7 +8,7 @@ import {
   type PriceImpactSeverity,
 } from '@shared/math/amm';
 import { Activity, AlertTriangle, CheckCircle, TrendingDown } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 interface PriceImpactMeterProps {
   impact: number;
@@ -31,7 +32,7 @@ function getSeverityConfig(severity: PriceImpactSeverity): {
   switch (severity) {
     case 'low':
       return {
-        icon: <CheckCircle className="h-4 w-4" />,
+        icon: <CheckCircle className="size-4" />,
         label: 'Minimal',
         color: 'text-primary',
         bgColor: 'bg-primary/10',
@@ -39,7 +40,7 @@ function getSeverityConfig(severity: PriceImpactSeverity): {
       };
     case 'medium':
       return {
-        icon: <Activity className="h-4 w-4" />,
+        icon: <Activity className="size-4" />,
         label: 'Moderate',
         color: 'text-warning',
         bgColor: 'bg-warning/10',
@@ -47,7 +48,7 @@ function getSeverityConfig(severity: PriceImpactSeverity): {
       };
     case 'high':
       return {
-        icon: <TrendingDown className="h-4 w-4" />,
+        icon: <TrendingDown className="size-4" />,
         label: 'High',
         color: 'text-destructive',
         bgColor: 'bg-destructive/10',
@@ -55,7 +56,7 @@ function getSeverityConfig(severity: PriceImpactSeverity): {
       };
     case 'very-high':
       return {
-        icon: <AlertTriangle className="h-4 w-4" />,
+        icon: <AlertTriangle className="size-4" />,
         label: 'Very High',
         color: 'text-destructive',
         bgColor: 'bg-destructive/20',
@@ -77,21 +78,8 @@ function ArcGauge({
   severity: PriceImpactSeverity;
   animated: boolean;
 }): ReactNode {
-  const [displayValue, setDisplayValue] = useState(animated ? 0 : value);
-
-  useEffect(() => {
-    if (animated) {
-      // Small delay to trigger the CSS transition
-      const timer = setTimeout(() => {
-        setDisplayValue(value);
-      }, 50);
-      return () => {
-        clearTimeout(timer);
-      };
-    }
-    setDisplayValue(value);
-    return undefined;
-  }, [value, animated]);
+  const isMounted = useDelayedMount(animated ? 50 : 0);
+  const displayValue = animated && !isMounted ? 0 : value;
 
   const config = getSeverityConfig(severity);
 
@@ -174,19 +162,8 @@ export function PriceImpactMeter({
   compact = false,
   animated = true,
 }: PriceImpactMeterProps): ReactNode {
-  const [mounted, setMounted] = useState(!animated);
-
-  useEffect(() => {
-    if (animated) {
-      const timer = setTimeout(() => {
-        setMounted(true);
-      }, 50);
-      return () => {
-        clearTimeout(timer);
-      };
-    }
-    return undefined;
-  }, [animated]);
+  const delayedMounted = useDelayedMount(animated ? 50 : 0);
+  const mounted = !animated || delayedMounted;
 
   const severity = getPriceImpactSeverity(impact);
   const config = useMemo(() => getSeverityConfig(severity), [severity]);

@@ -210,7 +210,12 @@ export function useMarkets(
 
   const isLoading = queries.some((q) => q.isLoading);
   const isError = queries.some((q) => q.isError);
-  const data = queries.map((q) => q.data).filter((d): d is MarketData => d !== undefined);
+  const data: MarketData[] = [];
+  for (const query of queries) {
+    if (query.data !== undefined) {
+      data.push(query.data);
+    }
+  }
 
   // Calculate totals
   const totalTvl = data.reduce((sum, m) => sum + m.tvlSy, BigInt(0));
@@ -233,7 +238,13 @@ export function useMarkets(
  */
 function getStaticMarketAddresses(network: NetworkId): string[] {
   const marketInfos = getMarketInfos(network);
-  return marketInfos.map((m) => m.marketAddress).filter((addr) => addr !== '' && addr !== '0x0');
+  const addresses: string[] = [];
+  for (const market of marketInfos) {
+    if (market.marketAddress !== '' && market.marketAddress !== '0x0') {
+      addresses.push(market.marketAddress);
+    }
+  }
+  return addresses;
 }
 
 /** Result type for paginated contract calls */
@@ -241,6 +252,7 @@ type PaginatedResult = { addresses: unknown[]; hasMore: boolean };
 
 /** Default empty result */
 const EMPTY_PAGINATED_RESULT: PaginatedResult = { addresses: [], hasMore: false };
+const ZERO_ADDRESS_FULL = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 /**
  * Try parsing array tuple format: [addresses[], hasMore]
@@ -301,6 +313,48 @@ function parsePaginatedResult(result: unknown): PaginatedResult {
   return EMPTY_PAGINATED_RESULT;
 }
 
+function extractMarketAddresses(result: unknown): string[] {
+  const parsed = parsePaginatedResult(result);
+  const addresses: string[] = [];
+
+  for (const rawAddress of parsed.addresses) {
+    const address = toHexAddress(rawAddress);
+    if (address !== '0x0' && address !== ZERO_ADDRESS_FULL) {
+      addresses.push(address);
+    }
+  }
+
+  return addresses;
+}
+
+function createPageOffsets(totalCount: number): number[] {
+  const pageCount = Math.ceil(totalCount / MARKETS_PAGE_SIZE);
+  return Array.from({ length: pageCount }, (_value, index) => index * MARKETS_PAGE_SIZE);
+}
+
+async function fetchPaginatedMarketAddresses(
+  provider: ProviderInterface,
+  network: NetworkId,
+  fetchPage: (offset: number, limit: number) => Promise<unknown>
+): Promise<string[]> {
+  const marketFactory = getMarketFactoryContract(provider, network);
+  const totalCount = Number(await marketFactory.get_market_count());
+  if (totalCount <= 0) return [];
+
+  const pages = await Promise.all(
+    createPageOffsets(totalCount).map((offset) => fetchPage(offset, MARKETS_PAGE_SIZE))
+  );
+  const addresses = new Set<string>();
+
+  for (const page of pages) {
+    for (const address of extractMarketAddresses(page)) {
+      addresses.add(address);
+    }
+  }
+
+  return Array.from(addresses);
+}
+
 /**
  * Fetch all active market addresses using pagination
  * @see Security Audit L-04 - Gas Exhaustion Prevention
@@ -310,38 +364,9 @@ async function fetchActiveMarketsPaginated(
   network: NetworkId
 ): Promise<string[]> {
   const marketFactory = getMarketFactoryContract(provider, network);
-  const allAddresses: string[] = [];
-  let offset = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    // Fetch a page of active markets
-    const result = await marketFactory.get_active_markets_paginated(offset, MARKETS_PAGE_SIZE);
-
-    // Parse the result (handles different starknet.js return formats)
-    const parsed = parsePaginatedResult(result);
-
-    const pageAddresses = parsed.addresses
-      .map(toHexAddress)
-      .filter(
-        (addr) =>
-          addr !== '0x0' &&
-          addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
-      );
-
-    allAddresses.push(...pageAddresses);
-
-    hasMore = parsed.hasMore;
-    offset += MARKETS_PAGE_SIZE;
-
-    // Safety limit to prevent infinite loops
-    if (offset > 1000) {
-      logWarn('Reached safety limit of 1000 markets', { module: 'useMarkets', offset });
-      break;
-    }
-  }
-
-  return allAddresses;
+  return fetchPaginatedMarketAddresses(provider, network, (offset, limit) =>
+    marketFactory.get_active_markets_paginated(offset, limit)
+  );
 }
 
 /**
@@ -414,36 +439,9 @@ async function fetchAllMarketsPaginated(
   network: NetworkId
 ): Promise<string[]> {
   const marketFactory = getMarketFactoryContract(provider, network);
-  const allAddresses: string[] = [];
-  let offset = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const result = await marketFactory.get_markets_paginated(offset, MARKETS_PAGE_SIZE);
-
-    // Parse the result (handles different starknet.js return formats)
-    const parsed = parsePaginatedResult(result);
-
-    const pageAddresses = parsed.addresses
-      .map(toHexAddress)
-      .filter(
-        (addr) =>
-          addr !== '0x0' &&
-          addr !== '0x0000000000000000000000000000000000000000000000000000000000000000'
-      );
-
-    allAddresses.push(...pageAddresses);
-
-    hasMore = parsed.hasMore;
-    offset += MARKETS_PAGE_SIZE;
-
-    if (offset > 1000) {
-      logWarn('Reached safety limit of 1000 markets (all)', { module: 'useMarkets', offset });
-      break;
-    }
-  }
-
-  return allAddresses;
+  return fetchPaginatedMarketAddresses(provider, network, (offset, limit) =>
+    marketFactory.get_markets_paginated(offset, limit)
+  );
 }
 
 /**

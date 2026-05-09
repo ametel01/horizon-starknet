@@ -3,11 +3,9 @@
 import { useProtocolTvl } from '@features/analytics';
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
-import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
-import { Calendar, CircleDot, DollarSign, Layers, Lock, TrendingUp } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -16,7 +14,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { ChartSkeleton, Skeleton } from '@shared/ui/Skeleton';
+import { Calendar, CircleDot, DollarSign, Layers, Lock, TrendingUp } from 'lucide-react';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -64,27 +65,27 @@ function CustomTooltip({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs">
-        <Calendar className="h-3 w-3" />
+        <Calendar className="size-3" />
         {data.displayDate}
       </div>
       <div className="space-y-1.5 text-sm">
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <Lock className="h-3 w-3" />
+            <Lock className="size-3" />
             Total TVL
           </span>
           <span className="text-primary font-mono font-medium">{formatUsdCompact(data.tvl)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <Layers className="h-3 w-3" />
+            <Layers className="size-3" />
             SY Reserve
           </span>
           <span className="font-mono">{formatUsdCompact(data.syReserve)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <CircleDot className="h-3 w-3" />
+            <CircleDot className="size-3" />
             PT Reserve
           </span>
           <span className="font-mono">{formatUsdCompact(data.ptReserve)}</span>
@@ -100,17 +101,13 @@ function CustomTooltip({
  * Falls back to on-chain data with USD conversion when indexer unavailable.
  */
 export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
 
   // Try to get historical data from indexer
   const { current: indexerCurrent, history, isLoading: indexerLoading } = useProtocolTvl({ days });
 
   // Fallback: get current on-chain data with USD pricing
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Get token addresses for pricing (for fallback mode)
   const tokenAddresses = useMemo(() => {
@@ -211,11 +208,11 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
     return (
       <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
         <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-          <Lock className="text-primary h-4 w-4" />
+          <Lock className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Total Value Locked</h3>
         </div>
         <div className="py-8 text-center">
-          <DollarSign className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+          <DollarSign className="text-muted-foreground mx-auto mb-2 size-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No TVL data available</p>
         </div>
       </div>
@@ -237,7 +234,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
         {/* Header */}
         <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
-            <Lock className="text-primary h-4 w-4" />
+            <Lock className="text-primary size-4" />
             <h3 className="text-foreground text-sm font-semibold">Total Value Locked</h3>
           </div>
         </div>
@@ -255,7 +252,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-muted/30 rounded-lg p-4 text-center">
               <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-                <Layers className="h-3 w-3" />
+                <Layers className="size-3" />
                 SY Reserve
               </div>
               <div className="text-foreground font-mono text-lg font-semibold">
@@ -264,7 +261,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
             </div>
             <div className="bg-muted/30 rounded-lg p-4 text-center">
               <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-                <CircleDot className="h-3 w-3" />
+                <CircleDot className="size-3" />
                 PT Reserve
               </div>
               <div className="text-foreground font-mono text-lg font-semibold">
@@ -273,7 +270,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
             </div>
             <div className="bg-muted/30 rounded-lg p-4 text-center">
               <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-                <TrendingUp className="h-3 w-3" />
+                <TrendingUp className="size-3" />
                 Markets
               </div>
               <div className="text-foreground font-mono text-lg font-semibold">
@@ -284,7 +281,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
 
           {/* Info note */}
           <div className="bg-muted/30 mt-4 flex items-start gap-2 rounded-lg p-3">
-            <Calendar className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <Calendar className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
             <p className="text-muted-foreground text-xs">
               Historical TVL chart will appear once more data points are available from the indexer.
             </p>
@@ -310,7 +307,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
       {/* Header */}
       <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <Lock className="text-primary h-4 w-4" />
+          <Lock className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Total Value Locked</h3>
         </div>
         <div className="text-primary font-mono text-sm font-semibold">
@@ -356,7 +353,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
         <div className="border-border/50 mt-4 grid grid-cols-3 gap-4 border-t pt-4">
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <Layers className="h-3 w-3" />
+              <Layers className="size-3" />
               SY Reserve
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">
@@ -365,7 +362,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
           </div>
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <CircleDot className="h-3 w-3" />
+              <CircleDot className="size-3" />
               PT Reserve
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">
@@ -374,7 +371,7 @@ export function TvlChart({ className, height = 300, days = 30 }: TvlChartProps):
           </div>
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <TrendingUp className="h-3 w-3" />
+              <TrendingUp className="size-3" />
               Markets
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">

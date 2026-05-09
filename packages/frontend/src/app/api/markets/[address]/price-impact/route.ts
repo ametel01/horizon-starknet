@@ -150,7 +150,7 @@ export async function GET(
     }
 
     // Sort by impact for percentile calculations
-    const sortedImpacts = [...impactData].sort((a, b) => a.impact - b.impact);
+    const sortedImpacts = impactData.slice().sort((a, b) => a.impact - b.impact);
 
     // Calculate statistics
     const totalSwaps = impactData.length;

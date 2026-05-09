@@ -63,7 +63,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
                 className="text-muted-foreground hover:text-foreground -mt-1 -mr-1 p-1"
                 aria-label="Dismiss"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -79,7 +79,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
               protocol features like trading and liquidity.
             </p>
             {/* Arrow */}
-            <div className="bg-card border-border absolute -top-2 right-8 h-4 w-4 rotate-45 border-t border-l" />
+            <div className="bg-card border-border absolute -top-2 right-8 size-4 rotate-45 border-t border-l" />
           </div>
         </div>
       )}

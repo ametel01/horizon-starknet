@@ -1,15 +1,10 @@
 'use client';
 
-import { getTokenPrice, usePrices } from '@features/price';
+import { getTokenPrice, PUBLIC_STRK_PRICE_ASSET, usePrices } from '@features/price';
 import { useAccount } from '@features/wallet';
 import { fromWad } from '@shared/math/wad';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import type { Call } from 'starknet';
-
-/**
- * STRK native token address for gas price conversion
- */
-const STRK_TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 
 /**
  * Fee estimate result with formatted values
@@ -46,17 +41,46 @@ interface FeeEstimateState {
   error: Error | null;
 }
 
+type FeeEstimateAction =
+  | { type: 'reset' }
+  | { type: 'loading' }
+  | { type: 'success'; totalFee: bigint; formattedFee: string }
+  | { type: 'error'; error: Error };
+
+const EMPTY_FEE_ESTIMATE: FeeEstimateState = {
+  totalFee: BigInt(0),
+  formattedFee: '',
+  isLoading: false,
+  error: null,
+};
+
+function feeEstimateReducer(state: FeeEstimateState, action: FeeEstimateAction): FeeEstimateState {
+  switch (action.type) {
+    case 'reset':
+      return EMPTY_FEE_ESTIMATE;
+    case 'loading':
+      return { ...state, isLoading: true, error: null };
+    case 'success':
+      return {
+        totalFee: action.totalFee,
+        formattedFee: action.formattedFee,
+        isLoading: false,
+        error: null,
+      };
+    case 'error':
+      return {
+        ...EMPTY_FEE_ESTIMATE,
+        error: action.error,
+      };
+  }
+}
+
 export function useEstimateFee(calls: Call[] | null, debounceMs = 500): FeeEstimate {
   const { account } = useAccount();
-  const [estimate, setEstimate] = useState<FeeEstimateState>({
-    totalFee: BigInt(0),
-    formattedFee: '',
-    isLoading: false,
-    error: null,
-  });
+  const [estimate, dispatchEstimate] = useReducer(feeEstimateReducer, EMPTY_FEE_ESTIMATE);
 
   // Fetch STRK price for USD conversion
-  const { data: prices } = usePrices([STRK_TOKEN_ADDRESS], {
+  const { data: prices } = usePrices([PUBLIC_STRK_PRICE_ASSET], {
     enabled: estimate.totalFee > 0n,
     refetchInterval: 60000,
   });
@@ -64,17 +88,12 @@ export function useEstimateFee(calls: Call[] | null, debounceMs = 500): FeeEstim
   useEffect(() => {
     // Skip if no calls or no account
     if (!calls || calls.length === 0 || !account) {
-      setEstimate({
-        totalFee: BigInt(0),
-        formattedFee: '',
-        isLoading: false,
-        error: null,
-      });
+      dispatchEstimate({ type: 'reset' });
       return;
     }
 
     // Start loading
-    setEstimate((prev) => ({ ...prev, isLoading: true, error: null }));
+    dispatchEstimate({ type: 'loading' });
 
     // Debounce the estimation
     const timeoutId = setTimeout(() => {
@@ -91,17 +110,14 @@ export function useEstimateFee(calls: Call[] | null, debounceMs = 500): FeeEstim
           const formattedFee =
             feeNumber < 0.0001 ? '< 0.0001 STRK' : `~${feeNumber.toFixed(4)} STRK`;
 
-          setEstimate({
+          dispatchEstimate({
+            type: 'success',
             totalFee,
             formattedFee,
-            isLoading: false,
-            error: null,
           });
         } catch (err) {
-          setEstimate({
-            totalFee: BigInt(0),
-            formattedFee: '',
-            isLoading: false,
+          dispatchEstimate({
+            type: 'error',
             error: err instanceof Error ? err : new Error('Failed to estimate fee'),
           });
         }
@@ -119,7 +135,7 @@ export function useEstimateFee(calls: Call[] | null, debounceMs = 500): FeeEstim
       return '';
     }
 
-    const strkPrice = getTokenPrice(STRK_TOKEN_ADDRESS, prices);
+    const strkPrice = getTokenPrice(PUBLIC_STRK_PRICE_ASSET, prices);
     if (strkPrice === 0) {
       return '';
     }

@@ -109,7 +109,12 @@ export function useIsAdmin(ytAddresses: string[]): {
   });
 
   const isLoading = ownerQueries.some((q) => q.isLoading);
-  const owners = ownerQueries.map((q) => q.data).filter((o): o is string => o !== undefined);
+  const owners: string[] = [];
+  for (const query of ownerQueries) {
+    if (query.data !== undefined) {
+      owners.push(query.data);
+    }
+  }
 
   // Check if connected wallet matches any owner
   const normalizedWallet = walletAddress?.toLowerCase() ?? '';

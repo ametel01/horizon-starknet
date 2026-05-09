@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, use, useCallback, useEffect, useReducer } from 'react';
 
 export type UIMode = 'simple' | 'advanced';
 
@@ -25,37 +25,73 @@ const ONBOARDING_KEY = `horizon-ui-onboarding-seen-${STORAGE_VERSION}`;
 
 interface UIModeProviderProps {
   children: React.ReactNode;
-  defaultMode?: UIMode;
+  initialMode?: UIMode;
+}
+
+interface UIModeState {
+  mode: UIMode;
+  isHydrated: boolean;
+  hasSeenOnboarding: boolean;
+}
+
+type UIModeAction =
+  | { type: 'hydrate'; mode: UIMode; hasSeenOnboarding: boolean }
+  | { type: 'set-mode'; mode: UIMode }
+  | { type: 'dismiss-onboarding' };
+
+function uiModeReducer(state: UIModeState, action: UIModeAction): UIModeState {
+  switch (action.type) {
+    case 'hydrate':
+      return {
+        mode: action.mode,
+        isHydrated: true,
+        hasSeenOnboarding: action.hasSeenOnboarding,
+      };
+    case 'set-mode':
+      return { ...state, mode: action.mode };
+    case 'dismiss-onboarding':
+      return { ...state, hasSeenOnboarding: true };
+  }
 }
 
 export function UIModeProvider({
   children,
-  defaultMode = 'simple',
+  initialMode = 'simple',
 }: UIModeProviderProps): React.ReactNode {
-  const [mode, setModeState] = useState<UIMode>(defaultMode);
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(true); // Default to true to prevent flash
+  const [state, dispatch] = useReducer(uiModeReducer, {
+    mode: initialMode,
+    isHydrated: false,
+    hasSeenOnboarding: true,
+  });
+  const { mode, isHydrated, hasSeenOnboarding } = state;
 
   // Load from localStorage on mount
   useEffect(() => {
+    let nextMode = initialMode;
+    let nextHasSeenOnboarding = true;
+
     try {
       const storedMode = localStorage.getItem(STORAGE_KEY);
       if (storedMode === 'simple' || storedMode === 'advanced') {
-        setModeState(storedMode);
+        nextMode = storedMode;
       }
 
       const seenOnboarding = localStorage.getItem(ONBOARDING_KEY);
-      setHasSeenOnboarding(seenOnboarding === 'true');
+      nextHasSeenOnboarding = seenOnboarding === 'true';
     } catch {
       // localStorage unavailable (private browsing, disabled cookies, etc.), use defaults
     }
 
-    setIsHydrated(true);
-  }, []);
+    dispatch({
+      type: 'hydrate',
+      mode: nextMode,
+      hasSeenOnboarding: nextHasSeenOnboarding,
+    });
+  }, [initialMode]);
 
   // Persist mode to localStorage on change
   const setMode = useCallback((newMode: UIMode) => {
-    setModeState(newMode);
+    dispatch({ type: 'set-mode', mode: newMode });
     try {
       localStorage.setItem(STORAGE_KEY, newMode);
     } catch {
@@ -67,7 +103,7 @@ export function UIModeProvider({
     setMode(mode === 'simple' ? 'advanced' : 'simple');
     // Dismiss onboarding when user interacts with toggle
     if (!hasSeenOnboarding) {
-      setHasSeenOnboarding(true);
+      dispatch({ type: 'dismiss-onboarding' });
       try {
         localStorage.setItem(ONBOARDING_KEY, 'true');
       } catch {
@@ -78,7 +114,7 @@ export function UIModeProvider({
 
   // Dismiss onboarding tooltip
   const dismissOnboarding = useCallback(() => {
-    setHasSeenOnboarding(true);
+    dispatch({ type: 'dismiss-onboarding' });
     try {
       localStorage.setItem(ONBOARDING_KEY, 'true');
     } catch {
@@ -105,7 +141,7 @@ export function UIModeProvider({
 }
 
 export function useUIMode(): UIModeContextValue {
-  const context = useContext(UIModeContext);
+  const context = use(UIModeContext);
   if (!context) {
     throw new Error('useUIMode must be used within a UIModeProvider');
   }

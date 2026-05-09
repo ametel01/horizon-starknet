@@ -61,7 +61,7 @@ function PositionRow({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-full text-xs font-medium',
+            'flex size-10 items-center justify-center rounded-full text-xs font-medium',
             isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
           )}
         >
@@ -99,7 +99,7 @@ function LoadingRows(): ReactNode {
           className="flex items-center justify-between border-b px-4 py-3 last:border-b-0"
         >
           <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="size-10 rounded-full" />
             <div className="flex flex-col gap-1">
               <Skeleton className="h-4 w-20" />
               <Skeleton className="h-3 w-16" />

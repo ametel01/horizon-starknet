@@ -204,7 +204,6 @@ function DeadlineSettings({
                 if (e.key === 'Enter') handleCustomDeadlineSubmit();
                 if (e.key === 'Escape') setShowCustomDeadline(false);
               }}
-              autoFocus
             />
             <span className="text-muted-foreground text-sm">min</span>
             <Button
@@ -452,7 +451,6 @@ export function TransactionSettingsPanel({
                     if (e.key === 'Enter') handleCustomSlippageSubmit();
                     if (e.key === 'Escape') setShowCustomSlippage(false);
                   }}
-                  autoFocus
                 />
                 <span className="text-muted-foreground text-sm">%</span>
                 <Button

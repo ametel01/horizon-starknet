@@ -2,7 +2,7 @@
 
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useReducer, useRef } from 'react';
 
 interface ModeTransitionProps {
   children: ReactNode;
@@ -15,22 +15,25 @@ interface ModeTransitionProps {
  */
 export function ModeTransition({ children, className }: ModeTransitionProps): ReactNode {
   const { mode } = useUIMode();
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [prevMode, setPrevMode] = useState(mode);
+  const [isTransitioning, dispatchTransitioning] = useReducer(
+    (_current: boolean, next: boolean) => next,
+    false
+  );
+  const prevMode = useRef(mode);
 
   useEffect(() => {
-    if (mode !== prevMode) {
-      setIsTransitioning(true);
+    if (mode !== prevMode.current) {
+      dispatchTransitioning(true);
       const timer = setTimeout(() => {
-        setIsTransitioning(false);
-        setPrevMode(mode);
+        dispatchTransitioning(false);
+        prevMode.current = mode;
       }, 200);
       return () => {
         clearTimeout(timer);
       };
     }
     return undefined;
-  }, [mode, prevMode]);
+  }, [mode]);
 
   return (
     <div
@@ -56,19 +59,29 @@ interface ModeContentProps {
 
 export function ModeContent({ simple, advanced, className }: ModeContentProps): ReactNode {
   const { isSimple } = useUIMode();
-  const [displayMode, setDisplayMode] = useState<'simple' | 'advanced'>(
-    isSimple ? 'simple' : 'advanced'
+  const [state, dispatchTransition] = useReducer(
+    (
+      current: { displayMode: 'simple' | 'advanced'; isTransitioning: boolean },
+      action: { type: 'start' } | { type: 'finish'; displayMode: 'simple' | 'advanced' }
+    ) => {
+      switch (action.type) {
+        case 'start':
+          return { ...current, isTransitioning: true };
+        case 'finish':
+          return { displayMode: action.displayMode, isTransitioning: false };
+      }
+    },
+    { displayMode: isSimple ? 'simple' : 'advanced', isTransitioning: false }
   );
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const { displayMode, isTransitioning } = state;
 
   useEffect(() => {
     const newMode = isSimple ? 'simple' : 'advanced';
     if (newMode !== displayMode) {
-      setIsTransitioning(true);
+      dispatchTransition({ type: 'start' });
       // Start fade out, then switch content, then fade in
       const timer = setTimeout(() => {
-        setDisplayMode(newMode);
-        setIsTransitioning(false);
+        dispatchTransition({ type: 'finish', displayMode: newMode });
       }, 150);
       return () => {
         clearTimeout(timer);

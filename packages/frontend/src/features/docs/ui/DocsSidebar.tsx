@@ -98,7 +98,7 @@ function NavItemComponent({ item, level = 0 }: NavItemProps): React.ReactNode {
             className="text-muted-foreground hover:text-foreground mr-1 p-0.5"
             aria-label={isOpen ? 'Collapse' : 'Expand'}
           >
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
           </button>
         )}
         {item.href ? (

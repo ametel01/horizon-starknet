@@ -19,6 +19,12 @@ interface RewardClaimHistoryProps {
   className?: string;
 }
 
+const CLAIM_HISTORY_SKELETON_KEYS = [
+  'claim-history-skeleton-1',
+  'claim-history-skeleton-2',
+  'claim-history-skeleton-3',
+];
+
 /**
  * Format a timestamp for display.
  */
@@ -37,7 +43,7 @@ function formatTimestamp(isoString: string): string {
  */
 function truncateHash(hash: string): string {
   if (hash.length <= 16) return hash;
-  return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
+  return `${hash.slice(0, 8)}…${hash.slice(-6)}`;
 }
 
 /**
@@ -81,7 +87,7 @@ function ClaimRow({ claim }: { claim: RewardClaimEvent }): ReactNode {
         title="View on explorer"
       >
         {truncateHash(claim.transactionHash)}
-        <ExternalLinkIcon className="h-3 w-3" aria-hidden="true" />
+        <ExternalLinkIcon className="size-3" aria-hidden="true" />
       </a>
     </div>
   );
@@ -113,12 +119,12 @@ export function RewardClaimHistory({
       <Card className={cn(className)}>
         <CardHeader>
           <CardTitle className="text-lg">Claim History</CardTitle>
-          <CardDescription>Loading your reward claims...</CardDescription>
+          <CardDescription>Loading your reward claims…</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between py-3">
+            {CLAIM_HISTORY_SKELETON_KEYS.map((key) => (
+              <div key={key} className="flex items-center justify-between py-3">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-20" />
               </div>
@@ -153,8 +159,8 @@ export function RewardClaimHistory({
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center gap-3 py-8">
-            <div className="bg-muted-foreground/20 flex h-12 w-12 items-center justify-center rounded-full">
-              <GiftIcon className="text-muted-foreground h-6 w-6" />
+            <div className="bg-muted-foreground/20 flex size-12 items-center justify-center rounded-full">
+              <GiftIcon className="text-muted-foreground size-6" />
             </div>
             <p className="text-muted-foreground text-center text-sm">No claims yet</p>
           </div>

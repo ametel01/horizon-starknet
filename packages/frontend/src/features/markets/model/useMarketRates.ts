@@ -123,7 +123,12 @@ function processRatesData(data: MarketRatesResponse): ProcessedRatesData {
   });
 
   // Calculate stats
-  const rates = dataPoints.map((p) => p.impliedRatePercent).filter((r) => r > 0);
+  const rates: number[] = [];
+  for (const point of dataPoints) {
+    if (point.impliedRatePercent > 0) {
+      rates.push(point.impliedRatePercent);
+    }
+  }
   const currentRate = rates.length > 0 ? (rates[rates.length - 1] ?? 0) : 0;
   const minRate = rates.length > 0 ? Math.min(...rates) : 0;
   const maxRate = rates.length > 0 ? Math.max(...rates) : 0;

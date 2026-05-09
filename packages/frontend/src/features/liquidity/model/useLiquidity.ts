@@ -128,15 +128,17 @@ export function useAddLiquidity(): UseAddLiquidityReturn {
      */
     onMutate: async (params: AddLiquidityParams): Promise<AddLiquidityOptimisticContext> => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.syAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.ptAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.marketAddress, address],
-      });
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.syAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.ptAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.marketAddress, address],
+        }),
+      ]);
 
       // Snapshot previous values
       const previousSyBalance = queryClient.getQueryData<string>([
@@ -283,15 +285,17 @@ export function useRemoveLiquidity(): UseRemoveLiquidityReturn {
      */
     onMutate: async (params: RemoveLiquidityParams): Promise<RemoveLiquidityOptimisticContext> => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.syAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.ptAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.marketAddress, address],
-      });
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.syAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.ptAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.marketAddress, address],
+        }),
+      ]);
 
       // Snapshot previous values
       const previousSyBalance = queryClient.getQueryData<string>([

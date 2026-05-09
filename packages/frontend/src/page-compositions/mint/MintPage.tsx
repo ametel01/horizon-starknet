@@ -5,6 +5,7 @@ import { SimpleEarnForm, SimpleWithdrawForm, WrapToSyForm } from '@features/earn
 import { useDashboardMarkets } from '@features/markets';
 import { MintForm } from '@features/mint';
 import { UnwrapSyForm } from '@features/redeem';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
@@ -86,7 +87,7 @@ function SimpleInfoPanelContent({ activeTab }: { activeTab: SimpleTabType }): Re
     return (
       <div className="text-muted-foreground space-y-4 text-sm">
         <div className="flex gap-3">
-          <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+          <div className="bg-chart-1/20 text-chart-1 flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
             1
           </div>
           <div>
@@ -95,7 +96,7 @@ function SimpleInfoPanelContent({ activeTab }: { activeTab: SimpleTabType }): Re
           </div>
         </div>
         <div className="flex gap-3">
-          <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+          <div className="bg-chart-1/20 text-chart-1 flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
             2
           </div>
           <div>
@@ -106,7 +107,7 @@ function SimpleInfoPanelContent({ activeTab }: { activeTab: SimpleTabType }): Re
           </div>
         </div>
         <div className="border-chart-1/30 bg-chart-1/10 flex items-start gap-2 rounded-lg border p-3">
-          <AlertCircle className="text-chart-1 mt-0.5 h-4 w-4 shrink-0" />
+          <AlertCircle className="text-chart-1 mt-0.5 size-4 shrink-0" />
           <p className="text-chart-1 text-sm">
             Withdrawing before maturity requires equal Fixed-Rate and Variable-Rate positions.
           </p>
@@ -118,7 +119,7 @@ function SimpleInfoPanelContent({ activeTab }: { activeTab: SimpleTabType }): Re
   return (
     <div className="text-muted-foreground space-y-4 text-sm">
       <div className="flex gap-3">
-        <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+        <div className="bg-primary/20 text-primary flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
           1
         </div>
         <div>
@@ -127,7 +128,7 @@ function SimpleInfoPanelContent({ activeTab }: { activeTab: SimpleTabType }): Re
         </div>
       </div>
       <div className="flex gap-3">
-        <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+        <div className="bg-primary/20 text-primary flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
           2
         </div>
         <div>
@@ -139,7 +140,7 @@ function SimpleInfoPanelContent({ activeTab }: { activeTab: SimpleTabType }): Re
         </div>
       </div>
       <div className="flex gap-3">
-        <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+        <div className="bg-primary/20 text-primary flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
           3
         </div>
         <div>
@@ -177,7 +178,7 @@ function WithdrawInfoContent(): ReactNode {
   return (
     <div className="text-muted-foreground space-y-4 text-sm">
       <div className="flex gap-3">
-        <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+        <div className="bg-chart-1/20 text-chart-1 flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
           1
         </div>
         <div>
@@ -188,7 +189,7 @@ function WithdrawInfoContent(): ReactNode {
         </div>
       </div>
       <div className="flex gap-3">
-        <div className="bg-chart-1/20 text-chart-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+        <div className="bg-chart-1/20 text-chart-1 flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
           2
         </div>
         <div>
@@ -200,7 +201,7 @@ function WithdrawInfoContent(): ReactNode {
         </div>
       </div>
       <div className="border-chart-1/30 bg-chart-1/10 flex items-start gap-2 rounded-lg border p-3">
-        <AlertCircle className="text-chart-1 mt-0.5 h-4 w-4 shrink-0" />
+        <AlertCircle className="text-chart-1 mt-0.5 size-4 shrink-0" />
         <p className="text-chart-1 text-sm">
           This only converts SY tokens back to the underlying token. If you have PT or YT, use
           Redeem in Portfolio to convert them to SY first.
@@ -219,7 +220,7 @@ function SplitInfoContent({ activeTab }: { activeTab: TabType }): ReactNode {
       <div className="flex gap-3">
         <div
           className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium',
+            'flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium',
             activeTab === 'wrap' ? 'bg-primary/30 text-primary' : 'bg-primary/20 text-primary'
           )}
         >
@@ -233,7 +234,7 @@ function SplitInfoContent({ activeTab }: { activeTab: TabType }): ReactNode {
       <div className="flex gap-3">
         <div
           className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium',
+            'flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium',
             activeTab === 'split' ? 'bg-primary/30 text-primary' : 'bg-primary/20 text-primary'
           )}
         >
@@ -247,7 +248,7 @@ function SplitInfoContent({ activeTab }: { activeTab: TabType }): ReactNode {
         </div>
       </div>
       <div className="flex gap-3">
-        <div className="bg-primary/20 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
+        <div className="bg-primary/20 text-primary flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-medium">
           3
         </div>
         <div>
@@ -265,15 +266,11 @@ function SplitInfoContent({ activeTab }: { activeTab: TabType }): ReactNode {
  * Simple mode content - streamlined deposit/withdraw flow
  */
 function SimpleModeContent(): ReactNode {
-  const searchParams = useSearchParams();
-  const marketParam = searchParams.get('market');
-  const [mounted, setMounted] = useState(false);
+  const { get } = useSearchParams();
+  const marketParam = get('market');
+  const mounted = useHydrated();
   const [activeTab, setActiveTab] = useState<SimpleTabType>('earn');
   const [selectedMarketAddress, setSelectedMarketAddress] = useState<string | null>(marketParam);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
 
@@ -300,14 +297,16 @@ function SimpleModeContent(): ReactNode {
         <div>
           {/* Market Selector */}
           <div className="mb-4">
-            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+            <span id="mint-asset-label" className="text-foreground mb-2 block text-sm font-medium">
+              Select Asset
+            </span>
             <Select
               value={selectedMarket?.address ?? ''}
               onValueChange={(value) => {
                 setSelectedMarketAddress(value);
               }}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" aria-labelledby="mint-asset-label">
                 <SelectValue>
                   {selectedMarket
                     ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (${selectedMarket.impliedApy.multipliedBy(100).toFixed(1)}% APY)`
@@ -382,7 +381,7 @@ function SimpleModeContent(): ReactNode {
         >
           <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
             <BookOpen
-              className={activeTab === 'withdraw' ? 'text-chart-1 h-4 w-4' : 'text-primary h-4 w-4'}
+              className={activeTab === 'withdraw' ? 'text-chart-1 size-4' : 'text-primary size-4'}
             />
             <h2 className="text-foreground text-sm font-semibold">
               {activeTab === 'withdraw' ? 'How Withdrawing Works' : 'How Earning Works'}
@@ -394,7 +393,7 @@ function SimpleModeContent(): ReactNode {
 
             <div className="bg-muted/50 mt-4 rounded-lg p-4">
               <div className="flex items-center gap-2">
-                <Info className="text-muted-foreground h-4 w-4" />
+                <Info className="text-muted-foreground size-4" />
                 <h3 className="text-foreground text-sm font-medium">Position Types</h3>
               </div>
               <dl className="mt-2 space-y-2 text-sm">
@@ -419,18 +418,14 @@ function SimpleModeContent(): ReactNode {
  * Advanced mode content - original tabbed interface
  */
 function AdvancedModeContent(): ReactNode {
-  const searchParams = useSearchParams();
-  const marketParam = searchParams.get('market');
-  const tabParam = searchParams.get('tab');
-  const [mounted, setMounted] = useState(false);
+  const { get } = useSearchParams();
+  const marketParam = get('market');
+  const tabParam = get('tab');
+  const mounted = useHydrated();
   const [activeTab, setActiveTab] = useState<TabType>(
     parseTabParam(tabParam, ADVANCED_TAB_VALUES, 'wrap') as TabType
   );
   const [selectedMarketAddress, setSelectedMarketAddress] = useState<string | null>(marketParam);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();
 
@@ -457,14 +452,19 @@ function AdvancedModeContent(): ReactNode {
         <div>
           {/* Market Selector */}
           <div className="mb-4">
-            <label className="text-foreground mb-2 block text-sm font-medium">Select Asset</label>
+            <span
+              id="advanced-mint-asset-label"
+              className="text-foreground mb-2 block text-sm font-medium"
+            >
+              Select Asset
+            </span>
             <Select
               value={selectedMarket?.address ?? ''}
               onValueChange={(value) => {
                 setSelectedMarketAddress(value);
               }}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" aria-labelledby="advanced-mint-asset-label">
                 <SelectValue>
                   {selectedMarket
                     ? `${selectedMarket.metadata?.yieldTokenSymbol ?? selectedMarket.address.slice(0, 10)} - ${selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (${selectedMarket.impliedApy.multipliedBy(100).toFixed(1)}% APY)`
@@ -536,7 +536,7 @@ function AdvancedModeContent(): ReactNode {
         >
           <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
             <BookOpen
-              className={activeTab === 'unwrap' ? 'text-chart-1 h-4 w-4' : 'text-primary h-4 w-4'}
+              className={activeTab === 'unwrap' ? 'text-chart-1 size-4' : 'text-primary size-4'}
             />
             <h2 className="text-foreground text-sm font-semibold">
               {activeTab === 'unwrap' ? 'How Withdrawing Works' : 'How Splitting Works'}
@@ -552,7 +552,7 @@ function AdvancedModeContent(): ReactNode {
 
             <div className="bg-muted/50 mt-4 rounded-lg p-4">
               <div className="flex items-center gap-2">
-                <Layers className="text-muted-foreground h-4 w-4" />
+                <Layers className="text-muted-foreground size-4" />
                 <h3 className="text-foreground text-sm font-medium">Token Details</h3>
               </div>
               <dl className="mt-2 space-y-2 text-sm">
@@ -590,7 +590,7 @@ export function MintPage(): ReactNode {
           href="/"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -601,8 +601,8 @@ export function MintPage(): ReactNode {
           Back
         </Link>
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
-            <Coins className="text-primary h-5 w-5" />
+          <div className="bg-primary/10 flex size-10 items-center justify-center rounded-full">
+            <Coins className="text-primary size-5" />
           </div>
           <div>
             <h1 className="font-display text-3xl tracking-tight sm:text-4xl">

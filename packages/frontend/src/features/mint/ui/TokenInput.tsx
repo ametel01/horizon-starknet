@@ -226,7 +226,7 @@ export function TokenInput({
   };
 
   // Format cleanup on blur (Error Prevention)
-  const handleBlur = useCallback((): void => {
+  const commitTokenInputBlur = useCallback((): void => {
     setIsFocused(false);
     const cleanedValue = cleanupInputValue(value);
     if (cleanedValue !== value) {
@@ -296,7 +296,7 @@ export function TokenInput({
             onFocus={() => {
               setIsFocused(true);
             }}
-            onBlur={handleBlur}
+            onBlur={commitTokenInputBlur}
             placeholder="0.00"
             disabled={disabled}
             aria-invalid={hasError}

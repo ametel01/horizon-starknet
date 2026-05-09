@@ -112,9 +112,6 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
         {/* Preconnect to external origins used early in page lifecycle */}
         <link rel="preconnect" href="https://starknet-mainnet.g.alchemy.com" />
         <link rel="preconnect" href="https://starknet.impulse.avnu.fi" />
-        {/* Preconnect to Google Fonts for faster font loading */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">
         <Providers>

@@ -53,7 +53,7 @@ export function YtCollateralWarning({
 function WarningIcon(): ReactNode {
   return (
     <svg
-      className="text-warning mt-0.5 h-4 w-4 shrink-0"
+      className="text-warning mt-0.5 size-4 shrink-0"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"

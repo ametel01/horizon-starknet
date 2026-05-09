@@ -1,18 +1,12 @@
 'use client';
 
-import { getTokenPrice, usePrices } from '@features/price';
+import { getTokenPrice, PUBLIC_STRK_PRICE_ASSET, usePrices } from '@features/price';
 import { useAccount } from '@features/wallet';
 import { useEstimateFee } from '@shared/hooks/useEstimateFee';
 import { fromWad } from '@shared/math/wad';
 import { getYTContract } from '@shared/starknet/contracts';
 import { useMemo } from 'react';
 import type { Call } from 'starknet';
-
-/**
- * STRK native token address for gas price conversion
- * @see https://starkscan.co/token/0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d
- */
-const STRK_TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 
 /**
  * Result of the claim gas check
@@ -88,7 +82,7 @@ export function useClaimGasCheck(
   const feeEstimate = useEstimateFee(claimCall);
 
   // Fetch STRK price for USD conversion
-  const { data: prices } = usePrices([STRK_TOKEN_ADDRESS], {
+  const { data: prices } = usePrices([PUBLIC_STRK_PRICE_ASSET], {
     enabled: enabled && feeEstimate.totalFee > 0n,
   });
 
@@ -98,7 +92,7 @@ export function useClaimGasCheck(
       return 0;
     }
 
-    const strkPrice = getTokenPrice(STRK_TOKEN_ADDRESS, prices);
+    const strkPrice = getTokenPrice(PUBLIC_STRK_PRICE_ASSET, prices);
     const feeInStrk = fromWad(feeEstimate.totalFee).toNumber();
 
     return feeInStrk * strkPrice;

@@ -76,11 +76,14 @@ describe('NearExpiryWarning - Severity Logic', () => {
   ];
 
   function getSeverity(days: number, thresholds: ExpiryThreshold[]): Severity | null {
-    for (const threshold of thresholds) {
+    for (let index = 0; index < thresholds.length; index += 1) {
+      const threshold = thresholds[index];
+      if (!threshold) {
+        continue;
+      }
       if (days <= threshold.days) {
         continue;
       }
-      const index = thresholds.indexOf(threshold);
       if (index > 0) {
         return thresholds[index - 1]?.severity ?? null;
       }

@@ -6,9 +6,9 @@ import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/p
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from '@shared/ui/recharts';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -109,29 +109,34 @@ export function FeeByMarket({ className, height = 300, days = 30 }: FeeByMarketP
   const chartData = useMemo((): MarketFeeData[] => {
     if (byMarket.length === 0) return [];
 
-    return byMarket
-      .filter((market) => market.totalFees > 0n)
-      .map((market, index) => {
-        const feesNum = Number(fromWad(market.totalFees));
-        const feesUsd = feesNum * avgPrice;
-        const avgFeeNum = Number(fromWad(market.avgFeePerSwap));
-        const avgFeeUsd = avgFeeNum * avgPrice;
+    const data: MarketFeeData[] = [];
+    for (const market of byMarket) {
+      if (market.totalFees <= 0n) {
+        continue;
+      }
 
-        // Try to get symbol from marketSymbols map, fallback to truncated address
-        const symbol = marketSymbols.get(market.market) ?? truncateAddress(market.market);
+      const feesNum = Number(fromWad(market.totalFees));
+      const feesUsd = feesNum * avgPrice;
+      const avgFeeNum = Number(fromWad(market.avgFeePerSwap));
+      const avgFeeUsd = avgFeeNum * avgPrice;
+      const index = data.length;
 
-        return {
-          name: symbol,
-          value: feesUsd,
-          valueUsd: feesUsd,
-          feesBigInt: market.totalFees,
-          swapCount: market.swapCount,
-          avgFeeUsd,
-          address: market.market,
-          color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
-        };
-      })
-      .sort((a, b) => b.value - a.value); // Sort by fees descending
+      // Try to get symbol from marketSymbols map, fallback to truncated address
+      const symbol = marketSymbols.get(market.market) ?? truncateAddress(market.market);
+
+      data.push({
+        name: symbol,
+        value: feesUsd,
+        valueUsd: feesUsd,
+        feesBigInt: market.totalFees,
+        swapCount: market.swapCount,
+        avgFeeUsd,
+        address: market.market,
+        color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
+      });
+    }
+
+    return data.sort((a, b) => b.value - a.value); // Sort by fees descending
   }, [byMarket, avgPrice, marketSymbols]);
 
   // Calculate total fees in USD
@@ -210,7 +215,7 @@ export function FeeByMarket({ className, height = 300, days = 30 }: FeeByMarketP
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value, name) => {
+              formatter={(_value: unknown, name: unknown) => {
                 const tooltipName = typeof name === 'string' ? name : String(name ?? '');
                 const market = chartData.find((d) => d.name === tooltipName);
                 if (!market) return [formatUsdCompact(0), tooltipName];
@@ -234,7 +239,7 @@ export function FeeByMarket({ className, height = 300, days = 30 }: FeeByMarketP
           {chartData.map((market) => (
             <div key={market.address} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: market.color }} />
+                <div className="size-3 rounded-full" style={{ backgroundColor: market.color }} />
                 <span className="text-foreground">{market.name}</span>
                 <span className="text-muted-foreground text-xs">({market.swapCount} swaps)</span>
               </div>
@@ -302,27 +307,32 @@ export function FeeByMarketCompact({
   const chartData = useMemo((): MarketFeeData[] => {
     if (byMarket.length === 0) return [];
 
-    return byMarket
-      .filter((market) => market.totalFees > 0n)
-      .map((market, index) => {
-        const feesNum = Number(fromWad(market.totalFees));
-        const feesUsd = feesNum * avgPrice;
-        const avgFeeNum = Number(fromWad(market.avgFeePerSwap));
-        const avgFeeUsd = avgFeeNum * avgPrice;
-        const symbol = marketSymbols.get(market.market) ?? truncateAddress(market.market);
+    const data: MarketFeeData[] = [];
+    for (const market of byMarket) {
+      if (market.totalFees <= 0n) {
+        continue;
+      }
 
-        return {
-          name: symbol,
-          value: feesUsd,
-          valueUsd: feesUsd,
-          feesBigInt: market.totalFees,
-          swapCount: market.swapCount,
-          avgFeeUsd,
-          address: market.market,
-          color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
-        };
-      })
-      .sort((a, b) => b.value - a.value);
+      const feesNum = Number(fromWad(market.totalFees));
+      const feesUsd = feesNum * avgPrice;
+      const avgFeeNum = Number(fromWad(market.avgFeePerSwap));
+      const avgFeeUsd = avgFeeNum * avgPrice;
+      const symbol = marketSymbols.get(market.market) ?? truncateAddress(market.market);
+      const index = data.length;
+
+      data.push({
+        name: symbol,
+        value: feesUsd,
+        valueUsd: feesUsd,
+        feesBigInt: market.totalFees,
+        swapCount: market.swapCount,
+        avgFeeUsd,
+        address: market.market,
+        color: CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0] ?? '',
+      });
+    }
+
+    return data.sort((a, b) => b.value - a.value);
   }, [byMarket, avgPrice, marketSymbols]);
 
   if (isLoading || pricesLoading) {
@@ -352,7 +362,7 @@ export function FeeByMarketCompact({
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value, name) => {
+            formatter={(_value: unknown, name: unknown) => {
               const tooltipName = typeof name === 'string' ? name : String(name ?? '');
               const market = chartData.find((d) => d.name === tooltipName);
               return [formatUsdCompact(market?.valueUsd ?? 0), tooltipName];

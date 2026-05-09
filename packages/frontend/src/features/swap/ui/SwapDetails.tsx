@@ -22,7 +22,12 @@ interface SwapDetailsProps {
   syLabel: string;
   parsedInputAmount: bigint;
   expectedOutput: bigint;
-  isValidAmount: boolean;
+  status: {
+    isValidAmount: boolean;
+    isEstimatingFee: boolean;
+    isPreviewLoading: boolean;
+    isPreviewAvailable: boolean;
+  };
 
   // Implied APY
   impliedApyDisplay: ImpliedApyDisplay;
@@ -42,13 +47,10 @@ interface SwapDetailsProps {
   // Gas estimate
   formattedFee: string | null;
   formattedFeeUsd: string | null;
-  isEstimatingFee: boolean;
   feeError: Error | null;
 
   // On-chain preview (from RouterStatic) - only available for PT swaps
   previewResult: SwapPreviewResult | null | undefined;
-  isPreviewLoading: boolean;
-  isPreviewAvailable: boolean;
 }
 
 /**
@@ -61,7 +63,7 @@ export function SwapDetails({
   syLabel,
   parsedInputAmount,
   expectedOutput,
-  isValidAmount,
+  status,
   impliedApyDisplay,
   historicalAvgImpact,
   slippageBps,
@@ -69,12 +71,10 @@ export function SwapDetails({
   reserveFeePercent,
   formattedFee,
   formattedFeeUsd,
-  isEstimatingFee,
   feeError,
   previewResult,
-  isPreviewLoading,
-  isPreviewAvailable,
 }: SwapDetailsProps): ReactNode {
+  const { isValidAmount, isEstimatingFee, isPreviewLoading, isPreviewAvailable } = status;
   // Pre-compute rate display
   const rateDisplay = formatRateDisplay(parsedInputAmount, expectedOutput, inputLabel, outputLabel);
 
@@ -100,7 +100,7 @@ export function SwapDetails({
     <Collapsible>
       <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between text-sm transition-colors">
         <span>Swap Details</span>
-        <ChevronDown className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-180" />
+        <ChevronDown className="size-4 transition-transform [[data-state=open]>&]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 pt-3 text-sm">
         {/* Exchange Rate */}
@@ -117,7 +117,7 @@ export function SwapDetails({
             <HoverCard>
               <HoverCardTrigger className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-sm transition-colors">
                 Expected (on-chain)
-                <Info className="h-3 w-3 opacity-50" />
+                <Info className="size-3 opacity-50" />
               </HoverCardTrigger>
               <HoverCardContent side="top" align="start" className="w-64">
                 <div className="space-y-2">
@@ -140,7 +140,7 @@ export function SwapDetails({
                   {previewDisplay.showDiscrepancyWarning && (
                     <HoverCard>
                       <HoverCardTrigger className="text-warning cursor-help">
-                        <AlertTriangle className="h-3.5 w-3.5" />
+                        <AlertTriangle className="size-3.5" />
                       </HoverCardTrigger>
                       <HoverCardContent side="top" align="end" className="w-56">
                         <div className="space-y-2">
@@ -209,7 +209,7 @@ export function SwapDetails({
               <HoverCard>
                 <HoverCardTrigger className="hover:text-primary inline-flex cursor-help items-center gap-1 font-mono transition-colors">
                   {swapFeeDisplay.text}
-                  <Info className="h-3 w-3 opacity-50" />
+                  <Info className="size-3 opacity-50" />
                 </HoverCardTrigger>
                 <HoverCardContent side="top" align="end" className="w-56">
                   <div className="space-y-2">

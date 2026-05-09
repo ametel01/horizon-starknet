@@ -33,7 +33,7 @@ import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { TxStatus } from '@widgets/display/TxStatus';
 import BigNumber from 'bignumber.js';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 interface RemoveLiquidityFormProps {
   market: MarketData;
@@ -261,8 +261,12 @@ function OutputPreviewRow({ label, value, minValue, isValid }: OutputPreviewRowP
 
 // ----- Main Component -----
 
+export function RemoveLiquidityForm(props: RemoveLiquidityFormProps): ReactNode {
+  return useRemoveLiquidityFormContent(props);
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode removal form with dual/SY-only/PT-only outputs and on-chain preview - inherent UI complexity
-export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormProps): ReactNode {
+function useRemoveLiquidityFormContent({ market, className }: RemoveLiquidityFormProps): ReactNode {
   const { isConnected, address } = useAccount();
   const { network } = useStarknet();
   const [lpAmount, setLpAmount] = useState('');
@@ -273,7 +277,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
 
   // Dual removal hook (SY + PT)
   const {
-    removeLiquidity,
+    removeLiquidityAsync,
     isRemoving: isRemovingDual,
     isSuccess: isSuccessDual,
     isError: isErrorDual,
@@ -283,7 +287,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
 
   // Single-sided SY removal hook
   const {
-    removeLiquiditySingleSy,
+    removeLiquiditySingleSyAsync,
     isRemoving: isRemovingSy,
     isSuccess: isSuccessSy,
     isError: isErrorSy,
@@ -293,7 +297,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
 
   // Single-sided PT removal hook
   const {
-    removeLiquiditySinglePt,
+    removeLiquiditySinglePtAsync,
     isRemoving: isRemovingPt,
     isSuccess: isSuccessPt,
     isError: isErrorPt,
@@ -474,25 +478,25 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
   }, [isRemoving, isSuccess, transactionSteps.length]);
 
   // Handle remove liquidity based on output type
-  const handleRemoveLiquidity = (): void => {
+  const handleRemoveLiquidity = async (): Promise<void> => {
     if (!canRemoveLiquidity) return;
 
     if (outputType === 'sy-only') {
-      removeLiquiditySingleSy({
+      await removeLiquiditySingleSyAsync({
         marketAddress: market.address,
         syAddress: market.syAddress,
         lpAmount: parsedLpAmount,
         minSyOut: minSyOnlyOut,
       });
     } else if (outputType === 'pt-only') {
-      removeLiquiditySinglePt({
+      await removeLiquiditySinglePtAsync({
         marketAddress: market.address,
         ptAddress: market.ptAddress,
         lpAmount: parsedLpAmount,
         minPtOut: minPtOnlyOut,
       });
     } else {
-      removeLiquidity({
+      await removeLiquidityAsync({
         marketAddress: market.address,
         syAddress: market.syAddress,
         ptAddress: market.ptAddress,
@@ -501,6 +505,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
         minPtOut: dualMinPtOut,
       });
     }
+    setLpAmount('');
   };
 
   // Handle percentage buttons
@@ -510,13 +515,6 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
       setLpAmount(formatWad(amount, 18));
     }
   };
-
-  // Clear input on success
-  useEffect(() => {
-    if (isSuccess) {
-      setLpAmount('');
-    }
-  }, [isSuccess]);
 
   return (
     <FormLayout gradient="primary" className={className}>
@@ -597,7 +595,7 @@ export function RemoveLiquidityForm({ market, className }: RemoveLiquidityFormPr
               (isSyPreviewLoading && isValidAmount ? (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-lg font-semibold">
-                    Loading preview...
+                    Loading preview&hellip;
                   </span>
                 </div>
               ) : (

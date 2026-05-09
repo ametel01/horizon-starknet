@@ -6,9 +6,9 @@ import { useProtocolVolume } from '@features/protocol-status';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from '@shared/ui/recharts';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -181,7 +181,7 @@ export function VolumeByMarket({ className, height = 300 }: VolumeByMarketProps)
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(_value, name) => {
+              formatter={(_value: unknown, name: unknown) => {
                 const tooltipName = typeof name === 'string' ? name : String(name ?? '');
                 return [
                   formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.value ?? 0),
@@ -203,7 +203,7 @@ export function VolumeByMarket({ className, height = 300 }: VolumeByMarketProps)
           {chartData.map((item) => (
             <div key={item.name} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                <div className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-foreground">{item.name}</span>
               </div>
               <span className="text-muted-foreground font-mono">
@@ -297,7 +297,7 @@ export function VolumeBreakdownCompact({
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: '8px' }}
-            formatter={(_value, name) => {
+            formatter={(_value: unknown, name: unknown) => {
               const tooltipName = typeof name === 'string' ? name : String(name ?? '');
               return [
                 formatUsdCompact(chartData.find((d) => d.name === tooltipName)?.value ?? 0),

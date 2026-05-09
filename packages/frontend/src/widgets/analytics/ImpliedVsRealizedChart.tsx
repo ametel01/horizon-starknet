@@ -5,8 +5,6 @@ import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
   CartesianGrid,
@@ -17,7 +15,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { type ReactNode, useMemo, useReducer } from 'react';
 
 /**
  * Format APY percentage with appropriate precision
@@ -34,7 +34,7 @@ interface ImpliedVsRealizedChartProps {
   className?: string;
   height?: number;
   showControls?: boolean;
-  defaultDays?: number;
+  initialDays?: number;
 }
 
 interface ChartDataPoint {
@@ -100,9 +100,9 @@ export function ImpliedVsRealizedChart({
   className,
   height = 300,
   showControls = true,
-  defaultDays = 30,
+  initialDays = 30,
 }: ImpliedVsRealizedChartProps): ReactNode {
-  const [days, setDays] = useState(defaultDays);
+  const [days, setDays] = useReducer((_current: number, next: number) => next, initialDays);
 
   const { dataPoints, summary, underlyingSymbol, isLoading, isError } = useImpliedVsRealized({
     market: marketAddress,
@@ -382,11 +382,11 @@ export function SpreadIndicator({ marketAddress, className }: SpreadIndicatorPro
         )}
       >
         {spread >= 0 ? (
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
           </svg>
         ) : (
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         )}

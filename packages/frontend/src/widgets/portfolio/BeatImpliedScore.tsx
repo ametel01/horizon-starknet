@@ -9,7 +9,6 @@ import {
 } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
-import { type ReactNode, useMemo } from 'react';
 import {
   Bar,
   BarChart,
@@ -20,7 +19,8 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format APY percentage

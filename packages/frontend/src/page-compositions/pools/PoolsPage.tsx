@@ -6,6 +6,7 @@ import { FeeStructure, useDashboardMarkets } from '@features/markets';
 import { useTokenBalance } from '@features/portfolio';
 import { useStarknet } from '@features/wallet';
 import { ApyBreakdown, useApyBreakdown } from '@features/yield';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, Suspense, useCallback, useMemo, useState } from 'react';
 
 type PoolTab = 'add' | 'remove';
 
@@ -215,7 +216,7 @@ function LpPositionDisplay({
       </div>
       <div className="border-chart-2/30 bg-chart-2/10 rounded-lg border p-3">
         <div className="text-chart-2 flex items-center gap-1.5 text-xs font-medium">
-          <TrendingUp className="h-3.5 w-3.5" />
+          <TrendingUp className="size-3.5" />
           LP Rewards
         </div>
         <p className="text-muted-foreground mt-1 text-xs">
@@ -227,15 +228,15 @@ function LpPositionDisplay({
 }
 
 function PoolsPageContent(): ReactNode {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const marketParam = searchParams.get('market');
-  const [activeTab, setActiveTab] = useState<PoolTab>('add');
-  const [mounted, setMounted] = useState(false);
+  return usePoolsPageContent();
+}
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+function usePoolsPageContent(): ReactNode {
+  const { push } = useRouter();
+  const { get } = useSearchParams();
+  const marketParam = get('market');
+  const [activeTab, setActiveTab] = useState<PoolTab>('add');
+  const mounted = useHydrated();
 
   const { markets, isLoading, isError } = useDashboardMarkets();
   const { isConnected } = useStarknet();
@@ -249,9 +250,9 @@ function PoolsPageContent(): ReactNode {
   // Handle market selection change
   const handleMarketChange = useCallback(
     (marketAddress: string) => {
-      router.push(`/pools?market=${marketAddress}`);
+      push(`/pools?market=${marketAddress}`);
     },
-    [router]
+    [push]
   );
 
   // Fetch LP balance for selected market
@@ -283,16 +284,19 @@ function PoolsPageContent(): ReactNode {
             <div className="space-y-4">
               {/* Pool Selector */}
               <div>
-                <label className="text-foreground mb-2 block text-sm font-medium">
+                <span
+                  id="pool-selector-label"
+                  className="text-foreground mb-2 block text-sm font-medium"
+                >
                   Select Pool
-                </label>
+                </span>
                 <Select
                   value={selectedMarket.address}
                   onValueChange={(value) => {
                     if (value) handleMarketChange(value);
                   }}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-labelledby="pool-selector-label">
                     <SelectValue>
                       {getPoolSymbol(selectedMarket)} Pool -{' '}
                       {selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (
@@ -368,7 +372,7 @@ function PoolsPageContent(): ReactNode {
               )}
             >
               <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-                <Wallet className="text-primary h-4 w-4" />
+                <Wallet className="text-primary size-4" />
                 <h3 className="text-foreground text-sm font-semibold">Your Position</h3>
               </div>
               <div className="p-4">
@@ -398,7 +402,7 @@ function PoolsPageContent(): ReactNode {
               )}
             >
               <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-                <PiggyBank className="text-muted-foreground h-4 w-4" />
+                <PiggyBank className="text-muted-foreground size-4" />
                 <h3 className="text-foreground text-sm font-semibold">
                   {getPoolName(selectedMarket)} Statistics
                 </h3>
@@ -465,13 +469,13 @@ function PoolsPageContent(): ReactNode {
               )}
             >
               <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-                <Info className="text-muted-foreground h-4 w-4" />
+                <Info className="text-muted-foreground size-4" />
                 <h3 className="text-foreground text-sm font-semibold">How Liquidity Works</h3>
               </div>
               <div className="space-y-4 p-4">
                 <div className="space-y-3">
                   <div className="flex gap-3">
-                    <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+                    <div className="bg-primary/20 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       1
                     </div>
                     <div>
@@ -482,7 +486,7 @@ function PoolsPageContent(): ReactNode {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+                    <div className="bg-primary/20 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       2
                     </div>
                     <div>
@@ -493,7 +497,7 @@ function PoolsPageContent(): ReactNode {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+                    <div className="bg-primary/20 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       3
                     </div>
                     <div>
@@ -504,8 +508,8 @@ function PoolsPageContent(): ReactNode {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <div className="bg-chart-1/20 text-chart-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-                      <AlertTriangle className="h-4 w-4" />
+                    <div className="bg-warning/20 text-warning flex size-8 shrink-0 items-center justify-center rounded-lg">
+                      <AlertTriangle className="size-4" />
                     </div>
                     <div>
                       <p className="text-foreground text-sm font-medium">Impermanent Loss</p>
@@ -522,9 +526,9 @@ function PoolsPageContent(): ReactNode {
                     href="/docs"
                     className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
                   >
-                    <BookOpen className="h-3.5 w-3.5" />
+                    <BookOpen className="size-3.5" />
                     Learn more about liquidity provision
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -552,7 +556,7 @@ export function PoolsPage(): ReactNode {
           href="/"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -563,8 +567,8 @@ export function PoolsPage(): ReactNode {
           Back
         </Link>
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
-            <Droplets className="text-primary h-5 w-5" />
+          <div className="bg-primary/10 flex size-10 items-center justify-center rounded-full">
+            <Droplets className="text-primary size-5" />
           </div>
           <div>
             <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Liquidity Pools</h1>

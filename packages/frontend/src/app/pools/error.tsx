@@ -30,7 +30,7 @@ export default function PoolsError({ error, reset }: PoolsErrorProps): React.Rea
           href="/"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -40,7 +40,7 @@ export default function PoolsError({ error, reset }: PoolsErrorProps): React.Rea
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-foreground text-3xl font-bold">Liquidity Pools</h1>
+        <h1 className="text-foreground text-3xl font-semibold">Liquidity Pools</h1>
       </div>
 
       <div className="flex items-center justify-center">

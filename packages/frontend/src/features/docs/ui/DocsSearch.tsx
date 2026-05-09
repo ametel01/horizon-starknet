@@ -119,17 +119,32 @@ function searchDocs(query: string): SearchResult[] {
   if (!query.trim()) return [];
 
   const lowerQuery = query.toLowerCase();
-  const terms = lowerQuery.split(/\s+/).filter(Boolean);
+  const terms: RegExp[] = [];
+  for (const term of lowerQuery.split(/\s+/)) {
+    if (term) {
+      terms.push(createLiteralSearchPattern(term));
+    }
+  }
 
-  return searchIndex
-    .map((item) => {
-      const searchText = `${item.title} ${item.section ?? ''} ${item.excerpt}`.toLowerCase();
-      const matchCount = terms.filter((term) => searchText.includes(term)).length;
-      return { ...item, matchCount };
-    })
-    .filter((item) => item.matchCount > 0)
-    .sort((a, b) => b.matchCount - a.matchCount)
-    .slice(0, 8);
+  const matches: Array<SearchResult & { matchCount: number }> = [];
+  for (const item of searchIndex) {
+    const searchText = `${item.title} ${item.section ?? ''} ${item.excerpt}`.toLowerCase();
+    let matchCount = 0;
+    for (const termPattern of terms) {
+      if (termPattern.test(searchText)) {
+        matchCount++;
+      }
+    }
+    if (matchCount > 0) {
+      matches.push({ ...item, matchCount });
+    }
+  }
+
+  return matches.sort((a, b) => b.matchCount - a.matchCount).slice(0, 8);
+}
+
+function createLiteralSearchPattern(value: string): RegExp {
+  return new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 }
 
 export function DocsSearch(): React.ReactNode {
@@ -138,7 +153,7 @@ export function DocsSearch(): React.ReactNode {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+  const { push } = useRouter();
 
   const handleSearch = useCallback((value: string) => {
     setQuery(value);
@@ -150,9 +165,9 @@ export function DocsSearch(): React.ReactNode {
     (href: string) => {
       setIsOpen(false);
       setQuery('');
-      router.push(href);
+      push(href);
     },
-    [router]
+    [push]
   );
 
   const handleKeyDown = useCallback(
@@ -189,9 +204,12 @@ export function DocsSearch(): React.ReactNode {
 
   // Focus input when dialog opens
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
+    if (!isOpen) return;
+
+    const timeoutId = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [isOpen]);
 
   return (
@@ -204,8 +222,8 @@ export function DocsSearch(): React.ReactNode {
         }}
         className="border-border bg-muted/50 text-muted-foreground hover:bg-muted flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors"
       >
-        <Search className="h-4 w-4" />
-        <span className="hidden sm:inline">Search docs...</span>
+        <Search className="size-4" />
+        <span className="hidden sm:inline">Search docs…</span>
         <kbd className="border-border bg-background hidden items-center gap-0.5 rounded border px-1.5 py-0.5 font-mono text-xs sm:inline-flex">
           <span className="text-xs">⌘</span>K
         </kbd>
@@ -215,7 +233,9 @@ export function DocsSearch(): React.ReactNode {
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
           {/* Backdrop */}
-          <div
+          <button
+            type="button"
+            aria-label="Close search"
             className="bg-background/80 fixed inset-0 backdrop-blur-sm"
             onClick={() => {
               setIsOpen(false);
@@ -226,7 +246,7 @@ export function DocsSearch(): React.ReactNode {
           <div className="border-border bg-card relative mx-4 w-full max-w-lg rounded-lg border shadow-lg">
             {/* Search input */}
             <div className="border-border flex items-center gap-3 border-b px-4 py-3">
-              <Search className="text-muted-foreground h-5 w-5" />
+              <Search className="text-muted-foreground size-5" />
               <input
                 ref={inputRef}
                 type="text"
@@ -235,7 +255,7 @@ export function DocsSearch(): React.ReactNode {
                   handleSearch(e.target.value);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Search documentation..."
+                placeholder="Search documentation…"
                 className="text-foreground placeholder:text-muted-foreground flex-1 bg-transparent focus:outline-none"
               />
               <button
@@ -245,7 +265,7 @@ export function DocsSearch(): React.ReactNode {
                 }}
                 className="text-muted-foreground hover:text-foreground"
               >
-                <X className="h-5 w-5" />
+                <X className="size-5" />
               </button>
             </div>
 
@@ -273,7 +293,7 @@ export function DocsSearch(): React.ReactNode {
                 >
                   <FileText
                     className={cn(
-                      'mt-0.5 h-5 w-5 flex-shrink-0',
+                      'mt-0.5 size-5 flex-shrink-0',
                       index === selectedIndex ? 'text-primary' : 'text-muted-foreground'
                     )}
                   />

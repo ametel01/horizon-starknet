@@ -3,8 +3,18 @@
 import { useDashboardMarkets } from '@features/markets';
 import { getTokenAddressForPricing, getTokenPrice, usePrices } from '@features/price';
 import { useProtocolVolume } from '@features/protocol-status';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from '@shared/ui/recharts';
 import { ChartSkeleton } from '@shared/ui/Skeleton';
 import {
   Activity,
@@ -15,8 +25,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format USD value with compact notation for large numbers
@@ -63,13 +72,13 @@ function CustomTooltip({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs">
-        <Calendar className="h-3 w-3" />
+        <Calendar className="size-3" />
         {data.displayDate}
       </div>
       <div className="space-y-1.5 text-sm">
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <BarChart3 className="h-3 w-3" />
+            <BarChart3 className="size-3" />
             Volume
           </span>
           <span className="text-primary font-mono font-medium">
@@ -78,7 +87,7 @@ function CustomTooltip({
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <ArrowLeftRight className="h-3 w-3" />
+            <ArrowLeftRight className="size-3" />
             Swaps
           </span>
           <span className="font-mono">{data.swapCount}</span>
@@ -108,33 +117,27 @@ function StackedTooltip({
   return (
     <div className="bg-popover/95 text-popover-foreground rounded-xl border p-3 shadow-lg backdrop-blur-sm">
       <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs">
-        <Calendar className="h-3 w-3" />
+        <Calendar className="size-3" />
         {data.displayDate}
       </div>
       <div className="space-y-1.5 text-sm">
         <div className="flex items-center justify-between gap-4">
           <span className="flex items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 rounded-sm"
-              style={{ backgroundColor: 'var(--chart-1)' }}
-            />
+            <span className="size-2.5 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
             <span className="text-muted-foreground">SY Volume</span>
           </span>
           <span className="font-mono">{formatUsdCompact(data.syVolumeUsd)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="flex items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 rounded-sm"
-              style={{ backgroundColor: 'var(--chart-3)' }}
-            />
+            <span className="size-2.5 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
             <span className="text-muted-foreground">PT Volume</span>
           </span>
           <span className="font-mono">{formatUsdCompact(data.ptVolumeUsd)}</span>
         </div>
         <div className="border-border/50 flex items-center justify-between gap-4 border-t pt-1.5">
           <span className="text-muted-foreground flex items-center gap-1.5">
-            <ArrowLeftRight className="h-3 w-3" />
+            <ArrowLeftRight className="size-3" />
             Swaps
           </span>
           <span className="font-mono">{data.swapCount}</span>
@@ -149,13 +152,9 @@ function StackedTooltip({
  * Displays volume in USD using token prices.
  */
 export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const { data: volumeData, isLoading: volumeLoading, isError } = useProtocolVolume({ days });
   const { markets } = useDashboardMarkets();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Get token addresses for pricing
   const tokenAddresses = useMemo(() => {
@@ -268,7 +267,7 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
         className={cn('border-destructive/50 bg-card overflow-hidden rounded-xl border', className)}
       >
         <div className="py-8 text-center">
-          <BarChart3 className="text-destructive mx-auto mb-2 h-8 w-8 opacity-50" />
+          <BarChart3 className="text-destructive mx-auto mb-2 size-8 opacity-50" />
           <p className="text-destructive text-sm">Failed to load volume data</p>
         </div>
       </div>
@@ -280,11 +279,11 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
     return (
       <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
         <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-          <BarChart3 className="text-primary h-4 w-4" />
+          <BarChart3 className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Trading Volume</h3>
         </div>
         <div className="py-8 text-center">
-          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+          <Activity className="text-muted-foreground mx-auto mb-2 size-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No volume data available</p>
         </div>
       </div>
@@ -306,7 +305,7 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
       {/* Header */}
       <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <BarChart3 className="text-primary h-4 w-4" />
+          <BarChart3 className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Trading Volume</h3>
         </div>
         <div className="text-primary font-mono text-sm font-semibold">
@@ -341,7 +340,7 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
         <div className="border-border/50 mt-4 grid grid-cols-4 gap-4 border-t pt-4">
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <TrendingUp className="h-3 w-3" />
+              <TrendingUp className="size-3" />
               24h Vol
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">
@@ -350,7 +349,7 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
           </div>
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <BarChart3 className="h-3 w-3" />
+              <BarChart3 className="size-3" />
               7d Vol
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">
@@ -359,14 +358,14 @@ export function VolumeChart({ className, height = 300, days = 30 }: VolumeChartP
           </div>
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <ArrowLeftRight className="h-3 w-3" />
+              <ArrowLeftRight className="size-3" />
               24h Swaps
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">{stats.swaps24h}</div>
           </div>
           <div className="text-center">
             <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1 text-xs">
-              <Users className="h-3 w-3" />
+              <Users className="size-3" />
               Traders
             </div>
             <div className="text-foreground font-mono text-sm font-semibold">
@@ -393,13 +392,9 @@ export function VolumeStackedChart({
   height = 300,
   days = 30,
 }: VolumeStackedChartProps): ReactNode {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const { data: volumeData, isLoading: volumeLoading, isError } = useProtocolVolume({ days });
   const { markets } = useDashboardMarkets();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Get token addresses for pricing
   const tokenAddresses = useMemo(() => {
@@ -473,7 +468,7 @@ export function VolumeStackedChart({
         className={cn('border-destructive/50 bg-card overflow-hidden rounded-xl border', className)}
       >
         <div className="py-8 text-center">
-          <BarChart3 className="text-destructive mx-auto mb-2 h-8 w-8 opacity-50" />
+          <BarChart3 className="text-destructive mx-auto mb-2 size-8 opacity-50" />
           <p className="text-destructive text-sm">Failed to load volume data</p>
         </div>
       </div>
@@ -484,11 +479,11 @@ export function VolumeStackedChart({
     return (
       <div className={cn('border-border/50 bg-card overflow-hidden rounded-xl border', className)}>
         <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-          <Layers className="text-primary h-4 w-4" />
+          <Layers className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Volume by Token Type</h3>
         </div>
         <div className="py-8 text-center">
-          <Activity className="text-muted-foreground mx-auto mb-2 h-8 w-8 opacity-50" />
+          <Activity className="text-muted-foreground mx-auto mb-2 size-8 opacity-50" />
           <p className="text-muted-foreground text-sm">No volume data available</p>
         </div>
       </div>
@@ -508,16 +503,16 @@ export function VolumeStackedChart({
       {/* Header */}
       <div className="border-border/50 flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <Layers className="text-primary h-4 w-4" />
+          <Layers className="text-primary size-4" />
           <h3 className="text-foreground text-sm font-semibold">Volume by Token Type</h3>
         </div>
         <div className="flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
+            <span className="size-2 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
             SY
           </span>
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
+            <span className="size-2 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
             PT
           </span>
         </div>
@@ -563,7 +558,7 @@ export function VolumeStackedChart({
         <div className="border-border/50 mt-4 grid grid-cols-2 gap-4 border-t pt-4">
           <div className="text-center">
             <div className="mb-1 flex items-center justify-center gap-1 text-xs">
-              <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
+              <span className="size-2 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />
               <span className="text-muted-foreground">SY Volume (7d)</span>
             </div>
             <div className="text-foreground font-mono text-lg font-semibold">
@@ -572,7 +567,7 @@ export function VolumeStackedChart({
           </div>
           <div className="text-center">
             <div className="mb-1 flex items-center justify-center gap-1 text-xs">
-              <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
+              <span className="size-2 rounded-sm" style={{ backgroundColor: 'var(--chart-3)' }} />
               <span className="text-muted-foreground">PT Volume (7d)</span>
             </div>
             <div className="text-foreground font-mono text-lg font-semibold">

@@ -39,12 +39,16 @@ export function Header(): React.ReactNode {
   };
 
   // Filter and transform nav links based on mode
-  const visibleLinks = navLinks
-    .filter((link) => !link.advancedOnly || !isSimple)
-    .map((link) => ({
+  const visibleLinks: Array<NavLink & { displayLabel: string }> = [];
+  for (const link of navLinks) {
+    if (link.advancedOnly && isSimple) {
+      continue;
+    }
+    visibleLinks.push({
       ...link,
       displayLabel: isSimple && link.simpleLabel ? link.simpleLabel : link.label,
-    }));
+    });
+  }
 
   return (
     <header className="bg-background/80 border-border sticky top-0 z-50 border-b backdrop-blur-sm">
@@ -139,7 +143,7 @@ export function Header(): React.ReactNode {
 
       {/* Mobile navigation */}
       {mobileMenuOpen && (
-        <nav className="border-border bg-background border-t px-4 py-4 md:hidden">
+        <nav className="border-border bg-background border-t p-4 md:hidden">
           <div className="flex flex-col gap-1">
             {visibleLinks.map((link) => {
               const active = isActive(link.href);

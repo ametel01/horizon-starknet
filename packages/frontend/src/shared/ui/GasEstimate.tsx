@@ -49,7 +49,7 @@ export function GasEstimate({
   return (
     <div className={cn('flex items-center gap-1.5 text-xs', className)}>
       <svg
-        className="text-muted-foreground h-3 w-3"
+        className="text-muted-foreground size-3"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

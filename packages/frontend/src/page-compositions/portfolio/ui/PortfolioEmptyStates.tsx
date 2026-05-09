@@ -12,8 +12,8 @@ import type { ReactNode } from 'react';
 export function ConnectWalletPrompt(): ReactNode {
   return (
     <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
-      <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-        <Wallet className="text-muted-foreground h-8 w-8" />
+      <div className="bg-muted flex size-16 items-center justify-center rounded-full">
+        <Wallet className="text-muted-foreground size-8" />
       </div>
       <h3 className="text-foreground text-lg font-semibold">Connect your wallet</h3>
       <p className="text-muted-foreground mt-2 max-w-sm text-sm">
@@ -41,8 +41,8 @@ export function PortfolioLoadingState(): ReactNode {
 export function NoPositionsPrompt(): ReactNode {
   return (
     <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
-      <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-        <Wallet className="text-muted-foreground h-8 w-8" />
+      <div className="bg-muted flex size-16 items-center justify-center rounded-full">
+        <Wallet className="text-muted-foreground size-8" />
       </div>
       <h3 className="text-foreground text-lg font-semibold">No positions yet</h3>
       <p className="text-muted-foreground mt-2 max-w-sm text-sm">

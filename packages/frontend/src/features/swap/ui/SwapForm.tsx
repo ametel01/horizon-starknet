@@ -55,7 +55,7 @@ import {
 import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { ArrowUpDown } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useReducer, useState } from 'react';
 import { toast } from 'sonner';
 
 interface SwapFormProps {
@@ -73,14 +73,18 @@ interface SwapFormProps {
  * - Collapsible swap details
  * - Directional background gradient
  */
-export function SwapForm({ market, className }: SwapFormProps): ReactNode {
+export function SwapForm(props: SwapFormProps): ReactNode {
+  return useSwapFormContent(props);
+}
+
+function useSwapFormContent({ market, className }: SwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
   const { address } = useAccount();
   const addresses = getAddresses(network);
   const [tokenType, setTokenType] = useState<TokenType>('PT');
   const [isBuying, setIsBuying] = useState(true);
-  const [inputAmount, setInputAmount] = useState('');
-  const [isFlipping, setIsFlipping] = useState(false);
+  const [inputAmount, setInputAmount] = useReducer((_current: string, next: string) => next, '');
+  const [isFlipping, setIsFlipping] = useReducer((_current: boolean, next: boolean) => next, false);
   const [slippageBps, setSlippageBps] = useState(50); // 0.5% default
 
   // Derive swap direction from token type and buy/sell (lookup table)
@@ -470,12 +474,12 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
             size="icon"
             onClick={toggleDirection}
             className={cn(
-              'bg-background h-10 w-10 rounded-full shadow-lg transition-transform duration-300',
+              'bg-background size-10 rounded-full shadow-lg transition-transform duration-300',
               uiState.flipButtonClass
             )}
             aria-label="Toggle swap direction"
           >
-            <ArrowUpDown className="h-4 w-4" />
+            <ArrowUpDown className="size-4" />
           </Button>
         </div>
       </FormDivider>
@@ -517,7 +521,12 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
         syLabel={syLabel}
         parsedInputAmount={parsedInputAmount}
         expectedOutput={expectedOutput}
-        isValidAmount={isValidAmount}
+        status={{
+          isValidAmount,
+          isEstimatingFee,
+          isPreviewLoading,
+          isPreviewAvailable,
+        }}
         impliedApyDisplay={impliedApyDisplay}
         historicalAvgImpact={historicalAvgImpact}
         slippageBps={slippageBps}
@@ -525,11 +534,8 @@ export function SwapForm({ market, className }: SwapFormProps): ReactNode {
         reserveFeePercent={market.state.reserveFeePercent}
         formattedFee={formattedFee}
         formattedFeeUsd={formattedFeeUsd}
-        isEstimatingFee={isEstimatingFee}
         feeError={feeError}
         previewResult={previewResult}
-        isPreviewLoading={isPreviewLoading}
-        isPreviewAvailable={isPreviewAvailable}
       />
 
       {/* Price Impact Warning */}

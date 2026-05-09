@@ -26,21 +26,21 @@ interface SeverityConfig {
 
 const SEVERITY_CONFIG: Record<Exclude<PriceImpactSeverity, 'low'>, SeverityConfig> = {
   medium: {
-    icon: <Info className="h-5 w-5" />,
+    icon: <Info className="size-5" />,
     title: 'Moderate Price Impact',
     description:
       'This trade has a moderate price impact. The larger your trade relative to liquidity, the more you pay above market price.',
     variant: 'warning',
   },
   high: {
-    icon: <TrendingDown className="h-5 w-5" />,
+    icon: <TrendingDown className="size-5" />,
     title: 'High Price Impact',
     description:
       'This trade has significant price impact. Consider splitting into smaller trades or waiting for more liquidity.',
     variant: 'warning',
   },
   'very-high': {
-    icon: <AlertTriangle className="h-5 w-5" />,
+    icon: <AlertTriangle className="size-5" />,
     title: 'Very High Price Impact',
     description:
       'This trade has extremely high price impact. You will receive significantly less than the market rate. Only proceed if you understand the risks.',
@@ -132,14 +132,14 @@ export function PriceImpactWarning({
                 onClick={handleAcknowledge}
                 className="border-destructive/30 text-destructive hover:bg-destructive/20 w-full gap-2"
               >
-                <ShieldAlert className="h-4 w-4" />I understand the risks, proceed anyway
+                <ShieldAlert className="size-4" />I understand the risks, proceed anyway
               </Button>
             </div>
           )}
 
           {severity === 'very-high' && isAcknowledged && (
             <p className="text-destructive/80 flex items-center gap-1.5 text-xs">
-              <ShieldAlert className="h-3.5 w-3.5" />
+              <ShieldAlert className="size-3.5" />
               Warning acknowledged. You may proceed with the swap.
             </p>
           )}

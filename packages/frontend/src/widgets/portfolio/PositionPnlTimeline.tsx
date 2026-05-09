@@ -15,7 +15,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@shared/ui';
-import { type ReactNode, useMemo, useState } from 'react';
+import { ClientDaysUntilExpiry } from '@shared/ui/client-time';
 import {
   Area,
   AreaChart,
@@ -25,7 +25,8 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { type ReactNode, useMemo, useState } from 'react';
 
 /**
  * Format percentage with sign
@@ -109,10 +110,8 @@ function PositionRow({
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <span className="text-foreground text-sm font-medium">{ytSymbol}</span>
-          <span className="text-muted-foreground text-xs">
-            {position.isExpired
-              ? 'Expired'
-              : `${String(Math.round((position.expiry - Date.now() / 1000) / 86400))}d left`}
+          <span className="text-muted-foreground text-xs" suppressHydrationWarning>
+            {position.isExpired ? 'Expired' : <ClientDaysUntilExpiry expiry={position.expiry} />}
           </span>
         </div>
       </div>

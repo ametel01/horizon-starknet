@@ -59,7 +59,7 @@ export const StepProgress = memo(function StepProgress({
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all duration-300',
+                    'flex size-8 items-center justify-center rounded-full text-sm font-medium transition-all duration-300',
                     isCompleted && 'bg-success text-success-foreground',
                     isCurrent && 'bg-primary text-primary-foreground ring-primary/20 ring-4',
                     isPending && 'bg-muted text-muted-foreground'
@@ -67,7 +67,7 @@ export const StepProgress = memo(function StepProgress({
                   aria-current={isCurrent ? 'step' : undefined}
                 >
                   {isCompleted ? (
-                    <Check className="h-4 w-4" aria-hidden="true" />
+                    <Check className="size-4" aria-hidden="true" />
                   ) : (
                     <span>{index + 1}</span>
                   )}

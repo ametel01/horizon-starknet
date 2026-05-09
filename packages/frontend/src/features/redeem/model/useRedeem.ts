@@ -109,15 +109,17 @@ export function useRedeemPy(): UseRedeemPyReturn {
      */
     onMutate: async (params: RedeemPyToSyParams): Promise<RedeemOptimisticContext> => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.ptAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.ytAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.syAddress, address],
-      });
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.ptAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.ytAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.syAddress, address],
+        }),
+      ]);
 
       // Snapshot previous values
       const previousPtBalance = queryClient.getQueryData<string>([
@@ -495,15 +497,17 @@ export function useRedeemPyWithInterest(): UseRedeemPyWithInterestReturn {
       params: RedeemPyWithInterestParams
     ): Promise<RedeemWithInterestOptimisticContext> => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.ptAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.ytAddress, address],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ['token-balance', params.syAddress, address],
-      });
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.ptAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.ytAddress, address],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ['token-balance', params.syAddress, address],
+        }),
+      ]);
 
       // Snapshot previous values
       const previousPtBalance = queryClient.getQueryData<string>([

@@ -180,7 +180,7 @@ export function PortfolioSummaryGrid({
       <BentoCard colSpan={{ default: 12, md: 6, lg: 4 }} rowSpan={1} featured animationDelay={0}>
         <div className="flex h-full flex-col justify-center p-4">
           <div className="flex items-center gap-2">
-            <Wallet className="text-primary h-4 w-4" />
+            <Wallet className="text-primary size-4" />
             <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Total Value
             </span>
@@ -196,7 +196,7 @@ export function PortfolioSummaryGrid({
         <div className="flex h-full flex-col justify-center p-4">
           <div className="flex items-center gap-2">
             <TrendingUp
-              className={cn('h-4 w-4', totalPnl >= 0 ? 'text-green-500' : 'text-red-500')}
+              className={cn('size-4', totalPnl >= 0 ? 'text-green-500' : 'text-red-500')}
             />
             <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Unrealized P&L
@@ -243,7 +243,7 @@ export function PortfolioSummaryGrid({
         <div className="flex h-full items-center justify-between p-4">
           <div>
             <div className="flex items-center gap-2">
-              <Zap className="text-primary h-4 w-4" />
+              <Zap className="text-primary size-4" />
               <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
                 Claimable Yield
               </span>

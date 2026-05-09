@@ -23,7 +23,7 @@ export function Step({ title, step, children }: StepProps): React.ReactNode {
   return (
     <div className="relative">
       {step !== undefined && step > 0 && (
-        <div className="bg-primary text-primary-foreground absolute -left-10 flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium">
+        <div className="bg-primary text-primary-foreground absolute -left-10 flex size-7 items-center justify-center rounded-full text-sm font-medium">
           {step}
         </div>
       )}

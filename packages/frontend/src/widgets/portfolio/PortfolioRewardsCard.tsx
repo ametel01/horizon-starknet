@@ -34,6 +34,8 @@ interface PortfolioRewardsCardProps {
   className?: string;
 }
 
+const EMPTY_REWARD_ADDRESSES: string[] = [];
+
 /**
  * Display a single reward token with its accrued amount
  */
@@ -121,14 +123,14 @@ function RewardsCardContent({
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <GiftIcon className="text-muted-foreground h-4 w-4" />
+            <GiftIcon className="text-muted-foreground size-4" />
             External Rewards
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-6 text-center">
-            <div className="bg-muted-foreground/20 mb-3 flex h-10 w-10 items-center justify-center rounded-full">
-              <GiftIcon className="text-muted-foreground h-5 w-5" />
+            <div className="bg-muted flex size-10 items-center justify-center rounded-full">
+              <GiftIcon className="text-muted-foreground size-5" />
             </div>
             <p className="text-muted-foreground text-sm">No external rewards available</p>
             <p className="text-muted-foreground/70 mt-1 text-xs">
@@ -145,7 +147,7 @@ function RewardsCardContent({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <GiftIcon className="text-success h-4 w-4" />
+            <GiftIcon className="text-success size-4" />
             External Rewards
           </CardTitle>
           <span className="bg-success/20 text-success rounded-full px-2 py-0.5 text-xs font-medium">
@@ -203,7 +205,7 @@ function RewardsCardContent({
         {/* Action Button */}
         {status === 'success' ? (
           <Button onClick={handleDone} className="w-full">
-            Done
+            Close rewards status
           </Button>
         ) : (
           <Button
@@ -279,14 +281,14 @@ function YTRewardsCardContent({
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <GiftIcon className="text-muted-foreground h-4 w-4" />
+            <GiftIcon className="text-muted-foreground size-4" />
             YT Rewards
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-6 text-center">
-            <div className="bg-muted-foreground/20 mb-3 flex h-10 w-10 items-center justify-center rounded-full">
-              <GiftIcon className="text-muted-foreground h-5 w-5" />
+            <div className="bg-muted flex size-10 items-center justify-center rounded-full">
+              <GiftIcon className="text-muted-foreground size-5" />
             </div>
             <p className="text-muted-foreground text-sm">No YT rewards available</p>
             <p className="text-muted-foreground/70 mt-1 text-xs">
@@ -303,7 +305,7 @@ function YTRewardsCardContent({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <GiftIcon className="text-primary h-4 w-4" />
+            <GiftIcon className="text-primary size-4" />
             YT Rewards
           </CardTitle>
           <span className="bg-primary/20 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
@@ -361,7 +363,7 @@ function YTRewardsCardContent({
         {/* Action Button */}
         {status === 'success' ? (
           <Button onClick={handleDone} className="w-full">
-            Done
+            Close YT rewards status
           </Button>
         ) : (
           <Button
@@ -396,7 +398,7 @@ function YTRewardsCardContent({
  */
 export function PortfolioRewardsCard({
   syAddresses,
-  ytAddresses = [],
+  ytAddresses = EMPTY_REWARD_ADDRESSES,
   className,
 }: PortfolioRewardsCardProps): ReactNode {
   const {
@@ -429,7 +431,7 @@ export function PortfolioRewardsCard({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <GiftIcon className="text-muted-foreground h-4 w-4" />
+                <GiftIcon className="text-muted-foreground size-4" />
                 External Rewards
               </CardTitle>
             </CardHeader>
@@ -446,7 +448,7 @@ export function PortfolioRewardsCard({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <GiftIcon className="text-muted-foreground h-4 w-4" />
+                <GiftIcon className="text-muted-foreground size-4" />
                 YT Rewards
               </CardTitle>
             </CardHeader>
@@ -482,7 +484,7 @@ export function PortfolioRewardsCard({
  */
 export function PortfolioRewardsBento({
   syAddresses,
-  ytAddresses = [],
+  ytAddresses = EMPTY_REWARD_ADDRESSES,
   className,
 }: PortfolioRewardsCardProps): ReactNode {
   const { data: syRewards, isLoading: syLoading } = usePortfolioRewards(syAddresses);
@@ -518,7 +520,7 @@ export function PortfolioRewardsBento({
     <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} className={className}>
       <div className="flex h-full flex-col justify-center p-4">
         <div className="flex items-center gap-2">
-          <GiftIcon className="text-success h-4 w-4" />
+          <GiftIcon className="text-success size-4" />
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             Claimable Rewards
           </span>

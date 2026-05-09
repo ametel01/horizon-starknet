@@ -29,6 +29,7 @@ import {
   usePostExpiryStatus,
   useUserYield,
 } from '@features/yield';
+import { useHydrated } from '@shared/hooks';
 import { formatWad } from '@shared/math/wad';
 import { useUIMode } from '@shared/theme/ui-mode-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
@@ -195,7 +196,7 @@ function PositionCard({ position }: { position: MarketPosition }): ReactNode {
                 </span>
               )}
               <svg
-                className={`text-muted-foreground h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                className={`text-muted-foreground size-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -470,6 +471,37 @@ function EnhancedPositionCardWrapper({
   );
 }
 
+function PositionCards({
+  enhancedPositions,
+  activePositions,
+  yieldByYtAddress,
+}: {
+  enhancedPositions: EnhancedPosition[];
+  activePositions: MarketPosition[];
+  yieldByYtAddress: Map<string, YieldEarnedData>;
+}): ReactNode {
+  if (enhancedPositions.length > 0) {
+    return enhancedPositions.map((position) => {
+      const legacyPosition = activePositions.find(
+        (p) => p.market.address === position.market.address
+      );
+      const positionYield = yieldByYtAddress.get(position.market.ytAddress.toLowerCase());
+      return (
+        <EnhancedPositionCardWrapper
+          key={position.market.address}
+          position={position}
+          legacyPosition={legacyPosition}
+          yieldEarned={positionYield}
+        />
+      );
+    });
+  }
+
+  return activePositions.map((position) => (
+    <PositionCard key={position.market.address} position={position} />
+  ));
+}
+
 function PortfolioContent(): ReactNode {
   const { isConnected } = useStarknet();
   const { isSimple } = useUIMode();
@@ -478,7 +510,7 @@ function PortfolioContent(): ReactNode {
   const { data: enhancedPortfolio, isLoading: enhancedLoading } = useEnhancedPositions(markets);
   const { data: yieldData } = useUserYield();
   const { lpPositions, isLoading: lpPositionsLoading } = useUserIndexedPositions();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
 
   // Build a map of YT address to yield data for position cards
   const yieldByYtAddress = useMemo(() => {
@@ -504,10 +536,6 @@ function PortfolioContent(): ReactNode {
     transactionHash: claimAllTxHash,
     reset: resetClaimAll,
   } = useClaimAllYield();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Derive claim all status using extracted helper
   const claimAllTxStatus = deriveTxStatus(isClaimingAll, claimAllSuccess, claimAllError);
@@ -560,9 +588,12 @@ function PortfolioContent(): ReactNode {
   const handleClaimAll = (): void => {
     if (!portfolio) return;
 
-    const claimableYtAddresses = portfolio.positions
-      .filter((p) => p.claimableYield > BigInt(0))
-      .map((p) => p.market.ytAddress);
+    const claimableYtAddresses: string[] = [];
+    for (const position of portfolio.positions) {
+      if (position.claimableYield > BigInt(0)) {
+        claimableYtAddresses.push(position.market.ytAddress);
+      }
+    }
 
     if (claimableYtAddresses.length > 0) {
       claimAllYield({ ytAddresses: claimableYtAddresses });
@@ -600,29 +631,6 @@ function PortfolioContent(): ReactNode {
   const totalPnlPercent = enhancedPortfolio?.totalPnlPercent ?? 0;
   const totalClaimable = enhancedPortfolio?.totalClaimableUsd ?? 0;
 
-  // Render position card for enhanced or legacy positions
-  const renderPositionCards = (): ReactNode => {
-    if (enhancedPositions.length > 0) {
-      return enhancedPositions.map((position) => {
-        const legacyPosition = activePositions.find(
-          (p) => p.market.address === position.market.address
-        );
-        const positionYield = yieldByYtAddress.get(position.market.ytAddress.toLowerCase());
-        return (
-          <EnhancedPositionCardWrapper
-            key={position.market.address}
-            position={position}
-            legacyPosition={legacyPosition}
-            yieldEarned={positionYield}
-          />
-        );
-      });
-    }
-    return activePositions.map((position) => (
-      <PositionCard key={position.market.address} position={position} />
-    ));
-  };
-
   return (
     <div className="space-y-8">
       <PortfolioSummaryGrid
@@ -649,7 +657,11 @@ function PortfolioContent(): ReactNode {
         <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
           Your Positions
         </h2>
-        {renderPositionCards()}
+        <PositionCards
+          enhancedPositions={enhancedPositions}
+          activePositions={activePositions}
+          yieldByYtAddress={yieldByYtAddress}
+        />
       </section>
 
       <YieldAnalyticsSection syAddresses={syAddresses} ytAddresses={ytAddresses} />
@@ -674,7 +686,7 @@ export function PortfolioPage(): ReactNode {
           href="/"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

@@ -159,7 +159,7 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
 
   const buttonText = useMemo(() => {
     if (!isConnected) return 'Connect Wallet';
-    if (underlyingLoading) return 'Loading...';
+    if (underlyingLoading) return 'Loading\u2026';
     if (!underlyingAddress) return 'Token not found';
     if (isPaused) return 'Deposits Paused';
     if (isLoading) return 'Depositing...';
@@ -228,7 +228,7 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
       <FormDivider>
         <Button variant="ghost" size="icon" className="rounded-full" disabled>
           <svg
-            className="text-muted-foreground h-4 w-4"
+            className="text-muted-foreground size-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -259,7 +259,7 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
             label={`Min Received (${slippagePercent} slippage)`}
             value={
               previewLoading ? (
-                <span className="text-muted-foreground">Loading...</span>
+                <span className="text-muted-foreground">Loading&hellip;</span>
               ) : (
                 <span className="font-mono">
                   {formatWad(minReceived, 4)} {sySymbol}

@@ -7,9 +7,6 @@ import { useStarknet } from '@features/wallet';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
-import { type ReactNode, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -18,7 +15,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { Skeleton } from '@shared/ui/Skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
+import { type ReactNode, useMemo, useReducer } from 'react';
 
 /**
  * Tooltip name display mapping for portfolio chart.
@@ -53,7 +53,7 @@ type TimeRange = '7d' | '30d' | '90d';
 interface PortfolioValueChartProps {
   className?: string;
   height?: number;
-  defaultRange?: TimeRange;
+  initialRange?: TimeRange;
   showControls?: boolean;
 }
 
@@ -74,11 +74,14 @@ interface ChartDataPoint {
 export function PortfolioValueChart({
   className,
   height = 300,
-  defaultRange = '30d',
+  initialRange = '30d',
   showControls = true,
 }: PortfolioValueChartProps): ReactNode {
   const { isConnected } = useStarknet();
-  const [range, setRange] = useState<TimeRange>(defaultRange);
+  const [range, setRange] = useReducer(
+    (_current: TimeRange, next: TimeRange) => next,
+    initialRange
+  );
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
 
@@ -308,7 +311,7 @@ export function PortfolioValueChart({
             />
             <Tooltip
               contentStyle={{ borderRadius: '8px' }}
-              formatter={(value, name) => {
+              formatter={(value: unknown, name: unknown) => {
                 const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
                 const tooltipName = typeof name === 'string' ? name : String(name ?? '');
                 return [
@@ -316,7 +319,9 @@ export function PortfolioValueChart({
                   getChartDisplayName(tooltipName),
                 ];
               }}
-              labelFormatter={(label) => (typeof label === 'string' ? label : String(label ?? ''))}
+              labelFormatter={(label: unknown) =>
+                typeof label === 'string' ? label : String(label ?? '')
+              }
             />
             <Area
               type="monotone"

@@ -38,8 +38,8 @@ export function DisclaimerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader>
-          <div className="bg-warning/10 border-warning/20 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border">
-            <AlertTriangle className="text-warning h-6 w-6" />
+          <div className="bg-warning/10 border-warning/20 mx-auto mb-4 flex size-12 items-center justify-center rounded-full border">
+            <AlertTriangle className="text-warning size-6" />
           </div>
           <DialogTitle className="text-center text-xl">Important Disclaimer</DialogTitle>
           <DialogDescription className="text-center">
@@ -51,7 +51,7 @@ export function DisclaimerDialog({
           {/* Experimental Warning */}
           <div className="border-destructive/20 bg-destructive/5 rounded-lg border p-4">
             <div className="flex items-start gap-3">
-              <FlaskConical className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
+              <FlaskConical className="text-destructive mt-0.5 size-5 flex-shrink-0" />
               <div>
                 <h4 className="text-foreground font-medium">Experimental Protocol</h4>
                 <p className="text-muted-foreground mt-1 text-sm">
@@ -65,7 +65,7 @@ export function DisclaimerDialog({
           {/* Risk Warning */}
           <div className="border-warning/20 bg-warning/5 rounded-lg border p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="text-warning mt-0.5 h-5 w-5 flex-shrink-0" />
+              <AlertTriangle className="text-warning mt-0.5 size-5 flex-shrink-0" />
               <div>
                 <h4 className="text-foreground font-medium">Funds at Risk</h4>
                 <p className="text-muted-foreground mt-1 text-sm">
@@ -93,7 +93,7 @@ export function DisclaimerDialog({
               }}
             >
               Go to Faucet
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="size-3.5" />
             </Link>
           </div>
 
@@ -106,7 +106,7 @@ export function DisclaimerDialog({
               onChange={(e) => {
                 setAcknowledged(e.target.checked);
               }}
-              className="border-border bg-background accent-primary mt-0.5 h-5 w-5 rounded border"
+              className="border-border bg-background accent-primary mt-0.5 size-5 rounded border"
             />
             <span className="text-muted-foreground text-sm">
               I understand the risks and accept the{' '}

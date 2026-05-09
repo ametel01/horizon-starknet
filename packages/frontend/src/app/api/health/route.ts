@@ -66,6 +66,7 @@ async function getCurrentStarknetBlock(): Promise<number | null> {
   try {
     const response = await fetch(rpcUrl, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',

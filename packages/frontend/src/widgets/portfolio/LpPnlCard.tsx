@@ -4,6 +4,7 @@ import type { LpPosition } from '@shared/api/types';
 import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
+import { ClientDateText } from '@shared/ui/client-time';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
 
@@ -292,23 +293,13 @@ export function LpPnlCard({ position, className, poolReserves }: LpPnlCardProps)
         {/* Activity Info */}
         <div className="text-muted-foreground text-xs">
           {position.firstMint && (
-            <div>
-              First deposit:{' '}
-              {new Date(position.firstMint).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
+            <div suppressHydrationWarning>
+              First deposit: <ClientDateText value={position.firstMint} />
             </div>
           )}
           {position.lastActivity && (
-            <div>
-              Last activity:{' '}
-              {new Date(position.lastActivity).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
+            <div suppressHydrationWarning>
+              Last activity: <ClientDateText value={position.lastActivity} />
             </div>
           )}
         </div>

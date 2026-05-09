@@ -1,7 +1,7 @@
 'use client';
 
 import { useStarknet } from '@features/wallet';
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { WalletAccount } from 'starknet';
 
 export interface UseAccountReturn {
@@ -12,21 +12,24 @@ export interface UseAccountReturn {
 
 export function useAccount(): UseAccountReturn {
   const { provider, wallet, address, isConnected } = useStarknet();
-  const [account, setAccount] = useState<WalletAccount | null>(null);
+  const [account, dispatchAccount] = useReducer(
+    (_current: WalletAccount | null, next: WalletAccount | null) => next,
+    null
+  );
 
   useEffect(() => {
     if (!wallet || !address) {
-      setAccount(null);
+      dispatchAccount(null);
       return;
     }
 
     // Use the new static connectSilent method instead of deprecated constructor
     WalletAccount.connectSilent(provider, wallet)
       .then((walletAccount) => {
-        setAccount(walletAccount);
+        dispatchAccount(walletAccount);
       })
       .catch(() => {
-        setAccount(null);
+        dispatchAccount(null);
       });
   }, [provider, wallet, address]);
 

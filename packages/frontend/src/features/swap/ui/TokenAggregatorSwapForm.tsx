@@ -34,7 +34,7 @@ import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { ArrowUpDown, Info, Zap } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useReducer, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -232,8 +232,15 @@ function getTransactionSteps(
  * - Two-step approval flow for aggregator swaps
  * - Combined slippage handling (aggregator + market)
  */
+export function TokenAggregatorSwapForm(props: AggregatorSwapFormProps): ReactNode {
+  return useTokenAggregatorSwapFormContent(props);
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode swap form with PT/YT toggle, buy/sell modes, aggregator routing, and price impact handling - inherent UI complexity
-export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFormProps): ReactNode {
+function useTokenAggregatorSwapFormContent({
+  market,
+  className,
+}: AggregatorSwapFormProps): ReactNode {
   const { isConnected, network } = useStarknet();
   const { address } = useAccount();
 
@@ -253,12 +260,12 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
   // Form state
   const [tokenType, setTokenType] = useState<TokenType>('PT');
   const [mode, setMode] = useState<SwapMode>('buy');
-  const [inputAmount, setInputAmount] = useState('');
+  const [inputAmount, setInputAmount] = useReducer((_current: string, next: string) => next, '');
   const [selectedTokenAddress, setSelectedTokenAddress] = useState(
     tokenList[0]?.address ?? market.syAddress
   );
   const [slippageBps, setSlippageBps] = useState(100); // 1% default for aggregator swaps
-  const [isFlipping, setIsFlipping] = useState(false);
+  const [isFlipping, setIsFlipping] = useReducer((_current: boolean, next: boolean) => next, false);
 
   // Get selected token config
   const selectedToken = useMemo(
@@ -457,7 +464,7 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
   } = useEstimateFee(null); // Pass null for now
 
   // Handlers
-  const handleSwap = (): void => {
+  const handleSwap = async (): Promise<void> => {
     if (!canSwap || !address) return;
 
     if (mode === 'buy') {
@@ -468,13 +475,13 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
       };
 
       if (tokenType === 'PT') {
-        swapTokenForPt.swap({
+        await swapTokenForPt.swapAsync({
           marketAddress: market.address,
           input: tokenInput,
           minPtOut: minOutput,
         });
       } else {
-        swapTokenForYt.swap({
+        await swapTokenForYt.swapAsync({
           ytAddress: market.ytAddress,
           marketAddress: market.address,
           input: tokenInput,
@@ -490,14 +497,14 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
       };
 
       if (tokenType === 'PT') {
-        swapPtForToken.swap({
+        await swapPtForToken.swapAsync({
           marketAddress: market.address,
           ptAddress: market.ptAddress,
           exactPtIn: parsedInputAmount,
           output: tokenOutput,
         });
       } else {
-        swapYtForToken.swap({
+        await swapYtForToken.swapAsync({
           ytAddress: market.ytAddress,
           syAddress: market.syAddress,
           marketAddress: market.address,
@@ -507,14 +514,8 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
         });
       }
     }
+    setInputAmount('');
   };
-
-  // Clear input on success
-  useEffect(() => {
-    if (isSuccess) {
-      setInputAmount('');
-    }
-  }, [isSuccess]);
 
   // Handle direction toggle
   const toggleDirection = (): void => {
@@ -614,7 +615,7 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
           <span>{mode === 'buy' ? 'Pay with' : 'Receive'}</span>
           {needsAggregator && (
             <span className="bg-chart-4/10 text-chart-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-              <Zap className="h-3 w-3" />
+              <Zap className="size-3" />
               Via DEX
             </span>
           )}
@@ -628,7 +629,7 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
               <SelectItem key={token.address} value={token.address}>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{token.symbol}</span>
-                  {token.isExternal && <Zap className="text-chart-4 h-3 w-3" />}
+                  {token.isExternal && <Zap className="text-chart-4 size-3" />}
                 </div>
               </SelectItem>
             ))}
@@ -656,12 +657,12 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
             size="icon"
             onClick={toggleDirection}
             className={cn(
-              'bg-background h-10 w-10 rounded-full shadow-lg transition-transform duration-300',
+              'bg-background size-10 rounded-full shadow-lg transition-transform duration-300',
               isFlipping && 'rotate-180'
             )}
             aria-label="Toggle swap direction"
           >
-            <ArrowUpDown className="h-4 w-4" />
+            <ArrowUpDown className="size-4" />
           </Button>
         </div>
       </FormDivider>
@@ -711,7 +712,7 @@ export function TokenAggregatorSwapForm({ market, className }: AggregatorSwapFor
       {/* Aggregator routing info */}
       {needsAggregator && isValidAmount && (
         <div className="bg-muted/50 flex items-start gap-2 rounded-lg p-3 text-sm">
-          <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+          <Info className="text-muted-foreground mt-0.5 size-4 shrink-0" />
           <div className="space-y-1">
             <p className="text-foreground font-medium">Route via DEX Aggregator</p>
             <p className="text-muted-foreground text-xs">

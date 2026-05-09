@@ -81,7 +81,7 @@ export function RewardApyBadge({
       variant="outline"
       className={cn('border-success/50 bg-success/10 text-success gap-1', className)}
     >
-      <GiftIcon className="h-3 w-3" aria-hidden="true" />
+      <GiftIcon className="size-3" aria-hidden="true" />
       <span>Rewards</span>
     </Badge>
   );

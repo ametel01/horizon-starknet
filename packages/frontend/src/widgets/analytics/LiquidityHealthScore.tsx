@@ -4,7 +4,6 @@ import { useDashboardMarkets } from '@features/markets';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact, WAD_BIGINT } from '@shared/math/wad';
 import { Badge, Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
-import { type ReactNode, useMemo } from 'react';
 import {
   Bar,
   BarChart,
@@ -14,7 +13,8 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { type ReactNode, useMemo } from 'react';
 
 type HealthLevel = 'excellent' | 'good' | 'fair' | 'poor';
 
@@ -160,7 +160,7 @@ function MarketRow({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold',
+            'flex size-8 items-center justify-center rounded-full text-sm font-bold',
             getHealthLevelBgColor(healthLevel),
             getHealthLevelColor(healthLevel)
           )}

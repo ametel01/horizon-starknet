@@ -141,8 +141,8 @@ export function ClaimRewardsCard({
         <FormHeader title={title} description="Your pending rewards will appear here" />
         <Card size="sm" className="bg-muted">
           <CardContent className="flex flex-col items-center justify-center gap-3 py-8">
-            <div className="bg-muted-foreground/20 flex h-12 w-12 items-center justify-center rounded-full">
-              <GiftIcon className="text-muted-foreground h-6 w-6" />
+            <div className="bg-muted-foreground/20 flex size-12 items-center justify-center rounded-full">
+              <GiftIcon className="text-muted-foreground size-6" />
             </div>
             <p className="text-muted-foreground text-center text-sm">
               No rewards available to claim
@@ -210,7 +210,7 @@ export function ClaimRewardsCard({
       <FormActions>
         {status === 'success' ? (
           <Button onClick={handleClaimMore} className="h-12 w-full text-base font-medium">
-            Done
+            Close reward status
           </Button>
         ) : (
           <Button

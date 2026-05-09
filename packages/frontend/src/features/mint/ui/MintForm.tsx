@@ -185,7 +185,7 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
       <FormDivider>
         <Button variant="ghost" size="icon" className="rounded-full" disabled>
           <svg
-            className="text-muted-foreground h-4 w-4"
+            className="text-muted-foreground size-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

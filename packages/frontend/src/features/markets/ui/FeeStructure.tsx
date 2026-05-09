@@ -48,7 +48,7 @@ export const FeeStructure = memo(function FeeStructure({
         <HoverCard>
           <HoverCardTrigger className="text-foreground hover:text-primary inline-flex cursor-help items-center gap-1 transition-colors">
             <span className="font-mono">{annualRateFormatted}</span>
-            <Info className="h-3 w-3 opacity-50" />
+            <Info className="size-3 opacity-50" />
           </HoverCardTrigger>
           <HoverCardContent side="top" className="w-72">
             <FeeBreakdownContent
@@ -76,11 +76,11 @@ export const FeeStructure = memo(function FeeStructure({
       {/* Legend */}
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5">
-          <div className="bg-chart-1 h-2 w-2 rounded-full" />
+          <div className="bg-chart-1 size-2 rounded-full" />
           <span className="text-muted-foreground">LP: {lpPercent}%</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="bg-chart-3 h-2 w-2 rounded-full" />
+          <div className="bg-chart-3 size-2 rounded-full" />
           <span className="text-muted-foreground">Treasury: {reserveFeePercent}%</span>
         </div>
       </div>

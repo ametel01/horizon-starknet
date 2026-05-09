@@ -37,8 +37,8 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
   if (!isConnected) {
     return (
       <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
-        <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-          <Wallet className="text-muted-foreground h-8 w-8" />
+        <div className="bg-muted flex size-16 items-center justify-center rounded-full">
+          <Wallet className="text-muted-foreground size-8" />
         </div>
         <h3 className="text-foreground text-lg font-semibold">Connect your wallet</h3>
         <p className="text-muted-foreground mt-2 max-w-sm text-sm">
@@ -81,7 +81,7 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
         <BentoCard colSpan={{ default: 12, md: 4 }} rowSpan={1} featured animationDelay={0}>
           <div className="flex h-full flex-col justify-center p-4">
             <div className="flex items-center gap-2">
-              <Wallet className="text-primary h-4 w-4" />
+              <Wallet className="text-primary size-4" />
               <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
                 Total Value
               </span>
@@ -108,7 +108,7 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
         <BentoCard colSpan={{ default: 6, md: 4 }} rowSpan={1} animationDelay={100}>
           <div className="flex h-full flex-col justify-center p-4">
             <div className="flex items-center gap-2">
-              <Zap className="text-primary h-4 w-4" />
+              <Zap className="text-primary size-4" />
               <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
                 Claimable Yield
               </span>
@@ -146,8 +146,8 @@ export function SimplePortfolio({ markets }: SimplePortfolioProps): ReactNode {
         </section>
       ) : (
         <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-xl border p-12 text-center">
-          <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-            <Wallet className="text-muted-foreground h-8 w-8" />
+          <div className="bg-muted flex size-16 items-center justify-center rounded-full">
+            <Wallet className="text-muted-foreground size-8" />
           </div>
           <h3 className="text-foreground text-lg font-semibold">No positions yet</h3>
           <p className="text-muted-foreground mt-2 max-w-sm text-sm">
@@ -262,7 +262,7 @@ function TxStatusSection({
           <TxStatus status={withdrawStatus} txHash={withdrawTxHash} error={withdrawError} />
           {withdrawStatus === 'success' && (
             <Button onClick={onReset} variant="ghost" size="sm" className="mt-2 w-full">
-              Done
+              Close withdraw status
             </Button>
           )}
         </div>

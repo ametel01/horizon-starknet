@@ -5,7 +5,6 @@ import { usePositionPnl } from '@features/portfolio';
 import { cn } from '@shared/lib/utils';
 import { fromWad } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@shared/ui';
-import { type ReactNode, useMemo } from 'react';
 import {
   Bar,
   CartesianGrid,
@@ -15,7 +14,8 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from '@shared/ui/recharts';
+import { type ReactNode, useMemo } from 'react';
 
 /**
  * Format date for grouping (YYYY-MM-DD)

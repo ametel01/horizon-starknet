@@ -41,7 +41,7 @@ export function DocsNavigation(): React.ReactNode {
           href={prevPage.href}
           className="group text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
-          <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+          <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
           <div>
             <div className="text-muted-foreground text-xs">Previous</div>
             <div className="text-foreground font-medium">{prevPage.title}</div>
@@ -60,7 +60,7 @@ export function DocsNavigation(): React.ReactNode {
             <div className="text-muted-foreground text-xs">Next</div>
             <div className="text-foreground font-medium">{nextPage.title}</div>
           </div>
-          <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
         </Link>
       ) : (
         <div />

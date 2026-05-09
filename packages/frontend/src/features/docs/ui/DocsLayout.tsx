@@ -30,7 +30,7 @@ export function DocsLayout({ children }: DocsLayoutProps): React.ReactNode {
           }}
           aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
         >
-          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {sidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </Button>
 
         {/* Left Sidebar - Navigation */}
@@ -48,7 +48,9 @@ export function DocsLayout({ children }: DocsLayoutProps): React.ReactNode {
 
         {/* Backdrop for mobile */}
         {sidebarOpen && (
-          <div
+          <button
+            type="button"
+            aria-label="Close navigation"
             className="bg-background/80 fixed inset-0 z-30 backdrop-blur-sm lg:hidden"
             onClick={() => {
               setSidebarOpen(false);

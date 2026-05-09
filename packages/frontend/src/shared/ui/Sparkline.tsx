@@ -188,7 +188,7 @@ export const Sparkline = memo(function Sparkline({
         role="img"
         aria-label="Insufficient data for trend"
       >
-        <Minus className="text-muted-foreground h-3 w-3" aria-hidden="true" />
+        <Minus className="text-muted-foreground size-3" aria-hidden="true" />
       </div>
     );
   }
@@ -273,7 +273,7 @@ export const SparklineWithValue = memo(function SparklineWithValue({
               isPositive ? 'text-primary' : 'text-destructive'
             )}
           >
-            {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+            {isPositive ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
             {typeof change === 'number' ? `${Math.abs(change).toFixed(2)}%` : change}
           </span>
         )}
@@ -384,7 +384,7 @@ export const MiniBarChart = memo(function MiniBarChart({
         role="img"
         aria-label="No data available"
       >
-        <Minus className="text-muted-foreground h-3 w-3" aria-hidden="true" />
+        <Minus className="text-muted-foreground size-3" aria-hidden="true" />
       </div>
     );
   }
@@ -399,9 +399,9 @@ export const MiniBarChart = memo(function MiniBarChart({
       role="img"
       aria-label={chartDescription}
     >
-      {bars.map((bar, i) => (
+      {bars.map((bar, index) => (
         <rect
-          key={i}
+          key={`${String(bar.x)}-${String(bar.y)}-${String(bar.height)}`}
           x={bar.x}
           y={mounted ? bar.y : height - 2}
           width={bar.width}
@@ -409,7 +409,7 @@ export const MiniBarChart = memo(function MiniBarChart({
           fill={bar.fill}
           rx={1}
           className="transition-all duration-500 ease-out"
-          style={{ transitionDelay: `${String(i * 30)}ms` }}
+          style={{ transitionDelay: `${String(index * 30)}ms` }}
         />
       ))}
     </svg>
@@ -454,9 +454,9 @@ export const TrendIndicator = memo(function TrendIndicator({
   };
 
   const iconSizes = {
-    sm: 'h-3 w-3',
-    md: 'h-3.5 w-3.5',
-    lg: 'h-4 w-4',
+    sm: 'size-3',
+    md: 'size-3.5',
+    lg: 'size-4',
   };
 
   if (isNeutral && showNeutral) {

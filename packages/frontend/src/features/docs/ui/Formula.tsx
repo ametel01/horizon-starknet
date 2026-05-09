@@ -4,6 +4,8 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
 import { cn } from '@shared/lib/utils';
+import type { ReactNode, RefObject } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface FormulaProps {
   children: string;
@@ -11,23 +13,47 @@ interface FormulaProps {
   className?: string;
 }
 
-export function Formula({ children, display = false, className }: FormulaProps): React.ReactNode {
-  const html = katex.renderToString(children, {
-    throwOnError: false,
-    displayMode: display,
-  });
+export function Formula({ children, display = false, className }: FormulaProps): ReactNode {
+  const formulaRef = useRef<HTMLDivElement | HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const node = formulaRef.current;
+    if (!node) return;
+
+    katex.render(children, node, {
+      throwOnError: false,
+      displayMode: display,
+    });
+
+    return () => {
+      node.textContent = children;
+    };
+  }, [children, display]);
 
   if (display) {
     return (
       <div
+        ref={formulaRef as RefObject<HTMLDivElement>}
         className={cn(
           'border-border bg-muted/30 my-6 overflow-x-auto rounded-lg border px-4 py-6 text-center',
           className
         )}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+        aria-label={children}
+        role="math"
+      >
+        {children}
+      </div>
     );
   }
 
-  return <span className={cn('mx-0.5', className)} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <span
+      ref={formulaRef as RefObject<HTMLSpanElement>}
+      className={cn('mx-0.5', className)}
+      aria-label={children}
+      role="math"
+    >
+      {children}
+    </span>
+  );
 }

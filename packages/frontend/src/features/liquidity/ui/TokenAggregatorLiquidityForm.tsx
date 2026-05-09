@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@shared/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
 import { ArrowUpDown, Info, Zap } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useReducer, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -218,8 +218,12 @@ function getTransactionSteps(
  * - Aggregator routing display (when available)
  * - Combined slippage handling (aggregator + market)
  */
+export function TokenAggregatorLiquidityForm(props: TokenAggregatorLiquidityFormProps): ReactNode {
+  return useTokenAggregatorLiquidityFormContent(props);
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multi-mode form with add/remove liquidity, keep YT toggle, and aggregator routing - inherent UI complexity
-export function TokenAggregatorLiquidityForm({
+function useTokenAggregatorLiquidityFormContent({
   market,
   className,
 }: TokenAggregatorLiquidityFormProps): ReactNode {
@@ -242,13 +246,13 @@ export function TokenAggregatorLiquidityForm({
 
   // Form state
   const [mode, setMode] = useState<OperationMode>('add');
-  const [inputAmount, setInputAmount] = useState('');
+  const [inputAmount, setInputAmount] = useReducer((_current: string, next: string) => next, '');
   const [selectedTokenAddress, setSelectedTokenAddress] = useState(
     tokenList[0]?.address ?? market.syAddress
   );
   const [slippageBps, setSlippageBps] = useState(100); // 1% default for aggregator swaps
   const [keepYt, setKeepYt] = useState(false);
-  const [isFlipping, setIsFlipping] = useState(false);
+  const [isFlipping, setIsFlipping] = useReducer((_current: boolean, next: boolean) => next, false);
 
   // Get selected token config
   const selectedToken = useMemo(
@@ -530,7 +534,7 @@ export function TokenAggregatorLiquidityForm({
   }, [isProcessing, isSuccess, isError]);
 
   // Handlers
-  const handleExecute = (): void => {
+  const handleExecute = async (): Promise<void> => {
     if (!canExecute || !address) return;
 
     if (mode === 'add') {
@@ -541,7 +545,7 @@ export function TokenAggregatorLiquidityForm({
       };
 
       if (keepYt) {
-        addLiquiditySingleTokenKeepYt.addLiquidityKeepYt({
+        await addLiquiditySingleTokenKeepYt.addLiquidityKeepYtAsync({
           marketAddress: market.address,
           ytAddress: market.ytAddress,
           input: tokenInput,
@@ -549,7 +553,7 @@ export function TokenAggregatorLiquidityForm({
           minYtOut: minOutput, // Simplified
         });
       } else {
-        addLiquiditySingleToken.addLiquidity({
+        await addLiquiditySingleToken.addLiquidityAsync({
           marketAddress: market.address,
           input: tokenInput,
           minLpOut: minOutput,
@@ -563,20 +567,14 @@ export function TokenAggregatorLiquidityForm({
         swap_data: EMPTY_SWAP_DATA,
       };
 
-      removeLiquiditySingleToken.removeLiquidity({
+      await removeLiquiditySingleToken.removeLiquidityAsync({
         marketAddress: market.address,
         lpToBurn: parsedInputAmount,
         output: tokenOutput,
       });
     }
+    setInputAmount('');
   };
-
-  // Clear input on success
-  useEffect(() => {
-    if (isSuccess) {
-      setInputAmount('');
-    }
-  }, [isSuccess]);
 
   // Handle direction toggle
   const toggleDirection = (): void => {
@@ -660,7 +658,7 @@ export function TokenAggregatorLiquidityForm({
           <span>{mode === 'add' ? 'Deposit with' : 'Receive'}</span>
           {needsAggregator && (
             <span className="bg-chart-4/10 text-chart-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-              <Zap className="h-3 w-3" />
+              <Zap className="size-3" />
               Via DEX
             </span>
           )}
@@ -674,7 +672,7 @@ export function TokenAggregatorLiquidityForm({
               <SelectItem key={token.address} value={token.address}>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{token.symbol}</span>
-                  {token.isExternal && <Zap className="text-chart-4 h-3 w-3" />}
+                  {token.isExternal && <Zap className="text-chart-4 size-3" />}
                 </div>
               </SelectItem>
             ))}
@@ -702,12 +700,12 @@ export function TokenAggregatorLiquidityForm({
             size="icon"
             onClick={toggleDirection}
             className={cn(
-              'bg-background h-10 w-10 rounded-full shadow-lg transition-transform duration-300',
+              'bg-background size-10 rounded-full shadow-lg transition-transform duration-300',
               isFlipping && 'rotate-180'
             )}
             aria-label="Toggle operation direction"
           >
-            <ArrowUpDown className="h-4 w-4" />
+            <ArrowUpDown className="size-4" />
           </Button>
         </div>
       </FormDivider>
@@ -757,7 +755,7 @@ export function TokenAggregatorLiquidityForm({
       {/* Aggregator routing info */}
       {needsAggregator && isValidAmount && (
         <div className="bg-muted/50 flex items-start gap-2 rounded-lg p-3 text-sm">
-          <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+          <Info className="text-muted-foreground mt-0.5 size-4 shrink-0" />
           <div className="space-y-1">
             <p className="text-foreground font-medium">Route via DEX Aggregator</p>
             <p className="text-muted-foreground text-xs">

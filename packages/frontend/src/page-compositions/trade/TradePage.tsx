@@ -5,6 +5,7 @@ import { usePositions } from '@features/portfolio';
 import { SwapForm, TokenAggregatorSwapForm } from '@features/swap';
 import { useStarknet } from '@features/wallet';
 import { ApyBreakdown, useApyBreakdown } from '@features/yield';
+import { useHydrated } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { formatWadCompact } from '@shared/math/wad';
 import {
@@ -18,6 +19,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@shared/ui';
+import { ClientDateText } from '@shared/ui/client-time';
 import { Skeleton, SkeletonCard } from '@shared/ui/Skeleton';
 import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -92,10 +94,14 @@ function TradeLoadingState({ mounted, isLoading, isError, hasData }: LoadingStat
 }
 
 function TradePageContent(): ReactNode {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const marketParam = searchParams.get('market');
-  const [mounted, setMounted] = useState(false);
+  return useTradePageContent();
+}
+
+function useTradePageContent(): ReactNode {
+  const { push } = useRouter();
+  const { get } = useSearchParams();
+  const marketParam = get('market');
+  const mounted = useHydrated();
   const { isConnected } = useStarknet();
 
   // Form mode state with localStorage persistence
@@ -103,7 +109,6 @@ function TradePageContent(): ReactNode {
 
   // Load form mode preference from localStorage on mount
   useEffect(() => {
-    setMounted(true);
     try {
       const savedMode = localStorage.getItem(FORM_MODE_STORAGE_KEY);
       if (savedMode === 'standard' || savedMode === 'any-token') {
@@ -130,9 +135,9 @@ function TradePageContent(): ReactNode {
   // Handle market selection change
   const handleMarketChange = useCallback(
     (marketAddress: string) => {
-      router.push(`/trade?market=${marketAddress}`);
+      push(`/trade?market=${marketAddress}`);
     },
-    [router]
+    [push]
   );
 
   // Select market based on URL param or default to first market
@@ -172,16 +177,19 @@ function TradePageContent(): ReactNode {
             <div className="space-y-4">
               {/* Market Selector */}
               <div>
-                <label className="text-foreground mb-2 block text-sm font-medium">
+                <span
+                  id="trade-market-selector-label"
+                  className="text-foreground mb-2 block text-sm font-medium"
+                >
                   Select Market
-                </label>
+                </span>
                 <Select
                   value={selectedMarket.address}
                   onValueChange={(value) => {
                     if (value) handleMarketChange(value);
                   }}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-labelledby="trade-market-selector-label">
                     <SelectValue>
                       {getMarketSymbol(selectedMarket)} -{' '}
                       {selectedMarket.metadata?.yieldTokenName ?? 'Unknown'} (
@@ -210,11 +218,11 @@ function TradePageContent(): ReactNode {
               <Tabs value={formMode} onValueChange={handleFormModeChange}>
                 <TabsList className="w-full">
                   <TabsTrigger value="standard" className="flex-1 gap-1.5">
-                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                    <ArrowRightLeft className="size-3.5" />
                     Standard
                   </TabsTrigger>
                   <TabsTrigger value="any-token" className="flex-1 gap-1.5">
-                    <Zap className="h-3.5 w-3.5" />
+                    <Zap className="size-3.5" />
                     Any Token
                   </TabsTrigger>
                 </TabsList>
@@ -234,8 +242,8 @@ function TradePageContent(): ReactNode {
                 marketAddress={selectedMarket.address}
                 height={200}
                 showControls={true}
-                defaultResolution="daily"
-                defaultDays={30}
+                initialResolution="daily"
+                initialDays={30}
               />
             </div>
           )}
@@ -254,7 +262,7 @@ function TradePageContent(): ReactNode {
               )}
             >
               <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-                <Wallet className="text-primary h-4 w-4" />
+                <Wallet className="text-primary size-4" />
                 <h3 className="text-foreground text-sm font-semibold">Your Position</h3>
               </div>
               <div className="p-4">
@@ -316,7 +324,7 @@ function TradePageContent(): ReactNode {
                     </div>
                     <div className="border-chart-2/20 mt-2 border-t pt-2">
                       <div className="text-chart-2 flex items-center gap-1 text-xs">
-                        <TrendingUp className="h-3 w-3" />
+                        <TrendingUp className="size-3" />
                         Swap fees auto-compound into LP
                       </div>
                     </div>
@@ -345,13 +353,13 @@ function TradePageContent(): ReactNode {
               )}
             >
               <div className="border-border/50 flex items-center gap-2 border-b px-4 py-3">
-                <Info className="text-muted-foreground h-4 w-4" />
+                <Info className="text-muted-foreground size-4" />
                 <h3 className="text-foreground text-sm font-semibold">How Trading Works</h3>
               </div>
               <div className="space-y-4 p-4">
                 <div className="space-y-3">
                   <div className="flex gap-3">
-                    <div className="bg-secondary/20 text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+                    <div className="bg-secondary/20 text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       PT
                     </div>
                     <div>
@@ -362,7 +370,7 @@ function TradePageContent(): ReactNode {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <div className="bg-primary/20 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+                    <div className="bg-primary/20 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       YT
                     </div>
                     <div>
@@ -373,7 +381,7 @@ function TradePageContent(): ReactNode {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <div className="bg-chart-2/20 text-chart-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+                    <div className="bg-chart-2/20 text-chart-2 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       %
                     </div>
                     <div>
@@ -407,11 +415,7 @@ function TradePageContent(): ReactNode {
                     <div className="bg-muted/50 rounded-lg p-3">
                       <div className="text-muted-foreground text-xs">Expiry Date</div>
                       <div className="text-foreground mt-1 text-sm">
-                        {new Date(selectedMarket.expiry * 1000).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
+                        <ClientDateText value={selectedMarket.expiry * 1000} />
                       </div>
                     </div>
                     <div className="bg-muted/50 col-span-2 rounded-lg p-3">
@@ -454,9 +458,9 @@ function TradePageContent(): ReactNode {
                     href="/docs"
                     className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
                   >
-                    <BookOpen className="h-3.5 w-3.5" />
+                    <BookOpen className="size-3.5" />
                     Learn more about yield trading
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -487,7 +491,7 @@ export function TradePage(): ReactNode {
           href="/"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -498,8 +502,8 @@ export function TradePage(): ReactNode {
           Back
         </Link>
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
-            <ArrowRightLeft className="text-primary h-5 w-5" />
+          <div className="bg-primary/10 flex size-10 items-center justify-center rounded-full">
+            <ArrowRightLeft className="text-primary size-5" />
           </div>
           <div>
             <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Trade</h1>

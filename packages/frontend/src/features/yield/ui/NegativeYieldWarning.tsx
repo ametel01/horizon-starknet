@@ -109,7 +109,7 @@ export function NegativeYieldWarning({
         variant="outline"
         className={cn('border-destructive/50 bg-destructive/10 text-destructive gap-1', className)}
       >
-        <TrendingDownIcon className="h-3 w-3" aria-hidden="true" />
+        <TrendingDownIcon className="size-3" aria-hidden="true" />
         <span>-{dropPercent}</span>
       </Badge>
     );

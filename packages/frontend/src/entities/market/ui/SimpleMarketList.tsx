@@ -1,9 +1,10 @@
 'use client';
 
 import { useDashboardMarkets } from '@features/markets';
+import { useHydrated } from '@shared/hooks';
 import { Card, CardContent } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
-import { type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { SimpleMarketCard } from './SimpleMarketCard';
 
@@ -17,11 +18,7 @@ interface SimpleMarketListProps {
  */
 export function SimpleMarketList({ className }: SimpleMarketListProps): ReactNode {
   const { markets, isLoading, isError } = useDashboardMarkets();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Show skeleton on server and during initial client render to prevent hydration mismatch
   if (!mounted || isLoading) {

@@ -23,9 +23,13 @@ export function TreasuryDashboard(): ReactNode {
   const { markets, isLoading: marketsLoading } = useDashboardMarkets();
 
   // Get all YT addresses from markets
-  const ytAddresses = markets
-    .map((m) => m.ytAddress)
-    .filter((addr) => addr !== '' && addr !== '0x0');
+  const ytAddresses: string[] = [];
+  for (const market of markets) {
+    const { ytAddress } = market;
+    if (ytAddress !== '' && ytAddress !== '0x0') {
+      ytAddresses.push(ytAddress);
+    }
+  }
 
   // Check admin status
   const { isAdmin, isLoading: adminLoading, treasury } = useIsAdmin(ytAddresses);
@@ -43,7 +47,7 @@ export function TreasuryDashboard(): ReactNode {
     return (
       <DashboardLayout>
         <Alert variant="default" className="mx-auto max-w-lg">
-          <WalletIcon className="h-4 w-4" />
+          <WalletIcon className="size-4" />
           <AlertTitle>Wallet Required</AlertTitle>
           <AlertDescription>Connect your wallet to access the treasury dashboard.</AlertDescription>
         </Alert>
@@ -56,7 +60,7 @@ export function TreasuryDashboard(): ReactNode {
     return (
       <DashboardLayout>
         <Alert variant="destructive" className="mx-auto max-w-lg">
-          <LockIcon className="h-4 w-4" />
+          <LockIcon className="size-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
             <p>Your wallet is not authorized to access the treasury dashboard.</p>
@@ -96,7 +100,7 @@ export function TreasuryDashboard(): ReactNode {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-foreground text-lg font-semibold">YT Breakdown</h2>
           {treasuryData.isLoading && (
-            <RefreshCwIcon className="text-muted-foreground h-4 w-4 animate-spin" />
+            <RefreshCwIcon className="text-muted-foreground size-4 animate-spin" />
           )}
         </div>
 
@@ -153,7 +157,7 @@ function DashboardLayout({ children }: { children: ReactNode }): ReactNode {
           href="/analytics"
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -164,8 +168,8 @@ function DashboardLayout({ children }: { children: ReactNode }): ReactNode {
           Back to Analytics
         </Link>
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
-            <LockIcon className="h-5 w-5" />
+          <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-full">
+            <LockIcon className="size-5" />
           </div>
           <div>
             <h1 className="font-display text-2xl tracking-tight sm:text-3xl">Treasury Dashboard</h1>
@@ -228,7 +232,7 @@ function YTSummaryCard({ summary }: { summary: YTTreasurySummary }): ReactNode {
             <div className="flex items-center gap-2">
               <span className="text-foreground font-mono text-sm font-medium">{shortAddress}</span>
               {summary.isLoading && (
-                <RefreshCwIcon className="text-muted-foreground h-3 w-3 animate-spin" />
+                <RefreshCwIcon className="text-muted-foreground size-3 animate-spin" />
               )}
             </div>
             {summary.feeInfo !== null && (

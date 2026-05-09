@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@shared/lib/utils';
-import type { HTMLAttributes, ReactNode } from 'react';
+import { type HTMLAttributes, isValidElement, type ReactNode } from 'react';
 
 /**
  * Animation Components for Horizon Protocol
@@ -127,6 +127,16 @@ interface StaggeredListProps {
   itemClassName?: string;
 }
 
+function getStaggeredChildKey(child: ReactNode): string {
+  if (isValidElement(child) && child.key !== null) {
+    return String(child.key);
+  }
+  if (typeof child === 'string' || typeof child === 'number') {
+    return String(child);
+  }
+  return 'staggered-child';
+}
+
 const staggerAnimations = {
   'fade-up': 'animate-fade-up',
   'slide-right': 'animate-slide-in-right',
@@ -150,7 +160,7 @@ export function StaggeredList({
     <div className={className}>
       {children.map((child, index) => (
         <div
-          key={index}
+          key={getStaggeredChildKey(child)}
           className={cn(staggerAnimations[animation], 'opacity-0', itemClassName)}
           style={{ animationDelay: `${String(initialDelay + index * staggerDelay)}ms` }}
         >

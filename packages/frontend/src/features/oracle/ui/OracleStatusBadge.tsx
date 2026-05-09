@@ -30,7 +30,7 @@ export function OracleStatusBadge({
     return (
       <div className={cn('inline-flex items-center gap-1', className)}>
         <span className="animate-pulse">⚫</span>
-        <span className="text-muted-foreground">Loading...</span>
+        <span className="text-muted-foreground">Loading&hellip;</span>
       </div>
     );
   }
@@ -62,7 +62,7 @@ function getConfig(status: OracleStatus) {
         icon: '🟡',
         label: `${status.availableDuration / 60}m TWAP`,
         color: 'text-warning',
-        detail: 'Building oracle history...',
+        detail: 'Building oracle history\u2026',
       };
     case 'spot-only':
       return {

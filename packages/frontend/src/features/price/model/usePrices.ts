@@ -6,6 +6,13 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 const AVNU_PRICES_API = 'https://starknet.impulse.avnu.fi/v3/tokens/prices';
 
 /**
+ * Public Starknet STRK token address used for client-side price lookups.
+ * This is not a secret and is safe to include in browser bundles.
+ */
+export const PUBLIC_STRK_PRICE_ASSET =
+  '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
+
+/**
  * Known token addresses for price lookups
  * When we have mock/test tokens, we can map them to real token addresses
  */
@@ -13,7 +20,7 @@ const TOKEN_ADDRESS_MAP: Record<string, string> = {
   // sSTRK (Staked STRK by Nimbora)
   sSTRK: '0x356f304b154d29d2a8fe22f1cb9107a9b564a733cf6b4cc47fd121ac1af90c9',
   // STRK native token
-  STRK: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+  STRK: PUBLIC_STRK_PRICE_ASSET,
   // wstETH
   wstETH: '0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2',
 };

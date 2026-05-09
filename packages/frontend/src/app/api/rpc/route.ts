@@ -114,6 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<JsonRpcRe
 
     const response = await fetch(RPC_URL, {
       method: 'POST',
+      cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
       },

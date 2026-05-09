@@ -46,6 +46,32 @@ function parseHistoryEvent(event: HistoryEvent): LpEvent | null {
   };
 }
 
+function collectLpEvents(
+  events: HistoryEvent[],
+  marketAddress: string | undefined,
+  limit: number
+): LpEvent[] {
+  const result: LpEvent[] = [];
+  const marketFilter = marketAddress?.toLowerCase();
+
+  for (const event of events) {
+    const parsed = parseHistoryEvent(event);
+    if (parsed === null) {
+      continue;
+    }
+    if (marketFilter !== undefined && parsed.market.toLowerCase() !== marketFilter) {
+      continue;
+    }
+
+    result.push(parsed);
+    if (result.length >= limit) {
+      break;
+    }
+  }
+
+  return result;
+}
+
 interface LpEntryExitTableProps {
   /** Filter to specific market address */
   marketAddress?: string;
@@ -69,14 +95,8 @@ export function LpEntryExitTable({
     }
   );
 
-  // Parse and filter events
   const lpEvents = useMemo(() => {
-    const parsed = events
-      .map(parseHistoryEvent)
-      .filter((e): e is LpEvent => e !== null)
-      .filter((e) => !marketAddress || e.market.toLowerCase() === marketAddress.toLowerCase());
-
-    return parsed.slice(0, limit);
+    return collectLpEvents(events, marketAddress, limit);
   }, [events, marketAddress, limit]);
 
   // Loading state
@@ -132,18 +152,18 @@ export function LpEntryExitTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="text-muted-foreground px-2 py-2 text-left font-medium">Type</th>
-                <th className="text-muted-foreground px-2 py-2 text-left font-medium">Date</th>
-                <th className="text-muted-foreground px-2 py-2 text-right font-medium">LP</th>
-                <th className="text-muted-foreground px-2 py-2 text-right font-medium">SY</th>
-                <th className="text-muted-foreground px-2 py-2 text-right font-medium">PT</th>
-                <th className="text-muted-foreground px-2 py-2 text-right font-medium">Tx</th>
+                <th className="text-muted-foreground p-2 text-right font-medium">Tx</th>
+                <th className="text-muted-foreground p- text-left font-medium">Date</th>
+                <th className="text-muted-foreground p- text-right font-medium">LP</th>
+                <th className="text-muted-foreground p- text-right font-medium">SY</th>
+                <th className="text-muted-foreground p- text-right font-medium">PT</th>
+                <th className="text-muted-foreground p- text-right font-medium">Tx</th>
               </tr>
             </thead>
             <tbody>
               {lpEvents.map((event) => (
                 <tr key={event.id} className="hover:bg-muted/50 border-b transition-colors">
-                  <td className="px-2 py-2">
+                  <td className="p-2">
                     <span
                       className={cn(
                         'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
@@ -155,7 +175,7 @@ export function LpEntryExitTable({
                       {event.type === 'add' ? 'Add' : 'Remove'}
                     </span>
                   </td>
-                  <td className="text-foreground px-2 py-2">
+                  <td className="text-foreground p-2">
                     {event.timestamp.toLocaleDateString(undefined, {
                       month: 'short',
                       day: 'numeric',
@@ -168,17 +188,17 @@ export function LpEntryExitTable({
                       })}
                     </span>
                   </td>
-                  <td className="text-foreground px-2 py-2 text-right font-mono">
+                  <td className="text-foreground p-2 text-right font-mono">
                     {event.type === 'add' ? '+' : '-'}
                     {formatWadCompact(event.lpAmount)}
                   </td>
-                  <td className="text-foreground px-2 py-2 text-right font-mono">
+                  <td className="text-foreground p-2 text-right font-mono">
                     {formatWadCompact(event.syAmount)}
                   </td>
-                  <td className="text-foreground px-2 py-2 text-right font-mono">
+                  <td className="text-foreground p-2 text-right font-mono">
                     {formatWadCompact(event.ptAmount)}
                   </td>
-                  <td className="px-2 py-2 text-right">
+                  <td className="p-2 text-right">
                     <a
                       href={`https://starkscan.co/tx/${event.transactionHash}`}
                       target="_blank"
@@ -205,7 +225,7 @@ export function LpEntryExitTable({
               disabled={isFetchingNextPage}
               className="text-primary hover:text-primary/80 text-sm font-medium disabled:opacity-50"
             >
-              {isFetchingNextPage ? 'Loading...' : 'Load more'}
+              {isFetchingNextPage ? 'Loading\u2026' : 'Load more'}
             </button>
           </div>
         )}
@@ -234,12 +254,7 @@ export function LpRecentActivity({
   });
 
   const lpEvents = useMemo(() => {
-    const parsed = events
-      .map(parseHistoryEvent)
-      .filter((e): e is LpEvent => e !== null)
-      .filter((e) => !marketAddress || e.market.toLowerCase() === marketAddress.toLowerCase());
-
-    return parsed.slice(0, limit);
+    return collectLpEvents(events, marketAddress, limit);
   }, [events, marketAddress, limit]);
 
   if (isLoading) {

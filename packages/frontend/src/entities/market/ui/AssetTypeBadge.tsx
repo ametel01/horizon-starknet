@@ -60,7 +60,7 @@ export const AssetTypeBadge = memo(function AssetTypeBadge({
 
   return (
     <Badge variant="outline" className={className}>
-      <Icon className="h-3 w-3" aria-hidden="true" />
+      <Icon className="size-3" aria-hidden="true" />
       <span>{config.label}</span>
     </Badge>
   );

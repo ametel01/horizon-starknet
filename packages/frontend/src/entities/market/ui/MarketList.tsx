@@ -1,10 +1,11 @@
 'use client';
 
 import { useDashboardMarkets } from '@features/markets';
+import { useHydrated } from '@shared/hooks';
 import { StaggeredList } from '@shared/ui/animations';
 import { Card, CardContent } from '@shared/ui/Card';
 import { SkeletonCard } from '@shared/ui/Skeleton';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { MarketCard } from './MarketCard';
 
@@ -14,11 +15,7 @@ interface MarketListProps {
 
 export function MarketList({ className }: MarketListProps): ReactNode {
   const { markets, isLoading, isError } = useDashboardMarkets();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Determine the recommended market (Paradox of Choice mitigation)
   // Criteria: Highest APY among non-expired markets with reasonable TVL

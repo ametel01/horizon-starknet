@@ -163,7 +163,7 @@ export const MarketCard = memo(function MarketCard({
           <div className="min-w-0 flex-1 overflow-hidden">
             <CardTitle className="flex items-center gap-2">
               {/* Token icon placeholder */}
-              <div className="bg-primary/10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full">
+              <div className="bg-primary/10 flex size-9 flex-shrink-0 items-center justify-center rounded-full">
                 <span className="text-primary font-mono text-xs">PT</span>
               </div>
               <div className="min-w-0 overflow-hidden">
@@ -174,7 +174,7 @@ export const MarketCard = memo(function MarketCard({
                       variant="default"
                       className="bg-primary text-primary-foreground gap-0.5 px-1.5 py-0 text-[10px]"
                     >
-                      <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
+                      <Sparkles className="size-2.5" aria-hidden="true" />
                       <span>Top</span>
                     </Badge>
                   )}
