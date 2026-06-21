@@ -2,13 +2,7 @@
 
 export {
   calculateUnrealizedPnl,
-  clearCostBasis,
-  exportCostBasis,
   getCostBasis,
-  loadCostBasis,
-  reduceCostBasis,
-  saveCostBasis,
-  updateCostBasis,
 } from './pnl';
 export {
   calculateLpValue,

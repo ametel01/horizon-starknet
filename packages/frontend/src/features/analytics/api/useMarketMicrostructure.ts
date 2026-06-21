@@ -156,6 +156,16 @@ interface DepthPoint {
   outputAmount: bigint;
 }
 
+function convertDepthPoints(points: DepthCurveResponse['buyPtCurve']): DepthPoint[] {
+  return points.map((p) => ({
+    tradeSizeSy: BigInt(p.tradeSizeSy),
+    tradeSizePercent: p.tradeSizePercent,
+    impactBps: p.impactBps,
+    effectivePrice: BigInt(p.effectivePrice),
+    outputAmount: BigInt(p.outputAmount),
+  }));
+}
+
 interface UseDepthCurveReturn {
   market: string;
   underlyingSymbol: string;
@@ -233,15 +243,6 @@ export function useDepthCurve(options: UseDepthCurveOptions): UseDepthCurveRetur
 
   if (!data) return emptyReturn;
 
-  const convertPoints = (points: DepthCurveResponse['buyPtCurve']): DepthPoint[] =>
-    points.map((p) => ({
-      tradeSizeSy: BigInt(p.tradeSizeSy),
-      tradeSizePercent: p.tradeSizePercent,
-      impactBps: p.impactBps,
-      effectivePrice: BigInt(p.effectivePrice),
-      outputAmount: BigInt(p.outputAmount),
-    }));
-
   return {
     market: data.market,
     underlyingSymbol: data.underlyingSymbol,
@@ -254,8 +255,8 @@ export function useDepthCurve(options: UseDepthCurveOptions): UseDepthCurveRetur
       spotPricePtSy: BigInt(data.state.spotPricePtSy),
       tvlSy: BigInt(data.state.tvlSy),
     },
-    buyPtCurve: convertPoints(data.buyPtCurve),
-    sellPtCurve: convertPoints(data.sellPtCurve),
+    buyPtCurve: convertDepthPoints(data.buyPtCurve),
+    sellPtCurve: convertDepthPoints(data.sellPtCurve),
     summary: {
       slippage50bpsSize: data.summary.slippage50bpsSize,
       slippage100bpsSize: data.summary.slippage100bpsSize,

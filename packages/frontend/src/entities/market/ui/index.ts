@@ -2,6 +2,5 @@
 export { AssetTypeBadge } from './AssetTypeBadge';
 export { MarketCard } from './MarketCard';
 export { MarketList } from './MarketList';
-export { SimpleMarketCard, SimpleStatsCard } from './SimpleMarketCard';
+export { SimpleMarketCard } from './SimpleMarketCard';
 export { SimpleMarketList } from './SimpleMarketList';
-export { StatsOverview } from './StatsOverview';

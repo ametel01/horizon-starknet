@@ -12,6 +12,11 @@ interface IndexerStatusBannerProps {
   className?: string;
 }
 
+function formatLag(blocks: number | null): string {
+  if (blocks === null) return 'unknown';
+  return `${String(blocks)} blocks`;
+}
+
 /**
  * Banner component that displays indexer health status.
  * Shows warnings when the indexer is degraded or unhealthy.
@@ -32,11 +37,6 @@ export function IndexerStatusBanner({
   if (showOnlyIssues && isHealthy) {
     return null;
   }
-
-  const formatLag = (blocks: number | null): string => {
-    if (blocks === null) return 'unknown';
-    return `${String(blocks)} blocks`;
-  };
 
   if (!data) {
     return (

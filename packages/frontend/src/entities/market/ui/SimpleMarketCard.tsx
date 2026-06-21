@@ -113,30 +113,3 @@ export function SimpleMarketCard({ market, className }: SimpleMarketCardProps): 
     </Card>
   );
 }
-
-/**
- * Simple stats card for dashboard overview
- */
-interface SimpleStatsCardProps {
-  title: string;
-  value: string | React.ReactNode;
-  subtitle?: string;
-  className?: string;
-}
-
-export function SimpleStatsCard({
-  title,
-  value,
-  subtitle,
-  className,
-}: SimpleStatsCardProps): ReactNode {
-  return (
-    <Card className={className}>
-      <CardContent className="p-4">
-        <div className="text-muted-foreground text-sm">{title}</div>
-        <div className="text-foreground text-2xl font-bold">{value}</div>
-        {subtitle && <div className="text-muted-foreground text-xs">{subtitle}</div>}
-      </CardContent>
-    </Card>
-  );
-}

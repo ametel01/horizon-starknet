@@ -250,6 +250,7 @@ export function DocsSearch(): React.ReactNode {
               <input
                 ref={inputRef}
                 type="text"
+                aria-label="Search documentation"
                 value={query}
                 onChange={(e) => {
                   handleSearch(e.target.value);
@@ -260,6 +261,7 @@ export function DocsSearch(): React.ReactNode {
               />
               <button
                 type="button"
+                aria-label="Close search"
                 onClick={() => {
                   setIsOpen(false);
                 }}
