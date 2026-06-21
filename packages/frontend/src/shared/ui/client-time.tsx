@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 type DateTextFormat = 'activity-date' | 'swap-timestamp';
 
@@ -18,6 +18,15 @@ const DATE_FORMAT_OPTIONS: Record<DateTextFormat, Intl.DateTimeFormatOptions> = 
   },
 };
 
+const unsubscribeFromHydration = (): void => undefined;
+const subscribeToHydration = (): (() => void) => unsubscribeFromHydration;
+const getClientSnapshot = (): boolean => true;
+const getServerSnapshot = (): boolean => false;
+
+function useIsHydrated(): boolean {
+  return useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot);
+}
+
 interface ClientDateTextProps {
   value: string | number | Date;
   format?: DateTextFormat;
@@ -29,19 +38,15 @@ export function ClientDateText({
   format = 'activity-date',
   placeholder = '-',
 }: ClientDateTextProps): string {
-  const [label, setLabel] = useState('');
+  const isHydrated = useIsHydrated();
 
-  useEffect(() => {
-    const date = new Date(value);
-    const options = DATE_FORMAT_OPTIONS[format];
-    const nextLabel =
-      format === 'activity-date'
-        ? date.toLocaleDateString(undefined, options)
-        : date.toLocaleString(undefined, options);
-    setLabel(nextLabel);
-  }, [value, format]);
+  if (!isHydrated) return placeholder;
 
-  return label || placeholder;
+  const date = new Date(value);
+  const options = DATE_FORMAT_OPTIONS[format];
+  return format === 'activity-date'
+    ? date.toLocaleDateString(undefined, options)
+    : date.toLocaleString(undefined, options);
 }
 
 interface ClientDaysUntilExpiryProps {
@@ -53,12 +58,10 @@ export function ClientDaysUntilExpiry({
   expiry,
   placeholder = '-',
 }: ClientDaysUntilExpiryProps): string {
-  const [label, setLabel] = useState('');
+  const isHydrated = useIsHydrated();
 
-  useEffect(() => {
-    const days = Math.round((expiry - Date.now() / 1000) / 86400);
-    setLabel(`${String(days)}d left`);
-  }, [expiry]);
+  if (!isHydrated) return placeholder;
 
-  return label || placeholder;
+  const days = Math.round((expiry - Date.now() / 1000) / 86400);
+  return `${String(days)}d left`;
 }
