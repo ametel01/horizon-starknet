@@ -9,6 +9,25 @@ export const dynamic = 'force-dynamic';
 
 const WAD = BigInt(10) ** BigInt(18);
 
+const SIZE_BUCKETS = [
+  { min: 0n, max: WAD / 10n, label: '< 0.1' },
+  { min: WAD / 10n, max: WAD, label: '0.1 - 1' },
+  { min: WAD, max: WAD * 10n, label: '1 - 10' },
+  { min: WAD * 10n, max: WAD * 100n, label: '10 - 100' },
+  { min: WAD * 100n, max: WAD * 1000n, label: '100 - 1K' },
+  { min: WAD * 1000n, max: WAD * BigInt(1_000_000), label: '> 1K' },
+];
+
+const DISTRIBUTION_BUCKETS = [
+  { min: 0, max: 0.01, label: '< 0.01%' },
+  { min: 0.01, max: 0.05, label: '0.01-0.05%' },
+  { min: 0.05, max: 0.1, label: '0.05-0.1%' },
+  { min: 0.1, max: 0.25, label: '0.1-0.25%' },
+  { min: 0.25, max: 0.5, label: '0.25-0.5%' },
+  { min: 0.5, max: 1, label: '0.5-1%' },
+  { min: 1, max: 100, label: '> 1%' },
+];
+
 /**
  * Calculate price impact percentage from before/after rates
  * Impact = (rate_after - rate_before) / rate_before * 100
@@ -158,18 +177,8 @@ export async function GET(
     const medianImpact = sortedImpacts[Math.floor(totalSwaps / 2)]?.impact ?? 0;
     const maxImpact = sortedImpacts[totalSwaps - 1]?.impact ?? 0;
 
-    // Define size buckets (in WAD)
-    const sizeBuckets = [
-      { min: 0n, max: WAD / 10n, label: '< 0.1' },
-      { min: WAD / 10n, max: WAD, label: '0.1 - 1' },
-      { min: WAD, max: WAD * 10n, label: '1 - 10' },
-      { min: WAD * 10n, max: WAD * 100n, label: '10 - 100' },
-      { min: WAD * 100n, max: WAD * 1000n, label: '100 - 1K' },
-      { min: WAD * 1000n, max: WAD * BigInt(1_000_000), label: '> 1K' },
-    ];
-
     // Calculate impact by size bucket
-    const impactBySize: ImpactBucket[] = sizeBuckets.map((bucket) => {
+    const impactBySize: ImpactBucket[] = SIZE_BUCKETS.map((bucket) => {
       const bucketSwaps = impactData.filter(
         (d) => d.tradeSize >= bucket.min && d.tradeSize < bucket.max
       );
@@ -198,18 +207,7 @@ export async function GET(
       };
     });
 
-    // Calculate impact distribution (histogram buckets)
-    const distributionBuckets = [
-      { min: 0, max: 0.01, label: '< 0.01%' },
-      { min: 0.01, max: 0.05, label: '0.01-0.05%' },
-      { min: 0.05, max: 0.1, label: '0.05-0.1%' },
-      { min: 0.1, max: 0.25, label: '0.1-0.25%' },
-      { min: 0.25, max: 0.5, label: '0.25-0.5%' },
-      { min: 0.5, max: 1, label: '0.5-1%' },
-      { min: 1, max: 100, label: '> 1%' },
-    ];
-
-    const impactDistribution: ImpactDistribution[] = distributionBuckets.map((bucket) => {
+    const impactDistribution: ImpactDistribution[] = DISTRIBUTION_BUCKETS.map((bucket) => {
       const count = impactData.filter(
         (d) => d.impact >= bucket.min && d.impact < bucket.max
       ).length;

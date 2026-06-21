@@ -97,6 +97,13 @@ const liquidityHealthQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(30).default(7),
 });
 
+const EMPTY_PROTOCOL_TOTALS: ProtocolTotals = {
+  tvlSy: 0n,
+  volume24hSy: 0n,
+  spreadBps: 0,
+  healthScore: 0,
+};
+
 // ----- Helper Functions -----
 
 function getHealthLevel(score: number): HealthLevel {
@@ -261,11 +268,13 @@ async function processMarket(
   return buildMarketHealth({ marketAddress, market, recentSwaps });
 }
 
-function accumulateTotals(health: MarketLiquidityHealth, totals: ProtocolTotals): void {
-  totals.tvlSy += BigInt(health.tvlSy);
-  totals.volume24hSy += BigInt(health.volume24hSy);
-  totals.spreadBps += health.spreadProxyBps;
-  totals.healthScore += health.healthScore;
+function accumulateTotals(totals: ProtocolTotals, health: MarketLiquidityHealth): ProtocolTotals {
+  return {
+    tvlSy: totals.tvlSy + BigInt(health.tvlSy),
+    volume24hSy: totals.volume24hSy + BigInt(health.volume24hSy),
+    spreadBps: totals.spreadBps + health.spreadProxyBps,
+    healthScore: totals.healthScore + health.healthScore,
+  };
 }
 
 /**
@@ -300,11 +309,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const marketHealths = (
       await Promise.all(markets.map((market) => processMarket(market, since)))
     ).filter((health): health is MarketLiquidityHealth => health !== null);
-    const totals: ProtocolTotals = { tvlSy: 0n, volume24hSy: 0n, spreadBps: 0, healthScore: 0 };
-
-    for (const health of marketHealths) {
-      accumulateTotals(health, totals);
-    }
+    const totals = marketHealths.reduce(accumulateTotals, EMPTY_PROTOCOL_TOTALS);
 
     marketHealths.sort((a, b) => b.healthScore - a.healthScore);
 

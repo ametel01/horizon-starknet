@@ -9,6 +9,13 @@ import type { ReactNode } from 'react';
 
 import { useYieldClaimPreview, type YieldClaimPreview } from '../model/useUserYield';
 
+const PREVIEW_ROW_VALUE_CLASSES = {
+  default: 'text-foreground',
+  muted: 'text-muted-foreground',
+  warning: 'text-warning',
+  success: 'text-primary font-medium',
+};
+
 /**
  * Props for the InterestClaimPreview component
  */
@@ -58,13 +65,6 @@ function PreviewRow({
   variant = 'default',
   icon,
 }: PreviewRowProps): ReactNode {
-  const valueClasses = {
-    default: 'text-foreground',
-    muted: 'text-muted-foreground',
-    warning: 'text-warning',
-    success: 'text-primary font-medium',
-  };
-
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
@@ -76,7 +76,7 @@ function PreviewRow({
           </Tooltip>
         )}
       </span>
-      <span className={cn('text-sm', valueClasses[variant])}>{value}</span>
+      <span className={cn('text-sm', PREVIEW_ROW_VALUE_CLASSES[variant])}>{value}</span>
     </div>
   );
 }

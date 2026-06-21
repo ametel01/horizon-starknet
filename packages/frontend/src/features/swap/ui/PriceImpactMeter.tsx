@@ -19,6 +19,8 @@ interface PriceImpactMeterProps {
   animated?: boolean;
 }
 
+const ARC_GAUGE_TICKS = [0, 25, 50, 75, 100];
+
 /**
  * Get severity configuration for styling
  */
@@ -99,9 +101,6 @@ function ArcGauge({
   // Arc path: semicircle from left to right
   const arcPath = `M ${String(cx - radius)} ${String(cy)} A ${String(radius)} ${String(radius)} 0 0 1 ${String(cx + radius)} ${String(cy)}`;
 
-  // Tick mark positions
-  const ticks = [0, 25, 50, 75, 100];
-
   return (
     <svg viewBox="0 0 100 55" className="h-16 w-full">
       {/* Background arc */}
@@ -124,7 +123,7 @@ function ArcGauge({
         className="transition-[stroke-dashoffset] duration-700 ease-out"
       />
       {/* Severity tick marks */}
-      {ticks.map((tick) => {
+      {ARC_GAUGE_TICKS.map((tick) => {
         // Angle: 0% = PI (left), 100% = 0 (right)
         const tickAngle = Math.PI - (tick / 100) * Math.PI;
         const innerRadius = radius - strokeWidth / 2 - 3;

@@ -22,6 +22,13 @@ import {
 } from '@shared/ui/recharts';
 import { type ReactNode, useMemo } from 'react';
 
+const SCORE_BADGE_LABELS = {
+  excellent: 'Excellent',
+  good: 'Good',
+  neutral: 'Neutral',
+  poor: 'Poor',
+};
+
 /**
  * Format APY percentage
  */
@@ -110,13 +117,6 @@ function ScoreBadge({
   value: number;
   size?: 'default' | 'large';
 }): ReactNode {
-  const labels = {
-    excellent: 'Excellent',
-    good: 'Good',
-    neutral: 'Neutral',
-    poor: 'Poor',
-  };
-
   return (
     <div
       className={cn(
@@ -137,7 +137,7 @@ function ScoreBadge({
           size === 'large' ? 'text-sm' : 'text-xs'
         )}
       >
-        {labels[score]}
+        {SCORE_BADGE_LABELS[score]}
       </span>
     </div>
   );

@@ -14,7 +14,8 @@ import { TxStatus } from '@widgets/display/TxStatus';
 import { GiftIcon } from 'lucide-react';
 import { type ReactNode, useCallback, useMemo } from 'react';
 
-import { type AccruedReward, useAccruedRewards, useClaimRewards } from '../model';
+import { type AccruedReward, useAccruedRewards } from '../model/useAccruedRewards';
+import { useClaimRewards } from '../model/useClaimRewards';
 
 interface ClaimRewardsCardProps {
   /** SYWithRewards contract address */

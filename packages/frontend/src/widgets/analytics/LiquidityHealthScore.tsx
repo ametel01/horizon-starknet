@@ -18,6 +18,20 @@ import { type ReactNode, useMemo } from 'react';
 
 type HealthLevel = 'excellent' | 'good' | 'fair' | 'poor';
 
+const HEALTH_BADGE_LABELS: Record<HealthLevel, string> = {
+  excellent: 'Excellent',
+  good: 'Good',
+  fair: 'Fair',
+  poor: 'Poor',
+};
+
+const LIQUIDITY_HEALTH_BADGE_LABELS: Record<HealthLevel, string> = {
+  excellent: 'Healthy',
+  good: 'Good',
+  fair: 'Fair',
+  poor: 'Low',
+};
+
 /**
  * Get color class for health level text
  */
@@ -119,18 +133,13 @@ function HealthTooltip({
  * Health level badge component
  */
 function HealthBadge({ level, score }: { level: HealthLevel; score: number }): ReactNode {
-  const labels: Record<HealthLevel, string> = {
-    excellent: 'Excellent',
-    good: 'Good',
-    fair: 'Fair',
-    poor: 'Poor',
-  };
-
   return (
     <div className={cn('flex items-center gap-2 rounded-lg p-3', getHealthLevelBgColor(level))}>
       <div className={cn('text-2xl font-bold', getHealthLevelColor(level))}>{score}</div>
       <div>
-        <div className={cn('text-sm font-medium', getHealthLevelColor(level))}>{labels[level]}</div>
+        <div className={cn('text-sm font-medium', getHealthLevelColor(level))}>
+          {HEALTH_BADGE_LABELS[level]}
+        </div>
         <div className="text-muted-foreground text-xs">Protocol Health</div>
       </div>
     </div>
@@ -465,13 +474,6 @@ export function LiquidityHealthBadge({ className }: LiquidityHealthBadgeProps): 
           ? 'fair'
           : 'poor';
 
-  const labels: Record<HealthLevel, string> = {
-    excellent: 'Healthy',
-    good: 'Good',
-    fair: 'Fair',
-    poor: 'Low',
-  };
-
   return (
     <Badge
       className={cn(
@@ -481,7 +483,7 @@ export function LiquidityHealthBadge({ className }: LiquidityHealthBadgeProps): 
         className
       )}
     >
-      {labels[level]} Liquidity
+      {LIQUIDITY_HEALTH_BADGE_LABELS[level]} Liquidity
     </Badge>
   );
 }

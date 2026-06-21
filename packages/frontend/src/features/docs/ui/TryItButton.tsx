@@ -11,6 +11,14 @@ interface TryItButtonProps {
   className?: string;
 }
 
+const BASE_STYLES =
+  'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors';
+
+const VARIANT_STYLES = {
+  default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  outline: 'border border-border hover:bg-accent hover:text-accent-foreground',
+};
+
 export function TryItButton({
   href,
   children,
@@ -19,21 +27,13 @@ export function TryItButton({
 }: TryItButtonProps): React.ReactNode {
   const isExternal = href.startsWith('http');
 
-  const baseStyles =
-    'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors';
-
-  const variantStyles = {
-    default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-    outline: 'border border-border hover:bg-accent hover:text-accent-foreground',
-  };
-
   if (isExternal) {
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={cn(baseStyles, variantStyles[variant], className)}
+        className={cn(BASE_STYLES, VARIANT_STYLES[variant], className)}
       >
         {children}
         <ArrowRight className="size-4" />
@@ -42,7 +42,7 @@ export function TryItButton({
   }
 
   return (
-    <Link href={href} className={cn(baseStyles, variantStyles[variant], className)}>
+    <Link href={href} className={cn(BASE_STYLES, VARIANT_STYLES[variant], className)}>
       {children}
       <ArrowRight className="size-4" />
     </Link>

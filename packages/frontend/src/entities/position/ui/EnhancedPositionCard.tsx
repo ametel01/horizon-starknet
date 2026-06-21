@@ -10,7 +10,7 @@ import { TxStatus } from '@widgets/display/TxStatus';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 
-import { formatPercent, formatUsd } from '../lib';
+import { formatPercent, formatUsd } from '../lib/value';
 import type { EnhancedPosition } from '../model/types';
 
 // ----- Types -----

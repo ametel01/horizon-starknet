@@ -6,7 +6,7 @@ import { Skeleton } from '@shared/ui/Skeleton';
 import { GiftIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { useRewardApy, useTotalRewardApy } from '../model';
+import { useRewardApy, useTotalRewardApy } from '../model/useRewardApy';
 
 interface RewardApyBadgeProps {
   /** SYWithRewards contract address */

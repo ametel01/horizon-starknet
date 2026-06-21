@@ -8,7 +8,7 @@ import { Skeleton } from '@shared/ui/Skeleton';
 import { ExternalLinkIcon, GiftIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { type RewardClaimEvent, useRewardHistory } from '../model';
+import { type RewardClaimEvent, useRewardHistory } from '../model/useRewardHistory';
 
 interface RewardClaimHistoryProps {
   /** User address to show claim history for */

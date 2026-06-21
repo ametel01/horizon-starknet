@@ -432,6 +432,18 @@ interface TrendIndicatorProps {
   showNeutral?: boolean;
 }
 
+const TREND_INDICATOR_SIZE_CLASSES = {
+  sm: 'text-xs gap-0.5',
+  md: 'text-sm gap-1',
+  lg: 'text-base gap-1',
+};
+
+const TREND_INDICATOR_ICON_SIZES = {
+  sm: 'size-3',
+  md: 'size-3.5',
+  lg: 'size-4',
+};
+
 /**
  * Trend indicator with arrow and change
  * Memoized as it's frequently rendered in lists
@@ -447,28 +459,16 @@ export const TrendIndicator = memo(function TrendIndicator({
   const isPositive = value > 0;
   const isNeutral = value === 0;
 
-  const sizeClasses = {
-    sm: 'text-xs gap-0.5',
-    md: 'text-sm gap-1',
-    lg: 'text-base gap-1',
-  };
-
-  const iconSizes = {
-    sm: 'size-3',
-    md: 'size-3.5',
-    lg: 'size-4',
-  };
-
   if (isNeutral && showNeutral) {
     return (
       <span
         className={cn(
           'text-muted-foreground inline-flex items-center font-medium',
-          sizeClasses[size],
+          TREND_INDICATOR_SIZE_CLASSES[size],
           className
         )}
       >
-        <Minus className={iconSizes[size]} />
+        <Minus className={TREND_INDICATOR_ICON_SIZES[size]} />
         {isPercentage ? '0%' : '0'}
       </span>
     );
@@ -479,14 +479,14 @@ export const TrendIndicator = memo(function TrendIndicator({
       className={cn(
         'inline-flex items-center font-medium',
         isPositive ? 'text-primary' : 'text-destructive',
-        sizeClasses[size],
+        TREND_INDICATOR_SIZE_CLASSES[size],
         className
       )}
     >
       {isPositive ? (
-        <ArrowUp className={iconSizes[size]} />
+        <ArrowUp className={TREND_INDICATOR_ICON_SIZES[size]} />
       ) : (
-        <ArrowDown className={iconSizes[size]} />
+        <ArrowDown className={TREND_INDICATOR_ICON_SIZES[size]} />
       )}
       {isPositive ? '+' : ''}
       {value.toFixed(decimals)}
