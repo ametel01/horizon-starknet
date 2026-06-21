@@ -67,8 +67,8 @@ function main(): void {
     try {
       console.log(`Processing: ${contract.name}`);
 
-      // Use abi-wan-kanabi to generate types
-      execSync(`npx abi-wan-kanabi --input "${inputPath}" --output "${outputPath}"`, {
+      // Use the declared package script so codegen does not depend on an implicit npx download.
+      execSync(`bun run codegen:abi -- --input "${inputPath}" --output "${outputPath}"`, {
         stdio: 'pipe',
       });
 
