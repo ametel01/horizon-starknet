@@ -4,6 +4,9 @@ import { cn } from '@shared/lib/utils';
 import { Check } from 'lucide-react';
 import { memo, type ReactNode } from 'react';
 
+export { StepCounter } from './StepCounter';
+export { StepIndicator } from './StepIndicator';
+
 export interface Step {
   label: string;
   description?: string;
@@ -108,56 +111,5 @@ export const StepProgress = memo(function StepProgress({
         </p>
       )}
     </div>
-  );
-});
-
-/**
- * Compact horizontal step indicator for inline use
- */
-export const StepIndicator = memo(function StepIndicator({
-  current,
-  total,
-  className,
-}: {
-  current: number;
-  total: number;
-  className?: string;
-}): ReactNode {
-  return (
-    <div className={cn('flex items-center gap-1.5', className)}>
-      {Array.from({ length: total }).map((_, index) => (
-        <div
-          key={index}
-          className={cn(
-            'h-1.5 rounded-full transition-all duration-300',
-            index < current
-              ? 'bg-success w-4'
-              : index === current
-                ? 'bg-primary w-6'
-                : 'bg-muted w-4'
-          )}
-        />
-      ))}
-    </div>
-  );
-});
-
-/**
- * Minimal step counter for space-constrained areas
- */
-export const StepCounter = memo(function StepCounter({
-  current,
-  total,
-  className,
-}: {
-  current: number;
-  total: number;
-  className?: string;
-}): ReactNode {
-  return (
-    <span className={cn('text-muted-foreground text-sm', className)}>
-      Step <span className="text-foreground font-medium">{current}</span> of{' '}
-      <span className="text-foreground font-medium">{total}</span>
-    </span>
   );
 });

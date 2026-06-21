@@ -3,7 +3,7 @@
 import { useAccount, useStarknet } from '@features/wallet';
 import { toBigInt } from '@shared/lib';
 import { getYTContract } from '@shared/starknet/contracts';
-import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 /**
  * Yield claim event from the API
@@ -131,19 +131,25 @@ interface UseUserYieldOptions {
   refetchInterval?: number;
 }
 
+interface UseUserYieldReturn {
+  data: ProcessedYieldData | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  address: string | null;
+}
+
 /**
  * Hook to fetch user's yield claim history and totals
  *
  * @param options - Query options
  * @returns Processed yield data with totals and history
  */
-export function useUserYield(
-  options: UseUserYieldOptions = {}
-): UseQueryResult<ProcessedYieldData> & { address: string | null } {
+export function useUserYield(options: UseUserYieldOptions = {}): UseUserYieldReturn {
   const { address } = useAccount();
   const { days, enabled = true, refetchInterval = 60000 } = options;
 
-  const query = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['user-yield', address, days],
     queryFn: async () => {
       if (!address) throw new Error('No address');
@@ -157,7 +163,7 @@ export function useUserYield(
     retryDelay: 5000,
   });
 
-  return { ...query, address };
+  return { data, isLoading, isError, error, address };
 }
 
 const WAD = 10n ** 18n;
@@ -176,6 +182,14 @@ export interface YieldClaimPreview {
   feeRatePercent: string;
   /** Whether user has yield to claim */
   hasYieldToClaim: boolean;
+}
+
+interface YieldClaimPreviewReturn {
+  data: YieldClaimPreview | null | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  address: string | null;
 }
 
 /**
@@ -198,13 +212,11 @@ export interface YieldClaimPreview {
  * }
  * ```
  */
-export function useYieldClaimPreview(
-  ytAddress: string | undefined
-): UseQueryResult<YieldClaimPreview | null> & { address: string | null } {
+export function useYieldClaimPreview(ytAddress: string | undefined): YieldClaimPreviewReturn {
   const { provider } = useStarknet();
   const { address } = useAccount();
 
-  const query = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['yield-claim-preview', ytAddress, address],
     queryFn: async (): Promise<YieldClaimPreview | null> => {
       if (ytAddress === undefined || !address) {
@@ -243,5 +255,5 @@ export function useYieldClaimPreview(
     refetchInterval: 60_000, // Refetch every minute
   });
 
-  return { ...query, address };
+  return { data, isLoading, isError, error, address };
 }

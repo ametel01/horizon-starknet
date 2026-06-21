@@ -1,10 +1,8 @@
 // Portfolio widgets - page sections for portfolio views
 export { BeatImpliedBadge, BeatImpliedScore } from './BeatImpliedScore';
-export {
-  IlIndicator,
-  ImpermanentLossCalc,
-  ImpermanentLossCalcSkeleton,
-} from './ImpermanentLossCalc';
+export { IlIndicator } from './IlIndicator';
+export { ImpermanentLossCalc } from './ImpermanentLossCalc';
+export { ImpermanentLossCalcSkeleton } from './ImpermanentLossCalcSkeleton';
 export { LpApyBreakdown, LpApyCompact } from './LpApyBreakdown';
 export { LpEntryExitTable, LpRecentActivity } from './LpEntryExitTable';
 export { LpPnlCard, LpPnlCardSkeleton, LpPnlInline } from './LpPnlCard';

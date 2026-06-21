@@ -69,7 +69,7 @@ export function useBeatImplied(options: UseBeatImpliedOptions = {}): UseBeatImpl
   const { address } = useAccount();
   const { refetchInterval = 60000 } = options;
 
-  const query = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['beat-implied', address],
     queryFn: async (): Promise<BeatImpliedResponse> => {
       if (!address) {
@@ -90,8 +90,8 @@ export function useBeatImplied(options: UseBeatImpliedOptions = {}): UseBeatImpl
   });
 
   return {
-    positions: query.data?.positions ?? [],
-    summary: query.data?.summary ?? {
+    positions: data?.positions ?? [],
+    summary: data?.summary ?? {
       totalPositions: 0,
       avgBeatImplied: 0,
       avgRealizedApy: 0,
@@ -100,10 +100,10 @@ export function useBeatImplied(options: UseBeatImpliedOptions = {}): UseBeatImpl
       positionsLagging: 0,
       overallScore: 'neutral' as const,
     },
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
+    isLoading,
+    isError,
+    error,
+    refetch,
   };
 }
 

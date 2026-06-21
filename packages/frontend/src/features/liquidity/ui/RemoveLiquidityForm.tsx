@@ -28,12 +28,13 @@ import {
   FormLayout,
   FormRow,
 } from '@shared/ui/FormLayout';
-import { GasEstimate } from '@shared/ui/GasEstimate';
-import { type Step, StepProgress } from '@shared/ui/StepProgress';
+import type { Step } from '@shared/ui/StepProgress';
 import { ToggleGroup, ToggleGroupItem } from '@shared/ui/toggle-group';
-import { TxStatus } from '@widgets/display/TxStatus';
 import BigNumber from 'bignumber.js';
 import { type ReactNode, useMemo, useState } from 'react';
+import { GasEstimateRow } from './RemoveLiquidityGasEstimateRow';
+import { OutputPreviewRow } from './RemoveLiquidityOutputPreviewRow';
+import { TransactionProgress } from './RemoveLiquidityTransactionProgress';
 
 interface RemoveLiquidityFormProps {
   market: MarketData;
@@ -149,114 +150,6 @@ function calculateExpectedPtOnlyOutput(params: ExpectedOutputsParams): bigint {
   // This is a rough estimate - actual value comes from swap math
   const syToPtEstimate = syShare; // Simplified approximation
   return ptShare + syToPtEstimate;
-}
-
-// ----- Sub-components -----
-
-interface GasEstimateRowProps {
-  isValidAmount: boolean;
-  formattedFee: string | null;
-  formattedFeeUsd: string | null;
-  isLoading: boolean;
-  error: Error | null;
-}
-
-function GasEstimateRow({
-  isValidAmount,
-  formattedFee,
-  formattedFeeUsd,
-  isLoading,
-  error,
-}: GasEstimateRowProps): ReactNode {
-  if (!isValidAmount) return null;
-  return (
-    <FormRow
-      label="Estimated Gas"
-      value={
-        <GasEstimate
-          formattedFee={formattedFee ?? ''}
-          formattedFeeUsd={formattedFeeUsd ?? undefined}
-          isLoading={isLoading}
-          error={error}
-        />
-      }
-    />
-  );
-}
-
-interface TransactionProgressProps {
-  txStatus: TxStatusValue;
-  steps: Step[];
-  currentStep: number;
-  txHash: string | null;
-  error: Error | null;
-  gasEstimate: {
-    formattedFee: string | null;
-    formattedFeeUsd: string | null;
-    isLoading: boolean;
-    error: Error | null;
-  };
-}
-
-function TransactionProgress({
-  txStatus,
-  steps,
-  currentStep,
-  txHash,
-  error,
-  gasEstimate,
-}: TransactionProgressProps): ReactNode {
-  if (txStatus === 'idle') return null;
-
-  const normalizedGasEstimate: {
-    formattedFee: string;
-    formattedFeeUsd?: string;
-    isLoading: boolean;
-    error: Error | null;
-  } = {
-    formattedFee: gasEstimate.formattedFee ?? '',
-    isLoading: gasEstimate.isLoading,
-    error: gasEstimate.error,
-  };
-  if (gasEstimate.formattedFeeUsd !== null) {
-    normalizedGasEstimate.formattedFeeUsd = gasEstimate.formattedFeeUsd;
-  }
-
-  return (
-    <div className="space-y-4">
-      <StepProgress steps={steps} currentStep={currentStep} />
-      <TxStatus
-        status={txStatus}
-        txHash={txHash}
-        error={error}
-        gasEstimate={normalizedGasEstimate}
-      />
-    </div>
-  );
-}
-
-interface OutputPreviewRowProps {
-  label: string;
-  value: bigint;
-  minValue: bigint;
-  isValid: boolean;
-}
-
-function OutputPreviewRow({ label, value, minValue, isValid }: OutputPreviewRowProps): ReactNode {
-  const valueClass = isValid
-    ? 'text-foreground text-lg font-semibold'
-    : 'text-muted-foreground text-lg font-semibold';
-
-  return (
-    <div className="flex items-center justify-between">
-      <span className={valueClass}>
-        {isValid ? formatWad(value, 6) : '0.000000'} {label}
-      </span>
-      <span className="text-muted-foreground text-sm">
-        min: {isValid ? formatWad(minValue, 6) : '-'}
-      </span>
-    </div>
-  );
 }
 
 // ----- Main Component -----

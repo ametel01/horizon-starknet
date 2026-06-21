@@ -13,14 +13,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Skeleton,
 } from '@shared/ui';
-import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
 import { BentoCard, BentoGrid } from '@shared/ui/BentoCard';
 import { ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
+import { CardSkeleton } from './CardSkeleton';
+import { ChartSkeleton } from './ChartSkeleton';
+import { EmptyState } from './EmptyState';
+import { StatCell } from './StatCell';
 
 // Lazy load yield-native chart components (primary focus)
 const YieldCurveChart = dynamic(
@@ -117,14 +119,6 @@ const TvlBreakdownCompact = dynamic(
   () => import('@widgets/analytics/TvlBreakdown').then((m) => m.TvlBreakdownCompact),
   { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
 );
-
-function ChartSkeleton({ height = 'h-[300px]' }: { height?: string }): ReactNode {
-  return <Skeleton className={cn(height, 'w-full rounded-lg')} />;
-}
-
-function CardSkeleton(): ReactNode {
-  return <Skeleton className="h-[200px] w-full rounded-lg" />;
-}
 
 export function AnalyticsPage(): ReactNode {
   return useAnalyticsPageContent();
@@ -462,49 +456,6 @@ function useAnalyticsPageContent(): ReactNode {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-interface StatCellProps {
-  label: string;
-  value: number;
-  formatter: (value: number) => string;
-  sublabel?: string | undefined;
-  highlight?: boolean | undefined;
-}
-
-function StatCell({
-  label,
-  value,
-  formatter,
-  sublabel,
-  highlight = false,
-}: StatCellProps): ReactNode {
-  return (
-    <div className="flex h-full flex-col justify-center p-4">
-      <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-        {label}
-      </span>
-      <span
-        className={cn(
-          'mt-1 font-mono text-2xl font-semibold',
-          highlight ? 'text-primary' : 'text-foreground'
-        )}
-      >
-        <AnimatedNumber value={value} formatter={formatter} duration={600} />
-      </span>
-      {sublabel !== undefined && (
-        <span className="text-muted-foreground mt-1 text-xs">{sublabel}</span>
-      )}
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }): ReactNode {
-  return (
-    <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-      {message}
     </div>
   );
 }

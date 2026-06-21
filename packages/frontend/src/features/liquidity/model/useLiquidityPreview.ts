@@ -6,11 +6,6 @@ import { getRouterStaticContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
 /**
- * Direction of the liquidity preview
- */
-export type LiquidityPreviewDirection = 'add' | 'remove';
-
-/**
  * Result of an add liquidity preview
  */
 export interface AddLiquidityPreviewResult {
@@ -155,71 +150,6 @@ export function useRemoveLiquidityPreview(
       };
     },
     enabled: enabled && !!marketAddress && lpAmount !== undefined && lpAmount > 0n,
-    refetchInterval,
-    staleTime: 15000, // Consider data stale after 15 seconds - market state changes
-    // Disable structural sharing to prevent BigInt serialization issues
-    structuralSharing: false,
-  });
-}
-
-/**
- * Combined hook to preview liquidity operations.
- *
- * This is a convenience hook that can preview either add or remove operations
- * based on the direction parameter.
- *
- * @param marketAddress - The market contract address
- * @param amount - Input amount (SY for add, LP for remove)
- * @param direction - 'add' for adding liquidity, 'remove' for removing
- * @param options - Query options
- * @returns Query result with expected output
- */
-export function useLiquidityPreview(
-  marketAddress: string | undefined,
-  amount: bigint | undefined,
-  direction: LiquidityPreviewDirection,
-  options: UseLiquidityPreviewOptions = {}
-): UseQueryResult<AddLiquidityPreviewResult | RemoveLiquidityPreviewResult | null> {
-  const { provider, network } = useStarknet();
-  const { enabled = true, refetchInterval = 30000 } = options;
-
-  return useQuery({
-    queryKey: ['liquidity-preview', direction, marketAddress, amount?.toString(), network],
-    queryFn: async (): Promise<AddLiquidityPreviewResult | RemoveLiquidityPreviewResult | null> => {
-      // These conditions are enforced by the `enabled` flag, but TypeScript needs the assertion
-      if (!marketAddress || amount === undefined) {
-        throw new Error('Market address and amount are required');
-      }
-
-      const routerStatic = getRouterStaticContract(provider, network);
-
-      // RouterStatic not deployed on this network
-      if (!routerStatic) {
-        return null;
-      }
-
-      if (direction === 'add') {
-        const rawOutput = await routerStatic.preview_add_liquidity_single_sy(marketAddress, amount);
-        const expectedLpOut = toBigInt(rawOutput);
-
-        return {
-          expectedLpOut,
-          syAmount: amount,
-        } as AddLiquidityPreviewResult;
-      } else {
-        const rawOutput = await routerStatic.preview_remove_liquidity_single_sy(
-          marketAddress,
-          amount
-        );
-        const expectedSyOut = toBigInt(rawOutput);
-
-        return {
-          expectedSyOut,
-          lpAmount: amount,
-        } as RemoveLiquidityPreviewResult;
-      }
-    },
-    enabled: enabled && !!marketAddress && amount !== undefined && amount > 0n,
     refetchInterval,
     staleTime: 15000, // Consider data stale after 15 seconds - market state changes
     // Disable structural sharing to prevent BigInt serialization issues

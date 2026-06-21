@@ -113,7 +113,7 @@ export function usePositionPnl(options: UsePositionPnlOptions = {}): UsePosition
   const { address } = useAccount();
   const { days = 90, refetchInterval = 60000 } = options;
 
-  const query = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['position-pnl', address, days],
     queryFn: async (): Promise<PnlTimelineResponse> => {
       if (!address) {
@@ -134,20 +134,20 @@ export function usePositionPnl(options: UsePositionPnlOptions = {}): UsePosition
   });
 
   return {
-    positions: query.data?.positions ?? [],
-    mintRedeemHistory: query.data?.mintRedeemHistory ?? [],
-    yieldClaimHistory: query.data?.yieldClaimHistory ?? [],
-    timeline: query.data?.timeline ?? [],
-    summary: query.data?.summary ?? {
+    positions: data?.positions ?? [],
+    mintRedeemHistory: data?.mintRedeemHistory ?? [],
+    yieldClaimHistory: data?.yieldClaimHistory ?? [],
+    timeline: data?.timeline ?? [],
+    summary: data?.summary ?? {
       totalPositions: 0,
       totalUnrealizedPnlSy: '0',
       totalYieldClaimedSy: '0',
       overallPnlPercent: 0,
     },
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
+    isLoading,
+    isError,
+    error,
+    refetch,
   };
 }
 

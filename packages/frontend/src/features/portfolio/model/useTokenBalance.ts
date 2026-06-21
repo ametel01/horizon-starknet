@@ -29,7 +29,7 @@ export function useTokenBalance(
   const { enabled = true, refetchInterval = 15000 } = options;
 
   // Store as string internally to avoid BigInt serialization issues
-  const query = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['token-balance', tokenAddress, address],
     queryFn: async (): Promise<string> => {
       if (!tokenAddress || !address) {
@@ -46,11 +46,11 @@ export function useTokenBalance(
   });
 
   return {
-    data: query.data !== undefined ? BigInt(query.data) : undefined,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
+    data: data !== undefined ? BigInt(data) : undefined,
+    isLoading,
+    isError,
+    error,
+    refetch,
   };
 }
 
@@ -64,7 +64,7 @@ export function useTokenAllowance(
   const { enabled = true, refetchInterval = 15000 } = options;
 
   // Store as string internally to avoid BigInt serialization issues
-  const query = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['token-allowance', tokenAddress, address, spenderAddress],
     queryFn: async (): Promise<string> => {
       if (!tokenAddress || !address || !spenderAddress) {
@@ -81,11 +81,11 @@ export function useTokenAllowance(
   });
 
   return {
-    data: query.data !== undefined ? BigInt(query.data) : undefined,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
+    data: data !== undefined ? BigInt(data) : undefined,
+    isLoading,
+    isError,
+    error,
+    refetch,
   };
 }
 

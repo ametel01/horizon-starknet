@@ -1,0 +1,41 @@
+'use client';
+
+import { PreviewCard as PreviewCardPrimitive } from '@base-ui/react/preview-card';
+import { cn } from '@shared/lib/utils';
+import type { ReactNode } from 'react';
+
+function HoverCardContent({
+  className,
+  side = 'bottom',
+  sideOffset = 8,
+  align = 'center',
+  alignOffset = 0,
+  ...props
+}: PreviewCardPrimitive.Popup.Props &
+  Pick<
+    PreviewCardPrimitive.Positioner.Props,
+    'align' | 'alignOffset' | 'side' | 'sideOffset'
+  >): ReactNode {
+  return (
+    <PreviewCardPrimitive.Portal data-slot="hover-card-portal">
+      <PreviewCardPrimitive.Positioner
+        align={align}
+        alignOffset={alignOffset}
+        side={side}
+        sideOffset={sideOffset}
+        className="isolate z-[100]"
+      >
+        <PreviewCardPrimitive.Popup
+          data-slot="hover-card-content"
+          className={cn(
+            'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/5 bg-popover text-popover-foreground z-[100] w-72 origin-(--transform-origin) rounded-2xl p-4 text-sm shadow-2xl ring-1 outline-hidden duration-100',
+            className
+          )}
+          {...props}
+        />
+      </PreviewCardPrimitive.Positioner>
+    </PreviewCardPrimitive.Portal>
+  );
+}
+
+export { HoverCardContent };

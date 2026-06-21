@@ -2,50 +2,16 @@
 
 import { cn } from '@shared/lib/utils';
 import { formatApyPercent, getApyColorClass } from '@shared/math/apy-breakdown';
-import { Card, CardContent } from '@shared/ui/Card';
 import type { ReactNode } from 'react';
 import type { MarketApyBreakdown } from '@/types/apy';
+
+import { ApyRow } from './ApyRow';
 
 interface ApyBreakdownProps {
   breakdown: MarketApyBreakdown;
   view: 'pt' | 'yt' | 'lp';
+  title?: string;
   className?: string;
-}
-
-interface TooltipProps {
-  content: string;
-  children: ReactNode;
-}
-
-function Tooltip({ content, children }: TooltipProps): ReactNode {
-  return (
-    <button
-      type="button"
-      className="group relative cursor-help border-0 bg-transparent p-0 text-inherit"
-      aria-label={content}
-    >
-      {children}
-      <span
-        className="bg-popover text-popover-foreground pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100"
-        role="tooltip"
-      >
-        {content}
-      </span>
-    </button>
-  );
-}
-
-function InfoIcon({ className }: { className?: string }): ReactNode {
-  return (
-    <svg className={cn('size-3', className)} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-  );
 }
 
 export function ApyBreakdown({ breakdown, view, className }: ApyBreakdownProps): ReactNode {
@@ -156,102 +122,5 @@ export function ApyBreakdown({ breakdown, view, className }: ApyBreakdownProps):
         </div>
       </div>
     </div>
-  );
-}
-
-interface ApyRowProps {
-  label: string;
-  value: number;
-  tooltip: string;
-  highlight?: boolean;
-}
-
-function ApyRow({ label, value, tooltip, highlight }: ApyRowProps): ReactNode {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground flex items-center gap-1 text-sm">
-        {label}
-        <Tooltip content={tooltip}>
-          <InfoIcon />
-        </Tooltip>
-      </span>
-      <span
-        className={cn('text-sm font-medium', highlight ? 'text-primary' : getApyColorClass(value))}
-      >
-        {formatApyPercent(value)}
-      </span>
-    </div>
-  );
-}
-
-/**
- * Compact APY display for cards and lists
- */
-interface ApyCompactProps {
-  breakdown: MarketApyBreakdown;
-  view: 'pt' | 'yt' | 'lp';
-  className?: string;
-}
-
-export function ApyCompact({ breakdown, view, className }: ApyCompactProps): ReactNode {
-  const getApy = (): number => {
-    switch (view) {
-      case 'pt':
-        return breakdown.ptFixedApy;
-      case 'yt':
-        return breakdown.ytApy.longYieldApy;
-      case 'lp':
-        return breakdown.lpApy.total;
-    }
-  };
-
-  const getLabel = (): string => {
-    switch (view) {
-      case 'pt':
-        return 'Fixed APY';
-      case 'yt':
-        return 'Long Yield';
-      case 'lp':
-        return 'LP APY';
-    }
-  };
-
-  const apy = getApy();
-
-  return (
-    <div className={cn('flex flex-col', className)}>
-      <span className="text-muted-foreground text-xs">{getLabel()}</span>
-      <span className={cn('text-lg font-semibold', getApyColorClass(apy))}>
-        {formatApyPercent(apy)}
-      </span>
-    </div>
-  );
-}
-
-/**
- * APY Breakdown Card wrapper
- */
-interface ApyBreakdownProps {
-  breakdown: MarketApyBreakdown;
-  view: 'pt' | 'yt' | 'lp';
-  title?: string;
-  className?: string;
-}
-
-export function ApyBreakdownCard({
-  breakdown,
-  view,
-  title,
-  className,
-}: ApyBreakdownProps): ReactNode {
-  const defaultTitle = view === 'pt' ? 'PT Yield' : view === 'yt' ? 'YT Yield' : 'LP Yield';
-
-  return (
-    <Card className={className}>
-      <CardContent className="p-4">
-        <h3 className="text-foreground mb-3 text-sm font-medium">{title ?? defaultTitle}</h3>
-        <ApyBreakdown breakdown={breakdown} view={view} />
-      </CardContent>
-    </Card>
   );
 }

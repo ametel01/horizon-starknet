@@ -1,10 +1,12 @@
 import { cn } from '@shared/lib/utils';
-import { lnRateToApy } from '@shared/math/yield';
+import BigNumber from 'bignumber.js';
 import type { ReactNode } from 'react';
 
-interface ImpliedYieldProps {
-  /** The ln(implied_rate) from the AMM in WAD format */
-  lnRate: bigint | string;
+interface ImpliedYieldFromPriceProps {
+  /** PT price as a BigNumber (fraction of SY, e.g., 0.95 means 1 PT = 0.95 SY) */
+  ptPrice: BigNumber;
+  /** Days remaining until expiry */
+  daysRemaining: number;
   /** Number of decimal places to display */
   decimals?: number;
   /** Additional CSS classes */
@@ -21,14 +23,26 @@ const sizeClasses = {
   lg: 'text-xl font-semibold',
 };
 
-export function ImpliedYield({
-  lnRate,
+export function ImpliedYieldFromPrice({
+  ptPrice,
+  daysRemaining,
   decimals = 2,
   className,
   showSign = false,
   size = 'md',
-}: ImpliedYieldProps): ReactNode {
-  const apy = lnRateToApy(lnRate);
+}: ImpliedYieldFromPriceProps): ReactNode {
+  // Calculate implied yield from PT price
+  // Implied APY = ((1/ptPrice)^(365/daysToExpiry) - 1)
+  let apy: BigNumber;
+  if (daysRemaining <= 0 || ptPrice.isZero()) {
+    apy = new BigNumber(0);
+  } else {
+    const priceRatio = new BigNumber(1).dividedBy(ptPrice);
+    const exponent = 365 / daysRemaining;
+    const annualizedReturn = priceRatio.toNumber() ** exponent - 1;
+    apy = new BigNumber(annualizedReturn);
+  }
+
   const apyPercent = apy.multipliedBy(100);
   const isPositive = apy.isGreaterThanOrEqualTo(0);
 

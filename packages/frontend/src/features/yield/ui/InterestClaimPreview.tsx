@@ -3,18 +3,13 @@
 import { cn } from '@shared/lib/utils';
 import { formatWad } from '@shared/math';
 import { Card, CardContent } from '@shared/ui/Card';
-import { Skeleton } from '@shared/ui/Skeleton';
-import { AlertCircleIcon, InfoIcon, MinusIcon, PercentIcon } from 'lucide-react';
+import { AlertCircleIcon, MinusIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { useYieldClaimPreview, type YieldClaimPreview } from '../model/useUserYield';
-
-const PREVIEW_ROW_VALUE_CLASSES = {
-  default: 'text-foreground',
-  muted: 'text-muted-foreground',
-  warning: 'text-warning',
-  success: 'text-primary font-medium',
-};
+import { FeeRateBadge } from './FeeRateBadge';
+import { PreviewRow } from './PreviewRow';
+import { PreviewSkeleton } from './PreviewSkeleton';
 
 /**
  * Props for the InterestClaimPreview component
@@ -28,102 +23,6 @@ export interface InterestClaimPreviewProps {
   className?: string;
   /** Whether to show in compact mode */
   compact?: boolean;
-}
-
-/**
- * Tooltip component for info hints
- */
-function Tooltip({ content, children }: { content: string; children: ReactNode }): ReactNode {
-  return (
-    <button
-      type="button"
-      className="group relative cursor-help border-0 bg-transparent p-0 text-inherit"
-      aria-label={content}
-    >
-      {children}
-      <span
-        className="bg-popover text-popover-foreground pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100"
-        role="tooltip"
-      >
-        {content}
-      </span>
-    </button>
-  );
-}
-
-/**
- * Row displaying a label-value pair with optional styling
- */
-interface PreviewRowProps {
-  label: string;
-  value: string;
-  tooltip?: string;
-  variant?: 'default' | 'muted' | 'warning' | 'success';
-  icon?: ReactNode;
-}
-
-function PreviewRow({
-  label,
-  value,
-  tooltip,
-  variant = 'default',
-  icon,
-}: PreviewRowProps): ReactNode {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
-        {icon}
-        {label}
-        {tooltip && (
-          <Tooltip content={tooltip}>
-            <InfoIcon className="size-3 opacity-60" />
-          </Tooltip>
-        )}
-      </span>
-      <span className={cn('text-sm', PREVIEW_ROW_VALUE_CLASSES[variant])}>{value}</span>
-    </div>
-  );
-}
-
-/**
- * Loading skeleton for the preview
- */
-function PreviewSkeleton({ className }: { className?: string | undefined }): ReactNode {
-  return (
-    <Card className={cn('bg-muted/50', className)}>
-      <CardContent className="space-y-2 p-4">
-        <Skeleton className="h-4 w-24" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * Compact badge showing fee rate
- */
-export function FeeRateBadge({
-  feeRatePercent,
-  className,
-}: {
-  feeRatePercent: string;
-  className?: string;
-}): ReactNode {
-  return (
-    <span
-      className={cn(
-        'bg-warning/20 text-warning inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium',
-        className
-      )}
-    >
-      <PercentIcon className="size-3" />
-      {feeRatePercent} Fee
-    </span>
-  );
 }
 
 /**
@@ -232,48 +131,6 @@ export function InterestClaimPreview({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-/**
- * Inline preview variant for use in forms
- */
-export function InterestClaimPreviewInline({
-  preview,
-  sySymbol = 'SY',
-  className,
-}: {
-  preview: YieldClaimPreview;
-  sySymbol?: string;
-  className?: string;
-}): ReactNode {
-  if (!preview.hasYieldToClaim) {
-    return null;
-  }
-
-  return (
-    <div className={cn('space-y-1 text-sm', className)}>
-      <div className="text-muted-foreground flex justify-between">
-        <span>Gross yield</span>
-        <span>
-          {formatWad(preview.grossYield)} {sySymbol}
-        </span>
-      </div>
-      {preview.feeAmount > 0n && (
-        <div className="text-warning flex justify-between">
-          <span>Fee ({preview.feeRatePercent})</span>
-          <span>
-            −{formatWad(preview.feeAmount)} {sySymbol}
-          </span>
-        </div>
-      )}
-      <div className="text-foreground flex justify-between font-medium">
-        <span>Net</span>
-        <span>
-          {formatWad(preview.netYield)} {sySymbol}
-        </span>
-      </div>
-    </div>
   );
 }
 

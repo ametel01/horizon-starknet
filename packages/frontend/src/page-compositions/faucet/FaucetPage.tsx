@@ -146,7 +146,11 @@ function useFaucetPageContent(): React.ReactNode {
   const isMinting = status === 'signing' || status === 'pending';
   const mintSuccess = status === 'success';
 
-  const canMintQuery = useQuery({
+  const {
+    data: canMintData,
+    isFetching: isChecking,
+    isError: canMintIsError,
+  } = useQuery({
     queryKey: ['faucet-can-mint', network, faucetInfo?.faucetAddress, targetAddress],
     enabled: Boolean(faucetInfo && targetAddress),
     queryFn: async () => {
@@ -163,9 +167,8 @@ function useFaucetPageContent(): React.ReactNode {
     },
   });
 
-  const canMint = mintSuccess ? false : (canMintQuery.data ?? null);
-  const isChecking = canMintQuery.isFetching;
-  const displayedError = error ?? (canMintQuery.isError ? 'Failed to check mint status' : null);
+  const canMint = mintSuccess ? false : (canMintData ?? null);
+  const displayedError = error ?? (canMintIsError ? 'Failed to check mint status' : null);
 
   // Handle mint
   const handleMint = async (): Promise<void> => {

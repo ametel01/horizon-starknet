@@ -1,12 +1,12 @@
 // UI primitives - shadcn/ui components
 
+export { AnimatedCurrency } from './AnimatedCurrency';
 export {
-  AnimatedCurrency,
   AnimatedNumber,
-  AnimatedPercent,
   useAnimatedNumber,
 } from './AnimatedNumber';
 export { easings } from './AnimatedNumber.easings';
+export { AnimatedPercent } from './AnimatedPercent';
 export { Alert, AlertAction, AlertDescription, AlertTitle } from './alert';
 export { alertVariants } from './alert.variants';
 // Animation components
@@ -108,7 +108,9 @@ export {
   TrendIndicator,
 } from './Sparkline';
 // Step progress components for multi-step flows
-export { type Step, StepCounter, StepIndicator, StepProgress } from './StepProgress';
+export { StepCounter } from './StepCounter';
+export { StepIndicator } from './StepIndicator';
+export { type Step, StepProgress } from './StepProgress';
 export {
   Select,
   SelectContent,
