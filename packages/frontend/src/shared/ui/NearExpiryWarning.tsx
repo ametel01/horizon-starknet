@@ -169,4 +169,4 @@ export function NearExpiryWarning({
   );
 }
 
-export type { ExpiryThreshold, NearExpiryWarningProps, Severity };
+export type { NearExpiryWarningProps };

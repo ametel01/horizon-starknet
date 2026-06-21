@@ -243,24 +243,3 @@ export function PriceImpactMeter({
     </div>
   );
 }
-
-/**
- * Inline price impact indicator for compact displays
- */
-export function PriceImpactIndicator({
-  impact,
-  className,
-}: {
-  impact: number;
-  className?: string;
-}): ReactNode {
-  const severity = getPriceImpactSeverity(impact);
-  const config = getSeverityConfig(severity);
-
-  return (
-    <span className={cn('inline-flex items-center gap-1', config.color, className)}>
-      {config.icon}
-      <span className="font-mono text-sm font-medium">{formatPriceImpact(impact)}</span>
-    </span>
-  );
-}

@@ -4,9 +4,6 @@ import { cn } from '@shared/lib/utils';
 import { Check } from 'lucide-react';
 import { memo, type ReactNode } from 'react';
 
-export { StepCounter } from './StepCounter';
-export { StepIndicator } from './StepIndicator';
-
 export interface Step {
   label: string;
   description?: string;

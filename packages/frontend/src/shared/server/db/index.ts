@@ -248,29 +248,3 @@ export function getDatabaseInfo(): DatabaseInfo {
     };
   }
 }
-
-/**
- * Get a summary string of the database configuration.
- * Useful for logging on startup.
- *
- * @returns Human-readable configuration summary
- */
-export function getDatabaseConfigSummary(): string {
-  const info = getDatabaseInfo();
-
-  if (!info.configured) {
-    return 'Database not configured';
-  }
-
-  const parts = [`host=${info.host ?? 'unknown'}`, info.usePooler ? 'pooler=yes' : 'pooler=no'];
-
-  if (info.poolMode) {
-    parts.push(`mode=${info.poolMode}`);
-  }
-
-  if (info.source) {
-    parts.push(`source=${info.source}`);
-  }
-
-  return parts.join(', ');
-}

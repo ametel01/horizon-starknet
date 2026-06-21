@@ -62,7 +62,7 @@ export interface SwapFormMarket {
   isExpired: boolean;
 }
 
-export interface SwapFormState {
+interface SwapFormState {
   isConnected: boolean;
   isValidAmount: boolean;
   hasInsufficientBalance: boolean;
@@ -588,25 +588,6 @@ export function deriveImpliedApyDisplay(
 // ============================================================================
 // Swap Rate Display
 // ============================================================================
-
-/**
- * Format the swap rate display.
- */
-export function formatSwapRate(
-  parsedInputAmount: bigint,
-  expectedOutput: bigint,
-  inputLabel: string,
-  outputLabel: string
-): string {
-  if (parsedInputAmount <= 0n) {
-    return `1 ${inputLabel} = - ${outputLabel}`;
-  }
-
-  // Use simple division for display (BigNumber handles large numbers)
-  const rate = Number(expectedOutput) / Number(parsedInputAmount);
-  return `1 ${inputLabel} = ${rate.toFixed(4)} ${outputLabel}`;
-}
-
 // ============================================================================
 // UI State Derivation (Pre-computed View Models)
 // ============================================================================

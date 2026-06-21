@@ -21,7 +21,7 @@ export interface PositionValue {
 /**
  * Yield tracking data
  */
-export interface YieldData {
+interface YieldData {
   /** Currently claimable yield */
   claimable: bigint;
   /** Claimable value in USD */
@@ -35,7 +35,7 @@ export interface YieldData {
 /**
  * LP position details
  */
-export interface LpDetails {
+interface LpDetails {
   /** User's share of pool as percentage */
   sharePercent: number;
   /** User's share of SY reserves */
@@ -49,7 +49,7 @@ export interface LpDetails {
 /**
  * P&L tracking data
  */
-export interface PnlData {
+interface PnlData {
   /** Unrealized P&L in SY terms */
   unrealizedSy: bigint;
   /** Unrealized P&L in USD */
@@ -65,7 +65,7 @@ export interface PnlData {
 /**
  * Redemption status
  */
-export interface RedemptionStatus {
+interface RedemptionStatus {
   /** Can redeem PT+YT before expiry */
   canRedeemPtYt: boolean;
   /** Can redeem PT after expiry */
@@ -117,17 +117,6 @@ export interface PortfolioSummary {
   totalClaimableUsd: number;
   /** All positions */
   positions: EnhancedPosition[];
-}
-
-/**
- * Token price data
- */
-export interface TokenPrices {
-  strk: number;
-  eth: number;
-  nstStrk: number;
-  sStrk: number;
-  wstEth: number;
 }
 
 /**

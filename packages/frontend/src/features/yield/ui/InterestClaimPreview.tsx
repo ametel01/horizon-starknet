@@ -5,8 +5,7 @@ import { formatWad } from '@shared/math';
 import { Card, CardContent } from '@shared/ui/Card';
 import { AlertCircleIcon, MinusIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-
-import { useYieldClaimPreview, type YieldClaimPreview } from '../model/useUserYield';
+import { useYieldClaimPreview } from '../model/useUserYield';
 import { FeeRateBadge } from './FeeRateBadge';
 import { PreviewRow } from './PreviewRow';
 import { PreviewSkeleton } from './PreviewSkeleton';
@@ -133,5 +132,3 @@ export function InterestClaimPreview({
     </Card>
   );
 }
-
-export type { YieldClaimPreview };

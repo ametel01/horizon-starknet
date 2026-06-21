@@ -11,7 +11,7 @@
 /**
  * Cache duration presets (in seconds)
  */
-export const CacheDuration = {
+const CacheDuration = {
   /** Real-time data that changes frequently (30s cache, 2min stale) */
   SHORT: { maxAge: 30, staleWhileRevalidate: 120 },
   /** Analytics data that updates periodically (60s cache, 5min stale) */
@@ -46,16 +46,6 @@ export function getCacheHeaders(
 
   return {
     'Cache-Control': `public, s-maxage=${String(maxAge)}, stale-while-revalidate=${String(staleWhileRevalidate)}`,
-    Vary: 'Accept-Encoding',
-  };
-}
-
-/**
- * No-cache headers for dynamic or user-specific data.
- */
-export function getNoCacheHeaders(): HeadersInit {
-  return {
-    'Cache-Control': 'private, no-cache, no-store, must-revalidate',
     Vary: 'Accept-Encoding',
   };
 }

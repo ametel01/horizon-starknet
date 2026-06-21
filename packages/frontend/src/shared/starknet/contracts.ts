@@ -2,11 +2,8 @@ import { getAddresses } from '@shared/config/addresses';
 import type { AccountInterface, ProviderInterface, TypedContractV2 } from 'starknet';
 import { Contract } from 'starknet';
 import {
-  FACTORY_ABI,
   MARKET_ABI,
   MARKETFACTORY_ABI,
-  PRAGMAINDEXORACLE_ABI,
-  PT_ABI,
   PYLPORACLE_ABI,
   ROUTER_ABI,
   ROUTERSTATIC_ABI,
@@ -19,42 +16,14 @@ import type { NetworkId } from './provider';
 
 type ProviderOrAccount = ProviderInterface | AccountInterface;
 
-// Type aliases for typed contracts (exported for use in hooks and components)
-export type TypedFactory = TypedContractV2<typeof FACTORY_ABI>;
 export type TypedMarketFactory = TypedContractV2<typeof MARKETFACTORY_ABI>;
 export type TypedRouter = TypedContractV2<typeof ROUTER_ABI>;
 export type TypedRouterStatic = TypedContractV2<typeof ROUTERSTATIC_ABI>;
 export type TypedMarket = TypedContractV2<typeof MARKET_ABI>;
 export type TypedSY = TypedContractV2<typeof SY_ABI>;
 export type TypedSYWithRewards = TypedContractV2<typeof SYWITHREWARDS_ABI>;
-export type TypedPT = TypedContractV2<typeof PT_ABI>;
 export type TypedYT = TypedContractV2<typeof YT_ABI>;
 export type TypedPyLpOracle = TypedContractV2<typeof PYLPORACLE_ABI>;
-export type TypedPragmaIndexOracle = TypedContractV2<typeof PRAGMAINDEXORACLE_ABI>;
-
-/**
- * Creates a type-safe contract instance using abi-wan-kanabi types.
- *
- * Usage:
- * ```typescript
- * const router = getRouterContract(account, network);
- * const [pt, yt] = await router.mint_py_from_sy(ytAddr, receiver, amount, minOut);
- * // TypeScript knows the return type is [bigint, bigint]
- * ```
- */
-
-// Core protocol contracts with full type safety
-export function getFactoryContract(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedFactory {
-  const addresses = getAddresses(network);
-  return new Contract({
-    abi: FACTORY_ABI,
-    address: addresses.factory,
-    providerOrAccount,
-  }).typedv2(FACTORY_ABI);
-}
 
 export function getMarketFactoryContract(
   providerOrAccount: ProviderOrAccount,
@@ -147,10 +116,6 @@ export function getSYWithRewardsContract(
   );
 }
 
-export function getPTContract(address: string, providerOrAccount: ProviderOrAccount): TypedPT {
-  return new Contract({ abi: PT_ABI, address, providerOrAccount }).typedv2(PT_ABI);
-}
-
 export function getYTContract(address: string, providerOrAccount: ProviderOrAccount): TypedYT {
   return new Contract({ abi: YT_ABI, address, providerOrAccount }).typedv2(YT_ABI);
 }
@@ -171,38 +136,4 @@ export function getPyLpOracleContract(
   providerOrAccount: ProviderOrAccount
 ): TypedPyLpOracle {
   return new Contract({ abi: PYLPORACLE_ABI, address, providerOrAccount }).typedv2(PYLPORACLE_ABI);
-}
-
-/**
- * Create a typed PyLpOracle contract instance using network config address.
- *
- * Convenience function that looks up the PyLpOracle address from network config.
- * Returns null if PyLpOracle is not deployed on the network (address is 0x0).
- */
-export function getPyLpOracleContractForNetwork(
-  providerOrAccount: ProviderOrAccount,
-  network: NetworkId
-): TypedPyLpOracle | null {
-  const addresses = getAddresses(network);
-  // Return null if PyLpOracle is not deployed (placeholder 0x0)
-  if (addresses.pyLpOracle === '0x0') {
-    return null;
-  }
-  return getPyLpOracleContract(addresses.pyLpOracle, providerOrAccount);
-}
-
-/**
- * Create a typed PragmaIndexOracle contract instance.
- *
- * PragmaIndexOracle provides the underlying asset exchange rate from Pragma,
- * used by SY contracts to calculate yield. It fetches TWAP prices for the
- * numerator/denominator pair to compute a manipulation-resistant index.
- */
-export function getPragmaIndexOracleContract(
-  address: string,
-  providerOrAccount: ProviderOrAccount
-): TypedPragmaIndexOracle {
-  return new Contract({ abi: PRAGMAINDEXORACLE_ABI, address, providerOrAccount }).typedv2(
-    PRAGMAINDEXORACLE_ABI
-  );
 }

@@ -5,7 +5,7 @@ import { toBigInt } from '@shared/lib';
 import { getSYContract } from '@shared/starknet/contracts';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 
-export type SyPreviewDirection = 'deposit' | 'redeem';
+type SyPreviewDirection = 'deposit' | 'redeem';
 
 export interface SyPreviewResult {
   /** Expected output amount from the preview */
@@ -38,7 +38,7 @@ export interface SyPreviewResult {
  * }
  * ```
  */
-export function useSyPreview(
+function useSyPreview(
   syAddress: string | undefined,
   amount: bigint | undefined,
   direction: SyPreviewDirection

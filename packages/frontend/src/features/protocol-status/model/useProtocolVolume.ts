@@ -5,7 +5,7 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 /**
  * Volume data point from the API
  */
-export interface VolumeDataPoint {
+interface VolumeDataPoint {
   date: string;
   syVolume: string;
   ptVolume: string;
@@ -16,7 +16,7 @@ export interface VolumeDataPoint {
 /**
  * Response from /api/analytics/volume
  */
-export interface VolumeResponse {
+interface VolumeResponse {
   total24h: {
     syVolume: string;
     ptVolume: string;

@@ -253,7 +253,6 @@ export function useTreasuryYield(ytAddresses: string[]): AggregatedTreasuryYield
     isError,
   };
 }
-
 /**
  * Hook to claim treasury interest from a specific YT contract.
  *
@@ -262,4 +261,3 @@ export function useTreasuryYield(ytAddresses: string[]): AggregatedTreasuryYield
  *
  * @returns Mutation function for claiming treasury interest
  */
-export { usePendingTreasuryInterest } from './usePostExpiryStatus';

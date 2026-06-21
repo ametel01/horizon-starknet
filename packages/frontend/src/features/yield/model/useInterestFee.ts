@@ -81,25 +81,3 @@ export function useInterestFee(
     refetchInterval: 300_000, // Refetch every 5 minutes
   });
 }
-
-/**
- * Convenience hook to check if a fee is being charged.
- *
- * @param ytAddress - The YT contract address
- * @returns Whether a fee is charged (false if unknown)
- */
-export function useHasInterestFee(ytAddress: string | undefined): boolean {
-  const { data } = useInterestFee(ytAddress);
-  return data?.hasFee ?? false;
-}
-
-/**
- * Convenience hook to get the fee rate as a decimal.
- *
- * @param ytAddress - The YT contract address
- * @returns Fee rate as decimal (e.g., 0.03 for 3%), 0 if unknown
- */
-export function useInterestFeeRate(ytAddress: string | undefined): number {
-  const { data } = useInterestFee(ytAddress);
-  return data?.feeRateDecimal ?? 0;
-}

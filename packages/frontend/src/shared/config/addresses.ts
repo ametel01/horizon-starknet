@@ -302,27 +302,6 @@ export function getAddresses(network: NetworkId): ContractAddresses {
 }
 
 /**
- * Get base token address (STRK)
- */
-export function getBaseTokenAddress(network: NetworkId): string {
-  if (network === 'devnet') {
-    return devnetAddresses.testSetup.baseToken?.STRK ?? ZERO_ADDRESS;
-  }
-  // Fork mode doesn't have a base STRK token (uses mainnet tokens)
-  return ZERO_ADDRESS;
-}
-
-/**
- * Get test recipient address
- */
-export function getTestRecipient(network: NetworkId): string {
-  if (network === 'devnet') {
-    return devnetAddresses.testSetup.testRecipient ?? ZERO_ADDRESS;
-  }
-  return ZERO_ADDRESS;
-}
-
-/**
  * Get all market infos with token metadata for a network
  */
 export function getMarketInfos(network: NetworkId): MarketInfo[] {
@@ -627,6 +606,4 @@ export function getFaucetInfo(network: NetworkId): FaucetInfo | null {
     dailyLimit: mainnetAddresses.tokens.hrzSTRK.faucetDailyLimit,
   };
 }
-
 // Re-export for convenience
-export { devnetAddresses, forkAddresses, mainnetAddresses, sepoliaAddresses };

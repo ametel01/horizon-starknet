@@ -17,64 +17,6 @@ interface UseYTClaimRewardsReturn {
 }
 
 /**
- * Hook to claim accrued rewards from a YT (Yield Token) contract.
- *
- * The claim_rewards function transfers all pending reward tokens to the user
- * and resets their accrued amounts. The function is permissionless - anyone
- * can call it on behalf of any user (rewards go to the specified user address).
- *
- * @param ytAddress - The YT contract address
- * @returns Claim mutation state and methods
- */
-export function useYTClaimRewards(ytAddress: string | undefined): UseYTClaimRewardsReturn {
-  const { address: userAddress } = useAccount();
-  const { execute, status, txHash, error, isLoading, reset } = useTransaction();
-  const queryClient = useQueryClient();
-
-  // Build the claim call for gas estimation or direct execution
-  const buildClaimCall = useCallback((): Call | null => {
-    if (!ytAddress || !userAddress) return null;
-
-    return {
-      contractAddress: ytAddress,
-      entrypoint: 'claim_rewards',
-      calldata: [userAddress],
-    };
-  }, [ytAddress, userAddress]);
-
-  // Execute the claim transaction
-  const claim = useCallback(async (): Promise<void> => {
-    const call = buildClaimCall();
-    if (!call) {
-      return;
-    }
-
-    const result = await execute([call]);
-
-    if (result) {
-      // Invalidate rewards queries to refetch updated state
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['yt-rewards', 'accrued', ytAddress] }),
-        queryClient.invalidateQueries({ queryKey: ['token-balance'] }), // Reward token balances changed
-      ]);
-    }
-  }, [buildClaimCall, execute, queryClient, ytAddress]);
-
-  return useMemo(
-    () => ({
-      claim,
-      status,
-      txHash,
-      error,
-      isLoading,
-      reset,
-      buildClaimCall,
-    }),
-    [claim, status, txHash, error, isLoading, reset, buildClaimCall]
-  );
-}
-
-/**
  * Hook to claim rewards from multiple YT contracts in a single multicall.
  *
  * Useful when a user has positions in multiple YT tokens and wants

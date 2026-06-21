@@ -59,7 +59,7 @@ interface UseApyBreakdownOptions {
 /**
  * Hook to fetch SY exchange rate data for underlying yield calculation
  */
-export function useSyRateData(
+function useSyRateData(
   syAddress: string | null,
   yieldTokenSymbol: string | undefined,
   options: UseApyBreakdownOptions = {}
@@ -169,50 +169,4 @@ export function useApyBreakdown(
     isLoading: isLoadingSyRate,
     isError: isErrorSyRate,
   };
-}
-
-/**
- * Hook to get APY breakdown for multiple markets
- */
-export function useMarketsApyBreakdown(
-  markets: MarketData[],
-  _options: UseApyBreakdownOptions = {}
-): Map<string, MarketApyBreakdown> {
-  // For now, calculate breakdown synchronously for each market
-  // In the future, this could batch SY rate fetches
-
-  return useMemo(() => {
-    const breakdowns = new Map<string, MarketApyBreakdown>();
-
-    for (const market of markets) {
-      // Get token-specific estimated APY
-      const yieldTokenSymbol = market.metadata?.yieldTokenSymbol;
-      const estimatedApy = getEstimatedUnderlyingApy(yieldTokenSymbol);
-
-      // Calculate estimated daily growth based on token's APY
-      const apyWad = BigInt(Math.floor(estimatedApy * 1e18));
-      const estimatedDailyGrowth = apyWad / 365n;
-
-      // Use WAD as current rate, calculate previous rate based on estimated growth
-      const currentRate = WAD_BIGINT;
-      const previousRate = (currentRate * WAD_BIGINT) / (WAD_BIGINT + estimatedDailyGrowth);
-
-      const breakdown = calculateApyBreakdown({
-        syReserve: market.state.syReserve,
-        ptReserve: market.state.ptReserve,
-        lnImpliedRate: market.state.lnImpliedRate,
-        expiry: BigInt(market.expiry),
-        syExchangeRate: currentRate,
-        previousExchangeRate: previousRate,
-        rateTimeDelta: 86400,
-        swapVolume24h: (market.state.syReserve + market.state.ptReserve) / 200n,
-        feeRate: 3_000_000_000_000_000n,
-        lpFeeShare: 0.2,
-      });
-
-      breakdowns.set(market.address, breakdown);
-    }
-
-    return breakdowns;
-  }, [markets]);
 }

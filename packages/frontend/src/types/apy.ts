@@ -7,7 +7,7 @@
 /**
  * Underlying yield components
  */
-export interface UnderlyingYield {
+interface UnderlyingYield {
   /** Interest APY from SY appreciation (e.g., staking rewards) */
   interestApy: number;
   /** Additional rewards APR from external sources (future) */

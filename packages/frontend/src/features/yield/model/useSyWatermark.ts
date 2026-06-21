@@ -81,25 +81,3 @@ export function useSyWatermark(
     refetchInterval: 300_000, // Refetch every 5 minutes for monitoring
   });
 }
-
-/**
- * Convenience hook to check if negative yield is detected.
- *
- * @param syAddress - The SY contract address
- * @returns Whether negative yield is detected (false if unknown)
- */
-export function useHasNegativeYield(syAddress: string | undefined): boolean {
-  const { data } = useSyWatermark(syAddress);
-  return data?.hasNegativeYield ?? false;
-}
-
-/**
- * Convenience hook to get the rate drop in basis points.
- *
- * @param syAddress - The SY contract address
- * @returns Drop from watermark in basis points (0 if no drop or unknown)
- */
-export function useSyRateDropBps(syAddress: string | undefined): number {
-  const { data } = useSyWatermark(syAddress);
-  return data?.rateDropBps ?? 0;
-}

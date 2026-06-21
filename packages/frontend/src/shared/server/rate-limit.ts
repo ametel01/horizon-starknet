@@ -204,17 +204,3 @@ export async function applyRateLimit(
 
   return null;
 }
-
-/**
- * Add rate limit headers to a response
- */
-export function withRateLimitHeaders(
-  response: NextResponse,
-  result: RateLimitResult
-): NextResponse {
-  const headers = getRateLimitHeaders(result);
-  response.headers.set('X-RateLimit-Limit', headers['X-RateLimit-Limit']);
-  response.headers.set('X-RateLimit-Remaining', headers['X-RateLimit-Remaining']);
-  response.headers.set('X-RateLimit-Reset', headers['X-RateLimit-Reset']);
-  return response;
-}

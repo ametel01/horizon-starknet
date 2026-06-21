@@ -1,32 +1,7 @@
 import { cn } from '@shared/lib/utils';
-import { formatExpiry, formatTimeToExpiry, isExpired } from '@shared/math/yield';
+import { formatTimeToExpiry, isExpired } from '@shared/math/yield';
 import { Badge } from '@shared/ui/badge';
 import type { ReactNode } from 'react';
-
-interface ExpiryCountdownProps {
-  expiryTimestamp: number;
-  className?: string;
-  showDate?: boolean;
-}
-
-export function ExpiryCountdown({
-  expiryTimestamp,
-  className,
-  showDate = true,
-}: ExpiryCountdownProps): ReactNode {
-  const expired = isExpired(expiryTimestamp);
-  const timeRemaining = formatTimeToExpiry(expiryTimestamp);
-  const expiryDate = formatExpiry(expiryTimestamp);
-
-  return (
-    <div className={cn('text-sm', className)}>
-      <span className={cn('font-medium', expired ? 'text-destructive' : 'text-foreground')}>
-        {timeRemaining}
-      </span>
-      {showDate && !expired && <span className="text-muted-foreground ml-2">({expiryDate})</span>}
-    </div>
-  );
-}
 
 interface ExpiryBadgeProps {
   expiryTimestamp: number;

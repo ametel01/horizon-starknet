@@ -7,9 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { type ReactNode, useMemo, useState } from 'react';
 import { calculateIl, getIlDirectionStyles } from './impermanentLossMath';
 
-export { IlIndicator } from './IlIndicator';
-export { ImpermanentLossCalcSkeleton } from './ImpermanentLossCalcSkeleton';
-
 interface ImpermanentLossCalcProps {
   position: LpPosition;
   poolReserves: {

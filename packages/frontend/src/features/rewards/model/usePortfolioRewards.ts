@@ -12,7 +12,7 @@ import type { AccruedReward } from './useAccruedRewards';
 /**
  * Represents rewards from a single SY contract
  */
-export interface SyRewards {
+interface SyRewards {
   /** SY contract address */
   syAddress: string;
   /** Array of reward tokens with accrued amounts */

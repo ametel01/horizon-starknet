@@ -24,75 +24,6 @@ export interface HealthResponse {
 }
 
 // Markets endpoint types
-export interface IndexedMarket {
-  address: string;
-  expiry: number;
-  sy: string;
-  pt: string;
-  yt: string;
-  underlying: string;
-  underlyingSymbol: string;
-  /** @deprecated Use lnFeeRateRoot instead */
-  feeRate?: string;
-  /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
-  lnFeeRateRoot: string;
-  /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
-  reserveFeePercent: number;
-  initialExchangeRate: string;
-  createdAt: string;
-  syReserve: string;
-  ptReserve: string;
-  impliedRate: string;
-  exchangeRate: string;
-  isExpired: boolean;
-  volume24h: string;
-  swaps24h: number;
-  lastActivity: string | null;
-}
-
-export interface MarketsResponse {
-  markets: IndexedMarket[];
-  total: number;
-}
-
-export interface MarketDetailResponse {
-  market: {
-    address: string;
-    expiry: number;
-    sy: string;
-    pt: string;
-    yt: string;
-    underlying: string;
-    underlyingSymbol: string;
-    /** @deprecated Use lnFeeRateRoot instead */
-    feeRate?: string;
-    /** Natural log of fee rate root in WAD, used for time-decay fee calculations */
-    lnFeeRateRoot: string;
-    /** Reserve fee percentage (0-100), portion of fees allocated to treasury */
-    reserveFeePercent: number;
-    initialExchangeRate: string;
-    createdAt: string;
-  };
-  currentState: {
-    syReserve: string;
-    ptReserve: string;
-    impliedRate: string;
-    exchangeRate: string;
-    isExpired: boolean;
-    lastActivity: string | null;
-  };
-  stats24h: {
-    volume: string;
-    fees: string;
-    swapCount: number;
-  };
-  stats7d: {
-    volume: string;
-    fees: string;
-    swapCount: number;
-    uniqueTraders: number;
-  };
-}
 
 export interface SwapEvent {
   id: string;
@@ -131,29 +62,8 @@ export interface SwapsResponse {
   hasMore: boolean;
 }
 
-export interface TvlDataPoint {
-  date: string;
-  syReserve: string;
-  ptReserve: string;
-}
-
-export interface TvlResponse {
-  history: TvlDataPoint[];
-}
-
-export interface RateDataPoint {
-  date: string;
-  impliedRate: string;
-  exchangeRate: string;
-  lnImpliedRate: string;
-}
-
-export interface RatesResponse {
-  history: RateDataPoint[];
-}
-
 // New rate data point format from /api/markets/[address]/rates
-export interface MarketRateDataPoint {
+interface MarketRateDataPoint {
   timestamp: string;
   impliedRate: string;
   exchangeRate: string;
@@ -244,38 +154,8 @@ export interface PositionsResponse {
   };
 }
 
-export interface YieldClaimEvent {
-  id: string;
-  yt: string;
-  sy: string;
-  expiry: number;
-  amountSy: string;
-  ytBalance: string;
-  pyIndexAtClaim: string;
-  exchangeRate: string;
-  blockTimestamp: string;
-  transactionHash: string;
-}
-
-export interface YieldSummary {
-  yt: string;
-  sy: string;
-  expiry: number;
-  totalClaimed: string;
-  claimCount: number;
-  lastClaim: string | null;
-  currentYtBalance: string;
-}
-
-export interface YieldResponse {
-  address: string;
-  totalYieldClaimed: string;
-  claimHistory: YieldClaimEvent[];
-  summaryByPosition: YieldSummary[];
-}
-
 // Analytics endpoint types
-export interface ProtocolTvlDataPoint {
+interface ProtocolTvlDataPoint {
   date: string;
   totalSyReserve: string;
   totalPtReserve: string;
@@ -291,36 +171,13 @@ export interface ProtocolTvlResponse {
   history: ProtocolTvlDataPoint[];
 }
 
-export interface VolumeDataPoint {
-  date: string;
-  syVolume: string;
-  ptVolume: string;
-  swapCount: number;
-  uniqueSwappers: number;
-}
-
-export interface VolumeResponse {
-  total24h: {
-    syVolume: string;
-    ptVolume: string;
-    swapCount: number;
-    uniqueSwappers: number;
-  };
-  total7d: {
-    syVolume: string;
-    ptVolume: string;
-    swapCount: number;
-  };
-  history: VolumeDataPoint[];
-}
-
-export interface FeesDataPoint {
+interface FeesDataPoint {
   date: string;
   totalFees: string;
   swapCount: number;
 }
 
-export interface MarketFeeBreakdown {
+interface MarketFeeBreakdown {
   market: string;
   underlyingSymbol: string;
   totalFees: string;
@@ -328,7 +185,7 @@ export interface MarketFeeBreakdown {
   avgFeePerSwap: string;
 }
 
-export interface FeeCollection {
+interface FeeCollection {
   market: string;
   collector: string;
   receiver: string;

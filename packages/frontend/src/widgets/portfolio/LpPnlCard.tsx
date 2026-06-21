@@ -5,7 +5,6 @@ import { cn } from '@shared/lib/utils';
 import { formatWad, formatWadCompact } from '@shared/math/wad';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { ClientDateText } from '@shared/ui/client-time';
-import { Skeleton } from '@shared/ui/Skeleton';
 import { type ReactNode, useMemo } from 'react';
 
 const WAD = BigInt(10) ** BigInt(18);
@@ -303,89 +302,6 @@ export function LpPnlCard({ position, className, poolReserves }: LpPnlCardProps)
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * Compact P&L display for embedding in position cards
- */
-interface LpPnlInlineProps {
-  position: LpPosition;
-  poolReserves?:
-    | {
-        syReserve: bigint;
-        ptReserve: bigint;
-        totalLpSupply: bigint;
-      }
-    | undefined;
-  className?: string | undefined;
-}
-
-export function LpPnlInline({ position, poolReserves, className }: LpPnlInlineProps): ReactNode {
-  const metrics = useMemo(() => calculateLpPnl(position), [position]);
-
-  // Calculate current value
-  const currentValue = useMemo(() => {
-    if (!poolReserves || poolReserves.totalLpSupply === 0n) return null;
-
-    const { syReserve, ptReserve, totalLpSupply } = poolReserves;
-    const lpShare = (metrics.currentLpBalance * WAD) / totalLpSupply;
-
-    return {
-      syValue: (syReserve * lpShare) / WAD,
-      ptValue: (ptReserve * lpShare) / WAD,
-    };
-  }, [metrics.currentLpBalance, poolReserves]);
-
-  // Calculate total P&L
-  const totalPnl = useMemo(() => {
-    if (!currentValue) return null;
-
-    const totalSyValue = currentValue.syValue + metrics.totalSyWithdrawn;
-    const pnlSy = totalSyValue - metrics.totalSyDeposited;
-    const percentSy =
-      metrics.totalSyDeposited > 0n ? (Number(pnlSy) / Number(metrics.totalSyDeposited)) * 100 : 0;
-
-    return { pnlSy, percentSy };
-  }, [currentValue, metrics]);
-
-  if (!totalPnl) {
-    return <div className={cn('text-muted-foreground text-sm', className)}>P&L: --</div>;
-  }
-
-  const isPositive = totalPnl.pnlSy >= 0n;
-
-  return (
-    <div className={cn('text-sm', className)}>
-      <span className="text-muted-foreground">P&L: </span>
-      <span className={cn('font-medium', isPositive ? 'text-primary' : 'text-destructive')}>
-        {isPositive ? '+' : ''}
-        {formatWadCompact(totalPnl.pnlSy)} SY ({isPositive ? '+' : ''}
-        {totalPnl.percentSy.toFixed(2)}%)
-      </span>
-    </div>
-  );
-}
-
-/**
- * Loading skeleton for LpPnlCard
- */
-export function LpPnlCardSkeleton({ className }: { className?: string }): ReactNode {
-  return (
-    <Card className={className}>
-      <CardHeader className="pb-2">
-        <Skeleton className="h-5 w-32" />
-        <Skeleton className="h-4 w-20" />
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Skeleton className="h-20 w-full" />
-        <div className="grid grid-cols-2 gap-3">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-        <Skeleton className="h-24 w-full" />
       </CardContent>
     </Card>
   );

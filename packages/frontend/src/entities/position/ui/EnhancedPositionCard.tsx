@@ -21,12 +21,12 @@ export interface YieldEarnedData {
   claimCount: number;
 }
 
-export interface YieldFeeInfo {
+interface YieldFeeInfo {
   feeRatePercent: string;
   hasFee: boolean;
 }
 
-export interface PostExpiryInfo {
+interface PostExpiryInfo {
   isInitialized: boolean;
   totalTreasuryInterestFormatted?: string;
 }

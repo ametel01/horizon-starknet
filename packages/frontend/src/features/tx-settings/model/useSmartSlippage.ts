@@ -44,7 +44,7 @@ const MAX_VOLATILITY_ADJUSTMENT_BPS = 100;
 // Types
 // ============================================================================
 
-export interface SmartSlippageResult {
+interface SmartSlippageResult {
   /** Recommended slippage in basis points */
   recommendedBps: number;
   /** Confidence level of the recommendation */

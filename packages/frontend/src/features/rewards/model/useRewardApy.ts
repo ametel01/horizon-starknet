@@ -5,7 +5,7 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 /**
  * Reward stats for a single reward token.
  */
-export interface RewardApyData {
+interface RewardApyData {
   rewardToken: string;
   rewardsLast7Days: string;
   avgTotalSupply: string;

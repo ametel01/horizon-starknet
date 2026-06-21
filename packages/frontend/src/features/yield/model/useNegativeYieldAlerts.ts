@@ -5,7 +5,7 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 /**
  * A single negative yield detection event.
  */
-export interface NegativeYieldEvent {
+interface NegativeYieldEvent {
   id: string;
   sy: string;
   underlying: string;
@@ -20,7 +20,7 @@ export interface NegativeYieldEvent {
 /**
  * Aggregated negative yield alert summary.
  */
-export interface NegativeYieldSummary {
+interface NegativeYieldSummary {
   sy: string;
   underlying: string;
   eventCount: number;
@@ -83,15 +83,4 @@ export function useNegativeYieldAlerts(
     enabled: !!syAddress,
     staleTime: 60_000, // 1 minute - event data is historical
   });
-}
-
-/**
- * Convenience hook to check if an SY has any negative yield history.
- *
- * @param syAddress - The SY contract address
- * @returns Whether negative yield has been detected (false if unknown)
- */
-export function useHasNegativeYieldHistory(syAddress: string | undefined): boolean {
-  const { data } = useNegativeYieldAlerts(syAddress);
-  return data?.summary !== null && (data?.summary?.eventCount ?? 0) > 0;
 }

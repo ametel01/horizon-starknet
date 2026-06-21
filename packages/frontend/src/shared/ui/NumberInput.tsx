@@ -43,5 +43,4 @@ function NumberInput({
   );
 }
 
-export type { NumberInputProps };
 export { NumberInput };

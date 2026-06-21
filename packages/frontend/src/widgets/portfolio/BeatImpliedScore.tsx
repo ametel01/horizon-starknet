@@ -286,35 +286,3 @@ export function BeatImpliedScore({ className, height = 200 }: BeatImpliedScorePr
     </Card>
   );
 }
-
-/**
- * Compact beat implied indicator
- */
-interface BeatImpliedBadgeProps {
-  className?: string;
-}
-
-export function BeatImpliedBadge({ className }: BeatImpliedBadgeProps): ReactNode {
-  const { summary, isLoading } = useBeatImplied();
-
-  if (isLoading) {
-    return <Skeleton className={cn('h-6 w-20', className)} />;
-  }
-
-  if (summary.totalPositions === 0) {
-    return null;
-  }
-
-  return (
-    <span
-      className={cn(
-        'rounded-full px-2 py-0.5 text-xs font-medium',
-        getScoreColor(summary.overallScore),
-        getScoreBgColor(summary.overallScore),
-        className
-      )}
-    >
-      {formatApy(summary.avgBeatImplied)} vs implied
-    </span>
-  );
-}

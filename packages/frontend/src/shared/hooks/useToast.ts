@@ -2,9 +2,9 @@
 
 import { toast as sonnerToast } from 'sonner';
 
-export type ToastVariant = 'default' | 'success' | 'error' | 'warning';
+type ToastVariant = 'default' | 'success' | 'error' | 'warning';
 
-export interface ToastInput {
+interface ToastInput {
   title?: string;
   description?: string;
   variant?: ToastVariant;
@@ -39,19 +39,3 @@ toast.error = (props: Omit<ToastInput, 'variant'>): string | number =>
 
 toast.warning = (props: Omit<ToastInput, 'variant'>): string | number =>
   toast({ ...props, variant: 'warning' });
-
-export function dismissToast(id: string | number): void {
-  sonnerToast.dismiss(id);
-}
-
-export function useToast(): {
-  toast: typeof toast;
-  dismiss: (id: string | number) => void;
-} {
-  return {
-    toast,
-    dismiss: dismissToast,
-  };
-}
-
-export { toast };

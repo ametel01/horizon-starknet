@@ -24,17 +24,17 @@ import { WAD_BIGINT, wadDiv, wadMul } from './wad';
 export const SECONDS_PER_YEAR = 31_536_000n;
 
 /** Minimum time to expiry to prevent division issues (1 second) */
-export const MIN_TIME_TO_EXPIRY = 1n;
+const MIN_TIME_TO_EXPIRY = 1n;
 
 /** Maximum ln(implied_rate) ~4.6 WAD corresponds to ~10000% APY */
-export const MAX_LN_IMPLIED_RATE = 4_600_000_000_000_000_000n;
+const MAX_LN_IMPLIED_RATE = 4_600_000_000_000_000_000n;
 
 /** Minimum proportion of assets (prevents extreme imbalance) */
-export const MIN_PROPORTION = 1_000_000_000_000_000n; // 0.001 WAD (0.1%)
-export const MAX_PROPORTION = 999_000_000_000_000_000n; // 0.999 WAD (99.9%)
+const MIN_PROPORTION = 1_000_000_000_000_000n; // 0.001 WAD (0.1%)
+const MAX_PROPORTION = 999_000_000_000_000_000n; // 0.999 WAD (99.9%)
 
 /** Half WAD for default proportions */
-export const HALF_WAD = WAD_BIGINT / 2n;
+const HALF_WAD = WAD_BIGINT / 2n;
 
 // ============================================================================
 // Types
@@ -62,13 +62,6 @@ export interface SwapResult {
   spotPrice: bigint; // WAD - price before impact
 }
 
-/** Result of a liquidity calculation */
-export interface LiquidityResult {
-  lpOut: bigint;
-  syUsed: bigint;
-  ptUsed: bigint;
-}
-
 // ============================================================================
 // Math Helpers (exp/ln using cairo-fp for on-chain precision matching)
 // ============================================================================
@@ -78,7 +71,7 @@ export interface LiquidityResult {
  * Returns (|ln(x)|, isNegative) to match Cairo implementation
  * Uses cairo-fp for precision matching with on-chain calculations
  */
-export function lnWad(x: bigint): { value: bigint; isNegative: boolean } {
+function lnWad(x: bigint): { value: bigint; isNegative: boolean } {
   return fpLnWad(x);
 }
 
@@ -96,7 +89,7 @@ export function expWad(x: bigint): bigint {
  * e^(-x) where x is in WAD
  * Uses cairo-fp for precision matching with on-chain calculations
  */
-export function expNegWad(x: bigint): bigint {
+function expNegWad(x: bigint): bigint {
   return fpExpNegWad(x);
 }
 
@@ -126,7 +119,7 @@ export function getTimeToExpiry(expiry: bigint, currentTime?: bigint): bigint {
  * @param state Current market state
  * @returns Proportion in WAD format
  */
-export function getProportion(state: MarketState): bigint {
+function getProportion(state: MarketState): bigint {
   const total = state.ptReserve + state.syReserve;
 
   if (total === 0n) {
@@ -300,10 +293,7 @@ export function getTimeAdjustedFeeRate(feeRate: bigint, timeToExpiry: bigint): b
  * @param timeToExpiry Time to expiry in seconds
  * @returns ln(implied_rate) in WAD, capped at MAX_LN_IMPLIED_RATE
  */
-export function getLnImpliedRateFromExchangeRate(
-  exchangeRate: bigint,
-  timeToExpiry: bigint
-): bigint {
+function getLnImpliedRateFromExchangeRate(exchangeRate: bigint, timeToExpiry: bigint): bigint {
   if (timeToExpiry === 0n || exchangeRate <= WAD_BIGINT) {
     return 0n;
   }
@@ -323,24 +313,6 @@ export function getLnImpliedRateFromExchangeRate(
 
   // Cap at MAX_LN_IMPLIED_RATE to prevent overflow
   return result > MAX_LN_IMPLIED_RATE ? MAX_LN_IMPLIED_RATE : result;
-}
-
-/**
- * Calculate ln(implied_rate) from market state using exchange rate formula
- * @param state Current market state
- * @param timeToExpiry Time to expiry in seconds
- * @returns ln(implied_rate) in WAD, always non-negative
- */
-export function getLnImpliedRate(state: MarketState, timeToExpiry: bigint): bigint {
-  const proportion = getProportion(state);
-  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
-  const rateAnchor = getRateAnchor(state, timeToExpiry);
-
-  // Get exchange rate at current proportion
-  const exchangeRate = getExchangeRate(proportion, rateScalar, rateAnchor);
-
-  // Calculate ln(implied_rate) from exchange rate
-  return getLnImpliedRateFromExchangeRate(exchangeRate, timeToExpiry);
 }
 
 /**
@@ -708,194 +680,12 @@ export function calcSwapSyForExactPt(
   };
 }
 
-/**
- * Calculate PT input required for exact SY output (sell PT for exact SY)
- * Uses logit-based exchange rate curve matching on-chain calc_swap_pt_for_exact_sy
- * @param state Current market state
- * @param exactSyOut Amount of SY to receive
- * @param currentTime Current timestamp (optional, defaults to now)
- * @returns SwapResult with input amount required
- */
-export function calcSwapPtForExactSy(
-  state: MarketState,
-  exactSyOut: bigint,
-  currentTime?: bigint
-): SwapResult {
-  if (exactSyOut === 0n) {
-    return {
-      amountOut: 0n,
-      fee: 0n,
-      newLnImpliedRate: state.lastLnImpliedRate,
-      priceImpact: 0,
-      effectivePrice: WAD_BIGINT,
-      spotPrice: WAD_BIGINT,
-    };
-  }
-
-  if (exactSyOut >= state.syReserve) {
-    throw new Error('Insufficient liquidity');
-  }
-
-  const timeToExpiry = getTimeToExpiry(state.expiry, currentTime);
-
-  // Calculate precomputed values
-  const rateScalar = getRateScalar(state.scalarRoot, timeToExpiry);
-  const rateAnchor = getRateAnchor(state, timeToExpiry);
-  const adjustedFeeRate = getTimeAdjustedFeeRate(state.feeRate, timeToExpiry);
-
-  // Get current proportion and exchange rate (spot)
-  const currentProportion = getProportion(state);
-  const spotExchangeRate = getExchangeRate(currentProportion, rateScalar, rateAnchor);
-  const spotPrice = wadDiv(WAD_BIGINT, spotExchangeRate); // PT price = 1/exchangeRate
-
-  // Add fee to output (pool needs to give out more before fee)
-  // syOutBeforeFee = exactSyOut / (1 - feeRate)
-  const syOutBeforeFee = wadDiv(exactSyOut, WAD_BIGINT - adjustedFeeRate);
-  const fee = syOutBeforeFee - exactSyOut;
-
-  // Calculate new SY reserve
-  const newSyReserve = state.syReserve - syOutBeforeFee;
-
-  // Binary search to find PT input required
-  let low = 0n;
-  let high = state.ptReserve * 10n; // Upper bound for PT input
-  let ptIn = 0n;
-
-  for (let i = 0; i < 100; i++) {
-    const mid = (low + high) / 2n;
-    if (mid === 0n) break;
-
-    // New state after adding mid PT
-    const newPtReserve = state.ptReserve + mid;
-    const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
-
-    // Exchange rate at new proportion
-    const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
-
-    // SY we would get for mid PT: mid / exchangeRate
-    const syOut = wadDiv(mid, newExchangeRate);
-
-    if (syOut < syOutBeforeFee) {
-      low = mid + 1n;
-    } else if (syOut > syOutBeforeFee) {
-      high = mid - 1n;
-    } else {
-      ptIn = mid;
-      break;
-    }
-
-    // Use the higher bound as our estimate (need at least this much)
-    ptIn = high;
-  }
-
-  // Calculate new implied rate
-  const newPtReserve = state.ptReserve + ptIn;
-  const newProportion = wadDiv(newPtReserve, newPtReserve + newSyReserve);
-  const newExchangeRate = getExchangeRate(newProportion, rateScalar, rateAnchor);
-  const newLnImpliedRate = getLnImpliedRateFromExchangeRate(newExchangeRate, timeToExpiry);
-
-  // Effective price = PT spent / SY received
-  const effectivePrice = wadDiv(ptIn, exactSyOut);
-  const priceImpact =
-    spotPrice > 0n ? Math.abs(Number(effectivePrice - spotPrice)) / Number(spotPrice) : 0;
-
-  return {
-    amountOut: ptIn, // Note: for exact output, this is the input required
-    fee,
-    newLnImpliedRate,
-    priceImpact,
-    effectivePrice,
-    spotPrice,
-  };
-}
-
 // ============================================================================
 // Liquidity Calculations
 // ============================================================================
-
-/**
- * Calculate LP tokens to mint for given liquidity addition
- * @param state Current market state
- * @param syAmount Amount of SY to add
- * @param ptAmount Amount of PT to add
- * @returns LiquidityResult with LP to mint and amounts used
- */
-export function calcMintLp(
-  state: MarketState,
-  syAmount: bigint,
-  ptAmount: bigint
-): LiquidityResult {
-  if (state.totalLp === 0n) {
-    // First liquidity provider - use geometric mean
-    const product = wadMul(syAmount, ptAmount);
-    const lpOut = sqrtBigInt(product);
-    return { lpOut, syUsed: syAmount, ptUsed: ptAmount };
-  }
-
-  // Calculate the amount of each token to use based on current ratio
-  const syRatio = wadDiv(syAmount, state.syReserve);
-  const ptRatio = wadDiv(ptAmount, state.ptReserve);
-
-  // Use the smaller ratio to maintain pool balance
-  const ratio = syRatio < ptRatio ? syRatio : ptRatio;
-
-  const syUsed = wadMul(ratio, state.syReserve);
-  const ptUsed = wadMul(ratio, state.ptReserve);
-  const lpOut = wadMul(ratio, state.totalLp);
-
-  return { lpOut, syUsed, ptUsed };
-}
-
-/**
- * Calculate tokens to return for LP burn
- * @param state Current market state
- * @param lpToBurn Amount of LP to burn
- * @returns Amounts of SY and PT to return
- */
-export function calcBurnLp(state: MarketState, lpToBurn: bigint): { syOut: bigint; ptOut: bigint } {
-  if (state.totalLp === 0n || lpToBurn === 0n) {
-    return { syOut: 0n, ptOut: 0n };
-  }
-
-  const ratio = wadDiv(lpToBurn, state.totalLp);
-  const syOut = wadMul(ratio, state.syReserve);
-  const ptOut = wadMul(ratio, state.ptReserve);
-
-  return { syOut, ptOut };
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Integer square root (Babylonian method)
- */
-function sqrtBigInt(x: bigint): bigint {
-  if (x === 0n) return 0n;
-  if (x <= 3n) return 1n;
-
-  let z = x;
-  let y = (x + 1n) / 2n;
-
-  while (y < z) {
-    z = y;
-    y = (x / y + y) / 2n;
-  }
-
-  return z;
-}
-
-/**
- * Calculate slippage-adjusted minimum output
- * @param expectedOut Expected output amount
- * @param slippageBps Slippage tolerance in basis points (50 = 0.5%)
- * @returns Minimum acceptable output
- */
-export function calculateMinOutput(expectedOut: bigint, slippageBps: number): bigint {
-  const slippageMultiplier = BigInt(10000 - slippageBps);
-  return (expectedOut * slippageMultiplier) / 10000n;
-}
 
 /**
  * Format price impact for display

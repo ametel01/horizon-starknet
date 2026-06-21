@@ -116,7 +116,7 @@ export function useYieldCurve(options: UseYieldCurveOptions = {}): UseYieldCurve
 // Implied vs Realized APY Hook
 // ============================================================================
 
-export interface ImpliedVsRealizedDataPoint {
+interface ImpliedVsRealizedDataPoint {
   date: string;
   impliedApyPercent: number;
   realizedApyPercent: number;
@@ -235,7 +235,7 @@ export interface DailyImpactStats {
   swapCount: number;
 }
 
-export interface RecentSwap {
+interface RecentSwap {
   timestamp: string;
   impactBps: number;
   tradeSizeSy: bigint;
@@ -352,7 +352,7 @@ export function useExecutionQuality(
 // PT Price History Hook
 // ============================================================================
 
-export interface PtPriceDataPoint {
+interface PtPriceDataPoint {
   date: string;
   ptPriceInSy: number;
   impliedApyPercent: number;

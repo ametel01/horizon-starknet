@@ -152,26 +152,3 @@ export function getTokenPrice(
   }
   return prices.get(normalizeAddress(tokenAddress)) ?? 0;
 }
-
-/**
- * Format a price for display
- */
-export function formatPrice(price: number): string {
-  if (price === 0) {
-    return '$0.00';
-  }
-
-  if (price < 0.01) {
-    return `$${price.toFixed(6)}`;
-  }
-
-  if (price < 1) {
-    return `$${price.toFixed(4)}`;
-  }
-
-  if (price >= 1000) {
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-
-  return `$${price.toFixed(2)}`;
-}

@@ -15,8 +15,6 @@ import { useAccount } from '@features/wallet';
 import { useEstimateFee } from '@shared/hooks';
 import { cn } from '@shared/lib/utils';
 import { formatWad } from '@shared/math/wad';
-import { AnimatedNumber } from '@shared/ui/AnimatedNumber';
-import { BentoCard } from '@shared/ui/BentoCard';
 import { Button } from '@shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { GasEstimate } from '@shared/ui/GasEstimate';
@@ -475,67 +473,5 @@ export function PortfolioRewardsCard({
       {hasSyRewards && <RewardsCardContent rewards={syRewards} />}
       {hasYtRewards && <YTRewardsCardContent rewards={ytRewards} />}
     </div>
-  );
-}
-
-/**
- * Compact version for BentoGrid display showing total rewards count.
- * Aggregates both SY and YT rewards into a single summary card.
- */
-export function PortfolioRewardsBento({
-  syAddresses,
-  ytAddresses = EMPTY_REWARD_ADDRESSES,
-  className,
-}: PortfolioRewardsCardProps): ReactNode {
-  const { data: syRewards, isLoading: syLoading } = usePortfolioRewards(syAddresses);
-  const { data: ytRewards, isLoading: ytLoading } = usePortfolioYTRewards(ytAddresses);
-
-  const isLoading = syLoading || ytLoading;
-
-  if (isLoading) {
-    return (
-      <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} className={className}>
-        <div className="flex h-full flex-col justify-center p-4">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="mt-2 h-8 w-16" />
-        </div>
-      </BentoCard>
-    );
-  }
-
-  const hasSyRewards = syRewards?.hasAnyRewards ?? false;
-  const hasYtRewards = ytRewards?.hasAnyRewards ?? false;
-
-  if (!hasSyRewards && !hasYtRewards) {
-    return null;
-  }
-
-  // Aggregate counts from both sources
-  const totalTokenCount =
-    (syRewards?.distinctTokenCount ?? 0) + (ytRewards?.distinctTokenCount ?? 0);
-  const totalPositions =
-    (syRewards?.claimableSyAddresses.length ?? 0) + (ytRewards?.claimableYtAddresses.length ?? 0);
-
-  return (
-    <BentoCard colSpan={{ default: 6, lg: 4 }} rowSpan={1} className={className}>
-      <div className="flex h-full flex-col justify-center p-4">
-        <div className="flex items-center gap-2">
-          <GiftIcon className="text-success size-4" />
-          <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-            Claimable Rewards
-          </span>
-        </div>
-        <span className="text-success mt-2 font-mono text-2xl font-semibold">
-          <AnimatedNumber
-            value={totalTokenCount}
-            formatter={(v) => `${String(v)} ${v === 1 ? 'token' : 'tokens'}`}
-            duration={400}
-          />
-        </span>
-        <span className="text-muted-foreground mt-1 text-sm">
-          from {String(totalPositions)} {totalPositions === 1 ? 'position' : 'positions'}
-        </span>
-      </div>
-    </BentoCard>
   );
 }

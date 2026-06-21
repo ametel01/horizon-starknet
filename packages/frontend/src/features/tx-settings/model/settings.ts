@@ -15,15 +15,6 @@ export const SLIPPAGE_OPTIONS = [
   { label: 'Standard', percent: '0.5%', value: 50, description: 'Recommended for most trades' },
   { label: 'Fast', percent: '1%', value: 100, description: 'Higher chance of execution' },
 ] as const;
-
-/** Predefined deadline options */
-export const DEADLINE_OPTIONS = [
-  { label: '5 min', value: 5 },
-  { label: '10 min', value: 10 },
-  { label: '20 min', value: 20 },
-  { label: '30 min', value: 30 },
-] as const;
-
 /** Validation limits */
 export const MIN_SLIPPAGE_BPS = 1; // 0.01%
 export const MAX_SLIPPAGE_BPS = 5000; // 50%

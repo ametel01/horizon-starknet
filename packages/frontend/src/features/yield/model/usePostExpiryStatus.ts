@@ -112,25 +112,3 @@ export function usePostExpiryStatus(
     refetchInterval: 300_000, // Refetch every 5 minutes
   });
 }
-
-/**
- * Convenience hook to check if post-expiry has been initialized.
- *
- * @param ytAddress - The YT contract address
- * @returns Whether post-expiry is initialized (false if unknown or not expired)
- */
-export function useIsPostExpiryInitialized(ytAddress: string | undefined): boolean {
-  const { data } = usePostExpiryStatus(ytAddress);
-  return data?.isInitialized ?? false;
-}
-
-/**
- * Convenience hook to get pending treasury interest.
- *
- * @param ytAddress - The YT contract address
- * @returns Pending treasury interest as bigint (0n if unknown)
- */
-export function usePendingTreasuryInterest(ytAddress: string | undefined): bigint {
-  const { data } = usePostExpiryStatus(ytAddress);
-  return data?.pendingTreasuryInterest ?? 0n;
-}

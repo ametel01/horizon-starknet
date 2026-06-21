@@ -7,13 +7,6 @@ import { getERC20Contract, getMarketContract, getYTContract } from '@shared/star
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import type { ProviderInterface } from 'starknet';
 
-export interface TokenPosition {
-  address: string;
-  symbol: string;
-  balance: bigint;
-  type: 'sy' | 'pt' | 'yt' | 'lp';
-}
-
 export interface MarketPosition {
   market: MarketData;
   syBalance: bigint;
@@ -150,31 +143,4 @@ export function usePositions(
     // Disable structural sharing to prevent BigInt serialization issues
     structuralSharing: false,
   });
-}
-
-/**
- * Hook to check if user has any positions in a specific market
- */
-export function useHasPosition(market: MarketData | undefined): boolean {
-  const { provider } = useStarknet();
-  const { address } = useAccount();
-
-  const { data } = useQuery({
-    queryKey: ['hasPosition', address, market?.address],
-    queryFn: async (): Promise<boolean> => {
-      if (!address || !market) return false;
-
-      const position = await fetchMarketPosition(market, address, provider);
-      return (
-        position.syBalance > BigInt(0) ||
-        position.ptBalance > BigInt(0) ||
-        position.ytBalance > BigInt(0) ||
-        position.lpBalance > BigInt(0)
-      );
-    },
-    enabled: !!address && !!market,
-    staleTime: 30000,
-  });
-
-  return data ?? false;
 }

@@ -317,19 +317,6 @@ export function isInsufficientBalanceError(error: unknown): boolean {
   );
 }
 
-/**
- * Check if error is a reward-related error
- */
-export function isRewardError(error: unknown): boolean {
-  const contractError = extractContractError(error);
-  if (!contractError) return false;
-  return (
-    contractError === 'HZN: empty reward tokens' ||
-    contractError === 'HZN: reward token exists' ||
-    contractError === 'HZN: reward transfer failed'
-  );
-}
-
 // ============================================================================
 // Legacy Error Handling (for non-contract errors)
 // ============================================================================

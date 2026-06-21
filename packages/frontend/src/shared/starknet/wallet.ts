@@ -62,7 +62,3 @@ export function formatAddress(address: string, chars = 4): string {
   }
   return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
 }
-
-export function isValidStarknetAddress(address: string): boolean {
-  return /^0x[0-9a-fA-F]{1,64}$/.test(address);
-}

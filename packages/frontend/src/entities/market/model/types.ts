@@ -23,7 +23,7 @@ export interface MarketState {
 }
 
 // Token metadata for display
-export interface MarketTokenMetadata {
+interface MarketTokenMetadata {
   key: string; // e.g. "sSTRK", "sSTRK"
   underlyingAddress: string;
   yieldTokenName: string; // e.g. "Staked Starknet Token"
@@ -51,11 +51,4 @@ export interface MarketData extends MarketInfo {
   oracleState: 'ready' | 'partial' | 'spot-only';
   /** TWAP duration used (seconds), 0 if spot-only */
   twapDuration: number;
-}
-
-export interface TokenMetadata {
-  address: string;
-  name: string;
-  symbol: string;
-  decimals: number;
 }

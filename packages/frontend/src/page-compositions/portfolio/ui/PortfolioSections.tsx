@@ -298,22 +298,3 @@ export function ClaimAllStatus({ txStatus, txHash, error }: ClaimAllStatusProps)
 // ============================================================================
 // Positions Section
 // ============================================================================
-
-interface PositionsSectionProps<TPosition, _TCardProps> {
-  positions: TPosition[];
-  renderCard: (position: TPosition) => ReactNode;
-}
-
-export function PositionsSection<TPosition>({
-  positions,
-  renderCard,
-}: PositionsSectionProps<TPosition, unknown>): ReactNode {
-  return (
-    <section className="space-y-4">
-      <h2 className="text-foreground text-sm font-semibold tracking-wider uppercase">
-        Your Positions
-      </h2>
-      {positions.map((position, _index) => renderCard(position))}
-    </section>
-  );
-}

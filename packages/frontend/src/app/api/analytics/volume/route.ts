@@ -2,7 +2,7 @@ import { getCacheHeaders } from '@shared/server/cache';
 import { db, protocolDailyStats, routerSwap, routerSwapYT } from '@shared/server/db';
 import { logError, logWarn } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
-import { analyticsVolumeQuerySchema, validateQuery } from '@shared/server/validations/api';
+import { dateRangeSchema, validateQuery } from '@shared/server/validations/api';
 import { desc, gte } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -303,7 +303,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
   if (rateLimitResult) return rateLimitResult;
 
-  const params = validateQuery(request.nextUrl.searchParams, analyticsVolumeQuerySchema);
+  const params = validateQuery(request.nextUrl.searchParams, dateRangeSchema);
   if (params instanceof NextResponse) return params;
 
   const th = createDateThresholds(params.days);

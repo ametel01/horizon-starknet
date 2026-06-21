@@ -186,10 +186,7 @@ interface UseMarketsReturn {
   avgApy: BigNumber;
 }
 
-export function useMarkets(
-  marketAddresses: string[],
-  options: UseMarketsOptions = {}
-): UseMarketsReturn {
+function useMarkets(marketAddresses: string[], options: UseMarketsOptions = {}): UseMarketsReturn {
   const { provider, network } = useStarknet();
   const { refetchInterval = 30000 } = options;
 
@@ -375,7 +372,7 @@ async function fetchActiveMarketsPaginated(
  * Falls back to static addresses from config if on-chain call fails or returns empty
  * @see Security Audit L-04 - Gas Exhaustion Prevention
  */
-export function useMarketAddresses(): {
+function useMarketAddresses(): {
   addresses: string[];
   isLoading: boolean;
   isError: boolean;
@@ -431,101 +428,10 @@ export function useMarketAddresses(): {
 }
 
 /**
- * Fetch all market addresses (including expired) using pagination
- * @see Security Audit L-04 - Gas Exhaustion Prevention
- */
-async function fetchAllMarketsPaginated(
-  provider: ProviderInterface,
-  network: NetworkId
-): Promise<string[]> {
-  const marketFactory = getMarketFactoryContract(provider, network);
-  return fetchPaginatedMarketAddresses(provider, network, (offset, limit) =>
-    marketFactory.get_markets_paginated(offset, limit)
-  );
-}
-
-/**
- * Hook to fetch all market addresses (including expired) from MarketFactory
- * Uses paginated fetching to prevent gas exhaustion
- * @see Security Audit L-04 - Gas Exhaustion Prevention
- */
-export function useAllMarketAddresses(): {
-  addresses: string[];
-  isLoading: boolean;
-  isError: boolean;
-} {
-  const { provider, network } = useStarknet();
-  const isClient = typeof window !== 'undefined';
-
-  const staticAddresses = getStaticMarketAddresses(network);
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['marketFactory', 'allMarketsPaginated', network],
-    queryFn: async () => {
-      try {
-        const addresses = await fetchAllMarketsPaginated(provider, network);
-
-        if (addresses.length === 0 && staticAddresses.length > 0) {
-          return staticAddresses;
-        }
-
-        return addresses;
-      } catch (error) {
-        logError(error, { module: 'useMarkets', action: 'useAllMarketAddresses' });
-        if (staticAddresses.length > 0) {
-          return staticAddresses;
-        }
-        throw error;
-      }
-    },
-    enabled: isClient,
-    staleTime: 60000,
-    retry: 2,
-  });
-
-  const addresses = data ?? (isError ? staticAddresses : []);
-
-  return {
-    addresses,
-    isLoading,
-    isError: isError && staticAddresses.length === 0,
-  };
-}
-
-/**
- * Hook to get market count from MarketFactory
- */
-export function useMarketCount(): {
-  count: number;
-  isLoading: boolean;
-  isError: boolean;
-} {
-  const { provider, network } = useStarknet();
-  const isClient = typeof window !== 'undefined';
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['marketFactory', 'marketCount', network],
-    queryFn: async () => {
-      const marketFactory = getMarketFactoryContract(provider, network);
-      const count = await marketFactory.get_market_count();
-      return Number(count);
-    },
-    enabled: isClient,
-    staleTime: 60000,
-  });
-
-  return {
-    count: data ?? 0,
-    isLoading,
-    isError,
-  };
-}
-
-/**
  * Hook to get known market addresses for the current network
  * Uses MarketFactory on-chain data, falls back to static config
  */
-export function useKnownMarkets(): string[] {
+function useKnownMarkets(): string[] {
   const { addresses } = useMarketAddresses();
   return addresses;
 }

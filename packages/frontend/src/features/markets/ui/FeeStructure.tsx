@@ -97,7 +97,7 @@ interface FeeSplitBarProps {
   className?: string;
 }
 
-export const FeeSplitBar = memo(function FeeSplitBar({
+const FeeSplitBar = memo(function FeeSplitBar({
   lpPercent,
   reserveFeePercent,
   className,

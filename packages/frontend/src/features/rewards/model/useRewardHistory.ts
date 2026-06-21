@@ -25,24 +25,6 @@ export interface RewardsHistoryResponse {
 }
 
 /**
- * Response from the reward summary API endpoint.
- */
-export interface RewardSummary {
-  sy: string;
-  rewardToken: string;
-  totalClaimed: string;
-  claimCount: number;
-  lastClaimTimestamp: string | null;
-}
-
-export interface RewardsSummaryResponse {
-  user: string;
-  totalTokensClaimed: string;
-  positionCount: number;
-  positions: RewardSummary[];
-}
-
-/**
  * Fetch reward claim history for a user from the indexed API.
  */
 async function fetchRewardHistory(
@@ -60,17 +42,6 @@ async function fetchRewardHistory(
     throw new Error('Failed to fetch reward history');
   }
   return response.json() as Promise<RewardsHistoryResponse>;
-}
-
-/**
- * Fetch aggregated reward summary for a user from the indexed API.
- */
-async function fetchRewardSummary(userAddress: string): Promise<RewardsSummaryResponse> {
-  const response = await fetch(`/api/rewards/${userAddress}/summary`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch reward summary');
-  }
-  return response.json() as Promise<RewardsSummaryResponse>;
 }
 
 /**
@@ -106,43 +77,5 @@ export function useRewardHistory(
     },
     enabled: !!userAddress,
     staleTime: 60_000, // 1 minute - historical data doesn't change often
-  });
-}
-
-/**
- * Hook to fetch aggregated reward summary for a user.
- *
- * Provides totals per SY/reward token pair from the materialized view.
- * Faster than computing totals client-side from full history.
- *
- * @param userAddress - The user's Starknet address
- * @returns Query result with aggregated reward summary
- *
- * @example
- * ```typescript
- * const { data, isLoading } = useRewardSummary(address);
- *
- * // Total tokens claimed across all positions
- * console.log(data?.totalTokensClaimed);
- *
- * // Per-position breakdown
- * data?.positions.map(pos => (
- *   <div key={`${pos.sy}-${pos.rewardToken}`}>
- *     {pos.totalClaimed} claimed from {pos.claimCount} claims
- *   </div>
- * ));
- * ```
- */
-export function useRewardSummary(
-  userAddress: string | undefined
-): UseQueryResult<RewardsSummaryResponse> {
-  return useQuery({
-    queryKey: ['rewards', 'summary', userAddress],
-    queryFn: async () => {
-      if (!userAddress) throw new Error('userAddress is required');
-      return fetchRewardSummary(userAddress);
-    },
-    enabled: !!userAddress,
-    staleTime: 60_000, // 1 minute
   });
 }

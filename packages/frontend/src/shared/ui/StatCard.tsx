@@ -9,7 +9,7 @@ import { AnimatedNumber } from './AnimatedNumber';
 import { Card, CardContent } from './Card';
 import { Skeleton } from './Skeleton';
 
-export { StatCardGrid, type StatCardGridProps } from './StatCardGrid';
+export { StatCardGrid } from './StatCardGrid';
 export { StatCardSkeleton } from './StatCardSkeleton';
 
 /**

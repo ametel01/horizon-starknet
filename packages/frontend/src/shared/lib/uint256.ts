@@ -1,12 +1,6 @@
 import { uint256 } from 'starknet';
 
 /**
- * Type alias for Uint256-like values from contracts.
- * Starknet.js typed contracts may return either a bigint or Uint256 struct { low, high }.
- */
-export type Uint256Like = bigint | { low: bigint; high: bigint };
-
-/**
  * Convert Uint256 or bigint to bigint.
  *
  * Handles the following input types:

@@ -7,7 +7,7 @@
  */
 
 // Re-export ApiError for convenience
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
@@ -195,6 +195,4 @@ export const api = new ApiClient({
   baseUrl: '/api',
   timeout: 30000,
 });
-
 // Export the class for custom instances
-export { ApiClient };

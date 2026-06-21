@@ -305,25 +305,3 @@ export function useEnhancedPositions(
     structuralSharing: false,
   });
 }
-
-/**
- * Hook to get portfolio totals without detailed position data
- */
-export function usePortfolioTotals(markets: MarketData[]): {
-  totalValueUsd: number;
-  totalPnlUsd: number;
-  totalClaimableUsd: number;
-  isLoading: boolean;
-} {
-  const { data, isLoading } = useEnhancedPositions(markets);
-
-  return useMemo(
-    () => ({
-      totalValueUsd: data?.totalValueUsd ?? 0,
-      totalPnlUsd: data?.totalPnlUsd ?? 0,
-      totalClaimableUsd: data?.totalClaimableUsd ?? 0,
-      isLoading,
-    }),
-    [data, isLoading]
-  );
-}

@@ -28,7 +28,7 @@ export interface BeatImpliedPosition {
   ptBalance: string;
 }
 
-export interface BeatImpliedSummary {
+interface BeatImpliedSummary {
   totalPositions: number;
   avgBeatImplied: number;
   avgRealizedApy: number;
@@ -38,7 +38,7 @@ export interface BeatImpliedSummary {
   overallScore: 'excellent' | 'good' | 'neutral' | 'poor';
 }
 
-export interface BeatImpliedResponse {
+interface BeatImpliedResponse {
   address: string;
   positions: BeatImpliedPosition[];
   summary: BeatImpliedSummary;

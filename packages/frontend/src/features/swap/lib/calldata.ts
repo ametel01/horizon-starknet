@@ -7,7 +7,7 @@
  * @see i_router.cairo for Cairo struct definitions
  */
 
-import type { ApproxParams, SwapData, TokenInput, TokenOutput } from '../model/types';
+import type { SwapData, TokenInput, TokenOutput } from '../model/types';
 
 // ============================================================================
 // U256 Serialization
@@ -51,7 +51,7 @@ export function serializeU256(value: bigint): [string, string] {
  * @param items - Array of felt252 values (as strings)
  * @returns Array with length prefix followed by items
  */
-export function serializeSpan(items: string[]): string[] {
+function serializeSpan(items: string[]): string[] {
   return [items.length.toString(), ...items];
 }
 
@@ -73,7 +73,7 @@ export function serializeSpan(items: string[]): string[] {
  * @param swapData - The SwapData to serialize
  * @returns Flat array of felt252 values
  */
-export function serializeSwapData(swapData: SwapData): string[] {
+function serializeSwapData(swapData: SwapData): string[] {
   return [
     swapData.aggregator, // ContractAddress
     ...serializeSpan(swapData.calldata), // Span<felt252>: [length, ...items]
@@ -141,41 +141,3 @@ export function serializeTokenOutput(output: TokenOutput): string[] {
 // ============================================================================
 // ApproxParams Serialization
 // ============================================================================
-
-/**
- * Serialize ApproxParams struct to calldata format.
- *
- * Cairo struct layout:
- * ```cairo
- * struct ApproxParams {
- *     guess_min: u256,
- *     guess_max: u256,
- *     guess_offchain: u256,
- *     max_iteration: u256,
- *     eps: u256,
- * }
- * ```
- *
- * @param params - The ApproxParams to serialize
- * @returns Flat array of felt252 values (10 elements: 5 u256 values)
- */
-export function serializeApproxParams(params: ApproxParams): string[] {
-  const [guessMinLow, guessMinHigh] = serializeU256(params.guess_min);
-  const [guessMaxLow, guessMaxHigh] = serializeU256(params.guess_max);
-  const [guessOffchainLow, guessOffchainHigh] = serializeU256(params.guess_offchain);
-  const [maxIterationLow, maxIterationHigh] = serializeU256(params.max_iteration);
-  const [epsLow, epsHigh] = serializeU256(params.eps);
-
-  return [
-    guessMinLow,
-    guessMinHigh,
-    guessMaxLow,
-    guessMaxHigh,
-    guessOffchainLow,
-    guessOffchainHigh,
-    maxIterationLow,
-    maxIterationHigh,
-    epsLow,
-    epsHigh,
-  ];
-}

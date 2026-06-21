@@ -15,7 +15,5 @@ export {
 } from '@widgets/portfolio';
 export {
   EnhancedPositionCard,
-  type PostExpiryInfo,
   type YieldEarnedData,
-  type YieldFeeInfo,
 } from './EnhancedPositionCard';

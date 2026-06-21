@@ -18,15 +18,6 @@ import { z } from 'zod';
 export const starknetAddressSchema = z
   .string()
   .regex(/^0x[a-fA-F0-9]{1,64}$/, 'Invalid Starknet address format');
-
-/**
- * Pagination parameters
- */
-export const paginationSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
 /**
  * Date range parameter (days of history)
  */
@@ -37,7 +28,7 @@ export const dateRangeSchema = z.object({
 /**
  * Sort order parameter
  */
-export const sortOrderSchema = z.enum(['asc', 'desc']).default('desc');
+const sortOrderSchema = z.enum(['asc', 'desc']).default('desc');
 
 // =============================================================================
 // API Route Schemas
@@ -57,51 +48,6 @@ export const marketsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
-
-export type MarketsQuery = z.infer<typeof marketsQuerySchema>;
-
-/**
- * GET /api/analytics/volume query params
- */
-export const analyticsVolumeQuerySchema = dateRangeSchema;
-
-export type AnalyticsVolumeQuery = z.infer<typeof analyticsVolumeQuerySchema>;
-
-/**
- * GET /api/analytics/fees query params
- */
-export const analyticsFeesQuerySchema = dateRangeSchema;
-
-export type AnalyticsFeesQuery = z.infer<typeof analyticsFeesQuerySchema>;
-
-/**
- * GET /api/markets/[address]/swaps query params
- */
-export const marketSwapsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-export type MarketSwapsQuery = z.infer<typeof marketSwapsQuerySchema>;
-
-/**
- * GET /api/markets/[address]/tvl query params
- */
-export const marketTvlQuerySchema = dateRangeSchema;
-
-export type MarketTvlQuery = z.infer<typeof marketTvlQuerySchema>;
-
-/**
- * GET /api/users/[address]/history query params
- */
-export const userHistoryQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-  type: z.enum(['all', 'swap', 'mint', 'redeem', 'liquidity']).default('all'),
-});
-
-export type UserHistoryQuery = z.infer<typeof userHistoryQuerySchema>;
-
 // =============================================================================
 // Validation Helpers
 // =============================================================================
@@ -186,14 +132,4 @@ export function validateParam<T extends z.ZodType>(
   }
 
   return result.data;
-}
-
-/**
- * Normalize a Starknet address to lowercase with 0x prefix and full padding.
- * Use after validation for database lookups.
- */
-export function normalizeStarknetAddress(address: string): string {
-  const hex = address.toLowerCase().replace(/^0x/, '');
-  const padded = hex.padStart(64, '0');
-  return `0x${padded}`;
 }

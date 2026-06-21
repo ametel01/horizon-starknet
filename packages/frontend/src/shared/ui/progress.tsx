@@ -48,24 +48,4 @@ function ProgressIndicator({ className, ...props }: ProgressPrimitive.Indicator.
   );
 }
 
-function ProgressLabel({ className, ...props }: ProgressPrimitive.Label.Props): ReactNode {
-  return (
-    <ProgressPrimitive.Label
-      className={cn('text-sm font-medium', className)}
-      data-slot="progress-label"
-      {...props}
-    />
-  );
-}
-
-function ProgressValue({ className, ...props }: ProgressPrimitive.Value.Props): ReactNode {
-  return (
-    <ProgressPrimitive.Value
-      className={cn('text-muted-foreground ml-auto text-sm tabular-nums', className)}
-      data-slot="progress-value"
-      {...props}
-    />
-  );
-}
-
-export { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue };
+export { Progress, ProgressIndicator, ProgressTrack };

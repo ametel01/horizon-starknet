@@ -14,14 +14,6 @@ export function lnRateToApy(lnRate: bigint | string): BigNumber {
 }
 
 /**
- * Format APY as percentage string
- */
-export function formatApy(lnRate: bigint | string, decimals = 2): string {
-  const apy = lnRateToApy(lnRate);
-  return `${apy.multipliedBy(100).toFixed(decimals)}%`;
-}
-
-/**
  * Calculate days until expiry
  */
 export function daysToExpiry(expiryTimestamp: number): number {
@@ -76,39 +68,4 @@ export function formatTimeToExpiry(expiryTimestamp: number): string {
 
   const months = Math.floor(days / 30);
   return `${String(months)}mo remaining`;
-}
-
-/**
- * Calculate implied yield from PT price
- * PT price is expressed as a fraction of SY (e.g., 0.95 means 1 PT = 0.95 SY)
- * Implied APY = ((1/ptPrice)^(365/daysToExpiry) - 1)
- */
-export function calculateImpliedYield(ptPrice: BigNumber, daysRemaining: number): BigNumber {
-  if (daysRemaining <= 0 || ptPrice.isZero()) {
-    return new BigNumber(0);
-  }
-
-  // 1/ptPrice = redemption value / current price
-  const priceRatio = new BigNumber(1).dividedBy(ptPrice);
-
-  // Annualize: (priceRatio)^(365/days) - 1
-  const exponent = 365 / daysRemaining;
-  const annualizedReturn = priceRatio.toNumber() ** exponent - 1;
-
-  return new BigNumber(annualizedReturn);
-}
-
-/**
- * Calculate PT price from implied yield and time to expiry
- * PT price = 1 / (1 + impliedYield)^(daysToExpiry/365)
- */
-export function calculatePTPrice(impliedYield: BigNumber, daysRemaining: number): BigNumber {
-  if (daysRemaining <= 0) {
-    return new BigNumber(1); // At expiry, PT = 1 SY
-  }
-
-  const exponent = daysRemaining / 365;
-  const discountFactor = (1 + impliedYield.toNumber()) ** exponent;
-
-  return new BigNumber(1).dividedBy(discountFactor);
 }

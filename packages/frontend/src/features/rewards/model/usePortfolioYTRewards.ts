@@ -13,7 +13,7 @@ import type { YTAccruedReward } from './useYTAccruedRewards';
 /**
  * Represents rewards from a single YT contract
  */
-export interface YTRewards {
+interface YTRewards {
   /** YT contract address */
   ytAddress: string;
   /** Array of reward tokens with accrued amounts */

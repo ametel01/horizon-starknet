@@ -55,5 +55,4 @@ function Button({
   );
 }
 
-export type { ButtonProps };
 export { Button };

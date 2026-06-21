@@ -2,7 +2,7 @@
 
 import { createContext, use, useCallback, useEffect, useReducer } from 'react';
 
-export type UIMode = 'simple' | 'advanced';
+type UIMode = 'simple' | 'advanced';
 
 interface UIModeContextValue {
   mode: UIMode;

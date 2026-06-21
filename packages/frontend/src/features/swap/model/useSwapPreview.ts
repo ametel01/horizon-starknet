@@ -97,37 +97,3 @@ export function useSwapPreview(
     structuralSharing: false,
   });
 }
-
-/**
- * Hook to preview swapping SY for PT.
- * Convenience wrapper around useSwapPreview for SY -> PT swaps.
- *
- * @param marketAddress - The market contract address
- * @param syAmount - Amount of SY to swap
- * @param options - Query options
- * @returns Expected PT output
- */
-export function useSwapSyForPtPreview(
-  marketAddress: string | undefined,
-  syAmount: bigint | undefined,
-  options: UseSwapPreviewOptions = {}
-): UseQueryResult<SwapPreviewResult | null> {
-  return useSwapPreview(marketAddress, syAmount, 'sy_for_pt', options);
-}
-
-/**
- * Hook to preview swapping PT for SY.
- * Convenience wrapper around useSwapPreview for PT -> SY swaps.
- *
- * @param marketAddress - The market contract address
- * @param ptAmount - Amount of PT to swap
- * @param options - Query options
- * @returns Expected SY output
- */
-export function useSwapPtForSyPreview(
-  marketAddress: string | undefined,
-  ptAmount: bigint | undefined,
-  options: UseSwapPreviewOptions = {}
-): UseQueryResult<SwapPreviewResult | null> {
-  return useSwapPreview(marketAddress, ptAmount, 'pt_for_sy', options);
-}

@@ -4,7 +4,7 @@ import { useAccount, useStarknet } from '@features/wallet';
 import { useCallback, useState } from 'react';
 import type { Call, InvokeFunctionResponse } from 'starknet';
 
-export type TransactionStatus = 'idle' | 'signing' | 'pending' | 'success' | 'error';
+type TransactionStatus = 'idle' | 'signing' | 'pending' | 'success' | 'error';
 export type TxStatus = TransactionStatus;
 
 export interface UseTransactionReturn {

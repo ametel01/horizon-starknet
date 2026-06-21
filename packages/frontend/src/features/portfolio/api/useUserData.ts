@@ -11,8 +11,6 @@ import type {
   PortfolioValueEvent,
   PositionsResponse,
   PyPosition,
-  YieldResponse,
-  YieldSummary,
 } from '@shared/api/types';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
@@ -171,105 +169,6 @@ export function useUserIndexedPositions(
 // ============================================================================
 // User Yield Hook
 // ============================================================================
-
-interface UseUserYieldOptions {
-  /** Number of days of history (omit for all time) */
-  days?: number;
-  /** Max claim events to return (default: 100, max: 500) */
-  limit?: number;
-  /** Refetch interval in milliseconds (default: 30000) */
-  refetchInterval?: number;
-  /** Whether to enable the query */
-  enabled?: boolean;
-}
-
-interface UseUserYieldReturn {
-  totalYieldClaimed: bigint;
-  claimHistory: YieldResponse['claimHistory'];
-  summaryByPosition: YieldSummary[];
-  isLoading: boolean;
-  isError: boolean;
-  error: unknown;
-}
-
-/**
- * Hook to fetch yield earned/claimed for the connected user
- *
- * @example
- * ```tsx
- * const { totalYieldClaimed, claimHistory, summaryByPosition } = useUserYield();
- * // Or limit to last 30 days:
- * const { totalYieldClaimed } = useUserYield({ days: 30 });
- * ```
- */
-export function useUserYield(options: UseUserYieldOptions = {}): UseUserYieldReturn {
-  const { address } = useAccount();
-  const { days, limit = 100, refetchInterval = 30000, enabled = true } = options;
-
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['indexer', 'user', address, 'yield', { days, limit }],
-    queryFn: () => {
-      if (!address) throw new Error('Address is required');
-      return api.get<YieldResponse>(`/users/${address}/yield`, {
-        days,
-        limit,
-      });
-    },
-    refetchInterval,
-    enabled: enabled && !!address,
-    staleTime: 10000,
-  });
-
-  return {
-    totalYieldClaimed: BigInt(data?.totalYieldClaimed ?? '0'),
-    claimHistory: data?.claimHistory ?? [],
-    summaryByPosition: data?.summaryByPosition ?? [],
-    isLoading,
-    isError,
-    error,
-  };
-}
-
-/**
- * Hook to fetch user data for a specific address (not necessarily the connected user)
- *
- * @example
- * ```tsx
- * const { pyPositions, lpPositions } = useUserPositionsByAddress('0x123...');
- * ```
- */
-export function useUserPositionsByAddress(
-  address: string | undefined,
-  options: Omit<UseUserIndexedPositionsOptions, 'enabled'> & { enabled?: boolean } = {}
-): UseUserIndexedPositionsReturn {
-  const { refetchInterval = 30000, enabled = true } = options;
-
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['indexer', 'user', address, 'positions'],
-    queryFn: () => {
-      if (!address) throw new Error('Address is required');
-      return api.get<PositionsResponse>(`/users/${address}/positions`);
-    },
-    refetchInterval,
-    enabled: enabled && !!address,
-    staleTime: 10000,
-  });
-
-  return {
-    pyPositions: data?.pyPositions ?? [],
-    lpPositions: data?.lpPositions ?? [],
-    summary: data?.summary ?? {
-      totalPyPositions: 0,
-      totalLpPositions: 0,
-      activePyPositions: 0,
-      activeLpPositions: 0,
-    },
-    isLoading,
-    isError,
-    error,
-  };
-}
-
 // ============================================================================
 // User Portfolio History Hook
 // ============================================================================

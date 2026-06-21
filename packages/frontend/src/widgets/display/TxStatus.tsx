@@ -385,35 +385,6 @@ function getStatusText(status: TxStatusType, isSimple: boolean): string {
   }
 }
 
-interface TxLinkProps {
-  txHash: string;
-  network?: 'mainnet' | 'sepolia' | 'devnet';
-  className?: string;
-}
-
-export function TxLink({ txHash, network = 'sepolia', className }: TxLinkProps): ReactNode {
-  const explorerUrl = getExplorerUrl(network, txHash);
-
-  if (!explorerUrl) {
-    return (
-      <span className={cn('text-muted-foreground font-mono text-sm', className)}>
-        {txHash.slice(0, 10)}...{txHash.slice(-8)}
-      </span>
-    );
-  }
-
-  return (
-    <a
-      href={explorerUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn('text-primary hover:text-primary font-mono text-sm hover:underline', className)}
-    >
-      {txHash.slice(0, 10)}...{txHash.slice(-8)} ↗
-    </a>
-  );
-}
-
 function getExplorerUrl(network: string, txHash: string): string | null {
   switch (network) {
     case 'mainnet':

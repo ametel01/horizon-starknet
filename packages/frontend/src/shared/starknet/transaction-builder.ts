@@ -44,7 +44,7 @@ export interface WithdrawParams {
 /**
  * Check if approval is needed for a given amount
  */
-export function needsApproval(allowance: bigint | undefined, amount: bigint): boolean {
+function needsApproval(allowance: bigint | undefined, amount: bigint): boolean {
   if (allowance === undefined) return true;
   return allowance < amount;
 }
@@ -65,11 +65,7 @@ export function calculateMinOutput(amount: bigint, slippageBps = 50): bigint {
 /**
  * Build an ERC20 approval call
  */
-export function buildApprovalCall(
-  tokenAddress: string,
-  spenderAddress: string,
-  amount: bigint
-): Call {
+function buildApprovalCall(tokenAddress: string, spenderAddress: string, amount: bigint): Call {
   const u256Amount = uint256.bnToUint256(amount);
   return {
     contractAddress: tokenAddress,
@@ -82,7 +78,7 @@ export function buildApprovalCall(
  * Build a deposit (wrap) call to SY contract
  * SY.deposit(receiver, amount, min_shares_out) -> amount_sy_minted
  */
-export function buildDepositToSyCall(
+function buildDepositToSyCall(
   syAddress: string,
   receiver: string,
   amount: bigint,
@@ -107,7 +103,7 @@ export function buildDepositToSyCall(
  * Build a mint PT+YT call via router
  * Router.mint_py_from_sy(yt, receiver, amount_sy_in, min_py_out, deadline)
  */
-export function buildMintPyCall(
+function buildMintPyCall(
   routerAddress: string,
   ytAddress: string,
   receiver: string,
@@ -137,7 +133,7 @@ export function buildMintPyCall(
  * Build a redeem PT+YT to SY call (pre-expiry)
  * Router.redeem_py_to_sy(yt, receiver, amount_py_in, min_sy_out, deadline)
  */
-export function buildRedeemPyToSyCall(
+function buildRedeemPyToSyCall(
   routerAddress: string,
   ytAddress: string,
   receiver: string,
@@ -167,7 +163,7 @@ export function buildRedeemPyToSyCall(
  * Build a redeem PT post-expiry call
  * Router.redeem_pt_post_expiry(yt, receiver, amount_pt_in, min_sy_out, deadline)
  */
-export function buildRedeemPtPostExpiryCall(
+function buildRedeemPtPostExpiryCall(
   routerAddress: string,
   ytAddress: string,
   receiver: string,
@@ -197,7 +193,7 @@ export function buildRedeemPtPostExpiryCall(
  * Build an unwrap (redeem) call from SY contract
  * SY.redeem(receiver, amount_sy_to_redeem, min_token_out, burn_from_internal_balance) -> amount_redeemed
  */
-export function buildUnwrapSyCall(
+function buildUnwrapSyCall(
   syAddress: string,
   receiver: string,
   amount: bigint,
@@ -331,35 +327,4 @@ export function buildWithdrawCalls(params: WithdrawParams): Call[] {
   calls.push(buildUnwrapSyCall(syAddress, userAddress, minSyOut, minUnderlyingOut, false));
 
   return calls;
-}
-
-/**
- * Estimate the number of calls in a deposit transaction
- * Useful for UI feedback
- */
-export function estimateDepositCallCount(
-  underlyingAllowance: bigint | undefined,
-  syAllowance: bigint | undefined,
-  amount: bigint
-): number {
-  let count = 2; // deposit + mint are always required
-  if (needsApproval(underlyingAllowance, amount)) count++;
-  if (needsApproval(syAllowance, amount)) count++;
-  return count;
-}
-
-/**
- * Estimate the number of calls in a withdraw transaction
- * Useful for UI feedback
- */
-export function estimateWithdrawCallCount(
-  isExpired: boolean,
-  ptAllowance: bigint | undefined,
-  ytAllowance: bigint | undefined,
-  amount: bigint
-): number {
-  let count = 2; // redeem + unwrap are always required
-  if (needsApproval(ptAllowance, amount)) count++;
-  if (!isExpired && needsApproval(ytAllowance, amount)) count++;
-  return count;
 }

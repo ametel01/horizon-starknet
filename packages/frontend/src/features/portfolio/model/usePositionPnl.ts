@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
  * These mirror the API response from /api/portfolio/[address]/pnl-timeline
  */
 
-export interface MintRedeemEvent {
+interface MintRedeemEvent {
   type: 'mint' | 'redeem';
   timestamp: string;
   yt: string;
@@ -22,7 +22,7 @@ export interface MintRedeemEvent {
   transactionHash: string;
 }
 
-export interface YieldClaimEvent {
+interface YieldClaimEvent {
   timestamp: string;
   yt: string;
   sy: string;
@@ -54,7 +54,7 @@ export interface PositionPnlSummary {
   yieldClaimCount: number;
 }
 
-export interface TimelineDataPoint {
+interface TimelineDataPoint {
   date: string;
   cumulativeYieldSy: string;
   ptBalance: string;
@@ -62,7 +62,7 @@ export interface TimelineDataPoint {
   eventType: 'mint' | 'redeem' | 'claim' | null;
 }
 
-export interface PnlTimelineResponse {
+interface PnlTimelineResponse {
   address: string;
   positions: PositionPnlSummary[];
   mintRedeemHistory: MintRedeemEvent[];
@@ -148,41 +148,5 @@ export function usePositionPnl(options: UsePositionPnlOptions = {}): UsePosition
     isError,
     error,
     refetch,
-  };
-}
-
-interface UsePositionPnlByYtReturn {
-  position: PositionPnlSummary | undefined;
-  yieldHistory: YieldClaimEvent[];
-  mintRedeemHistory: MintRedeemEvent[];
-  isLoading: boolean;
-  isError: boolean;
-}
-
-/**
- * Hook to get P&L data for a specific position (by YT address)
- */
-export function usePositionPnlByYt(
-  ytAddress: string | undefined,
-  options: UsePositionPnlOptions = {}
-): UsePositionPnlByYtReturn {
-  const pnlData = usePositionPnl(options);
-
-  const position = pnlData.positions.find((p) => p.yt.toLowerCase() === ytAddress?.toLowerCase());
-
-  const yieldHistory = pnlData.yieldClaimHistory.filter(
-    (e) => e.yt.toLowerCase() === ytAddress?.toLowerCase()
-  );
-
-  const mintRedeemHistory = pnlData.mintRedeemHistory.filter(
-    (e) => e.yt.toLowerCase() === ytAddress?.toLowerCase()
-  );
-
-  return {
-    position,
-    yieldHistory,
-    mintRedeemHistory,
-    isLoading: pnlData.isLoading,
-    isError: pnlData.isError,
   };
 }

@@ -15,13 +15,6 @@ export const TWAP_DURATIONS = {
 } as const;
 
 export const TWAP_DEFAULT_DURATION = TWAP_DURATIONS.DEFAULT;
-
-/** Stale time for TWAP rate queries (ms) */
-export const TWAP_STALE_TIME = 30_000;
-
-/** Refetch interval for TWAP rates (ms) */
-export const TWAP_REFETCH_INTERVAL = 30_000;
-
 /**
  * Default estimate for when TWAP will be ready (displayed in spot-only state)
  *

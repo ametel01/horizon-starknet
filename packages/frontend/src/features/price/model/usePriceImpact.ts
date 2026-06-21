@@ -18,7 +18,7 @@ export interface ImpactBucket {
 /**
  * Impact distribution for histogram
  */
-export interface ImpactDistribution {
+interface ImpactDistribution {
   bucket: string;
   count: number;
   percentage: number;
@@ -27,7 +27,7 @@ export interface ImpactDistribution {
 /**
  * Recent swap with impact data
  */
-export interface RecentImpact {
+interface RecentImpact {
   timestamp: string;
   impact: number;
   tradeSize: string;

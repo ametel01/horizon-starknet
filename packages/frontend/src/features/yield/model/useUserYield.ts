@@ -31,7 +31,7 @@ export interface YieldClaimEvent {
 /**
  * Yield summary by position from the API
  */
-export interface YieldSummary {
+interface YieldSummary {
   yt: string;
   sy: string;
   /** Total net yield claimed after fees */
@@ -48,7 +48,7 @@ export interface YieldSummary {
 /**
  * Response from /api/users/[address]/yield
  */
-export interface YieldResponse {
+interface YieldResponse {
   address: string;
   totalYieldClaimed: string;
   claimHistory: YieldClaimEvent[];
@@ -60,7 +60,7 @@ export interface YieldResponse {
 /**
  * Processed yield data for display
  */
-export interface ProcessedYieldData {
+interface ProcessedYieldData {
   address: string;
   /** Total net yield claimed (after fees) */
   totalYieldClaimed: bigint;
@@ -171,7 +171,7 @@ const WAD = 10n ** 18n;
 /**
  * Yield claim preview with fee breakdown
  */
-export interface YieldClaimPreview {
+interface YieldClaimPreview {
   /** Gross yield before fee deduction (WAD) */
   grossYield: bigint;
   /** Fee amount that will be deducted (WAD) */

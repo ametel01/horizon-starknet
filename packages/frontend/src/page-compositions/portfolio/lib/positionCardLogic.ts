@@ -68,11 +68,3 @@ export function hasAnyBalance(position: {
     position.lpBalance > 0n
   );
 }
-
-/**
- * Calculate the redeemable amount for PT+YT redemption.
- * Returns the minimum of PT and YT balances.
- */
-export function calculateRedeemableAmount(ptBalance: bigint, ytBalance: bigint): bigint {
-  return ptBalance < ytBalance ? ptBalance : ytBalance;
-}

@@ -7,16 +7,6 @@ import type { ComponentProps, ReactNode } from 'react';
 
 const Select = SelectPrimitive.Root;
 
-function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props): ReactNode {
-  return (
-    <SelectPrimitive.Group
-      data-slot="select-group"
-      className={cn('scroll-my-1 p-1', className)}
-      {...props}
-    />
-  );
-}
-
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props): ReactNode {
   return (
     <SelectPrimitive.Value
@@ -94,16 +84,6 @@ function SelectContent({
   );
 }
 
-function SelectLabel({ className, ...props }: SelectPrimitive.GroupLabel.Props): ReactNode {
-  return (
-    <SelectPrimitive.GroupLabel
-      data-slot="select-label"
-      className={cn('text-muted-foreground px-3 py-2.5 text-xs', className)}
-      {...props}
-    />
-  );
-}
-
 function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props): ReactNode {
   return (
     <SelectPrimitive.Item
@@ -125,16 +105,6 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
         <CheckIcon className="pointer-events-none" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
-  );
-}
-
-function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props): ReactNode {
-  return (
-    <SelectPrimitive.Separator
-      data-slot="select-separator"
-      className={cn('bg-border/50 pointer-events-none -mx-1 my-1 h-px', className)}
-      {...props}
-    />
   );
 }
 
@@ -174,15 +144,4 @@ function SelectScrollDownButton({
   );
 }
 
-export {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-};
+export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue };

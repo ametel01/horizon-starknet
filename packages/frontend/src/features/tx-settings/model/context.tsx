@@ -24,7 +24,7 @@ import {
 // Types
 // ============================================================================
 
-export interface TransactionSettings {
+interface TransactionSettings {
   /** Slippage tolerance in basis points (100 = 1%). Default: 50 (0.5%) */
   slippageBps: number;
   /** Transaction deadline in minutes. Default: 20 */
@@ -253,22 +253,4 @@ export function useTransactionSettings(): TransactionSettingsContextValue {
     throw new Error('useTransactionSettings must be used within a TransactionSettingsProvider');
   }
   return context;
-}
-
-/**
- * Get deadline as bigint timestamp for contract calls
- * Uses the deadline from settings context
- */
-export function useDeadline(): bigint {
-  const { deadlineSeconds } = useTransactionSettings();
-  return BigInt(Math.floor(Date.now() / 1000) + deadlineSeconds);
-}
-
-/**
- * Get slippage in WAD format for contract calculations
- * Returns slippage as a fraction (e.g., 0.005 * 10^18 for 0.5%)
- */
-export function useSlippageWad(): bigint {
-  const { slippageDecimal } = useTransactionSettings();
-  return BigInt(Math.floor(slippageDecimal * 1e18));
 }

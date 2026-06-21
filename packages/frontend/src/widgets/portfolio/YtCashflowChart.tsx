@@ -288,36 +288,3 @@ export function YtCashflowChart({
     </Card>
   );
 }
-
-/**
- * Compact YT yield indicator
- */
-interface YtYieldCompactProps {
-  ytAddress?: string;
-  className?: string;
-}
-
-export function YtYieldCompact({ ytAddress, className }: YtYieldCompactProps): ReactNode {
-  const { yieldClaimHistory, isLoading } = usePositionPnl({ days: 30 });
-
-  const totalYield = useMemo(() => {
-    const claims = ytAddress
-      ? yieldClaimHistory.filter((c) => c.yt.toLowerCase() === ytAddress.toLowerCase())
-      : yieldClaimHistory;
-
-    return claims.reduce((sum, c) => sum + Number(fromWad(BigInt(c.amountSy))), 0);
-  }, [yieldClaimHistory, ytAddress]);
-
-  if (isLoading) {
-    return <Skeleton className={cn('h-10 w-24', className)} />;
-  }
-
-  return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <div className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
-        +{totalYield.toFixed(4)} SY
-      </div>
-      <span className="text-muted-foreground text-xs">30d yield</span>
-    </div>
-  );
-}

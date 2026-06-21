@@ -16,7 +16,7 @@
  */
 
 import { expWad } from '../math/amm';
-import { formatWad, WAD_BIGINT } from '../math/wad';
+import { WAD_BIGINT } from '../math/wad';
 
 /**
  * Convert ln_fee_rate_root to the annual fee rate as a decimal.
@@ -58,35 +58,6 @@ export function formatFeeRate(lnFeeRateRoot: string | bigint, decimals = 2): str
 }
 
 /**
- * Format a fee breakdown showing LP and treasury splits.
- *
- * @param totalFee - Total fee in WAD (string or bigint)
- * @param lpFee - LP fee portion in WAD (string or bigint)
- * @param reserveFee - Treasury/reserve fee portion in WAD (string or bigint)
- * @param sySymbol - Symbol of the SY token for display
- * @returns Formatted string like "0.001234 xSTRK (80% LP / 20% Treasury)"
- */
-export function formatFeeBreakdown(
-  totalFee: string | bigint,
-  lpFee: string | bigint,
-  reserveFee: string | bigint,
-  sySymbol: string
-): string {
-  const total = typeof totalFee === 'string' ? BigInt(totalFee) : totalFee;
-  const lp = typeof lpFee === 'string' ? BigInt(lpFee) : lpFee;
-  const reserve = typeof reserveFee === 'string' ? BigInt(reserveFee) : reserveFee;
-
-  if (total === 0n) {
-    return `0 ${sySymbol}`;
-  }
-
-  const lpPercent = ((Number(lp) / Number(total)) * 100).toFixed(1);
-  const reservePercent = ((Number(reserve) / Number(total)) * 100).toFixed(1);
-
-  return `${formatWad(total, 6)} ${sySymbol} (${lpPercent}% LP / ${reservePercent}% Treasury)`;
-}
-
-/**
  * Calculate the LP fee percentage from reserve fee percent.
  *
  * @param reserveFeePercent - Reserve fee percentage (0-100)
@@ -119,14 +90,4 @@ export function calculateFeeSplit(
   const lpFee = totalFee - reserveFee;
 
   return { lpFee, reserveFee };
-}
-
-/**
- * Format reserve fee percent for display.
- *
- * @param reserveFeePercent - Reserve fee percentage (0-100)
- * @returns Formatted string like "20%" or "0%"
- */
-export function formatReserveFeePercent(reserveFeePercent: number): string {
-  return `${reserveFeePercent}%`;
 }

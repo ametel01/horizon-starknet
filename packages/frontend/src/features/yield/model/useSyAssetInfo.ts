@@ -7,7 +7,7 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 /** Asset type as defined in the SY contract */
 export type AssetType = 'Token' | 'Liquidity';
 
-export interface SyAssetInfo {
+interface SyAssetInfo {
   /** The type of underlying asset */
   assetType: AssetType;
   /** The underlying asset contract address */
@@ -64,7 +64,7 @@ function toAddressString(address: unknown): string {
  * }
  * ```
  */
-export function useSyAssetInfo(syAddress: string | undefined): UseQueryResult<SyAssetInfo | null> {
+function useSyAssetInfo(syAddress: string | undefined): UseQueryResult<SyAssetInfo | null> {
   const { provider } = useStarknet();
 
   return useQuery({
@@ -103,15 +103,4 @@ export function useSyAssetInfo(syAddress: string | undefined): UseQueryResult<Sy
 export function useSyAssetType(syAddress: string | undefined): AssetType | undefined {
   const { data } = useSyAssetInfo(syAddress);
   return data?.assetType;
-}
-
-/**
- * Hook to get the underlying asset address.
- *
- * @param syAddress - The SY contract address
- * @returns The underlying address or undefined if not loaded
- */
-export function useSyUnderlyingAddress(syAddress: string | undefined): string | undefined {
-  const { data } = useSyAssetInfo(syAddress);
-  return data?.underlyingAddress;
 }
