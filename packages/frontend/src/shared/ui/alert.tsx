@@ -3,6 +3,8 @@ import type { VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
 
 import { alertVariants } from './alert.variants';
+import { AlertDescription } from './alert-description';
+import { AlertTitle } from './alert-title';
 
 function Alert({
   className,
@@ -14,32 +16,6 @@ function Alert({
       data-slot="alert"
       role="alert"
       className={cn(alertVariants({ variant }), className)}
-      {...props}
-    />
-  );
-}
-
-function AlertTitle({ className, ...props }: React.ComponentProps<'div'>): React.ReactNode {
-  return (
-    <div
-      data-slot="alert-title"
-      className={cn(
-        '[&_a]:hover:text-foreground font-medium group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3',
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-function AlertDescription({ className, ...props }: React.ComponentProps<'div'>): React.ReactNode {
-  return (
-    <div
-      data-slot="alert-description"
-      className={cn(
-        'text-muted-foreground [&_a]:hover:text-foreground text-sm text-balance md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_p:not(:last-child)]:mb-4',
-        className
-      )}
       {...props}
     />
   );

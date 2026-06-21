@@ -4,6 +4,9 @@ import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
 import { cn } from '@shared/lib/utils';
 import type { ReactNode } from 'react';
 
+import { ProgressIndicator } from './progress-indicator';
+import { ProgressTrack } from './progress-track';
+
 function Progress({
   className,
   children,
@@ -22,29 +25,6 @@ function Progress({
         <ProgressIndicator />
       </ProgressTrack>
     </ProgressPrimitive.Root>
-  );
-}
-
-function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props): ReactNode {
-  return (
-    <ProgressPrimitive.Track
-      className={cn(
-        'bg-muted relative flex h-3 w-full items-center overflow-x-hidden rounded-4xl',
-        className
-      )}
-      data-slot="progress-track"
-      {...props}
-    />
-  );
-}
-
-function ProgressIndicator({ className, ...props }: ProgressPrimitive.Indicator.Props): ReactNode {
-  return (
-    <ProgressPrimitive.Indicator
-      data-slot="progress-indicator"
-      className={cn('bg-primary h-full transition-all', className)}
-      {...props}
-    />
   );
 }
 

@@ -80,7 +80,6 @@
     "abi-wan-kanabi": "^2.2.4",
     "postcss": "^8.5.10",
     "shadcn": "^4.4.0",
-    "ts-prune": "^0.10.3",
     "typescript": "^6.0.3"
   }
 }
