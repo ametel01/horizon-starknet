@@ -27,25 +27,3 @@ export function TokenAmount({
     </span>
   );
 }
-
-interface ApyDisplayProps {
-  apy: number;
-  className?: string;
-}
-
-export function ApyDisplay({ apy, className }: ApyDisplayProps): ReactNode {
-  const isPositive = apy >= 0;
-  const formatted = `${isPositive ? '+' : ''}${(apy * 100).toFixed(2)}%`;
-
-  return (
-    <span
-      className={cn(
-        'font-mono font-semibold',
-        isPositive ? 'text-primary' : 'text-destructive',
-        className
-      )}
-    >
-      {formatted}
-    </span>
-  );
-}

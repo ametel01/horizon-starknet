@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { type NavItem, navigation } from './DocsSidebar';
+import { type NavItem, navigation } from './DocsSidebar.navigation';
 
 // Flatten navigation to get ordered list of pages
 function flattenNavigation(items: NavItem[]): { title: string; href: string }[] {

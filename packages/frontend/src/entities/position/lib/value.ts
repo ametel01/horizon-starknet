@@ -119,66 +119,6 @@ export function getTimeToExpiry(expiry: number): bigint {
 }
 
 /**
- * Calculate total position value for a market
- */
-export function calculateTotalPositionValue(
-  syBalance: bigint,
-  ptBalance: bigint,
-  ytBalance: bigint,
-  lpBalance: bigint,
-  totalLp: bigint,
-  syReserve: bigint,
-  ptReserve: bigint,
-  lnImpliedRate: bigint,
-  expiry: number,
-  syPriceUsd: number
-): {
-  syValue: { amount: bigint; valueInSy: bigint; valueUsd: number };
-  ptValue: { amount: bigint; valueInSy: bigint; valueUsd: number };
-  ytValue: { amount: bigint; valueInSy: bigint; valueUsd: number };
-  lpValue: { amount: bigint; valueInSy: bigint; valueUsd: number };
-  lpDetails: {
-    underlyingSy: bigint;
-    underlyingPt: bigint;
-    sharePercent: number;
-  };
-  totalValueUsd: number;
-} {
-  const timeToExpiry = getTimeToExpiry(expiry);
-  const ptPriceInSy = calculatePtPriceInSy(lnImpliedRate, timeToExpiry);
-  const ytPriceInSy = calculateYtPriceInSy(lnImpliedRate, timeToExpiry);
-
-  // Calculate individual position values
-  const syValue = calculatePositionValue(syBalance, WAD_BIGINT, syPriceUsd);
-  const ptValue = calculatePositionValue(ptBalance, ptPriceInSy, syPriceUsd);
-  const ytValue = calculatePositionValue(ytBalance, ytPriceInSy, syPriceUsd);
-
-  // Calculate LP value
-  const lpCalc = calculateLpValue(lpBalance, totalLp, syReserve, ptReserve, ptPriceInSy);
-  const lpValue = {
-    amount: lpBalance,
-    valueInSy: lpCalc.valueInSy,
-    valueUsd: fromWad(lpCalc.valueInSy).toNumber() * syPriceUsd,
-  };
-
-  // Total value
-  const totalValueUsd = syValue.valueUsd + ptValue.valueUsd + ytValue.valueUsd + lpValue.valueUsd;
-
-  return {
-    syValue,
-    ptValue,
-    ytValue,
-    lpValue,
-    lpDetails: {
-      underlyingSy: lpCalc.underlyingSy,
-      underlyingPt: lpCalc.underlyingPt,
-      sharePercent: lpCalc.sharePercent,
-    },
-    totalValueUsd,
-  };
-}
-
-/**
  * Format USD value for display
  */
 export function formatUsd(value: number): string {

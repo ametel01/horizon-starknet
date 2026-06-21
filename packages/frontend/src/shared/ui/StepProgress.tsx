@@ -39,13 +39,13 @@ export const StepProgress = memo(function StepProgress({
   className,
 }: StepProgressProps): ReactNode {
   return (
-    <div
-      className={cn('w-full', className)}
-      role="progressbar"
-      aria-valuenow={currentStep + 1}
-      aria-valuemin={1}
-      aria-valuemax={steps.length}
-    >
+    <div className={cn('w-full', className)}>
+      <progress
+        className="sr-only"
+        value={currentStep + 1}
+        max={steps.length}
+        aria-label="Transaction step progress"
+      />
       {/* Step indicators */}
       <div className="flex items-center justify-between">
         {steps.map((step, index) => {

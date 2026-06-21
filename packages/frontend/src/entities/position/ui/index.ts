@@ -19,4 +19,3 @@ export {
   type YieldEarnedData,
   type YieldFeeInfo,
 } from './EnhancedPositionCard';
-export { SummaryCard } from './SummaryCard';

@@ -4,10 +4,11 @@ export {
   AnimatedCurrency,
   AnimatedNumber,
   AnimatedPercent,
-  easings,
   useAnimatedNumber,
 } from './AnimatedNumber';
-export { Alert, AlertAction, AlertDescription, AlertTitle, alertVariants } from './alert';
+export { easings } from './AnimatedNumber.easings';
+export { Alert, AlertAction, AlertDescription, AlertTitle } from './alert';
+export { alertVariants } from './alert.variants';
 // Animation components
 export {
   AnimatedValue,
@@ -20,8 +21,10 @@ export {
   SlideIn,
   StaggeredList,
 } from './animations';
-export { Button, buttonVariants } from './Button';
-export { Badge, badgeVariants } from './badge';
+export { Button } from './Button';
+export { buttonVariants } from './Button.variants';
+export { Badge } from './badge';
+export { badgeVariants } from './badge.variants';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './Collapsible';
 export {
@@ -123,7 +126,8 @@ export { Slider } from './slider';
 export { Toaster } from './sonner';
 export { Switch } from './switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
-export { Toggle, toggleVariants } from './toggle';
+export { Toggle } from './toggle';
+export { toggleVariants } from './toggle.variants';
 export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 // Typography components
 export {

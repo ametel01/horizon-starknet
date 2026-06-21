@@ -1,2 +1,2 @@
 // Token UI components
-export { ApyDisplay, TokenAmount } from './TokenAmount';
+export { TokenAmount } from './TokenAmount';

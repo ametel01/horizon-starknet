@@ -4,4 +4,5 @@ export type { OracleStatus } from './model/types';
 export { useOracleStatus } from './model/useOracleStatus';
 
 // UI
-export { formatApyWithStatus, OracleStatusBadge } from './ui/OracleStatusBadge';
+export { formatApyWithStatus } from './ui/formatApyWithStatus';
+export { OracleStatusBadge } from './ui/OracleStatusBadge';

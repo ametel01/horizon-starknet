@@ -291,21 +291,44 @@ export function TxStatus({
 function StatusIcon({ status }: { status: TxStatusType }): ReactNode {
   if (status === 'signing') {
     return (
-      <div
-        className="bg-chart-1 size-5 animate-pulse rounded-full"
+      <svg
+        className="text-chart-1 size-5 animate-pulse"
+        viewBox="0 0 24 24"
         role="img"
         aria-label="Waiting for signature"
-      />
+      >
+        <title>Waiting for signature</title>
+        <circle cx="12" cy="12" r="10" fill="currentColor" />
+      </svg>
     );
   }
 
   if (status === 'pending') {
     return (
-      <div
-        className="border-muted-foreground size-5 animate-spin rounded-full border-2 border-t-transparent"
+      <svg
+        className="text-muted-foreground size-5 animate-spin"
+        viewBox="0 0 24 24"
         role="img"
         aria-label="Transaction pending"
-      />
+      >
+        <title>Transaction pending</title>
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity={0.25}
+          strokeWidth="3"
+        />
+        <path
+          d="M22 12a10 10 0 0 1-10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      </svg>
     );
   }
 

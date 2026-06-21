@@ -4,8 +4,8 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
 import { cn } from '@shared/lib/utils';
-import type { ReactNode, RefObject } from 'react';
-import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 
 interface FormulaProps {
   children: string;
@@ -14,7 +14,7 @@ interface FormulaProps {
 }
 
 export function Formula({ children, display = false, className }: FormulaProps): ReactNode {
-  const formulaRef = useRef<HTMLDivElement | HTMLSpanElement>(null);
+  const formulaRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const node = formulaRef.current;
@@ -31,29 +31,27 @@ export function Formula({ children, display = false, className }: FormulaProps):
   }, [children, display]);
 
   if (display) {
-    return (
-      <div
-        ref={formulaRef as RefObject<HTMLDivElement>}
-        className={cn(
-          'border-border bg-muted/30 my-6 overflow-x-auto rounded-lg border px-4 py-6 text-center',
+    return createElement(
+      'math',
+      {
+        ref: formulaRef,
+        className: cn(
+          'border-border bg-muted/30 my-6 block overflow-x-auto rounded-lg border px-4 py-6 text-center',
           className
-        )}
-        aria-label={children}
-        role="math"
-      >
-        {children}
-      </div>
+        ),
+        'aria-label': children,
+      },
+      children
     );
   }
 
-  return (
-    <span
-      ref={formulaRef as RefObject<HTMLSpanElement>}
-      className={cn('mx-0.5', className)}
-      aria-label={children}
-      role="math"
-    >
-      {children}
-    </span>
+  return createElement(
+    'math',
+    {
+      ref: formulaRef,
+      className: cn('mx-0.5 inline-block', className),
+      'aria-label': children,
+    },
+    children
   );
 }

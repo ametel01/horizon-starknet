@@ -8,7 +8,6 @@ export {
   calculateLpValue,
   calculatePositionValue,
   calculatePtPriceInSy,
-  calculateTotalPositionValue,
   calculateYtPriceInSy,
   formatPercent,
   formatUsd,

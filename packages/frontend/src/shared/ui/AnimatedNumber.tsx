@@ -3,6 +3,8 @@
 import { cn } from '@shared/lib/utils';
 import { memo, type ReactNode, useEffect, useReducer, useRef } from 'react';
 
+import { easings } from './AnimatedNumber.easings';
+
 export interface UseAnimatedNumberOptions {
   /** Duration of animation in ms */
   duration?: number | undefined;
@@ -13,16 +15,6 @@ export interface UseAnimatedNumberOptions {
   /** Decimal places to round to during animation */
   decimals?: number | undefined;
 }
-
-/**
- * Easing functions for number animations
- */
-export const easings = {
-  linear: (t: number) => t,
-  easeOut: (t: number) => 1 - (1 - t) ** 3,
-  easeInOut: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2),
-  spring: (t: number) => 1 - Math.cos(t * Math.PI * 0.5) ** 3,
-} as const;
 
 /**
  * Hook to animate a number from one value to another

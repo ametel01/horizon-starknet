@@ -4,7 +4,7 @@ import { TokenAmount } from '@entities/token';
 import { NegativeYieldWarning } from '@features/yield';
 import { cn } from '@shared/lib/utils';
 import { formatExpiry } from '@shared/math/yield';
-import { buttonVariants } from '@shared/ui/Button';
+import { buttonVariants } from '@shared/ui/Button.variants';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import Link from 'next/link';
 import type { ReactNode } from 'react';

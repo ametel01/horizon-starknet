@@ -182,14 +182,26 @@ export const Sparkline = memo(function Sparkline({
 
   if (values.length < 2) {
     return (
-      <div
-        className={cn('bg-muted/50 flex items-center justify-center rounded', className)}
+      <svg
+        className={cn('bg-muted/50 rounded text-muted-foreground', className)}
+        width={width}
+        height={height}
+        viewBox={`0 0 ${String(width)} ${String(height)}`}
         style={{ width, height }}
         role="img"
         aria-label="Insufficient data for trend"
       >
-        <Minus className="text-muted-foreground size-3" aria-hidden="true" />
-      </div>
+        <title>Insufficient data for trend</title>
+        <line
+          x1={width / 2 - 6}
+          x2={width / 2 + 6}
+          y1={height / 2}
+          y2={height / 2}
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+      </svg>
     );
   }
 
@@ -378,14 +390,26 @@ export const MiniBarChart = memo(function MiniBarChart({
 
   if (data.length === 0) {
     return (
-      <div
-        className={cn('bg-muted/50 flex items-center justify-center rounded', className)}
+      <svg
+        className={cn('bg-muted/50 rounded text-muted-foreground', className)}
+        width={width}
+        height={height}
+        viewBox={`0 0 ${String(width)} ${String(height)}`}
         style={{ width, height }}
         role="img"
         aria-label="No data available"
       >
-        <Minus className="text-muted-foreground size-3" aria-hidden="true" />
-      </div>
+        <title>No data available</title>
+        <line
+          x1={width / 2 - 6}
+          x2={width / 2 + 6}
+          y1={height / 2}
+          y2={height / 2}
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+      </svg>
     );
   }
 

@@ -7,7 +7,7 @@ import { ApyBreakdown, NegativeYieldWarning, useApyBreakdown } from '@features/y
 import { TWAP_DEFAULT_DURATION, TWAP_ESTIMATED_READY_DEFAULT } from '@shared/config/twap';
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
-import { buttonVariants } from '@shared/ui/Button';
+import { buttonVariants } from '@shared/ui/Button.variants';
 import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
