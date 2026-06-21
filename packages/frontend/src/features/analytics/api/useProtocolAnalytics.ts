@@ -1,12 +1,7 @@
 'use client';
 
 import { api } from '@shared/api';
-import type {
-  FeesResponse,
-  ProtocolStatsResponse,
-  ProtocolTvlResponse,
-  VolumeResponse,
-} from '@shared/api/types';
+import type { FeesResponse, ProtocolStatsResponse, ProtocolTvlResponse } from '@shared/api/types';
 import { useQuery } from '@tanstack/react-query';
 
 // ============================================================================
@@ -89,119 +84,6 @@ export function useProtocolTvl(options: UseProtocolTvlOptions = {}): UseProtocol
 
   return {
     current,
-    history,
-    isLoading,
-    isError,
-    error,
-  };
-}
-
-// ============================================================================
-// Protocol Volume Hook
-// ============================================================================
-
-interface UseProtocolVolumeOptions {
-  /** Number of days of history (default: 30, max: 365) */
-  days?: number;
-  /** Refetch interval in milliseconds (default: 60000) */
-  refetchInterval?: number;
-  /** Whether to enable the query */
-  enabled?: boolean;
-}
-
-interface VolumeDataPoint {
-  date: string;
-  syVolume: bigint;
-  ptVolume: bigint;
-  totalVolume: bigint;
-  swapCount: number;
-  uniqueSwappers: number;
-}
-
-interface UseProtocolVolumeReturn {
-  total24h: {
-    syVolume: bigint;
-    ptVolume: bigint;
-    totalVolume: bigint;
-    swapCount: number;
-    uniqueSwappers: number;
-  };
-  total7d: {
-    syVolume: bigint;
-    ptVolume: bigint;
-    totalVolume: bigint;
-    swapCount: number;
-  };
-  history: VolumeDataPoint[];
-  isLoading: boolean;
-  isError: boolean;
-  error: unknown;
-}
-
-/**
- * Hook to fetch protocol-wide volume metrics
- *
- * @example
- * ```tsx
- * const { total24h, total7d, history } = useProtocolVolume({ days: 7 });
- * console.log(`24h Volume: ${formatWad(total24h.totalVolume)}`);
- * ```
- */
-export function useProtocolVolume(options: UseProtocolVolumeOptions = {}): UseProtocolVolumeReturn {
-  const { days = 30, refetchInterval = 60000, enabled = true } = options;
-
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['indexer', 'analytics', 'volume', { days }],
-    queryFn: () => api.get<VolumeResponse>('/analytics/volume', { days }),
-    refetchInterval,
-    enabled,
-    staleTime: 30000,
-  });
-
-  // Convert string values to bigint
-  const total24h = data?.total24h
-    ? {
-        syVolume: BigInt(data.total24h.syVolume),
-        ptVolume: BigInt(data.total24h.ptVolume),
-        totalVolume: BigInt(data.total24h.syVolume) + BigInt(data.total24h.ptVolume),
-        swapCount: data.total24h.swapCount,
-        uniqueSwappers: data.total24h.uniqueSwappers,
-      }
-    : {
-        syVolume: 0n,
-        ptVolume: 0n,
-        totalVolume: 0n,
-        swapCount: 0,
-        uniqueSwappers: 0,
-      };
-
-  const total7d = data?.total7d
-    ? {
-        syVolume: BigInt(data.total7d.syVolume),
-        ptVolume: BigInt(data.total7d.ptVolume),
-        totalVolume: BigInt(data.total7d.syVolume) + BigInt(data.total7d.ptVolume),
-        swapCount: data.total7d.swapCount,
-      }
-    : {
-        syVolume: 0n,
-        ptVolume: 0n,
-        totalVolume: 0n,
-        swapCount: 0,
-      };
-
-  const history: VolumeDataPoint[] =
-    data?.history.map((point) => ({
-      date: point.date,
-      syVolume: BigInt(point.syVolume),
-      ptVolume: BigInt(point.ptVolume),
-      totalVolume: BigInt(point.syVolume) + BigInt(point.ptVolume),
-      swapCount: point.swapCount,
-      uniqueSwappers: point.uniqueSwappers,
-    })) ?? [];
-
-  return {
-    total24h,
-    total7d,
     history,
     isLoading,
     isError,

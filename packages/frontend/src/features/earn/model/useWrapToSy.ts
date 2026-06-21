@@ -25,7 +25,7 @@ interface UseWrapToSyReturn {
   needsApproval: (amount: bigint) => boolean;
 
   // Transaction
-  wrap: (amount: string) => Promise<void>;
+  wrap: (amount: string) => Promise<boolean>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
   txHash: string | null;
   error: Error | null;
@@ -114,9 +114,9 @@ export function useWrapToSy({
 
   // Execute wrap
   const wrap = useCallback(
-    async (amount: string): Promise<void> => {
+    async (amount: string): Promise<boolean> => {
       if (!amount || amount === '0') {
-        return;
+        return false;
       }
 
       // Convert to WAD (18 decimals)
@@ -125,10 +125,17 @@ export function useWrapToSy({
       const calls = buildWrapCalls(amountWad);
       const result = await execute(calls);
 
-      if (result) {
-        // Refetch balances after successful wrap
-        await Promise.all([refetchUnderlyingBalance(), refetchSyBalance(), refetchAllowance()]);
+      if (!result) {
+        return false;
       }
+
+      // Refetch balances after successful wrap
+      await Promise.allSettled([
+        refetchUnderlyingBalance(),
+        refetchSyBalance(),
+        refetchAllowance(),
+      ]);
+      return true;
     },
     [buildWrapCalls, execute, refetchUnderlyingBalance, refetchSyBalance, refetchAllowance]
   );

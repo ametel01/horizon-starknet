@@ -25,7 +25,7 @@ import { ArrowRightLeft, BookOpen, Info, TrendingUp, Wallet, Zap } from 'lucide-
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, Suspense, useCallback, useMemo, useSyncExternalStore } from 'react';
 
 // ============================================================================
 // Constants
@@ -33,8 +33,88 @@ import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } f
 
 // Version localStorage keys to prevent data corruption on schema changes
 const STORAGE_VERSION = 'v1';
-const FORM_MODE_STORAGE_KEY = `horizon-trade-form-mode-${STORAGE_VERSION}`;
 type FormMode = 'standard' | 'any-token';
+const DEFAULT_FORM_MODE: FormMode = 'standard';
+const FORM_MODE_STORAGE_KEY = `horizon-trade-form-mode-${STORAGE_VERSION}`;
+
+let formModeSnapshot: FormMode = DEFAULT_FORM_MODE;
+let memoryFormMode: FormMode = DEFAULT_FORM_MODE;
+let formModeStorageAvailable = true;
+const formModeSubscribers = new Set<() => void>();
+
+function parseFormMode(value: string | null): FormMode {
+  return value === 'any-token' ? 'any-token' : DEFAULT_FORM_MODE;
+}
+
+function readFormModeFromStorage(): FormMode {
+  if (typeof window === 'undefined' || !formModeStorageAvailable) {
+    return memoryFormMode;
+  }
+
+  try {
+    memoryFormMode = parseFormMode(window.localStorage.getItem(FORM_MODE_STORAGE_KEY));
+    return memoryFormMode;
+  } catch {
+    formModeStorageAvailable = false;
+    return memoryFormMode;
+  }
+}
+
+function getFormModeSnapshot(): FormMode {
+  const nextSnapshot = readFormModeFromStorage();
+  if (formModeSnapshot === nextSnapshot) {
+    return formModeSnapshot;
+  }
+
+  formModeSnapshot = nextSnapshot;
+  return formModeSnapshot;
+}
+
+function getFormModeServerSnapshot(): FormMode {
+  return DEFAULT_FORM_MODE;
+}
+
+function notifyFormModeSubscribers(): void {
+  for (const subscriber of formModeSubscribers) {
+    subscriber();
+  }
+}
+
+function writeFormMode(mode: FormMode): void {
+  memoryFormMode = mode;
+  formModeSnapshot = mode;
+
+  try {
+    window.localStorage.setItem(FORM_MODE_STORAGE_KEY, mode);
+    formModeStorageAvailable = true;
+  } catch {
+    formModeStorageAvailable = false;
+  }
+
+  notifyFormModeSubscribers();
+}
+
+function subscribeFormMode(callback: () => void): () => void {
+  if (typeof window === 'undefined') {
+    return () => undefined;
+  }
+
+  const handleStorage = (event: StorageEvent): void => {
+    if (event.key === FORM_MODE_STORAGE_KEY) {
+      formModeStorageAvailable = true;
+      formModeSnapshot = readFormModeFromStorage();
+      callback();
+    }
+  };
+
+  formModeSubscribers.add(callback);
+  window.addEventListener('storage', handleStorage);
+
+  return () => {
+    formModeSubscribers.delete(callback);
+    window.removeEventListener('storage', handleStorage);
+  };
+}
 
 // Lazy load chart components (recharts is heavy)
 const ImpliedRateChart = dynamic(
@@ -104,30 +184,16 @@ function useTradePageContent(): ReactNode {
   const mounted = useHydrated();
   const { isConnected } = useStarknet();
 
-  // Form mode state with localStorage persistence
-  const [formMode, setFormMode] = useState<FormMode>('standard');
-
-  // Load form mode preference from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedMode = localStorage.getItem(FORM_MODE_STORAGE_KEY);
-      if (savedMode === 'standard' || savedMode === 'any-token') {
-        setFormMode(savedMode);
-      }
-    } catch {
-      // localStorage unavailable (private browsing, disabled cookies, etc.)
-    }
-  }, []);
+  const formMode = useSyncExternalStore(
+    subscribeFormMode,
+    getFormModeSnapshot,
+    getFormModeServerSnapshot
+  );
 
   // Handle form mode change with localStorage persistence
   const handleFormModeChange = useCallback((value: unknown) => {
     if (value !== 'standard' && value !== 'any-token') return;
-    setFormMode(value);
-    try {
-      localStorage.setItem(FORM_MODE_STORAGE_KEY, value);
-    } catch {
-      // localStorage unavailable, mode still works in memory
-    }
+    writeFormMode(value);
   }, []);
 
   const { markets, isLoading, isError } = useDashboardMarkets();

@@ -20,7 +20,7 @@ import {
 } from '@shared/ui/FormLayout';
 import { GasEstimate } from '@shared/ui/GasEstimate';
 import { TxStatus } from '@widgets/display/TxStatus';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 interface SimpleEarnFormProps {
   market: MarketData;
@@ -128,15 +128,11 @@ export function SimpleEarnForm({ market, className }: SimpleEarnFormProps): Reac
   // Handle deposit
   const handleDeposit = useCallback(async () => {
     if (validationError || !underlyingAddress) return;
-    await deposit(amount);
-  }, [amount, deposit, validationError, underlyingAddress]);
-
-  // Clear input on success
-  useEffect(() => {
-    if (status === 'success') {
+    const completed = await deposit(amount);
+    if (completed) {
       setAmount('');
     }
-  }, [status]);
+  }, [amount, deposit, validationError, underlyingAddress]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

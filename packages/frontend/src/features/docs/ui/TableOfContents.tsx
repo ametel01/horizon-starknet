@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@shared/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 interface TocItem {
   id: string;
@@ -9,39 +9,118 @@ interface TocItem {
   level: number;
 }
 
-export function TableOfContents(): React.ReactNode {
-  const [headings, setHeadings] = useState<TocItem[]>([]);
-  const [activeId, setActiveId] = useState<string>('');
+const EMPTY_HEADINGS: TocItem[] = [];
+let headingsSnapshot: TocItem[] = EMPTY_HEADINGS;
+let headingsSnapshotKey = '';
 
-  useEffect(() => {
-    // Get only h2 headings from the main prose content (skip component headings)
-    const article = document.querySelector('article');
-    if (!article) return;
+function cacheHeadings(items: TocItem[]): TocItem[] {
+  const snapshotKey = items.map((item) => `${item.level}:${item.id}:${item.text}`).join('|');
+  if (snapshotKey === headingsSnapshotKey) {
+    return headingsSnapshot;
+  }
 
-    // Only select direct h2 children or h2s within prose sections
-    const elements = article.querySelectorAll(':scope > h2, .prose > h2, :scope > * > h2');
-    const items: TocItem[] = [];
+  headingsSnapshotKey = snapshotKey;
+  headingsSnapshot = items.length > 0 ? items : EMPTY_HEADINGS;
+  return headingsSnapshot;
+}
 
-    elements.forEach((element) => {
-      // Skip headings inside not-prose sections (interactive components)
-      if (element.closest('.not-prose')) return;
+function readHeadingsFromDocument(): TocItem[] {
+  if (typeof document === 'undefined') {
+    return EMPTY_HEADINGS;
+  }
 
-      const textContent = element.textContent;
-      if (!textContent) return;
+  // Get only h2 headings from the main prose content (skip component headings)
+  const article = document.querySelector('article');
+  if (!article) {
+    return cacheHeadings([]);
+  }
 
-      const id = element.id !== '' ? element.id : textContent.toLowerCase().replace(/\s+/g, '-');
-      if (!element.id) {
-        element.id = id;
-      }
-      items.push({
-        id,
-        text: textContent,
-        level: 2,
-      });
+  // Only select direct h2 children or h2s within prose sections
+  const elements = article.querySelectorAll<HTMLElement>(
+    ':scope > h2, .prose > h2, :scope > * > h2'
+  );
+  const items: TocItem[] = [];
+
+  elements.forEach((element) => {
+    // Skip headings inside not-prose sections (interactive components)
+    if (element.closest('.not-prose')) return;
+
+    const textContent = element.textContent;
+    if (!textContent) return;
+
+    const id = element.id !== '' ? element.id : textContent.toLowerCase().replace(/\s+/g, '-');
+    if (!element.id) {
+      element.id = id;
+    }
+    items.push({
+      id,
+      text: textContent,
+      level: 2,
     });
+  });
 
-    setHeadings(items);
-  }, []);
+  return cacheHeadings(items);
+}
+
+function getHeadingsSnapshot(): TocItem[] {
+  return headingsSnapshot;
+}
+
+function getHeadingsServerSnapshot(): TocItem[] {
+  return EMPTY_HEADINGS;
+}
+
+function subscribeToHeadings(callback: () => void): () => void {
+  if (typeof document === 'undefined') {
+    return () => undefined;
+  }
+
+  let refreshTimer: number | null = null;
+  const refresh = (): void => {
+    refreshTimer = null;
+    readHeadingsFromDocument();
+    callback();
+  };
+  const scheduleRefresh = (): void => {
+    if (refreshTimer !== null) return;
+    refreshTimer = window.setTimeout(refresh, 0);
+  };
+
+  scheduleRefresh();
+
+  const article = document.querySelector('article');
+  if (!article || typeof MutationObserver === 'undefined') {
+    return () => {
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
+    };
+  }
+
+  const observer = new MutationObserver(scheduleRefresh);
+  observer.observe(article, {
+    attributes: true,
+    attributeFilter: ['id'],
+    characterData: true,
+    childList: true,
+    subtree: true,
+  });
+
+  return () => {
+    if (refreshTimer !== null) {
+      window.clearTimeout(refreshTimer);
+    }
+    observer.disconnect();
+  };
+}
+
+export function TableOfContents(): React.ReactNode {
+  const headings = useSyncExternalStore(
+    subscribeToHeadings,
+    getHeadingsSnapshot,
+    getHeadingsServerSnapshot
+  );
+  const [activeId, setActiveId] = useState<string>('');
 
   useEffect(() => {
     if (headings.length === 0) return;

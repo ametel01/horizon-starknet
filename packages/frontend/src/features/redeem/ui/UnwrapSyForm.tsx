@@ -28,7 +28,7 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 interface UnwrapSyFormProps {
   market: MarketData;
@@ -126,15 +126,11 @@ export function UnwrapSyForm({ market, className }: UnwrapSyFormProps): ReactNod
   // Handle unwrap
   const handleUnwrap = useCallback(async () => {
     if (validationError || !underlyingAddress) return;
-    await unwrap(amount);
-  }, [amount, unwrap, validationError, underlyingAddress]);
-
-  // Clear input on success
-  useEffect(() => {
-    if (status === 'success') {
+    const completed = await unwrap(amount);
+    if (completed) {
       setAmount('');
     }
-  }, [status]);
+  }, [amount, unwrap, validationError, underlyingAddress]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

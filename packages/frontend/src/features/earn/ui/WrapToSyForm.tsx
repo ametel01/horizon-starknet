@@ -29,7 +29,7 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 interface WrapToSyFormProps {
   market: MarketData;
@@ -130,15 +130,11 @@ export function WrapToSyForm({ market, className }: WrapToSyFormProps): ReactNod
   // Handle wrap
   const handleWrap = useCallback(async () => {
     if (validationError || !underlyingAddress) return;
-    await wrap(amount);
-  }, [amount, wrap, validationError, underlyingAddress]);
-
-  // Clear input on success
-  useEffect(() => {
-    if (status === 'success') {
+    const completed = await wrap(amount);
+    if (completed) {
       setAmount('');
     }
-  }, [status]);
+  }, [amount, wrap, validationError, underlyingAddress]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

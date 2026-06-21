@@ -20,7 +20,7 @@ import { NearExpiryWarning } from '@shared/ui/NearExpiryWarning';
 import { type Step, StepProgress } from '@shared/ui/StepProgress';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
 import { TxStatus } from '@widgets/display/TxStatus';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 interface MintFormProps {
   market: MarketData;
@@ -101,15 +101,11 @@ export function MintForm({ market, className }: MintFormProps): ReactNode {
   // Handle mint
   const handleMint = useCallback(async () => {
     if (validationError) return;
-    await mint(amountSy);
-  }, [amountSy, mint, validationError]);
-
-  // Clear input on success
-  useEffect(() => {
-    if (status === 'success') {
+    const completed = await mint(amountSy);
+    if (completed) {
       setAmountSy('');
     }
-  }, [status]);
+  }, [amountSy, mint, validationError]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

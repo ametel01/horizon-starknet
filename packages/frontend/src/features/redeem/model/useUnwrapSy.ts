@@ -21,7 +21,7 @@ interface UseUnwrapSyReturn {
   syBalanceLoading: boolean;
 
   // Transaction
-  unwrap: (amount: string) => Promise<void>;
+  unwrap: (amount: string) => Promise<boolean>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
   txHash: string | null;
   error: Error | null;
@@ -86,9 +86,9 @@ export function useUnwrapSy({
 
   // Execute unwrap
   const unwrap = useCallback(
-    async (amount: string): Promise<void> => {
+    async (amount: string): Promise<boolean> => {
       if (!amount || amount === '0') {
-        return;
+        return false;
       }
 
       // Convert to WAD (18 decimals)
@@ -97,10 +97,13 @@ export function useUnwrapSy({
       const calls = buildUnwrapCalls(amountWad);
       const result = await execute(calls);
 
-      if (result) {
-        // Refetch balances after successful unwrap
-        await Promise.all([refetchSyBalance(), refetchUnderlyingBalance()]);
+      if (!result) {
+        return false;
       }
+
+      // Refetch balances after successful unwrap
+      await Promise.allSettled([refetchSyBalance(), refetchUnderlyingBalance()]);
+      return true;
     },
     [buildUnwrapCalls, execute, refetchSyBalance, refetchUnderlyingBalance]
   );

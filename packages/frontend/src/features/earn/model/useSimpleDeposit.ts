@@ -24,7 +24,7 @@ interface UseSimpleDepositReturn {
   syAllowance: bigint | undefined;
 
   // Transaction
-  deposit: (amount: string) => Promise<void>;
+  deposit: (amount: string) => Promise<boolean>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
   txHash: string | null;
   error: Error | null;
@@ -70,9 +70,9 @@ export function useSimpleDeposit({
 
   // Execute combined deposit
   const deposit = useCallback(
-    async (amount: string): Promise<void> => {
+    async (amount: string): Promise<boolean> => {
       if (!amount || amount === '0' || !userAddress) {
-        return;
+        return false;
       }
 
       let amountWad: bigint;
@@ -80,7 +80,7 @@ export function useSimpleDeposit({
         amountWad = toWad(amount);
       } catch {
         // Invalid amount format
-        return;
+        return false;
       }
 
       // Use transaction builder to create calls
@@ -97,14 +97,17 @@ export function useSimpleDeposit({
 
       const result = await execute(calls);
 
-      if (result) {
-        // Refetch balances after successful deposit (use allSettled to ensure all refetches are attempted)
-        await Promise.allSettled([
-          refetchUnderlyingBalance(),
-          refetchUnderlyingAllowance(),
-          refetchSyAllowance(),
-        ]);
+      if (!result) {
+        return false;
       }
+
+      // Refetch balances after successful deposit (use allSettled to ensure all refetches are attempted)
+      await Promise.allSettled([
+        refetchUnderlyingBalance(),
+        refetchUnderlyingAllowance(),
+        refetchSyAllowance(),
+      ]);
+      return true;
     },
     [
       userAddress,

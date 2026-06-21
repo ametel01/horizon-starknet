@@ -24,7 +24,7 @@ interface UseMintReturn {
   needsApproval: (amount: bigint) => boolean;
 
   // Transaction
-  mint: (amountSy: string, minPyOut?: bigint) => Promise<void>;
+  mint: (amountSy: string, minPyOut?: bigint) => Promise<boolean>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
   txHash: string | null;
   error: Error | null;
@@ -110,9 +110,9 @@ export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn 
 
   // Execute mint
   const mint = useCallback(
-    async (amountSy: string, minPyOut?: bigint): Promise<void> => {
+    async (amountSy: string, minPyOut?: bigint): Promise<boolean> => {
       if (!amountSy || amountSy === '0') {
-        return;
+        return false;
       }
 
       // Convert to WAD
@@ -125,10 +125,13 @@ export function useMint({ syAddress, ytAddress }: UseMintParams): UseMintReturn 
       const calls = buildMintCalls(amountSyWad, minPy);
       const result = await execute(calls);
 
-      if (result) {
-        // Refetch balances after successful mint
-        await Promise.all([refetchBalance(), refetchAllowance()]);
+      if (!result) {
+        return false;
       }
+
+      // Refetch balances after successful mint
+      await Promise.allSettled([refetchBalance(), refetchAllowance()]);
+      return true;
     },
     [buildMintCalls, execute, refetchBalance, refetchAllowance]
   );

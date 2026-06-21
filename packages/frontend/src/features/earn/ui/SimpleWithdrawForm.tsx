@@ -21,7 +21,7 @@ import { GasEstimate } from '@shared/ui/GasEstimate';
 import { NumberInput } from '@shared/ui/Input';
 import { Skeleton } from '@shared/ui/Skeleton';
 import { TxStatus } from '@widgets/display/TxStatus';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 interface SimpleWithdrawFormProps {
   market: MarketData;
@@ -247,7 +247,10 @@ function useSimpleWithdrawFormContent({ market, className }: SimpleWithdrawFormP
   // Handle withdraw
   const handleWithdraw = useCallback(async () => {
     if (validationError || amountWad === BigInt(0)) return;
-    await withdraw(amountWad);
+    const completed = await withdraw(amountWad);
+    if (completed) {
+      setAmount('');
+    }
   }, [amountWad, withdraw, validationError]);
 
   // Handle max button
@@ -256,13 +259,6 @@ function useSimpleWithdrawFormContent({ market, className }: SimpleWithdrawFormP
       setAmount(fromWad(maxWithdrawable).toString());
     }
   }, [maxWithdrawable]);
-
-  // Clear input on success
-  useEffect(() => {
-    if (status === 'success') {
-      setAmount('');
-    }
-  }, [status]);
 
   // Handle reset after success
   const handleReset = useCallback(() => {

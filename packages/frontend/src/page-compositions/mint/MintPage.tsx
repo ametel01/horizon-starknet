@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@shared/ui/tabs';
 import { AlertCircle, BookOpen, Coins, Info, Layers } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, Suspense, useMemo, useState } from 'react';
 
 type TabType = 'wrap' | 'split' | 'unwrap';
 type SimpleTabType = 'earn' | 'withdraw';
@@ -284,12 +284,6 @@ function SimpleModeContent(): ReactNode {
     return markets[0];
   }, [markets, marketParam, selectedMarketAddress]);
 
-  useEffect(() => {
-    if (markets.length > 0 && !selectedMarketAddress && !marketParam) {
-      setSelectedMarketAddress(markets[0]?.address ?? null);
-    }
-  }, [markets, selectedMarketAddress, marketParam]);
-
   return (
     <div className="space-y-8">
       <div className="grid gap-8 lg:grid-cols-2">
@@ -438,12 +432,6 @@ function AdvancedModeContent(): ReactNode {
     }
     return markets[0];
   }, [markets, marketParam, selectedMarketAddress]);
-
-  useEffect(() => {
-    if (markets.length > 0 && !selectedMarketAddress && !marketParam) {
-      setSelectedMarketAddress(markets[0]?.address ?? null);
-    }
-  }, [markets, selectedMarketAddress, marketParam]);
 
   return (
     <div className="space-y-8">

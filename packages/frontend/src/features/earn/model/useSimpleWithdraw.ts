@@ -26,7 +26,7 @@ interface UseSimpleWithdrawReturn {
   ytAllowance: bigint | undefined;
 
   // Transaction
-  withdraw: (amount: bigint) => Promise<void>;
+  withdraw: (amount: bigint) => Promise<boolean>;
   status: 'idle' | 'signing' | 'pending' | 'success' | 'error';
   txHash: string | null;
   error: Error | null;
@@ -85,9 +85,9 @@ export function useSimpleWithdraw({
 
   // Execute withdraw
   const withdraw = useCallback(
-    async (amount: bigint): Promise<void> => {
+    async (amount: bigint): Promise<boolean> => {
       if (amount === BigInt(0) || !userAddress) {
-        return;
+        return false;
       }
 
       // Use transaction builder to create calls
@@ -106,16 +106,19 @@ export function useSimpleWithdraw({
 
       const result = await execute(calls);
 
-      if (result) {
-        // Refetch balances after successful withdraw (use allSettled to ensure all refetches are attempted)
-        await Promise.allSettled([
-          refetchPtBalance(),
-          refetchYtBalance(),
-          refetchUnderlyingBalance(),
-          refetchPtAllowance(),
-          refetchYtAllowance(),
-        ]);
+      if (!result) {
+        return false;
       }
+
+      // Refetch balances after successful withdraw (use allSettled to ensure all refetches are attempted)
+      await Promise.allSettled([
+        refetchPtBalance(),
+        refetchYtBalance(),
+        refetchUnderlyingBalance(),
+        refetchPtAllowance(),
+        refetchYtAllowance(),
+      ]);
+      return true;
     },
     [
       userAddress,
