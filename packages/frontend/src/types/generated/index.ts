@@ -13,11 +13,8 @@
  * ```
  */
 
-export { FACTORY_ABI } from './Factory';
 export { MARKET_ABI } from './Market';
 export { MARKETFACTORY_ABI } from './MarketFactory';
-export { PRAGMAINDEXORACLE_ABI } from './PragmaIndexOracle';
-export { PT_ABI } from './PT';
 export { PYLPORACLE_ABI } from './PyLpOracle';
 export { ROUTER_ABI } from './Router';
 export { ROUTERSTATIC_ABI } from './RouterStatic';
