@@ -243,7 +243,7 @@ pub mod Factory {
             let pt_class_hash = self.pt_class_hash.read();
 
             // Generate unique salt using deploy count
-            let count = self.deploy_count.read();
+            let count: u256 = self.deploy_count.read();
             self.deploy_count.write(count + 1);
 
             // Get SY symbol for derived naming
@@ -292,7 +292,7 @@ pub mod Factory {
             Serde::serialize(@reward_tokens, ref yt_calldata);
 
             // Deploy YT contract (which will deploy PT internally)
-            let salt: felt252 = count.low.into();
+            let salt: felt252 = Into::<u128, felt252>::into(count.low);
             let (yt_address, _) =
                 match deploy_syscall(yt_class_hash, salt, yt_calldata.span(), false) {
                 Result::Ok(result) => result,

@@ -12,6 +12,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      SCARB_UI_VERBOSITY: no-warnings
     defaults:
       run:
         working-directory: contracts
@@ -21,12 +23,12 @@ jobs:
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.15.0"
+          scarb-version: "2.19.1"
 
       - name: Setup snfoundry
         uses: foundry-rs/setup-snfoundry@v4
         with:
-          starknet-foundry-version: "0.54.0"
+          starknet-foundry-version: "0.62.1"
 
       - name: Run tests
         run: snforge test

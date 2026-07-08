@@ -283,7 +283,7 @@ pub mod MarketFactory {
             let market_class_hash = self.market_class_hash.read();
 
             // Generate unique salt
-            let count = self.deploy_count.read();
+            let count: u256 = self.deploy_count.read();
             self.deploy_count.write(count + 1);
 
             // Build Market constructor calldata
@@ -334,7 +334,7 @@ pub mod MarketFactory {
             }
 
             // Deploy Market contract
-            let salt: felt252 = count.low.into();
+            let salt: felt252 = Into::<u128, felt252>::into(count.low);
             let (market_address, _) =
                 match deploy_syscall(market_class_hash, salt, calldata.span(), false) {
                 Result::Ok(result) => result,

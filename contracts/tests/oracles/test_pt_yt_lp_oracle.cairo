@@ -430,5 +430,3 @@ fn test_view_functions() {
 // NOTE: Constructor zero-address validation is defense-in-depth tested through
 // the factory's deploy_oracle path (see test_pt_yt_lp_oracle_factory.cairo).
 // snforge cannot catch constructor panics from ContractClass::deploy().
-
-

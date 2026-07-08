@@ -1,5 +1,8 @@
 .PHONY: help dev-up dev-down dev-logs dev-build dev-fork dev-fork-down dev-fork-logs dev-fork-build clean-env build test
 
+SCARB_UI_VERBOSITY ?= no-warnings
+export SCARB_UI_VERBOSITY
+
 help:
 	@echo "Usage: make [target]"
 	@echo ""

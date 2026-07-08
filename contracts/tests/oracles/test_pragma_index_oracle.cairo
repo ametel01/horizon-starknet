@@ -410,5 +410,3 @@ fn test_view_functions() {
 // Note: Constructor validations are tested implicitly via deploy failures.
 // The validations are confirmed working (zero admin, zero oracle, zero pair, invalid index).
 // snforge's deploy panics on constructor failure rather than returning Result.
-
-

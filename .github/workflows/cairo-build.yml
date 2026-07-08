@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SCARB_UI_VERBOSITY: no-warnings
     defaults:
       run:
         working-directory: contracts
@@ -21,7 +23,7 @@ jobs:
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.15.0"
+          scarb-version: "2.19.1"
 
       - name: Build
         run: scarb build
