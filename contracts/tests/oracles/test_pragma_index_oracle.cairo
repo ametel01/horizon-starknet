@@ -173,6 +173,38 @@ fn test_single_feed_index() {
     assert(index <= expected + tolerance, 'single feed index too high');
 }
 
+#[test]
+#[should_panic(expected: 'MPSS: stale data')]
+fn test_single_feed_propagates_upstream_twap_revert() {
+    let pragma = deploy_mock_pragma();
+
+    start_cheat_caller_address(pragma.contract_address, ADMIN());
+    pragma.set_twap_revert(SSTRK_USD_PAIR_ID, true);
+    stop_cheat_caller_address(pragma.contract_address);
+
+    let (oracle, _admin) = deploy_pragma_index_oracle_single(
+        pragma.contract_address, SSTRK_USD_PAIR_ID,
+    );
+
+    oracle.index();
+}
+
+#[test]
+#[should_panic(expected: 'MPSS: stale data')]
+fn test_dual_feed_propagates_upstream_denominator_twap_revert() {
+    let pragma = deploy_mock_pragma();
+
+    start_cheat_caller_address(pragma.contract_address, ADMIN());
+    pragma.set_twap_revert(SSTRK_USD_PAIR_ID, true);
+    stop_cheat_caller_address(pragma.contract_address);
+
+    let (oracle, _admin) = deploy_pragma_index_oracle_dual(
+        pragma.contract_address, WSTETH_USD_PAIR_ID, SSTRK_USD_PAIR_ID,
+    );
+
+    oracle.index();
+}
+
 // ============ Admin Function Tests ============
 
 #[test]

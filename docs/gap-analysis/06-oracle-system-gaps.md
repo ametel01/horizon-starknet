@@ -28,7 +28,7 @@ Pendle's oracle infrastructure serves **two distinct purposes** that Horizon par
 | ERC-4626 direct | `SYBase` uses ERC-4626 `convertToAssets` ([SYBase.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/core/StandardizedYield/SYBase.sol)) | ✅ `is_erc4626` flag | ✅ |
 | Custom oracle adapter | `IIndexOracle` adapter interface ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `PragmaIndexOracle` | ✅ |
 | TWAP window | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | Configurable (default 1hr) | ✅ **Horizon exceeds** |
-| Staleness check | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | `max_staleness` (default 24hr) | ✅ **Horizon exceeds** |
+| Staleness check | Adapter-specific (no standard config in `IIndexOracle`) ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | Delegated to Pragma `calculate_twap()`; `max_staleness` is stored as operator metadata | 🟡 Upstream-dependent |
 | Watermark (monotonic) | Oracle-specific expectation via `index()` ([IIndexOracle.sol](https://github.com/pendle-finance/Pendle-SY-Public/blob/main/contracts/interfaces/IIndexOracle.sol)) | ✅ `stored_index` | ✅ **Horizon exceeds** |
 | Single-feed mode | Adapter-specific | ✅ `denominator_pair_id = 0` | ✅ **Horizon exceeds** |
 | Dual-feed ratio mode | Adapter-specific | ✅ `numerator/denominator` | ✅ **Horizon exceeds** |
@@ -57,7 +57,7 @@ if denominator_pair == 0 {
 2. **Full RBAC System** - Granular access control:
 ```cairo
 // Horizon - role-based permissions
-OPERATOR_ROLE: set_config (TWAP window, staleness)
+OPERATOR_ROLE: set_config (TWAP window, operator staleness metadata)
 PAUSER_ROLE: pause/unpause oracle
 DEFAULT_ADMIN_ROLE: emergency_set_index (can only increase)
 ```
