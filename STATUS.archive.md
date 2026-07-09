@@ -85,3 +85,24 @@ Acceptance criteria:
 
 - The local `gh pr merge` command merged remotely but failed local checkout cleanup because `main` was already used by the root worktree. Root `main` was then fast-forwarded to `origin/main`.
 - Issue #83 worktree was clean after merge and removed; remote branch was deleted and local branch was force-deleted because squash merge left the exact branch commit unmerged locally.
+
+### Process Retrospective
+
+Trigger: merged-pr.
+
+Signals:
+- Issue #83 acceptance criteria were explicit about tinted shell surfaces, root overflow clipping, no-overflow Playwright coverage across `/`, `/mint`, and `/analytics`, explicit primitive transitions, semantic color use, and tracker updates; builder/checker/reviewer did not need to infer missing gates or scope.
+- PR #89 passed local checker gates and live CI, including GitHub Build, Unit Tests, Code Quality, E2E Tests, Secret Scanning, Socket, GitGuardian, CodeRabbit, Vercel Preview Comments, and expected ignored Vercel deploy contexts.
+- Maintainer-reviewer review `4660641271` found no blocking or important findings, confirmed `closingIssuesReferences` only contained #83, and reran the frontend gates plus scope checks.
+- GitHub rejected same-author formal approval, so approval was recorded as a COMMENT review; the same pattern also occurred on PR #88.
+- `gh pr merge` merged PR #89 remotely but failed local checkout cleanup because `main` was already used by the root worktree; the issue #83 local branch then required `git branch -D` after squash merge.
+- `STATUS.md` and `STATUS.archive.md` had the issue contract, validation evidence, merge result, cleanup disposition, and next queue handoff.
+
+Lessons:
+- Same-author PR review cannot produce a formal GitHub APPROVE, even when maintainer-reviewer accepts the work. Record the GitHub rejection and COMMENT review ID in the PR and `STATUS.md`, and treat it as a workflow exception rather than weakening review requirements.
+- Squash-merged issue branches can remain locally "unmerged", and `gh pr merge` may not clean a worktree when root `main` is checked out elsewhere. After remote squash merge, verify `origin/main`, remove the issue worktree if clean, delete the remote branch, and force-delete the local issue branch only after recording evidence.
+- Previous same-author review and checkout-cleanup recommendations remain lesson-tracked but are not backed by a repo process issue. Keep the lesson in hot state for this queue; create a process issue only if the coordinator wants this generalized beyond the current run.
+
+Recommendations:
+- status-lesson-only: keep the above lessons visible while #84/#85/#86 are assigned.
+- create-process-issue: downgraded by coordinator to status-lesson-only for this run; no separate GitHub process issue unless the same closeout friction repeats beyond #84/#85/#86.
