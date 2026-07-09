@@ -235,8 +235,36 @@
 - command: `git branch -D codex/issue-83-frontend-foundation`
   result: passed
   evidence: local issue #83 branch was force-deleted because squash merge leaves the exact branch commit unmerged locally.
+- command: `bun install --frozen-lockfile`
+  result: passed
+  evidence: run in `packages/frontend` because package-local binaries were missing; restored frontend `node_modules` without manifest or lockfile changes.
+- command: `bun run --cwd packages/frontend format:check`
+  result: passed
+  evidence: Biome formatted 469 frontend source files with no fixes applied after formatting `MarketCard.tsx`.
+- command: `bun run --cwd packages/frontend lint`
+  result: passed
+  evidence: Biome lint checked 469 frontend source files with no fixes applied.
+- command: `bun run --cwd packages/frontend typecheck`
+  result: passed
+  evidence: `tsc --noEmit` completed successfully.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: Bun reported 476 passing tests, 0 failures, and 810 assertions across 20 files.
+- command: `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium`
+  result: passed
+  evidence: exact configured chromium markets spec passed 16/16 in 21.2s after a transient sibling-worktree port 3000 conflict cleared. Local logs still show expected missing `RPC_URL`/database fallback noise.
 
 ## Handoffs
+- from: builder-agent Sagan
+  to: checker-agent
+  timestamp: 2026-07-09
+  request: Review issue #86 only on branch `codex/issue-86-market-apy-access`. Verify the market-card APY/oracle disclosure is non-hover accessible, market data/actions are preserved, glow/hover treatment is reduced, and the diff stays out of #84/#85 scope.
+  changed-files: `packages/frontend/src/entities/market/ui/MarketCard.tsx`, `packages/frontend/e2e/markets.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, `STATUS.md`.
+  evidence: Replaced `HoverCard` APY details with a visible `CollapsibleTrigger` disclosure that supports keyboard and pointer/touch activation; kept implied APY, current spot APY, oracle badge/detail, APY breakdown, TWAP/spot rows, stats, exchange rates, negative-yield warning, expiry badge, and Trade PT/Pool links. Removed the APY glow overlay, `card-hover-glow`, broad market-card/yield `transition-all`, and hover-revealed action opacity. Added markets e2e coverage that switches to advanced mode, opens details with keyboard and click, and checks Trade PT/Pool links when cards render.
+  validation: `format:check`, `lint`, `typecheck`, `test`, and exact configured `test:e2e e2e/markets.spec.ts --project=chromium` passed.
+  risks: Frontend-only. No market math, oracle semantics, indexer API, contract call, transaction behavior, route, dependency, lockfile, contract, CI, deployment, README address, or license changes. Coordination note: port 3000 was briefly occupied by a sibling worktree during local E2E, then cleared before the exact command passed on this branch.
+  next-action: Checker should inspect the diff and rerun gates.
+
 - from: issue-spec-agent
   to: builder-agent
   timestamp: 2026-07-09

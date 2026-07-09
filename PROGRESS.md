@@ -7,8 +7,8 @@
 - Target package: `packages/frontend`
 
 ## Current Status
-- Phase: issues #84, #85, and #86 ready for spec
-- Owner: coordinator
+- Phase: issue #86 implemented; issues #84 and #85 remain parallel implementation streams
+- Owner: builder-agent Sagan for #86
 - Last completed issue: #83, merged in PR #89
 - Next step: spec and execute #84, #85, and #86 in parallel where file ownership permits.
 - GitHub status: verified on 2026-07-09; #82 and #83 are closed, #84 through #87 remain open, and no PRs are open after PR #89 merged.
@@ -18,7 +18,7 @@
 - [x] Step 1: Establish Frontend Token, Motion, and Overflow Foundation
 - [ ] Step 2: Replace the Home Hero With a Protocol Workbench
 - [ ] Step 3: Replace Stock SaaS App Chrome and Footer
-- [ ] Step 4: Make Market APY Details Touch-Accessible and Deslop Market Cards
+- [x] Step 4: Make Market APY Details Touch-Accessible and Deslop Market Cards
 - [ ] Step 5: Final Frontend Audit and Gate Run
 
 ## Definition of Done Tracker
@@ -28,7 +28,7 @@
 - [x] `html` and `body` clip horizontal overflow, and audited pages do not horizontally overflow at 320, 375, 414, 768, and desktop widths.
 - [ ] Header/mobile navigation and footer read as protocol app chrome/colophon instead of stock SaaS patterns.
 - [x] Shared `Button`, `Card`, home feature cards, and audited card surfaces avoid broad `transition-all`, unused elastic/bounce presets, generic glow shadows, and gratuitous hover lifts.
-- [ ] Market APY breakdown is reachable by keyboard and touch without relying on hover-only UI.
+- [x] Market APY breakdown is reachable by keyboard and touch without relying on hover-only UI.
 - [x] Existing user flows still work in simple and advanced modes.
 - [x] Focused frontend gates pass, or failures are proven pre-existing with exact command output and risk notes.
 - [x] No unrelated formatting, dependency, lockfile, contract, indexer, deployment, or README address changes are included.
@@ -51,7 +51,10 @@
 - 2026-07-09: Implemented issue #83 frontend foundation. Updated light/dark semantic shell tokens away from pure white and near-black defaults, added `html, body { overflow-x: clip; }`, replaced broad `transition-all` in `Button`, `Card`, `ModeToggle`, and touched home feature cards, and preserved live glow/bounce/spring utilities after reference search proved they are still used.
 - 2026-07-09: Added navigation e2e coverage asserting no horizontal overflow on `/`, `/mint`, and `/analytics` at 320, 375, 414, 768, and 1280 px. Validation passed: `bun run --cwd packages/frontend format:check`, `lint`, `typecheck`, `test`, and `test:e2e e2e/navigation.spec.ts --project=chromium`.
 - 2026-07-09: PR #89 merged and closed issue #83. GitHub Frontend CI Build, Unit Tests, Code Quality, E2E Tests, Secret Scanning, Socket, GitGuardian, CodeRabbit, and Vercel contexts passed.
+- 2026-07-09: Implemented issue #86 market card accessibility/design pass. Replaced hover-only APY `HoverCard` details with an explicit keyboard/touch disclosure, preserved implied APY, oracle state, TWAP/spot context, exchange rates, warnings, expiry, and Trade PT/Pool actions, and removed the market-card APY glow overlay, `card-hover-glow`, broad market-card `transition-all`, and hover-revealed actions.
+- 2026-07-09: Added markets e2e coverage for the non-hover APY details path and visible market actions when advanced market cards render. Validation passed: `bun run --cwd packages/frontend format:check`, `lint`, `typecheck`, `test`, and `test:e2e e2e/markets.spec.ts --project=chromium`. The exact E2E command passed 16/16 after a transient sibling-worktree port 3000 conflict cleared.
 
 ## Next-Step Instructions
-- Start issues #84, #85, and #86 with issue-spec-agent completion contracts before builder assignment.
+- Start checker review for issue #86 from branch `codex/issue-86-market-apy-access`.
+- Preserve #86 scope: market card APY disclosure/accessibility and markets e2e only.
 - Keep #87 blocked until #84, #85, and #86 merge.

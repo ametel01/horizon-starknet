@@ -40,6 +40,19 @@ function marketDataStates(page: Page): AcceptedState[] {
   ];
 }
 
+async function switchToAdvancedMode(page: Page): Promise<void> {
+  const advancedToggle = page.getByRole('button', { name: /Switch to advanced mode/i });
+  const simpleToggle = page.getByRole('button', { name: /Switch to simple mode/i });
+  await expect(
+    page.getByRole('button', { name: /Switch to (advanced|simple) mode/i })
+  ).toBeVisible();
+
+  if (await advancedToggle.isVisible().catch(() => false)) {
+    await advancedToggle.click();
+    await expect(simpleToggle).toBeVisible();
+  }
+}
+
 test.describe('Markets Display', () => {
   test('should display market list on home page', async ({ page }) => {
     await page.goto('/');
@@ -58,6 +71,48 @@ test.describe('Markets Display', () => {
     await expect(statsSection.first()).toBeVisible({ timeout: 10000 });
   });
 
+  test('should expose market APY details without hover when market cards render', async ({
+    page,
+  }) => {
+    await page.goto('/');
+
+    await switchToAdvancedMode(page);
+
+    const marketCards = page.getByTestId('market-card');
+    await expectAcceptedState(page, [
+      { name: 'advanced market card', locator: marketCards },
+      ...marketDataStates(page),
+    ]);
+
+    const firstCard = marketCards.first();
+    if (!(await firstCard.isVisible().catch(() => false))) {
+      return;
+    }
+
+    const detailsTrigger = firstCard.getByTestId('market-apy-details-trigger');
+    const detailsPanel = firstCard.getByTestId('market-apy-details-panel');
+
+    await expect(detailsTrigger).toBeVisible();
+    await expect(detailsPanel).toBeHidden();
+
+    await detailsTrigger.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(detailsTrigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(detailsPanel).toBeVisible();
+    await expect(detailsPanel).toContainText(/APY Breakdown/i);
+    await expect(detailsPanel).toContainText(/Oracle source|Spot Rate|TWAP Rate/i);
+
+    await detailsTrigger.click();
+    await expect(detailsPanel).toBeHidden();
+
+    await detailsTrigger.click();
+    await expect(detailsPanel).toBeVisible();
+
+    await expect(firstCard.getByRole('link', { name: /Trade PT/i })).toBeVisible();
+    await expect(firstCard.getByRole('link', { name: /^Pool$/i })).toBeVisible();
+  });
+
   test('should navigate to analytics page', async ({ page }) => {
     await page.goto('/');
 
@@ -73,23 +128,15 @@ test.describe('Markets Display', () => {
 test.describe('Trade Page', () => {
   test('should display swap form', async ({ page }) => {
     await page.goto('/trade');
+    await switchToAdvancedMode(page);
 
     // Wait for page to load
     await expect(page.getByRole('heading', { name: /Trade/i })).toBeVisible();
 
-    // Should show swap form or loading/empty state
-    const [hasForm, hasLoadingOrEmpty] = await Promise.all([
-      page
-        .locator('form, [data-testid="swap-form"], .swap-form')
-        .isVisible()
-        .catch(() => false),
-      page
-        .getByText(/Loading|No markets|Failed to load/i)
-        .isVisible()
-        .catch(() => false),
+    await expectAcceptedState(page, [
+      { name: 'swap form', locator: page.locator('form, [data-testid="swap-form"], .swap-form') },
+      ...marketDataStates(page),
     ]);
-
-    expect(hasForm || hasLoadingOrEmpty).toBe(true);
   });
 
   test('should display market selector when multiple markets exist', async ({ page }) => {
