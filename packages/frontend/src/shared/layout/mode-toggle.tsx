@@ -50,7 +50,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
   };
 
   return (
-    <div className={cn('relative flex items-center gap-1.5', className)}>
+    <div className={cn('relative items-center gap-1.5', className ?? 'flex')}>
       {/* Onboarding Tooltip */}
       {showTooltip && (
         <div className="animate-in fade-in slide-in-from-top-2 absolute top-full right-0 z-50 mt-2 w-64 duration-200">
@@ -98,7 +98,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
         {/* Background pill that slides */}
         <span
           className={cn(
-            'bg-primary absolute h-7 rounded-full transition-all duration-200 ease-in-out',
+            'bg-primary absolute h-7 rounded-full transition-[left,width] duration-200 ease-in-out',
             mode === 'simple' ? 'left-0.5 w-[4rem]' : 'left-[4.125rem] w-[5.25rem]'
           )}
         />

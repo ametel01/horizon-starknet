@@ -2,11 +2,11 @@
 
 ## Active Work
 - issue: #83 Establish frontend token, motion, and no-overflow foundation
-  owner: builder-agent
+  owner: checker-agent
   branch: codex/issue-83-frontend-foundation
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-83
-  pr: none
-  phase: implementing
+  pr: https://github.com/ametel01/horizon-starknet/pull/89
+  phase: review-ci
   cycle: 0/5
   blocker: none
 
@@ -35,9 +35,9 @@
   - cleanliness: tracked tree clean before this status reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-83`
   - branch: `codex/issue-83-frontend-foundation`
-  - owner: builder-agent
-  - phase: implementing
-  - cleanliness: clean at creation from `origin/main`.
+  - owner: coordinator
+  - phase: review-ci
+  - cleanliness: tracked frontend foundation and tracker edits only; dependency install produced no tracked lockfile or manifest changes.
 
 ## Completion Contract
 Issue: #83 Establish frontend token, motion, and no-overflow foundation
@@ -86,6 +86,54 @@ Open Questions:
 - Exact desktop viewport for the no-overflow assertion can follow the existing Playwright project default unless the builder chooses an explicit desktop width and records it.
 
 ## Gates
+- command: `git fetch --all --prune`
+  result: passed
+  evidence: builder synced issue #83 worktree before editing after user reported the branch was one commit behind.
+- command: `git rebase origin/main`
+  result: passed
+  evidence: issue #83 branch rebased cleanly onto current `origin/main` before implementation.
+- command: `rg -n "transition-all|animate-bounce-in|transition-spring|shadow-glow|hover-glow|hover-lift|hover-scale|card-hover-glow|bg-gradient-radial-primary|bg-gradient-mesh|animate-glow-pulse|animate-pulse-subtle|animate-number-tick|animate-slide-in|animate-scale-in|transition-(micro|ui|smooth|reveal)" packages/frontend/src packages/frontend/e2e`
+  result: passed
+  evidence: reference search showed generic glow/bounce/spring utilities are still used by `shared/ui/animations.tsx`, hero, market cards, badges, mobile nav, and transaction UI, so they were preserved rather than removed.
+- command: `bun install --cwd packages/frontend --frozen-lockfile`
+  result: passed
+  evidence: dependency install was required because initial `format:check` failed with `biome: command not found`; no tracked lockfile or manifest changes resulted.
+- command: `bun run --cwd packages/frontend format:check`
+  result: passed
+  evidence: Biome formatted 469 files and reported no fixes applied after implementation.
+- command: `bun run --cwd packages/frontend lint`
+  result: passed
+  evidence: Biome lint checked 469 files with no fixes applied.
+- command: `bun run --cwd packages/frontend typecheck`
+  result: passed
+  evidence: `tsc --noEmit` completed successfully.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: Bun reported 476 passing tests, 0 failures, 810 assertions across 20 files.
+- command: `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+  result: passed
+  evidence: Playwright Chromium reported 28 passed, including no-overflow coverage for `/`, `/mint`, and `/analytics` at 320, 375, 414, 768, and 1280 px. Dev-server logs still show baseline missing local `RPC_URL`/database warnings and `useMarkets` fallback noise, but tests passed.
+- command: `git diff --name-only | sort`
+  result: passed
+  evidence: checker confirmed changed files are limited to `CHANGELOG.md`, `PROGRESS.md`, `STATUS.md`, `packages/frontend/e2e/navigation.spec.ts`, `packages/frontend/src/app/globals.css`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/src/shared/layout/Header.tsx`, `packages/frontend/src/shared/layout/mode-toggle.tsx`, `packages/frontend/src/shared/ui/Button.tsx`, and `packages/frontend/src/shared/ui/Card.tsx`.
+- command: `git diff --exit-code -- packages/frontend/package.json packages/frontend/bun.lock packages/indexer contracts .github/workflows README.md contracts/Scarb.toml`
+  result: passed
+  evidence: checker confirmed no dependency, lockfile, indexer, contract, workflow, README address, or license-related diffs.
+- command: `rg -n "transition-all" packages/frontend/src/app/globals.css packages/frontend/src/app/home-page-client.tsx packages/frontend/src/shared/layout/Header.tsx packages/frontend/src/shared/layout/mode-toggle.tsx packages/frontend/src/shared/ui/Button.tsx packages/frontend/src/shared/ui/Card.tsx`
+  result: passed
+  evidence: checker confirmed no `transition-all` remains in touched files.
+- command: `rg -n "#[0-9a-fA-F]{3,8}|rgb\(|rgba\(" packages/frontend/src/app/home-page-client.tsx packages/frontend/src/shared/layout/Header.tsx packages/frontend/src/shared/layout/mode-toggle.tsx packages/frontend/src/shared/ui/Button.tsx packages/frontend/src/shared/ui/Card.tsx`
+  result: passed
+  evidence: checker confirmed no one-off hex/RGB inline colors were added in touched TSX files; color usage is semantic Tailwind/token classes.
+- command: `gh pr create --draft --base main --head codex/issue-83-frontend-foundation --title "fix: establish frontend visual foundation"`
+  result: passed
+  evidence: PR #89 created at `https://github.com/ametel01/horizon-starknet/pull/89`.
+- command: `gh pr view 89 --json closingIssuesReferences,body`
+  result: passed
+  evidence: PR body is self-contained and `closingIssuesReferences` contains only issue #83.
+- command: `gh pr ready 89`
+  result: passed
+  evidence: PR #89 marked ready for review after PR Context Gate passed.
 - command: `gh pr view 88 --json state,mergedAt,mergeCommit,url,closingIssuesReferences`
   result: passed
   evidence: PR #88 is merged at 2026-07-09T06:38:45Z with merge commit `743db2bda2ed3fa5fa6ea13b65e6828b29f378c9`; closing reference is only issue #82.
@@ -109,6 +157,24 @@ Open Questions:
   evidence: created builder worktree `/Users/alexmetelli/source/horizon-starknet-issue-83` at `402a407`.
 
 ## Handoffs
+- from: coordinator
+  to: maintainer-reviewer
+  timestamp: 2026-07-09
+  request: Review PR #89 against issue #83, completion contract, diff, checker evidence, PR body, and CI status. Same-author review fallback applies if GitHub rejects formal approval.
+  evidence: PR #89 closes only #83, is ready for review, checker result is ALL GREEN, and initial CI is pending.
+  next-action: Submit GitHub review decision or COMMENT evidence and return findings.
+- from: checker-agent
+  to: coordinator
+  timestamp: 2026-07-09
+  request: Issue #83 checker pass complete; proceed with PR packaging.
+  evidence: ALL GREEN. Acceptance criteria are satisfied, no scope leak into #84-#87 was found, no dependency/lockfile/protected-path changes were found, and required frontend gates passed.
+  next-action: Commit issue #83, push `codex/issue-83-frontend-foundation`, create PR closing #83, then run PR Context Gate and reviewer loop.
+- from: builder-agent
+  to: checker-agent
+  timestamp: 2026-07-09
+  request: Review issue #83 implementation against the completion contract, inspect the diff for scope, and rerun focused frontend gates as needed.
+  evidence: Changed `packages/frontend/src/app/globals.css`, `packages/frontend/src/shared/ui/Button.tsx`, `packages/frontend/src/shared/ui/Card.tsx`, `packages/frontend/src/shared/layout/Header.tsx`, `packages/frontend/src/shared/layout/mode-toggle.tsx`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/e2e/navigation.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, and `STATUS.md`. Implemented tinted light/dark shell tokens, root overflow clipping, finite transition property lists, preserved still-used glow/bounce/spring utilities after reference search, fixed 320px header overflow by allowing `ModeToggle` display control and hiding the text wordmark below 360px, and added route/viewport no-overflow e2e assertions.
+  next-action: Validate no #84-#87 redesign scope leaked in, confirm no dependency/lockfile/generated changes, and verify the required gates remain green.
 - from: coordinator
   to: builder-agent
   timestamp: 2026-07-09

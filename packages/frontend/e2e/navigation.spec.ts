@@ -1,4 +1,31 @@
+import type { Page } from '@playwright/test';
+
 import { expect, test } from './fixtures';
+
+const auditedNoOverflowRoutes = ['/', '/mint', '/analytics'] as const;
+const auditedViewportWidths = [320, 375, 414, 768, 1280] as const;
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() => {
+    const root = document.documentElement;
+    const body = document.body;
+
+    return {
+      bodyScrollWidth: body.scrollWidth,
+      bodyClientWidth: body.clientWidth,
+      rootScrollWidth: root.scrollWidth,
+      rootClientWidth: root.clientWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(overflow.rootScrollWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(
+    overflow.rootClientWidth + 1
+  );
+  expect(overflow.bodyScrollWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(
+    overflow.bodyClientWidth + 1
+  );
+}
 
 test.describe('Navigation', () => {
   test('should navigate to home page', async ({ page }) => {
@@ -106,6 +133,18 @@ test.describe('Theme Toggle', () => {
 });
 
 test.describe('Responsive Design', () => {
+  for (const route of auditedNoOverflowRoutes) {
+    for (const width of auditedViewportWidths) {
+      test(`should not horizontally overflow ${route} at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(route);
+        await expect(page.locator('body')).toBeVisible();
+
+        await expectNoHorizontalOverflow(page);
+      });
+    }
+  }
+
   test('should display mobile menu on small screens', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });

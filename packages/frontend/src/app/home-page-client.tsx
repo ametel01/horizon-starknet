@@ -120,7 +120,7 @@ function FeatureCard({ title, description, href }: FeatureCardProps): ReactNode 
   return (
     <Link
       href={href}
-      className="group border-border bg-card hover:border-primary/50 hover:shadow-primary/5 rounded-lg border p-6 transition-all hover:shadow-lg"
+      className="group border-border bg-card hover:border-primary/50 hover:shadow-primary/5 rounded-lg border p-6 transition-[border-color,box-shadow,color] duration-200 hover:shadow-lg"
     >
       <h4 className="text-foreground group-hover:text-primary transition-colors">{title}</h4>
       <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{description}</p>
