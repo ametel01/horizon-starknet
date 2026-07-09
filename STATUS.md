@@ -6,9 +6,9 @@
   branch: codex/issue-85-app-chrome-colophon
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
   pr: https://github.com/ametel01/horizon-starknet/pull/90
-  phase: rebase-needed
+  phase: waiting-ci
   cycle: 0/5
-  blocker: PR #90 is merge-dirty after #91 merged; rebase branch on current `origin/main`, rerun focused checks, renew review, then merge.
+  blocker: fresh CI and renewed maintainer-reviewer acceptance required after rebase before merge.
 
 ## Target Queue
 - repo: `ametel01/horizon-starknet`
@@ -135,8 +135,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  - phase: rebase-needed #85 / PR #90
-  - cleanliness: clean before #90 rebase; branch head `b7b4bf30f449215a4be437697b4b820f86c2a5d3`.
+  - phase: waiting-ci #85 / PR #90
+  - cleanliness: clean after rebase continuation; branch needs force-push and fresh PR checks.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
@@ -486,7 +486,17 @@ Status: ALL GREEN for PR packaging after coordinator rebase.
   evidence: no merge-tree output after rebase, so the previous `STATUS.md` packaging conflict is resolved.
 
 ## Next Action
-- Package PR for issue #85 with checker validation evidence above.
+- Coordinator may merge PR #90 after normal merge-order checks; #87 remains blocked until #84, #85, and #86 merge.
+
+## Maintainer Review - Issue #85
+Decision: APPROVE
+Review: https://github.com/ametel01/horizon-starknet/pull/90#pullrequestreview-4661054849
+Review id: `4661054849`
+Review submission: formal approval was rejected by GitHub because the PR is same-author; submitted a COMMENT review with explicit `Decision: APPROVE`.
+Findings summary: no blocking or important findings. Diff is scoped to #85 app chrome/footer/navigation coverage and trackers, with no #84 home workbench or #86 market APY/card scope leakage.
+Checks summary: PR context gate passed; head `5e0e33dc017fd8f304b53d5d23e0a87ff9296510` matches the requested updated head; PR closes only #85 and is not draft; GitHub checks are green for Build, Code Quality, Unit Tests, E2E Tests, Quality Checks, Secret Scanning, Socket, GitGuardian, CodeRabbit, and Vercel statuses. Production/staging deploy jobs are intentionally skipped.
+Residual risk: maintainer pass relied on checker-recorded local gates plus current GitHub checks instead of rerunning all local suites. CodeRabbit later flagged missing `/analytics` in the no-overflow audit; coordinator restored it and reran focused navigation e2e before requesting renewed review.
+Next action: push the CodeRabbit fix, wait for renewed CI, and request renewed maintainer review for PR #90.
 
 ## Completion Contract - Issue #86
 Issue: #86 Make market APY details touch-accessible and reduce card glow

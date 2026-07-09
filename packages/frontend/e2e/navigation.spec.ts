@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from './fixtures';
 
-const auditedNoOverflowRoutes = ['/', '/mint', '/trade', '/pools', '/portfolio'] as const;
+const auditedNoOverflowRoutes = ['/', '/mint', '/trade', '/pools', '/portfolio', '/analytics'] as const;
 const auditedViewportWidths = [320, 375, 414, 768, 1280] as const;
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
