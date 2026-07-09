@@ -1,4 +1,44 @@
 import { expect, test } from './fixtures';
+import type { Locator, Page } from '@playwright/test';
+
+interface AcceptedState {
+  name: string;
+  locator: Locator;
+}
+
+async function expectAcceptedState(page: Page, states: AcceptedState[]): Promise<void> {
+  await expect(
+    page.getByText(
+      /Unable to Load Trading|Unable to Load Pools|Something went wrong|Illegal invocation/i
+    )
+  ).toHaveCount(0);
+
+  const visibility = await Promise.all(
+    states.map(async (state) => ({
+      name: state.name,
+      visible: await state.locator.first().isVisible().catch(() => false),
+    }))
+  );
+  const visibleState = visibility.find((state) => state.visible);
+  const checkedStates = visibility
+    .map((state) => `${state.name}=${state.visible ? 'visible' : 'hidden'}`)
+    .join(', ');
+
+  expect(
+    visibleState?.name,
+    `Expected one accepted UI state to be visible. Checked: ${checkedStates}`
+  ).toBeDefined();
+}
+
+function marketDataStates(page: Page): AcceptedState[] {
+  return [
+    { name: 'loading', locator: page.getByText(/Loading/i) },
+    { name: 'empty markets', locator: page.getByText(/No markets available|No active markets/i) },
+    { name: 'market load error', locator: page.getByText(/Failed to load/i) },
+    { name: 'indexer unavailable', locator: page.getByText(/Indexer unavailable/i) },
+    { name: 'offline banner', locator: page.getByText(/Offline/i) },
+  ];
+}
 
 test.describe('Markets Display', () => {
   test('should display market list on home page', async ({ page }) => {
@@ -58,16 +98,10 @@ test.describe('Trade Page', () => {
     // Wait for content to load
     await page.waitForTimeout(2000);
 
-    // Look for market selector or single market display
-    const marketSelector = page.getByText(/Select Market/i);
-    const isVisible = await marketSelector.isVisible().catch(() => false);
-
-    // This test passes if either markets are shown or no markets message appears
-    if (!isVisible) {
-      const noMarkets = page.getByText(/No markets available/i);
-      const noMarketsVisible = await noMarkets.isVisible().catch(() => false);
-      expect(noMarketsVisible || true).toBe(true); // Accept either state
-    }
+    await expectAcceptedState(page, [
+      { name: 'market selector', locator: page.getByText(/Select Market/i) },
+      ...marketDataStates(page),
+    ]);
   });
 
   test('should display how trading works info', async ({ page }) => {
@@ -76,12 +110,13 @@ test.describe('Trade Page', () => {
     // Wait for page to load
     await page.waitForTimeout(2000);
 
-    // Look for educational content
-    const tradingInfo = page.getByText(/How Trading Works|Principal Token|Yield Token/i);
-    const isVisible = await tradingInfo.isVisible().catch(() => false);
-
-    // Accept if visible or if markets aren't loaded yet
-    expect(isVisible || true).toBe(true);
+    await expectAcceptedState(page, [
+      {
+        name: 'trading education',
+        locator: page.getByText(/How Trading Works|Principal Token|Yield Token/i),
+      },
+      ...marketDataStates(page),
+    ]);
   });
 });
 
@@ -98,17 +133,14 @@ test.describe('Pools Page', () => {
     // Wait for content to load
     await page.waitForTimeout(2000);
 
-    // Look for tabs
-    const addTab = page.getByRole('tab', { name: /Add Liquidity/i });
-    const removeTab = page.getByRole('tab', { name: /Remove Liquidity/i });
-
-    const [addVisible, removeVisible] = await Promise.all([
-      addTab.isVisible().catch(() => false),
-      removeTab.isVisible().catch(() => false),
+    await expectAcceptedState(page, [
+      { name: 'add liquidity tab', locator: page.getByRole('tab', { name: /Add Liquidity/i }) },
+      {
+        name: 'remove liquidity tab',
+        locator: page.getByRole('tab', { name: /Remove Liquidity/i }),
+      },
+      ...marketDataStates(page),
     ]);
-
-    // Accept if tabs are visible or if there's a loading/no markets state
-    expect(addVisible || removeVisible || true).toBe(true);
   });
 
   test('should display how liquidity works info', async ({ page }) => {
@@ -117,11 +149,13 @@ test.describe('Pools Page', () => {
     // Wait for page to load
     await page.waitForTimeout(2000);
 
-    // Look for educational content
-    const liquidityInfo = page.getByText(/How Liquidity Works|Provide SY|Earn Trading Fees/i);
-    const isVisible = await liquidityInfo.isVisible().catch(() => false);
-
-    expect(isVisible || true).toBe(true);
+    await expectAcceptedState(page, [
+      {
+        name: 'liquidity education',
+        locator: page.getByText(/How Liquidity Works|Provide SY|Earn Trading Fees/i),
+      },
+      ...marketDataStates(page),
+    ]);
   });
 });
 
@@ -139,20 +173,13 @@ test.describe('Mint Page', () => {
     // Wait for content to load
     await page.waitForTimeout(2000);
 
-    // Should show form, market selection, or loading/empty state
-    const [hasContent, hasLoadingOrEmpty] = await Promise.all([
-      page
-        .locator('form, [data-testid="mint-form"], .mint-form, button')
-        .first()
-        .isVisible()
-        .catch(() => false),
-      page
-        .getByText(/Loading|No markets|Select.*Market/i)
-        .isVisible()
-        .catch(() => false),
+    await expectAcceptedState(page, [
+      { name: 'mint form', locator: page.locator('form, [data-testid="mint-form"], .mint-form') },
+      { name: 'asset selector', locator: page.getByText(/Select Asset|Select an asset/i) },
+      { name: 'deposit tab', locator: page.getByRole('tab', { name: /Deposit/i }) },
+      { name: 'split tab', locator: page.getByRole('tab', { name: /Split/i }) },
+      ...marketDataStates(page),
     ]);
-
-    expect(hasContent || hasLoadingOrEmpty || true).toBe(true);
   });
 });
 
@@ -169,12 +196,12 @@ test.describe('Portfolio Page', () => {
     // Wait for page to load
     await page.waitForTimeout(1000);
 
-    // Should show either positions or connection prompt
-    const connectionPrompt = page.getByText(/Connect.*wallet|No positions/i);
-    const hasPrompt = await connectionPrompt.isVisible().catch(() => false);
-
-    // Either state is valid
-    expect(hasPrompt || true).toBe(true);
+    await expectAcceptedState(page, [
+      { name: 'wallet connection prompt', locator: page.getByText(/Connect.*wallet/i) },
+      { name: 'empty positions', locator: page.getByText(/No positions/i) },
+      { name: 'portfolio positions', locator: page.getByText(/Portfolio Value|Your Positions/i) },
+      { name: 'portfolio loading', locator: page.getByText(/Loading/i) },
+    ]);
   });
 });
 
@@ -192,10 +219,14 @@ test.describe('Analytics Page', () => {
     // Wait for data to load
     await page.waitForTimeout(2000);
 
-    // Look for typical analytics content
-    const metricsContent = page.getByText(/TVL|Volume|Markets|Fees/i);
-    const isVisible = await metricsContent.isVisible().catch(() => false);
-
-    expect(isVisible || true).toBe(true);
+    await expectAcceptedState(page, [
+      { name: 'analytics metrics', locator: page.getByText(/TVL|Volume|Markets|Fees/i) },
+      { name: 'analytics loading', locator: page.getByText(/Loading/i) },
+      {
+        name: 'analytics empty state',
+        locator: page.getByText(/No active markets|Select a market/i),
+      },
+      { name: 'analytics load error', locator: page.getByText(/Failed to load/i) },
+    ]);
   });
 });

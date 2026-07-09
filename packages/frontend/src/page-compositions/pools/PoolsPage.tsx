@@ -233,8 +233,8 @@ function PoolsPageContent(): ReactNode {
 
 function usePoolsPageContent(): ReactNode {
   const { push } = useRouter();
-  const { get } = useSearchParams();
-  const marketParam = get('market');
+  const searchParams = useSearchParams();
+  const marketParam = searchParams.get('market');
   const [activeTab, setActiveTab] = useState<PoolTab>('add');
   const mounted = useHydrated();
 
