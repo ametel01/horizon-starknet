@@ -57,18 +57,22 @@ test.describe('Markets Display', () => {
   test('should display market list on home page', async ({ page }) => {
     await page.goto('/');
 
-    // Wait for markets section heading to be visible
-    const marketSection = page.getByRole('heading', { name: /Earning Opportunities/i });
+    // Wait for markets section heading to be visible.
+    const marketSection = page.getByRole('heading', {
+      name: /Fixed-yield markets|Active protocol markets/i,
+    });
     await expect(marketSection).toBeVisible({ timeout: 10000 });
   });
 
-  test('should display protocol stats', async ({ page }) => {
+  test('should display protocol workbench metrics', async ({ page }) => {
     await page.goto('/');
 
-    // Stats are now in the hero section as floating orbs
-    // Look for stat labels like "Total Value Locked", "Avg. Implied APY", "Active Markets"
-    const statsSection = page.getByText(/Total Value Locked|Avg.*APY|Active Markets/i);
-    await expect(statsSection.first()).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
+    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Active markets/i).first()).toBeVisible();
+    await expect(page.getByText(/Avg implied APY/i)).toBeVisible();
+    await expect(page.getByText(/24h flow/i)).toBeVisible();
   });
 
   test('should expose market APY details without hover when market cards render', async ({

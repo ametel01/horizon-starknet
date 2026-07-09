@@ -17,31 +17,23 @@
   phase: waiting-ci
   cycle: 0/5
   blocker: none
-- issue: #86 Make market APY details touch-accessible and reduce card glow
-  owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
-  branch: codex/issue-86-market-apy-access
-  worktree: /Users/alexmetelli/source/horizon-starknet-issue-86
-  pr: https://github.com/ametel01/horizon-starknet/pull/92
-  phase: waiting-ci
-  cycle: 0/5
-  blocker: none
 
 ## Target Queue
 - repo: `ametel01/horizon-starknet`
 - completed:
   - #82 Set up tracking and capture frontend redesign baseline
   - #83 Establish frontend token, motion, and no-overflow foundation
+  - #86 Make market APY details touch-accessible and reduce card glow
 - remaining:
   - #84 Replace the home hero with a protocol workbench
   - #85 Redesign the frontend app chrome and footer colophon
-  - #86 Make market APY details touch-accessible and reduce card glow
   - #87 Verify the Hallmark frontend redesign against gates and viewports
 
 ## Dependency Graph
 - wave 0: #82 closed by PR #88
 - wave 1: #83 closed by PR #89
-- wave 2: #84, #85, and #86 ready in parallel after #83
-- wave 3: #87 blocked by #84, #85, and #86
+- wave 2: #86 closed by PR #92; #84 and #85 remain active after #83
+- wave 3: #87 blocked by #84 and #85
 
 ## Completion Contract
 - issue: #84 Replace the home hero with a protocol workbench
@@ -156,8 +148,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
-  - phase: waiting-ci #86 / PR #92
-  - cleanliness: clean, pushed as PR #92; branch contains implementation commit `6a1f7835` plus checker-status commit `a21c5dcf`.
+  - phase: merged #86 / cleanup pending
+  - cleanliness: dirty local `STATUS.md` review-evidence update after PR #92 merged; preserve worktree until coordinator records or explicitly discards it.
 
 ## Gates
 - command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-84 -b codex/issue-84-home-workbench origin/main`
@@ -264,6 +256,13 @@
   validation: `format:check`, `lint`, `typecheck`, `test`, and exact configured `test:e2e e2e/markets.spec.ts --project=chromium` passed.
   risks: Frontend-only. No market math, oracle semantics, indexer API, contract call, transaction behavior, route, dependency, lockfile, contract, CI, deployment, README address, or license changes. Coordination note: port 3000 was briefly occupied by a sibling worktree during local E2E, then cleared before the exact command passed on this branch.
   next-action: Checker should inspect the diff and rerun gates.
+
+- from: builder-agent Archimedes
+  to: checker-agent
+  timestamp: 2026-07-09
+  request: Review issue #84 implementation and validation evidence, then decide whether this branch is ready for PR creation.
+  evidence: Changed `packages/frontend/src/widgets/hero/HeroSection.tsx`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/e2e/navigation.spec.ts`, `packages/frontend/e2e/markets.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, and `STATUS.md`. Replaced the centered `min-h-[70vh]` marketing hero, radial glow layers, floating stat orbs, and generic feature cards with a dense workbench using `useDashboardMarkets`, token price helpers, and `useProtocolStats`; simple mode emphasizes fixed-yield minting and advanced mode exposes mint/trade/pools/portfolio/analytics task paths. Market list remains reachable at `#markets` with existing `SimpleMarketList`/`MarketList` fallback behavior. Validation passed: `bun run --cwd packages/frontend format:check`; `bun run --cwd packages/frontend lint`; `bun run --cwd packages/frontend typecheck`; `bun run --cwd packages/frontend test` (476 pass, 0 fail); `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium` (28 passed); `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium` (15 passed). E2E logs still show local missing `DATABASE_URL`/`RPC_URL`, analytics stats query failure, and `useMarkets` fallback noise; tests cover accepted degraded states and passed.
+  next-action: Checker should inspect the diff for #84 scope boundaries, verify no #85 chrome/footer or #86 market-card APY/detail work leaked in, and rerun any desired focused gate. Stop if local DB/RPC env noise needs coordinator decision.
 
 - from: issue-spec-agent
   to: builder-agent

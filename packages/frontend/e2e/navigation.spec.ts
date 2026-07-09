@@ -31,9 +31,8 @@ test.describe('Navigation', () => {
   test('should navigate to home page', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/Horizon Protocol/);
-    // Hero h1 heading shows "Split Your Yield" (advanced) or "Earn Fixed Yield" (simple)
     await expect(
-      page.getByRole('heading', { name: /(Split Your Yield|Earn Fixed Yield)/i, level: 1 })
+      page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
     ).toBeVisible();
   });
 
@@ -150,9 +149,9 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
 
-    // On mobile, page should still load and show main content (h1 hero heading)
+    // On mobile, page should still load and show main workbench content.
     await expect(
-      page.getByRole('heading', { name: /(Split Your Yield|Earn Fixed Yield)/i, level: 1 })
+      page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
     ).toBeVisible();
 
     // Navigation might be in a hamburger menu - check for menu button or visible nav
@@ -172,9 +171,9 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/');
 
-    // Page should load correctly (h1 hero heading)
+    // Page should load correctly with the workbench heading.
     await expect(
-      page.getByRole('heading', { name: /(Split Your Yield|Earn Fixed Yield)/i, level: 1 })
+      page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
     ).toBeVisible();
   });
 });
