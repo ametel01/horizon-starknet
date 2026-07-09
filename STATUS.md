@@ -6,7 +6,7 @@
   branch: pending
   worktree: pending
   pr: none
-  phase: needs-spec
+  phase: ready-for-builder
   cycle: 0/5
   blocker: none
 
@@ -33,6 +33,52 @@
   - owner: coordinator
   - phase: post-merge reconciliation
   - cleanliness: tracked tree clean before this status reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
+
+## Completion Contract
+Issue: #83 Establish frontend token, motion, and no-overflow foundation
+Readiness: ready; #82 is closed by merged PR #88, and no repo-local issue, PR, CI failure, or review thread currently blocks #83.
+Outcome:
+- Establish the shared frontend visual foundation for the Hallmark redesign: tinted semantic surface tokens, bounded motion/glow utilities, explicit primitive transitions, and responsive no-horizontal-overflow coverage for audited routes.
+Acceptance Criteria:
+- Light and dark audited shell surfaces no longer rely on pure white or near-black defaults; touched colors are promoted to semantic CSS variables/classes rather than new one-off inline OKLCH/hex/RGB values.
+- `html` and `body` clip horizontal overflow while preserving the existing Tailwind/shadcn import order and theme behavior.
+- `packages/frontend/e2e/navigation.spec.ts` asserts no horizontal overflow at 320, 375, 414, 768, and desktop widths on `/`, `/mint`, and `/analytics`.
+- Touched shared primitives, especially `Button` and `Card`, replace broad `transition-all` with finite transition property lists where practical.
+- Unused or audited generic glow/bounce/spring utilities are removed, renamed, or constrained without breaking existing required animations.
+- Existing theme toggle and simple/advanced mode behavior still work.
+- `PROGRESS.md` is updated only for Step 1/#83 validation evidence, and `CHANGELOG.md` records only the visible token/motion/overflow fix if it ships.
+Non-goals:
+- Do not implement #84 home workbench, #85 app chrome/footer, #86 market APY/card changes, or #87 final audit.
+- Do not change contracts, indexer code, deployment workflows, package dependencies, lockfiles, README deployment addresses, license metadata, protocol behavior, wallet/transaction behavior, data APIs, or market math.
+- Do not add a new design system, animation runtime, icon library, visual snapshot service, or broad formatting pass.
+Likely Touchpoints:
+- `packages/frontend/src/app/globals.css` for semantic tokens, root overflow clipping, glow/motion utility cleanup, and reduced-motion consistency.
+- `packages/frontend/src/shared/ui/Button.tsx` and `packages/frontend/src/shared/ui/Card.tsx` for transition and glow/lift discipline.
+- `packages/frontend/e2e/navigation.spec.ts` for responsive no-overflow assertions.
+- Nearby route/shell context already inspected: `packages/frontend/src/app/layout.tsx`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/src/app/page.tsx`, `packages/frontend/src/app/mint/page.tsx`, `packages/frontend/src/app/analytics/page.tsx`, `packages/frontend/src/shared/layout/Header.tsx`, `packages/frontend/src/shared/layout/MobileNav.tsx`, and `packages/frontend/src/shared/layout/Footer.tsx`.
+- Root trackers: `PROGRESS.md` and `CHANGELOG.md`, limited to #83/Step 1 notes only.
+Required Tests / Gates:
+- `bun run --cwd packages/frontend format:check`
+- `bun run --cwd packages/frontend lint`
+- `bun run --cwd packages/frontend typecheck`
+- `bun run --cwd packages/frontend test`
+- `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+- If running `bun run --cwd packages/frontend build`, compare branch vs current `main` before calling the known `Creating an optimized production build ...` hang a regression.
+Risks:
+- Global token changes can shift every frontend route; keep the palette restrained and verify simple/advanced and theme toggles.
+- `overflow-x: clip` can hide real layout defects if used alone; the E2E checks must prove audited pages do not exceed viewport width.
+- Removing glow/motion utilities can affect later #84-#86 work and any current shared animations; search references before deleting.
+- Shared primitive changes affect many components, so avoid API changes and broad visual churn.
+Do Not Touch:
+- Preserved local untracked artifacts: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
+- #84 `HeroSection`/home workbench implementation, #85 header/footer redesign implementation, #86 `MarketCard` APY/accessibility implementation, and #87 final audit implementation except for reading context.
+- Contracts, indexer, docs outside tracker updates, CI/deploy workflows, dependency manifests/lockfiles, README addresses, license metadata, and generated artifacts.
+Dependency Blockers:
+- None. Historical blocker #82 is closed by PR #88, PR #88 is merged, and its status checks are successful. CodeRabbit rate limiting on PR #88 resolved to success and is not a current blocker.
+Open Questions:
+- Which glow/bounce/spring utilities are truly unused versus still needed by current components must be determined by local reference search before removal.
+- Whether `next build` still hangs on branch code must be treated as branch-vs-main evidence, not assumed from the #82 baseline.
+- Exact desktop viewport for the no-overflow assertion can follow the existing Playwright project default unless the builder chooses an explicit desktop width and records it.
 
 ## Gates
 - command: `gh pr view 88 --json state,mergedAt,mergeCommit,url,closingIssuesReferences`
