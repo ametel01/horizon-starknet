@@ -4,13 +4,13 @@ This document analyzes the indexer schema against proposed frontend features and
 
 ## Schema Overview
 
-The indexer captures 23 event tables across 6 contracts:
-- **Factory** (2): YieldContractsCreated, ClassHashesUpdated
-- **MarketFactory** (2): MarketCreated, ClassHashUpdated
-- **SY** (3): Deposit, Redeem, OracleRateUpdated
-- **YT** (5): MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached
-- **Market** (5): Mint, Burn, Swap, ImpliedRateUpdated, FeesCollected
-- **Router** (6): MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT
+The indexer captures 54 event tables across 6 contracts:
+- **Factory** (7): YieldContractsCreated, ClassHashesUpdated, RewardFeeRateSet, DefaultInterestFeeRateSet, ExpiryDivisorSet, SYWithRewardsDeployed, SYWithRewardsClassHashUpdated
+- **MarketFactory** (7): MarketCreated, ClassHashUpdated, TreasuryUpdated, DefaultReserveFeeUpdated, OverrideFeeSet, DefaultRateImpactSensitivityUpdated, YieldContractFactoryUpdated
+- **SY** (8): Deposit, Redeem, OracleRateUpdated, NegativeYieldDetected, PauseState, RewardsClaimed, RewardIndexUpdated, RewardTokenAdded
+- **YT** (13): MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached, PostExpiryDataSet, PyIndexUpdated, TreasuryInterestRedeemed, InterestFeeRateSet, MintPYMulti, RedeemPYMulti, RedeemPYWithInterest, FlashMintPY
+- **Market** (12): Mint, Burn, BurnWithReceivers, Swap, ImpliedRateUpdated, FeesCollected, ScalarRootUpdated, ReserveFeeTransferred, RewardsClaimed, RewardIndexUpdated, RewardTokenAdded, Skim
+- **Router** (7): MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT, RolloverLp
 
 ---
 

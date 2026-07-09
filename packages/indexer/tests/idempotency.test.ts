@@ -9,58 +9,18 @@
  * would be needed to fully verify idempotency behavior.
  */
 
+import { is } from "drizzle-orm";
+import { PgTable } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
-// Import all event tables to verify their structure
-import {
-  factoryClassHashesUpdated,
-  factoryYieldContractsCreated,
-  marketBurn,
-  marketFactoryClassHashUpdated,
-  marketFactoryDefaultReserveFeeUpdated,
-  marketFactoryMarketCreated,
-  marketFactoryOverrideFeeSet,
-  marketFactoryTreasuryUpdated,
-  marketFeesCollected,
-  marketImpliedRateUpdated,
-  marketMint,
-  marketReserveFeeTransferred,
-  marketScalarRootUpdated,
-  marketSwap,
-  routerAddLiquidity,
-  routerMintPY,
-  routerRedeemPY,
-  routerRemoveLiquidity,
-  routerSwap,
-  routerSwapYT,
-  syDeposit,
-  syNegativeYieldDetected,
-  syOracleRateUpdated,
-  syPauseState,
-  syRedeem,
-  syRewardIndexUpdated,
-  syRewardsClaimed,
-  syRewardTokenAdded,
-  ytExpiryReached,
-  ytInterestClaimed,
-  ytInterestFeeRateSet,
-  ytMintPY,
-  ytMintPYMulti,
-  ytPostExpiryDataSet,
-  ytPyIndexUpdated,
-  ytRedeemPY,
-  ytRedeemPYMulti,
-  ytRedeemPYPostExpiry,
-  ytRedeemPYWithInterest,
-  ytTreasuryInterestRedeemed,
-} from "../src/schema";
+import * as schema from "../src/schema";
 
 // ============================================================
 // SCHEMA IDEMPOTENCY CONSTRAINT TESTS
 // ============================================================
 
 /**
- * All 40 event tables must have these three columns for idempotency:
+ * All 54 event tables must have these three columns for idempotency:
  * - block_number: The block where the event occurred
  * - transaction_hash: The transaction containing the event
  * - event_index: The position of the event within the transaction
@@ -68,63 +28,135 @@ import {
  * The combination of these three fields uniquely identifies an event.
  */
 
-const ALL_EVENT_TABLES = [
-  { name: "factoryYieldContractsCreated", table: factoryYieldContractsCreated },
-  { name: "factoryClassHashesUpdated", table: factoryClassHashesUpdated },
-  { name: "marketFactoryMarketCreated", table: marketFactoryMarketCreated },
-  {
-    name: "marketFactoryClassHashUpdated",
-    table: marketFactoryClassHashUpdated,
-  },
-  {
-    name: "marketFactoryTreasuryUpdated",
-    table: marketFactoryTreasuryUpdated,
-  },
-  {
-    name: "marketFactoryDefaultReserveFeeUpdated",
-    table: marketFactoryDefaultReserveFeeUpdated,
-  },
-  {
-    name: "marketFactoryOverrideFeeSet",
-    table: marketFactoryOverrideFeeSet,
-  },
-  { name: "syDeposit", table: syDeposit },
-  { name: "syRedeem", table: syRedeem },
-  { name: "syOracleRateUpdated", table: syOracleRateUpdated },
-  // SY Phase 4: Monitoring tables
-  { name: "syNegativeYieldDetected", table: syNegativeYieldDetected },
-  { name: "syPauseState", table: syPauseState },
-  // SY Phase 4: Reward tables
-  { name: "syRewardsClaimed", table: syRewardsClaimed },
-  { name: "syRewardIndexUpdated", table: syRewardIndexUpdated },
-  { name: "syRewardTokenAdded", table: syRewardTokenAdded },
-  { name: "ytMintPY", table: ytMintPY },
-  { name: "ytRedeemPY", table: ytRedeemPY },
-  { name: "ytRedeemPYPostExpiry", table: ytRedeemPYPostExpiry },
-  { name: "ytInterestClaimed", table: ytInterestClaimed },
-  { name: "ytExpiryReached", table: ytExpiryReached },
-  // YT Pendle-style interest system events
-  { name: "ytTreasuryInterestRedeemed", table: ytTreasuryInterestRedeemed },
-  { name: "ytInterestFeeRateSet", table: ytInterestFeeRateSet },
-  { name: "ytMintPYMulti", table: ytMintPYMulti },
-  { name: "ytRedeemPYMulti", table: ytRedeemPYMulti },
-  { name: "ytRedeemPYWithInterest", table: ytRedeemPYWithInterest },
-  { name: "ytPostExpiryDataSet", table: ytPostExpiryDataSet },
-  { name: "ytPyIndexUpdated", table: ytPyIndexUpdated },
-  { name: "marketMint", table: marketMint },
-  { name: "marketBurn", table: marketBurn },
-  { name: "marketSwap", table: marketSwap },
-  { name: "marketImpliedRateUpdated", table: marketImpliedRateUpdated },
-  { name: "marketFeesCollected", table: marketFeesCollected },
-  { name: "marketScalarRootUpdated", table: marketScalarRootUpdated },
-  { name: "marketReserveFeeTransferred", table: marketReserveFeeTransferred },
-  { name: "routerMintPY", table: routerMintPY },
-  { name: "routerRedeemPY", table: routerRedeemPY },
-  { name: "routerAddLiquidity", table: routerAddLiquidity },
-  { name: "routerRemoveLiquidity", table: routerRemoveLiquidity },
-  { name: "routerSwap", table: routerSwap },
-  { name: "routerSwapYT", table: routerSwapYT },
-];
+const EVENT_TABLE_NAMES = [
+  "factoryYieldContractsCreated",
+  "factoryClassHashesUpdated",
+  "factoryRewardFeeRateSet",
+  "factoryDefaultInterestFeeRateSet",
+  "factoryExpiryDivisorSet",
+  "factorySYWithRewardsDeployed",
+  "factorySYWithRewardsClassHashUpdated",
+  "marketFactoryMarketCreated",
+  "marketFactoryClassHashUpdated",
+  "marketFactoryTreasuryUpdated",
+  "marketFactoryDefaultReserveFeeUpdated",
+  "marketFactoryOverrideFeeSet",
+  "marketFactoryDefaultRateImpactSensitivityUpdated",
+  "marketFactoryYieldContractFactoryUpdated",
+  "syDeposit",
+  "syRedeem",
+  "syOracleRateUpdated",
+  "syNegativeYieldDetected",
+  "syPauseState",
+  "syRewardsClaimed",
+  "syRewardIndexUpdated",
+  "syRewardTokenAdded",
+  "ytMintPY",
+  "ytRedeemPY",
+  "ytRedeemPYPostExpiry",
+  "ytInterestClaimed",
+  "ytExpiryReached",
+  "ytPostExpiryDataSet",
+  "ytPyIndexUpdated",
+  "ytTreasuryInterestRedeemed",
+  "ytInterestFeeRateSet",
+  "ytMintPYMulti",
+  "ytRedeemPYMulti",
+  "ytRedeemPYWithInterest",
+  "ytFlashMintPY",
+  "marketMint",
+  "marketBurn",
+  "marketBurnWithReceivers",
+  "marketSwap",
+  "marketImpliedRateUpdated",
+  "marketFeesCollected",
+  "marketScalarRootUpdated",
+  "marketReserveFeeTransferred",
+  "marketRewardsClaimed",
+  "marketRewardIndexUpdated",
+  "marketRewardTokenAdded",
+  "marketSkim",
+  "routerMintPY",
+  "routerRedeemPY",
+  "routerAddLiquidity",
+  "routerRemoveLiquidity",
+  "routerSwap",
+  "routerSwapYT",
+  "routerRolloverLp",
+] as const satisfies readonly (keyof typeof schema)[];
+
+const EXPECTED_EVENT_TABLE_COUNT = 54;
+
+const EVENT_TABLES_BY_NAME = {
+  factoryYieldContractsCreated: schema.factoryYieldContractsCreated,
+  factoryClassHashesUpdated: schema.factoryClassHashesUpdated,
+  factoryRewardFeeRateSet: schema.factoryRewardFeeRateSet,
+  factoryDefaultInterestFeeRateSet: schema.factoryDefaultInterestFeeRateSet,
+  factoryExpiryDivisorSet: schema.factoryExpiryDivisorSet,
+  factorySYWithRewardsDeployed: schema.factorySYWithRewardsDeployed,
+  factorySYWithRewardsClassHashUpdated:
+    schema.factorySYWithRewardsClassHashUpdated,
+  marketFactoryMarketCreated: schema.marketFactoryMarketCreated,
+  marketFactoryClassHashUpdated: schema.marketFactoryClassHashUpdated,
+  marketFactoryTreasuryUpdated: schema.marketFactoryTreasuryUpdated,
+  marketFactoryDefaultReserveFeeUpdated:
+    schema.marketFactoryDefaultReserveFeeUpdated,
+  marketFactoryOverrideFeeSet: schema.marketFactoryOverrideFeeSet,
+  marketFactoryDefaultRateImpactSensitivityUpdated:
+    schema.marketFactoryDefaultRateImpactSensitivityUpdated,
+  marketFactoryYieldContractFactoryUpdated:
+    schema.marketFactoryYieldContractFactoryUpdated,
+  syDeposit: schema.syDeposit,
+  syRedeem: schema.syRedeem,
+  syOracleRateUpdated: schema.syOracleRateUpdated,
+  syNegativeYieldDetected: schema.syNegativeYieldDetected,
+  syPauseState: schema.syPauseState,
+  syRewardsClaimed: schema.syRewardsClaimed,
+  syRewardIndexUpdated: schema.syRewardIndexUpdated,
+  syRewardTokenAdded: schema.syRewardTokenAdded,
+  ytMintPY: schema.ytMintPY,
+  ytRedeemPY: schema.ytRedeemPY,
+  ytRedeemPYPostExpiry: schema.ytRedeemPYPostExpiry,
+  ytInterestClaimed: schema.ytInterestClaimed,
+  ytExpiryReached: schema.ytExpiryReached,
+  ytPostExpiryDataSet: schema.ytPostExpiryDataSet,
+  ytPyIndexUpdated: schema.ytPyIndexUpdated,
+  ytTreasuryInterestRedeemed: schema.ytTreasuryInterestRedeemed,
+  ytInterestFeeRateSet: schema.ytInterestFeeRateSet,
+  ytMintPYMulti: schema.ytMintPYMulti,
+  ytRedeemPYMulti: schema.ytRedeemPYMulti,
+  ytRedeemPYWithInterest: schema.ytRedeemPYWithInterest,
+  ytFlashMintPY: schema.ytFlashMintPY,
+  marketMint: schema.marketMint,
+  marketBurn: schema.marketBurn,
+  marketBurnWithReceivers: schema.marketBurnWithReceivers,
+  marketSwap: schema.marketSwap,
+  marketImpliedRateUpdated: schema.marketImpliedRateUpdated,
+  marketFeesCollected: schema.marketFeesCollected,
+  marketScalarRootUpdated: schema.marketScalarRootUpdated,
+  marketReserveFeeTransferred: schema.marketReserveFeeTransferred,
+  marketRewardsClaimed: schema.marketRewardsClaimed,
+  marketRewardIndexUpdated: schema.marketRewardIndexUpdated,
+  marketRewardTokenAdded: schema.marketRewardTokenAdded,
+  marketSkim: schema.marketSkim,
+  routerMintPY: schema.routerMintPY,
+  routerRedeemPY: schema.routerRedeemPY,
+  routerAddLiquidity: schema.routerAddLiquidity,
+  routerRemoveLiquidity: schema.routerRemoveLiquidity,
+  routerSwap: schema.routerSwap,
+  routerSwapYT: schema.routerSwapYT,
+  routerRolloverLp: schema.routerRolloverLp,
+} as const satisfies Record<(typeof EVENT_TABLE_NAMES)[number], object>;
+
+const ALL_EVENT_TABLES = EVENT_TABLE_NAMES.map((name) => ({
+  name,
+  table: EVENT_TABLES_BY_NAME[name],
+}));
+
+const EXPORTED_PG_TABLE_NAMES = Object.entries(schema)
+  .filter(([, value]) => is(value, PgTable))
+  .map(([name]) => name)
+  .sort();
 
 describe("Schema Idempotency Constraints", () => {
   describe("All tables have required idempotency columns", () => {
@@ -153,8 +185,12 @@ describe("Schema Idempotency Constraints", () => {
     });
   });
 
-  it("verifies we have all 40 event tables", () => {
-    expect(ALL_EVENT_TABLES).toHaveLength(40);
+  it("verifies we have all 54 event tables", () => {
+    expect(ALL_EVENT_TABLES).toHaveLength(EXPECTED_EVENT_TABLE_COUNT);
+  });
+
+  it("covers every exported pgTable schema table", () => {
+    expect([...EVENT_TABLE_NAMES].sort()).toEqual(EXPORTED_PG_TABLE_NAMES);
   });
 });
 
@@ -377,18 +413,18 @@ describe("Reorg Handling", () => {
 // ============================================================
 
 describe("Complete Table Coverage", () => {
-  it("covers all Factory events (2)", () => {
+  it("covers all Factory events (7)", () => {
     const factoryTables = ALL_EVENT_TABLES.filter((t) =>
       t.name.startsWith("factory")
     );
-    expect(factoryTables).toHaveLength(2);
+    expect(factoryTables).toHaveLength(7);
   });
 
-  it("covers all MarketFactory events (5)", () => {
+  it("covers all MarketFactory events (7)", () => {
     const marketFactoryTables = ALL_EVENT_TABLES.filter((t) =>
       t.name.startsWith("marketFactory")
     );
-    expect(marketFactoryTables).toHaveLength(5);
+    expect(marketFactoryTables).toHaveLength(7);
   });
 
   it("covers all SY events (8)", () => {
@@ -396,22 +432,22 @@ describe("Complete Table Coverage", () => {
     expect(syTables).toHaveLength(8);
   });
 
-  it("covers all YT events (12)", () => {
+  it("covers all YT events (13)", () => {
     const ytTables = ALL_EVENT_TABLES.filter((t) => t.name.startsWith("yt"));
-    expect(ytTables).toHaveLength(12);
+    expect(ytTables).toHaveLength(13);
   });
 
-  it("covers all Market events (7)", () => {
+  it("covers all Market events (12)", () => {
     const marketTables = ALL_EVENT_TABLES.filter(
       (t) => t.name.startsWith("market") && !t.name.startsWith("marketFactory")
     );
-    expect(marketTables).toHaveLength(7);
+    expect(marketTables).toHaveLength(12);
   });
 
-  it("covers all Router events (6)", () => {
+  it("covers all Router events (7)", () => {
     const routerTables = ALL_EVENT_TABLES.filter((t) =>
       t.name.startsWith("router")
     );
-    expect(routerTables).toHaveLength(6);
+    expect(routerTables).toHaveLength(7);
   });
 });

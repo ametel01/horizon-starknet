@@ -8,12 +8,12 @@ This indexer captures all protocol events and stores them in PostgreSQL:
 
 | Indexer | Type | Events |
 |---------|------|--------|
-| factory | Static | YieldContractsCreated, ClassHashesUpdated |
-| market-factory | Static | MarketCreated, MarketClassHashUpdated |
-| router | Static | MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT |
-| sy | Factory | Deposit, Redeem, OracleRateUpdated |
-| yt | Factory | MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached |
-| market | Factory | Mint, Burn, Swap, ImpliedRateUpdated, FeesCollected |
+| factory | Static | YieldContractsCreated, ClassHashesUpdated, RewardFeeRateSet, DefaultInterestFeeRateSet, ExpiryDivisorSet, SYWithRewardsDeployed, SYWithRewardsClassHashUpdated |
+| market-factory | Static | MarketCreated, ClassHashUpdated, TreasuryUpdated, DefaultReserveFeeUpdated, OverrideFeeSet, DefaultRateImpactSensitivityUpdated, YieldContractFactoryUpdated |
+| router | Static | MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT, RolloverLp |
+| sy | Factory | Deposit, Redeem, OracleRateUpdated, NegativeYieldDetected, PauseState, RewardsClaimed, RewardIndexUpdated, RewardTokenAdded |
+| yt | Factory | MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached, PostExpiryDataSet, PyIndexUpdated, TreasuryInterestRedeemed, InterestFeeRateSet, MintPYMulti, RedeemPYMulti, RedeemPYWithInterest, FlashMintPY |
+| market | Factory | Mint, Burn, BurnWithReceivers, Swap, ImpliedRateUpdated, FeesCollected, ScalarRootUpdated, ReserveFeeTransferred, RewardsClaimed, RewardIndexUpdated, RewardTokenAdded, Skim |
 
 ## Prerequisites
 
@@ -159,7 +159,7 @@ Access the MinIO console at http://localhost:9001 to inspect stored DNA data:
 
 The indexer uses [Drizzle ORM](https://orm.drizzle.team/) for database management. Migrations are handled automatically:
 
-1. **Schema Definition**: All 23 event tables are defined in `src/schema/index.ts`
+1. **Schema Definition**: All 54 event tables are defined in `src/schema/index.ts`
 2. **Migration Generation**: Run `bun run db:generate` to create SQL migration files in `drizzle/`
 3. **Auto-Migration on Startup**: When the indexer starts, the Apibara drizzle plugin automatically applies pending migrations
 
