@@ -6,7 +6,7 @@
   branch: codex/issue-84-home-workbench
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-84
   pr: none
-  phase: implementing
+  phase: checking
   cycle: 0/5
   blocker: none
 - issue: #85 Redesign the frontend app chrome and footer colophon
@@ -146,8 +146,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-84`
   - branch: `codex/issue-84-home-workbench`
   - owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
-  - phase: implementing #84
-  - cleanliness: clean at creation from `origin/main`.
+  - phase: checking #84
+  - cleanliness: clean, ahead of `origin/main` by commit `78d50fdd39f7c311a030057da109d6d75253ebf2`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
@@ -175,6 +175,9 @@
 - command: `git show --stat --oneline --decorate --name-only HEAD` in `/Users/alexmetelli/source/horizon-starknet-issue-85`
   result: passed
   evidence: #85 builder committed `48593a6e0b272aca013d6d64e2b3f1e233e90ba7` touching only chrome/footer/navigation e2e/tracker files.
+- command: `git show --stat --oneline --decorate --name-only HEAD` in `/Users/alexmetelli/source/horizon-starknet-issue-84`
+  result: passed
+  evidence: #84 builder committed `78d50fdd39f7c311a030057da109d6d75253ebf2` touching home workbench, navigation/markets e2e, and tracker files.
 - command: `gh issue view 84 --json number,title,state,body,comments,labels,url`
   result: passed
   evidence: issue #84 is OPEN, has no comments, is labeled `agent-ready`, `area:frontend`, `area:design`, `area:tests`, `type:feature`, and `parallel-safe`; body says it was blocked only by #83 and is parallel-safe with #85/#86.
