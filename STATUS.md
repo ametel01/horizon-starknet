@@ -14,7 +14,7 @@
   branch: codex/issue-85-app-chrome-colophon
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
   pr: none
-  phase: implementing
+  phase: checking
   cycle: 0/5
   blocker: none
 - issue: #86 Make market APY details touch-accessible and reduce card glow
@@ -151,8 +151,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  - phase: implementing #85
-  - cleanliness: clean at creation from `origin/main`.
+  - phase: checking #85
+  - cleanliness: clean, ahead of `origin/main` by commit `48593a6e0b272aca013d6d64e2b3f1e233e90ba7`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
@@ -172,6 +172,9 @@
 - command: `multi_agent_v1.spawn_agent` for #84/#85/#86 builders
   result: passed
   evidence: spawned #84 Archimedes `019f45be-d26e-7353-b71d-40b38a523d8b`, #85 Noether `019f45bf-1bba-7fa1-8c82-cb2d3c90160d`, and #86 Sagan `019f45bf-d01f-7a12-8c72-5ad45b68ddce`.
+- command: `git show --stat --oneline --decorate --name-only HEAD` in `/Users/alexmetelli/source/horizon-starknet-issue-85`
+  result: passed
+  evidence: #85 builder committed `48593a6e0b272aca013d6d64e2b3f1e233e90ba7` touching only chrome/footer/navigation e2e/tracker files.
 - command: `gh issue view 84 --json number,title,state,body,comments,labels,url`
   result: passed
   evidence: issue #84 is OPEN, has no comments, is labeled `agent-ready`, `area:frontend`, `area:design`, `area:tests`, `type:feature`, and `parallel-safe`; body says it was blocked only by #83 and is parallel-safe with #85/#86.
