@@ -296,6 +296,36 @@
 ## Blockers
 - none for #84/#85/#86 spec.
 
+## Checker Result - Issue #86
+Status: ALL GREEN
+
+Commands:
+- `pwd && git rev-parse --show-toplevel && git status --short --branch && git branch --show-current && git rev-parse HEAD`: passed; confirmed `/Users/alexmetelli/source/horizon-starknet-issue-86`, branch `codex/issue-86-market-apy-access`, builder commit `fb637d6ac9cf430de48679b6ed5ad94612d205f1`, clean before checker status update.
+- `gh issue view 86 --json number,title,state,body,labels,assignees,url,comments`: passed; issue #86 is open, owns market-card APY/oracle accessibility and glow reduction, and is parallel-safe with #84/#85.
+- `git diff --name-status origin/main...HEAD`: passed; changed files are only `CHANGELOG.md`, `PROGRESS.md`, `STATUS.md`, `packages/frontend/e2e/markets.spec.ts`, and `packages/frontend/src/entities/market/ui/MarketCard.tsx`.
+- `git diff --check origin/main...HEAD`: passed; no whitespace errors.
+- `bun run --cwd packages/frontend format:check`: passed; Biome checked 469 files with no fixes applied.
+- `bun run --cwd packages/frontend lint`: passed; Biome checked 469 files with no fixes applied.
+- `bun run --cwd packages/frontend typecheck`: passed; `tsc --noEmit` completed successfully.
+- `bun run --cwd packages/frontend test`: passed; 476 tests passed, 0 failed, 810 expect calls across 20 files.
+- `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium`: passed; 16/16 Chromium tests passed in 21.5s. Logs still show expected local missing `RPC_URL`/database fallback noise.
+
+Semantic evidence:
+- `MarketCard.tsx` replaces hover-only APY `HoverCard` with a visible `CollapsibleTrigger` button and panel; the trigger is keyboard-focusable, exposes `aria-controls` and Radix `aria-expanded`, and supports pointer/touch click.
+- APY/oracle details remain sourced from existing market fields and helpers: implied APY, current spot APY, oracle badge/detail, `ApyBreakdown`, TWAP/spot rows, exchange rates, negative-yield warning, expiry badge, fees, and Trade PT/Pool links are preserved.
+- Generic APY glow overlay, `card-hover-glow`, broad market-card/yield `transition-all`, hover shadow treatment, and hover-revealed action opacity were removed or narrowed.
+- #84 home workbench files and #85 chrome/footer files were not touched; no contracts, indexer, dependencies, lockfiles, CI, deployment, README addresses, market math, oracle semantics, API, route, or transaction behavior changed.
+- `markets.spec.ts` now asserts the non-hover details path with keyboard Enter and click when advanced market cards render, and confirms Trade PT/Pool links remain visible.
+
+Coverage gaps:
+- Optional `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium` not run because #86 did not change shared navigation, header/footer, mobile nav, or home workbench implementation files.
+- Local e2e environment uses fallback market/RPC behavior due missing `RPC_URL` and database configuration; accepted by existing markets e2e patterns, but final PR CI should remain the source for hosted/build confirmation.
+- `bun run --cwd packages/frontend build` not run; not required by #86 handoff and existing status records a local Next build hang baseline.
+- Packaging note: after the checker pass, `origin/main` is one tracker-only commit ahead (`3fb12999 chore: track wave 2 PRs`, touching `STATUS.md`). Read-only `git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main` predicts a `STATUS.md` conflict around #84/#85/#86 status lines, so coordinator should rebase/reconcile tracker state before opening the #86 PR.
+
+Next Action:
+- Ready for coordinator/maintainer PR packaging for issue #86 after reconciling the tracker-only `origin/main` `STATUS.md` update. Do not approve or open a PR from checker context.
+
 ## Completion Contract - Issue #86
 Issue: #86 Make market APY details touch-accessible and reduce card glow
 Readiness: ready
