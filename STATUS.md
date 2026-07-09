@@ -2,27 +2,27 @@
 
 ## Active Work
 - issue: #84 Replace the home hero with a protocol workbench
-  owner: coordinator
-  branch: pending
-  worktree: pending
+  owner: builder-agent pending spawn
+  branch: codex/issue-84-home-workbench
+  worktree: /Users/alexmetelli/source/horizon-starknet-issue-84
   pr: none
-  phase: ready-for-builder
+  phase: implementing
   cycle: 0/5
   blocker: none
 - issue: #85 Redesign the frontend app chrome and footer colophon
-  owner: coordinator
-  branch: pending
-  worktree: pending
+  owner: builder-agent pending spawn
+  branch: codex/issue-85-app-chrome-colophon
+  worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
   pr: none
-  phase: ready-for-builder
+  phase: implementing
   cycle: 0/5
   blocker: none
 - issue: #86 Make market APY details touch-accessible and reduce card glow
-  owner: coordinator
-  branch: pending
-  worktree: pending
+  owner: builder-agent pending spawn
+  branch: codex/issue-86-market-apy-access
+  worktree: /Users/alexmetelli/source/horizon-starknet-issue-86
   pr: none
-  phase: ready-for-builder
+  phase: implementing
   cycle: 0/5
   blocker: none
 
@@ -143,8 +143,32 @@
   - owner: coordinator
   - phase: coordinating
   - cleanliness: tracked tree clean before this status reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
+- `/Users/alexmetelli/source/horizon-starknet-issue-84`
+  - branch: `codex/issue-84-home-workbench`
+  - owner: builder-agent pending spawn
+  - phase: implementing #84
+  - cleanliness: clean at creation from `origin/main`.
+- `/Users/alexmetelli/source/horizon-starknet-issue-85`
+  - branch: `codex/issue-85-app-chrome-colophon`
+  - owner: builder-agent pending spawn
+  - phase: implementing #85
+  - cleanliness: clean at creation from `origin/main`.
+- `/Users/alexmetelli/source/horizon-starknet-issue-86`
+  - branch: `codex/issue-86-market-apy-access`
+  - owner: builder-agent pending spawn
+  - phase: implementing #86
+  - cleanliness: clean at creation from `origin/main`.
 
 ## Gates
+- command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-84 -b codex/issue-84-home-workbench origin/main`
+  result: passed
+  evidence: created clean #84 worktree at `2c8d23834abe8ad2d9f5790f1fd4431ca1551f9e`.
+- command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-85 -b codex/issue-85-app-chrome-colophon origin/main`
+  result: passed
+  evidence: created clean #85 worktree at `2c8d23834abe8ad2d9f5790f1fd4431ca1551f9e`.
+- command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-86 -b codex/issue-86-market-apy-access origin/main`
+  result: passed
+  evidence: created clean #86 worktree at `2c8d23834abe8ad2d9f5790f1fd4431ca1551f9e`.
 - command: `gh issue view 84 --json number,title,state,body,comments,labels,url`
   result: passed
   evidence: issue #84 is OPEN, has no comments, is labeled `agent-ready`, `area:frontend`, `area:design`, `area:tests`, `type:feature`, and `parallel-safe`; body says it was blocked only by #83 and is parallel-safe with #85/#86.
