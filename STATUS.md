@@ -417,6 +417,63 @@ Coverage gaps:
 Next Action:
 - Ready for coordinator/maintainer PR packaging for issue #86 after reconciling the tracker-only `origin/main` `STATUS.md` update. Do not approve or open a PR from checker context.
 
+## Checker Result - Issue #85
+Status: FAILED
+
+## Commands
+- command: `pwd && git rev-parse --show-toplevel && git status --short --branch --untracked-files=all && git rev-parse HEAD && git branch --show-current`
+  result: passed
+  evidence: confirmed `/Users/alexmetelli/source/horizon-starknet-issue-85`, branch `codex/issue-85-app-chrome-colophon`, HEAD `48593a6e0b272aca013d6d64e2b3f1e233e90ba7`; final status showed branch ahead 1 and behind current `origin/main` by 2.
+- command: `gh issue view 85 --comments --json number,title,state,body,comments,labels,assignees,url`
+  result: passed
+  evidence: issue #85 is open, frontend/design/tests feature scope, parallel-safe with #84/#86, and requires app chrome/footer redesign plus navigation e2e.
+- command: `git diff --name-status origin/main...HEAD && git diff --stat origin/main...HEAD`
+  result: passed
+  evidence: diff is scoped to `CHANGELOG.md`, `PROGRESS.md`, `STATUS.md`, `packages/frontend/e2e/navigation.spec.ts`, and touched layout chrome files `Footer.tsx`, `Header.tsx`, `MobileNav.tsx`, `mode-toggle.tsx`.
+- command: `git diff --name-status origin/main...HEAD -- packages/frontend/src/widgets/hero packages/frontend/src/app/home-page-client.tsx packages/frontend/src/entities/market/ui/MarketCard.tsx packages/frontend/src/entities/market/ui/SimpleMarketCard.tsx`
+  result: passed
+  evidence: no #84 home workbench or #86 market-card/APY files are changed by #85.
+- command: `git diff --check origin/main...HEAD`
+  result: passed
+  evidence: no whitespace conflict markers or whitespace errors in the issue diff.
+- command: `rg --files packages/frontend/src/app | sort`
+  result: passed
+  evidence: footer targets used by #85 exist, including `/docs`, `/docs/risks`, `/docs/mechanics`, `/docs/faq`, `/terms`, and `/privacy`.
+- command: `rg -n "<svg|Product|Learn|Resources|Legal|TVL|volume|users|healthy|live|Mainnet|Sepolia|Devnet|Fork|Alpha protocol|User risk review" packages/frontend/src/shared/layout packages/frontend/e2e/navigation.spec.ts`
+  result: passed
+  evidence: no manual `<svg>` remains in touched chrome; old stock footer labels are only asserted absent in e2e; status copy is network/mode/wallet state plus alpha/risk labels, not fake metrics.
+- command: `bun run --cwd packages/frontend format:check`
+  result: passed
+  evidence: Biome format checked 469 files; no fixes applied.
+- command: `bun run --cwd packages/frontend lint`
+  result: passed
+  evidence: Biome lint checked 469 files; no fixes applied.
+- command: `bun run --cwd packages/frontend typecheck`
+  result: passed
+  evidence: `tsc --noEmit` completed successfully.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: 476 tests passed, 0 failed, 810 expect calls across 20 files.
+- command: `CI=1 bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+  result: passed
+  evidence: 39 Chromium navigation tests passed. Local dev-server logs still include known missing `RPC_URL`/database fallback noise, but no test failed.
+- command: `bun run --cwd packages/frontend check`
+  result: passed
+  evidence: run because #85 changes global shell layout; `tsc --noEmit` passed and Biome checked 469 files with no fixes applied.
+- command: `git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main`
+  result: failed
+  evidence: `STATUS.md` has merge conflicts against current `origin/main` in #85 phase/cleanliness lines because both this branch and the coordinator updated hot status after the branch split.
+
+## Failures
+- `STATUS.md`: PR packaging conflict only. Current #85 code/test scope is green, but the branch is not ready to package until it rebases or merges current `origin/main` and reconciles the `STATUS.md` hot-state conflict.
+
+## Coverage Gaps
+- Did not run `bun run --cwd packages/frontend build`; not required by #85, and repo status records a local baseline Next build hang at `Creating an optimized production build ...`.
+- Did not run contract or indexer gates because #85 touches frontend chrome/e2e/tracker files only.
+
+## Next Action
+- Rebase or merge current `origin/main` into `codex/issue-85-app-chrome-colophon`, reconcile `STATUS.md` only, rerun the frontend checker gates if any source/test files change during conflict resolution, then package the PR.
+
 ## Completion Contract - Issue #86
 Issue: #86 Make market APY details touch-accessible and reduce card glow
 Readiness: ready
