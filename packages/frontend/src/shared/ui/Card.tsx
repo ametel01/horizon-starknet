@@ -34,7 +34,7 @@ function Card({
         // Size variants
         'data-[size=sm]:gap-4 data-[size=sm]:py-4',
         // Micro-interactions: smooth transitions
-        'transition-all duration-200 ease-out',
+        'transition-[background-color,border-color,box-shadow,color,opacity,transform] duration-200 ease-out',
         // Interactive mode: hover effects
         interactive && [
           'cursor-pointer',

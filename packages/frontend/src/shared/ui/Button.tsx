@@ -17,7 +17,7 @@ const buttonVariants = cva(
     // Disabled state
     'disabled:pointer-events-none disabled:opacity-50',
     // Micro-interactions: smooth transitions
-    'transition-all duration-150 ease-out',
+    'transition-[background-color,border-color,box-shadow,color,opacity,transform] duration-150 ease-out',
     // Micro-interactions: active press feedback
     'active:scale-[0.97] active:transition-transform active:duration-75',
     // Group for nested elements

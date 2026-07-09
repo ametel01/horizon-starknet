@@ -65,7 +65,7 @@ export function Header(): React.ReactNode {
                 priority
               />
             </div>
-            <span>Horizon</span>
+            <span className="hidden min-[360px]:inline">Horizon</span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {visibleLinks.map((link) => {
