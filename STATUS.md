@@ -2,7 +2,7 @@
 
 ## Active Work
 - issue: #84 Replace the home hero with a protocol workbench
-  owner: builder-agent pending spawn
+  owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
   branch: codex/issue-84-home-workbench
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-84
   pr: none
@@ -10,7 +10,7 @@
   cycle: 0/5
   blocker: none
 - issue: #85 Redesign the frontend app chrome and footer colophon
-  owner: builder-agent pending spawn
+  owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
   branch: codex/issue-85-app-chrome-colophon
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
   pr: none
@@ -18,7 +18,7 @@
   cycle: 0/5
   blocker: none
 - issue: #86 Make market APY details touch-accessible and reduce card glow
-  owner: builder-agent pending spawn
+  owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
   branch: codex/issue-86-market-apy-access
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-86
   pr: none
@@ -145,17 +145,17 @@
   - cleanliness: tracked tree clean before this status reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-84`
   - branch: `codex/issue-84-home-workbench`
-  - owner: builder-agent pending spawn
+  - owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
   - phase: implementing #84
   - cleanliness: clean at creation from `origin/main`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
-  - owner: builder-agent pending spawn
+  - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
   - phase: implementing #85
   - cleanliness: clean at creation from `origin/main`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
-  - owner: builder-agent pending spawn
+  - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
   - phase: implementing #86
   - cleanliness: clean at creation from `origin/main`.
 
@@ -169,6 +169,9 @@
 - command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-86 -b codex/issue-86-market-apy-access origin/main`
   result: passed
   evidence: created clean #86 worktree at `2c8d23834abe8ad2d9f5790f1fd4431ca1551f9e`.
+- command: `multi_agent_v1.spawn_agent` for #84/#85/#86 builders
+  result: passed
+  evidence: spawned #84 Archimedes `019f45be-d26e-7353-b71d-40b38a523d8b`, #85 Noether `019f45bf-1bba-7fa1-8c82-cb2d3c90160d`, and #86 Sagan `019f45bf-d01f-7a12-8c72-5ad45b68ddce`.
 - command: `gh issue view 84 --json number,title,state,body,comments,labels,url`
   result: passed
   evidence: issue #84 is OPEN, has no comments, is labeled `agent-ready`, `area:frontend`, `area:design`, `area:tests`, `type:feature`, and `parallel-safe`; body says it was blocked only by #83 and is parallel-safe with #85/#86.
