@@ -4,6 +4,7 @@ import { applyRateLimit } from '@shared/server/rate-limit';
 import { sql } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { deriveHealthStatus, EMPTY_INDEXER_STATE, getCurrentStarknetBlock } from './health-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,73 +26,11 @@ interface HealthResponse {
   timestamp: string;
 }
 
-/** Indexer state from database query */
-interface IndexerState {
-  lastIndexedBlock: number | null;
-  currentChainBlock: number | null;
-  lagBlocks: number | null;
-  error: string | null;
-}
-
-/** Empty indexer state when not connected */
-const EMPTY_INDEXER_STATE: IndexerState = {
-  lastIndexedBlock: null,
-  currentChainBlock: null,
-  lagBlocks: null,
-  error: null,
-};
-
-/**
- * Determine health status based on connection and indexer state.
- * Pure function - easy to test and reason about.
- */
-function deriveHealthStatus(
-  connected: boolean,
-  indexerState: IndexerState
-): HealthResponse['status'] {
-  if (!connected) return 'unhealthy';
-  if (indexerState.error) return 'degraded';
-  if (indexerState.lagBlocks !== null && indexerState.lagBlocks > 100) return 'degraded';
-  return 'healthy';
-}
-
-/**
- * Fetch current Starknet block number from RPC
- */
-async function getCurrentStarknetBlock(): Promise<number | null> {
-  // @ts-expect-error TS4111
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
-  if (!rpcUrl) return null;
-
-  try {
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'starknet_blockNumber',
-        params: [],
-        id: 1,
-      }),
-      // Short timeout for health check
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as { result?: number };
-    return data.result ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Fetch indexer state from database.
  * Queries the latest indexed block and compares with chain head.
  */
-async function fetchIndexerState(): Promise<IndexerState> {
+async function fetchIndexerState() {
   try {
     // Get the highest indexed block from airfoil.checkpoints
     const result = await db.execute<{ max_block: string | null }>(
