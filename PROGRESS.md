@@ -7,10 +7,11 @@
 - Target package: `packages/frontend`
 
 ## Current Status
-- Phase: issue #82 ready for checker review
-- Owner: coordinator/builder fallback
-- Next step after #82: checker review, then issue #83 frontend token, motion, and no-overflow foundation
-- GitHub status: live issue/PR state could not be verified from this shell because `gh` reports an invalid stored token and local DNS cannot resolve GitHub hosts.
+- Phase: issue #83 ready for spec
+- Owner: coordinator
+- Last completed issue: #82, merged in PR #88
+- Next step: issue #83 frontend token, motion, and no-overflow foundation
+- GitHub status: verified on 2026-07-09; #82 is closed, #83 through #87 remain open, and no PRs are open after PR #88 merged.
 
 ## Step Checklist
 - [x] Step 0: Progress and Changelog Tracking Setup
@@ -46,8 +47,9 @@
 - 2026-07-09: Created `CHANGELOG.md` with Keep a Changelog 1.0.0 structure and no fake entries.
 - 2026-07-09: Ran the required baseline command. `check` and `test` passed; `build` hung during the Next production build phase and was interrupted after several minutes without additional output.
 - 2026-07-09: Checker reproduced the build hang with a build-only 180-second alarm. Treat the Next build hang as baseline evidence for follow-up, not as a regression from issue #82 tracking setup.
+- 2026-07-09: PR #88 merged and closed issue #82. Issue #83 is now the next unblocked implementation stream.
 
 ## Next-Step Instructions
-- Start issue #83 only after issue #82 has checker approval and the local build hang is either accepted as baseline evidence or reproduced/diagnosed by the checker.
+- Start issue #83 with an issue-spec-agent completion contract before builder assignment.
 - Issue #83 should treat this file and `CHANGELOG.md` as shared root coordination files and update only the relevant progress/changelog entries for its own slice.
 - Do not treat the current GitHub access gap as proof about live issue or PR state; re-run `gh issue list`, `gh pr list`, and issue-specific views after GitHub access is restored.
