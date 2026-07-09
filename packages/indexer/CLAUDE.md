@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Event indexer for Horizon Protocol on Starknet using Apibara DNA with TypeScript. Captures all protocol events and stores them in PostgreSQL using a "one table per event type" architecture with 24 event tables across 6 contracts + 15 database views for analytics.
+Event indexer for Horizon Protocol on Starknet using Apibara DNA with TypeScript. Captures all protocol events and stores them in PostgreSQL using a "one table per event type" architecture with 54 event tables across 6 contracts + 23 database views for analytics.
 
 ## Build Commands
 
@@ -48,20 +48,20 @@ Migrations auto-apply on indexer startup via the Apibara drizzle plugin.
 ### Indexer Types
 
 **Static Contract Indexers** (fixed addresses from `src/lib/constants.ts`):
-- `factory.indexer.ts` - YieldContractsCreated, ClassHashesUpdated
-- `market-factory.indexer.ts` - MarketCreated, MarketClassHashUpdated
-- `router.indexer.ts` - MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT
+- `factory.indexer.ts` - YieldContractsCreated, ClassHashesUpdated, RewardFeeRateSet, DefaultInterestFeeRateSet, ExpiryDivisorSet, SYWithRewardsDeployed, SYWithRewardsClassHashUpdated
+- `market-factory.indexer.ts` - MarketCreated, ClassHashUpdated, TreasuryUpdated, DefaultReserveFeeUpdated, OverrideFeeSet, DefaultRateImpactSensitivityUpdated, YieldContractFactoryUpdated
+- `router.indexer.ts` - MintPY, RedeemPY, AddLiquidity, RemoveLiquidity, Swap, SwapYT, RolloverLp
 
 **Factory Pattern Indexers** (discover contracts dynamically + use `knownContracts` for restarts):
-- `sy.indexer.ts` - Deposit, Redeem, OracleRateUpdated (discovers SY from Factory.YieldContractsCreated)
-- `yt.indexer.ts` - MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached (discovers YT from Factory)
-- `market.indexer.ts` - Mint, Burn, Swap, ImpliedRateUpdated, FeesCollected, ScalarRootUpdated (discovers Markets from MarketFactory)
+- `sy.indexer.ts` - Deposit, Redeem, OracleRateUpdated, NegativeYieldDetected, PauseState, RewardsClaimed, RewardIndexUpdated, RewardTokenAdded (discovers SY from Factory.YieldContractsCreated)
+- `yt.indexer.ts` - MintPY, RedeemPY, RedeemPYPostExpiry, InterestClaimed, ExpiryReached, PostExpiryDataSet, PyIndexUpdated, TreasuryInterestRedeemed, InterestFeeRateSet, MintPYMulti, RedeemPYMulti, RedeemPYWithInterest, FlashMintPY (discovers YT from Factory)
+- `market.indexer.ts` - Mint, Burn, BurnWithReceivers, Swap, ImpliedRateUpdated, FeesCollected, ScalarRootUpdated, ReserveFeeTransferred, RewardsClaimed, RewardIndexUpdated, RewardTokenAdded, Skim (discovers Markets from MarketFactory)
 
 ### Key Files
 
 | Path | Purpose |
 |------|---------|
-| `src/schema/index.ts` | 24 Drizzle ORM tables + 15 view definitions |
+| `src/schema/index.ts` | 54 Drizzle ORM event tables + 23 view definitions |
 | `src/lib/constants.ts` | Network configs with `knownContracts` for factory indexers |
 | `src/lib/utils.ts` | `matchSelector`, `readU256`, `readI256`, `decodeByteArray` |
 | `src/lib/validation.ts` | Zod schemas for runtime event validation |

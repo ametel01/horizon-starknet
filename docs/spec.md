@@ -63,7 +63,7 @@ The system follows a **layered architecture** with three main tiers:
 ┌─────────────────────────────────────────────────────────────────┐
 │                         INDEXER LAYER                           │
 │              Apibara + PostgreSQL + Drizzle ORM                │
-│                    (40 event tables, 23 views)                  │
+│                    (54 event tables, 23 views)                  │
 └─────────────────────────────────────────────────────────────────┘
                                │
                                ▼
@@ -216,7 +216,7 @@ The system follows a **layered architecture** with three main tiers:
 
 #### Data Access Layer (Indexer)
 - **Pattern**: Event sourcing with one table per event type
-- **40 event tables** tracking all contract events
+- **54 event tables** tracking all contract events
 - **23 views** for analytics (9 materialized, 14 enriched/aggregated)
 - **Architecture**: 6 independent indexers (Factory, MarketFactory, Router, SY, YT, Market)
 
@@ -1145,7 +1145,7 @@ This technical specification provides a comprehensive reference for the Horizon 
 - **38 Cairo source files** in `contracts/src/`
 - **48 contract test files** with unit, integration, fuzz, and security tests
 - **14 frontend unit test files** + 3 E2E test files
-- **40 event tables + 23 views** in the indexer database schema
+- **54 event tables + 23 views** in the indexer database schema
 - **6 independent event indexers** processing contract events
 - **15 indexer test files**
 

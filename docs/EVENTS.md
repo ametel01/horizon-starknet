@@ -6,14 +6,18 @@ This document lists all events emitted by Horizon Protocol smart contracts.
 
 | Contract | Event Count |
 |----------|-------------|
-| Router | 6 |
-| Factory | 2 |
-| SY | 3 |
+| Router | 7 |
+| Factory | 7 |
+| SY | 8 |
 | PT | 0 |
-| YT | 5 |
-| MarketFactory | 2 |
-| Market (AMM) | 6 |
-| **Total** | **24** |
+| YT | 13 |
+| MarketFactory | 7 |
+| Market (AMM) | 12 |
+| **Total** | **54** |
+
+Note: The summary reflects current indexer event-table coverage. Detailed field
+sections below are historical summaries and should be expanded in a dedicated
+event-shape documentation pass.
 
 ---
 

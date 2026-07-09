@@ -6,8 +6,8 @@
  * - Enables independent scaling and reorg handling
  * - Optimized indexes per event's query patterns
  *
- * Total: 52 event tables across 6 contracts
- * (includes 4 AMM fee tables for reserve fee tracking and 3 market LP reward tables)
+ * Total: 54 event tables across 6 contracts
+ * (includes admin/config tables, AMM fee tables, and market LP reward tables)
  */
 
 import {
@@ -688,7 +688,7 @@ export const syRewardTokenAdded = pgTable(
 );
 
 // ============================================================
-// YT (YIELD TOKEN) EVENTS (5 tables)
+// YT (YIELD TOKEN) EVENTS (13 tables)
 // ============================================================
 
 export const ytMintPY = pgTable(
@@ -1200,8 +1200,7 @@ export const ytFlashMintPY = pgTable(
 );
 
 // ============================================================
-// MARKET (AMM) EVENTS (8 tables)
-// 7 core + 1 reserve fee transfer table
+// MARKET (AMM) CORE/FEE EVENTS (8 tables)
 // ============================================================
 
 export const marketMint = pgTable(

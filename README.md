@@ -294,7 +294,7 @@ The indexer captures all protocol events from Starknet and stores them in Postgr
 
 - **Runtime**: Bun + Apibara DNA (Starknet indexing framework)
 - **Database**: PostgreSQL 16 (hosted on Railway)
-- **Tables**: 40 event tables + 23 views (9 materialized, 14 enriched/aggregated)
+- **Tables**: 54 event tables + 23 views (9 materialized, 14 enriched/aggregated)
 
 ### Local Development
 
