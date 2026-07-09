@@ -44,6 +44,17 @@ log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+safe_rpc_display() {
+    local rpc_url=$1
+    if [[ -z "$rpc_url" ]]; then
+        echo "not configured"
+    elif [[ "$rpc_url" =~ ^([a-zA-Z][a-zA-Z0-9+.-]*://)([^/@?#]+@)?([^/:?#]+)(:[0-9]+)? ]]; then
+        echo "${BASH_REMATCH[1]}${BASH_REMATCH[3]}${BASH_REMATCH[4]}/..."
+    else
+        echo "configured (hidden)"
+    fi
+}
+
 update_env() {
     local key=$1
     local value=$2
@@ -76,7 +87,7 @@ if [[ -z "$DEPLOYER_ADDRESS" || -z "$DEPLOYER_PRIVATE_KEY" ]]; then
     exit 1
 fi
 
-log_info "RPC: $STARKNET_RPC_URL"
+log_info "RPC: $(safe_rpc_display "$STARKNET_RPC_URL")"
 log_info "Deployer: $DEPLOYER_ADDRESS"
 log_info "Test Recipient: $TEST_RECIPIENT"
 TREASURY_ADDRESS="${TREASURY_ADDRESS:-$DEPLOYER_ADDRESS}"

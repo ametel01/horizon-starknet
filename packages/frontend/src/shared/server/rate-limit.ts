@@ -43,6 +43,10 @@ interface RateLimitResult {
 let redis: Redis | null = null;
 let ratelimitInstances: Map<string, Ratelimit> | null = null;
 
+function isProduction(): boolean {
+  return process.env['NODE_ENV'] === 'production';
+}
+
 function getRedis(): Redis | null {
   if (redis) return redis;
 
@@ -90,9 +94,19 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const limiter = getRatelimiter(config);
 
-  // If Redis is not configured, allow all requests (development mode)
+  // Preserve local development ergonomics, but do not silently expose an
+  // unlimited production RPC proxy when distributed limiting is unavailable.
   if (!limiter) {
     const { requests } = RateLimitConfig[config];
+    if (isProduction() && config === 'RPC') {
+      return {
+        success: false,
+        limit: requests,
+        remaining: 0,
+        reset: Date.now() + 60_000,
+      };
+    }
+
     return {
       success: true,
       limit: requests,

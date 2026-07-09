@@ -28,7 +28,11 @@ cd /path/to/horizon-starknet
 source .env.mainnet
 
 # Verify variables are set
-echo "RPC: $STARKNET_RPC_URL"
+if [[ -n "${STARKNET_RPC_URL:-}" ]]; then
+  echo "RPC: configured"
+else
+  echo "RPC: missing"
+fi
 echo "Deployer: $DEPLOYER_ADDRESS"
 ```
 

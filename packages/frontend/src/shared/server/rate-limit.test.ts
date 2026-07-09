@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import {
+  applyRateLimit,
   checkRateLimit,
   getClientIdentifier,
   getRateLimitHeaders,
@@ -8,11 +9,23 @@ import {
   rateLimitResponse,
 } from './rate-limit';
 
+const originalNodeEnv = process.env['NODE_ENV'];
+const mutableEnv = process.env as Record<string, string | undefined>;
+
 // Mock Upstash Redis to test without actual connection
 beforeEach(() => {
   // Reset environment to ensure consistent test behavior
-  process.env['UPSTASH_REDIS_REST_URL'] = undefined;
-  process.env['UPSTASH_REDIS_REST_TOKEN'] = undefined;
+  mutableEnv['NODE_ENV'] = 'test';
+  mutableEnv['UPSTASH_REDIS_REST_URL'] = undefined;
+  mutableEnv['UPSTASH_REDIS_REST_TOKEN'] = undefined;
+});
+
+afterEach(() => {
+  if (originalNodeEnv === undefined) {
+    mutableEnv['NODE_ENV'] = undefined;
+  } else {
+    mutableEnv['NODE_ENV'] = originalNodeEnv;
+  }
 });
 
 describe('rate-limit', () => {
@@ -46,6 +59,46 @@ describe('rate-limit', () => {
       expect(result.limit).toBe(100);
       expect(result.remaining).toBe(99);
       expect(result.reset).toBeGreaterThan(Date.now());
+    });
+
+    test('allows RPC requests without Redis outside production', async () => {
+      const result = await checkRateLimit('test-ip', 'RPC');
+
+      expect(result.success).toBe(true);
+      expect(result.limit).toBe(60);
+      expect(result.remaining).toBe(59);
+      expect(result.reset).toBeGreaterThan(Date.now());
+    });
+
+    test('blocks RPC requests without Redis in production', async () => {
+      mutableEnv['NODE_ENV'] = 'production';
+
+      const result = await checkRateLimit('test-ip', 'RPC');
+
+      expect(result.success).toBe(false);
+      expect(result.limit).toBe(60);
+      expect(result.remaining).toBe(0);
+      expect(result.reset).toBeGreaterThan(Date.now());
+    });
+
+    test('returns a rate-limit response for production RPC when Redis is missing', async () => {
+      mutableEnv['NODE_ENV'] = 'production';
+      const request = new Request('http://localhost/api/rpc');
+
+      const response = await applyRateLimit(request, 'RPC');
+
+      expect(response).not.toBeNull();
+      expect(response?.status).toBe(429);
+    });
+
+    test('keeps non-RPC production requests unblocked when Redis is missing', async () => {
+      mutableEnv['NODE_ENV'] = 'production';
+
+      const result = await checkRateLimit('test-ip', 'PUBLIC');
+
+      expect(result.success).toBe(true);
+      expect(result.limit).toBe(100);
+      expect(result.remaining).toBe(99);
     });
 
     test('uses correct limit for each config', async () => {
