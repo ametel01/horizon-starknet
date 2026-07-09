@@ -1725,8 +1725,9 @@ pub mod Router {
             let aggregator = IAggregatorRouterDispatcher {
                 contract_address: output.swap_data.aggregator,
             };
-            let token_out_received = aggregator
-                .swap(
+            let token_out_received = self
+                ._swap_output_through_aggregator(
+                    aggregator,
                     underlying,
                     output.token,
                     underlying_received,
@@ -1737,9 +1738,6 @@ pub mod Router {
 
             // Clear aggregator approval to prevent approval griefing
             underlying_contract.approve(output.swap_data.aggregator, 0);
-
-            // Verify aggregator returned tokens and slippage check
-            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
             // Emit swap event
             self
@@ -1940,8 +1938,9 @@ pub mod Router {
             let aggregator = IAggregatorRouterDispatcher {
                 contract_address: output.swap_data.aggregator,
             };
-            let token_out_received = aggregator
-                .swap(
+            let token_out_received = self
+                ._swap_output_through_aggregator(
+                    aggregator,
                     underlying,
                     output.token,
                     underlying_received,
@@ -1952,9 +1951,6 @@ pub mod Router {
 
             // Clear aggregator approval to prevent approval griefing
             underlying_contract.approve(output.swap_data.aggregator, 0);
-
-            // Verify aggregator returned tokens and slippage check
-            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
             // Emit event
             self
@@ -2007,8 +2003,9 @@ pub mod Router {
             let aggregator = IAggregatorRouterDispatcher {
                 contract_address: input.swap_data.aggregator,
             };
-            let token_out_received = aggregator
-                .swap(
+            let token_out_received = self
+                ._swap_output_through_aggregator(
+                    aggregator,
                     input.token,
                     output.token,
                     input.amount,
@@ -2019,12 +2016,6 @@ pub mod Router {
 
             // 4. Clear aggregator approval to prevent approval griefing
             token_in_contract.approve(input.swap_data.aggregator, 0);
-
-            // 5. Verify aggregator returned tokens
-            assert(token_out_received > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
-
-            // 6. Verify slippage
-            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
             self.reentrancy_guard.end();
             token_out_received
@@ -2469,8 +2460,9 @@ pub mod Router {
             let aggregator = IAggregatorRouterDispatcher {
                 contract_address: output.swap_data.aggregator,
             };
-            let token_out_received = aggregator
-                .swap(
+            let token_out_received = self
+                ._swap_output_through_aggregator(
+                    aggregator,
                     underlying,
                     output.token,
                     underlying_received,
@@ -2481,9 +2473,6 @@ pub mod Router {
 
             // Clear aggregator approval to prevent approval griefing
             underlying_contract.approve(output.swap_data.aggregator, 0);
-
-            // Verify aggregator returned tokens and slippage check
-            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
             // Emit event
             self
@@ -2565,8 +2554,9 @@ pub mod Router {
             let aggregator = IAggregatorRouterDispatcher {
                 contract_address: output.swap_data.aggregator,
             };
-            let token_out_received = aggregator
-                .swap(
+            let token_out_received = self
+                ._swap_output_through_aggregator(
+                    aggregator,
                     underlying,
                     output.token,
                     underlying_received,
@@ -2577,9 +2567,6 @@ pub mod Router {
 
             // Clear aggregator approval to prevent approval griefing
             underlying_contract.approve(output.swap_data.aggregator, 0);
-
-            // Verify aggregator returned tokens and slippage check
-            assert(token_out_received >= output.min_amount, Errors::ROUTER_SLIPPAGE_EXCEEDED);
 
             // Emit event
             self
@@ -2603,6 +2590,37 @@ pub mod Router {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        /// Swap through an output-side aggregator and verify tokens actually reached the router.
+        fn _swap_output_through_aggregator(
+            ref self: ContractState,
+            aggregator: IAggregatorRouterDispatcher,
+            token_in: ContractAddress,
+            token_out: ContractAddress,
+            amount_in: u256,
+            min_amount_out: u256,
+            receiver: ContractAddress,
+            calldata: Span<felt252>,
+        ) -> u256 {
+            let this = get_contract_address();
+            let token_out_contract = IERC20Dispatcher { contract_address: token_out };
+            let balance_before = token_out_contract.balance_of(this);
+
+            let _reported_amount = aggregator
+                .swap(token_in, token_out, amount_in, min_amount_out, this, calldata);
+
+            let balance_after = token_out_contract.balance_of(this);
+            let actual_out = balance_after - balance_before;
+
+            assert(actual_out > 0, Errors::ROUTER_AGGREGATOR_SWAP_FAILED);
+            assert(actual_out >= min_amount_out, Errors::ROUTER_SLIPPAGE_EXCEEDED);
+            assert(
+                token_out_contract.transfer(receiver, actual_out),
+                Errors::ROUTER_AGGREGATOR_SWAP_FAILED,
+            );
+
+            actual_out
+        }
+
         /// Calculate optimal SY amount to swap for PT before adding liquidity
         /// Uses binary search to find swap amount that fully utilizes all tokens
         /// @param amount_sy_total Total SY available

@@ -15,6 +15,10 @@ pub mod MockAggregator {
         /// Exchange rates: (token_in, token_out) => rate in WAD
         /// rate represents how many token_out per 1 token_in (scaled by WAD)
         exchange_rates: Map<(ContractAddress, ContractAddress), u256>,
+        /// Test-only override for aggregators that report one amount and deliver another
+        lie_enabled: Map<(ContractAddress, ContractAddress), bool>,
+        reported_amounts: Map<(ContractAddress, ContractAddress), u256>,
+        delivered_amounts: Map<(ContractAddress, ContractAddress), u256>,
     }
 
     #[event]
@@ -73,6 +77,20 @@ pub mod MockAggregator {
         ) -> u256 {
             self.exchange_rates.read((token_in, token_out))
         }
+
+        /// Configure a dishonest output for tests.
+        /// The aggregator returns reported_amount but only mints delivered_amount.
+        fn set_reported_output(
+            ref self: ContractState,
+            token_in: ContractAddress,
+            token_out: ContractAddress,
+            reported_amount: u256,
+            delivered_amount: u256,
+        ) {
+            self.lie_enabled.write((token_in, token_out), true);
+            self.reported_amounts.write((token_in, token_out), reported_amount);
+            self.delivered_amounts.write((token_in, token_out), delivered_amount);
+        }
     }
 
     #[abi(embed_v0)]
@@ -100,12 +118,22 @@ pub mod MockAggregator {
             // Silence unused variable warning
             let _ = calldata;
             // Look up the configured exchange rate
-            let rate = self.exchange_rates.read((token_in, token_out));
-            assert(rate > 0, 'MockAggregator: rate not set');
+            let (reported_amount, delivered_amount) = if self
+                .lie_enabled
+                .read((token_in, token_out)) {
+                (
+                    self.reported_amounts.read((token_in, token_out)),
+                    self.delivered_amounts.read((token_in, token_out)),
+                )
+            } else {
+                let rate = self.exchange_rates.read((token_in, token_out));
+                assert(rate > 0, 'MockAggregator: rate not set');
 
-            // Calculate output amount: amount_out = amount_in * rate / WAD
-            let amount_out = (amount_in * rate) / WAD;
-            assert(amount_out >= min_amount_out, 'MockAggregator: slippage');
+                // Calculate output amount: amount_out = amount_in * rate / WAD
+                let amount_out = (amount_in * rate) / WAD;
+                (amount_out, amount_out)
+            };
+            assert(reported_amount >= min_amount_out, 'MockAggregator: slippage');
 
             let caller = get_caller_address();
             let this = get_contract_address();
@@ -116,11 +144,16 @@ pub mod MockAggregator {
 
             // Mint output tokens to receiver (mock behavior - simulates swap)
             let token_out_dispatcher = IMockERC20Dispatcher { contract_address: token_out };
-            token_out_dispatcher.mint(receiver, amount_out);
+            if delivered_amount > 0 {
+                token_out_dispatcher.mint(receiver, delivered_amount);
+            }
 
-            self.emit(Swap { token_in, token_out, amount_in, amount_out, receiver });
+            self
+                .emit(
+                    Swap { token_in, token_out, amount_in, amount_out: reported_amount, receiver },
+                );
 
-            amount_out
+            reported_amount
         }
     }
 }
@@ -137,4 +170,13 @@ pub trait IMockAggregator<TContractState> {
     fn get_exchange_rate(
         self: @TContractState, token_in: ContractAddress, token_out: ContractAddress,
     ) -> u256;
+
+    /// Configure a dishonest output for tests.
+    fn set_reported_output(
+        ref self: TContractState,
+        token_in: ContractAddress,
+        token_out: ContractAddress,
+        reported_amount: u256,
+        delivered_amount: u256,
+    );
 }

@@ -221,6 +221,47 @@ fn mint_external_token_to_user(
     external_token.mint(user, amount);
 }
 
+// ============ swap_tokens_to_tokens Tests ============
+
+#[test]
+#[should_panic(expected: ('HZN: slippage exceeded',))]
+fn test_swap_tokens_to_tokens_rejects_lying_aggregator_output() {
+    let (underlying, _, _, _, _, _, router, aggregator, external_token) = deploy_test_stack();
+    let user = user1();
+
+    let token_amount = 10 * WAD;
+    let reported_amount = 10 * WAD;
+    let delivered_amount = 5 * WAD;
+
+    mint_external_token_to_user(external_token, user, token_amount);
+
+    start_cheat_caller_address(external_token.contract_address, user);
+    external_token.approve(router.contract_address, token_amount);
+    stop_cheat_caller_address(external_token.contract_address);
+
+    aggregator
+        .set_reported_output(
+            external_token.contract_address,
+            underlying.contract_address,
+            reported_amount,
+            delivered_amount,
+        );
+
+    let input = TokenInput {
+        token: external_token.contract_address,
+        amount: token_amount,
+        swap_data: SwapData { aggregator: aggregator.contract_address, calldata: array![].span() },
+    };
+    let output = TokenOutput {
+        token: underlying.contract_address,
+        min_amount: reported_amount,
+        swap_data: SwapData { aggregator: aggregator.contract_address, calldata: array![].span() },
+    };
+
+    start_cheat_caller_address(router.contract_address, user);
+    router.swap_tokens_to_tokens(input, output, user, DEFAULT_DEADLINE);
+}
+
 // ============ swap_exact_token_for_pt Tests ============
 
 #[test]
