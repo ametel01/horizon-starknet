@@ -10,10 +10,10 @@ import { useUIMode } from '@shared/theme/ui-mode-context';
 import { buttonVariants } from '@shared/ui/Button';
 import { Badge } from '@shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/Card';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@shared/ui/hover-card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@shared/ui/Collapsible';
 import { RateSparkline } from '@widgets/analytics/RateSparkline';
 import { ExpiryBadge } from '@widgets/display/ExpiryCountdown';
-import { Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { memo, type ReactNode, useMemo } from 'react';
 
@@ -92,7 +92,7 @@ const YieldBar = memo(function YieldBar({ apy }: { apy: number }): ReactNode {
   return (
     <div className="bg-muted h-1.5 overflow-hidden rounded-full">
       <div
-        className="from-chart-1 to-primary h-full rounded-full bg-gradient-to-r transition-all duration-500"
+        className="from-chart-1 to-primary h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
         style={{ width: `${String(width)}%` }}
       />
     </div>
@@ -100,15 +100,13 @@ const YieldBar = memo(function YieldBar({ apy }: { apy: number }): ReactNode {
 });
 
 /**
- * MarketCard - Redesigned with visual hierarchy and yield indicators
+ * MarketCard - compact market summary with accessible APY details
  *
  * Features:
- * - Yield intensity glow that scales with APY
  * - Token icon placeholder
- * - APY hero display with gradient
+ * - APY hero display with explicit disclosure for details
  * - Visual yield bar
  * - Compact 2-column stats grid
- * - Hover effects and animations
  *
  * Memoized to prevent re-renders when parent list updates
  */
@@ -125,11 +123,13 @@ export const MarketCard = memo(function MarketCard({
 
   // Calculate APY percentage for display and effects
   const apyPercent = useMemo(() => market.impliedApy.toNumber() * 100, [market.impliedApy]);
+  const oracleStatus = useMemo(() => buildOracleStatus(market), [market]);
+  const detailsId = useMemo(
+    () => `market-apy-details-${market.address.replace(/[^a-zA-Z0-9_-]/g, '-')}`,
+    [market.address]
+  );
 
-  // Glow intensity scales with APY (capped at 20% APY = max glow)
-  const glowOpacity = useMemo(() => Math.min(apyPercent / 20, 1), [apyPercent]);
-
-  // Get APY breakdown for hover display
+  // Get APY breakdown for the explicit disclosure panel.
   const { data: apyBreakdown } = useApyBreakdown(market);
 
   // Fetch live exchange rates from RouterStatic (updates every 30s)
@@ -141,180 +141,213 @@ export const MarketCard = memo(function MarketCard({
 
   return (
     <Card
+      data-testid="market-card"
       className={cn(
-        'group relative overflow-hidden',
-        'transition-all duration-300',
-        'hover:shadow-primary/5 hover:shadow-lg',
-        'card-hover-glow',
+        'relative overflow-hidden',
+        'transition-[border-color,box-shadow] duration-200',
+        'hover:ring-foreground/20 focus-within:ring-ring/40',
         isRecommended && 'ring-primary/30 ring-2',
         className
       )}
     >
-      {/* Yield intensity glow overlay - stronger for higher APY */}
-      <div
-        className="from-primary/0 via-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:to-primary/10 pointer-events-none absolute inset-0 bg-gradient-to-br transition-all duration-500 group-hover:via-transparent"
-        style={{ opacity: glowOpacity }}
-        aria-hidden="true"
-      />
-
-      <CardHeader className="relative pb-2">
-        <div className="flex items-start justify-between gap-3">
-          {/* Token info with icon */}
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <CardTitle className="flex items-center gap-2">
-              {/* Token icon placeholder */}
-              <div className="bg-primary/10 flex size-9 flex-shrink-0 items-center justify-center rounded-full">
-                <span className="text-primary font-mono text-xs">PT</span>
-              </div>
-              <div className="min-w-0 overflow-hidden">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="truncate text-base font-semibold">PT-{tokenSymbol}</span>
-                  {isRecommended && (
-                    <Badge
-                      variant="default"
-                      className="bg-primary text-primary-foreground gap-0.5 px-1.5 py-0 text-[10px]"
-                    >
-                      <Sparkles className="size-2.5" aria-hidden="true" />
-                      <span>Top</span>
-                    </Badge>
-                  )}
-                  <AssetTypeBadge syAddress={market.syAddress} />
-                  <NegativeYieldWarning syAddress={market.syAddress} variant="badge" />
-                  <ExpiryBadge expiryTimestamp={market.expiry} />
+      <Collapsible>
+        <CardHeader className="relative pb-2">
+          <div className="flex items-start justify-between gap-3">
+            {/* Token info with icon */}
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <CardTitle className="flex items-center gap-2">
+                {/* Token icon placeholder */}
+                <div className="bg-primary/10 flex size-9 flex-shrink-0 items-center justify-center rounded-full">
+                  <span className="text-primary font-mono text-xs">PT</span>
                 </div>
-                <p className="text-muted-foreground mt-0.5 truncate text-xs">{tokenName}</p>
-              </div>
-            </CardTitle>
-          </div>
+                <div className="min-w-0 overflow-hidden">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="truncate text-base font-semibold">PT-{tokenSymbol}</span>
+                    {isRecommended && (
+                      <Badge
+                        variant="default"
+                        className="bg-primary text-primary-foreground gap-0.5 px-1.5 py-0 text-[10px]"
+                      >
+                        <Sparkles className="size-2.5" aria-hidden="true" />
+                        <span>Top</span>
+                      </Badge>
+                    )}
+                    <AssetTypeBadge syAddress={market.syAddress} />
+                    <NegativeYieldWarning syAddress={market.syAddress} variant="badge" />
+                    <ExpiryBadge expiryTimestamp={market.expiry} />
+                  </div>
+                  <p className="text-muted-foreground mt-0.5 truncate text-xs">{tokenName}</p>
+                </div>
+              </CardTitle>
+            </div>
 
-          {/* APY Hero Display - compact with hover breakdown and oracle status */}
-          <HoverCard>
-            <HoverCardTrigger className="flex-shrink-0 cursor-help text-right">
+            <CollapsibleTrigger
+              type="button"
+              aria-controls={detailsId}
+              aria-label={`Toggle APY details for PT-${tokenSymbol}`}
+              data-testid="market-apy-details-trigger"
+              className={cn(
+                'group/details flex-shrink-0 rounded-lg border px-3 py-2 text-right',
+                'border-border/70 bg-surface-sunken/60 hover:border-primary/30 hover:bg-muted/60',
+                'data-[state=open]:border-primary/40 data-[state=open]:bg-primary/5'
+              )}
+            >
               <div className="flex items-center justify-end gap-1">
                 <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
                   APY
                 </span>
-                <OracleStatusBadge status={buildOracleStatus(market)} className="text-[10px]" />
+                <OracleStatusBadge status={oracleStatus} className="text-[10px]" />
               </div>
-              <div className="text-primary font-mono text-xl font-semibold tabular-nums">
+              <span className="text-primary block font-mono text-xl font-semibold tabular-nums">
                 {apyPercent >= 0 ? '+' : ''}
                 {apyPercent.toFixed(1)}%
-              </div>
+              </span>
               {market.oracleState !== 'spot-only' && (
-                <div className="text-muted-foreground text-[10px]">
+                <span className="text-muted-foreground block text-[10px]">
                   Current: {formatApyWithStatus(market.spotImpliedApy.toNumber())}
-                </div>
+                </span>
               )}
-            </HoverCardTrigger>
-            {apyBreakdown && (
-              <HoverCardContent side="top" align="end" className="w-80">
-                <div className="space-y-2">
+              <span className="text-muted-foreground flex items-center justify-end gap-1 text-[10px]">
+                Details
+                <ChevronDown
+                  className="size-3 transition-transform duration-150 group-data-[state=open]/details:rotate-180"
+                  aria-hidden="true"
+                />
+              </span>
+            </CollapsibleTrigger>
+          </div>
+        </CardHeader>
+
+        <CardContent className="relative">
+          {/* Visual yield bar */}
+          <div className="mb-4">
+            <YieldBar apy={apyPercent} />
+          </div>
+
+          <CollapsibleContent id={detailsId}>
+            <div
+              data-testid="market-apy-details-panel"
+              className="border-border/70 bg-surface-sunken/40 mb-4 space-y-3 rounded-lg border p-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
                   <div className="text-foreground text-sm font-medium">APY Breakdown</div>
-                  <ApyBreakdown breakdown={apyBreakdown} view="pt" />
-                  {market.oracleState !== 'spot-only' && (
-                    <div className="border-border mt-2 border-t pt-2">
-                      <div className="text-muted-foreground flex items-center justify-between text-xs">
-                        <span>TWAP Rate ({market.twapDuration / 60}m)</span>
-                        <span className="font-medium">
-                          {formatApyWithStatus(market.twapImpliedApy.toNumber())}
-                        </span>
-                      </div>
-                      <div className="text-muted-foreground flex items-center justify-between text-xs">
-                        <span>Spot Rate</span>
-                        <span className="font-medium">
-                          {formatApyWithStatus(market.spotImpliedApy.toNumber())}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1 text-xs">
+                    <span>Oracle source:</span>
+                    <OracleStatusBadge status={oracleStatus} showDetails />
+                  </div>
                 </div>
-              </HoverCardContent>
-            )}
-          </HoverCard>
-        </div>
-      </CardHeader>
+                <div className="text-right">
+                  <div className="text-muted-foreground text-xs">Implied APY</div>
+                  <div className="text-primary font-mono text-sm font-medium">
+                    {formatApyWithStatus(market.impliedApy.toNumber())}
+                  </div>
+                </div>
+              </div>
 
-      <CardContent className="relative">
-        {/* Visual yield bar */}
-        <div className="mb-4">
-          <YieldBar apy={apyPercent} />
-        </div>
+              {apyBreakdown ? (
+                <ApyBreakdown breakdown={apyBreakdown} view="pt" />
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  APY breakdown is loading from the current market state.
+                </p>
+              )}
 
-        {/* Compact stats grid - 2 columns */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <StatRow label="TVL">
-            <TokenAmount
-              amount={market.tvlSy}
-              symbol={tokenSymbol}
-              compact
-              className="metric text-foreground"
-            />
-          </StatRow>
+              <div className="border-border space-y-1.5 border-t pt-2">
+                {market.oracleState !== 'spot-only' && (
+                  <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">
+                    <span>TWAP Rate ({market.twapDuration / 60}m)</span>
+                    <span className="font-medium">
+                      {formatApyWithStatus(market.twapImpliedApy.toNumber())}
+                    </span>
+                  </div>
+                )}
+                <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">
+                  <span>Spot Rate</span>
+                  <span className="font-medium">
+                    {formatApyWithStatus(market.spotImpliedApy.toNumber())}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
 
-          <StatRow label="Liquidity">
-            <TokenAmount
-              amount={market.state.syReserve}
-              symbol={tokenSymbol}
-              compact
-              className="metric text-foreground"
-            />
-          </StatRow>
-
-          <StatRow label="Days Left">
-            <span className="metric text-foreground">
-              {market.isExpired ? 'Expired' : Math.round(market.daysToExpiry)}
-            </span>
-          </StatRow>
-
-          <StatRow label="7d Trend">
-            <RateSparkline
-              marketAddress={market.address}
-              width={56}
-              height={20}
-              days={7}
-              showChange
-            />
-          </StatRow>
-
-          {/* Protocol Fees (Advanced mode only) */}
-          {isAdvanced && market.state.feesCollected > 0n && (
-            <StatRow label="Fees">
+          {/* Compact stats grid - 2 columns */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <StatRow label="TVL">
               <TokenAmount
-                amount={market.state.feesCollected}
+                amount={market.tvlSy}
                 symbol={tokenSymbol}
                 compact
                 className="metric text-foreground"
               />
             </StatRow>
+
+            <StatRow label="Liquidity">
+              <TokenAmount
+                amount={market.state.syReserve}
+                symbol={tokenSymbol}
+                compact
+                className="metric text-foreground"
+              />
+            </StatRow>
+
+            <StatRow label="Days Left">
+              <span className="metric text-foreground">
+                {market.isExpired ? 'Expired' : Math.round(market.daysToExpiry)}
+              </span>
+            </StatRow>
+
+            <StatRow label="7d Trend">
+              <RateSparkline
+                marketAddress={market.address}
+                width={56}
+                height={20}
+                days={7}
+                showChange
+              />
+            </StatRow>
+
+            {/* Protocol Fees (Advanced mode only) */}
+            {isAdvanced && market.state.feesCollected > 0n && (
+              <StatRow label="Fees">
+                <TokenAmount
+                  amount={market.state.feesCollected}
+                  symbol={tokenSymbol}
+                  compact
+                  className="metric text-foreground"
+                />
+              </StatRow>
+            )}
+          </div>
+
+          {/* Live Exchange Rates (Advanced mode only) */}
+          {isAdvanced && (
+            <MarketRates
+              rates={exchangeRates}
+              isLoading={isRatesLoading && !exchangeRates}
+              isAvailable={!isRatesError}
+              className="border-border/50 mt-4 border-t pt-3"
+            />
           )}
-        </div>
 
-        {/* Live Exchange Rates (Advanced mode only) */}
-        {isAdvanced && (
-          <MarketRates
-            rates={exchangeRates}
-            isLoading={isRatesLoading && !exchangeRates}
-            isAvailable={!isRatesError}
-            className="border-border/50 mt-4 border-t pt-3"
-          />
-        )}
-
-        {/* Action buttons with hover reveal */}
-        <div className="mt-4 flex gap-2 opacity-80 transition-opacity group-hover:opacity-100">
-          <Link
-            href={`/trade?market=${market.address}`}
-            className={cn(buttonVariants({ variant: 'default' }), 'flex-1')}
-          >
-            Trade PT
-          </Link>
-          <Link
-            href={`/pools?market=${market.address}`}
-            className={cn(buttonVariants({ variant: 'outline' }), 'flex-1')}
-          >
-            Pool
-          </Link>
-        </div>
-      </CardContent>
+          {/* Action buttons */}
+          <div className="mt-4 flex gap-2">
+            <Link
+              href={`/trade?market=${market.address}`}
+              className={cn(buttonVariants({ variant: 'default' }), 'flex-1')}
+            >
+              Trade PT
+            </Link>
+            <Link
+              href={`/pools?market=${market.address}`}
+              className={cn(buttonVariants({ variant: 'outline' }), 'flex-1')}
+            >
+              Pool
+            </Link>
+          </div>
+        </CardContent>
+      </Collapsible>
     </Card>
   );
 });
