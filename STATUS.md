@@ -1,39 +1,31 @@
 # Agent Team Status
 
 ## Active Work
-- issue: #84 Replace the home hero with a protocol workbench
-  owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
-  branch: codex/issue-84-home-workbench
-  worktree: /Users/alexmetelli/source/horizon-starknet-issue-84
-  pr: https://github.com/ametel01/horizon-starknet/pull/91
-  phase: waiting-ci
-  cycle: 0/5
-  blocker: none
 - issue: #85 Redesign the frontend app chrome and footer colophon
   owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
   branch: codex/issue-85-app-chrome-colophon
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
   pr: https://github.com/ametel01/horizon-starknet/pull/90
-  phase: waiting-ci
+  phase: rebase-needed
   cycle: 0/5
-  blocker: none
+  blocker: PR #90 is merge-dirty after #91 merged; rebase branch on current `origin/main`, rerun focused checks, renew review, then merge.
 
 ## Target Queue
 - repo: `ametel01/horizon-starknet`
 - completed:
   - #82 Set up tracking and capture frontend redesign baseline
   - #83 Establish frontend token, motion, and no-overflow foundation
+  - #84 Replace the home hero with a protocol workbench
   - #86 Make market APY details touch-accessible and reduce card glow
 - remaining:
-  - #84 Replace the home hero with a protocol workbench
   - #85 Redesign the frontend app chrome and footer colophon
   - #87 Verify the Hallmark frontend redesign against gates and viewports
 
 ## Dependency Graph
 - wave 0: #82 closed by PR #88
 - wave 1: #83 closed by PR #89
-- wave 2: #86 closed by PR #92; #84 and #85 remain active after #83
-- wave 3: #87 blocked by #84 and #85
+- wave 2: #84 closed by PR #91; #86 closed by PR #92; #85 remains active after #83
+- wave 3: #87 blocked by #85
 
 ## Completion Contract
 - issue: #84 Replace the home hero with a protocol workbench
@@ -124,7 +116,7 @@
     - Avoid #84-owned `HeroSection.tsx` / home workbench behavior and #86-owned `MarketCard.tsx` / APY detail behavior unless a narrow layout integration is unavoidable and documented.
   dependency blockers:
     - None. #82 is closed by PR #88 and #83 is closed by PR #89; #85 is unblocked and parallel-safe with #84 and #86.
-    - #87 remains downstream and should stay blocked until #84, #85, and #86 merge.
+    - #87 remains downstream and should stay blocked until #85 merges.
   open questions:
     - What exact protocol status should the header expose if the existing indexer health banner is hidden by `showOnlyIssues={true}`? Default to existing health/status data only and avoid invented live claims.
     - Should advanced-only routes be visible but disabled in simple mode, or stay hidden as today? Default to preserving current behavior unless the issue owner clarifies.
@@ -134,17 +126,17 @@
   - branch: `main`
   - owner: coordinator
   - phase: coordinating
-  - cleanliness: tracked tree clean before this status reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
+  - cleanliness: tracked tree clean after post-#91 reconciliation commit; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-84`
   - branch: `codex/issue-84-home-workbench`
   - owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
-  - phase: approved #84 / PR #91
-  - cleanliness: clean before maintainer-reviewer status update; branch contains implementation commit `ae738c05` plus checker-status commit `d8210edd`.
+  - phase: merged #84 / cleanup pending
+  - cleanliness: dirty local `STATUS.md` renewed-review evidence update after PR #91 merged; preserve worktree until coordinator records or explicitly discards it.
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  - phase: waiting-ci #85 / PR #90
-  - cleanliness: clean, pushed as PR #90; branch contains implementation commit `65e69717` plus checker-status commits `90298be6` and `683e4288`.
+  - phase: rebase-needed #85 / PR #90
+  - cleanliness: clean before #90 rebase; branch head `b7b4bf30f449215a4be437697b4b820f86c2a5d3`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
@@ -251,6 +243,15 @@
 - command: `gh pr review 91 --comment --body-file -`
   result: passed
   evidence: submitted maintainer-reviewer evidence review `4661113927` at https://github.com/ametel01/horizon-starknet/pull/91#pullrequestreview-4661113927 with explicit `Decision: APPROVE`; this evidence belongs to pre-rebase head `d8210edd1d1f0ec10808f0c93381e0e931f80bb2` and must be renewed after the #92 rebase force-push.
+- command: `gh pr view 91 --json closingIssuesReferences,body,headRefOid,mergeStateStatus,reviewDecision,state,isDraft,url`
+  result: passed
+  evidence: pre-merge context gate passed for head `68e0969d1d89c723b7091f4e6dbbe5369c7065fe`; PR #91 closed only #84 and merge state was `CLEAN`.
+- command: `gh pr checks 91 --watch=false`
+  result: passed
+  evidence: Build, Code Quality, Unit Tests, E2E Tests, Quality Checks, Secret Scanning, Socket, GitGuardian, Vercel, and CodeRabbit passed; deploy jobs were skipped/ignored as expected.
+- command: `gh pr merge 91 --squash --delete-branch`
+  result: remote merge passed; local command exited 1 only because branch deletion failed while `codex/issue-84-home-workbench` remained checked out in `/Users/alexmetelli/source/horizon-starknet-issue-84`.
+  evidence: PR #91 is MERGED at 2026-07-09T08:28:04Z with merge commit `245e50f5df8f642f18b8e3397eb92f2e09daf586`; issue #84 closed at 2026-07-09T08:28:05Z.
 
 ## Handoffs
 - from: maintainer-reviewer
@@ -367,7 +368,7 @@
   next-action: Spec #84, #85, and #86 before assigning builders.
 
 ## Blockers
-- none for #84/#85/#86 spec.
+- PR #90 for issue #85 is merge-dirty after PR #91 merged. Next action: rebase `/Users/alexmetelli/source/horizon-starknet-issue-85` on current `origin/main`, resolve shared tracker conflicts, rerun focused gates, force-push, wait for fresh CI/CodeRabbit, renew review, and merge.
 
 ## Checker Result - Issue #86
 Status: ALL GREEN
@@ -437,7 +438,7 @@ Do Not Touch:
 Dependency Blockers:
 - #82 is closed by PR #88, and #83 is closed by PR #89; no active dependency blocker remains for #86.
 - #84 and #85 may proceed in parallel later; coordinate if both branches touch home market-list expectations or shared viewport assertions.
-- #87 remains downstream and should stay blocked until #84, #85, and #86 merge.
+- #87 remains downstream and should stay blocked until #85 merges.
 Open Questions:
 - None blocking. Builder may choose the exact pattern, but it must be checkable by keyboard/touch, such as a visible compact details row, an accessible disclosure, or a tap-open panel.
 
@@ -457,3 +458,7 @@ Open Questions:
   pr: https://github.com/ametel01/horizon-starknet/pull/89
   merge: 09320febb24a50ca183aa8f2aaf8a13ccc6a3ced
   final-review: https://github.com/ametel01/horizon-starknet/pull/89#pullrequestreview-4660641271
+- issue: #84 Replace the home hero with a protocol workbench
+  pr: https://github.com/ametel01/horizon-starknet/pull/91
+  merge: 245e50f5df8f642f18b8e3397eb92f2e09daf586
+  final-review: https://github.com/ametel01/horizon-starknet/pull/91#pullrequestreview-4661240607
