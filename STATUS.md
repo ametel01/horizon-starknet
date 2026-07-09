@@ -5,16 +5,16 @@
   owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
   branch: codex/issue-84-home-workbench
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-84
-  pr: none
-  phase: checking
+  pr: https://github.com/ametel01/horizon-starknet/pull/91
+  phase: waiting-ci
   cycle: 0/5
   blocker: none
 - issue: #85 Redesign the frontend app chrome and footer colophon
   owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
   branch: codex/issue-85-app-chrome-colophon
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
-  pr: none
-  phase: checking
+  pr: https://github.com/ametel01/horizon-starknet/pull/90
+  phase: waiting-ci
   cycle: 0/5
   blocker: none
 - issue: #86 Make market APY details touch-accessible and reduce card glow
@@ -22,7 +22,7 @@
   branch: codex/issue-86-market-apy-access
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-86
   pr: none
-  phase: implementing
+  phase: checking
   cycle: 0/5
   blocker: none
 
@@ -146,18 +146,18 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-84`
   - branch: `codex/issue-84-home-workbench`
   - owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
-  - phase: checking #84
-  - cleanliness: clean, ahead of `origin/main` by commit `78d50fdd39f7c311a030057da109d6d75253ebf2`.
+  - phase: waiting-ci #84 / PR #91
+  - cleanliness: clean, pushed as PR #91; branch contains implementation commit `cac51553` plus checker-status commit `b01ffb48`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  - phase: checking #85
-  - cleanliness: clean, ahead of `origin/main` by commit `48593a6e0b272aca013d6d64e2b3f1e233e90ba7`.
+  - phase: waiting-ci #85 / PR #90
+  - cleanliness: clean, pushed as PR #90; branch contains implementation commit `65e69717` plus checker-status commits `90298be6` and `683e4288`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
-  - phase: implementing #86
-  - cleanliness: clean at creation from `origin/main`.
+  - phase: checking #86
+  - cleanliness: clean, ahead of `origin/main` by commit `fb637d6ac9cf430de48679b6ed5ad94612d205f1`; checker Hume `019f45d3-5c78-77c0-8f69-3be339acb491` is running.
 
 ## Gates
 - command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-84 -b codex/issue-84-home-workbench origin/main`
@@ -178,6 +178,15 @@
 - command: `git show --stat --oneline --decorate --name-only HEAD` in `/Users/alexmetelli/source/horizon-starknet-issue-84`
   result: passed
   evidence: #84 builder committed `78d50fdd39f7c311a030057da109d6d75253ebf2` touching home workbench, navigation/markets e2e, and tracker files.
+- command: `gh pr view 90 --json closingIssuesReferences,body`
+  result: passed
+  evidence: PR #90 is ready for review and closes only issue #85; context gate body includes dependencies, sibling issues, behavior scope, non-goals, validation, skipped checks, risks, and merge order.
+- command: `gh pr view 91 --json closingIssuesReferences,body`
+  result: passed
+  evidence: PR #91 is ready for review and closes only issue #84; context gate body includes dependencies, sibling issues/PR #90, behavior scope, non-goals, validation, skipped checks, risks, and merge order.
+- command: `multi_agent_v1.spawn_agent` for #86 checker
+  result: passed
+  evidence: spawned checker Hume `019f45d3-5c78-77c0-8f69-3be339acb491`.
 - command: `gh issue view 84 --json number,title,state,body,comments,labels,url`
   result: passed
   evidence: issue #84 is OPEN, has no comments, is labeled `agent-ready`, `area:frontend`, `area:design`, `area:tests`, `type:feature`, and `parallel-safe`; body says it was blocked only by #83 and is parallel-safe with #85/#86.
