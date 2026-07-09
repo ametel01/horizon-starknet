@@ -232,7 +232,6 @@ pub mod Router {
         /// SECURITY: Only allows calls to self (this router) to prevent arbitrary external calls
         fn multicall(ref self: ContractState, calls: Span<Call>) -> Array<Span<felt252>> {
             self.pausable.assert_not_paused();
-            self.reentrancy_guard.start();
 
             let this = get_contract_address();
             let mut results: Array<Span<felt252>> = array![];
@@ -248,7 +247,6 @@ pub mod Router {
                 results.append(result);
             }
 
-            self.reentrancy_guard.end();
             results
         }
 
