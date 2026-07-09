@@ -6,9 +6,9 @@
   branch: codex/issue-85-app-chrome-colophon
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
   pr: https://github.com/ametel01/horizon-starknet/pull/90
-  phase: rebase-needed
+  phase: waiting-ci
   cycle: 0/5
-  blocker: PR #90 is merge-dirty after #91 merged; rebase branch on current `origin/main`, rerun focused checks, renew review, then merge.
+  blocker: fresh CI and renewed maintainer-reviewer acceptance required after rebase before merge.
 
 ## Target Queue
 - repo: `ametel01/horizon-starknet`
@@ -135,8 +135,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  - phase: rebase-needed #85 / PR #90
-  - cleanliness: clean before #90 rebase; branch head `b7b4bf30f449215a4be437697b4b820f86c2a5d3`.
+  - phase: waiting-ci #85 / PR #90
+  - cleanliness: clean after rebase continuation; branch needs force-push and fresh PR checks.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
@@ -221,7 +221,7 @@
   evidence: local issue #83 branch was force-deleted because squash merge leaves the exact branch commit unmerged locally.
 - command: `bun install --frozen-lockfile`
   result: passed
-  evidence: run in `packages/frontend` because package-local binaries were missing; restored frontend `node_modules` without manifest or lockfile changes.
+  evidence: run from `packages/frontend` because package-local binaries were missing; restored frontend `node_modules` without manifest or lockfile changes.
 - command: `bun run --cwd packages/frontend format:check`
   result: passed
   evidence: Biome formatted 469 frontend source files with no fixes applied after formatting `MarketCard.tsx`.
@@ -252,6 +252,15 @@
 - command: `gh pr merge 91 --squash --delete-branch`
   result: remote merge passed; local command exited 1 only because branch deletion failed while `codex/issue-84-home-workbench` remained checked out in `/Users/alexmetelli/source/horizon-starknet-issue-84`.
   evidence: PR #91 is MERGED at 2026-07-09T08:28:04Z with merge commit `245e50f5df8f642f18b8e3397eb92f2e09daf586`; issue #84 closed at 2026-07-09T08:28:05Z.
+- command: `bun run --cwd packages/frontend format:check && bun run --cwd packages/frontend lint && bun run --cwd packages/frontend typecheck && bun run --cwd packages/frontend check`
+  result: passed
+  evidence: #85 builder validation passed; Biome format/lint/check all checked 469 files with no fixes applied and `tsc --noEmit` passed.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: #85 builder validation passed with 476 tests passed, 0 failed, and 810 expect calls across 20 files.
+- command: `CI=1 bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+  result: passed
+  evidence: #85 builder validation passed with 39 Chromium navigation tests on a fresh Playwright dev server. A prior non-CI rerun reused stale old localhost app code and then failed with `ERR_CONNECTION_REFUSED`; fresh-server rerun passed.
 
 ## Handoffs
 - from: maintainer-reviewer
@@ -339,6 +348,14 @@
   evidence: Changed `packages/frontend/src/widgets/hero/HeroSection.tsx`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/e2e/navigation.spec.ts`, `packages/frontend/e2e/markets.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, and `STATUS.md`. Replaced the centered `min-h-[70vh]` marketing hero, radial glow layers, floating stat orbs, and generic feature cards with a dense workbench using `useDashboardMarkets`, token price helpers, and `useProtocolStats`; simple mode emphasizes fixed-yield minting and advanced mode exposes mint/trade/pools/portfolio/analytics task paths. Market list remains reachable at `#markets` with existing `SimpleMarketList`/`MarketList` fallback behavior. Validation passed: `bun run --cwd packages/frontend format:check`; `bun run --cwd packages/frontend lint`; `bun run --cwd packages/frontend typecheck`; `bun run --cwd packages/frontend test` (476 pass, 0 fail); `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium` (28 passed); `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium` (15 passed). E2E logs still show local missing `DATABASE_URL`/`RPC_URL`, analytics stats query failure, and `useMarkets` fallback noise; tests cover accepted degraded states and passed.
   next-action: Checker should inspect the diff for #84 scope boundaries, verify no #85 chrome/footer or #86 market-card APY/detail work leaked in, and rerun any desired focused gate. Stop if local DB/RPC env noise needs coordinator decision.
 
+- from: builder-agent
+  to: checker-agent
+  timestamp: 2026-07-09
+  request: Check issue #85 implementation only, then hand off for reviewer if acceptable.
+  evidence: Changed `packages/frontend/src/shared/layout/Header.tsx`, `Footer.tsx`, `MobileNav.tsx`, `mode-toggle.tsx`, `packages/frontend/e2e/navigation.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, and this `STATUS.md`. Header now uses compact Horizon app chrome with network/mode/wallet status, lucide app-menu controls, preserved `ConnectButton`, `ThemeToggle`, and `ModeToggle`, and simple-mode hiding for advanced-only routes. Footer now uses compact app/reference/policy links with alpha/risk/Starknet protocol colophon content instead of stock columns. Mobile bottom nav spacing/glow is reduced and the onboarding tooltip close icon is lucide with viewport-bounded width. Navigation e2e now covers route access, footer colophon links, theme menu items, 320px app menu, and no horizontal overflow at 320, 375, 414, 768, and 1280 px on app routes.
+  next-action: Verify diff scope, run or trust recorded frontend gates, and check for merge conflicts with #84/#86 branches before PR creation.
+  stop-condition: Escalate if checker finds header/footer behavior hides wallet/theme/mode controls, breaks simple/advanced route access, or conflicts with sibling #84/#86 edits.
+
 - from: issue-spec-agent
   to: builder-agent
   timestamp: 2026-07-09
@@ -399,6 +416,87 @@ Coverage gaps:
 
 Next Action:
 - Ready for coordinator/maintainer PR packaging for issue #86 after reconciling the tracker-only `origin/main` `STATUS.md` update. Do not approve or open a PR from checker context.
+
+## Checker Result - Issue #85
+Status: FAILED
+
+## Commands
+- command: `pwd && git rev-parse --show-toplevel && git status --short --branch --untracked-files=all && git rev-parse HEAD && git branch --show-current`
+  result: passed
+  evidence: confirmed `/Users/alexmetelli/source/horizon-starknet-issue-85`, branch `codex/issue-85-app-chrome-colophon`, HEAD `48593a6e0b272aca013d6d64e2b3f1e233e90ba7`; final status showed branch ahead 1 and behind current `origin/main` by 2.
+- command: `gh issue view 85 --comments --json number,title,state,body,comments,labels,assignees,url`
+  result: passed
+  evidence: issue #85 is open, frontend/design/tests feature scope, parallel-safe with #84/#86, and requires app chrome/footer redesign plus navigation e2e.
+- command: `git diff --name-status origin/main...HEAD && git diff --stat origin/main...HEAD`
+  result: passed
+  evidence: diff is scoped to `CHANGELOG.md`, `PROGRESS.md`, `STATUS.md`, `packages/frontend/e2e/navigation.spec.ts`, and touched layout chrome files `Footer.tsx`, `Header.tsx`, `MobileNav.tsx`, `mode-toggle.tsx`.
+- command: `git diff --name-status origin/main...HEAD -- packages/frontend/src/widgets/hero packages/frontend/src/app/home-page-client.tsx packages/frontend/src/entities/market/ui/MarketCard.tsx packages/frontend/src/entities/market/ui/SimpleMarketCard.tsx`
+  result: passed
+  evidence: no #84 home workbench or #86 market-card/APY files are changed by #85.
+- command: `git diff --check origin/main...HEAD`
+  result: passed
+  evidence: no whitespace conflict markers or whitespace errors in the issue diff.
+- command: `rg --files packages/frontend/src/app | sort`
+  result: passed
+  evidence: footer targets used by #85 exist, including `/docs`, `/docs/risks`, `/docs/mechanics`, `/docs/faq`, `/terms`, and `/privacy`.
+- command: `rg -n "<svg|Product|Learn|Resources|Legal|TVL|volume|users|healthy|live|Mainnet|Sepolia|Devnet|Fork|Alpha protocol|User risk review" packages/frontend/src/shared/layout packages/frontend/e2e/navigation.spec.ts`
+  result: passed
+  evidence: no manual `<svg>` remains in touched chrome; old stock footer labels are only asserted absent in e2e; status copy is network/mode/wallet state plus alpha/risk labels, not fake metrics.
+- command: `bun run --cwd packages/frontend format:check`
+  result: passed
+  evidence: Biome format checked 469 files; no fixes applied.
+- command: `bun run --cwd packages/frontend lint`
+  result: passed
+  evidence: Biome lint checked 469 files; no fixes applied.
+- command: `bun run --cwd packages/frontend typecheck`
+  result: passed
+  evidence: `tsc --noEmit` completed successfully.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: 476 tests passed, 0 failed, 810 expect calls across 20 files.
+- command: `CI=1 bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+  result: passed
+  evidence: 39 Chromium navigation tests passed. Local dev-server logs still include known missing `RPC_URL`/database fallback noise, but no test failed.
+- command: `bun run --cwd packages/frontend check`
+  result: passed
+  evidence: run because #85 changes global shell layout; `tsc --noEmit` passed and Biome checked 469 files with no fixes applied.
+- command: `git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main`
+  result: failed
+  evidence: `STATUS.md` has merge conflicts against current `origin/main` in #85 phase/cleanliness lines because both this branch and the coordinator updated hot status after the branch split.
+
+## Failures
+- `STATUS.md`: PR packaging conflict only. Current #85 code/test scope is green, but the branch is not ready to package until it rebases or merges current `origin/main` and reconciles the `STATUS.md` hot-state conflict.
+
+## Coverage Gaps
+- Did not run `bun run --cwd packages/frontend build`; not required by #85, and repo status records a local baseline Next build hang at `Creating an optimized production build ...`.
+- Did not run contract or indexer gates because #85 touches frontend chrome/e2e/tracker files only.
+
+## Next Action
+- Rebase or merge current `origin/main` into `codex/issue-85-app-chrome-colophon`, reconcile `STATUS.md` only, rerun the frontend checker gates if any source/test files change during conflict resolution, then package the PR.
+
+## Checker Reconciliation - Issue #85
+Status: ALL GREEN for PR packaging after coordinator rebase.
+
+## Commands
+- command: `git rebase origin/main`
+  result: passed after resolving only `STATUS.md`
+  evidence: rebased #85 onto `44d9a6c9`; functional source and e2e files remained the #85 chrome/footer/navigation implementation.
+- command: `git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main`
+  result: passed
+  evidence: no merge-tree output after rebase, so the previous `STATUS.md` packaging conflict is resolved.
+
+## Next Action
+- Coordinator may merge PR #90 after normal merge-order checks; #87 remains blocked until #84, #85, and #86 merge.
+
+## Maintainer Review - Issue #85
+Decision: APPROVE
+Review: https://github.com/ametel01/horizon-starknet/pull/90#pullrequestreview-4661054849
+Review id: `4661054849`
+Review submission: formal approval was rejected by GitHub because the PR is same-author; submitted a COMMENT review with explicit `Decision: APPROVE`.
+Findings summary: no blocking or important findings. Diff is scoped to #85 app chrome/footer/navigation coverage and trackers, with no #84 home workbench or #86 market APY/card scope leakage.
+Checks summary: PR context gate passed; head `5e0e33dc017fd8f304b53d5d23e0a87ff9296510` matches the requested updated head; PR closes only #85 and is not draft; GitHub checks are green for Build, Code Quality, Unit Tests, E2E Tests, Quality Checks, Secret Scanning, Socket, GitGuardian, CodeRabbit, and Vercel statuses. Production/staging deploy jobs are intentionally skipped.
+Residual risk: maintainer pass relied on checker-recorded local gates plus current GitHub checks instead of rerunning all local suites. CodeRabbit later flagged missing `/analytics` in the no-overflow audit; coordinator restored it and reran focused navigation e2e before requesting renewed review.
+Next action: push the CodeRabbit fix, wait for renewed CI, and request renewed maintainer review for PR #90.
 
 ## Completion Contract - Issue #86
 Issue: #86 Make market APY details touch-accessible and reduce card glow
