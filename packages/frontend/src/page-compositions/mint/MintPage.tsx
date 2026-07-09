@@ -266,8 +266,8 @@ function SplitInfoContent({ activeTab }: { activeTab: TabType }): ReactNode {
  * Simple mode content - streamlined deposit/withdraw flow
  */
 function SimpleModeContent(): ReactNode {
-  const { get } = useSearchParams();
-  const marketParam = get('market');
+  const searchParams = useSearchParams();
+  const marketParam = searchParams.get('market');
   const mounted = useHydrated();
   const [activeTab, setActiveTab] = useState<SimpleTabType>('earn');
   const [selectedMarketAddress, setSelectedMarketAddress] = useState<string | null>(marketParam);
@@ -418,9 +418,9 @@ function SimpleModeContent(): ReactNode {
  * Advanced mode content - original tabbed interface
  */
 function AdvancedModeContent(): ReactNode {
-  const { get } = useSearchParams();
-  const marketParam = get('market');
-  const tabParam = get('tab');
+  const searchParams = useSearchParams();
+  const marketParam = searchParams.get('market');
+  const tabParam = searchParams.get('tab');
   const mounted = useHydrated();
   const [activeTab, setActiveTab] = useState<TabType>(
     parseTabParam(tabParam, ADVANCED_TAB_VALUES, 'wrap') as TabType

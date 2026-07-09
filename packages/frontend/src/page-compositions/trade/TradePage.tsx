@@ -99,8 +99,8 @@ function TradePageContent(): ReactNode {
 
 function useTradePageContent(): ReactNode {
   const { push } = useRouter();
-  const { get } = useSearchParams();
-  const marketParam = get('market');
+  const searchParams = useSearchParams();
+  const marketParam = searchParams.get('market');
   const mounted = useHydrated();
   const { isConnected } = useStarknet();
 
