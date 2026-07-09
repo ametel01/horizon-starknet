@@ -5,7 +5,13 @@
  * The nonce is generated per-request in middleware and passed via headers.
  */
 
-const isProduction = process.env.NODE_ENV === 'production';
+function isProductionEnvironment(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+interface BuildCSPOptions {
+  isProduction?: boolean;
+}
 
 /**
  * Generate a cryptographically secure nonce for CSP
@@ -13,7 +19,11 @@ const isProduction = process.env.NODE_ENV === 'production';
 export function generateNonce(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
-  return Buffer.from(array).toString('base64');
+  let binary = '';
+  for (const byte of array) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
 }
 
 /**
@@ -22,13 +32,14 @@ export function generateNonce(): string {
  * @param nonce - The cryptographic nonce for inline scripts
  * @returns The complete CSP header value
  */
-export function buildCSP(nonce: string): string {
+export function buildCSP(nonce: string, options: BuildCSPOptions = {}): string {
   // In development, Next.js injects inline scripts that don't have nonces.
   // When a nonce is present, 'unsafe-inline' is ignored in modern browsers.
   // So in dev mode, we skip the nonce entirely and use 'unsafe-inline' + 'unsafe-eval'.
   // In production, we use strict nonce-based CSP with 'strict-dynamic'.
   //
   // snaps.consensys.io is needed for MetaMask Snaps wallet discovery
+  const isProduction = options.isProduction ?? isProductionEnvironment();
   const scriptSrc = isProduction
     ? ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https://snaps.consensys.io']
     : ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://snaps.consensys.io'];
@@ -81,3 +92,22 @@ export function buildCSP(nonce: string): string {
  * Header name used to pass the nonce from middleware to the app
  */
 export const CSP_NONCE_HEADER = 'x-csp-nonce';
+export const CSP_HEADER = 'Content-Security-Policy';
+
+const SECURITY_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+} as const;
+
+/**
+ * Apply CSP and baseline browser hardening headers to page responses.
+ */
+export function applySecurityHeaders(headers: Headers, nonce: string, csp = buildCSP(nonce)): void {
+  headers.set(CSP_HEADER, csp);
+
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    headers.set(name, value);
+  }
+}
