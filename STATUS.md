@@ -2,11 +2,11 @@
 
 ## Active Work
 - issue: #83 Establish frontend token, motion, and no-overflow foundation
-  owner: coordinator
-  branch: pending
-  worktree: pending
+  owner: builder-agent
+  branch: codex/issue-83-frontend-foundation
+  worktree: /Users/alexmetelli/source/horizon-starknet-issue-83
   pr: none
-  phase: ready-for-builder
+  phase: implementing
   cycle: 0/5
   blocker: none
 
@@ -31,8 +31,13 @@
 - `/Users/alexmetelli/source/horizon-starknet`
   - branch: `main`
   - owner: coordinator
-  - phase: post-merge reconciliation
+  - phase: coordinating
   - cleanliness: tracked tree clean before this status reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
+- `/Users/alexmetelli/source/horizon-starknet-issue-83`
+  - branch: `codex/issue-83-frontend-foundation`
+  - owner: builder-agent
+  - phase: implementing
+  - cleanliness: clean at creation from `origin/main`.
 
 ## Completion Contract
 Issue: #83 Establish frontend token, motion, and no-overflow foundation
@@ -99,8 +104,17 @@ Open Questions:
 - command: `git rebase origin/main`
   result: duplicate local commit skipped
   evidence: local `main` now matches `origin/main` after skipping the pre-squash local #82 commit.
+- command: `git worktree add ../horizon-starknet-issue-83 -b codex/issue-83-frontend-foundation origin/main`
+  result: passed
+  evidence: created builder worktree `/Users/alexmetelli/source/horizon-starknet-issue-83` at `402a407`.
 
 ## Handoffs
+- from: coordinator
+  to: builder-agent
+  timestamp: 2026-07-09
+  request: Implement issue #83 in `/Users/alexmetelli/source/horizon-starknet-issue-83` on `codex/issue-83-frontend-foundation`, following the #83 completion contract.
+  evidence: #83 contract is in `STATUS.md`; issue #82 is merged; dedicated branch/worktree exists.
+  next-action: Update tokens/overflow/primitives/navigation e2e and root trackers, then hand off to checker with changed files and gate results.
 - from: coordinator
   to: issue-spec-agent
   timestamp: 2026-07-09
