@@ -21,8 +21,8 @@
   owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
   branch: codex/issue-86-market-apy-access
   worktree: /Users/alexmetelli/source/horizon-starknet-issue-86
-  pr: none
-  phase: checking
+  pr: https://github.com/ametel01/horizon-starknet/pull/92
+  phase: waiting-ci
   cycle: 0/5
   blocker: none
 
@@ -156,8 +156,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
-  - phase: checking #86
-  - cleanliness: clean, ahead of `origin/main` by commit `fb637d6ac9cf430de48679b6ed5ad94612d205f1`; checker Hume `019f45d3-5c78-77c0-8f69-3be339acb491` is running.
+  - phase: waiting-ci #86 / PR #92
+  - cleanliness: clean, pushed as PR #92; branch contains implementation commit `6a1f7835` plus checker-status commit `a21c5dcf`.
 
 ## Gates
 - command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-84 -b codex/issue-84-home-workbench origin/main`
@@ -187,6 +187,9 @@
 - command: `multi_agent_v1.spawn_agent` for #86 checker
   result: passed
   evidence: spawned checker Hume `019f45d3-5c78-77c0-8f69-3be339acb491`.
+- command: `gh pr view 92 --json closingIssuesReferences,body`
+  result: passed
+  evidence: PR #92 is ready for review and closes only issue #86; context gate body includes dependencies, sibling PRs, behavior scope, non-goals, validation, skipped checks, risks, and merge order.
 - command: `gh issue view 84 --json number,title,state,body,comments,labels,url`
   result: passed
   evidence: issue #84 is OPEN, has no comments, is labeled `agent-ready`, `area:frontend`, `area:design`, `area:tests`, `type:feature`, and `parallel-safe`; body says it was blocked only by #83 and is parallel-safe with #85/#86.
