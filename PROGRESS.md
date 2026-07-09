@@ -7,11 +7,11 @@
 - Target package: `packages/frontend`
 
 ## Current Status
-- Phase: issue #83 implemented; ready for checker
-- Owner: builder-agent
-- Last completed issue: #82, merged in PR #88
-- Next step: checker review for issue #83, then issue #84 home workbench after #83 merges
-- GitHub status: verified on 2026-07-09; #82 is closed, #83 through #87 remain open, and no PRs are open after PR #88 merged.
+- Phase: issues #84, #85, and #86 ready for spec
+- Owner: coordinator
+- Last completed issue: #83, merged in PR #89
+- Next step: spec and execute #84, #85, and #86 in parallel where file ownership permits.
+- GitHub status: verified on 2026-07-09; #82 and #83 are closed, #84 through #87 remain open, and no PRs are open after PR #89 merged.
 
 ## Step Checklist
 - [x] Step 0: Progress and Changelog Tracking Setup
@@ -50,7 +50,8 @@
 - 2026-07-09: PR #88 merged and closed issue #82. Issue #83 is now the next unblocked implementation stream.
 - 2026-07-09: Implemented issue #83 frontend foundation. Updated light/dark semantic shell tokens away from pure white and near-black defaults, added `html, body { overflow-x: clip; }`, replaced broad `transition-all` in `Button`, `Card`, `ModeToggle`, and touched home feature cards, and preserved live glow/bounce/spring utilities after reference search proved they are still used.
 - 2026-07-09: Added navigation e2e coverage asserting no horizontal overflow on `/`, `/mint`, and `/analytics` at 320, 375, 414, 768, and 1280 px. Validation passed: `bun run --cwd packages/frontend format:check`, `lint`, `typecheck`, `test`, and `test:e2e e2e/navigation.spec.ts --project=chromium`.
+- 2026-07-09: PR #89 merged and closed issue #83. GitHub Frontend CI Build, Unit Tests, Code Quality, E2E Tests, Secret Scanning, Socket, GitGuardian, CodeRabbit, and Vercel contexts passed.
 
 ## Next-Step Instructions
-- Checker should review issue #83 against the `STATUS.md` completion contract and rerun the focused frontend gates as needed.
-- Keep #84, #85, #86, and #87 out of this branch until #83 is reviewed and merged.
+- Start issues #84, #85, and #86 with issue-spec-agent completion contracts before builder assignment.
+- Keep #87 blocked until #84, #85, and #86 merge.
