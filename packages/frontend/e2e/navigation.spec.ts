@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from './fixtures';
 
-const auditedNoOverflowRoutes = ['/', '/mint', '/analytics'] as const;
+const auditedNoOverflowRoutes = ['/', '/mint', '/trade', '/pools', '/portfolio'] as const;
 const auditedViewportWidths = [320, 375, 414, 768, 1280] as const;
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
@@ -34,6 +34,7 @@ test.describe('Navigation', () => {
     await expect(
       page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
     ).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible();
   });
 
   test('should navigate to trade page', async ({ page }) => {
@@ -76,6 +77,19 @@ test.describe('Navigation', () => {
   test('should navigate to docs page', async ({ page }) => {
     await page.goto('/docs');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
+  test('should expose compact protocol footer links', async ({ page }) => {
+    await page.goto('/');
+
+    const footer = page.locator('footer');
+    await expect(footer.getByRole('link', { name: 'Markets' })).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'Terms' })).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'Privacy' })).toBeVisible();
+    await expect(footer.getByRole('link', { name: /Built on Starknet/i })).toBeVisible();
+    await expect(footer.getByText(/Alpha protocol/i)).toBeVisible();
+    await expect(footer.getByText(/Product/i)).toHaveCount(0);
+    await expect(footer.getByText(/Resources/i)).toHaveCount(0);
   });
 
   test('should show 404 for invalid routes', async ({ page }) => {
@@ -126,6 +140,10 @@ test.describe('Theme Toggle', () => {
     // Click the toggle (theme change may depend on localStorage/system preferences)
     await themeToggle.click();
 
+    await expect(page.getByRole('menuitem', { name: /Light/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /Dark/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /System/i })).toBeVisible();
+
     // Verify button is still functional after click
     await expect(themeToggle).toBeVisible();
   });
@@ -146,25 +164,27 @@ test.describe('Responsive Design', () => {
 
   test('should display mobile menu on small screens', async ({ page }) => {
     // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
+    await page.setViewportSize({ width: 320, height: 667 });
     await page.goto('/');
 
     // On mobile, page should still load and show main workbench content.
     await expect(
       page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
     ).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
 
-    // Navigation might be in a hamburger menu - check for menu button or visible nav
-    const menuButton = page.getByRole('button', { name: /menu|navigation/i });
-    const nav = page.getByRole('navigation');
+    const menuButton = page.getByRole('button', { name: /Open app menu/i });
+    await expect(menuButton).toBeVisible();
+    await menuButton.click();
 
-    // Either nav is visible or there's a menu button to open it
-    const [navVisible, menuVisible] = await Promise.all([
-      nav.isVisible().catch(() => false),
-      menuButton.isVisible().catch(() => false),
-    ]);
-
-    expect(navVisible || menuVisible).toBe(true);
+    const appMenu = page.getByRole('navigation', { name: /App menu/i });
+    await expect(appMenu).toBeVisible();
+    await expect(appMenu.getByRole('link', { name: /Earn/i })).toBeVisible();
+    await expect(appMenu.getByRole('link', { name: /Portfolio/i })).toBeVisible();
+    await expect(appMenu.getByRole('link', { name: /Docs/i })).toBeVisible();
+    await expect(appMenu.getByRole('button', { name: /Switch to advanced mode/i })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
   });
 
   test('should adapt layout for tablet', async ({ page }) => {
@@ -175,6 +195,9 @@ test.describe('Responsive Design', () => {
     await expect(
       page.getByRole('heading', { name: /Horizon protocol workbench/i, level: 1 })
     ).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open app menu/i })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
   });
 });
 

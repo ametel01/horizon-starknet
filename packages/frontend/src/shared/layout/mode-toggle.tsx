@@ -2,6 +2,7 @@
 
 import { cn } from '@shared/lib/utils';
 import { useUIMode } from '@shared/theme/ui-mode-context';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface ModeToggleProps {
@@ -53,7 +54,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
     <div className={cn('relative items-center gap-1.5', className ?? 'flex')}>
       {/* Onboarding Tooltip */}
       {showTooltip && (
-        <div className="animate-in fade-in slide-in-from-top-2 absolute top-full right-0 z-50 mt-2 w-64 duration-200">
+        <div className="animate-in fade-in slide-in-from-top-2 absolute top-full right-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] duration-200">
           <div className="bg-card border-border rounded-lg border p-3 shadow-lg">
             <div className="mb-2 flex items-start justify-between">
               <span className="text-foreground text-sm font-medium">Interface Mode</span>
@@ -63,14 +64,7 @@ export function ModeToggle({ className }: ModeToggleProps): React.ReactNode {
                 className="text-muted-foreground hover:text-foreground -mt-1 -mr-1 p-1"
                 aria-label="Dismiss"
               >
-                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X className="size-4" aria-hidden="true" />
               </button>
             </div>
             <p className="text-muted-foreground text-xs">

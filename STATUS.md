@@ -221,7 +221,7 @@
   evidence: local issue #83 branch was force-deleted because squash merge leaves the exact branch commit unmerged locally.
 - command: `bun install --frozen-lockfile`
   result: passed
-  evidence: run in `packages/frontend` because package-local binaries were missing; restored frontend `node_modules` without manifest or lockfile changes.
+  evidence: run from `packages/frontend` because package-local binaries were missing; restored frontend `node_modules` without manifest or lockfile changes.
 - command: `bun run --cwd packages/frontend format:check`
   result: passed
   evidence: Biome formatted 469 frontend source files with no fixes applied after formatting `MarketCard.tsx`.
@@ -252,6 +252,15 @@
 - command: `gh pr merge 91 --squash --delete-branch`
   result: remote merge passed; local command exited 1 only because branch deletion failed while `codex/issue-84-home-workbench` remained checked out in `/Users/alexmetelli/source/horizon-starknet-issue-84`.
   evidence: PR #91 is MERGED at 2026-07-09T08:28:04Z with merge commit `245e50f5df8f642f18b8e3397eb92f2e09daf586`; issue #84 closed at 2026-07-09T08:28:05Z.
+- command: `bun run --cwd packages/frontend format:check && bun run --cwd packages/frontend lint && bun run --cwd packages/frontend typecheck && bun run --cwd packages/frontend check`
+  result: passed
+  evidence: #85 builder validation passed; Biome format/lint/check all checked 469 files with no fixes applied and `tsc --noEmit` passed.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: #85 builder validation passed with 476 tests passed, 0 failed, and 810 expect calls across 20 files.
+- command: `CI=1 bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+  result: passed
+  evidence: #85 builder validation passed with 39 Chromium navigation tests on a fresh Playwright dev server. A prior non-CI rerun reused stale old localhost app code and then failed with `ERR_CONNECTION_REFUSED`; fresh-server rerun passed.
 
 ## Handoffs
 - from: maintainer-reviewer
@@ -338,6 +347,14 @@
   request: Review issue #84 implementation and validation evidence, then decide whether this branch is ready for PR creation.
   evidence: Changed `packages/frontend/src/widgets/hero/HeroSection.tsx`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/e2e/navigation.spec.ts`, `packages/frontend/e2e/markets.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, and `STATUS.md`. Replaced the centered `min-h-[70vh]` marketing hero, radial glow layers, floating stat orbs, and generic feature cards with a dense workbench using `useDashboardMarkets`, token price helpers, and `useProtocolStats`; simple mode emphasizes fixed-yield minting and advanced mode exposes mint/trade/pools/portfolio/analytics task paths. Market list remains reachable at `#markets` with existing `SimpleMarketList`/`MarketList` fallback behavior. Validation passed: `bun run --cwd packages/frontend format:check`; `bun run --cwd packages/frontend lint`; `bun run --cwd packages/frontend typecheck`; `bun run --cwd packages/frontend test` (476 pass, 0 fail); `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium` (28 passed); `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium` (15 passed). E2E logs still show local missing `DATABASE_URL`/`RPC_URL`, analytics stats query failure, and `useMarkets` fallback noise; tests cover accepted degraded states and passed.
   next-action: Checker should inspect the diff for #84 scope boundaries, verify no #85 chrome/footer or #86 market-card APY/detail work leaked in, and rerun any desired focused gate. Stop if local DB/RPC env noise needs coordinator decision.
+
+- from: builder-agent
+  to: checker-agent
+  timestamp: 2026-07-09
+  request: Check issue #85 implementation only, then hand off for reviewer if acceptable.
+  evidence: Changed `packages/frontend/src/shared/layout/Header.tsx`, `Footer.tsx`, `MobileNav.tsx`, `mode-toggle.tsx`, `packages/frontend/e2e/navigation.spec.ts`, `PROGRESS.md`, `CHANGELOG.md`, and this `STATUS.md`. Header now uses compact Horizon app chrome with network/mode/wallet status, lucide app-menu controls, preserved `ConnectButton`, `ThemeToggle`, and `ModeToggle`, and simple-mode hiding for advanced-only routes. Footer now uses compact app/reference/policy links with alpha/risk/Starknet protocol colophon content instead of stock columns. Mobile bottom nav spacing/glow is reduced and the onboarding tooltip close icon is lucide with viewport-bounded width. Navigation e2e now covers route access, footer colophon links, theme menu items, 320px app menu, and no horizontal overflow at 320, 375, 414, 768, and 1280 px on app routes.
+  next-action: Verify diff scope, run or trust recorded frontend gates, and check for merge conflicts with #84/#86 branches before PR creation.
+  stop-condition: Escalate if checker finds header/footer behavior hides wallet/theme/mode controls, breaks simple/advanced route access, or conflicts with sibling #84/#86 edits.
 
 - from: issue-spec-agent
   to: builder-agent
