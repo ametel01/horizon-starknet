@@ -138,8 +138,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-84`
   - branch: `codex/issue-84-home-workbench`
   - owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
-  - phase: waiting-ci #84 / PR #91
-  - cleanliness: clean, pushed as PR #91; branch contains implementation commit `cac51553` plus checker-status commit `b01ffb48`.
+  - phase: approved #84 / PR #91
+  - cleanliness: clean before maintainer-reviewer status update; branch contains implementation commit `ae738c05` plus checker-status commit `d8210edd`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
@@ -245,8 +245,21 @@
 - command: `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium`
   result: passed
   evidence: exact configured chromium markets spec passed 16/16 in 21.2s after a transient sibling-worktree port 3000 conflict cleared. Local logs still show expected missing `RPC_URL`/database fallback noise.
+- command: `gh pr review 91 --approve --body-file -`
+  result: failed
+  evidence: GitHub rejected same-author approval with `Review Can not approve your own pull request`.
+- command: `gh pr review 91 --comment --body-file -`
+  result: passed
+  evidence: submitted maintainer-reviewer evidence review `4661113927` at https://github.com/ametel01/horizon-starknet/pull/91#pullrequestreview-4661113927 with explicit `Decision: APPROVE`; this evidence belongs to pre-rebase head `d8210edd1d1f0ec10808f0c93381e0e931f80bb2` and must be renewed after the #92 rebase force-push.
 
 ## Handoffs
+- from: maintainer-reviewer
+  to: coordinator
+  timestamp: 2026-07-09
+  request: Treat review `4661113927` as stale pre-rebase evidence only; after force-pushing the rebased #91 branch, wait for fresh checks and renew maintainer-reviewer acceptance before merge.
+  evidence: Review `4661113927` was submitted as COMMENT because GitHub refused same-author approval; body states `Decision: APPROVE`. Findings: none. It reviewed pre-rebase head `d8210edd1d1f0ec10808f0c93381e0e931f80bb2`.
+  next-action: Coordinator should force-push the rebased branch, wait for fresh CI, and request renewed review.
+
 - from: builder-agent Sagan
   to: checker-agent
   timestamp: 2026-07-09
