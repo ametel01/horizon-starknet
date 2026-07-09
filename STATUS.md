@@ -1,14 +1,14 @@
 # Agent Team Status
 
 ## Active Work
-- issue: #85 Redesign the frontend app chrome and footer colophon
-  owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  branch: codex/issue-85-app-chrome-colophon
-  worktree: /Users/alexmetelli/source/horizon-starknet-issue-85
-  pr: https://github.com/ametel01/horizon-starknet/pull/90
-  phase: waiting-ci
+- issue: #87 Verify the Hallmark frontend redesign against gates and viewports
+  owner: builder-agent Carver complete; checker Arendt passed; PR next
+  branch: codex/issue-87-final-verification
+  worktree: /Users/alexmetelli/source/horizon-starknet-issue-87
+  pr: none
+  phase: checker-passed / ready-pr
   cycle: 0/5
-  blocker: fresh CI and renewed maintainer-reviewer acceptance required after rebase before merge.
+  blocker: none; live GitHub evidence confirms #84, #85, and #86 are closed by merged PRs.
 
 ## Target Queue
 - repo: `ametel01/horizon-starknet`
@@ -16,16 +16,16 @@
   - #82 Set up tracking and capture frontend redesign baseline
   - #83 Establish frontend token, motion, and no-overflow foundation
   - #84 Replace the home hero with a protocol workbench
+  - #85 Redesign the frontend app chrome and footer colophon
   - #86 Make market APY details touch-accessible and reduce card glow
 - remaining:
-  - #85 Redesign the frontend app chrome and footer colophon
   - #87 Verify the Hallmark frontend redesign against gates and viewports
 
 ## Dependency Graph
 - wave 0: #82 closed by PR #88
 - wave 1: #83 closed by PR #89
-- wave 2: #84 closed by PR #91; #86 closed by PR #92; #85 remains active after #83
-- wave 3: #87 blocked by #85
+- wave 2: #84 closed by PR #91; #85 closed by PR #90; #86 closed by PR #92
+- wave 3: #87 ready; dependencies are closed/merged.
 
 ## Completion Contract
 - issue: #84 Replace the home hero with a protocol workbench
@@ -120,13 +120,62 @@
   open questions:
     - What exact protocol status should the header expose if the existing indexer health banner is hidden by `showOnlyIssues={true}`? Default to existing health/status data only and avoid invented live claims.
     - Should advanced-only routes be visible but disabled in simple mode, or stay hidden as today? Default to preserving current behavior unless the issue owner clarifies.
+- issue: #87 Verify the Hallmark frontend redesign against gates and viewports
+  readiness: ready
+  outcome: Complete a final validation-driven audit of the merged Hallmark frontend redesign, proving the critical/major Hallmark findings are fixed or explicitly deferred, capturing required viewport evidence, running the full frontend gate set, and bringing `PROGRESS.md`/`CHANGELOG.md` current without broad redesign work.
+  acceptance criteria:
+    - Every critical and major source Hallmark finding is checked against the merged frontend and recorded as fixed or deferred with a concrete reason. Source findings from `PLAN.md` include centered AI-template home hero, glow/orb hero decoration, stock SaaS footer, 320px horizontal overflow, pure black/white base tokens, stock SaaS nav, inline token drift, broad `transition-all`, hover-only APY explanation, elastic motion utilities, and mixed hand SVG/Lucide chrome.
+    - Viewport evidence covers widths 320, 375, 414, 768, and desktop on `/`, `/mint`, `/analytics`, plus changed implementation-slice routes `/trade`, `/pools`, and `/portfolio` because current `navigation.spec.ts` audits those routes.
+    - `bun run --cwd packages/frontend format:check`, `bun run --cwd packages/frontend lint`, `bun run --cwd packages/frontend typecheck`, `bun run --cwd packages/frontend test`, `bun run --cwd packages/frontend build`, and `bun run --cwd packages/frontend test:e2e --project=chromium` pass or have exact pre-existing failure evidence. The known local build baseline is a possible `next build` hang at `Creating an optimized production build ...`; do not call it a #87 regression without reproduction/evidence.
+    - Focused e2e evidence includes `packages/frontend/e2e/navigation.spec.ts` responsive/no-overflow coverage and `packages/frontend/e2e/markets.spec.ts` APY-details coverage; full chromium e2e is the closeout gate when feasible.
+    - `PROGRESS.md` marks Step 5 complete with final validation evidence, viewport evidence, residual risks, and current GitHub dependency status.
+    - `CHANGELOG.md` remains limited to user-visible functional changes from the redesign and does not add chores, tests-only work, planning files, or validation-only entries.
+    - Final diff has no unrelated contract, indexer, deployment, dependency, lockfile, generated artifact, license, or README live-address changes.
+  non-goals:
+    - Do not perform a broad redesign pass or polish unrelated UI beyond validation and documentation closeout.
+    - Do not change application code unless the audit exposes a direct regression from #84/#85/#86 and the minimal fix is required to satisfy the issue.
+    - Do not change contracts, protocol behavior, market math, oracle logic, indexer schemas/APIs, Starknet transaction behavior, deployment addresses, dependencies, lockfiles, CI, release workflows, license metadata, or README mainnet live-address tables.
+    - Do not add new visual-regression infrastructure, new dependencies, new icon libraries, or new runtime services for this verification issue.
+  likely touchpoints:
+    - `STATUS.md` for this completion contract and handoff evidence.
+    - `PROGRESS.md` for Step 5 final audit/gate/viewport evidence and completed status.
+    - `CHANGELOG.md` only if a remaining user-visible redesign change is made; otherwise leave existing entries intact.
+    - `packages/frontend/e2e/navigation.spec.ts` and `packages/frontend/e2e/markets.spec.ts` as read-only references for viewport/APY coverage; edit only if a direct regression requires a minimal test fix.
+    - Read-only implementation references from merged slices: `packages/frontend/src/widgets/hero/HeroSection.tsx`, `packages/frontend/src/app/home-page-client.tsx`, `packages/frontend/src/shared/layout/Header.tsx`, `packages/frontend/src/shared/layout/Footer.tsx`, `packages/frontend/src/shared/layout/MobileNav.tsx`, `packages/frontend/src/entities/market/ui/MarketCard.tsx`, and `packages/frontend/src/app/globals.css`.
+    - Source artifacts: `PLAN.md`, `hallmark-frontend-issues.json`, and `hallmark-frontend-created-issues.json` are not present in `/Users/alexmetelli/source/horizon-starknet-issue-87`; they were read from preserved untracked files in `/Users/alexmetelli/source/horizon-starknet`.
+  required tests/gates:
+    - `bun run --cwd packages/frontend format:check`
+    - `bun run --cwd packages/frontend lint`
+    - `bun run --cwd packages/frontend typecheck`
+    - `bun run --cwd packages/frontend test`
+    - `bun run --cwd packages/frontend build`
+    - `bun run --cwd packages/frontend test:e2e --project=chromium`
+    - Focused support gates when diagnosing failures: `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium` and `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium`
+    - Viewport evidence: use Playwright/browser inspection or equivalent scripted DOM assertions for widths 320, 375, 414, 768, and desktop on `/`, `/mint`, `/analytics`, `/trade`, `/pools`, and `/portfolio`; record exact method and pass/fail evidence in `PROGRESS.md`.
+  risks:
+    - This is a frontend verification issue over a DeFi surface; visual copy and fallback states must not invent APY, TVL, volume, oracle readiness, healthy indexer status, or protocol guarantees.
+    - Local e2e logs have known missing `DATABASE_URL`/`RPC_URL` fallback noise; distinguish accepted degraded-state behavior from a real rendering/navigation failure.
+    - Local `next build` has prior hang evidence; if it recurs, capture command, timeout, phase, and compare with CI/build evidence before deciding pass/fail.
+    - The source Hallmark artifacts are currently untracked in the main checkout, not tracked in this #87 worktree; preserve them and cite exact paths when using them as audit inputs.
+    - `PROGRESS.md`, `CHANGELOG.md`, and `STATUS.md` are shared tracker files; avoid overwriting unrelated completed evidence.
+  do-not-touch:
+    - Contracts, `packages/indexer`, `.github/workflows`, deploy/docker topology, dependency manifests, lockfiles, generated ABI/code, README deployment addresses, license metadata, and security-sensitive protocol logic.
+    - Application code outside a minimal direct-regression fix required by #87 acceptance.
+    - Do not delete or normalize the preserved untracked source artifacts in `/Users/alexmetelli/source/horizon-starknet`.
+    - Do not change changelog semantics by adding validation-only, planning-only, or test-only entries.
+  dependency blockers:
+    - None. Live evidence on 2026-07-09 confirms #84 is CLOSED by merged PR #91 (`245e50f5df8f642f18b8e3397eb92f2e09daf586`), #85 is CLOSED by merged PR #90 (`ed78fe43f41072364b93b70d0597fe2eb77dbed4`), and #86 is CLOSED by merged PR #92 (`e049b239eb27f812d229fa21d54e3b88d7ffb766`).
+    - Local branch `codex/issue-87-final-verification` is current with `origin/main` at `ed78fe43` after `git fetch origin main`; `git rev-list --left-right --count HEAD...origin/main` returned `0 0`.
+  open questions:
+    - Should final viewport evidence be screenshots, DOM no-overflow assertions, or both? Default: DOM no-overflow assertions are required; screenshots are useful supplemental evidence if the builder/checker has browser time.
+    - If the source Hallmark artifacts must be committed for durable audit traceability, coordinator/user decision is needed. Current #87 scope should not add them automatically because the issue is validation/tracker-focused.
 
 ## Worktrees
 - `/Users/alexmetelli/source/horizon-starknet`
   - branch: `main`
   - owner: coordinator
   - phase: coordinating
-  - cleanliness: tracked tree clean after post-#91 reconciliation commit; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
+  - cleanliness: tracked tree clean after post-#90 reconciliation; preserved local source artifacts remain untracked: `PLAN.md`, `hallmark-frontend-created-issues.json`, and `hallmark-frontend-issues.json`.
 - `/Users/alexmetelli/source/horizon-starknet-issue-84`
   - branch: `codex/issue-84-home-workbench`
   - owner: builder-agent Archimedes (`019f45be-d26e-7353-b71d-40b38a523d8b`)
@@ -135,8 +184,8 @@
 - `/Users/alexmetelli/source/horizon-starknet-issue-85`
   - branch: `codex/issue-85-app-chrome-colophon`
   - owner: builder-agent Noether (`019f45bf-1bba-7fa1-8c82-cb2d3c90160d`)
-  - phase: waiting-ci #85 / PR #90
-  - cleanliness: clean after rebase continuation; branch needs force-push and fresh PR checks.
+  - phase: merged #85 / cleanup pending
+  - cleanliness: dirty local `STATUS.md` reviewer evidence after PR #90 merged; preserve worktree until coordinator records or explicitly discards it.
 - `/Users/alexmetelli/source/horizon-starknet-issue-86`
   - branch: `codex/issue-86-market-apy-access`
   - owner: builder-agent Sagan (`019f45bf-d01f-7a12-8c72-5ad45b68ddce`)
@@ -144,6 +193,36 @@
   - cleanliness: dirty local `STATUS.md` review-evidence update after PR #92 merged; preserve worktree until coordinator records or explicitly discards it.
 
 ## Gates
+- command: `multi_agent_v1.spawn_agent` for #87 builder
+  result: passed
+  evidence: spawned builder Carver `019f460f-93a7-7bf1-a509-188246b20f44`; builder completed tracker-only #87 verification in `PROGRESS.md` and left `CHANGELOG.md` unchanged.
+- command: `bun install --cwd packages/frontend --frozen-lockfile`
+  result: passed
+  evidence: restored package-local frontend dependencies in the #87 worktree with no tracked manifest or lockfile changes.
+- command: `bun run --cwd packages/frontend format:check`
+  result: passed
+  evidence: Biome checked 469 frontend files with no fixes applied.
+- command: `bun run --cwd packages/frontend lint`
+  result: passed
+  evidence: Biome checked 469 frontend files with no fixes applied.
+- command: `bun run --cwd packages/frontend typecheck`
+  result: passed
+  evidence: `tsc --noEmit` completed successfully.
+- command: `bun run --cwd packages/frontend test`
+  result: passed
+  evidence: Bun reported 476 passing tests, 0 failures, and 810 assertions across 20 files.
+- command: `env NEXT_TELEMETRY_DISABLED=1 perl -e 'alarm shift; exec @ARGV' 300 bun run --cwd packages/frontend build`
+  result: passed
+  evidence: Next 16.2.10 compiled successfully in 5.2s and generated 46/46 static pages; local logs still reported missing `DATABASE_URL`/`DATABASE_POOLER_URL` during page data collection.
+- command: `CI=1 bun run --cwd packages/frontend test:e2e --project=chromium`
+  result: local environment/data-suite failure captured
+  evidence: full chromium e2e was interrupted after 6.0m of retries with 64 passed, 7 failed, 1 flaky, and 37 not run; failures were in rewards and single-sided-liquidity suites under missing `RPC_URL`/database fallback conditions, outside #87-owned navigation/markets coverage.
+- command: `CI=1 bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts e2e/markets.spec.ts --project=chromium`
+  result: passed
+  evidence: focused #87 viewport/APY suite passed 60/60 in 35.5s, covering `/`, `/mint`, `/analytics`, `/trade`, `/pools`, and `/portfolio` at 320, 375, 414, 768, and 1280 px plus non-hover market APY details.
+- command: `multi_agent_v1.spawn_agent` for #87 checker
+  result: passed
+  evidence: checker Arendt `019f461a-868a-76c1-8d9d-05e2e83c1733` reported no blocking findings, confirmed tracker-only diff, unchanged `CHANGELOG.md`, #84/#85/#86 closed, #87 open, full finding/viewport/validation evidence present, and recommended commit/PR.
 - command: `git worktree add /Users/alexmetelli/source/horizon-starknet-issue-84 -b codex/issue-84-home-workbench origin/main`
   result: passed
   evidence: created clean #84 worktree at `2c8d23834abe8ad2d9f5790f1fd4431ca1551f9e`.
@@ -560,3 +639,11 @@ Open Questions:
   pr: https://github.com/ametel01/horizon-starknet/pull/91
   merge: 245e50f5df8f642f18b8e3397eb92f2e09daf586
   final-review: https://github.com/ametel01/horizon-starknet/pull/91#pullrequestreview-4661240607
+- issue: #85 Redesign the frontend app chrome and footer colophon
+  pr: https://github.com/ametel01/horizon-starknet/pull/90
+  merge: ed78fe43f41072364b93b70d0597fe2eb77dbed4
+  final-review: https://github.com/ametel01/horizon-starknet/pull/90#pullrequestreview-4661340193
+- issue: #86 Make market APY details touch-accessible and reduce card glow
+  pr: https://github.com/ametel01/horizon-starknet/pull/92
+  merge: e049b239eb27f812d229fa21d54e3b88d7ffb766
+  final-review: https://github.com/ametel01/horizon-starknet/pull/92#pullrequestreview-4661112547
