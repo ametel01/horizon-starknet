@@ -4,12 +4,18 @@ on:
   push:
     branches: [main]
     paths:
+      - "contracts/**"
       - "packages/frontend/**"
+      - "packages/frontend/scripts/generate-types.ts"
+      - "packages/frontend/src/types/generated/**"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: [main]
     paths:
+      - "contracts/**"
       - "packages/frontend/**"
+      - "packages/frontend/scripts/generate-types.ts"
+      - "packages/frontend/src/types/generated/**"
       - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 

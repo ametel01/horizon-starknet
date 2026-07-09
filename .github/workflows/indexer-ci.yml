@@ -4,12 +4,20 @@ on:
   push:
     branches: [main]
     paths:
+      - 'contracts/**'
+      - 'packages/frontend/scripts/generate-types.ts'
+      - 'packages/frontend/src/types/generated/**'
       - 'packages/indexer/**'
+      - 'packages/indexer/scripts/generate-events-abi.ts'
       - '.github/workflows/indexer-ci.yml'
   pull_request:
     branches: [main]
     paths:
+      - 'contracts/**'
+      - 'packages/frontend/scripts/generate-types.ts'
+      - 'packages/frontend/src/types/generated/**'
       - 'packages/indexer/**'
+      - 'packages/indexer/scripts/generate-events-abi.ts'
       - '.github/workflows/indexer-ci.yml'
   workflow_dispatch:
 
