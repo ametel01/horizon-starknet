@@ -474,6 +474,20 @@ Status: FAILED
 ## Next Action
 - Rebase or merge current `origin/main` into `codex/issue-85-app-chrome-colophon`, reconcile `STATUS.md` only, rerun the frontend checker gates if any source/test files change during conflict resolution, then package the PR.
 
+## Checker Reconciliation - Issue #85
+Status: ALL GREEN for PR packaging after coordinator rebase.
+
+## Commands
+- command: `git rebase origin/main`
+  result: passed after resolving only `STATUS.md`
+  evidence: rebased #85 onto `44d9a6c9`; functional source and e2e files remained the #85 chrome/footer/navigation implementation.
+- command: `git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main`
+  result: passed
+  evidence: no merge-tree output after rebase, so the previous `STATUS.md` packaging conflict is resolved.
+
+## Next Action
+- Package PR for issue #85 with checker validation evidence above.
+
 ## Completion Contract - Issue #86
 Issue: #86 Make market APY details touch-accessible and reduce card glow
 Readiness: ready
