@@ -257,6 +257,67 @@
   risks: Frontend-only. No market math, oracle semantics, indexer API, contract call, transaction behavior, route, dependency, lockfile, contract, CI, deployment, README address, or license changes. Coordination note: port 3000 was briefly occupied by a sibling worktree during local E2E, then cleared before the exact command passed on this branch.
   next-action: Checker should inspect the diff and rerun gates.
 
+- from: checker-agent
+  to: coordinator
+  timestamp: 2026-07-09
+  request: Package issue #84 for PR; do not open/approve a PR from this checker handoff.
+  evidence: |
+    ## Checker Result
+    Status: ALL GREEN
+
+    ## Commands
+    - command: `pwd && git rev-parse --show-toplevel && git branch --show-current`
+      result: passed
+      evidence: worktree root is `/Users/alexmetelli/source/horizon-starknet-issue-84`; branch is `codex/issue-84-home-workbench`.
+    - command: `git rev-parse HEAD && git show --stat --oneline --decorate --no-renames 78d50fdd39f7c311a030057da109d6d75253ebf2`
+      result: passed
+      evidence: HEAD is builder commit `78d50fdd39f7c311a030057da109d6d75253ebf2` (`Replace home hero with protocol workbench`).
+    - command: `gh issue view 84 --json number,title,state,body,labels,assignees,url`
+      result: passed
+      evidence: issue #84 is open; body requires replacing the centered marketing hero with a protocol workbench, preserving simple/advanced modes, updating nav/markets e2e, and updating progress/changelog.
+    - command: `git diff --name-status --no-renames origin/main...HEAD`
+      result: passed
+      evidence: diff is limited to `CHANGELOG.md`, `PROGRESS.md`, `STATUS.md`, `packages/frontend/e2e/markets.spec.ts`, `packages/frontend/e2e/navigation.spec.ts`, `packages/frontend/src/app/home-page-client.tsx`, and `packages/frontend/src/widgets/hero/HeroSection.tsx`.
+    - command: `git diff --name-only origin/main...HEAD | rg 'Header|Footer|MobileNav|MarketCard|SimpleMarketCard|shared/layout|package.json|bun.lock|lock|contracts|indexer|\.github|README' || true`
+      result: passed
+      evidence: no changed #85 chrome/footer/mobile-nav files, no #86 market-card APY/detail files, and no dependency, lockfile, contract, indexer, CI, deployment, or README address files.
+    - command: `bun run --cwd packages/frontend format:check`
+      result: passed
+      evidence: `biome format src`; checked 469 files in 62ms; no fixes applied.
+    - command: `bun run --cwd packages/frontend lint`
+      result: passed
+      evidence: `biome lint src`; checked 469 files in 112ms; no fixes applied.
+    - command: `bun run --cwd packages/frontend typecheck`
+      result: passed
+      evidence: `tsc --noEmit` completed successfully.
+    - command: `bun run --cwd packages/frontend test`
+      result: passed
+      evidence: `476 pass`, `0 fail`, 810 expect calls across 20 files.
+    - command: `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium`
+      result: passed
+      evidence: `28 passed` in 21.7s. Local logs still show missing `DATABASE_URL`/`RPC_URL`, analytics stats query failure, and `useMarkets` fallback noise.
+    - command: `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium`
+      result: passed
+      evidence: `15 passed` in 24.9s. Local logs still show missing `DATABASE_URL`/`RPC_URL`, analytics stats query failure, and `useMarkets` fallback noise.
+
+    ## Semantic Checks
+    - Home first viewport replaces old tall centered `min-h-[70vh]` hero/radial glow/stat orbs/generic feature grid with a bordered dense workbench in `HeroSection.tsx`.
+    - Workbench metrics use existing `useDashboardMarkets`, token price helpers, and `useProtocolStats`; unavailable prices/stats render `Unavailable` or `Indexer unavailable` instead of invented values.
+    - Simple route path keeps fixed-yield mint/market/portfolio actions; advanced exposes mint/trade/pools/portfolio/analytics actions.
+    - Home market list remains reachable at `#markets` with existing `SimpleMarketList`/`MarketList` fallbacks.
+    - Navigation and markets e2e now assert the workbench heading/metrics and market headings rather than the old hero headings or floating-orb stat rhythm.
+
+    ## Failures
+    - none.
+
+    ## Coverage Gaps
+    - `bun run --cwd packages/frontend build` was not rerun because it is not in the #84 required gate list and `STATUS.md`/`PROGRESS.md` document a local baseline hang at `Creating an optimized production build ...`.
+    - E2E passed under degraded local DB/RPC/indexer conditions; this validates accepted fallback behavior but not a fully connected local dev stack.
+
+    ## Next Action
+    - Ready for coordinator PR packaging for issue #84.
+  next-action: Coordinator may package the #84 branch for PR; keep #85 and #86 in their separate scopes.
+
 - from: builder-agent Archimedes
   to: checker-agent
   timestamp: 2026-07-09
