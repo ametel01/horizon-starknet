@@ -7,23 +7,23 @@
 - Target package: `packages/frontend`
 
 ## Current Status
-- Phase: issue #86 implemented; issues #84 and #85 remain parallel implementation streams
-- Owner: builder-agent Sagan for #86
+- Phase: issues #84 and #86 implemented; issue #85 remains active.
+- Owner: coordinator for #84/#85/#86 PR merge sequencing.
 - Last completed issue: #83, merged in PR #89
-- Next step: spec and execute #84, #85, and #86 in parallel where file ownership permits.
-- GitHub status: verified on 2026-07-09; #82 and #83 are closed, #84 through #87 remain open, and no PRs are open after PR #89 merged.
+- Next step: merge approved #84/#91 when fresh checks pass; keep #87 blocked until #84, #85, and #86 merge.
+- GitHub status: verified on 2026-07-09; #82, #83, and #86 are closed, #84/#85/#87 remain open, and PRs #90/#91 remain open after PR #92 merged.
 
 ## Step Checklist
 - [x] Step 0: Progress and Changelog Tracking Setup
 - [x] Step 1: Establish Frontend Token, Motion, and Overflow Foundation
-- [ ] Step 2: Replace the Home Hero With a Protocol Workbench
+- [x] Step 2: Replace the Home Hero With a Protocol Workbench
 - [ ] Step 3: Replace Stock SaaS App Chrome and Footer
 - [x] Step 4: Make Market APY Details Touch-Accessible and Deslop Market Cards
 - [ ] Step 5: Final Frontend Audit and Gate Run
 
 ## Definition of Done Tracker
 - [x] Root `PROGRESS.md` and `CHANGELOG.md` exist and are current.
-- [ ] The home page no longer uses a tall centered hero, radial glow/orb decoration, or generic feature-card grid as its primary first-screen structure.
+- [x] The home page no longer uses a tall centered hero, radial glow/orb decoration, or generic feature-card grid as its primary first-screen structure.
 - [x] The frontend visual foundation uses semantic tokens for neutrals, accent, surfaces, focus, gradients, and motion.
 - [x] `html` and `body` clip horizontal overflow, and audited pages do not horizontally overflow at 320, 375, 414, 768, and desktop widths.
 - [ ] Header/mobile navigation and footer read as protocol app chrome/colophon instead of stock SaaS patterns.
@@ -53,8 +53,9 @@
 - 2026-07-09: PR #89 merged and closed issue #83. GitHub Frontend CI Build, Unit Tests, Code Quality, E2E Tests, Secret Scanning, Socket, GitGuardian, CodeRabbit, and Vercel contexts passed.
 - 2026-07-09: Implemented issue #86 market card accessibility/design pass. Replaced hover-only APY `HoverCard` details with an explicit keyboard/touch disclosure, preserved implied APY, oracle state, TWAP/spot context, exchange rates, warnings, expiry, and Trade PT/Pool actions, and removed the market-card APY glow overlay, `card-hover-glow`, broad market-card `transition-all`, and hover-revealed actions.
 - 2026-07-09: Added markets e2e coverage for the non-hover APY details path and visible market actions when advanced market cards render. Validation passed: `bun run --cwd packages/frontend format:check`, `lint`, `typecheck`, `test`, and `test:e2e e2e/markets.spec.ts --project=chromium`. The exact E2E command passed 16/16 after a transient sibling-worktree port 3000 conflict cleared.
+- 2026-07-09: Implemented issue #84 home workbench. Replaced the centered hero, radial glow/orb stats, and generic `What you can do` grid with a dense protocol workbench using `useDashboardMarkets`, token price helpers, and `useProtocolStats`; simple mode routes toward fixed-yield minting and advanced mode exposes mint, trade, pools, portfolio, and analytics paths while keeping the market list directly reachable at `#markets`.
+- 2026-07-09: Issue #84 validation passed after package-local `bun install` restored missing frontend dependencies: `bun run --cwd packages/frontend format:check`, `bun run --cwd packages/frontend lint`, `bun run --cwd packages/frontend typecheck`, `bun run --cwd packages/frontend test` (476 pass, 0 fail), `bun run --cwd packages/frontend test:e2e e2e/navigation.spec.ts --project=chromium` (28 passed), and `bun run --cwd packages/frontend test:e2e e2e/markets.spec.ts --project=chromium` (15 passed). E2E logs still show local missing `DATABASE_URL`/`RPC_URL` and accepted indexer/RPC fallback noise.
 
 ## Next-Step Instructions
-- Start checker review for issue #86 from branch `codex/issue-86-market-apy-access`.
-- Preserve #86 scope: market card APY disclosure/accessibility and markets e2e only.
+- Merge #84/#91 after final preflight, continue #85/#90 after the CodeRabbit `/analytics` audit fix clears fresh CI/review.
 - Keep #87 blocked until #84, #85, and #86 merge.
