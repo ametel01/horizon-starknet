@@ -1,13 +1,14 @@
 import { db, marketSwap, routerSwap, routerSwapYT } from '@shared/server/db';
 import { logError } from '@shared/server/logger';
 import { applyRateLimit } from '@shared/server/rate-limit';
+import { marketSwapsQuerySchema, validateQuery } from '@shared/server/validations/api';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-interface SwapEvent {
+export interface SwapEvent {
   id: string;
   type: 'pt' | 'yt';
   blockNumber: number;
@@ -48,7 +49,7 @@ interface SwapsResponse {
  * Deduplicates swaps by transaction hash, preferring entries with rate data.
  * This handles cases where both Router.Swap and Market.Swap events are emitted for the same tx.
  */
-function deduplicateSwaps(allSwaps: SwapEvent[]): SwapEvent[] {
+export function deduplicateSwaps(allSwaps: SwapEvent[]): SwapEvent[] {
   const seenTxHashes = new Map<string, SwapEvent>();
 
   for (const swap of allSwaps) {
@@ -78,6 +79,30 @@ function parseSinceDate(since: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+export function paginateSwaps(
+  allSwaps: SwapEvent[],
+  { limit, offset }: { limit: number; offset: number }
+): SwapsResponse {
+  const dedupedSwaps = deduplicateSwaps(allSwaps);
+  dedupedSwaps.sort(
+    (a, b) => new Date(b.blockTimestamp).getTime() - new Date(a.blockTimestamp).getTime()
+  );
+
+  const paginatedSwaps = dedupedSwaps.slice(offset, offset + limit + 1);
+  const hasMore = paginatedSwaps.length > limit;
+  const swaps = paginatedSwaps.slice(0, limit);
+
+  return {
+    swaps,
+    total: swaps.length,
+    hasMore,
+  };
+}
+
+export function parseMarketSwapsQuery(searchParams: URLSearchParams) {
+  return validateQuery(searchParams, marketSwapsQuerySchema);
+}
+
 /**
  * GET /api/markets/[address]/swaps
  * Get swap history for a market (includes PT and YT swaps)
@@ -90,15 +115,18 @@ function parseSinceDate(since: string | null): Date | null {
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
-): Promise<NextResponse<SwapsResponse>> {
+): Promise<NextResponse> {
   // Apply rate limiting
   const rateLimitResult = await applyRateLimit(request, 'PUBLIC');
-  if (rateLimitResult) return rateLimitResult as NextResponse<SwapsResponse>;
+  if (rateLimitResult) return rateLimitResult;
 
   const { address } = await params;
   const searchParams = request.nextUrl.searchParams;
-  const limit = Math.min(Number.parseInt(searchParams.get('limit') ?? '50', 10), 100);
-  const offset = Number.parseInt(searchParams.get('offset') ?? '0', 10);
+  const query = parseMarketSwapsQuery(searchParams);
+  if (query instanceof NextResponse) return query;
+
+  const { limit, offset } = query;
+  const queryLimit = offset + limit + 1;
   const sinceDate = parseSinceDate(searchParams.get('since'));
 
   try {
@@ -113,7 +141,8 @@ export async function GET(
             ? and(eq(marketSwap.market, address), gte(marketSwap.block_timestamp, sinceDate))
             : eq(marketSwap.market, address)
         )
-        .orderBy(desc(marketSwap.block_timestamp)),
+        .orderBy(desc(marketSwap.block_timestamp))
+        .limit(queryLimit),
 
       // 2. Query router_swap (PT swaps through router)
       db
@@ -124,7 +153,8 @@ export async function GET(
             ? and(eq(routerSwap.market, address), gte(routerSwap.block_timestamp, sinceDate))
             : eq(routerSwap.market, address)
         )
-        .orderBy(desc(routerSwap.block_timestamp)),
+        .orderBy(desc(routerSwap.block_timestamp))
+        .limit(queryLimit),
 
       // 3. Query router_swap_yt (YT swaps through router)
       db
@@ -135,7 +165,8 @@ export async function GET(
             ? and(eq(routerSwapYT.market, address), gte(routerSwapYT.block_timestamp, sinceDate))
             : eq(routerSwapYT.market, address)
         )
-        .orderBy(desc(routerSwapYT.block_timestamp)),
+        .orderBy(desc(routerSwapYT.block_timestamp))
+        .limit(queryLimit),
     ]);
 
     // Map results to SwapEvent format
@@ -191,22 +222,7 @@ export async function GET(
       })),
     ];
 
-    // Deduplicate and sort
-    const dedupedSwaps = deduplicateSwaps(allSwaps);
-    dedupedSwaps.sort(
-      (a, b) => new Date(b.blockTimestamp).getTime() - new Date(a.blockTimestamp).getTime()
-    );
-
-    // Apply pagination
-    const paginatedSwaps = dedupedSwaps.slice(offset, offset + limit + 1);
-    const hasMore = paginatedSwaps.length > limit;
-    const swaps = paginatedSwaps.slice(0, limit);
-
-    return NextResponse.json({
-      swaps,
-      total: swaps.length,
-      hasMore,
-    });
+    return NextResponse.json(paginateSwaps(allSwaps, { limit, offset }));
   } catch (error) {
     logError(error, { module: 'markets/swaps', marketAddress: address });
     return NextResponse.json({ swaps: [], total: 0, hasMore: false }, { status: 500 });
