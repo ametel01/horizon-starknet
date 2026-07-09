@@ -1,10 +1,13 @@
 import { Footer } from '@shared/layout/Footer';
 import { Header } from '@shared/layout/Header';
 import { MobileNav } from '@shared/layout/MobileNav';
+import { NonceProvider } from '@shared/security/NonceProvider';
+import { CSP_NONCE_HEADER } from '@shared/server/csp';
 import { Toaster } from '@shared/ui/sonner';
 import { IndexerStatusBanner } from '@widgets/analytics/IndexerStatusBanner';
 import type { Metadata } from 'next';
 import { JetBrains_Mono, Outfit, Sora } from 'next/font/google';
+import { headers } from 'next/headers';
 import { Providers } from '@/providers';
 
 import './globals.css';
@@ -100,7 +103,9 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps): React.ReactNode {
+export default async function RootLayout({ children }: RootLayoutProps): Promise<React.ReactNode> {
+  const nonce = (await headers()).get(CSP_NONCE_HEADER) ?? undefined;
+
   return (
     <html
       lang="en"
@@ -114,14 +119,16 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactNo
         <link rel="preconnect" href="https://starknet.impulse.avnu.fi" />
       </head>
       <body className="font-sans antialiased">
-        <Providers>
-          <Header />
-          <IndexerStatusBanner showOnlyIssues={true} className="mx-4 mt-2" />
-          <main className="pb-mobile-nav min-h-[calc(100vh-4rem)]">{children}</main>
-          <Footer />
-          <MobileNav />
-          <Toaster />
-        </Providers>
+        <NonceProvider nonce={nonce}>
+          <Providers>
+            <Header />
+            <IndexerStatusBanner showOnlyIssues={true} className="mx-4 mt-2" />
+            <main className="pb-mobile-nav min-h-[calc(100vh-4rem)]">{children}</main>
+            <Footer />
+            <MobileNav />
+            <Toaster />
+          </Providers>
+        </NonceProvider>
       </body>
     </html>
   );

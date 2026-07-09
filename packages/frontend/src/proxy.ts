@@ -1,3 +1,10 @@
+import {
+  applySecurityHeaders,
+  buildCSP,
+  CSP_HEADER,
+  CSP_NONCE_HEADER,
+  generateNonce,
+} from '@shared/server/csp';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -14,7 +21,36 @@ import { NextResponse } from 'next/server';
  * See: https://nextjs.org/docs/app/api-reference/file-conventions/proxy
  */
 export function proxy(request: NextRequest): NextResponse {
-  const response = NextResponse.next();
+  const nonce = generateNonce();
+  const csp = buildCSP(nonce);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(CSP_HEADER, csp);
+  requestHeaders.set(CSP_NONCE_HEADER, nonce);
+
+  let response: NextResponse;
+
+  const buildRedirect = (pathname: string): NextResponse =>
+    NextResponse.redirect(new URL(pathname, request.url), 301);
+
+  const { pathname } = request.nextUrl;
+
+  if (pathname === '/markets') {
+    response = buildRedirect('/pools');
+  } else if (pathname === '/stake') {
+    response = buildRedirect('/mint');
+  } else if (pathname === '/dashboard') {
+    response = buildRedirect('/portfolio');
+  } else if (pathname === '/earn') {
+    response = buildRedirect('/pools');
+  } else if (pathname === '/swap') {
+    response = buildRedirect('/trade');
+  } else {
+    response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
 
   // Add request timing header for performance monitoring
   response.headers.set('x-request-time', Date.now().toString());
@@ -23,34 +59,8 @@ export function proxy(request: NextRequest): NextResponse {
   const requestId = crypto.randomUUID();
   response.headers.set('x-request-id', requestId);
 
-  // Legacy route redirects
-  // Redirect old paths to new ones for backwards compatibility
-  const { pathname } = request.nextUrl;
-
-  // Redirect /markets to /pools (markets is now called pools)
-  if (pathname === '/markets') {
-    return NextResponse.redirect(new URL('/pools', request.url), 301);
-  }
-
-  // Redirect /stake to /mint (stake is now called mint)
-  if (pathname === '/stake') {
-    return NextResponse.redirect(new URL('/mint', request.url), 301);
-  }
-
-  // Redirect /dashboard to /portfolio
-  if (pathname === '/dashboard') {
-    return NextResponse.redirect(new URL('/portfolio', request.url), 301);
-  }
-
-  // Redirect /earn to /pools (alternative naming)
-  if (pathname === '/earn') {
-    return NextResponse.redirect(new URL('/pools', request.url), 301);
-  }
-
-  // Redirect /swap to /trade (alternative naming)
-  if (pathname === '/swap') {
-    return NextResponse.redirect(new URL('/trade', request.url), 301);
-  }
+  response.headers.set(CSP_NONCE_HEADER, nonce);
+  applySecurityHeaders(response.headers, nonce, csp);
 
   return response;
 }
