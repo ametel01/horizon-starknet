@@ -72,12 +72,19 @@ fn constructor(
 | TWAP Window | 3600s (1 hour) | 300s (5 minutes) |
 | Max Staleness | 86400s (24 hours) | - |
 
+`max_staleness` is retained in the admin ABI and config event as operator
+metadata describing the expected upstream freshness bound. The current Pragma
+SummaryStats `calculate_twap()` interface returns only `(price, decimals)`, so
+Horizon cannot independently compare sample timestamps in `PragmaIndexOracle`;
+stale or insufficient TWAP data must be rejected by the upstream Pragma call and
+that revert propagates.
+
 ### Admin Functions
 
 | Function | Required Role | Purpose |
 |----------|---------------|---------|
 | `update_index()` | OPERATOR | Persist current oracle value to storage |
-| `set_config(twap_window, max_staleness)` | OPERATOR | Change TWAP parameters |
+| `set_config(twap_window, max_staleness)` | OPERATOR | Change TWAP window and record staleness metadata |
 | `pause()` / `unpause()` | PAUSER | Freeze oracle at current value |
 | `emergency_set_index(value)` | DEFAULT_ADMIN | Manual override for emergencies |
 | `initialize_rbac()` | Owner | Bootstrap RBAC after upgrade |
@@ -236,8 +243,8 @@ operator.call: update_index()
 ### Staleness Protection
 
 - TWAP uses configured time window (default: 1 hour)
-- Oracle reverts if data is older than `max_staleness` (default: 24 hours)
-- Pragma's internal staleness checks also apply
+- Horizon validates that `max_staleness >= twap_window` but does not independently enforce sample age because `calculate_twap()` does not return a timestamp
+- Pragma's internal stale/insufficient-data checks are the freshness authority; if Pragma reverts, Horizon propagates the revert
 
 ---
 

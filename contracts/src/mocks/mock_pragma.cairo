@@ -58,8 +58,10 @@ pub trait IMockPragmaSummaryStats<TContractState> {
     // Admin functions for testing
     fn set_base_price(ref self: TContractState, pair_id: felt252, price: u128);
     fn set_annual_yield_rate_bps(ref self: TContractState, pair_id: felt252, rate_bps: u32);
+    fn set_twap_revert(ref self: TContractState, pair_id: felt252, should_revert: bool);
     fn get_base_price(self: @TContractState, pair_id: felt252) -> u128;
     fn get_annual_yield_rate_bps(self: @TContractState, pair_id: felt252) -> u32;
+    fn should_twap_revert(self: @TContractState, pair_id: felt252) -> bool;
     fn get_deployment_timestamp(self: @TContractState) -> u64;
     fn admin(self: @TContractState) -> ContractAddress;
 }
@@ -84,6 +86,8 @@ pub mod MockPragmaSummaryStats {
         base_prices: Map<felt252, u128>,
         // Annual yield rate in basis points (e.g., 500 = 5% APR)
         annual_yield_rate_bps: Map<felt252, u32>,
+        // Test control: simulate upstream SummaryStats rejecting stale/insufficient TWAP data
+        twap_reverts: Map<felt252, bool>,
         // Admin address for test controls
         admin: ContractAddress,
     }
@@ -158,6 +162,8 @@ pub mod MockPragmaSummaryStats {
                 DataType::FutureEntry((id, _)) => id,
             };
 
+            assert(!self.twap_reverts.read(pair_id), 'MPSS: stale data');
+
             let base_price = self.base_prices.read(pair_id);
             assert(base_price > 0, 'MPSS: unknown pair');
 
@@ -222,6 +228,12 @@ pub mod MockPragmaSummaryStats {
             self.emit(YieldRateUpdated { pair_id, old_rate_bps: old_rate, new_rate_bps: rate_bps });
         }
 
+        /// Toggle calculate_twap reverts for a pair to model upstream stale-data rejection.
+        fn set_twap_revert(ref self: ContractState, pair_id: felt252, should_revert: bool) {
+            self.assert_admin();
+            self.twap_reverts.write(pair_id, should_revert);
+        }
+
         /// Get base price for a pair
         fn get_base_price(self: @ContractState, pair_id: felt252) -> u128 {
             self.base_prices.read(pair_id)
@@ -230,6 +242,11 @@ pub mod MockPragmaSummaryStats {
         /// Get annual yield rate in basis points
         fn get_annual_yield_rate_bps(self: @ContractState, pair_id: felt252) -> u32 {
             self.annual_yield_rate_bps.read(pair_id)
+        }
+
+        /// Whether calculate_twap is configured to revert for a pair
+        fn should_twap_revert(self: @ContractState, pair_id: felt252) -> bool {
+            self.twap_reverts.read(pair_id)
         }
 
         /// Get deployment timestamp

@@ -5,7 +5,7 @@ use starknet::ContractAddress;
 pub trait IPragmaIndexOracleAdmin<TContractState> {
     /// Update the stored index from oracle (call periodically to persist watermark)
     fn update_index(ref self: TContractState) -> u256;
-    /// Update TWAP window and staleness parameters (OPERATOR_ROLE)
+    /// Update TWAP window and operator staleness metadata (OPERATOR_ROLE)
     fn set_config(ref self: TContractState, twap_window: u64, max_staleness: u64);
     /// Pause the oracle (returns stored index instead of fetching) (PAUSER_ROLE)
     fn pause(ref self: TContractState);
@@ -93,7 +93,8 @@ pub mod PragmaIndexOracle {
         denominator_pair_id: felt252,
         /// TWAP window duration in seconds
         twap_window: u64,
-        /// Maximum allowed staleness in seconds
+        /// Operator-declared upstream staleness expectation in seconds.
+        /// SummaryStats returns no sample timestamp, so stale-data rejection is delegated upstream.
         max_staleness: u64,
         /// Stored index (monotonic watermark)
         stored_index: u256,
@@ -239,7 +240,7 @@ pub mod PragmaIndexOracle {
             max(oracle_index, old_index)
         }
 
-        /// Update TWAP window and staleness parameters (OPERATOR_ROLE)
+        /// Update TWAP window and operator staleness metadata (OPERATOR_ROLE)
         fn set_config(ref self: ContractState, twap_window: u64, max_staleness: u64) {
             self.access_control.assert_only_role(OPERATOR_ROLE);
             assert(twap_window >= MIN_TWAP_WINDOW, 'HZN: window too short');
