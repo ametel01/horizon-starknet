@@ -26,7 +26,7 @@ jobs:
           scarb-version: "2.19.1"
 
       - name: Setup snfoundry
-        uses: foundry-rs/setup-snfoundry@v4
+        uses: foundry-rs/setup-snfoundry@v6
         with:
           starknet-foundry-version: "0.62.1"
 
